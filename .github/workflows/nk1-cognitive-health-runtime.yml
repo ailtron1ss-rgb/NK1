@@ -1,0 +1,41 @@
+name: NK1 Cognitive Health Runtime Supervision
+on:
+  pull_request:
+    branches: [workpass70-source]
+    paths:
+      - 'runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts'
+      - 'runtime/neuro-kurisu/src/organism/cognition/CognitiveImmuneSystem.ts'
+      - 'runtime/neuro-kurisu/tests/cognitive-health-runtime-integration.mjs'
+      - 'runtime/neuro-kurisu/tests/cognitive-immune-health-monitor.mjs'
+      - '.github/workflows/nk1-cognitive-health-runtime.yml'
+  push:
+    branches: [aspect/cognitive-health-runtime-bridge-20261123]
+    paths:
+      - 'runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts'
+      - 'runtime/neuro-kurisu/src/organism/cognition/CognitiveImmuneSystem.ts'
+      - 'runtime/neuro-kurisu/tests/cognitive-health-runtime-integration.mjs'
+      - 'runtime/neuro-kurisu/tests/cognitive-immune-health-monitor.mjs'
+      - '.github/workflows/nk1-cognitive-health-runtime.yml'
+permissions:
+  contents: read
+concurrency:
+  group: nk1-cognitive-health-runtime-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  cognitive-health-runtime:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          package-manager-cache: false
+      - name: Install locked runtime dependencies
+        run: npm ci --prefix runtime/neuro-kurisu --ignore-scripts --no-audit --no-fund
+      - name: Verify runtime health supervision and persistence
+        run: node --experimental-strip-types runtime/neuro-kurisu/tests/cognitive-health-runtime-integration.mjs
+      - name: Preserve existing cognitive immune-health monitor contract
+        run: node --experimental-strip-types runtime/neuro-kurisu/tests/cognitive-immune-health-monitor.mjs
+      - name: Runtime typecheck
+        run: npm --prefix runtime/neuro-kurisu run typecheck
