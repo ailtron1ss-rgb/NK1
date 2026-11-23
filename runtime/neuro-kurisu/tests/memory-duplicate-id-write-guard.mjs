@@ -20,6 +20,7 @@ assert.equal(snapshot.items.length, 2, 'both observations are retained as separa
 
 // The live indexes must agree with the row list.
 assert.ok(memory.indexDiagnostics().pass, 'live indexes must stay consistent');
+console.log('MEMORY_DUPLICATE_ID_DOCTOR_DIAGNOSTICS=', JSON.stringify(memory.doctor()));
 assert.equal(memory.doctor().pass, true, 'the live state must report no integrity issue');
 
 // A snapshot/restore round-trip is the independent oracle: no row may be dropped.
