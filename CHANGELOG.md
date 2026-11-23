@@ -1,3 +1,15 @@
+## [NK1][Cognition] Port OmeStro governed cognitive and developmental contracts (2026-11-23)
+
+- Add the 32-concept status registry and bounded contracts for intent, ChronoTruth, negative-space memory, open-loop commitments, undo-first planning, developmental genome, research review and neural-adaptation candidates.
+- Compose the kernel over canonical CognitiveImmuneSystem, P25, P28, SubstratePortabilityEngine and NeuralMorphogenesisEngine owners; persist governance state through the existing OrganismCore projection/checkpoint path.
+- Keep neural adaptation and morphogenesis candidate/shadow-only; no production training or inference authority is added.
+
+## [NK1][Cognition] Port OmeStro governed cognitive and developmental contracts (2026-11-23)
+
+- Add the 32-concept status registry and bounded contracts for intent, ChronoTruth, negative-space memory, open-loop commitments, undo-first planning, developmental genome, research review and neural-adaptation candidates.
+- Compose the kernel over canonical CognitiveImmuneSystem, P25, P28, SubstratePortabilityEngine and NeuralMorphogenesisEngine owners; persist governance state through the existing OrganismCore projection/checkpoint path.
+- Keep neural adaptation and morphogenesis candidate/shadow-only; no production training or inference authority is added.
+
 ## [NK1][Governance] Port the evidence-gated 75-aspect progress tracker (2026-11-23)
 
 - Port the 75-aspect machine-readable tracker, validator, regression suite, Russian backlog and dedicated CI workflow onto the current source baseline.
