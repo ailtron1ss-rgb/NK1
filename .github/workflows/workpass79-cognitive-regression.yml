@@ -101,3 +101,6 @@ jobs:
       - name: Verify live causal action-to-post-state binding and strict one-tick attribution
         working-directory: runtime/neuro-kurisu
         run: npm run test:workpass667:causal-live-binding
+      - name: Verify safety-escalated cognitive domains reach interrupt and wake routing
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/cognitive-frame-resource-routing-workpass330.mjs
