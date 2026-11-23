@@ -65,18 +65,23 @@
 | #1099 | NMCN advisor bridge | `OrganismRuntime.ts`, server, package, sidecar and new adapters | Keep opt-in and advisory; verify no duplicate memory/action authority, process lifecycle, network timeout or persistence path. |
 | #1084 | Project map and analysis tracker | docs, README, AGENTS and census snapshots | Salvage dated project-map/cycle/census artifacts; do not import stale root checkpoint blocks as current. |
 
-## Current repository census — 2026-11-23
+## Current repository census — 2026-11-23 (live snapshot at base 5384111)
 
-- Branch refs: **1,097**; unique HEADs: **1,078**; duplicate-tip groups: **4**; excess aliases: **19**.
-- Open PRs: **275**; unique PR heads: **275**; Draft: **210**; Ready: **65**.
-- Prefix distribution: `aspect/*` 274; root refs 268; `fix/*` 180; `work/*` 159; `consolidation/*` 63; `feature/*` 44; `docs/*` 31; `integrate/*` 27; `feat/*` 14; remaining prefixes total 37.
-- Four duplicate-tip groups:
-  1. `f9621bf3e4411ce17bc809922a5f90126001f4fd`: `aspect/consequence-ecology-20261117` and `integrate/consequence-calibration-lineage-followup-20261120`.
-  2. `68a03799ca0c9f18e4c6e19399ed8018e0215e60`: `aspect/world-forge-integrated-20261117` and `integrate/worldforge-to-sharedfuture-after-calibration-20261120`.
-  3. `4972c2d5228141ef9673be94fca243614d28d9d6`: `consolidation/nk1-ledger-refresh-20261123` and `workpass70-source`. This alias appeared during concurrent work and is excluded from cleanup until the other session is confirmed inactive.
-  4. `82ea7a8b7c9b036e65c8b056acedd1176952dd8f`: 17 legacy/workpass branch refs: `nk1-all-branches-merge-2026-10-23`, `nk1-integration-workspace-2026-10-22`, `rebuild`, `workpass79-cognitive-rebuild`, `workpass116-seed-clustered-learning-eval`, `workpass117-verified-replay-admission`, `workpass118-multi-source-learning-integration`, `workpass119-skill-retrieval-feedback-curriculum`, `workpass120-verified-skill-revision-gate`, `workpass121-ledger-bound-promotion-proposals`, `workpass122-promotion-gate-coverage-hardening`, `workpass123-authenticated-skill-lifecycle`, `workpass124-learning-evidence-hardening`, `workpass135-durable-shadow-run-registry`, `workpass203-independent-candidate-evaluator`, `workpass206-runtime-evaluator-wiring`, `workpass313-actions-history-audit`.
-- All 19 excess duplicate-tip branch names were checked against the full 275-open-PR list; none is the head branch of an open PR. The source-tip alias `consolidation/nk1-ledger-refresh-20261123` may be active in a parallel session and is excluded from cleanup pending confirmation. Retain at least one branch ref per duplicate SHA.
-- Actual branch deletion was not performed in this pass: the connected GitHub tool exposes branch listing/creation/ref updates but no delete-ref action. The available TinyFish browser profile has no recorded signed-in sites. A confirmed authenticated GitHub browser session or equivalent authorized delete-ref capability is required to execute cleanup.
+- Canonical source: `workpass70-source` @ `5384111285f0f9c46ce452aeca633e47baab3289` (post-PR #1106).
+- At the time of this snapshot, before creating the temporary resource-routing integration branch: **1,100 refs**, **1,082 unique tip SHAs**, **3 exact duplicate-tip groups**, and **18 excess aliases**.
+- Open PRs at this snapshot: **274** (208 Draft, 66 Ready).
+- Duplicate group 1: `f9621bf3e4411ce17bc809922a5f90126001f4fd` — `aspect/consequence-ecology-20261117` and `integrate/consequence-calibration-lineage-followup-20261120`.
+- Duplicate group 2: `68a03799ca0c9f18e4c6e19399ed8018e0215e60` — `aspect/world-forge-integrated-20261117` and `integrate/worldforge-to-sharedfuture-after-calibration-20261120`.
+- Duplicate group 3: `82ea7a8b7c9b036e65c8b056acedd1176952dd8f` — 17 legacy refs: `nk1-all-branches-merge-2026-10-23`, `nk1-integration-workspace-2026-10-22`, `rebuild`, `workpass79-cognitive-rebuild`, `workpass116-seed-clustered-learning-eval`, `workpass117-verified-replay-admission`, `workpass118-multi-source-learning-integration`, `workpass119-skill-retrieval-feedback-curriculum`, `workpass120-verified-skill-revision-gate`, `workpass121-ledger-bound-skill-revision-proposals`, `workpass122-promotion-gate-coverage-hardening`, `workpass123-authenticated-skill-lifecycle`, `workpass124-learning-evidence-hardening`, `workpass135-durable-shadow-run-registry`, `workpass203-independent-candidate-evaluator`, `workpass206-runtime-evaluator-wiring`, `workpass313-actions-history-audit`.
+- Current open PRs use four names from the legacy duplicate group as base refs; preserve `nk1-all-branches-merge-2026-10-23` (PR #109), `rebuild` (PRs #91 and #86), and `workpass206-runtime-evaluator-wiring` (PR #124). Keep `workpass79-cognitive-rebuild` as the canonical legacy ref. Keep `aspect/consequence-ecology-20261117` and `aspect/world-forge-integrated-20261117` as canonical refs for their newer duplicate groups.
+- Fifteen aliases are potential cleanup candidates after a fresh recheck: 13 legacy refs (all except the four names above), plus `integrate/consequence-calibration-lineage-followup-20261120` and `integrate/worldforge-to-sharedfuture-after-calibration-20261120`. These refs all point to commits retained by another branch. None of the 18 duplicate aliases is an open-PR head; do not remove open-PR base refs.
+- All enumerated branch refs had `protected=false`; this is not a substitute for checking repository rulesets. Recheck the source SHA, all refs, and open-PR head/base references immediately before any deletion.
+- No branch deletion was performed. The GitHub connector has no delete-ref action; the default browser profile has no recorded signed-in sites. Actual cleanup requires an authenticated GitHub browser session or an equivalent authorized delete-ref capability.
+
+## PR #1107 unique contribution to port
+
+- PR #1107's unique source contribution is the standalone `test:cognitive-frame-resource-routing` package command. The regression test file is already present in the source tree, and runtime behavior was integrated by PR #1103.
+- The command is being carried forward additively with its changelog note. Do not replay PR #1107's older ledger; the richer #1106 ledger is authoritative.
 
 ## File-size and repository constraints
 
