@@ -291,4 +291,56 @@ assert.throws(() => kernel.beginDecisionCycle({
  assert.equal(payloadGetterExecuted, false, 'top-level payload accessors must be omitted without execution');
  assert.deepEqual(accessorEvent.payload, {});
 
-console.log('WorkPass351 canonical cognitive kernel: PASS');
+
+ // Omitted timestamps replay the original decision time instead of generating a conflict.
+ const retentionFabric = new CognitiveEventFabric(128);
+ const retentionCycle = new UnifiedCognitiveCycle();
+ const retentionKernel = new CanonicalCognitiveKernel(retentionFabric, retentionCycle);
+ const noTimestampInput = { ...decisionInput(), tick: 21 };
+ delete noTimestampInput.at;
+ const firstNoTimestampDecision = retentionKernel.beginDecisionCycle(noTimestampInput);
+ const totalAfterFirstDecision = retentionFabric.snapshot().total;
+ const replayWithoutTimestamp = retentionKernel.beginDecisionCycle(noTimestampInput);
+ assert.deepEqual(replayWithoutTimestamp.anchors, firstNoTimestampDecision.anchors);
+ assert.equal(retentionFabric.snapshot().total, totalAfterFirstDecision,
+   'replaying an existing decision without at must reuse the original decision time');
+
+ const retentionCompletion = retentionKernel.completeCycle({
+   anchors:firstNoTimestampDecision.anchors,
+   fallbackTick:22,
+   at:firstNoTimestampDecision.anchors.at+1,
+   outcome:stage('outcome.verifier',{success01:0.8,verified:true}),
+   learning:stage('learning.update',{updated:true}),
+   selfUpdate:stage('self-model.update',{continuity01:0.8}),
+ });
+ assert.equal(retentionCompletion.completionRecorded,true);
+ const oldDecisionReplay = retentionKernel.beginDecisionCycle(noTimestampInput);
+ assert.deepEqual(oldDecisionReplay.anchors, firstNoTimestampDecision.anchors,
+   'a completed old tick may be replayed read-only while all stage evidence remains retained');
+ const totalBeforeRetentionFill = retentionFabric.snapshot().total;
+ assert.equal(totalBeforeRetentionFill, totalAfterFirstDecision + 3);
+
+ // Force the bounded event window to evict the old decision's stages.
+ for (let i=0;i<140;i++) {
+   retentionFabric.append({
+     id:`retention-filler-${i}`,
+     tick:1000+i,
+     at:10000+i,
+     stage:'tool-evidence',
+     source:'retention-test',
+     payload:{index:i},
+   });
+ }
+ assert.equal(retentionFabric.getById('cef:kernel:21:observation'),null,
+   'fixture must actually evict the old observation');
+ const beforeStaleDecisionReplay = retentionFabric.snapshot().total;
+ assert.throws(
+   ()=>retentionKernel.beginDecisionCycle(noTimestampInput),
+   /stale-decision/,
+   'the kernel must not recreate an already-finalized decision after its stage evidence is evicted',
+ );
+ assert.equal(retentionFabric.snapshot().total,beforeStaleDecisionReplay,
+   'a rejected stale decision replay must not resurrect evicted stages');
+ assert.equal(retentionFabric.getById('cef:kernel:21:observation'),null);
+
+console.log('WorkPass352 canonical cognitive kernel: PASS');
