@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
   "title": "NK1 / NeuroCore — 75-aspect executable progress tracker",
-  "generatedAt": "2026-11-04",
+  "generatedAt": "2026-11-23",
   "base": "workpass70-source",
-  "convention": "one aspect branch per direction; one PR per aspect; status advances only with a linked evidence artifact",
+  "convention": "75 logical aspects are grouped into 10 shared canonical aspect lines; no branch per aspect; coherent batches are integrated on the current source or an existing aspect line; status advances only with linked evidence.",
   "statusValues": [
     "PLANNED",
     "IN_PROGRESS",
@@ -79,7 +79,8 @@
       "gates": [
         "GOV-1OWNER"
       ],
-      "branch": "aspect-01-core-architecture"
+      "legacyBranchHint": "aspect-01-core-architecture",
+      "aspectLine": "core-runtime"
     },
     {
       "id": "A02",
@@ -99,7 +100,8 @@
       "evidence": [],
       "blockers": [],
       "gates": [],
-      "branch": "aspect-02-organism-bus"
+      "legacyBranchHint": "aspect-02-organism-bus",
+      "aspectLine": "core-runtime"
     },
     {
       "id": "A03",
@@ -124,7 +126,8 @@
         "STATE-MIGRATION",
         "RESTART-NO-LOSS"
       ],
-      "branch": "aspect-03-organism-state"
+      "legacyBranchHint": "aspect-03-organism-state",
+      "aspectLine": "core-runtime"
     },
     {
       "id": "A04",
@@ -147,7 +150,8 @@
       "evidence": [],
       "blockers": [],
       "gates": [],
-      "branch": "aspect-04-cognitive-kernel"
+      "legacyBranchHint": "aspect-04-cognitive-kernel",
+      "aspectLine": "core-runtime"
     },
     {
       "id": "A05",
@@ -170,7 +174,8 @@
       "gates": [
         "TICK-10000"
       ],
-      "branch": "aspect-05-cognitive-cycle"
+      "legacyBranchHint": "aspect-05-cognitive-cycle",
+      "aspectLine": "core-runtime"
     },
     {
       "id": "A06",
@@ -193,7 +198,8 @@
       "evidence": [],
       "blockers": [],
       "gates": [],
-      "branch": "aspect-06-engineering-os"
+      "legacyBranchHint": "aspect-06-engineering-os",
+      "aspectLine": "core-runtime"
     },
     {
       "id": "A07",
@@ -215,7 +221,8 @@
       "evidence": [],
       "blockers": [],
       "gates": [],
-      "branch": "aspect-07-perception"
+      "legacyBranchHint": "aspect-07-perception",
+      "aspectLine": "cognition"
     },
     {
       "id": "A08",
@@ -237,7 +244,8 @@
       "evidence": [],
       "blockers": [],
       "gates": [],
-      "branch": "aspect-08-world-model"
+      "legacyBranchHint": "aspect-08-world-model",
+      "aspectLine": "cognition"
     },
     {
       "id": "A09",
@@ -257,7 +265,8 @@
       "evidence": [],
       "blockers": [],
       "gates": [],
-      "branch": "aspect-09-reasoning"
+      "legacyBranchHint": "aspect-09-reasoning",
+      "aspectLine": "cognition"
     },
     {
       "id": "A10",
@@ -277,7 +286,8 @@
       "evidence": [],
       "blockers": [],
       "gates": [],
-      "branch": "aspect-10-planning"
+      "legacyBranchHint": "aspect-10-planning",
+      "aspectLine": "cognition"
     },
     {
       "id": "A11",
@@ -298,7 +308,8 @@
       "evidence": [],
       "blockers": [],
       "gates": [],
-      "branch": "aspect-11-metacognition"
+      "legacyBranchHint": "aspect-11-metacognition",
+      "aspectLine": "cognition"
     },
     {
       "id": "A12",
@@ -319,7 +330,8 @@
       "evidence": [],
       "blockers": [],
       "gates": [],
-      "branch": "aspect-12-attention"
+      "legacyBranchHint": "aspect-12-attention",
+      "aspectLine": "cognition"
     },
     {
       "id": "A13",
@@ -344,7 +356,8 @@
         "RECALL-DELTA>0",
         "SEARCH-10K<=30MS"
       ],
-      "branch": "aspect-13-memoryos2"
+      "legacyBranchHint": "aspect-13-memoryos2",
+      "aspectLine": "memory-learning"
     },
     {
       "id": "A14",
@@ -369,7 +382,8 @@
         "RECALL-DELTA>0",
         "PAIRED-SEEDS>=5"
       ],
-      "branch": "aspect-14-retrieval"
+      "legacyBranchHint": "aspect-14-retrieval",
+      "aspectLine": "memory-learning"
     },
     {
       "id": "A15",
@@ -390,7 +404,8 @@
       "evidence": [],
       "blockers": [],
       "gates": [],
-      "branch": "aspect-15-consolidation"
+      "legacyBranchHint": "aspect-15-consolidation",
+      "aspectLine": "memory-learning"
     },
     {
       "id": "A16",
@@ -411,7 +426,8 @@
       "evidence": [],
       "blockers": [],
       "gates": [],
-      "branch": "aspect-16-continual-learning"
+      "legacyBranchHint": "aspect-16-continual-learning",
+      "aspectLine": "memory-learning"
     },
     {
       "id": "A17",
@@ -432,7 +448,8 @@
       "evidence": [],
       "blockers": [],
       "gates": [],
-      "branch": "aspect-17-skill-system"
+      "legacyBranchHint": "aspect-17-skill-system",
+      "aspectLine": "memory-learning"
     },
     {
       "id": "A18",
@@ -456,7 +473,8 @@
       "gates": [
         "PAIRED-SEEDS>=5"
       ],
-      "branch": "aspect-18-evaluation"
+      "legacyBranchHint": "aspect-18-evaluation",
+      "aspectLine": "memory-learning"
     },
     {
       "id": "A19",
@@ -477,7 +495,8 @@
       "evidence": [],
       "blockers": [],
       "gates": [],
-      "branch": "aspect-19-self-model"
+      "legacyBranchHint": "aspect-19-self-model",
+      "aspectLine": "agency-personhood"
     },
     {
       "id": "A20",
@@ -497,7 +516,8 @@
       "evidence": [],
       "blockers": [],
       "gates": [],
-      "branch": "aspect-20-usermodel"
+      "legacyBranchHint": "aspect-20-usermodel",
+      "aspectLine": "agency-personhood"
     },
     {
       "id": "A21",
@@ -518,7 +538,8 @@
       "evidence": [],
       "blockers": [],
       "gates": [],
-      "branch": "aspect-21-personality"
+      "legacyBranchHint": "aspect-21-personality",
+      "aspectLine": "agency-personhood"
     },
     {
       "id": "A22",
@@ -539,7 +560,8 @@
       "evidence": [],
       "blockers": [],
       "gates": [],
-      "branch": "aspect-22-affect-system"
+      "legacyBranchHint": "aspect-22-affect-system",
+      "aspectLine": "agency-personhood"
     },
     {
       "id": "A23",
@@ -560,7 +582,8 @@
       "evidence": [],
       "blockers": [],
       "gates": [],
-      "branch": "aspect-23-motivation"
+      "legacyBranchHint": "aspect-23-motivation",
+      "aspectLine": "agency-personhood"
     },
     {
       "id": "A24",
@@ -586,7 +609,8 @@
       "gates": [
         "INITIATIVE>=1/H"
       ],
-      "branch": "aspect-24-autonomy"
+      "legacyBranchHint": "aspect-24-autonomy",
+      "aspectLine": "agency-personhood"
     },
     {
       "id": "A25",
@@ -609,7 +633,8 @@
       "evidence": [],
       "blockers": [],
       "gates": [],
-      "branch": "aspect-25-embodiment"
+      "legacyBranchHint": "aspect-25-embodiment",
+      "aspectLine": "embodiment-io"
     },
     {
       "id": "A26",
@@ -631,7 +656,8 @@
       "evidence": [],
       "blockers": [],
       "gates": [],
-      "branch": "aspect-26-live2d"
+      "legacyBranchHint": "aspect-26-live2d",
+      "aspectLine": "embodiment-io"
     },
     {
       "id": "A27",
@@ -653,7 +679,8 @@
       "evidence": [],
       "blockers": [],
       "gates": [],
-      "branch": "aspect-27-depth-rig-25d"
+      "legacyBranchHint": "aspect-27-depth-rig-25d",
+      "aspectLine": "embodiment-io"
     },
     {
       "id": "A28",
@@ -675,7 +702,8 @@
       "evidence": [],
       "blockers": [],
       "gates": [],
-      "branch": "aspect-28-vrm-3d-avatar"
+      "legacyBranchHint": "aspect-28-vrm-3d-avatar",
+      "aspectLine": "embodiment-io"
     },
     {
       "id": "A29",
@@ -699,7 +727,8 @@
       "evidence": [],
       "blockers": [],
       "gates": [],
-      "branch": "aspect-29-body-intelligence"
+      "legacyBranchHint": "aspect-29-body-intelligence",
+      "aspectLine": "embodiment-io"
     },
     {
       "id": "A30",
@@ -721,7 +750,8 @@
       "gates": [
         "LIPSYNC<=80MS"
       ],
-      "branch": "aspect-30-speech"
+      "legacyBranchHint": "aspect-30-speech",
+      "aspectLine": "embodiment-io"
     },
     {
       "id": "A31",
@@ -743,7 +773,8 @@
       "gates": [
         "INTERRUPT<=200MS"
       ],
-      "branch": "aspect-31-voice-interaction"
+      "legacyBranchHint": "aspect-31-voice-interaction",
+      "aspectLine": "embodiment-io"
     },
     {
       "id": "A32",
@@ -765,7 +796,8 @@
       "evidence": [],
       "blockers": [],
       "gates": [],
-      "branch": "aspect-32-multimodal-interaction"
+      "legacyBranchHint": "aspect-32-multimodal-interaction",
+      "aspectLine": "embodiment-io"
     },
     {
       "id": "A33",
@@ -785,7 +817,8 @@
       "evidence": [],
       "blockers": [],
       "gates": [],
-      "branch": "aspect-33-neko-gateway"
+      "legacyBranchHint": "aspect-33-neko-gateway",
+      "aspectLine": "integrations"
     },
     {
       "id": "A34",
@@ -806,7 +839,8 @@
       "evidence": [],
       "blockers": [],
       "gates": [],
-      "branch": "aspect-34-hermes"
+      "legacyBranchHint": "aspect-34-hermes",
+      "aspectLine": "integrations"
     },
     {
       "id": "A35",
@@ -826,7 +860,8 @@
       "evidence": [],
       "blockers": [],
       "gates": [],
-      "branch": "aspect-35-firecrawl"
+      "legacyBranchHint": "aspect-35-firecrawl",
+      "aspectLine": "integrations"
     },
     {
       "id": "A36",
@@ -846,7 +881,8 @@
       "evidence": [],
       "blockers": [],
       "gates": [],
-      "branch": "aspect-36-tinyfish"
+      "legacyBranchHint": "aspect-36-tinyfish",
+      "aspectLine": "integrations"
     },
     {
       "id": "A37",
@@ -866,7 +902,8 @@
       "evidence": [],
       "blockers": [],
       "gates": [],
-      "branch": "aspect-37-context7"
+      "legacyBranchHint": "aspect-37-context7",
+      "aspectLine": "integrations"
     },
     {
       "id": "A38",
@@ -886,7 +923,8 @@
       "evidence": [],
       "blockers": [],
       "gates": [],
-      "branch": "aspect-38-supabase"
+      "legacyBranchHint": "aspect-38-supabase",
+      "aspectLine": "integrations"
     },
     {
       "id": "A39",
@@ -906,7 +944,8 @@
       "evidence": [],
       "blockers": [],
       "gates": [],
-      "branch": "aspect-39-mongodb"
+      "legacyBranchHint": "aspect-39-mongodb",
+      "aspectLine": "integrations"
     },
     {
       "id": "A40",
@@ -926,7 +965,8 @@
       "evidence": [],
       "blockers": [],
       "gates": [],
-      "branch": "aspect-40-redis"
+      "legacyBranchHint": "aspect-40-redis",
+      "aspectLine": "integrations"
     },
     {
       "id": "A41",
@@ -946,7 +986,8 @@
       "evidence": [],
       "blockers": [],
       "gates": [],
-      "branch": "aspect-41-local-models"
+      "legacyBranchHint": "aspect-41-local-models",
+      "aspectLine": "integrations"
     },
     {
       "id": "A42",
@@ -966,7 +1007,8 @@
       "evidence": [],
       "blockers": [],
       "gates": [],
-      "branch": "aspect-42-cloud-models"
+      "legacyBranchHint": "aspect-42-cloud-models",
+      "aspectLine": "integrations"
     },
     {
       "id": "A43",
@@ -989,7 +1031,8 @@
       "evidence": [],
       "blockers": [],
       "gates": [],
-      "branch": "aspect-43-replit-github"
+      "legacyBranchHint": "aspect-43-replit-github",
+      "aspectLine": "integrations"
     },
     {
       "id": "A44",
@@ -1009,7 +1052,8 @@
       "evidence": [],
       "blockers": [],
       "gates": [],
-      "branch": "aspect-44-agent-ecosystem"
+      "legacyBranchHint": "aspect-44-agent-ecosystem",
+      "aspectLine": "integrations"
     },
     {
       "id": "A45",
@@ -1029,7 +1073,8 @@
       "evidence": [],
       "blockers": [],
       "gates": [],
-      "branch": "aspect-45-ethical-gate"
+      "legacyBranchHint": "aspect-45-ethical-gate",
+      "aspectLine": "safety-governance"
     },
     {
       "id": "A46",
@@ -1049,7 +1094,8 @@
       "evidence": [],
       "blockers": [],
       "gates": [],
-      "branch": "aspect-46-permission-system"
+      "legacyBranchHint": "aspect-46-permission-system",
+      "aspectLine": "safety-governance"
     },
     {
       "id": "A47",
@@ -1069,7 +1115,8 @@
       "evidence": [],
       "blockers": [],
       "gates": [],
-      "branch": "aspect-47-action-verification"
+      "legacyBranchHint": "aspect-47-action-verification",
+      "aspectLine": "safety-governance"
     },
     {
       "id": "A48",
@@ -1090,7 +1137,8 @@
       "evidence": [],
       "blockers": [],
       "gates": [],
-      "branch": "aspect-48-memory-safety"
+      "legacyBranchHint": "aspect-48-memory-safety",
+      "aspectLine": "safety-governance"
     },
     {
       "id": "A49",
@@ -1110,7 +1158,8 @@
       "evidence": [],
       "blockers": [],
       "gates": [],
-      "branch": "aspect-49-tool-security"
+      "legacyBranchHint": "aspect-49-tool-security",
+      "aspectLine": "safety-governance"
     },
     {
       "id": "A50",
@@ -1131,7 +1180,8 @@
       "evidence": [],
       "blockers": [],
       "gates": [],
-      "branch": "aspect-50-self-modification"
+      "legacyBranchHint": "aspect-50-self-modification",
+      "aspectLine": "safety-governance"
     },
     {
       "id": "A51",
@@ -1152,7 +1202,8 @@
       "evidence": [],
       "blockers": [],
       "gates": [],
-      "branch": "aspect-51-reliability"
+      "legacyBranchHint": "aspect-51-reliability",
+      "aspectLine": "safety-governance"
     },
     {
       "id": "A52",
@@ -1172,7 +1223,8 @@
       "evidence": [],
       "blockers": [],
       "gates": [],
-      "branch": "aspect-52-observability"
+      "legacyBranchHint": "aspect-52-observability",
+      "aspectLine": "safety-governance"
     },
     {
       "id": "A53",
@@ -1192,7 +1244,8 @@
       "evidence": [],
       "blockers": [],
       "gates": [],
-      "branch": "aspect-53-desktop"
+      "legacyBranchHint": "aspect-53-desktop",
+      "aspectLine": "platforms"
     },
     {
       "id": "A54",
@@ -1215,7 +1268,8 @@
       "gates": [
         "TICK<=50MS-MOBILE"
       ],
-      "branch": "aspect-54-android"
+      "legacyBranchHint": "aspect-54-android",
+      "aspectLine": "platforms"
     },
     {
       "id": "A55",
@@ -1236,7 +1290,8 @@
       "evidence": [],
       "blockers": [],
       "gates": [],
-      "branch": "aspect-55-termux"
+      "legacyBranchHint": "aspect-55-termux",
+      "aspectLine": "platforms"
     },
     {
       "id": "A56",
@@ -1258,7 +1313,8 @@
       "evidence": [],
       "blockers": [],
       "gates": [],
-      "branch": "aspect-56-ui-ux"
+      "legacyBranchHint": "aspect-56-ui-ux",
+      "aspectLine": "platforms"
     },
     {
       "id": "A57",
@@ -1282,7 +1338,8 @@
       "evidence": [],
       "blockers": [],
       "gates": [],
-      "branch": "aspect-57-avatar-interface"
+      "legacyBranchHint": "aspect-57-avatar-interface",
+      "aspectLine": "platforms"
     },
     {
       "id": "A58",
@@ -1303,7 +1360,8 @@
       "evidence": [],
       "blockers": [],
       "gates": [],
-      "branch": "aspect-58-synchronization"
+      "legacyBranchHint": "aspect-58-synchronization",
+      "aspectLine": "platforms"
     },
     {
       "id": "A59",
@@ -1325,7 +1383,8 @@
       "gates": [
         "TICK<=50MS-MOBILE"
       ],
-      "branch": "aspect-59-performance"
+      "legacyBranchHint": "aspect-59-performance",
+      "aspectLine": "platforms"
     },
     {
       "id": "A60",
@@ -1347,7 +1406,8 @@
       "evidence": [],
       "blockers": [],
       "gates": [],
-      "branch": "aspect-60-unit-tests"
+      "legacyBranchHint": "aspect-60-unit-tests",
+      "aspectLine": "validation"
     },
     {
       "id": "A61",
@@ -1367,7 +1427,8 @@
       "evidence": [],
       "blockers": [],
       "gates": [],
-      "branch": "aspect-61-integration-tests"
+      "legacyBranchHint": "aspect-61-integration-tests",
+      "aspectLine": "validation"
     },
     {
       "id": "A62",
@@ -1387,7 +1448,8 @@
       "evidence": [],
       "blockers": [],
       "gates": [],
-      "branch": "aspect-62-architecture-tests"
+      "legacyBranchHint": "aspect-62-architecture-tests",
+      "aspectLine": "validation"
     },
     {
       "id": "A63",
@@ -1408,7 +1470,8 @@
       "evidence": [],
       "blockers": [],
       "gates": [],
-      "branch": "aspect-63-mathematical-tests"
+      "legacyBranchHint": "aspect-63-mathematical-tests",
+      "aspectLine": "validation"
     },
     {
       "id": "A64",
@@ -1430,7 +1493,8 @@
       "evidence": [],
       "blockers": [],
       "gates": [],
-      "branch": "aspect-64-cognitive-benchmarks"
+      "legacyBranchHint": "aspect-64-cognitive-benchmarks",
+      "aspectLine": "validation"
     },
     {
       "id": "A65",
@@ -1453,7 +1517,8 @@
       "gates": [
         "SOAK-24H"
       ],
-      "branch": "aspect-65-autonomy-soak"
+      "legacyBranchHint": "aspect-65-autonomy-soak",
+      "aspectLine": "validation"
     },
     {
       "id": "A66",
@@ -1477,7 +1542,8 @@
       "gates": [
         "DEVICE-E2E"
       ],
-      "branch": "aspect-66-device-e2e"
+      "legacyBranchHint": "aspect-66-device-e2e",
+      "aspectLine": "validation"
     },
     {
       "id": "A67",
@@ -1498,7 +1564,8 @@
       "evidence": [],
       "blockers": [],
       "gates": [],
-      "branch": "aspect-67-regression"
+      "legacyBranchHint": "aspect-67-regression",
+      "aspectLine": "validation"
     },
     {
       "id": "A68",
@@ -1521,7 +1588,8 @@
       "gates": [
         "HOLDOUT-INDEPENDENT"
       ],
-      "branch": "aspect-68-independent-holdout"
+      "legacyBranchHint": "aspect-68-independent-holdout",
+      "aspectLine": "validation"
     },
     {
       "id": "A69",
@@ -1541,7 +1609,8 @@
       "evidence": [],
       "blockers": [],
       "gates": [],
-      "branch": "aspect-69-branch-consolidation"
+      "legacyBranchHint": "aspect-69-branch-consolidation",
+      "aspectLine": "release-governance"
     },
     {
       "id": "A70",
@@ -1565,7 +1634,8 @@
       "gates": [
         "CI-REQUIRED"
       ],
-      "branch": "aspect-70-ci-cd"
+      "legacyBranchHint": "aspect-70-ci-cd",
+      "aspectLine": "release-governance"
     },
     {
       "id": "A71",
@@ -1589,7 +1659,8 @@
       "gates": [
         "RELEASE-ZIP-PROVENANCE"
       ],
-      "branch": "aspect-71-release-pipeline"
+      "legacyBranchHint": "aspect-71-release-pipeline",
+      "aspectLine": "release-governance"
     },
     {
       "id": "A72",
@@ -1613,7 +1684,8 @@
       "gates": [
         "LICENSE-REVIEW"
       ],
-      "branch": "aspect-72-license-review"
+      "legacyBranchHint": "aspect-72-license-review",
+      "aspectLine": "release-governance"
     },
     {
       "id": "A73",
@@ -1635,7 +1707,8 @@
       "evidence": [],
       "blockers": [],
       "gates": [],
-      "branch": "aspect-73-documentation"
+      "legacyBranchHint": "aspect-73-documentation",
+      "aspectLine": "release-governance"
     },
     {
       "id": "A74",
@@ -1657,7 +1730,8 @@
       "evidence": [],
       "blockers": [],
       "gates": [],
-      "branch": "aspect-74-backup-recovery"
+      "legacyBranchHint": "aspect-74-backup-recovery",
+      "aspectLine": "release-governance"
     },
     {
       "id": "A75",
@@ -1678,7 +1752,158 @@
       "evidence": [],
       "blockers": [],
       "gates": [],
-      "branch": "aspect-75-continuous-development"
+      "legacyBranchHint": "aspect-75-continuous-development",
+      "aspectLine": "release-governance"
     }
-  ]
+  ],
+  "aspectLines": {
+    "core-runtime": {
+      "branch": "aspect/core-runtime",
+      "section": "I. Фундамент и архитектура",
+      "aspectIds": [
+        "A01",
+        "A02",
+        "A03",
+        "A04",
+        "A05",
+        "A06"
+      ]
+    },
+    "cognition": {
+      "branch": "aspect/cognition",
+      "section": "II. Интеллект и познание",
+      "aspectIds": [
+        "A07",
+        "A08",
+        "A09",
+        "A10",
+        "A11",
+        "A12"
+      ]
+    },
+    "memory-learning": {
+      "branch": "aspect/memory-learning",
+      "section": "III. Память и обучение",
+      "aspectIds": [
+        "A13",
+        "A14",
+        "A15",
+        "A16",
+        "A17",
+        "A18"
+      ]
+    },
+    "agency-personhood": {
+      "branch": "aspect/agency-personhood",
+      "section": "IV. Личность, мотивация, автономность",
+      "aspectIds": [
+        "A19",
+        "A20",
+        "A21",
+        "A22",
+        "A23",
+        "A24"
+      ]
+    },
+    "embodiment-io": {
+      "branch": "aspect/embodiment-io",
+      "section": "V. Тело, голос и взаимодействие",
+      "aspectIds": [
+        "A25",
+        "A26",
+        "A27",
+        "A28",
+        "A29",
+        "A30",
+        "A31",
+        "A32"
+      ]
+    },
+    "integrations": {
+      "branch": "aspect/integrations",
+      "section": "VI. Интеграции и инструменты",
+      "aspectIds": [
+        "A33",
+        "A34",
+        "A35",
+        "A36",
+        "A37",
+        "A38",
+        "A39",
+        "A40",
+        "A41",
+        "A42",
+        "A43",
+        "A44"
+      ]
+    },
+    "safety-governance": {
+      "branch": "aspect/safety-governance",
+      "section": "VII. Безопасность и надёжность",
+      "aspectIds": [
+        "A45",
+        "A46",
+        "A47",
+        "A48",
+        "A49",
+        "A50",
+        "A51",
+        "A52"
+      ]
+    },
+    "platforms": {
+      "branch": "aspect/platforms",
+      "section": "VIII. Приложение и платформы",
+      "aspectIds": [
+        "A53",
+        "A54",
+        "A55",
+        "A56",
+        "A57",
+        "A58",
+        "A59"
+      ]
+    },
+    "validation": {
+      "branch": "aspect/validation",
+      "section": "IX. Тестирование и научная проверка",
+      "aspectIds": [
+        "A60",
+        "A61",
+        "A62",
+        "A63",
+        "A64",
+        "A65",
+        "A66",
+        "A67",
+        "A68"
+      ]
+    },
+    "release-governance": {
+      "branch": "aspect/release-governance",
+      "section": "X. Релиз и развитие",
+      "aspectIds": [
+        "A69",
+        "A70",
+        "A71",
+        "A72",
+        "A73",
+        "A74",
+        "A75"
+      ]
+    }
+  },
+  "branchPolicy": {
+    "maxAspectLines": 10,
+    "oneBranchPerAspect": false,
+    "canonicalSource": "workpass70-source",
+    "mergeUnit": "coherent aspect batch",
+    "rules": [
+      "75 logical aspects map to 10 shared aspect lines by section.",
+      "Do not create one Git branch or one PR per aspect.",
+      "Do not pre-create empty aspect-line refs; reuse the current source or an existing line until work requires a dedicated line.",
+      "Integrate related changes in batches after exact diff, dependency and CI review."
+    ]
+  },
+  "sourcePlanDate": "2026-11-04"
 }
