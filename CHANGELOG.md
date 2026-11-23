@@ -1,3 +1,13 @@
+## [NK1][Governance] Port the evidence-gated 75-aspect progress tracker (2026-11-23)
+
+- Port the 75-aspect machine-readable tracker, validator, regression suite, Russian backlog and dedicated CI workflow onto the current source baseline.
+- Keep all 75 aspects evidence-gated; no status is promoted by the tracker integration.
+
+## [NK1][Learning] Port verified teacher-student distillation pipeline (2026-11-23)
+
+- Add isolated offline teacher-to-student SFT/LoRA preparation with signed verifier artifacts, family-isolated splits, holdout exclusion, bounded training supervision and one-shot independent evaluation gate.
+- Keep production activation manual; no real training run, model quality uplift or production model switch is claimed.
+
 ## [NK1][NMCN] Add optional loopback-only numeric compute advisor (2026-11-23)
 
 - Add an opt-in host-injected NMCN 0.4.x adapter that receives a bounded numeric cycle projection and may request extra language deliberation only when canonical policy and budget allow.
