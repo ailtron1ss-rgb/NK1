@@ -5,7 +5,7 @@ on:
     branches: [workpass70-source]
     paths:
       - "runtime/neuro-kurisu/src/organism/developmental/MemoryOS2.ts"
-      - "runtime/neuro-kurisu/tests/memory-duplicate-id-write-guard.mjs"
+      - "runtime/neuro-kurisu/tests/memory-*.mjs"
       - ".github/workflows/nk1-memory-id-integrity.yml"
   push:
     branches: [aspect/memory-write-id-integrity-20261123]
