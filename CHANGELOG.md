@@ -1,3 +1,9 @@
+## [NK1][Persistence] Verify HMX explicit apply across server restart (2026-11-22)
+
+- Extend the real-server HMX consent regression to restart against the same durable state directory after an approved import.
+- Verify the accepted stage and canonical hypothesis survive restart, sensitive text remains redacted, and replay does not insert a duplicate.
+- Test-only hardening; no runtime behavior or release artifact changes.
+
 ## [NK1][Autonomy] Attribute social feedback only to the relevant initiative (2026-11-22)
 
 - Prevent unrelated negative/positive conversational remarks from being recorded as feedback for the most recent proactive thought.
