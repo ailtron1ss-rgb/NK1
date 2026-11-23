@@ -8,12 +8,15 @@ const root = path.resolve(process.cwd());
 const stateDir = await mkdtemp(path.join(tmpdir(), 'nk-hexis-hmx-apply-consent-'));
 const port = 38200 + Math.floor(Math.random() * 1200);
 const env = { ...process.env, HOST: '127.0.0.1', PORT: String(port), STATE_DIR: stateDir };
-const child = spawn(process.execPath, ['--experimental-strip-types', 'src/server/server.mjs'], {
-  cwd: root, env, stdio: ['ignore', 'pipe', 'pipe'],
-});
+let child = null;
 let output = '';
-child.stdout.on('data', chunk => { output += chunk; });
-child.stderr.on('data', chunk => { output += chunk; });
+const startServer = () => {
+  child = spawn(process.execPath, ['--experimental-strip-types', 'src/server/server.mjs'], {
+    cwd: root, env, stdio: ['ignore', 'pipe', 'pipe'],
+  });
+  child.stdout.on('data', chunk => { output += chunk; });
+  child.stderr.on('data', chunk => { output += chunk; });
+};
 const base = `http://127.0.0.1:${port}`;
 const post = (route, payload) => fetch(base + route, {
   method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload),
@@ -26,17 +29,23 @@ const memoryIndex = async () => {
   return result.memoryIndex;
 };
 const stop = async () => {
-  if (child.exitCode !== null || child.signalCode !== null) return;
-  await new Promise(resolve => {
-    const timeout = setTimeout(resolve, 3500);
-    child.once('exit', () => { clearTimeout(timeout); resolve(); });
-    child.kill('SIGTERM');
-  });
+  const running = child;
+  if (!running) return;
+  if (running.exitCode === null && running.signalCode === null) {
+    await new Promise(resolve => {
+      const timeout = setTimeout(resolve, 3500);
+      running.once('exit', () => { clearTimeout(timeout); resolve(); });
+      running.kill('SIGTERM');
+    });
+  }
+  assert.ok(running.exitCode !== null || running.signalCode !== null,
+    `server did not stop cleanly: ${output.slice(-1400)}`);
+  child = null;
 };
-
-try {
+const waitReady = async () => {
   let ready = false;
   for (let attempt = 0; attempt < 180; attempt += 1) {
+    if (!child || child.exitCode !== null || child.signalCode !== null) break;
     await new Promise(resolve => setTimeout(resolve, 100));
     try {
       const response = await fetch(base + '/api/health');
@@ -45,6 +54,11 @@ try {
     } catch {}
   }
   assert.equal(ready, true, `server did not become ready: ${output.slice(-1400)}`);
+};
+
+try {
+  startServer();
+  await waitReady();
 
   const exportId = 'exp_apply_consent_' + Date.now().toString(36);
   const marker = 'HMX explicit-apply consent regression ' + exportId;
@@ -129,8 +143,36 @@ try {
     'a repeated explicit apply must be idempotent through MemoryFabric command receipts');
   assert.equal((await memoryIndex()).length, afterApply.length);
 
+  // Reboot against the same durable state directory. The accepted stage, imported
+  // canonical row and MemoryFabric command receipt must survive process restart.
+  await stop();
+  startServer();
+  await waitReady();
+
+  const afterRestart = await memoryIndex();
+  const restoredImports = afterRestart.filter(row => row.summary.includes(marker));
+  assert.equal(restoredImports.length, 1,
+    'a confirmed HMX import must survive restart exactly once in canonical MemoryOS2');
+  assert.equal(restoredImports[0].epistemicStatus, 'hypothesis');
+  assert.equal(restoredImports[0].summary.includes('nk1-fixture-token-0123456789abcdef'), false);
+
+  const restartReplayResponse = await post('/api/organism/integration/hexis/hmx/apply', {
+    stagingId: staged.stage.stagingId, confirmed: true,
+  });
+  const restartReplay = await restartReplayResponse.json();
+  assert.equal(restartReplayResponse.status, 200, JSON.stringify(restartReplay));
+  assert.equal(restartReplay.application.ok, true);
+  assert.equal(restartReplay.application.inserted, 0,
+    'replaying the persisted accepted stage after restart must not insert another memory');
+  assert.equal(restartReplay.application.replayed, 1,
+    'the persisted command receipt must make post-restart apply idempotent');
+  assert.equal((await memoryIndex()).length, afterRestart.length);
+
   console.log('HEXIS_HMX_EXPLICIT_APPLY_CONSENT=PASS');
 } finally {
-  await stop();
-  await rm(stateDir, { recursive: true, force: true });
+  try {
+    await stop();
+  } finally {
+    await rm(stateDir, { recursive: true, force: true });
+  }
 }
