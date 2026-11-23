@@ -57,6 +57,7 @@ import { createHostOwnedIndependentEvaluationConfigFactory, type HostOwnedIndepe
 
 function currentBudgetAllowsLanguage(mode: string | undefined): boolean { return mode !== 'sleep' && mode !== 'defer'; }
 const clamp01=(n:number)=>Math.max(0,Math.min(1,Number.isFinite(n)?n:0));
+const COGNITIVE_HEALTH_PROVIDER_TIMEOUT_MS = 750;
 // External repair hints are advisory only and must be fresh; stale/future timestamps cannot bias autonomous revision order.
 const EXTERNAL_REPAIR_HINT_TTL_MS=7*24*60*60*1000;
 const EXTERNAL_REPAIR_HINT_MAX_FUTURE_SKEW_MS=5*60*1000;
@@ -163,6 +164,12 @@ export interface RuntimeConfig extends OrganismConfig {
     routing: SynapticAdapterRoutingInput,
   ) => Promise<SynapticAdapterLanguageResponse>;
   stateStore?: JsonStateStore<PersistedOrganism>;
+  /** Host-owned monitor instance; structural injection avoids a core-to-cognition dependency edge. */
+  cognitiveHealthSystem?: RuntimeCognitiveHealthMonitor;
+  /** Optional canonical-ledger adapter; missing evidence remains unknown, never a healthy sample. */
+  cognitiveHealthInputProvider?: (tick:number)=>RuntimeCognitiveHealthInput|null|Promise<RuntimeCognitiveHealthInput|null>;
+  /** Durable sidecar for accepted health observations and human review history. */
+  cognitiveHealthStore?: JsonStateStore<any>;
   /** Optional injected durable sidecar for event/budget-aware cognitive-spine cadence. */
   cognitiveSpineStore?: JsonStateStore<CognitiveSpineScheduleState>;
   /** Optional injected durable sidecar for autonomous risk/recovery calibration. */
@@ -201,6 +208,38 @@ export interface RuntimeConfig extends OrganismConfig {
   repositoryCoding?: { createTools: () => Promise<ToolDefinition[]> | ToolDefinition[] };
   /** P2836: how real device outcomes compete with the predictive simulator. */
   realityMode?: RealityGroundingMode;
+}
+
+interface RuntimeCognitiveHealthClaim {
+  id?:string; kind?:string; confidence01?:number; supportCount?:number;
+  status?:string; resolved?:boolean; source?:string; error01?:number; predicted01?:number; actual01?:number;
+}
+interface RuntimeCognitiveHealthSkill {
+  id?:string; uses?:number; successes?:number; failures?:number; successRate?:number;
+  status?:string; validatedUses?:number; independentEvidenceUses?:number;
+  nonHoldoutUses?:number; nonHoldoutSuccesses?:number;
+}
+interface RuntimeCognitiveHealthInput {
+  tick:number; at?:number;
+  epistemic?:{claimsData?:RuntimeCognitiveHealthClaim[];resolvedPredictions?:number;meanPredictionError01?:number;meanConfidence01?:number};
+  contradictions?:{claims?:Array<{id?:string;status?:string}>;unresolvedCount?:number};
+  skills?:{skills?:RuntimeCognitiveHealthSkill[];compoundSkills?:RuntimeCognitiveHealthSkill[]};
+}
+interface RuntimeCognitiveHealthSignal {
+  id:string; metric:string; severity:string; evidenceRefs:string[];
+}
+interface RuntimeCognitiveHealthInspectionResult {
+  tick:number; score01:number; coverage01:number; healthStatus:string;
+  newSignals:RuntimeCognitiveHealthSignal[]; recoveredSignals:RuntimeCognitiveHealthSignal[];
+  recommendedAction:string; observationAccepted:boolean;
+}
+/** Structural host port: keeps OrganismRuntime independent of the cognition implementation package. */
+interface RuntimeCognitiveHealthMonitor {
+  restore(state?:any):void;
+  snapshot():any;
+  healthSnapshot():any;
+  inspectHealth(input:RuntimeCognitiveHealthInput):RuntimeCognitiveHealthInspectionResult;
+  reviewHealthSignal(id:string,verdict:'confirmed'|'false-positive'|'recovered',reviewer:string,evidenceRef?:string):boolean;
 }
 
 export interface RuntimeStepOptions {
@@ -335,6 +374,8 @@ export class OrganismRuntime {
   private readonly cognitiveSpineScheduler = new CognitiveSpineScheduler();
   private readonly cognitiveSpineStore: JsonStateStore<CognitiveSpineScheduleState>;
   private readonly riskAwareRecoveryStore: JsonStateStore<RiskAwareRecoveryControllerState>;
+  private readonly cognitiveImmuneSystem: RuntimeCognitiveHealthMonitor | null;
+  private readonly cognitiveImmuneStore: JsonStateStore<any>;
   private readonly unifiedCycle = new UnifiedCognitiveCycle();
   private readonly continuousCognitiveFabric = new ContinuousCognitiveFabric();
   private readonly realityGrounding = new RealityGroundingController();
@@ -384,6 +425,7 @@ export class OrganismRuntime {
 
   constructor(config: RuntimeConfig) {
     this.config = { intervalMs: 30_000, enableLanguage: false, autoRun: false, ...config };
+    this.cognitiveImmuneSystem = this.config.cognitiveHealthSystem ?? null;
     this.embodiment.setNekoAsrProvider(config.nekoAsrProvider ?? null);
     this.mem0Adapter = config.mem0Adapter ?? Mem0PlatformAdapter.fromEnvironment();
     this.mem0CognitiveRecallEnabled = config.mem0CognitiveRecall === true;
@@ -488,6 +530,7 @@ export class OrganismRuntime {
     this.proceduralSkillStore = new FileStateStore<SkillLibraryState>(skillStatePath);
     this.cognitiveSpineStore = config.cognitiveSpineStore ?? new FileStateStore<CognitiveSpineScheduleState>(`${config.stateFile}.cognitive-spine.json`);
     this.riskAwareRecoveryStore = config.riskAwareRecoveryStore ?? new FileStateStore<RiskAwareRecoveryControllerState>(`${config.stateFile}.risk-aware-recovery.json`);
+    this.cognitiveImmuneStore = config.cognitiveHealthStore ?? new FileStateStore<any>(`${config.stateFile}.cognitive-health.json`);
     this.synapticMatrixStore = new FileStateStore<AdaptiveSynapticMatrixState>(`${config.stateFile}.synaptic-matrix.json`);
     this.synapticAdapterTimeoutMs = config.synapticAdapterTimeoutMs ?? 15_000;
     if (!Number.isSafeInteger(this.synapticAdapterTimeoutMs) || this.synapticAdapterTimeoutMs < 100 || this.synapticAdapterTimeoutMs > 120_000) {
@@ -586,6 +629,15 @@ export class OrganismRuntime {
       this.openLoopRadar.restore(restoredOpenLoopState ?? undefined);
       if (!restoredOpenLoopState) await this.openLoopStore.save(this.openLoopRadar.snapshot());
       const systemSnapshot = this.core.systemSnapshot();
+      if (this.cognitiveImmuneSystem) {
+        try {
+          this.cognitiveImmuneSystem.restore(await this.cognitiveImmuneStore.load() ?? undefined);
+        } catch (error) {
+          await this.journal.write('warn', 'runtime.cognitive-health.restore-failed', {
+            message: String((error as any)?.message ?? error).slice(0, 180),
+          }).catch(() => {});
+        }
+      }
       try {
         this.cognitiveSpineScheduler.restore(await this.cognitiveSpineStore.load() ?? undefined);
       } catch (error) {
@@ -740,6 +792,7 @@ export class OrganismRuntime {
       await this.core.beginBatch();
       const worldBeforeTick=Number(this.environment.snapshot().tick);
       const domainBefore=this.core.causalDomainOperationalSnapshot(worldBeforeTick);
+      let completedHealthTick: number | null = null;
       this.causalDomainClosureLedger.begin({
         at: Date.now(),
         tick: Number(domainBefore.tick)+1,
@@ -803,12 +856,14 @@ export class OrganismRuntime {
         if (closureRecord && closureRecord.status==='FAIL') {
           await this.journal.write('warn','runtime.causal-domain-closure.degraded',{tick:closureRecord.tick,score01:closureRecord.score01,chain:closureRecord.causalChain});
         }
+        completedHealthTick = result.cycle.state.tick;
         return result;
       } catch (error: any) {
         await this.journal.write('error', 'runtime.step.failed', { message: String(error?.message || error) });
         throw error;
       } finally {
         await this.core.endBatch();
+        if (completedHealthTick !== null) await this.inspectRuntimeCognitiveHealth(completedHealthTick);
         let cpuMs=0;
         try { if(stepCpuStart && (process as any).cpuUsage) { const cpu=(process as any).cpuUsage(stepCpuStart); cpuMs=(Number(cpu?.user??0)+Number(cpu?.system??0))/1000; } } catch {}
         const mem=process.memoryUsage();
@@ -1745,6 +1800,74 @@ export class OrganismRuntime {
       cycleCounters: this.unifiedCycle.snapshot(),
       exportedAtMs: Date.now(),
     });
+  }
+
+  /** Read-only bounded health state, including evidence-linked alerts and audit history. */
+  cognitiveHealthSnapshot() { return this.cognitiveImmuneSystem?.healthSnapshot() ?? null; }
+
+  /** Feed canonical ledger projections into the runtime-owned health monitor and persist accepted observations. */
+  async inspectCognitiveHealth(input:RuntimeCognitiveHealthInput):Promise<RuntimeCognitiveHealthInspectionResult> {
+    return this.enqueue(async()=>{
+      if(!this.initialized)throw new Error('organism-runtime-not-initialized');
+      const system=this.cognitiveImmuneSystem;
+      if(!system)throw new Error('cognitive-health-monitor-not-configured');
+      const result=system.inspectHealth(input);
+      if(result.observationAccepted)await this.cognitiveImmuneStore.save(system.snapshot());
+      return result;
+    });
+  }
+
+  /** Human/independent review annotates a signal; evidence and audit history are retained. */
+  async reviewCognitiveHealthSignal(id:string,verdict:'confirmed'|'false-positive'|'recovered',reviewer:string,evidenceRef?:string):Promise<boolean> {
+    return this.enqueue(async()=>{
+      if(!this.initialized)throw new Error('organism-runtime-not-initialized');
+      const system=this.cognitiveImmuneSystem;
+      if(!system)throw new Error('cognitive-health-monitor-not-configured');
+      const reviewed=system.reviewHealthSignal(id,verdict,reviewer,evidenceRef);
+      if(reviewed)await this.cognitiveImmuneStore.save(system.snapshot());
+      return reviewed;
+    });
+  }
+
+  private async inspectRuntimeCognitiveHealth(tick:number):Promise<void> {
+    const provider=this.config.cognitiveHealthInputProvider;
+    const system=this.cognitiveImmuneSystem;
+    if(!provider||!system)return;
+    let timeout:ReturnType<typeof setTimeout>|undefined;
+    let timedOut=false;
+    try{
+      const input=await Promise.race<RuntimeCognitiveHealthInput|null>([
+        Promise.resolve().then(()=>provider(tick)),
+        new Promise<null>(resolve=>{
+          timeout=setTimeout(()=>{timedOut=true;resolve(null);},COGNITIVE_HEALTH_PROVIDER_TIMEOUT_MS);
+        }),
+      ]);
+      if(timeout)clearTimeout(timeout);
+      if(timedOut){
+        await this.journal.write('warn','runtime.cognitive-health.provider-timeout',{tick,timeoutMs:COGNITIVE_HEALTH_PROVIDER_TIMEOUT_MS}).catch(()=>{});
+        return;
+      }
+      if(!input)return; // Missing evidence is unknown, never a healthy/recovery sample.
+      const result=system.inspectHealth({...input,tick});
+      if(!result.observationAccepted)return;
+      // Avoid an fsync on every mobile tick. Persist signal transitions immediately,
+      // otherwise checkpoint the bounded observation stream every eighth organism tick.
+      if(result.newSignals.length||result.recoveredSignals.length||tick%8===0)
+        await this.cognitiveImmuneStore.save(system.snapshot());
+      if(result.newSignals.length||result.recoveredSignals.length){
+        await this.journal.write(result.healthStatus==='critical'?'error':'warn','runtime.cognitive-health.changed',{
+          tick,status:result.healthStatus,score01:result.score01,coverage01:result.coverage01,
+          newSignals:result.newSignals.map(signal=>({id:signal.id,metric:signal.metric,severity:signal.severity,evidenceRefs:signal.evidenceRefs})),
+          recoveredSignals:result.recoveredSignals.map(signal=>({id:signal.id,metric:signal.metric})),
+          recommendedAction:result.recommendedAction,
+        }).catch(()=>{});
+      }
+    }catch(error){
+      // A failed observer is isolated from the cognitive cycle and has no action authority.
+      await this.journal.write('warn','runtime.cognitive-health.provider-failed',{tick,message:String((error as any)?.message??error).slice(0,180)}).catch(()=>{});
+    }finally{
+      if(timeout)clearTimeout(timeout);
+    }
   }
 
   realityGroundingSnapshot(){ return this.realityGrounding.snapshot(); }
