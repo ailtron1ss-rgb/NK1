@@ -2,7 +2,7 @@
  "schemaVersion": 1,
  "name": "NK1 Aspect Integration Fabric",
  "generatedFrom": "engineering-os/aspects.v1.json",
- "trunk": "fba16fa1f",
+ "trunk": "71343b17c",
  "organism": {
   "id": "organism",
   "titleRu": "NK1 / NeuroCore — единый организм",
@@ -2751,9 +2751,9 @@
    "group": "VI",
    "wave": "4",
    "system": "research",
-   "owner": "UNKNOWN",
-   "ownerStatus": "candidate-pr",
-   "ownerExists": false,
+   "owner": "runtime/neuro-kurisu/src/organism/integration/neko",
+   "ownerStatus": "candidate",
+   "ownerExists": true,
    "dependsOn": [
     46,
     17
@@ -4284,9 +4284,9 @@
    "group": "IX",
    "wave": "5",
    "system": "research",
-   "owner": "UNKNOWN",
-   "ownerStatus": "unmapped",
-   "ownerExists": false,
+   "owner": "runtime/neuro-kurisu/tests/p2684-mobile-soak.mjs",
+   "ownerStatus": "candidate",
+   "ownerExists": true,
    "dependsOn": [
     24
    ],
@@ -4313,9 +4313,9 @@
    "group": "IX",
    "wave": "5",
    "system": "research",
-   "owner": "UNKNOWN",
-   "ownerStatus": "unmapped",
-   "ownerExists": false,
+   "owner": "runtime/neuro-kurisu/tests/big-pass-177-device-truthfulness.mjs",
+   "ownerStatus": "candidate",
+   "ownerExists": true,
    "dependsOn": [
     53,
     54
@@ -5915,24 +5915,8 @@
   "domains": 10,
   "systems": 7,
   "mapped": 75,
-  "ownerExists": 72,
-  "missingOwners": [
-   {
-    "n": 33,
-    "id": "neko",
-    "owner": "UNKNOWN"
-   },
-   {
-    "n": 65,
-    "id": "autonomy-soak",
-    "owner": "UNKNOWN"
-   },
-   {
-    "n": 66,
-    "id": "device-e2e",
-    "owner": "UNKNOWN"
-   }
-  ],
+  "ownerExists": 75,
+  "missingOwners": [],
   "systemsCovered": 7,
   "domainsCovered": 10,
   "connected": true,
@@ -5984,10 +5968,6 @@
  "validation": {
   "ok": true,
   "errors": [],
-  "warnings": [
-   "owner missing for aspect 33: UNKNOWN",
-   "owner missing for aspect 65: UNKNOWN",
-   "owner missing for aspect 66: UNKNOWN"
-  ]
+  "warnings": []
  }
 }

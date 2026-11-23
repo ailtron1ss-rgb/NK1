@@ -849,8 +849,8 @@
       "wave": "4",
       "titleRu": "N.E.K.O.",
       "titleEn": "N.E.K.O.",
-      "owner": "UNKNOWN",
-      "ownerStatus": "candidate-pr",
+      "owner": "runtime/neuro-kurisu/src/organism/integration/neko",
+      "ownerStatus": "candidate",
       "dependsOn": [
         "permission-system",
         "skill-system"
@@ -858,7 +858,7 @@
       "verificationGate": "integration",
       "status": "PLANNED",
       "evidence": null,
-      "notes": "Only open PRs (#780-#792) adapt the N.E.K.O. gateway; there is no merged canonical owner yet."
+      "notes": "Candidate owner: runtime/neuro-kurisu/src/organism/integration/neko (merged N.E.K.O. adapters). Gateway composition remains candidate; verify end-to-end evidence before promotion."
     },
     {
       "n": 34,
@@ -1399,15 +1399,15 @@
       "wave": "5",
       "titleRu": "Autonomy Soak",
       "titleEn": "Autonomy soak",
-      "owner": "UNKNOWN",
-      "ownerStatus": "unmapped",
+      "owner": "runtime/neuro-kurisu/tests/p2684-mobile-soak.mjs",
+      "ownerStatus": "candidate",
       "dependsOn": [
         "autonomy"
       ],
       "verificationGate": "soak",
       "status": "PLANNED",
       "evidence": null,
-      "notes": "No long autonomous soak has run; >=1 initiative/hour and explainable causes are unproven."
+      "notes": "Candidate owner: p2684-mobile-soak.mjs. A long autonomous soak with >=1 initiative/hour and explainable causes is still unproven."
     },
     {
       "n": 66,
@@ -1416,8 +1416,8 @@
       "wave": "5",
       "titleRu": "Device E2E",
       "titleEn": "Device E2E",
-      "owner": "UNKNOWN",
-      "ownerStatus": "unmapped",
+      "owner": "runtime/neuro-kurisu/tests/big-pass-177-device-truthfulness.mjs",
+      "ownerStatus": "candidate",
       "dependsOn": [
         "desktop",
         "android"
@@ -1425,7 +1425,7 @@
       "verificationGate": "device",
       "status": "PLANNED",
       "evidence": null,
-      "notes": "No real PC/Android E2E is recorded; lip-sync, interrupt and tick-latency targets are unmeasured."
+      "notes": "Candidate owner: big-pass-177-device-truthfulness.mjs. Real PC/Android E2E, lip-sync, interrupt and tick-latency targets remain unrecorded."
     },
     {
       "n": 67,

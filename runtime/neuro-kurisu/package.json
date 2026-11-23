@@ -19,6 +19,7 @@
     "test:negative-space-memory-core": "node --experimental-strip-types tests/negative-space-memory-core.mjs",
     "test:cognitive-cycle-boundary": "node --experimental-strip-types tests/cognitive-cycle-boundary.mjs",
     "test:aspect-fabric": "node --experimental-strip-types tests/aspect-fabric-integration.mjs",
+    "test:aspect-inventory": "node --experimental-strip-types tests/aspect-inventory.mjs",
     "test:cognitive-frame-resource-routing": "node --experimental-strip-types tests/cognitive-frame-resource-routing-workpass330.mjs",
     "test:nmcn-runtime-bridge": "node --experimental-strip-types tests/nmcn-runtime-bridge.mjs",
     "test:workpass95:receipt-integrity": "node --experimental-strip-types tests/workpass95-restored-action-receipt-integrity.mjs",
