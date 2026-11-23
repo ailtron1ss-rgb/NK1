@@ -1,3 +1,8 @@
+## [NK1][Learning] Add runtime learning-journal wiring regression (2026-11-23)
+
+- Add an isolated regression for canonical P23 fitness/lifecycle journal readiness, startup reconciliation, and aggregate-only diagnostics.
+- Wire the test into the P26 Learning Validation workflow; this is an integration regression, not evidence of learning-performance uplift.
+
 ## [NK1][Mobile] Parse the canonical Termux SensorAPI wire shape (2026-11-02)
 - Support the documented object-keyed sensor payload (`{"Accelerometer":{"values":[x,y,z]}}`) while retaining array-based adapter compatibility.
 - Change the sensor-only regression to use the official object-keyed shape, so a host-side mock cannot hide a real Termux integration gap.
