@@ -1971,7 +1971,17 @@ export class MemoryOS2{
   if(tracked)this.state.estimatedBytes=Math.max(0,this.state.estimatedBytes-before+estimateMemoryBytes(m));
  }
  revise(id:string,to:EpistemicStatus,reason:string){
-  const m=this.state.items.find(x=>x.id===id);if(!m||m.epistemicStatus===to)return;
+  const requested=this.itemIndex.get(String(id))??this.state.items.find(x=>x.id===id);if(!requested)return;
+  const group=requested.revisionGroupId??requested.id;
+  // A status change requested against a historical ID applies to the live tip,
+  // preserving the parent->child revision interval and reciprocal pointers.
+  const chain=[...(this.revisionGroupIndex.get(group)??new Set([requested.id]))]
+   .map(itemId=>this.itemIndex.get(itemId)).filter((x):x is MemoryItem2=>Boolean(x));
+  const m=chain.filter(x=>x.validUntilAt==null).sort((a,b)=>
+   Number(b.revisionSequence??1)-Number(a.revisionSequence??1)||
+   Number(b.observedAt??b.createdAt)-Number(a.observedAt??a.createdAt)
+  )[0]??requested;
+  if(m.epistemicStatus===to)return;
   const from=m.epistemicStatus;
   const recordedAt=Math.max(Date.now(),Number(m.recordedFromAt??m.createdAt)+1);
   this.beginBitemporalRevision(m,recordedAt);
@@ -2116,7 +2126,16 @@ export class MemoryOS2{
  }
 
  updateSignals(id:string, patch:Partial<Pick<MemoryItem2,'salience'|'emotionalWeight'|'identityRelevance'|'goalRelevance'|'socialRelevance'|'predictionError'|'confidence'|'dormant'>>, reason='reconsolidation') {
-   const m=this.state.items.find(x=>x.id===id); if(!m) return null;
+   const requested=this.itemIndex.get(String(id))??this.state.items.find(x=>x.id===id);if(!requested)return null;
+   const group=requested.revisionGroupId??requested.id;
+   // Stale callers may retain a historical ID; signal updates belong to the
+   // current revision tip, never to a superseded parent.
+   const chain=[...(this.revisionGroupIndex.get(group)??new Set([requested.id]))]
+    .map(itemId=>this.itemIndex.get(itemId)).filter((x):x is MemoryItem2=>Boolean(x));
+   const m=chain.filter(x=>x.validUntilAt==null).sort((a,b)=>
+    Number(b.revisionSequence??1)-Number(a.revisionSequence??1)||
+    Number(b.observedAt??b.createdAt)-Number(a.observedAt??a.createdAt)
+   )[0]??requested;
    const beforeBytes=estimateMemoryBytes(m);
    const fromStatus=m.epistemicStatus;
    const previousBitemporal=this.bitemporalIntervalFor(m);
