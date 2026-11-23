@@ -1,0 +1,138 @@
+name: Affect and embodied expression validation
+
+on:
+  pull_request:
+    paths:
+      - 'runtime/neuro-kurisu/src/organism/system/EmotionAppraisalEngine.ts'
+      - 'runtime/neuro-kurisu/src/organism/cognition/P66InteroceptiveHomeostasis.ts'
+      - 'runtime/neuro-kurisu/src/organism/core/OrganismCore.ts'
+      - 'runtime/neuro-kurisu/src/server/server.mjs'
+      - 'runtime/neuro-kurisu/public/live2d/viewer.html'
+      - 'runtime/neuro-kurisu/src/organism/cognition/B272EndogenousGoalGenesis.ts'
+      - 'runtime/neuro-kurisu/src/organism/cognition/IntrinsicExperimentGenerator.ts'
+      - 'runtime/neuro-kurisu/src/organism/core/CognitiveDependencyGraph.ts'
+      - 'runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts'
+      - 'runtime/neuro-kurisu/src/organism/learning/CausalExperienceStream.ts'
+      - 'runtime/neuro-kurisu/src/organism/learning/MultiSourceLearningMechanisms.ts'
+      - 'runtime/neuro-kurisu/src/organism/learning/P23LearningEngine.ts'
+      - 'runtime/neuro-kurisu/src/organism/learning/ProceduralSkillLibrary.ts'
+      - 'runtime/neuro-kurisu/src/organism/learning/SkillRetrievalAugmentation.ts'
+      - 'runtime/neuro-kurisu/src/organism/learning/VerifiedSessionDataset.ts'
+      - 'runtime/neuro-kurisu/src/organism/system/CognitiveEventFabric.ts'
+      - 'runtime/neuro-kurisu/tests/big-pass-172-emotion-interoceptive-mind.mjs'
+      - 'runtime/neuro-kurisu/tests/big-pass-190-p66-regression.mjs'
+      - 'runtime/neuro-kurisu/tests/affect-ui-snapshot-contract.mjs'
+      - 'app/src/components/AvatarStage.tsx'
+      - 'app/src/components/avatar/embodimentTimeline.ts'
+      - 'app/scripts/embodiment-timeline.test.mjs'
+      - 'app/src/legacy/avatar/safeLocalStorage.test.mjs'
+      - 'app/src/organism/types.ts'
+      - 'app/src/neuro-kurisu/types.ts'
+      - 'app/src/neuro-kurisu/normalize.ts'
+      - 'app/package.json'
+      - 'app/package-lock.json'
+      - 'runtime/neuro-kurisu/package.json'
+      - 'runtime/neuro-kurisu/package-lock.json'
+      - '.github/workflows/affect-embodiment-validation.yml'
+
+concurrency:
+  group: affect-embodiment-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  runtime-typecheck:
+    name: Runtime TypeScript check
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: runtime/neuro-kurisu/package-lock.json
+      - name: Install runtime dependencies
+        working-directory: runtime/neuro-kurisu
+        run: npm ci --no-audit --no-fund
+      - name: Typecheck
+        working-directory: runtime/neuro-kurisu
+        run: npm run typecheck
+
+  emotion-regression:
+    name: Emotion and interoception regression
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: runtime/neuro-kurisu/package-lock.json
+      - name: Install runtime dependencies
+        working-directory: runtime/neuro-kurisu
+        run: npm ci --no-audit --no-fund
+      - name: Run emotion regression
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:big-pass-172
+
+      - name: Run P66 homeostasis regression
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:big-pass-190:p66
+
+  affect-api-contract:
+    name: Canonical affect API bridge contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: runtime/neuro-kurisu/package-lock.json
+      - name: Install runtime dependencies
+        working-directory: runtime/neuro-kurisu
+        run: npm ci --no-audit --no-fund
+      - name: Verify runtime-to-UI contract
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:affect-ui-contract
+
+  app-typecheck:
+    name: App TypeScript check
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - name: Install app dependencies
+        working-directory: app
+        run: npm ci --no-audit --no-fund
+      - name: Typecheck
+        working-directory: app
+        run: npm run typecheck
+
+  app-embodiment-regression:
+    name: Voice and Live2D affect regression
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - name: Install app dependencies
+        working-directory: app
+        run: npm ci --no-audit --no-fund
+      - name: Run embodiment tests
+        working-directory: app
+        run: npm run test:embodiment-timeline

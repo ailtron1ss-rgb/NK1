@@ -1,3 +1,5 @@
+import type { EmotionAffectSnapshot } from "@/organism/types";
+
 export interface BackendMemory {
   id: string;
   kind: string;
@@ -75,6 +77,8 @@ export interface BackendUiSnapshot {
     tendency: string;
     cause: string;
   };
+  /** Present on backends that expose the persisted functional affect state. */
+  affect?: EmotionAffectSnapshot;
   identity: {
     subjectId: string;
     name: string;

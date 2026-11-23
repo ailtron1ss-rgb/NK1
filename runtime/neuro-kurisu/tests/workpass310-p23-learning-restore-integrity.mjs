@@ -55,8 +55,11 @@ assert.equal(restored.skills.length,1);
 assert.equal(restored.ablations.length,1);
 assert.equal(restored.evidenceDebt.length,1);
 assert.equal(restored.processedTraceIds.length,2048);
-assert.equal(restored.processedTraceIds[0],'trace-newest','retain newest trace IDs');
-assert.deepEqual(restored.replayedTraceIds,['replay-newest']);
+assert.ok(restored.processedTraceIds.includes('trace-newest'),'valid persisted dedupe IDs must be retained when capacity permits');
+assert.equal(restored.processedTraceIds[0],'trace-127',
+  'durable experience identities must be prioritized ahead of auxiliary dedupe-cache entries');
+assert.deepEqual(restored.replayedTraceIds,['replay-1','replay-newest'],
+  'validated durable replay identities must precede auxiliary replay-cache IDs during restore');
 assert.equal(restored.checksum.digest,'');
 assert.equal(restored.checksum.verificationFailures,0);
 assert.equal(restored.metrics.outcomes,128,'outcome counter cannot be lower than persisted experience rows');

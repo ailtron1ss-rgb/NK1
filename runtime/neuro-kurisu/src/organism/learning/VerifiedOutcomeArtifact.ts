@@ -146,6 +146,12 @@ export function ingestSignedOutcomeArtifact(
     if (!exactMatch) {
       return { accepted: false, artifactFingerprint: fingerprint, rejection: 'conflicting-existing-outcome' };
     }
+    // Idempotent re-ingestion after restore is permitted only to re-establish the
+    // process-local trust receipt. An artifact already authenticated in this process
+    // is a duplicate attempt and must not be reported as a new acceptance.
+    if (hasAuthenticatedOutcomeEvidence(ledger, outcome.evidenceRef)) {
+      return { accepted: false, artifactFingerprint: fingerprint, rejection: 'duplicate-attempt' };
+    }
   } else {
     const result = ledger.record(outcome);
     if (!result.accepted) {

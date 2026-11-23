@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
-import { generateKeyPairSync, sign } from 'node:crypto';
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { createHash, generateKeyPairSync, sign } from 'node:crypto';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { AtomicFileSkillStorePersistence } from '../src/organism/learning/AtomicFileSkillStorePersistence.ts';
@@ -48,7 +48,7 @@ function proposal(id, accepted=true, authenticatedEvidenceRows=20, unauthenticat
     gate: { accepted }, canActivateAutomatically: false, authenticatedEvidenceRows, unauthenticatedEvidenceRows,
   };
 }
-const store = new VersionedSkillCandidateStore(new InMemorySkillStorePersistence(), () => true, () => true); // explicit test-only approval/evidence adapters
+const store = new VersionedSkillCandidateStore(new InMemorySkillStorePersistence(), () => true, () => true, () => true); // explicit test-only promotion/evidence/rollback adapters
 const defaultDenyStore = new VersionedSkillCandidateStore(new InMemorySkillStorePersistence());
 const defaultDenyCandidate = defaultDenyStore.stageCandidate(proposal('f'), 'deny-shadow-test', { instruction: 'must not enter shadow' });
 assert.throws(() => defaultDenyStore.recordShadowObservation(defaultDenyCandidate.candidateId, {
@@ -93,7 +93,10 @@ const active2 = store.approveAndPromote(c2.candidateId, {
 });
 assert.equal(active2.version, 2);
 assert.equal(store.snapshot().active.find(item => item.skillId === 'memory-repair').version, 2);
-const restored = store.rollback(c2.candidateId, 2, Date.now());
+const rollbackAt = Date.now();
+const restored = store.rollback(c2.candidateId, {
+  approvedBy: 'human-reviewer-1', approvedAt: rollbackAt, expectedActiveVersion: 2,
+});
 assert.equal(restored.version, 1);
 assert.equal(restored.payload.instruction, 'version one');
 assert.equal(store.snapshot().active.find(item => item.skillId === 'memory-repair').version, 1);
@@ -102,7 +105,9 @@ assert.equal(store.snapshot().candidates.find(item => item.candidateId === c1.ca
   'rollback restores the prior version lifecycle status as well as its payload');
 assert.equal(store.snapshot().candidates.find(item => item.candidateId === c2.candidateId).approval.approvedBy, 'human-reviewer-1',
   'promotion approval is retained as an audit record');
-assert.throws(() => store.rollback(c2.candidateId, 2), /currently promoted/);
+assert.throws(() => store.rollback(c2.candidateId, {
+  approvedBy: 'human-reviewer-1', approvedAt: Date.now(), expectedActiveVersion: 2,
+}), /currently promoted/);
 
 // The production-safe default denies promotion even if a caller fabricates plausible audit fields.
 const denyStore = new VersionedSkillCandidateStore(new InMemorySkillStorePersistence(), () => false, () => true); // allow fixture shadow rows while testing default-deny approval
@@ -173,8 +178,8 @@ const tamperedPersistence = {
   compareAndSwap: () => false,
 };
 assert.throws(() => new VersionedSkillCandidateStore(tamperedPersistence, authenticatedApprovalVerifier, () => true),
-  /promotion CAS\/activation metadata is not bound to the signed approval/,
-  'a structurally valid state file cannot rewrite the active skill base-version CAS metadata');
+  /rollback target is not bound to a prior approved version|promotion CAS\/activation metadata is not bound to the signed approval/,
+  'a structurally valid state file cannot rewrite active skill base-version CAS metadata; any earlier integrity guard may reject it');
 
 const persistence = new InMemorySkillStorePersistence();
 const first = new VersionedSkillCandidateStore(persistence);
@@ -189,11 +194,41 @@ try {
   const durable = new AtomicFileSkillStorePersistence(filePath);
   const durableStore = new VersionedSkillCandidateStore(durable);
   const durableCandidate = durableStore.stageCandidate(proposal('g'), 'file-backed-skill', { instruction: 'persisted' });
+  const durableRevisionProvenance = {
+    schemaVersion: 1,
+    evaluationFingerprint: '1'.repeat(64),
+    sourceCandidateId: null,
+    planFingerprint: '2'.repeat(64),
+    datasetFingerprint: '3'.repeat(64),
+    sourceEvidenceFingerprint: '4'.repeat(64),
+    dimensions: ['task-success', 'trajectory'],
+    createdAt: Date.now(),
+  };
+  const durableRevisionCandidate = durableStore.stageCandidate(
+    proposal('g-revision'), 'file-backed-revision-skill', { instruction: 'persisted with provenance' },
+    durableRevisionProvenance,
+  );
   const afterRestart = new VersionedSkillCandidateStore(new AtomicFileSkillStorePersistence(filePath));
   assert.equal(afterRestart.snapshot().candidates[0].candidateId, durableCandidate.candidateId,
-    'atomic file adapter restores candidate state across store reconstruction');
+    'atomic file adapter restores ordinary candidate state across store reconstruction');
+  const restoredRevisionCandidate = afterRestart.snapshot().candidates.find(item => item.candidateId === durableRevisionCandidate.candidateId);
+  assert.ok(restoredRevisionCandidate, 'atomic file adapter accepts candidate IDs bound to revision provenance');
+  assert.deepEqual(restoredRevisionCandidate.revisionProvenance, durableRevisionProvenance,
+    'revision provenance survives validated durable JSON reconstruction');
   assert.equal(durable.compareAndSwap(0, { schemaVersion: 1, revision: 1, active: [], candidates: [] }), false,
     'stale revisions cannot overwrite a newer durable snapshot');
+
+  // A schema-1 file created before revision provenance used a four-field candidate ID.
+  const legacySnapshot = JSON.parse(readFileSync(filePath, 'utf8'));
+  const legacyCandidate = legacySnapshot.candidates.find(item => item.skillId === 'file-backed-skill');
+  assert.ok(legacyCandidate, 'ordinary file-backed candidate exists for migration coverage');
+  legacyCandidate.candidateId = createHash('sha256').update(JSON.stringify([
+    legacyCandidate.skillId, legacyCandidate.version, legacyCandidate.proposalId, legacyCandidate.payloadFingerprint,
+  ])).digest('hex');
+  writeFileSync(filePath, JSON.stringify(legacySnapshot));
+  const migratedSnapshot = new AtomicFileSkillStorePersistence(filePath).read();
+  assert.equal(migratedSnapshot.candidates.find(item => item.skillId === 'file-backed-skill')?.candidateId,
+    legacyCandidate.candidateId, 'legacy candidate IDs remain readable when no revision provenance is present');
 } finally {
   rmSync(tempRoot, { recursive: true, force: true });
 }
