@@ -54,6 +54,24 @@ reloaded.restore(structuredClone(live.snapshot()));
 const liveSnap = live.snapshot();
 const reloadedSnap = reloaded.snapshot();
 
+if (liveSnap.estimatedBytes !== reloadedSnap.estimatedBytes) {
+  const fields = ['content', 'tags', 'context', 'semanticLinks', 'temporalLinks', 'causalLinks',
+    'contradictionLinks', 'evidenceSources', 'evidenceLineageKeys', 'revisionIntegrityIssues',
+    'revisionHistory', 'bitemporalHistory', 'recordedFromAt', 'recordedUntilAt',
+    'freshnessUntilAt', 'freshnessHalfLifeMs', 'temporalKind'];
+  const rowDiffs = liveSnap.items.map((row) => {
+    const restored = reloadedSnap.items.find((item) => item.id === row.id);
+    if (!restored) return { id: row.id, missing: true };
+    const changed = Object.fromEntries(fields
+      .filter((field) => JSON.stringify(row[field] ?? null) !== JSON.stringify(restored[field] ?? null))
+      .map((field) => [field, { live: row[field] ?? null, restored: restored[field] ?? null }]));
+    return Object.keys(changed).length ? { id: row.id, changed } : null;
+  }).filter(Boolean);
+  console.log('MEMORY_CONFLICT_BYTE_DIAGNOSTICS=', JSON.stringify({
+    liveBytes: liveSnap.estimatedBytes, restoredBytes: reloadedSnap.estimatedBytes,
+    liveRows: liveSnap.items.length, restoredRows: reloadedSnap.items.length, rowDiffs,
+  }));
+}
 assert.equal(liveSnap.estimatedBytes, reloadedSnap.estimatedBytes, 'byte budget must survive a reload');
 assert.equal(liveSnap.items.length, reloadedSnap.items.length, 'row count must survive a reload');
 
