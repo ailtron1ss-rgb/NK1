@@ -77,14 +77,21 @@ assert.equal(liveSnap.items.length, reloadedSnap.items.length, 'row count must s
 
 let graphDiffs = 0;
 let integrityDiffs = 0;
+const graphDiffDetails = [];
 for (const liveItem of liveSnap.items) {
   const reloadedItem = reloadedSnap.items.find((item) => item.id === liveItem.id);
   assert.ok(reloadedItem, 'every live row must reload');
+  const changed = {};
   for (const field of GRAPH_FIELDS) {
-    if (liveItem[field] !== reloadedItem[field]) graphDiffs += 1;
+    if (liveItem[field] !== reloadedItem[field]) {
+      graphDiffs += 1;
+      changed[field] = { live: liveItem[field] ?? null, restored: reloadedItem[field] ?? null };
+    }
   }
+  if (Object.keys(changed).length) graphDiffDetails.push({ id: liveItem.id, changed });
   if (JSON.stringify(liveItem.revisionIntegrityIssues ?? []) !== JSON.stringify(reloadedItem.revisionIntegrityIssues ?? [])) integrityDiffs += 1;
 }
+if (graphDiffs || integrityDiffs) console.log('MEMORY_CONFLICT_GRAPH_DIAGNOSTICS=', JSON.stringify({ graphDiffs, integrityDiffs, graphDiffDetails }));
 
 assert.equal(graphDiffs, 0, 'the live revision graph must equal the reloaded revision graph');
 assert.equal(integrityDiffs, 0, 'live rows must not carry a graph the reloaded copy rejects');
