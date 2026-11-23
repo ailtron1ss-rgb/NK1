@@ -128,3 +128,11 @@ Record expected pre-fix failures from the current implementation. Import/setup e
 - [x] Verified branch is 6 commits ahead and 0 behind current workpass70-source.
 - [x] Exact merge-head run 45125682489 (commit 451e5d69b508100bb94e74311bc87c958f42efd4) passed all 13 memory workflow checks and runtime TypeScript check.
 - PR #1121 remains Draft and unmerged.
+
+
+## Current source-head confirmation
+
+- workpass70-source now points to 06e2deb640807acf20ebb950524d0442ad75356f.
+- The aspect branch contains that base ancestry and compares ahead by 7 / behind by 0.
+- No additional source rebase is required.
+- Exact integration-head workflow run 45125682489 passed all 13 checks; subsequent commits are documentation-only.
