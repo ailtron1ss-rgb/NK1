@@ -11,7 +11,7 @@ import { OrganismCore, type OrganismConfig, type PersistedOrganism } from './Org
 import { WorldEnvironment, type EnvironmentAction, type PersistedWorld } from '../world/WorldEnvironment.ts';
 import { PlanEngine } from '../world/PlanEngine.ts';
 import { OfflineConsolidation, type ConsolidationResult } from '../cognition/OfflineConsolidation.ts';
-import type { OrganismCycleResult, CognitiveProposal, WorldContext, WorldTransitionForOrganism } from './types.ts';
+import type { ActionKind, OrganismCycleResult, CognitiveProposal, WorldContext, WorldTransitionForOrganism } from './types.ts';
 import { buildAutonomousDialoguePrompt, buildCognitivePrompt, type LanguageInvoker, type LanguageResponse } from '../language/LanguageOrgan.ts';
 import { AdaptiveSynapticMatrixEngine, type AdaptiveSynapticMatrixState, type SynapticAdapterActivationManifest, type SynapticAdapterCandidate, type SynapticAdapterManifestVerifier, type SynapticAdapterRoutingInput, type SynapticAdapterTask, type SynapticReplayAnchorState, type SynapticReplayAnchorStore } from '../learning/AdaptiveSynapticMatrix.ts';
 import type { ContextBudgetLedgerReport } from '../language/ContextBudgetLedger.ts';
@@ -28,7 +28,7 @@ import { RuntimeEvidenceBus } from '../system/RuntimeEvidenceBus.ts';
 import { CognitiveEventFabric } from '../system/CognitiveEventFabric.ts';
 import { buildIndependentEvaluationEvidenceBundle } from '../system/IndependentEvaluationEvidence.ts';
 import { CognitiveResourceEconomy, cognitiveAttentionIntentFromAction, CognitiveSpineScheduler, type CognitiveSpineScheduleState } from '../system/CognitiveResourceEconomy.ts';
-import { UnifiedCognitiveCycle } from '../system/UnifiedCognitiveCycle.ts';
+import { UnifiedCognitiveCycle, type RiskAwareRecoveryControllerState } from '../system/UnifiedCognitiveCycle.ts';
 import { ContinuousCognitiveFabric } from '../system/ContinuousCognitiveFabric.ts';
 import { RuntimeClosureLedger } from '../system/RuntimeClosureLedger.ts';
 import { CausalDomainClosureLedger, type CausalDomainEvidence } from '../system/CausalDomainClosureLedger.ts';
@@ -171,6 +171,8 @@ export interface RuntimeConfig extends OrganismConfig {
   cognitiveHealthInputProvider?: (tick:number)=>RuntimeCognitiveHealthInput|null|Promise<RuntimeCognitiveHealthInput|null>;
   /** Override the durable cognitive-health sidecar (defaults beside stateFile). */
   cognitiveHealthStore?: JsonStateStore<any>;
+  /** Durable, independently calibrated recovery controller sidecar. */
+  riskAwareRecoveryStore?: JsonStateStore<RiskAwareRecoveryControllerState>;
   /** Optional injected durable sidecar for event/budget-aware cognitive-spine cadence. */
   cognitiveSpineStore?: JsonStateStore<CognitiveSpineScheduleState>;
   worldStateStore?: JsonStateStore<PersistedWorld>;
@@ -407,6 +409,7 @@ export class OrganismRuntime {
   };
   private readonly cognitiveImmuneSystem: RuntimeCognitiveHealthMonitor | null;
   private readonly cognitiveImmuneStore: JsonStateStore<any>;
+  private readonly riskAwareRecoveryStore: JsonStateStore<RiskAwareRecoveryControllerState>;
   private readonly proceduralSkillLibrary = new ProceduralSkillLibrary();
   private readonly proceduralSkillStore: JsonStateStore<SkillLibraryState>;
   private readonly openLoopStore: JsonStateStore<OpenLoopRadarState>;
@@ -527,6 +530,7 @@ export class OrganismRuntime {
     const skillStatePath = `${config.stateFile}.procedural-skills.json`;
     this.proceduralSkillStore = new FileStateStore<SkillLibraryState>(skillStatePath);
     this.cognitiveImmuneStore = config.cognitiveHealthStore ?? new FileStateStore<any>(`${config.stateFile}.cognitive-health.json`);
+    this.riskAwareRecoveryStore = config.riskAwareRecoveryStore ?? new FileStateStore<RiskAwareRecoveryControllerState>(`${config.stateFile}.risk-aware-recovery.json`);
     this.cognitiveSpineStore = config.cognitiveSpineStore ?? new FileStateStore<CognitiveSpineScheduleState>(`${config.stateFile}.cognitive-spine.json`);
     this.synapticMatrixStore = new FileStateStore<AdaptiveSynapticMatrixState>(`${config.stateFile}.synaptic-matrix.json`);
     this.synapticAdapterTimeoutMs = config.synapticAdapterTimeoutMs ?? 15_000;
@@ -633,6 +637,12 @@ export class OrganismRuntime {
           // Diagnostics must not make a valid organism checkpoint unbootable.
           await this.journal.write('warn','runtime.cognitive-health.restore-failed',{message:String((error as any)?.message??error).slice(0,180)}).catch(()=>{});
         }
+      }
+      try {
+        this.unifiedCycle.restoreRiskAwareRecovery(await this.riskAwareRecoveryStore.load() ?? undefined);
+      } catch (error) {
+        this.unifiedCycle.restoreRiskAwareRecovery();
+        await this.journal.write('warn','runtime.risk-aware-recovery.restore-failed',{message:String((error as any)?.message??error).slice(0,180)}).catch(()=>{});
       }
       try {
         this.cognitiveSpineScheduler.restore(await this.cognitiveSpineStore.load() ?? undefined);
@@ -1262,16 +1272,64 @@ export class OrganismRuntime {
     if (cognitiveProposal) {
       this.core.recordMultimodalObservation({ modality:'world', summary:`cognitive-proposal: ${cognitiveProposal.summary}`, confidence:1-cognitiveProposal.uncertainty, salience:.42, evidence:cognitiveProposal.evidenceNeeded.slice(0,6), content:cognitiveProposal.hypotheses.join(' | ') });
     }
-    const internalAction = cycle.decision.selected?.action ?? 'wait';
-    const observationEvidence = this.evidenceBus.publish({tick:cycle.state.tick,kind:'observation',source:'runtime',confidence01:.72,payload:{external:Boolean(externalText),predictionError:cycle.state.predictionError,selectedAction:internalAction}});
+    const canonicalAction:ActionKind = cycle.decision.selected?.action ?? 'wait';
+    const actionUtilities:Record<ActionKind,number> = {
+      respond:.5, explore:.5, verify:.5, rest:.5, reflect:.5, wait:.5, defer:.5,
+    };
+    for (const candidate of cycle.decision.candidates) {
+      const utility = Number.isFinite(candidate.predictedUtility)
+        ? clamp01(candidate.predictedUtility)
+        : Number.isFinite(candidate.score) ? clamp01(candidate.score) : .5;
+      actionUtilities[candidate.action] = Math.max(actionUtilities[candidate.action], utility);
+    }
+    const autonomousRecoveryAllowed = !externalText && cycle.decision.userRequestedAction == null;
+    const priorEmbodiedRecovery = this.embodiedRecovery.snapshot();
+    const lastPhysicalEpisode = priorEmbodiedRecovery.episodes[0];
+    const riskDecision = this.unifiedCycle.beforeRiskAwareDecision({
+      tick:cycle.state.tick,
+      actionUtilities,
+      predictionError01:clamp01(cycle.state.predictionError),
+      uncertainty01:clamp01(cycle.state.needs.uncertainty),
+      modelDrift01:clamp01(Math.max(
+        Number(previousNeural.predictionError01 ?? 0),
+        Number(this.realityShadowBridge.diagnostics().meanDivergence01 ?? 0),
+      )),
+      recoveryGain01:clamp01(priorEmbodiedRecovery.globalReliability01),
+      verified01:clamp01(Number(lastPhysicalEpisode?.verified01 ?? 0)),
+      computeBudget01:clamp01(resourceAllocation.totalBudget01),
+      allowRecovery:autonomousRecoveryAllowed,
+    });
+    // External/user-directed turns and explicit canonical action requests are never overridden.
+    const requestedRecoveryAction:ActionKind|null = riskDecision.recoveryAction === 'defer'
+      ? 'wait' : riskDecision.recoveryAction;
+    const riskRecoveryApplied = autonomousRecoveryAllowed && (riskDecision.abstain || requestedRecoveryAction !== null);
+    const internalAction:ActionKind = !autonomousRecoveryAllowed
+      ? canonicalAction
+      : riskDecision.abstain ? 'wait' : requestedRecoveryAction ?? canonicalAction;
+    const observationEvidence = this.evidenceBus.publish({
+      tick:cycle.state.tick,kind:'observation',source:'runtime',confidence01:.72,
+      payload:{external:Boolean(externalText),predictionError:cycle.state.predictionError,selectedAction:canonicalAction,runtimeAction:internalAction},
+    });
+    this.evidenceBus.publish({
+      tick:cycle.state.tick,kind:'action',source:'risk-aware-recovery-controller',
+      confidence01:clamp01(1-riskDecision.risk01),parentIds:[observationEvidence.id],
+      payload:{
+        canonicalAction,runtimeAction:internalAction,risk01:riskDecision.risk01,
+        recoverability01:riskDecision.recoverability01,recoveryAction:riskDecision.recoveryAction,
+        abstain:riskDecision.abstain,recoveryApplied:riskRecoveryApplied,
+        authority:'autonomous-runtime-actuation-only',userDirectedOverride:false,
+      },
+    });
     const projectAllowed = executionPlan?.run?.project !== false && spineDecision.run.project;
-    const planningBudget = projectAllowed
+    const planningBudget = projectAllowed && !riskRecoveryApplied
       ? this.core.cognitiveBudgetSpend('planning',undefined,cycle.state.needs.uncertainty,'action-planning')
       : { accepted: false };
     const selectedGoal = cycle.goals.find(g => g.id === cycle.decision.selected?.goalId) ?? null;
-    const plan = planningBudget.accepted && projectAllowed
-      ? this.plans.build(selectedGoal, internalAction, 4, 4)
-      : this.plans.buildBudgetFallback(selectedGoal, internalAction, projectAllowed ? 'planning-budget-exhausted' : 'planner-project-gated');
+    const plan = riskRecoveryApplied
+      ? this.plans.buildBudgetFallback(selectedGoal, internalAction, 'risk-aware-recovery-override')
+      : planningBudget.accepted && projectAllowed
+        ? this.plans.build(selectedGoal, internalAction, 4, 4)
+        : this.plans.buildBudgetFallback(selectedGoal, internalAction, projectAllowed ? 'planning-budget-exhausted' : 'planner-project-gated');
     const worldRolloutAllowed = executionPlan?.run?.['world-rollout'] !== false && spineDecision.run['world-rollout'];
     const shadowPassAllowed = executionPlan?.run?.shadow !== false && spineDecision.run.shadow;
     const simBudget = worldRolloutAllowed && shadowPassAllowed
@@ -1438,6 +1496,15 @@ export class OrganismRuntime {
     });
     this.realityGrounding.refineLatest({verified01:grounded.verified01,independent01:grounded.independent01,evidence01:grounded.evidence01,consequence01:grounded.consequence01,reason:grounded.reason});
     this.core.setRealityGrounding(this.realityGrounding.snapshot());
+    this.unifiedCycle.recordRiskAwareOutcome({
+      reward01:grounded.reward01,
+      verified01:grounded.verified01,
+      predictionError01:clamp01(Math.max(cycle.state.predictionError,grounded.consequenceError01)),
+      recoveryTriggered:riskRecoveryApplied || physicalAction !== internalAction,
+      recoverySuccessful01:clamp01(.60*grounded.success01+.25*grounded.verified01+.15*grounded.independent01),
+      failureSeverity01:clamp01(.55*(1-grounded.success01)+.25*(1-grounded.verified01)+.20*grounded.consequenceError01),
+    });
+    await this.persistRiskAwareRecovery();
 
     const shadowResolution=this.realityShadowBridge.resolve({
       source:grounded.source,
@@ -1802,6 +1869,17 @@ export class OrganismRuntime {
     });
   }
 
+  private async persistRiskAwareRecovery():Promise<void> {
+    try {
+      await this.riskAwareRecoveryStore.save(this.unifiedCycle.riskAwareRecoverySnapshot());
+    } catch(error) {
+      await this.journal.write('warn','runtime.risk-aware-recovery.persist-failed',{
+        tick:this.unifiedCycle.riskAwareRecoverySnapshot().tick,
+        message:String((error as any)?.message??error).slice(0,180),
+      }).catch(()=>{});
+    }
+  }
+
   realityGroundingSnapshot(){ return this.realityGrounding.snapshot(); }
   neuralCausalTraceSnapshot(){ return this.neuralCausalTrace.snapshot(); }
   realityLearningGateSnapshot(){ return this.realityLearningGate.snapshot(); }
@@ -2099,6 +2177,7 @@ export class OrganismRuntime {
   runtimePerformanceSnapshot(){ return this.runtimePerformance.snapshot(); }
   realityEvidenceLedgerSnapshot(){ return this.core.realityEvidenceLedgerSnapshot(); }
   unifiedCognitiveCycleSnapshot(){ return this.unifiedCycle.snapshot(); }
+  riskAwareRecoverySnapshot(){ return this.unifiedCycle.riskAwareRecoverySnapshot(); }
   activeProjectSnapshot(){ return this.core.activeProjectSnapshot(); }
   runtimeDecisionSnapshot(){ const p=this.runtimeDecision(); return { ...p, body:this.embodiment.snapshot(), clocks:this.clockScheduler.snapshot() }; }
   evidenceSnapshot(){ return this.evidenceBus.snapshot(); }
@@ -2419,6 +2498,7 @@ export class OrganismRuntime {
       this.core.setRuntimeClosure(this.runtimeClosure.snapshot());
       await this.core.flush();
       await this.persistCognitiveSpineSchedule();
+      await this.persistRiskAwareRecovery();
       await this.checkpointWorld(true);
       await this.journal.write('info', 'runtime.stop.durable', {
         tick: runtimeView.tick,
