@@ -1355,8 +1355,18 @@ export class MemoryOS2{
  adjudicateImplicitConflicts(input:{limit?:number;pairBudget?:number;at?:number}={}):{candidates:number;resolved:number;at:number}{
   const at=Number(input.at??Date.now()); const newerRows=this.state.items.slice().filter(m=>m.validUntilAt==null&&m.epistemicStatus!=='quarantined').sort((a,b)=>Number(b.observedAt??b.createdAt)-Number(a.observedAt??a.createdAt)).slice(0,Math.max(8,Math.min(64,Math.floor(input.limit??32))));
   let candidates=0,resolved=0,pairs=0; const pairBudget=Math.max(16,Math.min(512,Math.floor(input.pairBudget??192)));
-  for(let ni=0;ni<newerRows.length&&pairs<pairBudget;ni++){const newer=newerRows[ni]!;const newerAt=Number(newer.observedAt??newer.createdAt);
-   for(let oi=ni+1;oi<this.state.items.length&&pairs<pairBudget;oi++){const older=this.state.items[oi]!;if(older.id===newer.id||older.validUntilAt!=null||older.epistemicStatus==='quarantined')continue;const olderAt=Number(older.observedAt??older.createdAt);if(!(olderAt<newerAt))continue;if(newer.revisionGroupId&&older.revisionGroupId&&newer.revisionGroupId===older.revisionGroupId)continue;pairs++;const signal=this.implicitConflictSignals(newer,older);if(signal.score<.75)continue;candidates++;
+  for(let ni=0;ni<newerRows.length&&pairs<pairBudget;ni++){
+   const newer=newerRows[ni]!;
+   // A row that already has a parent is part of an existing revision chain.
+   // Reparenting it during heuristic conflict adjudication would leave its old
+   // parent's supersededById pointing at the same child, creating a branch that
+   // only restore can detect. Preserve existing chains; only adopt clean roots.
+   if(newer.supersedesId||newer.supersededById)continue;
+   const newerAt=Number(newer.observedAt??newer.createdAt);
+   for(let oi=ni+1;oi<this.state.items.length&&pairs<pairBudget;oi++){
+    const older=this.state.items[oi]!;
+    if(older.id===newer.id||older.validUntilAt!=null||older.supersededById||older.epistemicStatus==='quarantined')continue;
+    const olderAt=Number(older.observedAt??older.createdAt);if(!(olderAt<newerAt))continue;if(newer.revisionGroupId&&older.revisionGroupId&&newer.revisionGroupId===older.revisionGroupId)continue;pairs++;const signal=this.implicitConflictSignals(newer,older);if(signal.score<.75)continue;candidates++;
     const newerProv=this.provenanceStrength(newer),olderProv=this.provenanceStrength(older);
     if(olderProv-newerProv>.18){
       const recordedAt=Math.max(at,Number(newer.recordedFromAt??newer.createdAt)+1);
