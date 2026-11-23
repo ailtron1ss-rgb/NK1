@@ -1485,8 +1485,31 @@ export class MemoryOS2{
    // If canonical content already exists only as an expired/quarantined record,
    // a fresh observation gets its own stable-in-process identity rather than
    // mutating history or overwriting the historical item's map entry.
-   const collision=this.itemIndex.has(input.id??identity.stableId);
-   const materializedInput:MemoryEncodeInput=options.forceDistinct||input.id||!collision?input:{...input,id:stableMemoryId(`${canonicalContent}\0reobserved:${now}:${this.state.items.length}:${this.state.reconsolidations}`,input.kind,input.source)};
+   const requestedId=String(input.id??identity.stableId);
+   const collision=this.itemIndex.has(requestedId);
+   let materializedInput:MemoryEncodeInput=input;
+   if(collision){
+     // An explicit caller ID cannot shadow a different canonical row. Derive a
+     // stable collision ID from the payload and requested ID so replay remains
+     // idempotent across restarts and preserves both observations.
+     if(input.id){
+       const collisionSeed=canonicalContent+'\0explicit-id-collision:'+String(input.id);
+       let candidate=stableMemoryId(collisionSeed,input.kind,input.source);
+       let suffix=0;
+       while(this.itemIndex.has(candidate)){
+         const occupied=this.itemIndex.get(candidate);
+         if(occupied&&canonicalizeMemoryContent(occupied.content)===canonicalContent){
+           return options.clone===false?occupied:structuredClone(occupied);
+         }
+         suffix++;
+         candidate=stableMemoryId(collisionSeed+'\0'+suffix,input.kind,input.source);
+         if(suffix>64)throw new Error('Unable to allocate a unique MemoryOS2 identity after explicit ID collision.');
+       }
+       materializedInput={...input,id:candidate};
+     }else{
+       materializedInput={...input,id:stableMemoryId(canonicalContent+'\0reobserved:'+now+':'+this.state.items.length+':'+this.state.reconsolidations,input.kind,input.source)};
+     }
+   }
    const item=this.buildMemoryItem(materializedInput,identity,entities,semanticVector,now);
    if(collision&&!input.id&&!options.forceDistinct&&!materializedInput.revisionGroupId)item.revisionGroupId=item.id;
    item.temperature01=memoryTemperature(item,now);
