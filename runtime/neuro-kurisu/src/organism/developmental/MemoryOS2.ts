@@ -1396,7 +1396,10 @@ export class MemoryOS2{
       this.beginBitemporalRevision(newer,recordedAt);
       this.recordRevision(newer,{at:recordedAt,from:newer.epistemicStatus,to:'quarantined',reason:'implicit-conflict-provenance-protection'});
       newer.epistemicStatus='quarantined';
-      this.state.implicitConflictsDeferred++; this.state.provenanceProtected++; this.state.quarantined++; continue;
+      this.state.implicitConflictsDeferred++; this.state.provenanceProtected++; this.state.quarantined++;
+      // One observation is adjudicated at most once per scan. Continuing here
+      // could quarantine it repeatedly against unrelated older candidates.
+      break;
     }
     const group=older.revisionGroupId??older.id;
     const previousNewGroup=this.revisionGroupIndex.get(newer.revisionGroupId??newer.id);
@@ -1439,6 +1442,11 @@ export class MemoryOS2{
     newer.contradictionLinks=[...new Set([...(newer.contradictionLinks??[]),older.id])].slice(0,6);
     this.state.estimatedBytes=Math.max(0,this.state.estimatedBytes-olderBytesBeforeLinks-newerBytesBeforeLinks+estimateMemoryBytes(older)+estimateMemoryBytes(newer));
     this.state.implicitConflictsResolved++;this.state.reconsolidations++;resolved++;
+    // A child has exactly one predecessor in a linear revision lineage. Stop
+    // scanning older candidates after the first successful adjudication;
+    // otherwise the next match overwrites supersedesId and leaves an orphaned
+    // supersededById edge on the previously selected parent.
+    break;
    }
   }
   this.state.implicitConflictCandidates+=candidates;this.state.lastConflictScanAt=at;return {candidates,resolved,at};
