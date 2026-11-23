@@ -1,3 +1,24 @@
+## WorkPass359 — strict operational-cycle phase envelopes (2026-10-26)
+
+- **Code/test checkpoint:** `c2ea83c25d905c54acec63dbbaacce5ec37f245c`; latest target branch base at integration start: `f38d3189777649da490f8b0dbb3a8d19c7444811`.
+- **Defect:** `recordOperationalCycle()` previously treated any falsy phase value as if the phase were omitted, and normalized malformed explicit payload roots through `cleanPayload()`. This could disguise invalid phase evidence as an empty payload.
+- **Fix:** read known cycle-root and phase fields through own data descriptors; skip only absent phases; reject null/falsy present phases, non-record payload roots, noncanonical source IDs and confidence outside `[0,1]` in preflight, before the first event write.
+- **Regression:** `cognitive-operational-cycle-envelope.mjs` tests malformed late-phase payloads, falsy phase envelopes, root/phase accessors, invalid source/confidence, zero mutation on rejection, and ordinary record/omitted-payload compatibility. Wired into `test:cognitive-integration-suite`.
+- **Validation:** exact-head CI pending for the expanded WorkPass358/359 combination. Prior WorkPass358 PASS remains valid only for its own code/test snapshot; current additions require a fresh run. Scores unchanged.
+
+---
+
+## WorkPass358 — latest-base integration of strict receipt ingress and proxy-safe parent restore (2026-10-26)
+
+- **Code/test checkpoint:** `813fdde7361ae1a690cbd690e4e7f4337fa38a4e`; source base `f38d3189777649da490f8b0dbb3a8d19c7444811`.
+- **Receipt ingress:** `CognitiveEventFabric.appendToolReceiptTrace()`, `appendToolReceiptRevision()`, and `appendToolExternalObservation()` snapshot known fields via own data descriptors, reject accessor-backed inputs, and validate IDs/flags/hashes/counters/timestamps/confidence without coercing or truncating.
+- **Restore lineage:** `restore()` now validates nested `parentIds` arrays through a bounded native-array inspector. It does not read proxy-backed `.length` or indexed slots directly; uninspectable rows are skipped before reserving the ID.
+- **Regressions:** `cognitive-tool-receipt-input-boundary.mjs` and `cognitive-event-parent-proxy-restore.mjs`, both wired into `test:cognitive-integration-suite`.
+- **Base preservation:** the newer WorkPass370 cross-ledger cognitive-cycle commit and WorkPass372 unified-cycle input/restore validation are preserved.
+- **Exact-head CI PASS:** PR head `bf2f20b554890babb917ca43ab04c7e9ad8e0ba9` passed Unified project integration [#40293367296](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40293367296), progress-ledger integrity [#40293367206](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40293367206), WorkPass110 [#40293367155](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40293367155), P26 [#40293367156](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40293367156), and nine additional focused workflows. The unified run passed cognitive integration, governed approval E2E, public gateway/service startup, runtime/research bridge smoke, and final release gates without publishing an archive. Code/test checkpoint `813fdde7361ae1a690cbd690e4e7f4337fa38a4e`; later tracker/changelog commits only record this evidence. Historical CI evidence rows and readiness scores remain unchanged.
+
+---
+
 # NK1 — общая панель инженерного прогресса (2026-10-26)
 
 **Источник:** `ailtron1ss-rgb/NK1`, combined source branch `fix/mega-cognitive-progress-tracking-2026-10-26-r3`. Точный проверенный code/test head: `621864d0d7f2676245383adab86f1dcc6d0f741f`, merged into the source branch as `39af7eb67c9ab05efd45d01cbd4b4d1d44751454`. На HEAD 621864d0d7f2676245383adab86f1dcc6d0f741f успешно прошли Unified project integration suite [#40257525157](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40257525157), WorkPass110 [#40257525071](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40257525071), WorkPass108 [#40257525093](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40257525093), P26 Learning Validation [#40257525095](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40257525095), progress-ledger integrity [#40257525008](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40257525008), plus outcome-ledger, replay, cognitive-contract, verified-experience, reflection and postcondition suites.
