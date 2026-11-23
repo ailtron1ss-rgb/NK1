@@ -8,7 +8,7 @@ const root=path.join(repoRoot,"app");
 const stagePath=path.join(root,"src/components/Avatar3DStage.tsx");
 test("a real Three.js 3D mode exists rather than reusing the legacy Avatar2D alias",async()=>{
  const parent=await readFile(path.join(root,"src/components/AvatarStage.tsx"),"utf8"),stage=await readFile(stagePath,"utf8"),legacy=await readFile(path.join(repoRoot,"legacy/kurisu-v56/src/components/Avatar3D.tsx"),"utf8");
- assert.match(parent,/"3d"/);assert.match(parent,/<Avatar3DStage/);assert.match(stage,/new THREE\.WebGLRenderer/);assert.match(stage,/new THREE\.Scene/);assert.match(stage,/makeBody/);assert.match(legacy,/return <Avatar2D \{\.\.\.props\} \/>/);assert.match(stage,/Процедурный 3D-концепт/);
+ assert.match(parent,/"3d"/);assert.match(parent,/<Avatar3DStage/);assert.match(stage,/new THREE\.WebGLRenderer/);assert.match(stage,/new THREE\.Scene/);assert.match(stage,/makeBody/);assert.match(legacy,/return <Avatar2D \{\.\.\.props\} \/>/);assert.match(stage,/3D-модель не загружена/);
 });
 test("local VRM/GLB upload is bounded and browser-local",async()=>{
  const stage=await readFile(stagePath,"utf8"),store=await readFile(path.join(root,"src/components/avatar/avatarModelStore.ts"),"utf8");
@@ -134,4 +134,30 @@ test("3D GLB clip playback uses semantic resolution and crossfades without stopp
  assert.doesNotMatch(stage, /rt\.mixer\.stopAllAction\(\);const a=rt\.mixer\.clipAction/);
  assert.match(animation, /crossFadeTo\(next, fadeSeconds, false\)/);
  assert.match(animation, /const requestedAction = input\.awake \? input\.action : "rest"/);
+});
+
+
+test("the procedural geometry is hidden until a verified external model loads",async()=>{
+ const stage=await readFile(stagePath,"utf8");
+ assert.match(stage,/const body=makeBody\(scene\);body\.root\.visible=false;/);
+ assert.match(stage,/setState\("empty"\)/);
+ assert.doesNotMatch(stage,/setState\("procedural"\)/);
+ assert.doesNotMatch(stage,/rt\.body\.root\.visible=true/);
+ assert.match(stage,/Показываем 3D-тело только после успешной загрузки и preflight/);
+ assert.match(stage,/геометрическая заглушка скрыта/);
+});
+
+test("3D model failure presents a real retry/import/Live2D recovery path",async()=>{
+ const stage=await readFile(stagePath,"utf8"),parent=await readFile(path.join(root,"src/components/AvatarStage.tsx"),"utf8");
+ assert.match(stage,/Повторить загрузку встроенной модели/);
+ assert.match(stage,/Выбрать VRM \/ GLB/);
+ assert.match(stage,/props\.onReturnTo2D/);
+ assert.match(parent,/onReturnTo2D=\{\(\) => setMode\("live2d"\)\}/);
+});
+
+test("reset hides the procedural body and disposes VRM resources through VRMUtils",async()=>{
+ const stage=await readFile(stagePath,"utf8");
+ assert.match(stage,/if\(rt\.vrm\)VRMUtils\.deepDispose\(rt\.loaded\);else disposeTree\(rt\.loaded\)/);
+ assert.match(stage,/rt\.body\.root\.visible=false/);
+ assert.match(stage,/setState\(rt\?"empty":"webgl-unavailable"\)/);
 });
