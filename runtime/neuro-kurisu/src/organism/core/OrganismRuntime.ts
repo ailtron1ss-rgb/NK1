@@ -7,8 +7,6 @@ import { externalGoalForRuntimeInput, normalizeRuntimeExternalPluginSource, shou
 import { normalizeWorldContext } from './WorldContextNormalizer.ts';
 import { FileStateStore, registerFileWorkspaceUndoFirstTools } from '../persistence/FileStateStore.ts';
 import { OrganismCore, type OrganismConfig, type PersistedOrganism } from './OrganismCore.ts';
-import type { OrganismAspectFabric } from './OrganismAspectFabric.ts';
-import type { OrganismSystemFabric } from './OrganismSystemFabric.ts';
 import { WorldEnvironment, type EnvironmentAction, type PersistedWorld } from '../world/WorldEnvironment.ts';
 import { PlanEngine } from '../world/PlanEngine.ts';
 import { OfflineConsolidation, type ConsolidationResult } from '../cognition/OfflineConsolidation.ts';
@@ -327,6 +325,11 @@ export function projectVoiceEmotionContext(snapshot:unknown, appraisalSnapshot?:
 
 export interface RuntimeStep { cycle: OrganismCycleResult; worldAction: EnvironmentAction; language?: LanguageResponse; embodiedAction?: EmbodiedActionResult; }
 
+interface RuntimeAspectFabricPort {
+  snapshot(): unknown;
+  health(): unknown;
+}
+
 export class OrganismRuntime {
   /**
    * Host-owned production composition: prepare the three separately configured
@@ -449,7 +452,7 @@ export class OrganismRuntime {
   private readonly openLoopStore: JsonStateStore<OpenLoopRadarState>;
   private stopping = false;
   /** Opt-in read-only aspect graph adapter; attached after Core construction. */
-  private aspectFabric?: OrganismAspectFabric;
+  private aspectFabric?: RuntimeAspectFabricPort;
   private sleepStartedAt: number | null = null;
   private sleepReason = '';
   private lastAutonomyStepAt = 0;
@@ -2544,10 +2547,10 @@ export class OrganismRuntime {
 
   embodimentStatus(): ReturnType<EmbodimentRuntime['snapshot']> { return this.embodiment.snapshot(); }
   /** Attach the aspect integration fabric after Core construction; read-only and opt-in. */
-  attachAspectFabric(fabric: OrganismAspectFabric) { this.aspectFabric = fabric; return this.aspectFabricSnapshot(); }
-  aspectFabricSnapshot() { return this.aspectFabric?.snapshot() ?? null; }
-  aspectFabricHealth() { return this.aspectFabric?.health() ?? null; }
-  get organismSystemFabric(): OrganismSystemFabric { return this.core.organismSystemFabric; }
+  attachAspectFabric(fabric: RuntimeAspectFabricPort) { this.aspectFabric = fabric; return this.aspectFabricSnapshot(); }
+  aspectFabricSnapshot(): unknown { return this.aspectFabric?.snapshot() ?? null; }
+  aspectFabricHealth(): unknown { return this.aspectFabric?.health() ?? null; }
+  get organismSystemFabric() { return this.core.organismSystemFabric; }
   embodimentDiagnostics(){ return this.embodiment.sensorDiagnosticsSnapshot(); }
   async stop(): Promise<void> {
     // Stop is a durability boundary, not merely a scheduler shutdown.  The previous
