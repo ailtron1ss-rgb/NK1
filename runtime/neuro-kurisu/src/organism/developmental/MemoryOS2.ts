@@ -1357,11 +1357,12 @@ export class MemoryOS2{
  }
 
  private buildMemoryItem(input:MemoryEncodeInput,identity:{stableId:string;contentHash:string},entities:string[],semanticVector:number[],now:number):MemoryItem2{
-  const source=typeof input.source==='string'&&input.source.trim()?input.source.trim().slice(0,240):'unknown';
+  const sourceIsValid=typeof input.source==='string'&&Boolean(input.source.trim());
+  const source=sourceIsValid?input.source.trim().slice(0,240):'unknown';
   const confidenceValid=typeof input.confidence==='number'&&Number.isFinite(input.confidence)&&input.confidence>=0&&input.confidence<=1;
   const confidence=confidenceValid?clamp(input.confidence):.5;
   const statusIsValid=EPISTEMIC_STATUSES.has(input.epistemicStatus);
-  const epistemicStatus=statusIsValid&&source!=='unknown'&&(input.epistemicStatus!=='fact'||confidenceValid)
+  const epistemicStatus=statusIsValid&&sourceIsValid&&(input.epistemicStatus!=='fact'||confidenceValid)
     ?input.epistemicStatus:'unknown';
   const normalizedInput:MemoryEncodeInput={
     ...input,source,confidence,epistemicStatus,
