@@ -43,6 +43,8 @@ try {
 
   const snapshot = core.snapshot();
   assert.ok(snapshot.system?.autonomousDecisionReceipts, 'receipts must be included in system persistence');
+  assert.ok(snapshot.system.autonomousDecisionReceipts.receipts.length >= 2,
+    'public snapshot must project the current bounded receipt log rather than omit it');
   const restored = new OrganismCore(
     new MemoryStateStore({ initial: snapshot }),
     { performanceProfile: 'mobile', cycleResultMode: 'operational' },
