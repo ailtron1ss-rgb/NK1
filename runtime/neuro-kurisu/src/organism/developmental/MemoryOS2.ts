@@ -2290,6 +2290,41 @@ export class MemoryOS2{
  }
 
  size(){return this.state.items.length;}
+ snapshotItem(id:string):MemoryItem2|null {
+  const item=this.itemIndex.get(String(id));
+  return item?structuredClone(item):null;
+ }
+ snapshotPrefix(limit:number):MemoryItem2[] {
+  const count=Math.max(0,Math.min(this.state.items.length,Math.floor(Number.isFinite(limit)?limit:0)));
+  return this.state.items.slice(0,count).map(item=>structuredClone(item));
+ }
+ canonicalIdsSnapshot():string[] {return this.state.items.map(item=>item.id);}
+ private snapshotWithItems(items:readonly MemoryItem2[]):MemoryOSState2 {
+  const {items:_canonicalItems,...rest}=this.state;
+  return {...structuredClone(rest),items:items.map(item=>structuredClone(item))} as MemoryOSState2;
+ }
+ compatibilityProjectionSnapshotForId(id:string):MemoryOSState2 {
+  const item=this.itemIndex.get(String(id));
+  return this.snapshotWithItems(item?[item]:[]);
+ }
+ compatibilityProjectionSnapshot(limit=96):MemoryOSState2 {
+  const max=Math.max(1,Math.min(96,Math.floor(limit)));
+  const now=Date.now();
+  const selected=this.state.items.filter(item=>{
+   const validFromAt=item.validFromAt??item.createdAt;
+   const validUntilAt=item.validUntilAt;
+   return !item.dormant&&item.epistemicStatus!=='quarantined'&&Number.isFinite(validFromAt)&&validFromAt<=now&&(validUntilAt==null||(Number.isFinite(validUntilAt)&&validUntilAt>now));
+  }).sort((a,b)=>(b.salience+b.identityRelevance+b.goalRelevance)-(a.salience+a.identityRelevance+a.goalRelevance)).slice(0,max);
+  return this.snapshotWithItems(selected);
+ }
+ activeSemanticSnapshot(limit=1000,at=Date.now()):MemoryItem2[] {
+  const max=Math.max(1,Math.min(1000,Math.floor(limit)));
+  return this.state.items.filter(item=>{
+   const validFromAt=item.validFromAt??item.createdAt;
+   const validUntilAt=item.validUntilAt;
+   return !item.dormant&&item.epistemicStatus!=='quarantined'&&Number.isFinite(validFromAt)&&validFromAt<=at&&(validUntilAt==null||(Number.isFinite(validUntilAt)&&validUntilAt>at));
+  }).sort((a,b)=>(b.salience+b.identityRelevance+b.goalRelevance)-(a.salience+a.identityRelevance+a.goalRelevance)).slice(0,max).map(item=>structuredClone(item));
+ }
  capacityDiagnostics(){
   const protectedRows=this.state.items.filter(item=>this.isProtectedMemoryItem(item)).length;
   const items=this.state.items.length;

@@ -355,10 +355,9 @@ export class MemoryFabric {
   private syncCompatibilityProjection(id:string):boolean {
     const key=String(id??'').trim().slice(0,160);
     if(!key)return false;
-    const snapshot=this.memoryOS.snapshot({clone:false});
-    const item=snapshot.items.find(row=>row.id===key);
+    const item=this.memoryOS.snapshotItem(key);
     if(!item){this.multiTimescale.removeCanonicalProjection(key);return false;}
-    const projected=this.substrate.projectCompatibilityRecords({...snapshot,items:[item]},1)[0];
+    const projected=this.substrate.projectCompatibilityRecords(this.memoryOS.compatibilityProjectionSnapshotForId(key),1)[0];
     if(!projected){this.multiTimescale.removeCanonicalProjection(key);return false;}
     this.multiTimescale.add(projected,false);
     return true;
@@ -396,19 +395,7 @@ export class MemoryFabric {
 
   private activeSemanticProjectionItems() {
     const now=Date.now();
-    return this.memoryOS.snapshot({clone:false}).items
-      .filter(item=>{
-        const validFromAt=item.validFromAt??item.createdAt;
-        const validUntilAt=item.validUntilAt;
-        return !item.dormant&&item.epistemicStatus!=='quarantined'&&
-          Number.isFinite(validFromAt)&&validFromAt<=now&&
-          (validUntilAt==null||(Number.isFinite(validUntilAt)&&validUntilAt>now));
-      })
-      .slice()
-      .sort((left,right)=>
-        (right.salience+right.identityRelevance+right.goalRelevance)-
-        (left.salience+left.identityRelevance+left.goalRelevance))
-      .slice(0,1_000);
+    return this.memoryOS.activeSemanticSnapshot(1_000,now);
   }
 
   /** Rebuild the graph read-model exclusively from active canonical rows. */
@@ -460,8 +447,7 @@ export class MemoryFabric {
   }
 
   private findCanonical(id:string):MemoryItem2|null {
-    const item=this.memoryOS.snapshot({clone:false}).items.find(row=>row.id===String(id));
-    return item?structuredClone(item):null;
+    return this.memoryOS.snapshotItem(String(id));
   }
 
   private replayMutationReceipt(receipt:MemoryLifecycleReceipt):MemoryItem2|Record<string,string>|boolean|void|null {
@@ -595,11 +581,11 @@ export class MemoryFabric {
   }
 
   recall(query:string,limit=8):P62Frame {
-    const canonical=this.memoryOS.snapshot({clone:false});
+    const canonical=this.memoryOS.snapshotPrefix(128);
     const continuum=this.multiTimescale.retrieve(query,Math.min(16,Math.max(1,limit)),false);
     const frame=this.p62.recall({
       query,
-      memoryOS:canonical.items.slice(0,128).map(m=>({id:m.id,content:m.content,kind:m.kind,confidence01:m.confidence,salience01:m.salience,source:m.source,status:m.epistemicStatus})),
+      memoryOS:canonical.map(m=>({id:m.id,content:m.content,kind:m.kind,confidence01:m.confidence,salience01:m.salience,source:m.source,status:m.epistemicStatus})),
       multiTimescale:continuum.map(m=>({id:m.id,content:m.summary,kind:m.kind,confidence01:m.confidence,salience01:m.salience,source:'multi-timescale'})),
       semanticNodes:this.semanticMemory.retrieve(query,Math.min(8,Math.max(1,limit)),false).map(x=>({id:x.id,label:x.label,type:x.type,salience:x.salience})),
       beliefs:this.unifiedMemory.snapshot().beliefs,
@@ -612,12 +598,12 @@ export class MemoryFabric {
     const tick=Number.isFinite(options.tick)?Number(options.tick):-1;
     if(!options.force && tick>=0 && tick===this.lastMaintenanceTick)return {skipped:true,changed:0};
     const beforeSemanticIds=new Set(this.activeSemanticProjectionItems().map(item=>item.id));
-    const beforeCanonicalIds=new Set(this.memoryOS.snapshot({clone:false}).items.map(item=>item.id));
+    const beforeCanonicalIds=new Set(this.memoryOS.canonicalIdsSnapshot());
     const before=this.memoryOS.size();
     this.memoryOS.maintain({pressure01:options.pressure01,maxItems:options.maxItems});
     const byteBudget=Math.max(262144,Math.min(1048576,Math.floor(options.byteBudget??Math.max(262144,Math.min(1048576,Math.floor((options.maxItems??768)*720))))));
     const byteBudgetResult=this.memoryOS.enforceByteBudget({maxBytes:byteBudget,tick,protectedIds:options.protectedIds,reason:'memory-fabric-byte-budget'});
-    const afterCanonicalIds=new Set(this.memoryOS.snapshot({clone:false}).items.map(item=>item.id));
+    const afterCanonicalIds=new Set(this.memoryOS.canonicalIdsSnapshot());
     const reconciledIds=new Set(this.reconcileMemoryRemovalReceipts());
     const evictedIds=[...beforeCanonicalIds].filter(id=>!afterCanonicalIds.has(id));
     // The receipt path is authoritative; retain before/after reconciliation as a
@@ -660,7 +646,7 @@ export class MemoryFabric {
   reconcileImplicitMemoryConflicts(options:{limit?:number;pairBudget?:number;at?:number}={}){ return this.memoryOS.adjudicateImplicitConflicts(options); }
 
   projectCompatibility(limit=48) {
-    const rows=this.substrate.projectCompatibilityRecords(this.memoryOS.snapshot({clone:false}),limit);
+    const rows=this.substrate.projectCompatibilityRecords(this.memoryOS.compatibilityProjectionSnapshot(limit),limit);
     this.statsData.compatibilityProjections++;
     for(const row of rows)this.multiTimescale.add(row,false);
     return rows.length;
@@ -805,11 +791,10 @@ export class MemoryFabric {
   canonicalSnapshot(clone=true){return this.memoryOS.snapshot({clone});}
 
   inspect(){
-    const canonical=this.memoryOS.snapshot({clone:false});
     const compatibility=this.multiTimescale.snapshot({clone:false});
     return {
       canonicalAuthority:'memoryOS2' as const,
-      canonicalItems:canonical.items.length,
+      canonicalItems:this.memoryOS.size(),
       compatibilityItems:compatibility.length,
       hotItems:this.hotIds.length,
       stats:{...this.statsData},
