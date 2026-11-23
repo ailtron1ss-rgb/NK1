@@ -1,3 +1,8 @@
+## [NK1][Cognition] Preserve standalone resource-escalation routing regression (2026-11-23)
+
+- Keep the cognitive resource-interrupt routing regression independently runnable through `npm run test:cognitive-frame-resource-routing`.
+- The same regression remains part of the existing WorkPass79 workflow; this adds a focused local entry point without duplicating runtime logic.
+
 ## [NK1][Docs] Preserve project analysis map and current branch integration ledger (2026-11-23)
 
 - Import the dated NeuroCore project-map and daily engineering-cycle records from the 2026-11-22 documentation branch as historical snapshots.
