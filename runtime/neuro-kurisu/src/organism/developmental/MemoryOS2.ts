@@ -1150,13 +1150,17 @@ export class MemoryOS2{
    this.state.items=normalizedRows.filter(item=>retainedIds.has(item.id));
    let danglingLinksPruned=0;
    const retainedCanonicalIds=new Set(this.state.items.map(item=>item.id));
+   const sourceCanonicalIds=new Set(normalizedRows.map(item=>item.id));
    for(const item of this.state.items){
+    // Relationship IDs may intentionally target another memory substrate. Only
+    // prune IDs that existed in this restore snapshot but lost capacity selection.
     for(const field of ['semanticLinks','temporalLinks','causalLinks','contradictionLinks'] as const){
-     const previous=item[field]??[];const next=[...new Set(previous.filter(id=>retainedCanonicalIds.has(id)&&id!==item.id))];
+     const previous=item[field]??[];
+     const next=[...new Set(previous.filter(id=>!sourceCanonicalIds.has(id)||retainedCanonicalIds.has(id)))];
      danglingLinksPruned+=previous.length-next.length;item[field]=next;
     }
-    if(item.supersedesId&&!retainedCanonicalIds.has(item.supersedesId)){item.supersedesId=null;danglingLinksPruned++;}
-    if(item.supersededById&&!retainedCanonicalIds.has(item.supersededById)){item.supersededById=null;danglingLinksPruned++;}
+    if(item.supersedesId&&sourceCanonicalIds.has(item.supersedesId)&&!retainedCanonicalIds.has(item.supersedesId)){item.supersedesId=null;danglingLinksPruned++;}
+    if(item.supersededById&&sourceCanonicalIds.has(item.supersededById)&&!retainedCanonicalIds.has(item.supersededById)){item.supersededById=null;danglingLinksPruned++;}
    }
    this.lastRestoreDiagnosticsData={...this.lastRestoreDiagnosticsData,acceptedRows:this.state.items.length,truncatedRows:normalizedRows.length-this.state.items.length,capacityOverrunRows,danglingLinksPruned};
   this.state.estimatedBytes=this.state.items.reduce((total,item)=>total+estimateMemoryBytes(item),0);
