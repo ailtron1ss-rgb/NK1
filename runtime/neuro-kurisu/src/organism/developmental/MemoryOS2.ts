@@ -1345,10 +1345,27 @@ export class MemoryOS2{
       newer.epistemicStatus='quarantined';
       this.state.implicitConflictsDeferred++; this.state.provenanceProtected++; this.state.quarantined++; continue;
     }
-    const group=older.revisionGroupId??older.id; const previousNewGroup=this.revisionGroupIndex.get(newer.revisionGroupId??newer.id); if(previousNewGroup)previousNewGroup.delete(newer.id); newer.revisionGroupId=group; newer.revisionSequence=Math.max(Number(older.revisionSequence??1)+1,Number(newer.revisionSequence??1)); let groupSet=this.revisionGroupIndex.get(group); if(!groupSet){groupSet=new Set<string>();this.revisionGroupIndex.set(group,groupSet);} groupSet.add(older.id);groupSet.add(newer.id);
-    const recordedAt=Math.max(at,Number(older.recordedFromAt??older.createdAt)+1);
+    const group=older.revisionGroupId??older.id;
+    const previousNewGroup=this.revisionGroupIndex.get(newer.revisionGroupId??newer.id);
+    // This adjudication is one recorded transaction that changes both ends of
+    // the revision edge. Advance both records beyond their prior transaction
+    // intervals; otherwise a fast pair of writes can leave the child recorded
+    // before its parent and restore will reject both sides of the live edge.
+    const recordedAt=Math.max(
+      at,
+      Number(older.recordedFromAt??older.createdAt)+1,
+      Number(newer.recordedFromAt??newer.createdAt)+1,
+    );
     this.beginBitemporalRevision(older,recordedAt);
-    older.validUntilAt=newerAt;older.supersededById=newer.id;
+    this.beginBitemporalRevision(newer,recordedAt);
+    if(previousNewGroup)previousNewGroup.delete(newer.id);
+    newer.revisionGroupId=group;
+    newer.revisionSequence=Math.max(Number(older.revisionSequence??1)+1,Number(newer.revisionSequence??1));
+    let groupSet=this.revisionGroupIndex.get(group);
+    if(!groupSet){groupSet=new Set<string>();this.revisionGroupIndex.set(group,groupSet);}
+    groupSet.add(older.id);groupSet.add(newer.id);
+    older.validUntilAt=Math.max(Number(older.validFromAt??older.createdAt),newerAt);
+    older.supersededById=newer.id;
     this.recordRevision(older,{at:recordedAt,from:older.epistemicStatus,to:older.epistemicStatus,reason:signal.contextConflict?'implicit-state-conflict-context':'implicit-state-conflict'});
     newer.supersedesId=older.id;
     const olderBytesBeforeLinks=estimateMemoryBytes(older),newerBytesBeforeLinks=estimateMemoryBytes(newer);
