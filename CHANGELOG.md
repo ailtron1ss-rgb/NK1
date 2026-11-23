@@ -1,3 +1,16 @@
+# WorkPass362 — strict, atomic cognitive event-fabric restore (2026-10-26)
+
+- [FIXED] Validate a present event-fabric schema version before mutation. Unknown versions and accessor-backed root fields fail closed without replacing the previous live ledger.
+- [HARDENED] Reconstruct events from own data descriptors only. Non-canonical IDs, fractional/unsafe ticks, invalid timestamps, string booleans, invalid confidence and malformed parent IDs are dropped rather than coerced into valid-looking evidence.
+- [HARDENED] Recursively clone nested JSON payloads without evaluating getters; reject nested accessors, cycles, sparse/extended arrays, unsupported prototypes, non-JSON values and excessive depth/node count.
+- [ATOMICITY] Build restored events, receipt-index entries and references locally; publish events/index/total only after the bounded restore projection completes.
+- [COMPATIBILITY] Preserve legacy snapshots that omit optional version/node fields using conservative defaults; invalid present values do not become stronger evidence.
+- [REGRESSION] Extend the canonical kernel contract with malformed persisted fields, accessor/cycle payloads, unknown schema and zero-mutation restore tests.
+- [CI PASS] Source/test HEAD `1f92e8eed3e17ff0aa2722b3af7165da056bcb3a` passed [WorkPass331 unified cognitive kernel #40282530812](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40282530812) (23/23 steps, including runtime typecheck, restore/substrate boundaries, canonical loop, smoke, autonomy, dialogue/background initiative and restart) and [WorkPass110 continual-learning metrics #40282530835](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40282530835) (48/48 steps).
+- [RELEASE] `main` and the published Release ZIP remain unchanged.
+
+---
+
 # WorkPass361 — align runtime-wiring regression with resource-feedback import (2026-10-26)
 
 - [FIXED] Update the source-contract assertion for the actual runtime import after WorkPass359 added `resolveUnifiedCognitiveResourceSignals`.

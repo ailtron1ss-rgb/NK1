@@ -82,6 +82,87 @@ const cleanPayload=(x:unknown):Record<string,unknown>=>{
   }
   return detached;
 };
+const ownDataValue=(value:unknown,key:string):unknown=>{
+  if(value===null||(typeof value!=='object'&&typeof value!=='function'))return undefined;
+  try {
+    const descriptor=Object.getOwnPropertyDescriptor(value,key);
+    return descriptor&&Object.prototype.hasOwnProperty.call(descriptor,'value')
+      ? descriptor.value : undefined;
+  } catch {
+    return undefined;
+  }
+};
+const ownArrayValues=(value:unknown,maxItems:number):unknown[]=>{
+  if(!Array.isArray(value))return [];
+  const length=Math.min(value.length,Math.max(0,Math.floor(maxItems)));
+  const values:unknown[]=[];
+  for(let i=0;i<length;i++) {
+    const descriptor=ownDataValue(value,String(i));
+    // Sparse slots and accessors are not data rows and must not be invoked.
+    if(descriptor!==undefined)values.push(descriptor);
+  }
+  return values;
+};
+const hasOwnAccessorField=(value:unknown,key:string):boolean=>{
+  if(value===null||(typeof value!=='object'&&typeof value!=='function'))return false;
+  try {
+    const descriptor=Object.getOwnPropertyDescriptor(value,key);
+    return Boolean(descriptor&&!Object.prototype.hasOwnProperty.call(descriptor,'value'));
+  } catch {
+    return true;
+  }
+};
+const hasOnlyCanonicalEventId=(value:unknown):value is string=>
+  typeof value==='string'&&value.length>0&&value.length<=180&&value===value.trim()&&
+  !/[\u0000-\u001f\u007f-\u009f]/u.test(value);
+const clonePlainJsonData=(value:unknown,state:{seen:Set<object>;nodes:number}={seen:new Set<object>(),nodes:0},depth=0):unknown=>{
+  state.nodes+=1;
+  if(depth>32||state.nodes>16384)throw new TypeError('event-payload-json-budget-exceeded');
+  if(value===null||typeof value==='string'||typeof value==='boolean')return value;
+  if(typeof value==='number') {
+    if(!Number.isFinite(value))throw new TypeError('event-payload-non-finite-number');
+    return value;
+  }
+  if(typeof value!=='object')throw new TypeError('event-payload-non-json-value');
+  if(state.seen.has(value))throw new TypeError('event-payload-circular-reference');
+  state.seen.add(value);
+  try {
+    if(Array.isArray(value)) {
+      if(Object.getPrototypeOf(value)!==Array.prototype||value.length>4096) {
+        throw new TypeError('event-payload-invalid-array');
+      }
+      const keys=Object.keys(value);
+      if(keys.length!==value.length||keys.some((key,index)=>key!==String(index))) {
+        throw new TypeError('event-payload-sparse-or-extended-array');
+      }
+      const copied:unknown[]=[];
+      for(let i=0;i<value.length;i++) {
+        const descriptor=Object.getOwnPropertyDescriptor(value,String(i));
+        if(!descriptor||!Object.prototype.hasOwnProperty.call(descriptor,'value')||descriptor.enumerable!==true) {
+          throw new TypeError('event-payload-accessor-or-hole');
+        }
+        copied.push(clonePlainJsonData(descriptor.value,state,depth+1));
+      }
+      return copied;
+    }
+    const proto=Object.getPrototypeOf(value);
+    if(proto!==Object.prototype&&proto!==null)throw new TypeError('event-payload-non-plain-object');
+    const copied:Record<string,unknown>={};
+    for(const key of Object.keys(value)) {
+      const descriptor=Object.getOwnPropertyDescriptor(value,key);
+      if(!descriptor||!Object.prototype.hasOwnProperty.call(descriptor,'value')||descriptor.enumerable!==true) {
+        throw new TypeError('event-payload-accessor');
+      }
+      Object.defineProperty(copied,key,{
+        value:clonePlainJsonData(descriptor.value,state,depth+1),
+        enumerable:true,writable:true,configurable:true,
+      });
+    }
+    return copied;
+  } finally {
+    state.seen.delete(value);
+  }
+};
 const COGNITIVE_STAGES=new Set<CognitiveStage>(['observation','prediction','appraisal','attention','memory','goal','plan','action','outcome','learning','self-update','tool-action','tool-outcome','tool-evidence','external-evidence','tool-reconciliation']);
 
 export class CognitiveEventFabric {
@@ -93,62 +174,164 @@ export class CognitiveEventFabric {
   constructor(capacity=512){this.capacity=Math.max(128,Math.min(4096,Math.floor(capacity)));}
 
   restore(raw?:Partial<CognitiveEventFabricSnapshot>|null):void{
-    const recentRows=Array.isArray(raw?.recent)?raw!.recent:[];
-    const receiptEvents=Array.isArray((raw as CognitiveEventFabricSnapshot | undefined)?.receiptEvents)
-      ? (raw as CognitiveEventFabricSnapshot).receiptEvents! : [];
-    const rows=[...recentRows,...receiptEvents];
+    if(raw!==undefined&&raw!==null&&!isRecord(raw)) {
+      throw new TypeError('cognitive-event-fabric-snapshot-must-be-a-record');
+    }
+    const root=isRecord(raw)?raw:{};
+    const rootFields=['version','recent','receiptEvents','receiptProjectionIndex','total'];
+    const accessorRootField=rootFields.find(key=>hasOwnAccessorField(root,key));
+    if(accessorRootField) {
+      throw new TypeError('cognitive-event-fabric-snapshot-field-accessor:'+accessorRootField);
+    }
+    const schemaVersion=ownDataValue(root,'version');
+    if(schemaVersion!==undefined&&schemaVersion!==1) {
+      throw new RangeError('unsupported-cognitive-event-fabric-snapshot-version');
+    }
+
+    // Decode into local collections first. A malformed schema or hostile accessor
+    // cannot clear/partially rebuild the live ledger before validation finishes.
+    const recentRows=ownArrayValues(ownDataValue(root,'recent'),this.capacity*2);
+    const receiptEventRows=ownArrayValues(ownDataValue(root,'receiptEvents'),this.capacity*2);
+    const rows=[...recentRows,...receiptEventRows].slice(0,this.capacity*2);
     const seen=new Set<string>();
     const restored:CognitiveEventNode[]=[];
     for(const value of rows){
-      if(!isRecord(value))continue;
-      const id=typeof value.id==='string'?value.id.trim().slice(0,180):'';
-      const stage=typeof value.stage==='string'?value.stage as CognitiveStage:undefined;
-      // Restore strictly typed ticks; do not coerce null/strings into valid causal time.
-      const tick=value.tick;
-      if(!id||!COGNITIVE_STAGES.has(stage as CognitiveStage)||typeof tick!=='number'||!Number.isFinite(tick)||tick<0||seen.has(id))continue;
-      seen.add(id);
-      const at=Number(value.at);
-      const parentIds=Array.isArray(value.parentIds)?value.parentIds.filter((parent):parent is string=>typeof parent==='string'&&Boolean(parent.trim())).map(parent=>parent.trim().slice(0,180)).slice(0,12):[];
-      restored.push({
-        id, stage:stage as CognitiveStage, tick:Math.floor(tick),
-        at:Number.isFinite(at)&&at>=0?at:0,
-        source:typeof value.source==='string'?value.source.slice(0,120):'restored-unknown',
-        parentIds, external:Boolean(value.external), confidence01:clamp01(Number(value.confidence01??.5)),
-        payload:cleanPayload(value.payload),
-      });
-      if(restored.length>=this.capacity)break;
+      try {
+        if(!isRecord(value))continue;
+        if(['id','stage','tick','at','source','parentIds','external','confidence01','payload'].some(key=>hasOwnAccessorField(value,key)))continue;
+        const idValue=ownDataValue(value,'id');
+        const stageValue=ownDataValue(value,'stage');
+        const tickValue=ownDataValue(value,'tick');
+        if(!hasOnlyCanonicalEventId(idValue) ||
+          typeof stageValue!=='string'||!COGNITIVE_STAGES.has(stageValue as CognitiveStage)||
+          typeof tickValue!=='number'||!Number.isSafeInteger(tickValue)||tickValue<0||seen.has(idValue)) continue;
+
+        const atValue=ownDataValue(value,'at');
+        const sourceValue=ownDataValue(value,'source');
+        const externalValue=ownDataValue(value,'external');
+        const confidenceValue=ownDataValue(value,'confidence01');
+        const payloadValue=ownDataValue(value,'payload');
+        const parentValue=ownDataValue(value,'parentIds');
+
+        if(atValue!==undefined&&(typeof atValue!=='number'||!Number.isFinite(atValue)||atValue<0))continue;
+        if(sourceValue!==undefined&&(typeof sourceValue!=='string'||!sourceValue.trim()||sourceValue.length>120))continue;
+        if(externalValue!==undefined&&typeof externalValue!=='boolean')continue;
+        if(confidenceValue!==undefined&&(
+          typeof confidenceValue!=='number'||!Number.isFinite(confidenceValue)||confidenceValue<0||confidenceValue>1
+        ))continue;
+        if(payloadValue!==undefined&&!isRecord(payloadValue))continue;
+
+        const parentIds:string[]=[];
+        if(parentValue!==undefined){
+          if(!Array.isArray(parentValue)||parentValue.length>12)continue;
+          const rawParents=ownArrayValues(parentValue,12);
+          if(rawParents.length!==parentValue.length||rawParents.some(parent=>!hasOnlyCanonicalEventId(parent)))continue;
+          parentIds.push(...rawParents as string[]);
+        }
+
+        // Copy nested payload data through own property descriptors. structuredClone/JSON
+        // serializers can evaluate nested getters, so neither is an admissible parser
+        // for an untrusted restored event.
+        const payloadRaw=payloadValue===undefined?{}:payloadValue;
+        const payload=clonePlainJsonData(payloadRaw) as Record<string,unknown>;
+        if(!isRecord(payload))continue;
+        sha256Stable(payload);
+        const node:CognitiveEventNode={
+          id:idValue,
+          stage:stageValue as CognitiveStage,
+          tick:tickValue,
+          at:atValue===undefined?0:atValue,
+          source:sourceValue===undefined?'restored-unknown':sourceValue as string,
+          parentIds,
+          external:externalValue===undefined?false:externalValue as boolean,
+          confidence01:confidenceValue===undefined ? 0.5 : confidenceValue as number,
+          payload,
+        };
+        seen.add(idValue);
+        restored.push(node);
+        if(restored.length>=this.capacity)break;
+      } catch {
+        // Malformed individual rows are dropped; valid rows already staged locally
+        // remain isolated until the complete snapshot projection is ready.
+      }
     }
+
+    const restoredById=new Map(restored.map(event=>[event.id,event] as const));
+    const restoredIndex=new Map<string,ToolReceiptProjectionIndexEntry>();
+    const receiptRows=ownArrayValues(ownDataValue(root,'receiptProjectionIndex'),512);
+    const sanitizeReceiptRef=(value:unknown,kind:'observation'|'revision',executionId:string):ExternalObservationProjectionRef|ToolReceiptRevisionProjectionRef|null=>{
+      if(!isRecord(value))return null;
+      if(['observationId','revisionId','eventId','projectionHash','projectedAt'].some(key=>hasOwnAccessorField(value,key)))return null;
+      const idKey=kind==='observation'?'observationId':'revisionId';
+      const refId=ownDataValue(value,idKey);
+      const eventId=ownDataValue(value,'eventId');
+      const projectionHash=ownDataValue(value,'projectionHash');
+      const projectedAt=ownDataValue(value,'projectedAt');
+      if(!hasOnlyCanonicalEventId(refId)||!hasOnlyCanonicalEventId(eventId)||
+        typeof projectionHash!=='string'||!/^[a-f0-9]{64}$/i.test(projectionHash)||
+        typeof projectedAt!=='number'||!Number.isFinite(projectedAt)||projectedAt<0)return null;
+      const event=restoredById.get(eventId);
+      if(kind==='observation'){
+        if(event?.stage!=='external-evidence'||
+          ownDataValue(event.payload,'executionId')!==executionId||
+          ownDataValue(event.payload,'observationId')!==refId||
+          ownDataValue(event.payload,'projectionHash')!==projectionHash.toLowerCase())return null;
+        return {observationId:refId,eventId,projectionHash:projectionHash.toLowerCase(),projectedAt};
+      }
+      if(event?.stage!=='tool-reconciliation'||
+        ownDataValue(event.payload,'executionId')!==executionId||
+        ownDataValue(event.payload,'revisionId')!==refId||
+        ownDataValue(event.payload,'projectionHash')!==projectionHash.toLowerCase())return null;
+      return {revisionId:refId,eventId,projectionHash:projectionHash.toLowerCase(),projectedAt};
+    };
+
+    for(const value of receiptRows){
+      if(!isRecord(value))continue;
+      if(['executionId','actionEventId','outcomeEventId','evidenceEventId','projectedAt','projectionHash','externalObservations','receiptRevisions'].some(key=>hasOwnAccessorField(value,key)))continue;
+      const executionId=ownDataValue(value,'executionId');
+      const actionEventId=ownDataValue(value,'actionEventId');
+      const outcomeEventId=ownDataValue(value,'outcomeEventId');
+      const evidenceEventId=ownDataValue(value,'evidenceEventId');
+      const projectedAt=ownDataValue(value,'projectedAt');
+      const projectionHash=ownDataValue(value,'projectionHash');
+      if(!hasOnlyCanonicalEventId(executionId)||!hasOnlyCanonicalEventId(actionEventId)||
+        !hasOnlyCanonicalEventId(outcomeEventId)||!hasOnlyCanonicalEventId(evidenceEventId)||
+        typeof projectedAt!=='number'||!Number.isFinite(projectedAt)||projectedAt<0)continue;
+      const action=restoredById.get(actionEventId);
+      const outcome=restoredById.get(outcomeEventId);
+      const evidence=restoredById.get(evidenceEventId);
+      if(action?.stage!=='tool-action'||outcome?.stage!=='tool-outcome'||evidence?.stage!=='tool-evidence')continue;
+      if(ownDataValue(action.payload,'executionId')!==executionId||
+        ownDataValue(outcome.payload,'executionId')!==executionId||
+        ownDataValue(evidence.payload,'executionId')!==executionId)continue;
+      if(!outcome.parentIds.includes(action.id)||!evidence.parentIds.includes(outcome.id))continue;
+
+      const observationsRaw=ownDataValue(value,'externalObservations');
+      const observations=ownArrayValues(observationsRaw,32)
+        .map(ref=>sanitizeReceiptRef(ref,'observation',executionId))
+        .filter((ref):ref is ExternalObservationProjectionRef=>ref!==null);
+      const revisionsRaw=ownDataValue(value,'receiptRevisions');
+      const revisions=ownArrayValues(revisionsRaw,32)
+        .map(ref=>sanitizeReceiptRef(ref,'revision',executionId))
+        .filter((ref):ref is ToolReceiptRevisionProjectionRef=>ref!==null);
+      const accepted:ToolReceiptProjectionIndexEntry={
+        executionId,actionEventId,outcomeEventId,evidenceEventId,projectedAt,
+        ...((typeof projectionHash==='string'&&/^[a-f0-9]{64}$/i.test(projectionHash))
+          ?{projectionHash:projectionHash.toLowerCase()}:{}),
+        ...(observations.length?{externalObservations:observations}:{}),
+        ...(revisions.length?{receiptRevisions:revisions}:{}),
+      };
+      restoredIndex.set(executionId,accepted);
+      if(restoredIndex.size>=256)break;
+    }
+
+    const rawTotal=ownDataValue(root,'total');
+    const restoredTotal=typeof rawTotal==='number'&&Number.isSafeInteger(rawTotal)&&rawTotal>=0
+      ?Math.max(restored.length,rawTotal):restored.length;
     this.events=restored;
     this.receiptProjectionIndex.clear();
-    const restoredById=new Map(this.events.map(event=>[event.id,event] as const));
-    const receiptRows=Array.isArray((raw as CognitiveEventFabricSnapshot | undefined)?.receiptProjectionIndex)
-      ? (raw as CognitiveEventFabricSnapshot).receiptProjectionIndex! : [];
-    for(const entry of receiptRows) {
-      if(!entry || typeof entry.executionId!=='string' || !entry.executionId.trim() || entry.executionId.length>180) continue;
-      if(typeof entry.actionEventId!=='string' || typeof entry.outcomeEventId!=='string' || typeof entry.evidenceEventId!=='string') continue;
-      const projectedAt=Number(entry.projectedAt);
-      if(!Number.isFinite(projectedAt) || projectedAt<0) continue;
-      const action=restoredById.get(entry.actionEventId), outcome=restoredById.get(entry.outcomeEventId), evidence=restoredById.get(entry.evidenceEventId);
-      // Never restore a replay guard whose three referenced nodes have aged out,
-      // been truncated or no longer match the execution identity/stage contract.
-      if(action?.stage!=='tool-action' || outcome?.stage!=='tool-outcome' || evidence?.stage!=='tool-evidence') continue;
-      if(action.payload.executionId!==entry.executionId || outcome.payload.executionId!==entry.executionId || evidence.payload.executionId!==entry.executionId) continue;
-      if(!outcome.parentIds.includes(action.id) || !evidence.parentIds.includes(outcome.id)) continue;
-      const externalObservations=Array.isArray(entry.externalObservations)?entry.externalObservations.slice(-32).filter((ref:any)=>{
-        if(!ref||typeof ref.observationId!=='string'||!ref.observationId.trim()||ref.observationId.length>180||typeof ref.eventId!=='string'||ref.eventId.length>180||!/^[a-f0-9]{64}$/i.test(String(ref.projectionHash??''))||!Number.isFinite(Number(ref.projectedAt))||Number(ref.projectedAt)<0)return false;
-        const event=restoredById.get(String(ref.eventId));
-        return event?.stage==='external-evidence'&&event.payload.executionId===entry.executionId&&event.payload.observationId===ref.observationId&&event.payload.projectionHash===String(ref.projectionHash).toLowerCase();
-      }).map((ref:any)=>({observationId:String(ref.observationId),eventId:String(ref.eventId),projectionHash:String(ref.projectionHash).toLowerCase(),projectedAt:Number(ref.projectedAt)})):[];
-      const receiptRevisions=Array.isArray((entry as ToolReceiptProjectionIndexEntry).receiptRevisions)?(entry as ToolReceiptProjectionIndexEntry).receiptRevisions!.slice(-32).filter((ref:any)=>{
-        if(!ref||typeof ref.revisionId!=='string'||!ref.revisionId.trim()||ref.revisionId.length>180||typeof ref.eventId!=='string'||ref.eventId.length>180||!/^[a-f0-9]{64}$/i.test(String(ref.projectionHash??''))||!Number.isFinite(Number(ref.projectedAt))||Number(ref.projectedAt)<0)return false;
-        const event=restoredById.get(String(ref.eventId));
-        return event?.stage==='tool-reconciliation'&&event.payload.executionId===entry.executionId&&event.payload.revisionId===ref.revisionId&&event.payload.projectionHash===String(ref.projectionHash).toLowerCase();
-      }).map((ref:any)=>({revisionId:String(ref.revisionId),eventId:String(ref.eventId),projectionHash:String(ref.projectionHash).toLowerCase(),projectedAt:Number(ref.projectedAt)})):[];
-      this.receiptProjectionIndex.set(entry.executionId,{executionId:entry.executionId,actionEventId:entry.actionEventId.slice(0,180),outcomeEventId:entry.outcomeEventId.slice(0,180),evidenceEventId:entry.evidenceEventId.slice(0,180),projectedAt,...(/^[a-f0-9]{64}$/i.test(String(entry.projectionHash??''))?{projectionHash:String(entry.projectionHash).toLowerCase()}: {}),...(externalObservations.length?{externalObservations}:{}),...(receiptRevisions.length?{receiptRevisions}:{})});
-      if(this.receiptProjectionIndex.size>=256) break;
-    }
-    const rawTotal=Number(raw?.total??this.events.length);
-    this.total=Math.max(this.events.length,Number.isFinite(rawTotal)?Math.max(0,Math.floor(rawTotal)):this.events.length);
+    for(const [executionId,entry] of restoredIndex)this.receiptProjectionIndex.set(executionId,entry);
+    this.total=restoredTotal;
   }
 
   append(input:{id?:string;tick:number;stage:CognitiveStage;source:string;parentIds?:string[];external?:boolean;confidence01?:number;payload?:Record<string,unknown>;at?:number}):CognitiveEventNode{
