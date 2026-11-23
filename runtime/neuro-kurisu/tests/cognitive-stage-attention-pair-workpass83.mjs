@@ -1,0 +1,27 @@
+import assert from 'node:assert/strict';
+import { CognitiveResourceEconomy, cognitiveAttentionIntentFromAction } from '../src/organism/system/CognitiveResourceEconomy.ts';
+
+const base = { tick: 1, energy01: .8, cognitiveLoad01: .2, uncertainty01: .35, novelty01: .4, thermalStrain01: .2, ramPressure01: .2, awake: true };
+const economy = new CognitiveResourceEconomy();
+const baseline = economy.allocate(base);
+const focus = economy.allocate({ ...base, tick: 2, attentionIntent: cognitiveAttentionIntentFromAction('explore') });
+assert.equal(focus.attentionEffort01, 1);
+assert.equal(focus.totalBudget01, baseline.totalBudget01);
+const rest = economy.allocate({ ...base, tick: 3, attentionIntent: cognitiveAttentionIntentFromAction('rest') });
+assert.equal(rest.attentionEffort01, .4);
+assert.ok(rest.attention01 < focus.attention01);
+assert.equal(rest.totalBudget01, focus.totalBudget01);
+assert.equal(rest.simulation01, focus.simulation01);
+assert.equal(rest.learning01, focus.learning01);
+assert.equal(rest.memory01, focus.memory01);
+assert.equal(rest.externalInteraction01, focus.externalInteraction01);
+assert.equal(economy.snapshot().attentionEffortIntent, 'rest');
+assert.equal(cognitiveAttentionIntentFromAction('verify'), 'engage');
+assert.equal(cognitiveAttentionIntentFromAction('reflect'), 'engage');
+assert.equal(cognitiveAttentionIntentFromAction('wait'), 'rest');
+assert.equal(cognitiveAttentionIntentFromAction('respond'), undefined);
+const legacy = new CognitiveResourceEconomy();
+legacy.restore({ version: 1, cycles: 3, attentionBudget01: .7, lastTick: 2 });
+const migrated = legacy.allocate({ ...base, tick: 4 });
+assert.ok(migrated.attentionEffort01 >= .4 && migrated.attentionEffort01 <= 1);
+console.log('COGNITIVE_STAGE_ATTENTION_PAIR=PASS');
