@@ -1,0 +1,55 @@
+name: NK1 self-motivation decision receipts and delivery consent
+
+on:
+  push:
+    branches: [aspect/self-motivation-receipts-consent-current-20261123]
+    paths:
+      - 'runtime/neuro-kurisu/src/organism/core/OrganismCore.ts'
+      - 'runtime/neuro-kurisu/src/organism/core/AgencySubsystemRuntime.ts'
+      - 'runtime/neuro-kurisu/src/organism/core/OrganismSystemFabric.ts'
+      - 'runtime/neuro-kurisu/src/organism/core/PersistenceProjectionCoordinator.ts'
+      - 'runtime/neuro-kurisu/src/organism/persistence/StateMigrations.ts'
+      - 'runtime/neuro-kurisu/src/organism/system/AutonomousSocialInitiativeEngine.ts'
+      - 'runtime/neuro-kurisu/tests/self-motivation-autonomy-runtime.mjs'
+      - 'runtime/neuro-kurisu/tests/self-motivation-delivery-consent.mjs'
+      - 'runtime/neuro-kurisu/package.json'
+      - '.github/workflows/nk1-self-motivation-autonomy.yml'
+  pull_request:
+    branches: [workpass70-source]
+    paths:
+      - 'runtime/neuro-kurisu/src/organism/core/OrganismCore.ts'
+      - 'runtime/neuro-kurisu/src/organism/core/AgencySubsystemRuntime.ts'
+      - 'runtime/neuro-kurisu/src/organism/core/OrganismSystemFabric.ts'
+      - 'runtime/neuro-kurisu/src/organism/core/PersistenceProjectionCoordinator.ts'
+      - 'runtime/neuro-kurisu/src/organism/persistence/StateMigrations.ts'
+      - 'runtime/neuro-kurisu/src/organism/system/AutonomousSocialInitiativeEngine.ts'
+      - 'runtime/neuro-kurisu/tests/self-motivation-autonomy-runtime.mjs'
+      - 'runtime/neuro-kurisu/tests/self-motivation-delivery-consent.mjs'
+      - 'runtime/neuro-kurisu/package.json'
+      - '.github/workflows/nk1-self-motivation-autonomy.yml'
+
+permissions:
+  contents: read
+concurrency:
+  group: nk1-self-motivation-autonomy-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  decision-receipts-and-delivery-consent:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          package-manager-cache: false
+      - name: Install locked runtime dependencies
+        run: npm ci --prefix runtime/neuro-kurisu --ignore-scripts --no-audit --no-fund
+      - name: Verify evidence-derived receipts on real Core cycles and restore
+        run: npm --prefix runtime/neuro-kurisu run test:self-motivation:receipts
+      - name: Verify proactive-delivery consent and quiet-hours boundary
+        if: always()
+        run: npm --prefix runtime/neuro-kurisu run test:self-motivation:delivery-consent
+      - name: Runtime typecheck
+        if: always()
+        run: npm --prefix runtime/neuro-kurisu run typecheck
