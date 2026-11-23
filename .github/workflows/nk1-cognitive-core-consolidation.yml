@@ -1,0 +1,45 @@
+name: NK1 Cognitive Core Consolidation
+
+on:
+  pull_request:
+    branches: [workpass70-source]
+    paths:
+      - 'runtime/neuro-kurisu/src/organism/cognition/MetacognitiveEpisode.ts'
+      - 'runtime/neuro-kurisu/src/organism/cognition/ActiveInformationGainController.ts'
+      - 'runtime/neuro-kurisu/src/organism/core/OrganismCore.ts'
+      - 'runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts'
+      - 'runtime/neuro-kurisu/src/organism/core/PersistenceProjectionCoordinator.ts'
+      - 'runtime/neuro-kurisu/src/organism/memory/EventSourcing.ts'
+      - 'runtime/neuro-kurisu/src/organism/system/CognitiveEventFabric.ts'
+      - 'runtime/neuro-kurisu/tests/metacognitive-episode-*.mjs'
+      - 'runtime/neuro-kurisu/package.json'
+      - '.github/workflows/nk1-cognitive-core-consolidation.yml'
+permissions:
+  contents: read
+concurrency:
+  group: nk1-cognitive-core-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  cognitive-core:
+    name: Metacognitive episodes and active-information regression
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: runtime/neuro-kurisu
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v7
+      - name: Set up Node
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: runtime/neuro-kurisu/package-lock.json
+      - name: Install locked dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Metacognitive episode contract and real runtime
+        run: npm run test:workpass613:metacognitive-episodes
+      - name: Active-information closed-loop regression
+        run: npm run test:p2675:information
+      - name: Runtime typecheck
+        run: npm run typecheck
