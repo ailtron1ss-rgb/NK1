@@ -2,7 +2,7 @@ import { useEffect, useId, useState } from "react";
 import type { EmotionLabel, ActionKind } from "@/organism/types";
 import { readAvatarPreference, writeAvatarPreference } from "@/legacy/avatar/safeLocalStorage";
 import type { MouthPose } from "./avatar/embodimentTimeline";
-import { planAvatarMotorIntent, type AvatarMotorIntentPlan } from "./avatar/motorIntent";
+import type { AvatarMotorIntentPlan } from "./avatar/motorIntent";
 import { originalStageChannelOffsets, type BodyChannels } from "./avatar/originalStageChannels";
 
 type Outfit = "lab" | "casual" | "night";
@@ -107,7 +107,6 @@ export interface KurisuOriginalMotorSignals {
 
 export interface KurisuOriginalStageProps {
   emotion: EmotionLabel;
-  action: ActionKind;
   valence: number;
   arousal: number;
   gazeX: number;
@@ -115,6 +114,7 @@ export interface KurisuOriginalStageProps {
   speaking: boolean;
   mouthPose: MouthPose;
   thinking: boolean;
+  motorPlan: AvatarMotorIntentPlan;
   motorSignals: KurisuOriginalMotorSignals;
   /** Renderer-neutral arbiter channels, applied additively on top of the authored pose. */
   bodyChannels?: BodyChannels;
@@ -126,7 +126,7 @@ export interface KurisuOriginalStageProps {
  * organism state and audio-timed mouth signal, and is intended to be the art
  * direction + switchable UI while a production PSD/Cubism rig is authored.
  */
-export function KurisuOriginalStage({ emotion, action, valence, arousal, gazeX, gazeY, speaking, mouthPose, thinking, motorSignals, bodyChannels }: KurisuOriginalStageProps) {
+export function KurisuOriginalStage({ emotion, valence, arousal, gazeX, gazeY, speaking, mouthPose, thinking, motorPlan, motorSignals, bodyChannels }: KurisuOriginalStageProps) {
   // SVG paint-server IDs must be unique when multiple avatar previews are mounted.
   const instanceId = useId().replace(/:/g, "");
   const svgIds = {
@@ -151,25 +151,6 @@ export function KurisuOriginalStage({ emotion, action, valence, arousal, gazeX, 
   const hair = HAIR.find((choice) => choice.id === hairTone) ?? HAIR[0];
   const eyes = EYES.find((choice) => choice.id === eyeTone) ?? EYES[0];
   const accent = ACCENTS.find((choice) => choice.id === accentTone) ?? ACCENTS[0];
-  const motorPlan = planAvatarMotorIntent({
-    emotion,
-    valence,
-    arousal,
-    action,
-    thinking,
-    speaking,
-    hasFreshTurn: motorSignals.hasFreshTurn,
-    turnText: motorSignals.turnText,
-    awake: motorSignals.awake,
-    energy: motorSignals.energy,
-    cognitiveLoad: motorSignals.cognitiveLoad,
-    uncertainty: motorSignals.uncertainty,
-    socialNeed: motorSignals.socialNeed,
-    novelty: motorSignals.novelty,
-    goalPressure: motorSignals.goalPressure,
-    predictionError: motorSignals.predictionError,
-    traits: motorSignals.traits,
-  });
   const pose = poseForMotorPlan(motorPlan, motorSignals.energy, motorSignals.cognitiveLoad, motion);
   const effectivePose = poseOverride === "auto" ? automaticPoseForMotorPlan(motorPlan, emotion) : poseOverride;
   const mouthHeight = speaking ? Math.max(2, Math.min(14, mouthPose.open * 18)) : 2.5;
