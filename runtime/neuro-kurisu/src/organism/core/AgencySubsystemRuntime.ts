@@ -294,6 +294,8 @@ export class AgencySubsystemRuntime {
   readonly openEndedSkillAcquisition = new OpenEndedSkillAcquisitionController();
   /** Ownership extraction: retained algorithm/state, moved out of OrganismCore. */
   readonly autonomousSocialInitiative = new AutonomousSocialInitiativeEngine();
+  /** Canonical evidence-derived explanations for real decisions. */
+  readonly decisionReceipts = new AutonomousDecisionReceiptLog();
   /** Ownership extraction: retained algorithm/state, moved out of OrganismCore. */
   readonly liveSelfImprovementSupervisor = new LiveSelfImprovementSupervisor();
   restore(input: {
@@ -302,6 +304,7 @@ export class AgencySubsystemRuntime {
     budget?: CognitiveBudgetState & { ledger?: CognitiveBudgetLedgerEntry[] };
     quorum?: Partial<CognitiveQuorumState>;
     executor?: Partial<ProjectExecutionState> | null;
+    decisionReceipts?:unknown;
     p67?: unknown; p68?: unknown;
   }) {
     this.selfProjects.restore(input.selfProjects);
@@ -309,6 +312,7 @@ export class AgencySubsystemRuntime {
     this.budget.restore(input.budget);
     this.quorum.restore(input.quorum);
     this.projectExecutor.restore(input.executor);
+    this.decisionReceipts.restore(input.decisionReceipts);
     this.p67AutonomousGoalGenesis.restore(input.p67 as any);
     this.p68GoalEcology.restore(input.p68 as any);
   }
@@ -320,6 +324,7 @@ export class AgencySubsystemRuntime {
       budget: this.budget.snapshot(),
       quorum: this.quorum.snapshot(),
       executor: this.projectExecutor.snapshot(),
+      decisionReceipts:this.decisionReceipts.snapshot(),
       p67: this.p67AutonomousGoalGenesis.snapshot(),
       p68: this.p68GoalEcology.snapshot(),
     };
