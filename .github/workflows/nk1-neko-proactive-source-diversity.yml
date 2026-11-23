@@ -1,0 +1,43 @@
+name: NK1 N.E.K.O. proactive source diversity
+
+on:
+  push:
+    branches: [aspect/neko-proactive-source-fairness-current-20261123]
+    paths:
+      - 'runtime/neuro-kurisu/src/organism/system/AutonomousSocialInitiativeEngine.ts'
+      - 'runtime/neuro-kurisu/tests/neko-proactive-source-diversity.mjs'
+      - 'runtime/neuro-kurisu/package.json'
+      - '.github/workflows/nk1-neko-proactive-source-diversity.yml'
+  pull_request:
+    branches: [workpass70-source]
+    paths:
+      - 'runtime/neuro-kurisu/src/organism/system/AutonomousSocialInitiativeEngine.ts'
+      - 'runtime/neuro-kurisu/tests/neko-proactive-source-diversity.mjs'
+      - 'runtime/neuro-kurisu/package.json'
+      - '.github/workflows/nk1-neko-proactive-source-diversity.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nk1-neko-proactive-source-diversity-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  source-diversity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          package-manager-cache: false
+      - name: Install locked runtime dependencies
+        run: npm ci --prefix runtime/neuro-kurisu --ignore-scripts --no-audit --no-fund
+      - name: Run canonical source diversity behavioral contract
+        run: npm --prefix runtime/neuro-kurisu run test:neko-social-source-fairness
+      - name: Preserve existing proactive anti-repeat contract
+        run: npm --prefix runtime/neuro-kurisu run test:neko-social-anti-repeat
+      - name: Runtime typecheck
+        run: npm --prefix runtime/neuro-kurisu run typecheck
