@@ -1,3 +1,9 @@
+## [NK1][Memory] Add reproducible bilingual external-holdout generator (2026-11-23)
+
+- Port the Wikipedia EN/RU holdout builder and expose it through `npm run build:memory:bilingual-holdout`.
+- Correct CLI help to match the actual bilingual behavior and validate topic/throttle inputs.
+- Document the mechanical topic-labeling caveat: this is supporting diagnostic evidence, not human-annotated independent ground truth.
+
 ## [NK1][Memory] Add evidence half-life and bounded affect-aware semantic reranking (2026-11-23)
 
 - Add optional evidence half-life decay independent of access recency; missing/null horizons preserve durable and legacy memories.
