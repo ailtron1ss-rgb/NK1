@@ -1,3 +1,8 @@
+## [NK1][Cognition] Preserve standalone resource-escalation routing regression (2026-11-23)
+
+- Keep the cognitive resource-interrupt routing regression independently runnable through `npm run test:cognitive-frame-resource-routing`.
+- The same regression remains part of the existing WorkPass79 workflow; this adds a focused local entry point without duplicating runtime logic.
+
 ## [NK1][Persistence] Verify HMX explicit apply across server restart (2026-11-22)
 
 - Extend the real-server HMX consent regression to restart against the same durable state directory after an approved import.
