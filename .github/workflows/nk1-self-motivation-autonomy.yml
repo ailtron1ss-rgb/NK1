@@ -6,6 +6,7 @@ on:
     paths:
       - 'runtime/neuro-kurisu/src/organism/core/OrganismCore.ts'
       - 'runtime/neuro-kurisu/src/organism/core/AgencySubsystemRuntime.ts'
+      - 'runtime/neuro-kurisu/src/organism/core/OrganismSystemFabric.ts'
       - 'runtime/neuro-kurisu/src/organism/system/AutonomousSocialInitiativeEngine.ts'
       - 'runtime/neuro-kurisu/tests/self-motivation-autonomy-runtime.mjs'
       - 'runtime/neuro-kurisu/tests/self-motivation-delivery-consent.mjs'
@@ -16,6 +17,7 @@ on:
     paths:
       - 'runtime/neuro-kurisu/src/organism/core/OrganismCore.ts'
       - 'runtime/neuro-kurisu/src/organism/core/AgencySubsystemRuntime.ts'
+      - 'runtime/neuro-kurisu/src/organism/core/OrganismSystemFabric.ts'
       - 'runtime/neuro-kurisu/src/organism/system/AutonomousSocialInitiativeEngine.ts'
       - 'runtime/neuro-kurisu/tests/self-motivation-autonomy-runtime.mjs'
       - 'runtime/neuro-kurisu/tests/self-motivation-delivery-consent.mjs'
