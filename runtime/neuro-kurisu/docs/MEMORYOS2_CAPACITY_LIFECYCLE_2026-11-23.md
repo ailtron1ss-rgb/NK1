@@ -137,3 +137,27 @@ The PR remains Draft and unmerged. No release artifact or main branch was modifi
 The base branch subsequently advanced to workpass70-source HEAD 06e2deb640807acf20ebb950524d0442ad75356f. This is a merge commit with parents d07bec7a75fd986f7a73ef77a6b8afdd1600df04 and 54b9b0dcc62425c9d860c08fe78b91e557d4c800. The aspect branch contains both ancestry lines; comparison from 06e2deb to the aspect branch head reports ahead_by=7 and behind_by=0. No additional rebase is currently needed.
 
 The final memory workflow remains run 45125682489 on integration head 451e5d69b508100bb94e74311bc87c958f42efd4, with conclusion SUCCESS and all 13 checks passing. The current branch tip after documentation-only commits is later than that tested code head; no runtime source changed after the verified integration head.
+
+
+## Full current-base merge and verification — 23 November 2026
+
+The complete current workpass70-source HEAD 06e2deb640807acf20ebb950524d0442ad75356f was merged into the aspect branch. Its second-parent line contained twelve additional agency/autonomy commits; the package.json overlap was resolved by preserving the current base manifest and adding both MemoryOS2 regression scripts. The other feature files did not overlap with that line.
+
+Final integrated head: fd5010a51496fb994e5fa8a588a89c4ec7cf50e2.
+
+Exact-head GitHub Actions run 45126160004 completed SUCCESS on this commit. All 13 checks passed:
+- Multi-timescale and semantic graph regression
+- Explicit forget and source-isolated projection integrity
+- Automatic eviction projection reconciliation
+- MemoryOS2 capacity lifecycle integrity
+- Encode overflow projection reconciliation
+- MemoryOS2 semantic vector integrity
+- MemoryFabric retrieval accounting
+- MemoryOS2 metadata retrieval
+- Memory subsystem state roundtrip
+- Bilingual retrieval bridge
+- Restore integrity and duplicate identity
+- Candidate coverage regression
+- Runtime TypeScript check
+
+The current comparison workpass70-source (06e2deb6) → aspect branch (fd5010a5) is ahead_by=9 and behind_by=0. The eight-file diff is limited to the planned MemoryOS2, MemoryFabric, tests, scripts, workflow and documentation paths.

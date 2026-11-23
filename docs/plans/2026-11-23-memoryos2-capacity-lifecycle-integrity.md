@@ -136,3 +136,12 @@ Record expected pre-fix failures from the current implementation. Import/setup e
 - The aspect branch contains that base ancestry and compares ahead by 7 / behind by 0.
 - No additional source rebase is required.
 - Exact integration-head workflow run 45125682489 passed all 13 checks; subsequent commits are documentation-only.
+
+
+## Full current-base merge and final CI — 23 November 2026
+
+- [x] Merged the complete current workpass70-source HEAD 06e2deb640807acf20ebb950524d0442ad75356f, including the second-parent agency/autonomy line.
+- [x] Kept the current package.json additions and added both capacity regression scripts.
+- [x] Final integrated HEAD fd5010a51496fb994e5fa8a588a89c4ec7cf50e2 is 9 commits ahead / 0 behind current workpass70-source.
+- [x] Exact-head Actions run 45126160004 passed all 13 checks, including the two new regressions and runtime TypeScript.
+- [ ] PR #1121 remains Draft and unmerged.
