@@ -1,3 +1,10 @@
+## [NK1][Autonomy] Wire risk-aware recovery into the current runtime (2026-11-23)
+
+- Connect the existing RiskAwareRecoveryController to the current OrganismRuntime decision/outcome path.
+- Keep recovery overrides limited to autonomous cycles; preserve external/user-directed and explicit Core action choices.
+- Record canonical and runtime actions as linked evidence, persist bounded risk calibration, and fail soft on an invalid optional sidecar.
+- Extend real runtime integration and update the planner-budget contract for the recovery-specific one-step fallback.
+
 ## [NK1][Docs] Preserve project analysis map and current branch integration ledger (2026-11-23)
 
 - Import the dated NeuroCore project-map and daily engineering-cycle records from the 2026-11-22 documentation branch as historical snapshots.
