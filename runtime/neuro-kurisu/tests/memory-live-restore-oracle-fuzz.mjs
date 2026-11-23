@@ -89,7 +89,13 @@ function assertOracle(label, memory) {
       const nextId = liveItem.supersededById ?? restoredItem.supersededById;
       const nextLive = nextId ? liveById.get(nextId) : undefined;
       const nextRestored = nextId ? restoredSnapshot.items.find(item => item.id === nextId) : undefined;
-      rowByteDeltas.push({ id: restoredItem.id, byteDelta, fields: changedFields, before: Object.fromEntries(changedFields.map(field => [field, liveItem[field] ?? null])), after: Object.fromEntries(changedFields.map(field => [field, restoredItem[field] ?? null])), liveEdge:edgeShape(liveItem), restoredEdge:edgeShape(restoredItem), liveSuccessor:nextLive?edgeShape(nextLive):null, restoredSuccessor:nextRestored?edgeShape(nextRestored):null });
+      const previousId = liveItem.supersedesId ?? restoredItem.supersedesId;
+      const previousLive = previousId ? liveById.get(previousId) : undefined;
+      const previousRestored = previousId ? restoredSnapshot.items.find(item => item.id === previousId) : undefined;
+      const successorParentId = nextLive?.supersedesId;
+      const successorParent = successorParentId ? liveById.get(successorParentId) : undefined;
+      const liveGroupRows = liveSnapshot.items.filter(item => (item.revisionGroupId ?? item.id) === (liveItem.revisionGroupId ?? liveItem.id)).map(edgeShape);
+      rowByteDeltas.push({ id: restoredItem.id, byteDelta, fields: changedFields, before: Object.fromEntries(changedFields.map(field => [field, liveItem[field] ?? null])), after: Object.fromEntries(changedFields.map(field => [field, restoredItem[field] ?? null])), liveEdge:edgeShape(liveItem), restoredEdge:edgeShape(restoredItem), livePredecessor:previousLive?edgeShape(previousLive):null, restoredPredecessor:previousRestored?edgeShape(previousRestored):null, liveSuccessor:nextLive?edgeShape(nextLive):null, restoredSuccessor:nextRestored?edgeShape(nextRestored):null, liveSuccessorPredecessor:successorParent?edgeShape(successorParent):null, liveGroupRows });
     }
   }
   const liveAccounting = memory.memoryAccountingDiagnostics();
