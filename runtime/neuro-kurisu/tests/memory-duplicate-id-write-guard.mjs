@@ -9,8 +9,8 @@ import { MemoryOS2 } from '../src/organism/developmental/MemoryOS2.ts';
 // stable-id collision handling.
 
 const memory = new MemoryOS2({ embeddingProvider: null });
-const first = memory.encode({ id: 'deployment-target', content: 'The deployment target is the staging cluster.', kind: 'semantic', source: 'ops' });
-const second = memory.encode({ id: 'deployment-target', content: 'The deployment target is the production cluster.', kind: 'semantic', source: 'ops' });
+const first = memory.encode({ id: 'deployment-target', content: 'The deployment target is the staging cluster.', kind: 'semantic', source: 'ops', confidence: .8, epistemicStatus: 'belief' });
+const second = memory.encode({ id: 'deployment-target', content: 'The deployment target is the production cluster.', kind: 'semantic', source: 'ops', confidence: .8, epistemicStatus: 'belief' });
 
 const snapshot = memory.snapshot();
 const shared = snapshot.items.filter(item => item.id === 'deployment-target');
@@ -20,7 +20,6 @@ assert.equal(snapshot.items.length, 2, 'both observations are retained as separa
 
 // The live indexes must agree with the row list.
 assert.ok(memory.indexDiagnostics().pass, 'live indexes must stay consistent');
-console.log('MEMORY_DUPLICATE_ID_DOCTOR_DIAGNOSTICS=', JSON.stringify(memory.doctor()));
 assert.equal(memory.doctor().pass, true, 'the live state must report no integrity issue');
 
 // A snapshot/restore round-trip is the independent oracle: no row may be dropped.
@@ -32,7 +31,7 @@ assert.ok(restored.get(first.id), 'the original record survives');
 assert.ok(restored.get(second.id), 'the re-observed record survives');
 
 // Re-encoding identical content under the same id still merges rather than forks.
-const merged = memory.encode({ id: 'deployment-target', content: 'The deployment target is the staging cluster.', kind: 'semantic', source: 'ops' });
+const merged = memory.encode({ id: 'deployment-target', content: 'The deployment target is the staging cluster.', kind: 'semantic', source: 'ops', confidence: .8, epistemicStatus: 'belief' });
 assert.equal(merged.id, first.id, 'identical content under the same id must still merge');
 assert.equal(memory.size(), 2, 'a same-content re-encode must not add a row');
 
