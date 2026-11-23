@@ -1398,6 +1398,11 @@ export class MemoryOS2{
   const statusIsValid=EPISTEMIC_STATUSES.has(input.epistemicStatus);
   const epistemicStatus=statusIsValid&&sourceIsValid&&(input.epistemicStatus!=='fact'||confidenceValid)
     ?input.epistemicStatus:'unknown';
+  const validFromAt=Number.isFinite(Number(input.validFromAt))?Number(input.validFromAt):now;
+  // An inverted or malformed expiry is closed at the start of its own valid-time
+  // window. Live writes and restore must enforce the same half-open interval.
+  const validUntilAt=input.validUntilAt==null?null:
+    (Number.isFinite(Number(input.validUntilAt))?Math.max(validFromAt,Number(input.validUntilAt)):validFromAt);
   const normalizedInput:MemoryEncodeInput={
     ...input,source,confidence,epistemicStatus,
     salience:normalizeMemorySignal(input.salience,.5),
@@ -1418,8 +1423,8 @@ export class MemoryOS2{
     entities,
     createdAt:now,lastAccessAt:now,retrievalCount:0,revisionHistory:[],dormant:false,
     semanticVector,temperature01:0,residencyTier:'hot',
-    validFromAt:Number.isFinite(Number(input.validFromAt))?Number(input.validFromAt):now,
-    validUntilAt:input.validUntilAt==null?null:(Number.isFinite(Number(input.validUntilAt))?Number(input.validUntilAt):null),
+    validFromAt,
+    validUntilAt,
     observedAt:Number.isFinite(Number(input.observedAt))?Number(input.observedAt):now,
     recordedFromAt:Number.isFinite(Number(input.recordedFromAt))?Number(input.recordedFromAt):now,
     recordedUntilAt:input.recordedUntilAt==null?null:(Number.isFinite(Number(input.recordedUntilAt))?Number(input.recordedUntilAt):now),
