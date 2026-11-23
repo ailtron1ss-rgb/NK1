@@ -2,7 +2,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import type { NekoPluginVoiceTranscriptBridge } from '../integration/neko/NekoPluginVoiceTranscriptBridge.ts';
 import type { NekoAsrProviderPort } from '../integration/neko/NekoAsrTranscriptAdapter.ts';
 import { assertCognitiveCycleBoundaryInput } from './CognitiveCycleBoundary.ts';
-import type { CognitiveImmuneSystem, CognitiveHealthInput, CognitiveHealthInspectionResult, CognitiveImmuneState } from '../cognition/CognitiveImmuneSystem.ts';
+
 import { buildUniversalInputInterpretation, formatUniversalInterpretationContext } from '../cognition/UniversalInputInterpreter.ts';
 import { externalGoalForRuntimeInput, normalizeRuntimeExternalPluginSource, shouldInvokeLanguageForRuntimeStep, type RuntimeExternalGoalPolicy, type RuntimeExternalPluginSource } from './RuntimeInputPolicy.ts';
 import { normalizeWorldContext } from './WorldContextNormalizer.ts';
@@ -166,11 +166,11 @@ export interface RuntimeConfig extends OrganismConfig {
   ) => Promise<SynapticAdapterLanguageResponse>;
   stateStore?: JsonStateStore<PersistedOrganism>;
   /** Host-owned monitor instance; keeping it injectable avoids a runtime dependency edge into the cognition island. */
-  cognitiveHealthSystem?: CognitiveImmuneSystem;
+  cognitiveHealthSystem?: RuntimeCognitiveHealthMonitor;
   /** Optional canonical-ledger adapter. When configured, health is inspected after completed cognitive cycles. */
-  cognitiveHealthInputProvider?: (tick:number)=>CognitiveHealthInput|null|Promise<CognitiveHealthInput|null>;
+  cognitiveHealthInputProvider?: (tick:number)=>RuntimeCognitiveHealthInput|null|Promise<RuntimeCognitiveHealthInput|null>;
   /** Override the durable cognitive-health sidecar (defaults beside stateFile). */
-  cognitiveHealthStore?: JsonStateStore<CognitiveImmuneState>;
+  cognitiveHealthStore?: JsonStateStore<any>;
   /** Optional injected durable sidecar for event/budget-aware cognitive-spine cadence. */
   cognitiveSpineStore?: JsonStateStore<CognitiveSpineScheduleState>;
   worldStateStore?: JsonStateStore<PersistedWorld>;
@@ -207,6 +207,38 @@ export interface RuntimeConfig extends OrganismConfig {
   repositoryCoding?: { createTools: () => Promise<ToolDefinition[]> | ToolDefinition[] };
   /** P2836: how real device outcomes compete with the predictive simulator. */
   realityMode?: RealityGroundingMode;
+}
+
+interface RuntimeCognitiveHealthClaim {
+  id?:string; kind?:string; confidence01?:number; supportCount?:number;
+  status?:string; resolved?:boolean; source?:string; error01?:number; predicted01?:number; actual01?:number;
+}
+interface RuntimeCognitiveHealthSkill {
+  id?:string; uses?:number; successes?:number; failures?:number; successRate?:number;
+  status?:string; validatedUses?:number; independentEvidenceUses?:number;
+  nonHoldoutUses?:number; nonHoldoutSuccesses?:number;
+}
+interface RuntimeCognitiveHealthInput {
+  tick:number; at?:number;
+  epistemic?:{claimsData?:RuntimeCognitiveHealthClaim[];resolvedPredictions?:number;meanPredictionError01?:number;meanConfidence01?:number};
+  contradictions?:{claims?:Array<{id?:string;status?:string}>;unresolvedCount?:number};
+  skills?:{skills?:RuntimeCognitiveHealthSkill[];compoundSkills?:RuntimeCognitiveHealthSkill[]};
+}
+interface RuntimeCognitiveHealthSignal {
+  id:string; metric:string; severity:string; evidenceRefs:string[];
+}
+interface RuntimeCognitiveHealthInspectionResult {
+  tick:number; score01:number; coverage01:number; healthStatus:string;
+  newSignals:RuntimeCognitiveHealthSignal[]; recoveredSignals:RuntimeCognitiveHealthSignal[];
+  recommendedAction:string; observationAccepted:boolean;
+}
+/** Structural host port: keeps OrganismRuntime independent of the cognition implementation package. */
+interface RuntimeCognitiveHealthMonitor {
+  restore(state?:any):void;
+  snapshot():any;
+  healthSnapshot():any;
+  inspectHealth(input:RuntimeCognitiveHealthInput):RuntimeCognitiveHealthInspectionResult;
+  reviewHealthSignal(id:string,verdict:'confirmed'|'false-positive'|'recovered',reviewer:string,evidenceRef?:string):boolean;
 }
 
 export interface RuntimeStepOptions {
@@ -373,7 +405,7 @@ export class OrganismRuntime {
     lastCandidateId: null as string | null,
     lastFailureCategory: null as string | null,
   };
-  private readonly cognitiveImmuneSystem: CognitiveImmuneSystem | null;
+  private readonly cognitiveImmuneSystem: RuntimeCognitiveHealthMonitor | null;
   private readonly cognitiveImmuneStore: JsonStateStore<CognitiveImmuneState>;
   private readonly proceduralSkillLibrary = new ProceduralSkillLibrary();
   private readonly proceduralSkillStore: JsonStateStore<SkillLibraryState>;
@@ -494,7 +526,7 @@ export class OrganismRuntime {
     this.worldStore = config.worldStateStore ?? new FileStateStore<PersistedWorld>(worldPath);
     const skillStatePath = `${config.stateFile}.procedural-skills.json`;
     this.proceduralSkillStore = new FileStateStore<SkillLibraryState>(skillStatePath);
-    this.cognitiveImmuneStore = config.cognitiveHealthStore ?? new FileStateStore<CognitiveImmuneState>(`${config.stateFile}.cognitive-health.json`);
+    this.cognitiveImmuneStore = config.cognitiveHealthStore ?? new FileStateStore<any>(`${config.stateFile}.cognitive-health.json`);
     this.cognitiveSpineStore = config.cognitiveSpineStore ?? new FileStateStore<CognitiveSpineScheduleState>(`${config.stateFile}.cognitive-spine.json`);
     this.synapticMatrixStore = new FileStateStore<AdaptiveSynapticMatrixState>(`${config.stateFile}.synaptic-matrix.json`);
     this.synapticAdapterTimeoutMs = config.synapticAdapterTimeoutMs ?? 15_000;
@@ -1689,7 +1721,7 @@ export class OrganismRuntime {
   cognitiveHealthSnapshot() { return this.cognitiveImmuneSystem?.healthSnapshot() ?? null; }
 
   /** Feed canonical ledger projections into the runtime-owned health monitor and persist accepted observations. */
-  async inspectCognitiveHealth(input:CognitiveHealthInput):Promise<CognitiveHealthInspectionResult> {
+  async inspectCognitiveHealth(input:RuntimeCognitiveHealthInput):Promise<RuntimeCognitiveHealthInspectionResult> {
     return this.enqueue(async()=>{
       if(!this.initialized)throw new Error('organism-runtime-not-initialized');
       const system=this.cognitiveImmuneSystem;
