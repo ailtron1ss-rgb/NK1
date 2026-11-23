@@ -1,0 +1,43 @@
+name: NK1 VRM affect expression contract
+
+on:
+  pull_request:
+    branches: [workpass70-source]
+    paths:
+      - "app/src/components/avatar/vrmRuntimeAdapter.ts"
+      - "app/src/components/Avatar3DStage.tsx"
+      - "app/scripts/vrm-runtime-adapter.test.mjs"
+      - ".github/workflows/nk1-vrm-affect-expression.yml"
+  push:
+    branches: [workpass70-source]
+    paths:
+      - "app/src/components/avatar/vrmRuntimeAdapter.ts"
+      - "app/src/components/Avatar3DStage.tsx"
+      - "app/scripts/vrm-runtime-adapter.test.mjs"
+      - ".github/workflows/nk1-vrm-affect-expression.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nk1-vrm-affect-expression-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - name: Install locked app dependencies
+        run: npm ci --prefix app
+      - name: Run VRM adapter behavioral tests
+        run: npm --prefix app run test:vrm-runtime-adapter
+      - name: Typecheck avatar application
+        run: npm --prefix app run typecheck
