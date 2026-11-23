@@ -75,6 +75,8 @@ jobs:
           node --experimental-strip-types runtime/neuro-kurisu/tests/integration/hexis-hmx-export-route.mjs
       - name: Unified cognitive cycle and boundary
         run: npm --prefix runtime/neuro-kurisu run test:workpass287:cognitive-cycle && npm --prefix runtime/neuro-kurisu run test:cognitive-cycle-boundary-runtime-wiring
+      - name: Active information learning and exact action-outcome attribution
+        run: node --experimental-strip-types runtime/neuro-kurisu/tests/p2675-active-information-outcome-attribution.mjs && npm --prefix runtime/neuro-kurisu run test:p2675:information
       - name: Cognitive resource economy and Will voluntary attention
         run: npm --prefix runtime/neuro-kurisu run test:cognitive-resource-economy && npm --prefix runtime/neuro-kurisu run test:will:voluntary-attention-budget
       - name: Cooperative autonomous cycle batches and cancellation
@@ -111,5 +113,7 @@ jobs:
         run: npm --prefix runtime/neuro-kurisu run test:p2702:personality
       - name: Self-model and identity-state restore integrity
         run: node --experimental-strip-types --test runtime/neuro-kurisu/tests/self-state-restore-integrity-workpass80.mjs
+      - name: P34 causal personhood evidence lifecycle and persistence
+        run: npm --prefix runtime/neuro-kurisu run test:p34:personhood && npm --prefix runtime/neuro-kurisu run test:p34:migration && npm --prefix runtime/neuro-kurisu run test:p34:integration
       - name: Organism runtime smoke
         run: npm --prefix runtime/neuro-kurisu run test:organism-smoke
