@@ -1401,7 +1401,6 @@ export class MemoryOS2{
     freshnessHalfLifeMs:normalizeFreshnessHalfLife(input.freshnessHalfLifeMs),
     evidenceSources, evidenceLineageKeys,
   };
- };
  }
 
  encode(input:MemoryEncodeInput, options:{clone?:boolean;forceDistinct?:boolean}={}){
