@@ -1,4 +1,5 @@
 export { normalizeMetacognitiveEpisode } from '../cognition/MetacognitiveEpisode.ts';
+import { validateCognitiveStageReceipt, type CognitiveStageReceipt, type CognitiveStageOwnerName } from './CognitiveStageReceipt.ts';
 import { sha256Stable } from '../core/StableSerialization.ts';
 
 /**
