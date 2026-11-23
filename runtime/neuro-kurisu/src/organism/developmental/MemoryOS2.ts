@@ -682,9 +682,12 @@ export class MemoryOS2{
    const validFromAt=finite(row.validFromAt,createdAt);
    const validUntilProvided=row.validUntilAt!=null;
    const validUntilCandidate=validUntilProvided?finite(row.validUntilAt,Number.NaN):null;
-   // A malformed expiry must never turn an expiring memory into a timeless fact.
-   const validUntilAt=validUntilProvided&&!Number.isFinite(validUntilCandidate)?validFromAt:validUntilCandidate;
-   if(validUntilProvided&&!Number.isFinite(validUntilCandidate))this.incrementRestoreDiagnostic('invalidExpiriesClosed');
+   // A malformed or inverted expiry must never create an impossible valid-time window.
+   const invalidValidUntil=validUntilProvided&&(
+    !Number.isFinite(validUntilCandidate)||Number(validUntilCandidate)<validFromAt
+   );
+   const validUntilAt=invalidValidUntil?validFromAt:validUntilCandidate;
+   if(invalidValidUntil)this.incrementRestoreDiagnostic('invalidExpiriesClosed');
    const recordedFromAt=finite(row.recordedFromAt,createdAt);
    const recordedUntilProvided=row.recordedUntilAt!=null;
    const recordedUntilCandidate=recordedUntilProvided?finite(row.recordedUntilAt,Number.NaN):null;
