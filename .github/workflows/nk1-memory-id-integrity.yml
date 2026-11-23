@@ -11,7 +11,7 @@ on:
     branches: [aspect/memory-write-id-integrity-20261123]
     paths:
       - "runtime/neuro-kurisu/src/organism/developmental/MemoryOS2.ts"
-      - "runtime/neuro-kurisu/tests/memory-duplicate-id-write-guard.mjs"
+      - "runtime/neuro-kurisu/tests/memory-*.mjs"
       - ".github/workflows/nk1-memory-id-integrity.yml"
 
 permissions:
