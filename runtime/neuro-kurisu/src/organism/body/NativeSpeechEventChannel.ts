@@ -132,7 +132,7 @@ export function createNativeSpeechEventChannel(
         ...(safeInput.exitCode !== undefined ? { exitCode: safeInput.exitCode } : {}),
         ...(safeInput.signal !== undefined ? { signal: safeInput.signal } : {}),
         ...(safeInput.errorCode ? { errorCode: safeInput.errorCode.slice(0, 64) } : {}),
-        ...(safeInput.reason ? { reason: safeInput.reason.replace(/[\\r\\n\\t]+/g, ' ').slice(0, 160) } : {}),
+        ...(safeInput.reason ? { reason: safeInput.reason.replace(/[\r\n\t]+/g, ' ').slice(0, 160) } : {}),
       });
       pending.push(event);
       // Queue reentrant publications so every observer sees the same total order.
