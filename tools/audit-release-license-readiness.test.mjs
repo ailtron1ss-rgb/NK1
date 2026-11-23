@@ -92,6 +92,12 @@ test("pending human licensing decisions block release redistribution", async () 
     assert.ok(report.errors.some(e => e.includes("global release license review must be approved")));
     assert.ok(report.errors.some(e => e.includes("root project: status must be approved")));
     assert.ok(report.errors.some(e => e.includes("source archives:legacy/archive-a.zip: status must be approved")));
+    assert.equal(report.errorSummary.total, report.errorCount);
+    const groupedErrors = report.errorSummary.byScope.reduce((sum, group) => sum + group.errorCount, 0);
+    assert.equal(groupedErrors, report.errorCount);
+    assert.ok(report.errorSummary.byScope.some(group => group.scope === "global-review"));
+    assert.ok(report.errorSummary.byScope.some(group => group.scope === "root-project"));
+    assert.ok(report.errorSummary.byScope.some(group => group.scope === "source-archives"));
   });
 });
 
@@ -103,6 +109,8 @@ test("a fully reviewed hash-bound manifest passes its license readiness gate", a
     assert.equal(report.dependencyComponentCount, 2);
     assert.equal(report.archiveCount, 2);
     assert.equal(report.repositoryLicenseFileCount, 1);
+    assert.equal(report.errorSummary.total, 0);
+    assert.deepEqual(report.errorSummary.byScope, []);
   });
 });
 
@@ -136,6 +144,26 @@ test("dependency fingerprint changes require a new review", async () => {
     const report = await auditReleaseLicenseReadiness({ root, now });
     assert.equal(report.ok, false);
     assert.ok(report.errors.some(e => e.includes("locked npm dependency fingerprint changed or was not reviewed")));
+  });
+});
+
+test("error summary preserves all errors and provides stable scope counts", async () => {
+  await withFixture(async ({ root }) => {
+    const manifest = JSON.parse(await readFile(path.join(root, "contracts/RELEASE_LICENSE_REVIEW.json"), "utf8"));
+    manifest.status = "pending";
+    manifest.review.status = "pending";
+    manifest.rootProject.redistributionApproved = false;
+    manifest.sourceArchives[0].status = "pending";
+    manifest.repositoryLicenseFiles[0].reviewer = null;
+    await writeJson(root, "contracts/RELEASE_LICENSE_REVIEW.json", manifest);
+    const report = await auditReleaseLicenseReadiness({ root, now });
+    const summary = report.errorSummary;
+    assert.equal(summary.total, report.errors.length);
+    assert.equal(summary.byScope.reduce((sum, group) => sum + group.errorCount, 0), summary.total);
+    assert.ok(summary.byScope.some(group => group.scope === "global-review"));
+    assert.ok(summary.byScope.some(group => group.scope === "root-project"));
+    assert.ok(summary.byScope.some(group => group.scope === "source-archives"));
+    assert.ok(summary.byScope.some(group => group.scope === "repository-license-files"));
   });
 });
 

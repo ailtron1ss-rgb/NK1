@@ -5,6 +5,11 @@ import { UnifiedLearningSubstrate } from '../src/organism/learning/UnifiedLearni
 import { OutcomeVerificationService } from '../src/organism/system/OutcomeVerificationService.ts';
 
 const f=new ExperienceContinuumFabric({maxNodes:128,maxEdges:256,maxClusters:32});
+const receiptVerifier=new OutcomeVerificationService();
+const mintReceipt=async(toolId,input,label)=>receiptVerifier.verify({toolId,input,result:{ok:true,observationId:label}},()=>({
+  verified:true,basis:'external-postcondition',confidence01:.99,externalObservation:true,
+  observationId:label,expectedPostcondition:label,observedPostcondition:label
+}));
 const base={id:'m103',kind:'episodic',source:'runtime',content:'causal memory replay transfer test',createdAt:1,lastAccessAt:1,retrievalCount:0,salience:.84,identityRelevance:.72,goalRelevance:.82,predictionError:.78,emotionalWeight:.42,socialRelevance:.36,confidence:.82,semanticLinks:[],temporalLinks:[],causalLinks:[],epistemicStatus:'verified'};
 f.observe(base,{tick:1,at:1,novelty01:.74,activeGoalIds:['goal-A'],evidenceSupport01:.82});
 const candidates=f.replayCandidates(4,['goal-A']); assert.equal(candidates.length,1); assert.ok(candidates[0].replayPriority01>.5);
@@ -38,10 +43,20 @@ const validation=f.recordReplayValidation({...verificationInput,verification,at:
 assert.equal(validation.independentVerified,true,'only the exact service-minted receipt may authorize retention learning');
 assert.ok(f.snapshot().replay.validated===1);
 assert.ok(f.snapshot().graphNodes[0].stability01>=before);
-f.recordReplayExperimentTrial({experimentId:'exp103',taskId:'task-X',mode:'replay-on',preScore01:.5,postScore01:.8,independentVerified:true,randomized:true,contextKey:'x1',pairKey:'pair-1',at:1200});
-f.recordReplayExperimentTrial({experimentId:'exp103',taskId:'task-X',mode:'replay-on',preScore01:.5,postScore01:.74,independentVerified:true,randomized:true,contextKey:'x2',pairKey:'pair-2',at:1300});
-f.recordReplayExperimentTrial({experimentId:'exp103',taskId:'task-X',mode:'replay-off',preScore01:.5,postScore01:.56,independentVerified:true,randomized:true,contextKey:'x1',pairKey:'pair-1',at:1400});
-f.recordReplayExperimentTrial({experimentId:'exp103',taskId:'task-X',mode:'replay-off',preScore01:.5,postScore01:.59,independentVerified:true,randomized:true,contextKey:'x2',pairKey:'pair-2',at:1500});
+const protocolInput={id:'exp103',taskId:'task-X',randomized:true,balanced:true,requiredPairs:5,contextKeys:['x1','x2']};
+const protocolVerification=await mintReceipt('memory.replay-protocol-postcondition',{...protocolInput},'obs-exp103-protocol');
+const protocol=f.createReplayExperimentProtocol({...protocolInput,verification:protocolVerification});
+assert.equal(protocol.randomized,true,'protocol randomization must be authenticated');
+assert.equal(protocol.balanced,true,'protocol balance must be authenticated');
+const addTrial=async(mode,preScore01,postScore01,contextKey,pairKey,at)=>{
+  const input={experimentId:'exp103',taskId:'task-X',mode,preScore01,postScore01,randomized:true,contextKey,pairKey};
+  const verification=await mintReceipt('memory.replay-trial-postcondition',input,`obs-exp103-${mode}-${pairKey}`);
+  return f.recordReplayExperimentTrial({...input,independentVerified:true,verification,at});
+};
+await addTrial('replay-on',.5,.8,'x1','pair-1',1200);
+await addTrial('replay-on',.5,.74,'x2','pair-2',1300);
+await addTrial('replay-off',.5,.56,'x1','pair-1',1400);
+await addTrial('replay-off',.5,.59,'x2','pair-2',1500);
 const exp=f.replayExperimentSummary('exp103','task-X');
 assert.equal(exp.pairedComparable,true); assert.equal(exp.evidenceGrade,'randomized-matched-observational'); assert.ok((exp.estimatedConditionDifference01??0)>.1);
 
