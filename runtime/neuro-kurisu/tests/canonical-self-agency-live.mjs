@@ -17,6 +17,7 @@ assert(authority.contributionCount>0);
 assert.equal(authority.duplicateSourcePairs,0);
 assert(d.goalAdmissionChecks>=10);
 assert(d.selfModificationChecks>=10);
+assert.equal(d.selfModificationBlocks,d.selfModificationChecks,'Core must fail closed while paired downstream evidence is absent');
 const selfAblation=r.core.canonicalSelfAgencyAuthority.ablateActionContribution('verify',{baseSignals01:.22,selfImprovementDecision:'continue',identityContinuity01:d.meanIdentityContinuity01,uncertainty01:.15,externalInput:false,autonomy01:d.agencyIntegrity01,domain:'verification'},.9);
 assert(selfAblation.baseline.contribution01>selfAblation.lesioned.contribution01);
 assert(selfAblation.absoluteDelta01>0);
