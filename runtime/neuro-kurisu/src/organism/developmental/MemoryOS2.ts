@@ -4,6 +4,7 @@ import { MemorySignalFusion, type MemoryFusionProfile } from './MemorySignalFusi
 import { AdaptiveMemoryPolicy, type MemoryPolicyName } from './AdaptiveMemoryPolicy.ts';
 import { canonicalizeMemoryContent, deriveMemoryIdentity, mergeMemoContext, mergeMemoTags, memoContentHash, stableMemoryId } from './MemoInspiredMemoryPrimitives.ts';
 import { LocalEmbeddingProvider, type TextEmbeddingProvider } from './LocalEmbeddingProvider.ts';
+import { rerankSemanticCandidates } from './MemorySemanticReranker.ts';
 import { cosineSimilarity, fnv1a32 } from '../core/NumericPrimitives.ts';
 function normalizeValidatedEmbeddingVector(value:unknown,expectedDimensions?:number):number[]|null{
  if(!Array.isArray(value)||value.length===0||value.length>4096||
@@ -34,7 +35,7 @@ export interface MemoryBitemporalInterval {
  recordedFromAt:number; recordedUntilAt:number|null;
  confidence:number; epistemicStatus:EpistemicStatus; source:string;
  provenanceClass?:MemoryProvenanceClass; sourceAuthority01?:number;
- evidenceFreshnessAt?:number; freshnessUntilAt?:number|null;
+ evidenceFreshnessAt?:number; freshnessHalfLifeMs?:number|null; freshnessUntilAt?:number|null;
  evidenceLineageKeys?:string[];
  evidenceSources?:MemoryEvidenceSource[];
  independenceKey?:string|null;
@@ -83,6 +84,8 @@ provenanceClass?: MemoryProvenanceClass;
 sourceAuthority01?: number;
 independenceKey?: string;
 evidenceFreshnessAt?: number;
+/** Optional evidence half-life; missing/null keeps evidence durable. */
+freshnessHalfLifeMs?:number|null;
 /** Transaction-time interval: when NK1 held this state as its current knowledge. */
 recordedFromAt?:number;
 recordedUntilAt?:number|null;
@@ -348,6 +351,26 @@ function memoryTemperature(item:Pick<MemoryItem2,'salience'|'emotionalWeight'|'i
   const recency=Math.exp(-Math.min(age,14*86400000)/(18*3600000));
   return clamp(.24*item.salience+.16*item.emotionalWeight+.18*item.identityRelevance+.16*item.goalRelevance+.10*item.socialRelevance+.10*item.predictionError+.16*recency);
 }
+const MEMORY_FRESHNESS_MIN_HALF_LIFE_MS=60_000;
+const MEMORY_FRESHNESS_MAX_HALF_LIFE_MS=10*365*86_400_000;
+function normalizeFreshnessHalfLife(value:unknown):number|null|undefined{
+ if(value===undefined)return undefined;
+ if(value===null)return null;
+ if(typeof value!=='number'||!Number.isFinite(value)||value<=0)return undefined;
+ return Math.max(MEMORY_FRESHNESS_MIN_HALF_LIFE_MS,Math.min(MEMORY_FRESHNESS_MAX_HALF_LIFE_MS,value));
+}
+/** Evidence freshness is independent of lastAccessAt. No horizon means durable/legacy. */
+export function memoryEvidenceFreshness01(
+ item:Pick<MemoryItem2,'evidenceFreshnessAt'|'observedAt'|'createdAt'|'freshnessHalfLifeMs'>,
+ now=Date.now()
+):number{
+ const halfLife=normalizeFreshnessHalfLife(item.freshnessHalfLifeMs);
+ if(halfLife==null||halfLife===undefined)return 1;
+ const evidenceAt=Number(item.evidenceFreshnessAt??item.observedAt??item.createdAt);
+ if(!Number.isFinite(evidenceAt))return 1;
+ const at=Number.isFinite(now)?now:Date.now();
+ return clamp(Math.pow(.5,Math.max(0,at-evidenceAt)/halfLife));
+}
 function extractEntities(text:string){return [...new Set(tokenize(text).filter(t=>t.length>=4).slice(0,12))];}
 const NEGATION_TOKENS=new Set(['not','no','never','without','cannot','cant','cannot','isnt','doesnt','dont','не','нет','никогда','без','нельзя','невозможно']);
 function negationSignature(text:string){const tokens=tokenize(text);let hits=0;for(const t of tokens)if(NEGATION_TOKENS.has(t))hits++;return hits%2?1:0;}
@@ -432,6 +455,7 @@ function normalizeBitemporalHistory(value:unknown):MemoryBitemporalInterval[]{
    provenanceClass:provenanceKinds.has(candidate.provenanceClass)?candidate.provenanceClass as MemoryProvenanceClass:undefined,
    sourceAuthority01:typeof candidate.sourceAuthority01==='number'&&Number.isFinite(candidate.sourceAuthority01)?Math.max(0,Math.min(1,candidate.sourceAuthority01)):.5,
    evidenceFreshnessAt:finite(candidate.evidenceFreshnessAt),
+   freshnessHalfLifeMs:normalizeFreshnessHalfLife(candidate.freshnessHalfLifeMs),
    freshnessUntilAt:freshnessValue===null||Number.isFinite(freshnessValue)?freshnessValue:recordedFromAt,
    evidenceLineageKeys:evidenceLineageKeys??[],evidenceSources:evidenceSources??[],
    independenceKey:typeof candidate.independenceKey==='string'?candidate.independenceKey.trim().slice(0,96)||undefined:(candidate.independenceKey===null?null:null),
@@ -567,8 +591,8 @@ function normalizeMemoryRevisionGraph(items:MemoryItem2[],onDuplicate?:(id:strin
  }
  return unique;
 }
-type MemoryEstimateShape=Pick<MemoryItem2,'content'|'tags'|'context'|'semanticLinks'|'temporalLinks'|'causalLinks'|'contradictionLinks'|'evidenceSources'|'evidenceLineageKeys'|'revisionIntegrityIssues'> & Partial<Pick<MemoryItem2,'revisionHistory'|'bitemporalHistory'|'recordedFromAt'|'recordedUntilAt'|'freshnessUntilAt'|'temporalKind'>>;
-const estimateMemoryBytes=(m:MemoryEstimateShape)=>Math.max(96,new TextEncoder().encode(JSON.stringify({content:m.content,tags:m.tags,context:m.context,s:m.semanticLinks,t:m.temporalLinks,c:m.causalLinks,k:m.contradictionLinks,e:m.evidenceSources,ek:m.evidenceLineageKeys,ri:m.revisionIntegrityIssues,r:normalizeRevisionHistory(m.revisionHistory),bh:m.bitemporalHistory,rf:m.recordedFromAt,ru:m.recordedUntilAt,fu:m.freshnessUntilAt,tk:m.temporalKind})).byteLength);
+type MemoryEstimateShape=Pick<MemoryItem2,'content'|'tags'|'context'|'semanticLinks'|'temporalLinks'|'causalLinks'|'contradictionLinks'|'evidenceSources'|'evidenceLineageKeys'|'revisionIntegrityIssues'> & Partial<Pick<MemoryItem2,'revisionHistory'|'bitemporalHistory'|'recordedFromAt'|'recordedUntilAt'|'freshnessUntilAt'|'temporalKind'|'freshnessHalfLifeMs'>>;
+const estimateMemoryBytes=(m:MemoryEstimateShape)=>Math.max(96,new TextEncoder().encode(JSON.stringify({content:m.content,tags:m.tags,context:m.context,s:m.semanticLinks,t:m.temporalLinks,c:m.causalLinks,k:m.contradictionLinks,e:m.evidenceSources,ek:m.evidenceLineageKeys,ri:m.revisionIntegrityIssues,r:normalizeRevisionHistory(m.revisionHistory),bh:m.bitemporalHistory,rf:m.recordedFromAt,ru:m.recordedUntilAt,fu:m.freshnessUntilAt,fh:m.freshnessHalfLifeMs,tk:m.temporalKind})).byteLength);
 const MEMORY_OS2_ITEM_CAP=1600;
 const MEMORY_OS2_RESTORE_SCAN_LIMIT=100_000;
 export class MemoryCapacityExhaustedError extends Error {
@@ -699,6 +723,7 @@ export class MemoryOS2{
     provenanceClass,
     sourceAuthority01:clamp(finite(row.sourceAuthority01,this.sourceAuthorityDefault(provenanceClass))),
     evidenceFreshnessAt:finite(row.evidenceFreshnessAt,observedAt),
+    freshnessHalfLifeMs:normalizeFreshnessHalfLife(row.freshnessHalfLifeMs),
     independenceKey:typeof row.independenceKey==='string'?row.independenceKey.trim().slice(0,96):undefined,
    };
    const evidenceSources=this.normalizeEvidenceSources(evidenceSeed);
@@ -748,6 +773,7 @@ export class MemoryOS2{
     sourceAuthority01:clamp(finite(row.sourceAuthority01,this.sourceAuthorityDefault(provenanceClass))),
     independenceKey:evidenceSeed.independenceKey,
     evidenceFreshnessAt:finite(row.evidenceFreshnessAt,observedAt),
+    freshnessHalfLifeMs:normalizeFreshnessHalfLife(row.freshnessHalfLifeMs),
     evidenceSources,
     evidenceLineageKeys,
     dormant:row.dormant===true,
@@ -773,7 +799,7 @@ export class MemoryOS2{
    recordedFromAt:Number(item.recordedFromAt??item.createdAt),recordedUntilAt:item.recordedUntilAt??null,
    confidence:item.confidence,epistemicStatus:item.epistemicStatus,source:item.source,
    provenanceClass:item.provenanceClass,sourceAuthority01:item.sourceAuthority01,
-   evidenceFreshnessAt:item.evidenceFreshnessAt,freshnessUntilAt:item.freshnessUntilAt??null,
+   evidenceFreshnessAt:item.evidenceFreshnessAt,freshnessHalfLifeMs:item.freshnessHalfLifeMs,freshnessUntilAt:item.freshnessUntilAt??null,
    evidenceLineageKeys:[...(item.evidenceLineageKeys??[])],
    evidenceSources:(item.evidenceSources??[]).map(row=>({...row})),independenceKey:item.independenceKey??null,
    tags:[...(item.tags??[])],context:item.context?{...item.context}:null,
@@ -791,7 +817,7 @@ export class MemoryOS2{
   const payload=(row:MemoryBitemporalInterval)=>({
    confidence:row.confidence,epistemicStatus:row.epistemicStatus,source:row.source,
    provenanceClass:row.provenanceClass,sourceAuthority01:row.sourceAuthority01,
-   evidenceFreshnessAt:row.evidenceFreshnessAt,freshnessUntilAt:row.freshnessUntilAt,
+   evidenceFreshnessAt:row.evidenceFreshnessAt,freshnessHalfLifeMs:row.freshnessHalfLifeMs,freshnessUntilAt:row.freshnessUntilAt,
    evidenceLineageKeys:row.evidenceLineageKeys,evidenceSources:row.evidenceSources,
    independenceKey:row.independenceKey,tags:row.tags,context:row.context,entities:row.entities,
    semanticLinks:row.semanticLinks,temporalLinks:row.temporalLinks,causalLinks:row.causalLinks,
@@ -811,6 +837,7 @@ export class MemoryOS2{
    provenanceClass:version.provenanceClass??item.provenanceClass,
    sourceAuthority01:version.sourceAuthority01??item.sourceAuthority01,
    evidenceFreshnessAt:version.evidenceFreshnessAt??item.evidenceFreshnessAt,
+   freshnessHalfLifeMs:version.freshnessHalfLifeMs===undefined?item.freshnessHalfLifeMs:(version.freshnessHalfLifeMs??null),
    freshnessUntilAt:version.freshnessUntilAt,evidenceLineageKeys:version.evidenceLineageKeys??item.evidenceLineageKeys,
    evidenceSources:version.evidenceSources??item.evidenceSources,independenceKey:version.independenceKey===undefined?item.independenceKey:(version.independenceKey??undefined),
    tags:version.tags??item.tags,context:version.context===undefined?item.context:(version.context??undefined),entities:version.entities??item.entities,
@@ -1078,7 +1105,8 @@ export class MemoryOS2{
        const itemTokens=this.tokensFor(item.content);let covered=0;for(const token of queryTokens)if(itemTokens.has(token))covered++;
        const coverage=queryTokens.size?covered/queryTokens.size:0;const entity=overlap(queryEntities,item.entities);
        const temporalHint=this.signalFusion.temporalHint(query,item.validFromAt??item.createdAt,now);
-       const score=clamp(.68*similarity+.20*lexicalScore+.06*coverage+.03*entity+.02*temporalHint+.01*clamp(item.salience));
+       const evidenceFreshness=memoryEvidenceFreshness01(item,now);
+       const score=clamp(.66*similarity+.19*lexicalScore+.06*coverage+.03*entity+.02*temporalHint+.01*clamp(item.salience)+.03*evidenceFreshness);
        cached.lastUsedAt=now;semanticRows.push({item,score,similarity,lexicalRank:rank??Number.MAX_SAFE_INTEGER});
      }
      semanticRows.sort((a,b)=>b.score-a.score||b.similarity-a.similarity||a.lexicalRank-b.lexicalRank||a.item.id.localeCompare(b.item.id));
@@ -1092,7 +1120,8 @@ export class MemoryOS2{
        const diag=provider.diagnostics();
        return {items:fallbackItems,semantic:{enabled:false,provider:diag.provider,model:diag.model,indexedItems:this.semanticEmbeddingIndex.size,corpusItems:corpus.length,coverage01:corpus.length?clamp(this.semanticEmbeddingIndex.size/corpus.length):0,newlyIndexed,fallbackReason:'semantic-similarity-below-grounding-threshold',cacheEntries:diag.cacheEntries,requests:diag.requests,failures:diag.failures,lastLatencyMs:diag.lastLatencyMs,minSimilarity01,topSimilarity01,abstained:true}};
      }
-     const items=qualifiedRows.slice(0,safeLimit).map(row=>structuredClone(row.item));
+     const rerankedRows=rerankSemanticCandidates(qualifiedRows,{limit:safeLimit,goalRelevance,identityRelevance});
+     const items=rerankedRows.map(row=>structuredClone(row.item));
      const diag=provider.diagnostics();
      return {items,semantic:{enabled:true,provider:diag.provider,model:diag.model,indexedItems:this.semanticEmbeddingIndex.size,corpusItems:corpus.length,coverage01:corpus.length?clamp(this.semanticEmbeddingIndex.size/corpus.length):0,newlyIndexed,fallbackReason:null,cacheEntries:diag.cacheEntries,requests:diag.requests,failures:diag.failures,lastLatencyMs:diag.lastLatencyMs,minSimilarity01,topSimilarity01,abstained:false}};
    }catch(error){
@@ -1353,6 +1382,7 @@ export class MemoryOS2{
     sourceAuthority01:clamp(Number(input.sourceAuthority01??defaults[provenanceClass]??.5)),
     independenceKey:input.independenceKey?.slice(0,96),
     evidenceFreshnessAt:Number.isFinite(Number(input.evidenceFreshnessAt))?Number(input.evidenceFreshnessAt):Number(input.observedAt??now),
+    freshnessHalfLifeMs:normalizeFreshnessHalfLife(input.freshnessHalfLifeMs),
     evidenceSources, evidenceLineageKeys,
   };
  }
@@ -1373,6 +1403,10 @@ export class MemoryOS2{
     const priorBytes=estimateMemoryBytes(existing);
     const previousBitemporal=this.bitemporalIntervalFor(existing);
     const evidenceMerge=this.mergeIncomingEvidence(existing,input,now);
+    if(input.freshnessHalfLifeMs!==undefined)existing.freshnessHalfLifeMs=normalizeFreshnessHalfLife(input.freshnessHalfLifeMs);
+    const incomingFreshnessAt=Number(input.evidenceFreshnessAt??input.observedAt??now);
+    const previousFreshnessAt=Number(existing.evidenceFreshnessAt??0);
+    if(Number.isFinite(incomingFreshnessAt)&&incomingFreshnessAt>previousFreshnessAt)existing.evidenceFreshnessAt=incomingFreshnessAt;
     existing.lastAccessAt=now;
     existing.salience=clamp(existing.salience*.8+input.salience*.2);
     // A repeated import from the same source/lineage is not independent evidence
@@ -1410,7 +1444,6 @@ export class MemoryOS2{
         if(input.validUntilAt===null)existing.validUntilAt=null;
         else if(Number.isFinite(input.validUntilAt))existing.validUntilAt=Number(input.validUntilAt);
       }
-      if(Object.prototype.hasOwnProperty.call(input,'evidenceFreshnessAt')&&Number.isFinite(input.evidenceFreshnessAt))existing.evidenceFreshnessAt=Number(input.evidenceFreshnessAt);
     }
     this.spatialIndex.upsert(existing.id,existing.context);
     const nextBitemporal=this.bitemporalIntervalFor(existing);
@@ -1613,7 +1646,7 @@ export class MemoryOS2{
    if(candidateIds.size>192)throw new Error(`memory retrieval candidate budget exceeded: ${candidateIds.size}/192`);
    this.lastCandidateCount=candidateIds.size;
    const identifierBias=identifierLike(query);
-   const rawRows:Array<{m:MemoryItem2;canonical:MemoryItem2;bm25:number;entity:number;lexical:number;coverage:number;fuzzy:number;metadata:number;conceptCoverage:number;temporal:number;causal:number;identity:number;goal:number;recency:number;spatial:number;spatialDistance:number|null}> = [];
+   const rawRows:Array<{m:MemoryItem2;canonical:MemoryItem2;bm25:number;entity:number;lexical:number;coverage:number;fuzzy:number;metadata:number;conceptCoverage:number;temporal:number;causal:number;identity:number;goal:number;recency:number;evidenceFreshness:number;spatial:number;spatialDistance:number|null}> = [];
    for(const id of candidateIds){
      const canonical=this.itemIndex.get(id);
      if(!canonical)continue;
@@ -1645,11 +1678,12 @@ export class MemoryOS2{
      const spatial=spatialHit?spatialHit.relevance01:0;
      const spatialDistance=spatialHit?.distance??null;
      const recency=clamp(1-(now-m.lastAccessAt)/(1000*60*60*24*21));
+     const evidenceFreshness=memoryEvidenceFreshness01(m,now);
      const causal=clamp(linkSupport?.get(m.id)||0);
      const temporalBase=this.signalFusion.temporalHint(query,m.validFromAt??m.createdAt,now); const validity=temporalMode==='all'?1:(isValidAt(m,now)?1:0); const temporal=clamp(.72*validity+.28*temporalBase);
      const identity=clamp(m.identityRelevance*clamp(identityRelevance));
      const goal=clamp(m.goalRelevance*clamp(goalRelevance));
-     rawRows.push({m,canonical,bm25,entity,lexical,coverage,fuzzy,metadata,conceptCoverage,temporal,causal,identity,goal,recency,spatial,spatialDistance});
+     rawRows.push({m,canonical,bm25,entity,lexical,coverage,fuzzy,metadata,conceptCoverage,temporal,causal,identity,goal,recency,evidenceFreshness,spatial,spatialDistance});
    }
    const rrfK=60;
    const rankBy=(score:(row:typeof rawRows[number])=>number)=>new Map(rawRows.filter(row=>score(row)>0).sort((a,b)=>score(b)-score(a)||a.m.id.localeCompare(b.m.id)).map((row,index)=>[row.m.id,index+1]));
@@ -1671,7 +1705,7 @@ export class MemoryOS2{
      const rrfNorm=clamp((rrfWeights.bm25/(rrfK+(bm25Rank.get(row.m.id)??rawRows.length+1))+rrfWeights.coverage/(rrfK+(coverageRank.get(row.m.id)??rawRows.length+1))+rrfWeights.fuzzy/(rrfK+(fuzzyRank.get(row.m.id)??rawRows.length+1))+rrfWeights.metadata/(rrfK+(metadataRank.get(row.m.id)??rawRows.length+1))+rrfWeights.entity/(rrfK+(entityRank.get(row.m.id)??rawRows.length+1))+rrfWeights.relationship/(rrfK+(relationshipRank.get(row.m.id)??rawRows.length+1)))/maxRrf);
      const bm25Norm=maxBm25>0?normalizeBm25(row.bm25,maxBm25):0;
      const lexical=this.metadataRecallEnabled?clamp(.18*row.lexical+.40*bm25Norm+.21*row.coverage+.16*row.fuzzy+.08*rrfNorm+.07*row.metadata):clamp(.18*row.lexical+.43*bm25Norm+.22*row.coverage+.17*row.fuzzy+.10*rrfNorm);
-     const fused=this.signalFusion.score({semantic01:0,lexical01:identifierBias?clamp(lexical+.10*row.lexical):lexical,entity01:row.entity,temporal01:row.temporal,causal01:row.causal,recency01:row.recency,salience01:row.m.salience,identity01:row.identity,goal01:row.goal,predictionError01:row.m.predictionError,temperature01:row.m.temperature01});
+     const fused=this.signalFusion.score({semantic01:0,lexical01:identifierBias?clamp(lexical+.10*row.lexical):lexical,entity01:row.entity,temporal01:row.temporal,causal01:row.causal,recency01:row.recency,evidenceFreshness01:row.evidenceFreshness,salience01:row.m.salience,identity01:row.identity,goal01:row.goal,predictionError01:row.m.predictionError,temperature01:row.m.temperature01});
      const policyBias=this.activePolicy==='semantic'?(row.fuzzy*.04+row.coverage*.04):this.activePolicy==='causal'?row.causal*.10:this.activePolicy==='temporal'?row.temporal*.10:this.activePolicy==='hybrid'?(rrfNorm+row.entity)*.06:(row.identity+row.goal)*.04;
      // Intent adds a bounded preference for the memory system that answers the
      // question being asked (event, procedure, self, goal, cause, or fact). It is
