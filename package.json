@@ -208,7 +208,11 @@
     "test:runtime-pin": "node --test tools/runtime-pin.test.mjs",
     "quickstart": "node tools/super-quickstart.mjs",
     "start:prebuilt": "node tools/super-start.mjs",
-    "test:startup": "node --test tools/super-startup.test.mjs"
+    "test:startup": "node --test tools/super-startup.test.mjs",
+    "aspect:progress": "node tools/nk1-aspect-progress.mjs",
+    "aspect:progress:check": "node tools/nk1-aspect-progress.mjs --check",
+    "aspect:progress:json": "node tools/nk1-aspect-progress.mjs --json",
+    "aspect:progress:test": "node --test tools/nk1-aspect-progress.test.mjs"
   },
   "version": "35.0.0-super-workpass70",
   "packageManager": "npm@10.9.2",
