@@ -64,9 +64,9 @@ async function readRegularTextFile(
   // The supervisor currently targets Linux; Darwin's flag differs. Windows relies
   // on the post-open inode/device check because Node does not expose O_NOFOLLOW there.
   const handle = process.platform === 'linux'
-    ? await open(filename, 0x20000)
+    ? await open(filename, 0x20000 as unknown as string)
     : process.platform === 'darwin'
-      ? await open(filename, 0x100)
+      ? await open(filename, 0x100 as unknown as string)
       : await open(filename, 'r');
   try {
     const opened = await handle.stat();

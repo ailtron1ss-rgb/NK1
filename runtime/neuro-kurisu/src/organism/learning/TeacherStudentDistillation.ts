@@ -597,7 +597,8 @@ export class TeacherStudentDistillationDataset {
     for (const taskId of taskIds) {
       const task = this.manifest.get(taskId);
       if (!task) { reject('unknown-task'); continue; }
-      if (task.split === 'holdout') { reject('holdout-task-forbidden'); continue; }
+      const split = task.split;
+      if (split === 'holdout') { reject('holdout-task-forbidden'); continue; }
       for (const seed of seeds) {
         if (input.signal?.aborted) throw new Error('teacher-distillation-collection-cancelled');
         report.attempted++;
@@ -630,7 +631,7 @@ export class TeacherStudentDistillationDataset {
             taskId: task.taskId,
             taskVersion: task.taskVersion,
             family: task.family,
-            split: task.split,
+            split,
             prompt: task.prompt,
             ...(task.systemPrompt !== undefined ? { systemPrompt: task.systemPrompt } : {}),
             completion: generated.completion,

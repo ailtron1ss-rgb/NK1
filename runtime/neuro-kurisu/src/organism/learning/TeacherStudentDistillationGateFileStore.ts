@@ -64,8 +64,8 @@ function errnoCode(error: unknown): string | undefined {
 }
 
 async function openNoFollow(filename: string) {
-  if (process.platform === 'linux') return open(filename, 0x20000);
-  if (process.platform === 'darwin') return open(filename, 0x100);
+  if (process.platform === 'linux') return open(filename, 0x20000 as unknown as string);
+  if (process.platform === 'darwin') return open(filename, 0x100 as unknown as string);
   return open(filename, 'r');
 }
 
