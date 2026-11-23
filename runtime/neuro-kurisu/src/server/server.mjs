@@ -370,7 +370,7 @@ const runtime = new OrganismRuntime({
     } : {}),
     mem0Adapter: MEM0_MEMORY_ADAPTER,
     mem0CognitiveRecall: process.env.NK_MEM0_COGNITIVE_RECALL === '1',
-    autoRun: true,
+    autoRun: process.env.NK_TEST_DISABLE_AUTORUN !== '1',
     intervalMs: INTERVAL_MS,
     sensorIntervalMs: SENSOR_INTERVAL_MS,
     phonePolicy: PHONE_POLICY,
