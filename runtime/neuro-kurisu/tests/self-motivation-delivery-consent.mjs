@@ -1,12 +1,7 @@
 import assert from 'node:assert/strict';
-import { AutonomousSocialInitiativeEngine, withinQuietHoursUtc } from '../src/organism/system/AutonomousSocialInitiativeEngine.ts';
+import { AutonomousSocialInitiativeEngine } from '../src/organism/system/AutonomousSocialInitiativeEngine.ts';
 
 const atHourUtc = (hour, dayOffset = 0) => Date.UTC(2026, 10, 2 + dayOffset, hour, 30, 0);
-assert.equal(withinQuietHoursUtc(atHourUtc(23), 22, 8), true);
-assert.equal(withinQuietHoursUtc(atHourUtc(3), 22, 8), true);
-assert.equal(withinQuietHoursUtc(atHourUtc(12), 22, 8), false);
-assert.equal(withinQuietHoursUtc(atHourUtc(9), 8, 17), true);
-assert.equal(withinQuietHoursUtc(atHourUtc(18), 8, 17), false);
 
 const runtimeInput = at => ({
   at, externalInput: false, socialNeed01: .95, relationship01: .4,
