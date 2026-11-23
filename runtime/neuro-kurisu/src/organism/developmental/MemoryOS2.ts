@@ -1327,7 +1327,22 @@ export class MemoryOS2{
   if(newer.id===older.id||isUnverifiedHmxImportedMemory(newer)||isUnverifiedHmxImportedMemory(older))return {score:0,contextConflict:false,polarityConflict:false,entityOverlap:0,semantic:0};
   const semantic=cosine(newer.semanticVector.length?newer.semanticVector:vectorize(newer.content),older.semanticVector.length?older.semanticVector:vectorize(older.content));
   const entityOverlap=overlap(newer.entities,older.entities); const newCtx=newer.context??{}; const oldCtx=older.context??{};
-  let contextConflict=false; for(const key of Object.keys(newCtx)){if(!(key in oldCtx))continue;const nv=String(newCtx[key]??'').trim().toLowerCase();const ov=String(oldCtx[key]??'').trim().toLowerCase();if(nv&&ov&&nv!==ov){contextConflict=true;break;}}
+  const normalizedContextValue=(value:unknown)=>String(value??'').trim().toLowerCase();
+  const newSubject=normalizedContextValue(newCtx.subject),oldSubject=normalizedContextValue(oldCtx.subject);
+  const newAttribute=normalizedContextValue(newCtx.attribute),oldAttribute=normalizedContextValue(oldCtx.attribute);
+  // Context conflicts are only meaningful inside the same subject/attribute
+  // scope. A shared generic key such as "attribute" or "value" must not merge
+  // unrelated entities into one revision chain.
+  const sameSubjectScope=newSubject===oldSubject;
+  const sameAttributeScope=newAttribute===oldAttribute;
+  let contextConflict=false;
+  if(sameSubjectScope&&sameAttributeScope){
+   for(const key of Object.keys(newCtx)){
+    if(key==='subject'||key==='attribute'||!(key in oldCtx))continue;
+    const nv=normalizedContextValue(newCtx[key]),ov=normalizedContextValue(oldCtx[key]);
+    if(nv&&ov&&nv!==ov){contextConflict=true;break;}
+   }
+  }
   const polarityConflict=sharedEntityCount(newer.entities,older.entities)>=2&&hasNegationPolarityDifference(newer.content,older.content);
   const identifierShift=identifierLike(newer.content)!==identifierLike(older.content)&&entityOverlap>=.18;
   const score=Math.max(contextConflict&&semantic>=.55?.90:0,polarityConflict&&semantic>=.64?.82:0,identifierShift&&semantic>=.70?.76:0);
