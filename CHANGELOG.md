@@ -1,3 +1,10 @@
+## [NK1][Memory] Add evidence half-life and bounded affect-aware semantic reranking (2026-11-23)
+
+- Add optional evidence half-life decay independent of access recency; missing/null horizons preserve durable and legacy memories.
+- Preserve half-life metadata through restore and bitemporal history, and keep freshness timestamps monotonic when evidence is re-ingested.
+- Rerank only candidates already above the semantic grounding threshold; affect, identity and goal metadata cannot inject unrelated memories.
+- Add deterministic regressions and a 10k-candidate CPU-only component benchmark (excluding embeddings, vector I/O, MemoryFabric and cloning); no recall uplift is claimed.
+
 ## [NK1][Learning] Add runtime learning-journal wiring regression (2026-11-23)
 
 - Add an isolated regression for canonical P23 fitness/lifecycle journal readiness, startup reconciliation, and aggregate-only diagnostics.
