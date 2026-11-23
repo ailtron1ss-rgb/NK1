@@ -35,6 +35,24 @@ export function validateTracker(doc) {
   const aspects = doc.aspects;
   if (!Array.isArray(aspects)) return { errors: ['aspects is not an array'], warnings };
 
+  const aspectLines = doc.aspectLines;
+  const lineEntries = aspectLines && typeof aspectLines === 'object' && !Array.isArray(aspectLines)
+    ? Object.entries(aspectLines)
+    : [];
+  if (lineEntries.length !== 10) errors.push(`expected 10 shared aspect lines, found ${lineEntries.length}`);
+  const lineKeys = new Set(lineEntries.map(([key]) => key));
+  const lineBranches = new Set();
+  for (const [key, line] of lineEntries) {
+    if (typeof line?.branch !== 'string' || line.branch !== `aspect/${key}`) {
+      errors.push(`${key}: canonical branch must be aspect/${key}`);
+    } else if (lineBranches.has(line.branch)) {
+      errors.push(`${key}: duplicate canonical branch ${line.branch}`);
+    } else {
+      lineBranches.add(line.branch);
+    }
+    if (!Array.isArray(line?.aspectIds)) errors.push(`${key}: aspectIds is not an array`);
+  }
+
   const expected = 75;
   if (aspects.length !== expected) errors.push(`expected ${expected} aspects, found ${aspects.length}`);
 
@@ -49,6 +67,7 @@ export function validateTracker(doc) {
     else if (nums.has(a.num)) errors.push(`${a.id}: duplicate num ${a.num}`);
     else nums.add(a.num);
     if (!STATUSES.includes(a.status)) errors.push(`${a.id}: invalid status ${a.status}`);
+    if (!lineKeys.has(a.aspectLine)) errors.push(`${a.id}: unknown aspect line ${a.aspectLine}`);
     if (!Array.isArray(a.waves) || a.waves.length === 0) errors.push(`${a.id}: no wave assigned`);
     for (const w of a.waves ?? []) if (!/^W[1-6]$/.test(w)) errors.push(`${a.id}: invalid wave ${w}`);
     if (!Array.isArray(a.dependsOn)) errors.push(`${a.id}: dependsOn is not an array`);
@@ -80,6 +99,16 @@ export function validateTracker(doc) {
     colour.set(id, 'black');
   };
   for (const a of aspects) visit(a.id);
+
+  // The declared membership list must exactly match each aspect's shared line.
+  for (const [key, line] of lineEntries) {
+    if (!Array.isArray(line?.aspectIds)) continue;
+    const assigned = aspects.filter((a) => a?.aspectLine === key).map((a) => a.id).sort();
+    const declared = [...line.aspectIds].sort();
+    if (JSON.stringify(assigned) !== JSON.stringify(declared)) {
+      errors.push(`${key}: aspectIds do not match assigned aspects`);
+    }
+  }
 
   // Owner hints: a missing path is a warning, not an integrity failure, because
   // the hint may be a directory that has not been created yet.
