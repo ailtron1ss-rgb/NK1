@@ -212,7 +212,8 @@
     "aspect:progress": "node tools/nk1-aspect-progress.mjs",
     "aspect:progress:check": "node tools/nk1-aspect-progress.mjs --check",
     "aspect:progress:json": "node tools/nk1-aspect-progress.mjs --json",
-    "aspect:progress:test": "node --test tools/nk1-aspect-progress.test.mjs"
+    "aspect:progress:test": "node --test tools/nk1-aspect-progress.test.mjs",
+    "neurok-os:admit": "node tools/neurok-os-patch.mjs admit"
   },
   "version": "35.0.0-super-workpass70",
   "packageManager": "npm@10.9.2",
