@@ -1,5 +1,5 @@
 import { useEffect, useId, useState } from "react";
-import type { EmotionLabel, ActionKind } from "@/organism/types";
+import type { EmotionLabel } from "@/organism/types";
 import { readAvatarPreference, writeAvatarPreference } from "@/legacy/avatar/safeLocalStorage";
 import type { MouthPose } from "./avatar/embodimentTimeline";
 import type { AvatarMotorIntentPlan } from "./avatar/motorIntent";
