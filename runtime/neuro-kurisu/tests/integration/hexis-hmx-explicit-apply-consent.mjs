@@ -7,7 +7,7 @@ import path from 'node:path';
 const root = path.resolve(process.cwd());
 const stateDir = await mkdtemp(path.join(tmpdir(), 'nk-hexis-hmx-apply-consent-'));
 const port = 38200 + Math.floor(Math.random() * 1200);
-const env = { ...process.env, HOST: '127.0.0.1', PORT: String(port), STATE_DIR: stateDir };
+const env = { ...process.env, HOST: '127.0.0.1', PORT: String(port), STATE_DIR: stateDir, NK_TEST_DISABLE_AUTORUN: '1' };
 let child = null;
 let output = '';
 const startServer = () => {
