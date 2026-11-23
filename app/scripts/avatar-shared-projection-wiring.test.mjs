@@ -27,6 +27,6 @@ test("Original 2D consumes the supplied plan and does not make a duplicate decis
 test("3D consumes the same plan for head and arm intent while raw action remains the GLB clip selector", () => {
   assert.match(three, /motorPlan: AvatarMotorIntentPlan/);
   assert.match(three, /resolveVrmArmIntent\(p\.motorPlan/);
-  assert.match(three, /headTilt: p\.motorPlan\.headTilt/);
+  assert.match(three, /headTilt:p\.motorPlan\.headTilt/);
   assert.match(three, /applyAvatarAnimationFrame\(\{mixer:rt\.mixer,clips:rt\.clips,action:p\.action/);
 });

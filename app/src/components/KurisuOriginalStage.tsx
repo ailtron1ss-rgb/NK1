@@ -1,5 +1,5 @@
 import { useEffect, useId, useState } from "react";
-import type { EmotionLabel } from "@/organism/types";
+import type { ActionKind, EmotionLabel } from "@/organism/types";
 import { readAvatarPreference, writeAvatarPreference } from "@/legacy/avatar/safeLocalStorage";
 import type { MouthPose } from "./avatar/embodimentTimeline";
 import type { AvatarMotorIntentPlan } from "./avatar/motorIntent";
@@ -98,6 +98,8 @@ export interface KurisuOriginalMotorSignals {
 
 export interface KurisuOriginalStageProps {
   emotion: EmotionLabel;
+  /** Raw organism action remains available for diagnostics; motor behavior comes from motorPlan. */
+  action: ActionKind;
   valence: number;
   arousal: number;
   gazeX: number;
@@ -117,7 +119,7 @@ export interface KurisuOriginalStageProps {
  * organism state and audio-timed mouth signal, and is intended to be the art
  * direction + switchable UI while a production PSD/Cubism rig is authored.
  */
-export function KurisuOriginalStage({ emotion, valence, arousal, gazeX, gazeY, speaking, mouthPose, thinking, motorPlan, motorSignals, bodyChannels }: KurisuOriginalStageProps) {
+export function KurisuOriginalStage({ emotion, action, valence, arousal, gazeX, gazeY, speaking, mouthPose, thinking, motorPlan, motorSignals, bodyChannels }: KurisuOriginalStageProps) {
   // SVG paint-server IDs must be unique when multiple avatar previews are mounted.
   const instanceId = useId().replace(/:/g, "");
   const svgIds = {
@@ -173,7 +175,7 @@ export function KurisuOriginalStage({ emotion, valence, arousal, gazeX, gazeY, s
   const motionDuration = motion === "soft" ? "5.2s" : "3.1s";
 
   return (
-    <div className="relative min-h-[320px] overflow-hidden rounded-xl border border-border bg-[#07131b] md:min-h-[420px]" data-testid="kurisu-original-stage">
+    <div className="relative min-h-[320px] overflow-hidden rounded-xl border border-border bg-[#07131b] md:min-h-[420px]" data-testid="kurisu-original-stage" data-organism-action={action}>
       <style>{`
         @keyframes nk-float { 0%,100% { transform: translateY(0px) } 50% { transform: translateY(-3.5px) } }
         @keyframes nk-hair { 0%,100% { transform: rotate(-.45deg) } 50% { transform: rotate(.65deg) } }

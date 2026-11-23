@@ -18,7 +18,7 @@ test("the 3D body consumes organism emotion, action, arousal/valence, gaze, slee
  const stage=await readFile(stagePath,"utf8"),parent=await readFile(path.join(root,"src/components/AvatarStage.tsx"),"utf8");
  for(const key of ["emotion","arousal","valence","dominance","energy","cognitiveLoad","uncertainty","socialNeed","novelty","goalPressure","curiosity","predictionError","traits","gazeX","gazeY","speaking","mouthPose","thinking","awake","action"])assert.ok(stage.includes(key),"Missing state: "+key);
  for(const key of ["b.head.rotation","b.leftArm.rotation","b.rightArm.rotation","b.mouth.scale","rt.mood.color","rt.mixer"])assert.ok(stage.includes(key),"Missing body response: "+key);
- assert.match(parent,/emotion=\{snap\.emotion\.label\} action=\{snap\.lastOption\}/);assert.match(parent,/arousal=\{snap\.emotion\.arousal\} valence=\{snap\.emotion\.valence\}/);assert.match(parent,/cognitiveLoad=\{snap\.needs\.cognitiveLoad\}/);assert.match(parent,/traits=\{snap\.identity\.traits\}/);assert.match(parent,/predictionError=\{snap\.predictionError\}/);assert.match(parent,/mouthPose=\{mouthPose\} thinking=\{thinking\} awake=\{snap\.awake\}/);
+ assert.match(parent,/emotion=\{snap\.emotion\.label\} action=\{snap\.lastOption\}/);assert.match(parent,/arousal=\{snap\.emotion\.arousal\} valence=\{snap\.emotion\.valence\}/);assert.match(parent,/cognitiveLoad=\{snap\.needs\.cognitiveLoad\}/);assert.match(parent,/traits=\{snap\.identity\.traits\}/);assert.match(parent,/predictionError=\{snap\.predictionError\}/);assert.match(parent,/motorPlan=\{projection\.motorPlan\}/);assert.match(parent,/gazeX=\{projection\.gaze\.x\} gazeY=\{projection\.gaze\.y\}/);assert.match(parent,/mouthPose=\{projection\.mouthPose\} thinking=\{thinking\} awake=\{snap\.awake\}/);
 });
 test("renderer resources and animation loops are disposed and high-DPI rendering is capped",async()=>{
  const stage=await readFile(stagePath,"utf8"),animation=await readFile(path.join(root,"src/components/avatar/avatarAnimationRuntime.ts"),"utf8");assert.match(stage,/setPixelRatio\(Math\.min\(window\.devicePixelRatio\|\|1,2\)\)/);assert.match(stage,/cancelAnimationFrame\(raf\)/);assert.match(stage,/Reset to bind pose before the mixer/);assert.match(stage,/applyAvatarAnimationFrame/);assert.match(stage,/rt\.activeClipAction/);assert.doesNotMatch(stage,/\|\|clips\[0\]\|\|null/);assert.ok(animation.includes("rig[_-]?kurisu"),"semantic rig fallback must remain in the extracted resolver");assert.match(stage,/observer\?\.disconnect\(\)/);assert.match(stage,/renderer\.dispose\(\)/);assert.match(stage,/disposeTree\(rt\.loaded\)/);assert.match(stage,/const gradient=getSharedAnimeGradientTexture\(\);disposeThreeObjectTree\(root,gradient\?\[gradient\]:\[\]\)/);
@@ -40,6 +40,7 @@ test("VRM models use the official Pixiv runtime through the normalized adapter",
  assert.ok(stage.includes("gltf.userData?.vrm"));
  assert.ok(stage.includes("applyVrmExpressionFrame"));
  assert.ok(stage.includes("applyVrmNormalizedMotorFrame"));
+ assert.ok(stage.includes("resolveVrmArmIntent(p.motorPlan"));
  assert.ok(stage.includes("updateVrmForNk1Frame"));
  assert.ok(adapter.includes("expressionManager"));
  assert.ok(adapter.includes("getNormalizedBoneNode"));

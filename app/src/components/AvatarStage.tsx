@@ -573,6 +573,7 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
       <div className="transition-opacity duration-200 ease-out" style={{ opacity: switchOpacity }}>
       {mode === "legacy" ? <LegacySpriteDeck emotion={snap.emotion.label} action={snap.lastOption} thinking={thinking} speaking={projection.speaking || thinking || projection.hasFreshTurn} /> : mode === "original" ? <KurisuOriginalStage
           emotion={snap.emotion.label}
+          action={snap.lastOption}
           valence={snap.emotion.valence}
           arousal={snap.emotion.arousal}
           gazeX={projection.gaze.x}
