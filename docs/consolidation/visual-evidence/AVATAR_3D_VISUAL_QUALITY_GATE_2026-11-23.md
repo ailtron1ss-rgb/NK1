@@ -37,3 +37,8 @@ True 2.5D remains unavailable in the mode selector until the real layered Kurisu
 ## Verification target
 
 Run the existing embodiment-switch workflow on the exact PR head. It executes the 3D stage contract regression, VRM parser/preflight tests, animation/mixer tests, renderer bridge checks, and app typecheck. Browser visual review on the pinned v5 and v7 candidates, plus Android/Termux soak, remains a separate acceptance gate.
+
+
+## Canonical renderer registry correction
+
+The shared capability manifest now classifies the default 3D body as `assetKind: gltf`, `source: remote`, `productionReady: false`. This matches the actual pinned v5 model delivery route (external CloudFront), the open visual-quality decision and the pending redistribution-license review. This flag does not block an explicit development preview or local user import; it prevents the default remote asset from being advertised as a production-ready bundled embodiment. The hidden procedural fixture is also not advanced frame-by-frame while invisible.

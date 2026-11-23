@@ -161,3 +161,9 @@ test("reset hides the procedural body and disposes VRM resources through VRMUtil
  assert.match(stage,/rt\.body\.root\.visible=false/);
  assert.match(stage,/setState\(rt\?"empty":"webgl-unavailable"\)/);
 });
+
+
+test("hidden procedural fixture does not run its per-frame body animation",async()=>{
+ const stage=await readFile(stagePath,"utf8");
+ assert.match(stage,/if\(b\.root\.visible\)\{/);
+});
