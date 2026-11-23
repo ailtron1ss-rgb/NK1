@@ -79,6 +79,17 @@ export class UnifiedCognitiveCycle {
     };
   }
 
+  /**
+   * Preflight the monotonic cycle ledger before a caller appends its completion
+   * evidence. Completion writers use this to avoid partial event traces when a
+   * restored counter has exhausted the safe-integer range.
+   */
+  assertCanAdvance(tick:number):void {
+    if(!Number.isSafeInteger(tick)||tick<0)throw new RangeError('cognitive cycle tick must be a non-negative safe integer');
+    if(tick<=this.state.lastTick)throw new RangeError('cognitive cycle tick must strictly increase');
+    if(this.state.cycles>=Number.MAX_SAFE_INTEGER)throw new RangeError('cognitive cycle counter reached its safe integer limit');
+  }
+
   evaluate(input:{tick:number;stageIds:Partial<Record<UnifiedCycleStage,string|undefined>>;parentIntegrity01:number}):UnifiedCognitiveCycleResult {
     if(input===null||typeof input!=='object')throw new TypeError('cognitive cycle input must be an object');
     if(input.stageIds===null||typeof input.stageIds!=='object'||Array.isArray(input.stageIds))throw new TypeError('stageIds must be an object');
