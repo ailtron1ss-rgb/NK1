@@ -110,6 +110,8 @@ jobs:
         run: npm --prefix runtime/neuro-kurisu run test:workpass310:p23-restore-integrity
       - name: Teacher-student distillation trust, holdout and trainer integration
         run: npm --prefix runtime/neuro-kurisu run test:teacher-student-distillation
+      - name: OmeStro governance and research-boundary regressions
+        run: npm --prefix runtime/neuro-kurisu run test:omestro
       - name: WorkPass313 user model, EILS, and bounded sleep consolidation
         run: npm --prefix runtime/neuro-kurisu run test:p313:user-mind-and-eils
       - name: WorkPass314 verified skill holdout receipt gate
