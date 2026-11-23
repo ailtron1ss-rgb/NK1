@@ -67,14 +67,15 @@
 
 ## Current repository census — 2026-11-23
 
-- Branch refs: **1,095**; unique HEADs: **1,077**; duplicate-tip groups: **3**; excess aliases: **18**.
-- Open PRs: **274**; unique PR heads: **274**; Draft: **209**; Ready: **65**.
-- Prefix distribution: `aspect/*` 274; root refs 268; `fix/*` 180; `work/*` 159; `consolidation/*` 62; `feature/*` 44; `docs/*` 30; `integrate/*` 27; `feat/*` 14; remaining prefixes total 27.
-- Three duplicate-tip groups:
+- Branch refs: **1,097**; unique HEADs: **1,078**; duplicate-tip groups: **4**; excess aliases: **19**.
+- Open PRs: **275**; unique PR heads: **275**; Draft: **210**; Ready: **65**.
+- Prefix distribution: `aspect/*` 274; root refs 268; `fix/*` 180; `work/*` 159; `consolidation/*` 63; `feature/*` 44; `docs/*` 31; `integrate/*` 27; `feat/*` 14; remaining prefixes total 37.
+- Four duplicate-tip groups:
   1. `f9621bf3e4411ce17bc809922a5f90126001f4fd`: `aspect/consequence-ecology-20261117` and `integrate/consequence-calibration-lineage-followup-20261120`.
   2. `68a03799ca0c9f18e4c6e19399ed8018e0215e60`: `aspect/world-forge-integrated-20261117` and `integrate/worldforge-to-sharedfuture-after-calibration-20261120`.
-  3. `82ea7a8b7c9b036e65c8b056acedd1176952dd8f`: 17 legacy/workpass branch refs: `nk1-all-branches-merge-2026-10-23`, `nk1-integration-workspace-2026-10-22`, `rebuild`, `workpass79-cognitive-rebuild`, `workpass116-seed-clustered-learning-eval`, `workpass117-verified-replay-admission`, `workpass118-multi-source-learning-integration`, `workpass119-skill-retrieval-feedback-curriculum`, `workpass120-verified-skill-revision-gate`, `workpass121-ledger-bound-promotion-proposals`, `workpass122-promotion-gate-coverage-hardening`, `workpass123-authenticated-skill-lifecycle`, `workpass124-learning-evidence-hardening`, `workpass135-durable-shadow-run-registry`, `workpass203-independent-candidate-evaluator`, `workpass206-runtime-evaluator-wiring`, `workpass313-actions-history-audit`.
-- All 18 excess duplicate-tip branch names were checked against the full 274-open-PR list; none is the head branch of an open PR. This makes them low-risk alias cleanup candidates, not an unconditional delete list. Retain at least one branch ref per duplicate SHA.
+  3. `4972c2d5228141ef9673be94fca243614d28d9d6`: `consolidation/nk1-ledger-refresh-20261123` and `workpass70-source`. This alias appeared during concurrent work and is excluded from cleanup until the other session is confirmed inactive.
+  4. `82ea7a8b7c9b036e65c8b056acedd1176952dd8f`: 17 legacy/workpass branch refs: `nk1-all-branches-merge-2026-10-23`, `nk1-integration-workspace-2026-10-22`, `rebuild`, `workpass79-cognitive-rebuild`, `workpass116-seed-clustered-learning-eval`, `workpass117-verified-replay-admission`, `workpass118-multi-source-learning-integration`, `workpass119-skill-retrieval-feedback-curriculum`, `workpass120-verified-skill-revision-gate`, `workpass121-ledger-bound-promotion-proposals`, `workpass122-promotion-gate-coverage-hardening`, `workpass123-authenticated-skill-lifecycle`, `workpass124-learning-evidence-hardening`, `workpass135-durable-shadow-run-registry`, `workpass203-independent-candidate-evaluator`, `workpass206-runtime-evaluator-wiring`, `workpass313-actions-history-audit`.
+- All 19 excess duplicate-tip branch names were checked against the full 275-open-PR list; none is the head branch of an open PR. The source-tip alias `consolidation/nk1-ledger-refresh-20261123` may be active in a parallel session and is excluded from cleanup pending confirmation. Retain at least one branch ref per duplicate SHA.
 - Actual branch deletion was not performed in this pass: the connected GitHub tool exposes branch listing/creation/ref updates but no delete-ref action. The available TinyFish browser profile has no recorded signed-in sites. A confirmed authenticated GitHub browser session or equivalent authorized delete-ref capability is required to execute cleanup.
 
 ## File-size and repository constraints
