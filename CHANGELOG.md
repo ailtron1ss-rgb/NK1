@@ -1,3 +1,10 @@
+## [NK1][Docs] Preserve project analysis map and current branch integration ledger (2026-11-23)
+
+- Import the dated NeuroCore project-map and daily engineering-cycle records from the 2026-11-22 documentation branch as historical snapshots.
+- Preserve the full dated branch census, closed-PR reference audit and open-PR census JSONL evidence.
+- Add a refreshed integration ledger with exact merge SHAs, exact-head CI evidence, current branch/PR census, low-risk duplicate-tip candidates and explicit file-size constraints.
+- Do not overwrite current README/AGENTS/Start-Here files with stale checkpoint headers.
+
 ## [NK1][Persistence] Verify HMX explicit apply across server restart (2026-11-22)
 
 - Extend the real-server HMX consent regression to restart against the same durable state directory after an approved import.
