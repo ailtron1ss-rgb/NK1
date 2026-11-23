@@ -87,6 +87,10 @@ jobs:
         run: npm --prefix runtime/neuro-kurisu run test:workpass637:cognitive-spine-runtime
       - name: N.E.K.O. BM25 anti-repeat for proactive initiative selection
         run: npm --prefix runtime/neuro-kurisu run test:neko-social-anti-repeat
+      - name: Evidence-derived autonomous decision receipts and restart restore
+        run: npm --prefix runtime/neuro-kurisu run test:self-motivation:receipts
+      - name: Proactive delivery consent and quiet-hours policy
+        run: npm --prefix runtime/neuro-kurisu run test:self-motivation:delivery-consent
       - name: N.E.K.O. proactive topic-source diversity
         run: npm --prefix runtime/neuro-kurisu run test:neko-social-source-fairness
       - name: Endogenous motivation and goal genesis
