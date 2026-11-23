@@ -89,7 +89,8 @@ test('unknown dependency and dependency cycle are rejected', () => {
 
 test('an unmapped aspect may not claim a canonical owner', () => {
   const bad = clone();
-  const aspect = bad.aspects.find(a => a.ownerStatus === 'unmapped');
+  const aspect = bad.aspects[0];
+  aspect.ownerStatus = 'unmapped';
   aspect.owner = 'runtime/neuro-kurisu/src/organism/core/OrganismCore.ts';
   const result = validateRegistry(bad);
   assert.equal(result.ok, false);
