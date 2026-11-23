@@ -1349,7 +1349,13 @@ export class MemoryOS2{
     const recordedAt=Math.max(at,Number(older.recordedFromAt??older.createdAt)+1);
     this.beginBitemporalRevision(older,recordedAt);
     older.validUntilAt=newerAt;older.supersededById=newer.id;
-    this.recordRevision(older,{at:recordedAt,from:older.epistemicStatus,to:older.epistemicStatus,reason:signal.contextConflict?'implicit-state-conflict-context':'implicit-state-conflict'});newer.supersedesId=older.id;older.contradictionLinks=[...new Set([...(older.contradictionLinks??[]),newer.id])].slice(0,6);newer.contradictionLinks=[...new Set([...(newer.contradictionLinks??[]),older.id])].slice(0,6);this.state.implicitConflictsResolved++;this.state.reconsolidations++;resolved++;
+    this.recordRevision(older,{at:recordedAt,from:older.epistemicStatus,to:older.epistemicStatus,reason:signal.contextConflict?'implicit-state-conflict-context':'implicit-state-conflict'});
+    newer.supersedesId=older.id;
+    const olderBytesBeforeLinks=estimateMemoryBytes(older),newerBytesBeforeLinks=estimateMemoryBytes(newer);
+    older.contradictionLinks=[...new Set([...(older.contradictionLinks??[]),newer.id])].slice(0,6);
+    newer.contradictionLinks=[...new Set([...(newer.contradictionLinks??[]),older.id])].slice(0,6);
+    this.state.estimatedBytes=Math.max(0,this.state.estimatedBytes-olderBytesBeforeLinks-newerBytesBeforeLinks+estimateMemoryBytes(older)+estimateMemoryBytes(newer));
+    this.state.implicitConflictsResolved++;this.state.reconsolidations++;resolved++;
    }
   }
   this.state.implicitConflictCandidates+=candidates;this.state.lastConflictScanAt=at;return {candidates,resolved,at};
@@ -1929,7 +1935,18 @@ export class MemoryOS2{
   if(tracked)this.state.estimatedBytes=Math.max(0,this.state.estimatedBytes-before+estimateMemoryBytes(m));
  }
  revise(id:string,to:EpistemicStatus,reason:string){
-  const m=this.state.items.find(x=>x.id===id);if(!m||m.epistemicStatus===to)return;
+  const requested=this.itemIndex.get(String(id))??this.state.items.find(x=>x.id===id);if(!requested)return;
+  const group=requested.revisionGroupId??requested.id;
+  // A status transition requested by a historical ID applies to the current
+  // revision tip; mutating a superseded parent would move its recordedFromAt
+  // beyond its child and invalidate the persisted supersedes edge on restore.
+  const chain=[...(this.revisionGroupIndex.get(group)??new Set([requested.id]))]
+   .map(itemId=>this.itemIndex.get(itemId)).filter((x):x is MemoryItem2=>Boolean(x));
+  const m=chain.filter(x=>x.validUntilAt==null).sort((a,b)=>
+   Number(b.revisionSequence??1)-Number(a.revisionSequence??1)||
+   Number(b.observedAt??b.createdAt)-Number(a.observedAt??a.createdAt)
+  )[0]??requested;
+  if(m.epistemicStatus===to)return;
   const from=m.epistemicStatus;
   const recordedAt=Math.max(Date.now(),Number(m.recordedFromAt??m.createdAt)+1);
   this.beginBitemporalRevision(m,recordedAt);
@@ -2074,7 +2091,16 @@ export class MemoryOS2{
  }
 
  updateSignals(id:string, patch:Partial<Pick<MemoryItem2,'salience'|'emotionalWeight'|'identityRelevance'|'goalRelevance'|'socialRelevance'|'predictionError'|'confidence'|'dormant'>>, reason='reconsolidation') {
-   const m=this.state.items.find(x=>x.id===id); if(!m) return null;
+   const requested=this.itemIndex.get(String(id))??this.state.items.find(x=>x.id===id);if(!requested)return null;
+   const group=requested.revisionGroupId??requested.id;
+   // Keep signal/context updates on the current revision tip when callers retain
+   // an older ID; otherwise a historical parent can be reopened after its successor.
+   const chain=[...(this.revisionGroupIndex.get(group)??new Set([requested.id]))]
+    .map(itemId=>this.itemIndex.get(itemId)).filter((x):x is MemoryItem2=>Boolean(x));
+   const m=chain.filter(x=>x.validUntilAt==null).sort((a,b)=>
+    Number(b.revisionSequence??1)-Number(a.revisionSequence??1)||
+    Number(b.observedAt??b.createdAt)-Number(a.observedAt??a.createdAt)
+   )[0]??requested;
    const beforeBytes=estimateMemoryBytes(m);
    const fromStatus=m.epistemicStatus;
    const previousBitemporal=this.bitemporalIntervalFor(m);
