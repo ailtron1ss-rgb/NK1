@@ -60,7 +60,7 @@ assert.match(runtimeSource,
   /const matchedProjections = shadowPassAllowed\s*\?\s*matchedCandidates\.map\([\s\S]*?:\s*\[\];/,
   'matched shadow projections must be skipped when shadow is gated');
 
-assert.match(runtimeSource, /const autonomousRecoveryAllowed = !externalText && cycle\\.decision\\.userRequestedAction == null;/, 'risk recovery must not override external/user-requested actions');
+assert.match(runtimeSource, /const autonomousRecoveryAllowed = !externalText && cycle\.decision\.userRequestedAction == null;/, 'risk recovery must not override external/user-requested actions');
 
 console.log('COGNITIVE_RUNTIME_PLANNER_EXECUTION_GATE=PASS', JSON.stringify({
   fallbackSteps: fallback.steps.length,
