@@ -273,6 +273,150 @@ function canonicalExpectedOutputKeys(values:unknown):string[]|null {
   if (!Array.isArray(values)) return null;
   return [...new Set(values.map((value)=>String(value).trim()).filter(Boolean))].sort().slice(0,32);
 }
+
+type ActionLedgerOwnField = { present:boolean; accessor:boolean; value?:unknown };
+
+function actionLedgerOwnField(source:unknown,key:string):ActionLedgerOwnField {
+  if(!source || typeof source!=='object') return {present:false,accessor:false};
+  const descriptor=Object.getOwnPropertyDescriptor(source,key);
+  if(!descriptor) return {present:false,accessor:false};
+  if(!Object.prototype.hasOwnProperty.call(descriptor,'value')) return {present:true,accessor:true};
+  return {present:true,accessor:false,value:descriptor.value};
+}
+
+function actionLedgerIsPlainRecord(value:unknown):value is Record<string,unknown> {
+  if(!value || typeof value!=='object' || Array.isArray(value)) return false;
+  const prototype=Object.getPrototypeOf(value);
+  return prototype===Object.prototype || prototype===null;
+}
+
+function actionLedgerAssertDataRecord(value:unknown,label:string):asserts value is Record<string,unknown> {
+  if(!actionLedgerIsPlainRecord(value)) throw new Error(label+'-not-plain-record');
+  if(Object.getOwnPropertySymbols(value).length) throw new Error(label+'-symbol-key');
+  for(const key of Object.getOwnPropertyNames(value)) {
+    const descriptor=Object.getOwnPropertyDescriptor(value,key);
+    if(!descriptor || !Object.prototype.hasOwnProperty.call(descriptor,'value') || descriptor.enumerable!==true) {
+      throw new Error(label+'-accessor-or-non-enumerable-field');
+    }
+  }
+}
+
+function actionLedgerReadArray(value:unknown,label:string,maxLength:number):unknown[] {
+  if(!Array.isArray(value)) throw new Error(label+'-not-array');
+  if(value.length>maxLength) throw new Error(label+'-limit-exceeded');
+  if(Object.getOwnPropertySymbols(value).length) throw new Error(label+'-symbol-key');
+  const names=Object.getOwnPropertyNames(value);
+  if(names.length!==value.length+1 || !names.includes('length')) throw new Error(label+'-sparse-or-extended-array');
+  const output:unknown[]=[];
+  for(let index=0;index<value.length;index++) {
+    const descriptor=Object.getOwnPropertyDescriptor(value,String(index));
+    if(!descriptor || !Object.prototype.hasOwnProperty.call(descriptor,'value') || descriptor.enumerable!==true) {
+      throw new Error(label+'-accessor-or-sparse-element');
+    }
+    output.push(descriptor.value);
+  }
+  return output;
+}
+
+
+function actionLedgerIsTrustedReceipt(entry:ActionExecutionLedgerEntry,response:Record<string,unknown>):boolean {
+  const identity=actionLedgerOwnField(response,'executionId').value;
+  const tool=actionLedgerOwnField(response,'tool').value;
+  const capability=actionLedgerOwnField(response,'capability').value;
+  const ok=actionLedgerOwnField(response,'ok').value;
+  const verified=actionLedgerOwnField(response,'verified').value;
+  const outcomeClass=actionLedgerOwnField(response,'outcomeClass').value;
+  const result=actionLedgerOwnField(response,'result').value;
+  const audit=actionLedgerOwnField(response,'audit').value;
+  const verification=actionLedgerOwnField(response,'verification').value;
+  if(typeof entry.executionId!=='string' || !/^exec-[a-z0-9-]{8,80}$/i.test(entry.executionId)
+    || typeof entry.toolId!=='string' || !/^[a-z0-9._-]{2,64}$/i.test(entry.toolId)
+    || identity!==entry.executionId || tool!==entry.toolId
+    || typeof capability!=='string' || !capability.trim() || capability.length>120
+    || typeof ok!=='boolean' || typeof verified!=='boolean'
+    || !['unavailable','competence-insufficient','gate-check-failed','policy-refused','execution-failed',
+      'executed-unverified','executed-verified','executed-contradicted','idempotency-conflict',
+      'idempotency-recovery-required','idempotency-storage-failed','idempotency-ledger-full',
+      'failed-no-effect','executed-partial','reconciled-not-executed','idempotency-key-required',
+      'approval-required','approval-invalid','approval-storage-failed'].includes(String(outcomeClass))
+    || !actionLedgerIsPlainRecord(result) || !actionLedgerIsPlainRecord(audit) || !actionLedgerIsPlainRecord(verification)) return false;
+  if(verified && !ok) return false;
+  if(verified!==(outcomeClass==='executed-verified')) return false;
+  const auditExecutionId=actionLedgerOwnField(audit,'executionId').value;
+  const auditTool=actionLedgerOwnField(audit,'tool').value;
+  const auditAction=actionLedgerOwnField(audit,'action').value;
+  const auditAccepted=actionLedgerOwnField(audit,'accepted').value;
+  const auditVerified=actionLedgerOwnField(audit,'verified').value;
+  const auditOutcome=actionLedgerOwnField(audit,'outcomeClass').value;
+  const auditMode=actionLedgerOwnField(audit,'mode').value;
+  const auditAt=actionLedgerOwnField(audit,'at').value;
+  if(auditExecutionId!==entry.executionId || auditTool!==entry.toolId || auditAction!=='tool'
+    || auditAccepted!==ok || auditVerified!==verified || auditOutcome!==outcomeClass
+    || (auditMode!=='live' && auditMode!=='dry-run')
+    || typeof auditAt!=='number' || !Number.isSafeInteger(auditAt) || auditAt<0) return false;
+  const verificationVerified=actionLedgerOwnField(verification,'verified').value;
+  const basis=actionLedgerOwnField(verification,'basis').value;
+  const confidence=actionLedgerOwnField(verification,'confidence01').value;
+  const externalObservation=actionLedgerOwnField(verification,'externalObservation').value;
+  const notes=actionLedgerOwnField(verification,'notes').value;
+  if(verificationVerified!==verified || !['none','tool-contract','external-postcondition'].includes(String(basis))
+    || typeof confidence!=='number' || !Number.isFinite(confidence) || confidence<0 || confidence>1
+    || typeof externalObservation!=='boolean' || typeof notes!=='string') return false;
+  const auditBasis=actionLedgerOwnField(audit,'verificationBasis').value;
+  const auditConfidence=actionLedgerOwnField(audit,'verificationConfidence01').value;
+  if(auditBasis!==basis || auditConfidence!==confidence) return false;
+  return true;
+}
+
+function actionLedgerCloneJson(value:unknown,depth=0,budget:{nodes:number;bytes?:number}={nodes:0,bytes:0},seen=new Set<object>()):unknown {
+  if(depth>32) throw new Error('action-ledger-response-depth-limit');
+  budget.nodes++;
+  if(budget.nodes>16_384) throw new Error('action-ledger-response-node-limit');
+  if(value===null || typeof value==='boolean') return value;
+  if(typeof value==='string') {
+    budget.bytes=(budget.bytes??0)+value.length;
+    if(budget.bytes>32_768) throw new Error('action-ledger-response-byte-limit');
+    return value;
+  }
+  if(typeof value==='number') {
+    if(!Number.isFinite(value)) throw new Error('action-ledger-response-nonfinite-number');
+    return value;
+  }
+  if(value===undefined) return undefined;
+  if(typeof value!=='object') throw new Error('action-ledger-response-non-json-value');
+  if(seen.has(value)) throw new Error('action-ledger-response-circular');
+  seen.add(value);
+  try {
+    if(Array.isArray(value)) {
+      const values=actionLedgerReadArray(value,'action-ledger-response-array',4096);
+      const result:unknown[]=[];
+      for(const item of values) {
+        if(item===undefined) throw new Error('action-ledger-response-array-undefined');
+        result.push(actionLedgerCloneJson(item,depth+1,budget,seen));
+      }
+      return result;
+    }
+    actionLedgerAssertDataRecord(value,'action-ledger-response-object');
+    const result:Record<string,unknown>={};
+    for(const key of Object.keys(value)) {
+      const descriptor=Object.getOwnPropertyDescriptor(value,key);
+      if(!descriptor || !Object.prototype.hasOwnProperty.call(descriptor,'value')) {
+        throw new Error('action-ledger-response-accessor');
+      }
+      budget.bytes=(budget.bytes??0)+key.length;
+      if(budget.bytes>32_768) throw new Error('action-ledger-response-byte-limit');
+      if(descriptor.value===undefined) continue;
+      Object.defineProperty(result,key,{
+        value:actionLedgerCloneJson(descriptor.value,depth+1,budget,seen),
+        enumerable:true,writable:true,configurable:true,
+      });
+    }
+    return result;
+  } finally {
+    seen.delete(value);
+  }
+}
+
 export class ActionGateway {
   private readonly live:boolean;
   private readonly allowed:Set<ActionKind>;
@@ -471,38 +615,188 @@ export class ActionGateway {
 
 
   restoreExecutionLedger(snapshot:unknown):void {
-    const raw=snapshot && typeof snapshot==='object' ? snapshot as Partial<ActionExecutionLedgerSnapshot> : {};
-    const rows=Array.isArray(raw.records)?raw.records:[];
+    // The live ledger is an idempotency safety boundary: a malformed snapshot must
+    // never silently erase a receipt and allow a possibly repeated side effect.
+    actionLedgerAssertDataRecord(snapshot,'action-ledger-snapshot');
+    const versionField=actionLedgerOwnField(snapshot,'version');
+    if(versionField.present && versionField.value!==1) throw new Error('action-ledger-snapshot-version-unsupported');
+    const recordsField=actionLedgerOwnField(snapshot,'records');
+    if(!recordsField.present) throw new Error('action-ledger-snapshot-records-missing');
+    if(!Array.isArray(recordsField.value)) throw new Error('action-ledger-snapshot-records-invalid');
+    const rows=actionLedgerReadArray(recordsField.value,'action-ledger-snapshot-records',4096);
     const restored=new Map<string,ActionExecutionLedgerEntry>();
     for(const value of rows) {
-      if(!value || typeof value!=='object') continue;
-      const row=value as ActionExecutionLedgerEntry;
-      if(!/^[a-f0-9]{64}$/i.test(String(row.keyHash??'')) || !/^[a-f0-9]{64}$/i.test(String(row.requestHash??''))) continue;
-      if(row.status!=='pending' && row.status!=='completed') continue;
-      const recordedAt=Number(row.recordedAt); if(!Number.isFinite(recordedAt)||recordedAt<0) continue;
-      const safe:ActionExecutionLedgerEntry={keyHash:row.keyHash.toLowerCase(),requestHash:row.requestHash.toLowerCase(),status:row.status,recordedAt,
-        ...(typeof row.executionId==='string'&&/^exec-[a-z0-9-]{8,80}$/i.test(row.executionId)?{executionId:row.executionId}:{}),
-        ...(typeof row.toolId==='string'&&row.toolId.length<=64?{toolId:row.toolId}:{}),
-        ...(typeof row.decisionId==='string'&&row.decisionId.length<=180?{decisionId:row.decisionId}:{}),
-        ...(typeof row.autonomous==='boolean'?{autonomous:row.autonomous}:{})};
-      if(row.status==='completed' && row.response && typeof row.response==='object') {
-        try { safe.response=structuredClone(row.response); } catch { safe.responseOmitted=true; }
-      } else if(row.status==='completed') safe.responseOmitted=true;
+      actionLedgerAssertDataRecord(value,'action-ledger-record');
+      const keyHashField=actionLedgerOwnField(value,'keyHash');
+      const requestHashField=actionLedgerOwnField(value,'requestHash');
+      const statusField=actionLedgerOwnField(value,'status');
+      const recordedAtField=actionLedgerOwnField(value,'recordedAt');
+      if(keyHashField.accessor || requestHashField.accessor || statusField.accessor || recordedAtField.accessor) {
+        throw new Error('action-ledger-record-accessor');
+      }
+      const keyHash=keyHashField.value;
+      const requestHash=requestHashField.value;
+      const status=statusField.value;
+      const recordedAt=recordedAtField.value;
+      if(!keyHashField.present || typeof keyHash!=='string' || !/^[a-f0-9]{64}$/i.test(keyHash)
+        || !requestHashField.present || typeof requestHash!=='string' || !/^[a-f0-9]{64}$/i.test(requestHash)
+        || (status!=='pending' && status!=='completed')
+        || !recordedAtField.present || typeof recordedAt!=='number' || !Number.isSafeInteger(recordedAt) || recordedAt<0) {
+        throw new Error('action-ledger-record-invalid-identity');
+      }
+      const safe:ActionExecutionLedgerEntry={
+        keyHash:keyHash.toLowerCase(),requestHash:requestHash.toLowerCase(),
+        status,recordedAt,
+      };
+      for(const fieldName of ['executionId','toolId','decisionId','autonomous','response','responseOmitted'] as const) {
+        const field=actionLedgerOwnField(value,fieldName);
+        if(field.accessor) throw new Error('action-ledger-record-accessor');
+      }
+      const executionId=actionLedgerOwnField(value,'executionId').value;
+      const toolId=actionLedgerOwnField(value,'toolId').value;
+      const decisionId=actionLedgerOwnField(value,'decisionId').value;
+      const autonomous=actionLedgerOwnField(value,'autonomous').value;
+      if(typeof executionId==='string' && /^exec-[a-z0-9-]{8,80}$/i.test(executionId)) safe.executionId=executionId;
+      if(typeof toolId==='string' && /^[a-z0-9._-]{2,64}$/i.test(toolId)) safe.toolId=toolId;
+      if(typeof decisionId==='string' && decisionId.length>0 && decisionId.length<=180 && !/[\u0000-\u001f\u007f]/.test(decisionId)) safe.decisionId=decisionId;
+      if(typeof autonomous==='boolean') safe.autonomous=autonomous;
+      if(status==='completed') {
+        const responseOmittedField=actionLedgerOwnField(value,'responseOmitted');
+        const responseOmitted=responseOmittedField.present && responseOmittedField.value!==false;
+        const responseField=actionLedgerOwnField(value,'response');
+        if(responseOmitted) {
+          safe.responseOmitted=true;
+        } else if(responseField.present && !responseField.accessor && actionLedgerIsPlainRecord(responseField.value)) {
+          try {
+            const response=actionLedgerCloneJson(responseField.value);
+            if(actionLedgerIsPlainRecord(response) && actionLedgerIsTrustedReceipt(safe,response)) {
+              safe.response=response as unknown as ToolExecution;
+            } else safe.responseOmitted=true;
+          } catch {
+            // Keep the key as a completed tombstone; never re-run an opaque receipt.
+            safe.responseOmitted=true;
+          }
+        } else {
+          safe.responseOmitted=true;
+        }
+      }
       const prior=restored.get(safe.keyHash);
-      if(prior && (prior.requestHash!==safe.requestHash || stableJson(prior)!==stableJson(safe))) throw new Error('action-ledger-snapshot-key-conflict');
+      if(prior && (prior.requestHash!==safe.requestHash || stableJson(prior)!==stableJson(safe))) {
+        throw new Error('action-ledger-snapshot-key-conflict');
+      }
       restored.set(safe.keyHash,safe);
     }
+
+    const permissionsField=actionLedgerOwnField(snapshot,'permissions');
+    if(permissionsField.accessor) throw new Error('action-ledger-snapshot-accessor:permissions');
+    let permissions:Record<string,unknown>|undefined;
+    if(permissionsField.present) {
+      actionLedgerAssertDataRecord(permissionsField.value,'action-ledger-permissions');
+      permissions=permissionsField.value;
+      const permissionVersion=actionLedgerOwnField(permissions,'version');
+      if(permissionVersion.present && permissionVersion.value!==1) throw new Error('action-ledger-permissions-version-unsupported');
+    }
+
+    const requestsField=permissions ? actionLedgerOwnField(permissions,'requests') : {present:false,accessor:false} as ActionLedgerOwnField;
+    if(requestsField.accessor) throw new Error('action-ledger-permissions-accessor:requests');
+    if(requestsField.present && !Array.isArray(requestsField.value)) throw new Error('action-ledger-permissions-requests-invalid');
+    const requestRows=requestsField.present
+      ? actionLedgerReadArray(requestsField.value,'action-ledger-permissions-requests',4096)
+      : [];
+    const cleanRequests:Array<ActionToolApprovalRecord>=[];
+    const validClasses=['web','device','filesystem','code','system','self-modification'];
+    const validOperations=['execute','reconcile','direct'];
+    const validStatuses=['pending','approved','declined','consumed','expired'];
+    for(const item of requestRows.slice(-128)) {
+      if(!actionLedgerIsPlainRecord(item)) continue;
+      try { actionLedgerAssertDataRecord(item,'action-ledger-approval'); } catch { continue; }
+      const approvalId=actionLedgerOwnField(item,'id').value;
+      const toolId=actionLedgerOwnField(item,'toolId').value;
+      const permissionClass=actionLedgerOwnField(item,'permissionClass').value;
+      const operation=actionLedgerOwnField(item,'operation').value;
+      const requestHash=actionLedgerOwnField(item,'requestHash').value;
+      const status=actionLedgerOwnField(item,'status').value;
+      const createdAt=actionLedgerOwnField(item,'createdAt').value;
+      const expiresAt=actionLedgerOwnField(item,'expiresAt').value;
+      if(typeof approvalId!=='string' || !/^approval-[a-z0-9-]{8,100}$/i.test(approvalId)
+        || typeof toolId!=='string' || !/^[a-z0-9._-]{2,64}$/i.test(toolId)
+        || typeof permissionClass!=='string' || !validClasses.includes(permissionClass)
+        || typeof operation!=='string' || !validOperations.includes(operation)
+        || typeof status!=='string' || !validStatuses.includes(status)
+        || typeof requestHash!=='string' || !/^[a-f0-9]{64}$/i.test(requestHash)
+        || typeof createdAt!=='number' || !Number.isSafeInteger(createdAt) || createdAt<0
+        || typeof expiresAt!=='number' || !Number.isSafeInteger(expiresAt) || expiresAt<createdAt
+        || expiresAt-createdAt>5*60_000+1000) continue;
+      const inputKeysField=actionLedgerOwnField(item,'inputKeys');
+      let inputKeys:string[]=[];
+      if(inputKeysField.present && !inputKeysField.accessor && Array.isArray(inputKeysField.value)) {
+        try {
+          inputKeys=actionLedgerReadArray(inputKeysField.value,'action-ledger-approval-input-keys',256)
+            .filter((entry):entry is string=>typeof entry==='string').slice(0,24).map(entry=>entry.slice(0,80));
+        } catch { inputKeys=[]; }
+      }
+      const inputPreviewField=actionLedgerOwnField(item,'inputPreview');
+      let inputPreview:Record<string,unknown>={};
+      if(inputPreviewField.present && !inputPreviewField.accessor && actionLedgerIsPlainRecord(inputPreviewField.value)) {
+        try {
+          const cloned=actionLedgerCloneJson(inputPreviewField.value,0,{nodes:0});
+          if(actionLedgerIsPlainRecord(cloned)) inputPreview=cloned;
+        } catch { inputPreview={}; }
+      }
+      const record:ActionToolApprovalRecord={
+        id:approvalId,toolId,permissionClass:permissionClass as ActionToolPermissionClass,
+        operation:operation as ActionToolApprovalOperation,requestHash:requestHash.toLowerCase(),
+        status:status as ActionToolApprovalStatus,createdAt,expiresAt,
+        reasonCode:typeof actionLedgerOwnField(item,'reasonCode').value==='string'?(actionLedgerOwnField(item,'reasonCode').value as string).replace(/[\r\n\t]+/g,' ').slice(0,120):'restored-approval',
+        inputKeys,inputPreview,autonomous:typeof actionLedgerOwnField(item,'autonomous').value==='boolean'?(actionLedgerOwnField(item,'autonomous').value as boolean):false,
+      };
+      const resolvedAt=actionLedgerOwnField(item,'resolvedAt').value;
+      if(typeof resolvedAt==='number' && Number.isSafeInteger(resolvedAt) && resolvedAt>=0) record.resolvedAt=resolvedAt;
+      const consumedAt=actionLedgerOwnField(item,'consumedAt').value;
+      if(typeof consumedAt==='number' && Number.isSafeInteger(consumedAt) && consumedAt>=0) record.consumedAt=consumedAt;
+      const actor=actionLedgerOwnField(item,'actor').value;
+      if(typeof actor==='string') record.actor=actor.slice(0,40);
+      const decisionId=actionLedgerOwnField(item,'decisionId').value;
+      if(typeof decisionId==='string' && decisionId.length>0 && decisionId.length<=180 && !/[\u0000-\u001f\u007f]/.test(decisionId)) record.decisionId=decisionId;
+      cleanRequests.push(record);
+    }
+
+    const counter=(name:string,fallback:number):number=>{
+      if(!permissions) return fallback;
+      const field=actionLedgerOwnField(permissions,name);
+      if(field.accessor) throw new Error('action-ledger-permissions-accessor:'+name);
+      if(!field.present) return fallback;
+      if(typeof field.value!=='number' || !Number.isSafeInteger(field.value) || field.value<0) {
+        throw new Error('action-ledger-permissions-counter-invalid:'+name);
+      }
+      return field.value;
+    };
+    const nextPermissions:ActionToolPermissionSnapshot={
+      version:1,requests:cleanRequests,
+      created:counter('created',cleanRequests.length),
+      approved:counter('approved',0),
+      declined:counter('declined',0),
+      consumed:counter('consumed',0),
+      expired:counter('expired',0),
+      lastChangeAt:counter('lastChangeAt',0),
+    };
+    const expirationTime=Date.now();
+    let expiredChanged=false;
+    for(const row of nextPermissions.requests) {
+      if((row.status==='pending'||row.status==='approved') && row.expiresAt<=expirationTime) {
+        row.status='expired';
+        if(nextPermissions.expired>=Number.MAX_SAFE_INTEGER) throw new Error('action-ledger-permissions-counter-exhausted:expired');
+        nextPermissions.expired++;
+        expiredChanged=true;
+      }
+    }
+    if(expiredChanged) nextPermissions.lastChangeAt=expirationTime;
+
+    // Commit only after both the execution receipt ledger and approval state have
+    // been fully validated and detached into new local collections.
     this.executionLedger.clear();
     for(const row of [...restored.values()].sort((a,b)=>a.recordedAt-b.recordedAt)) this.executionLedger.set(row.keyHash,row);
-    const permissions=raw.permissions as Partial<ActionToolPermissionSnapshot>|undefined;
-    const cleanRequests:Array<ActionToolApprovalRecord>=[];
-    if(Array.isArray(permissions?.requests)) for(const item of permissions!.requests.slice(-128)) {
-      if(!item||typeof item!=='object'||typeof item.id!=='string'||!item.id.startsWith('approval-')||!['web','device','filesystem','code','system','self-modification'].includes(item.permissionClass)||!['execute','reconcile','direct'].includes(item.operation)||!['pending','approved','declined','consumed','expired'].includes(item.status)||!/^[a-f0-9]{64}$/i.test(String(item.requestHash??''))) continue;
-      const createdAt=Number(item.createdAt),expiresAt=Number(item.expiresAt); if(!Number.isFinite(createdAt)||!Number.isFinite(expiresAt)||expiresAt<createdAt||expiresAt-createdAt>5*60_000+1000) continue;
-      cleanRequests.push({...structuredClone(item),requestHash:item.requestHash.toLowerCase(),createdAt,expiresAt,inputKeys:Array.isArray(item.inputKeys)?item.inputKeys.slice(0,24).map(x=>String(x).slice(0,80)):[],inputPreview:item.inputPreview&&typeof item.inputPreview==='object'?structuredClone(item.inputPreview):{},autonomous:Boolean(item.autonomous)});
-    }
-    this.permissionState={version:1,requests:cleanRequests,created:Math.max(0,Math.floor(Number(permissions?.created??cleanRequests.length))),approved:Math.max(0,Math.floor(Number(permissions?.approved??0))),declined:Math.max(0,Math.floor(Number(permissions?.declined??0))),consumed:Math.max(0,Math.floor(Number(permissions?.consumed??0))),expired:Math.max(0,Math.floor(Number(permissions?.expired??0))),lastChangeAt:Math.max(0,Number(permissions?.lastChangeAt??0))};
-    this.expirePermissionRequests();
+    this.permissionState=nextPermissions;
   }
 
   authorize(action:ActionKind,reason:string):ActionAuditRecord {

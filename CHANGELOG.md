@@ -1,3 +1,17 @@
+# WorkPass368 — atomic, non-coercive ActionGateway ledger restore (2026-10-26)
+
+- [FIXED] Validate root schema and own data descriptors before reading persisted execution receipts or approval state; present unsupported versions and malformed present fields now fail before mutation.
+- [FIXED] Require the durable `records` array even for legacy snapshots without an explicit version; a truncated `{}`/`{version:1}` snapshot can no longer clear the in-memory idempotency ledger.
+- [FIXED] Reject malformed execution identity rows rather than silently dropping an idempotency key that may correspond to a side effect already accepted by a provider.
+- [HARDENED] Clone completed response data with bounded depth/node/array budgets, plain-object/data-descriptor checks, cycle rejection and no getter invocation. Opaque response data becomes a durable completed tombstone, not a replayable success.
+- [ATOMICITY] Build the next receipt map and sanitized approval state locally; commit both only after validation and expiration processing succeeds.
+- [SAFETY] Preserve a persisted `responseOmitted` marker even when a stale response body is also present; retry remains `idempotency-recovery-required` and never calls the executor again.
+- [REGRESSION] Add `tests/workpass368-action-ledger-restore-boundary.mjs` covering legacy compatibility, schema/version rejection, root/row/permission accessors, bad counters, opaque nested response data, omission tombstones, and no duplicate execution.
+- [CI] The focused WorkPass368 suite passed after isolating its executor-count baseline. The chained WorkPass95 regression then exposed a real defect: restored response payloads were not cross-checked against the durable execution identity and audit/verification evidence, and oversized strings were not byte-budgeted. Added identity/evidence consistency checks plus a cumulative 32 KiB string/key budget; exact-head validation is pending.
+- [RELEASE] `main` and the published Release ZIP remain unchanged.
+
+---
+
 # WorkPass367 — verify trusted receipt lineage before promotion (2026-10-26)
 
 - [HARDENED] `hasToolReceiptTrace()` no longer treats three stage names as sufficient evidence: it checks canonical lookup identity, same execution ID/tool, valid causal parent edges, typed outcome/evidence metadata and the event-bound projection fingerprint.
