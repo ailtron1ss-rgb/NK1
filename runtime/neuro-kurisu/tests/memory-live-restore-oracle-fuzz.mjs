@@ -91,7 +91,7 @@ function assertOracle(label, memory) {
   assert.equal(
     restoredSnapshot.estimatedBytes,
     liveSnapshot.estimatedBytes,
-    `${label}: live and reloaded durable byte budgets must agree (no accounting drift): ${JSON.stringify({ liveAccounting, liveBytes: liveSnapshot.estimatedBytes, restoredBytes: restoredSnapshot.estimatedBytes, shapeDiffs })}`,
+    `${label}: live and reloaded durable byte budgets must agree (no accounting drift): ${JSON.stringify({ liveAccounting, liveBytes: liveSnapshot.estimatedBytes, restoredBytes: restoredSnapshot.estimatedBytes, byteDiffSummary })}`,
   );
   assert.equal(reloaded.size(), memory.size(), `${label}: reload must preserve the item count`);
 }
