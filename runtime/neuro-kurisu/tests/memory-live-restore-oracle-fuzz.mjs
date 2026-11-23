@@ -102,8 +102,16 @@ function assertOracle(label, memory) {
       const liveEstimate = estimateProjectionBytes(item);
       const restoredEstimate = estimateProjectionBytes(restored);
       const delta = restoredEstimate - liveEstimate;
+      const revisionState = (row) => ({
+        group: row.revisionGroupId, sequence: row.revisionSequence,
+        supersedesId: row.supersedesId ?? null, supersededById: row.supersededById ?? null,
+        validFromAt: row.validFromAt, validUntilAt: row.validUntilAt ?? null,
+        recordedFromAt: row.recordedFromAt, recordedUntilAt: row.recordedUntilAt ?? null,
+        integrityIssues: row.revisionIntegrityIssues ?? [],
+      });
       return delta !== 0 || changedKeys.length
-        ? { id: item.id, liveEstimate, restoredEstimate, delta, changedKeys, projectionFieldDiffs }
+        ? { id: item.id, liveEstimate, restoredEstimate, delta, changedKeys, projectionFieldDiffs,
+            liveRevision: revisionState(item), restoredRevision: revisionState(restored) }
         : null;
     }).filter(Boolean).sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta));
     console.log('MEMORY_FUZZ_BYTE_DIAGNOSTICS=', JSON.stringify({
