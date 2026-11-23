@@ -9,7 +9,7 @@
 
 ## Result
 
-<badge>15/15 GitHub checks passed</badge>
+**15/15 GitHub checks passed.**
 
 All 15 exact-head check runs completed with `success`; there were no failed or pending checks at the time of this record.
 
