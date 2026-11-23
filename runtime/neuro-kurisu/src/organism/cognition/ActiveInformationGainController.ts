@@ -128,7 +128,9 @@ export class ActiveInformationGainController {
     const best=candidates.slice().sort((a,b)=>(b.info*.62+b.utility*.38)-(a.info*.62+a.utility*.38))[0]!;
     // Let novelty and prediction error reopen exploration after successful outcomes have driven action uncertainty low.
     // Keep the independent resource and risk ceilings strict; only the evidence-score threshold is calibrated.
-    const shouldExperiment=clamp(best.info*.72+novelty*.10+predictionError*.10+(1-grounding)*.08)>.45&&computeBudget>.24&&risk<.82;
+    const experimentNeed=clamp(best.info*.72+novelty*.10+predictionError*.10+(1-grounding)*.08);
+    // Preserve hard compute-budget and risk ceilings while reopening bounded exploration after uncertainty decays.
+    const shouldExperiment=experimentNeed>.34&&computeBudget>.24&&risk<.82;
     const selected=shouldExperiment?best.a:null;
     const rawQuery=typeof i.externalQuery==='string'?i.externalQuery.normalize('NFKC').trim().slice(0,160):'';
     const hId=rawQuery||'action:'+best.a;
