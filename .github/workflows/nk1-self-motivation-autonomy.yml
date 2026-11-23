@@ -44,6 +44,8 @@ jobs:
       - name: Verify evidence-derived receipts on real Core cycles
         run: npm --prefix runtime/neuro-kurisu run test:self-motivation:receipts
       - name: Verify proactive-delivery consent and quiet-hours boundary
+        if: always()
         run: npm --prefix runtime/neuro-kurisu run test:self-motivation:delivery-consent
       - name: Runtime typecheck
+        if: always()
         run: npm --prefix runtime/neuro-kurisu run typecheck
