@@ -6,6 +6,8 @@ import { existsSync as fsExistsSync, statSync as fsStatSync, readdirSync as fsRe
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { OrganismRuntime } from '../organism/core/OrganismRuntime.ts';
+import { NmcNLocalHttpPort } from '../organism/integration/nmcn/NmcNLocalHttpPort.ts';
+import { buildNmcNRuntimeInput, evaluateNmcNRuntime } from '../organism/integration/nmcn/NmcNRuntimeBridge.ts';
 import { Mem0PlatformAdapter } from '../organism/integration/mem0/Mem0PlatformAdapter.ts';
 import { P23LearningEngine } from '../organism/learning/P23LearningEngine.ts';
 import { generateLocalSkillRevision } from '../organism/learning/P23LocalModelSkillRevisionGenerator.ts';
@@ -356,12 +358,32 @@ async function invokeLanguage(request) {
     }
     return { ...response, preferredBackend, latencyMs: finishedAt - started };
 }
+const NMCN_SIDECAR_URL = process.env.NK1_NMCN_SIDECAR_URL?.trim() ?? '';
+const NMCN_SIDECAR_TIMEOUT_MS = Number(process.env.NK1_NMCN_SIDECAR_TIMEOUT_MS ?? 80);
+let NMCN_RUNTIME_PORT = null;
+if (NMCN_SIDECAR_URL) {
+    try {
+        NMCN_RUNTIME_PORT = new NmcNLocalHttpPort(NMCN_SIDECAR_URL);
+    } catch (error) {
+        console.warn(`[NMCN] optional sidecar disabled: ${String(error).slice(0, 160)}`);
+    }
+}
+const NMCN_RUNTIME_ADVISOR = NMCN_RUNTIME_PORT ? {
+    async evaluate(source, options = {}) {
+        try {
+            return await evaluateNmcNRuntime(NMCN_RUNTIME_PORT, buildNmcNRuntimeInput(source), options);
+        } catch {
+            return null;
+        }
+    },
+} : null;
 const runtime = new OrganismRuntime({
     stateFile,
     worldStateFile: worldFile,
     enableLanguage: true,
     visionBackend: VISION_BACKEND,
     languageInvoker: invokeLanguage,
+    ...(NMCN_RUNTIME_ADVISOR ? { nmcnRuntime: NMCN_RUNTIME_ADVISOR, nmcnTimeoutMs: NMCN_SIDECAR_TIMEOUT_MS } : {}),
     ...(P25_EXECUTOR_ENABLED ? {
         synapticBaseModelId: P25_BASE_MODEL_ID,
         synapticBaseModelRevisionSha256: P25_BASE_MODEL_SHA256,

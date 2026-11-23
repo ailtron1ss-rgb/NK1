@@ -1,3 +1,10 @@
+## [NK1][NMCN] Add optional loopback-only numeric compute advisor (2026-11-23)
+
+- Add an opt-in host-injected NMCN 0.4.x adapter that receives a bounded numeric cycle projection and may request extra language deliberation only when canonical policy and budget allow.
+- Keep NMCN outside OrganismRuntime's runtime import graph; the server composition root owns the loopback transport and payload builder.
+- Keep the sidecar advisory-only: no raw text, memory writes, tool/action dispatch, world mutation, or provider authority.
+- Add a loopback-only Python sidecar with bounded requests, strict schema validation and three-generation auxiliary checkpoints.
+
 ## [NK1][Cognition] Expose the standalone resource-routing regression (2026-11-23)
 
 - Add `npm run test:cognitive-frame-resource-routing` for the existing WorkPass330 regression.
