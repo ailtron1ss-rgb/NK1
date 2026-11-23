@@ -126,7 +126,12 @@ export class ActiveInformationGainController {
       return {a,info:clamp(info-budgetPenalty),utility:clamp(utility-riskPenalty)};
     });
     const best=candidates.slice().sort((a,b)=>(b.info*.62+b.utility*.38)-(a.info*.62+a.utility*.38))[0]!;
-    const shouldExperiment=clamp(best.info*.72+novelty*.10+predictionError*.10+(1-grounding)*.08)>.48&&computeBudget>.24&&risk<.82;
+    const experimentNeed=clamp(best.info*.72+novelty*.10+predictionError*.10+(1-grounding)*.08);
+    // The old .48 gate starved the integrated controller: after repeated verified
+    // outcomes, action uncertainty decayed and realistic high-surprise windows never
+    // crossed the threshold. Keep budget and risk gates hard, but let moderate
+    // uncertainty/novelty trigger bounded experiments again.
+    const shouldExperiment=experimentNeed>.34&&computeBudget>.24&&risk<.82;
     const selected=shouldExperiment?best.a:null;
     const rawQuery=typeof i.externalQuery==='string'?i.externalQuery.normalize('NFKC').trim().slice(0,160):'';
     const hId=rawQuery||'action:'+best.a;
