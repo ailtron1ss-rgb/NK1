@@ -271,7 +271,7 @@ export class WorldForge {
   generateAdversarialRuntimeScenarios(input:unknown):WorldForgeCase[] {
     const request=normalizeAdversarialInput(input);
     if(!request)return[];
-    const candidateCount=Math.min(this.maxCases,request.count*request.candidateMultiplier);
+    const candidateCount=Math.min(this.maxCases,request.count*(request.candidateMultiplier ?? 2));
     const candidates=this.generate({split:'train',seed:request.seed,count:candidateCount,difficulty01:request.difficulty01});
     const focusKind=request.focus==='balanced'?null:request.focus;
     const ranked=candidates.map(scenario=>{
