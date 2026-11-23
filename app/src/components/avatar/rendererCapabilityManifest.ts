@@ -21,7 +21,7 @@ export interface BodyRendererCapabilityManifest {
   mode: EmbodimentMode;
   assetKind: AvatarAssetKind;
   /** Honest source of the body, e.g. "bundled" or "user-import". */
-  source: "bundled" | "user-import" | "procedural" | "none";
+  source: "bundled" | "remote" | "user-import" | "procedural" | "none";
   /** Whether a real, selectable body exists. A placeholder must set this false. */
   productionReady: boolean;
   channels: readonly BodyChannel[];
@@ -45,7 +45,7 @@ const ASSET_KINDS: ReadonlySet<AvatarAssetKind> = new Set([
   "none", "sprite-sheet", "svg-vector", "cubism-model", "layered-depth-rig", "gltf", "vrm",
 ]);
 const SOURCES: ReadonlySet<BodyRendererCapabilityManifest["source"]> = new Set([
-  "bundled", "user-import", "procedural", "none",
+  "bundled", "remote", "user-import", "procedural", "none",
 ]);
 const BODY_CHANNELS: ReadonlySet<BodyChannel> = new Set([
   "headYaw", "headPitch", "headRoll", "torsoYaw", "torsoPitch",
