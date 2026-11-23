@@ -1,0 +1,35 @@
+name: NK1 Memory explicit-ID integrity
+
+on:
+  pull_request:
+    branches: [workpass70-source]
+    paths:
+      - "runtime/neuro-kurisu/src/organism/developmental/MemoryOS2.ts"
+      - "runtime/neuro-kurisu/tests/memory-duplicate-id-write-guard.mjs"
+      - ".github/workflows/nk1-memory-id-integrity.yml"
+  push:
+    branches: [aspect/memory-write-id-integrity-20261123]
+    paths:
+      - "runtime/neuro-kurisu/src/organism/developmental/MemoryOS2.ts"
+      - "runtime/neuro-kurisu/tests/memory-duplicate-id-write-guard.mjs"
+      - ".github/workflows/nk1-memory-id-integrity.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nk1-memory-id-integrity-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  explicit-id-write-guard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+      - name: Verify explicit IDs remain unique through write and restore
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/memory-duplicate-id-write-guard.mjs
