@@ -71,6 +71,9 @@ import { DevelopmentalForks, defaultDevelopmentalForks } from '../developmental/
 import { RelationshipSelf, defaultRelationshipSelf } from '../developmental/RelationshipSelf.ts';
 import { MultiHypothesisPersonality, defaultMultiHypothesisPersonality } from '../developmental/MultiHypothesisPersonality.ts';
 import { FutureSimulator, defaultFutureSimulator } from '../developmental/FutureSimulator.ts';
+import { registerSharedFutureTools } from '../developmental/SharedFutureEngine.ts';
+import { registerWorldForgeTools } from '../developmental/WorldForgeTools.ts';
+import { registerConsequenceEcologyTools } from '../developmental/ConsequenceEcologyTools.ts';
 import { LongTermSocialMind, defaultLongTermSocialMind } from '../developmental/LongTermSocialMind.ts';
 import { FutureSelfModel, defaultFutureSelf } from '../cognition/evolution/FutureSelfModel.ts';
 import { SocialDevelopmentSystem, defaultSocialDevelopment } from '../developmental/SocialDevelopmentSystem.ts';
@@ -183,6 +186,8 @@ export class CognitiveRuntimeCluster {
     p64IntegratedOrganismDynamics: P64IntegratedOrganismDynamics;
     endogenousGoalGenesisB272: B272EndogenousGoalGenesis;
     omeStroDependencies: Required<Omit<OmeStroKernelDependencies, 'cognitiveImmune'>>;
+    resolveCanonicalGoal?: (goalId: string) => boolean;
+    resolveCanonicalDecision?: (decisionId: string) => boolean;
   }) {
     this.intrinsicMotivationGoalCoupling = new IntrinsicMotivationGoalCoupling(
       this.intrinsicMotivation,
@@ -191,5 +196,8 @@ export class CognitiveRuntimeCluster {
     this.cognitiveKernelCoordinator = new CognitiveKernelCoordinator(input.p61IntegratedMind, input.p64IntegratedOrganismDynamics);
     this.cognitiveSubsystemRegistry = new CognitiveSubsystemRegistry(input.organismSystems);
     this.omeStroIntegration = new OmeStroIntegrationKernel({ ...input.omeStroDependencies, cognitiveImmune: this.cognitiveImmune });
+    registerSharedFutureTools(this.actionGateway, this.futureSimulator, input.resolveCanonicalGoal, input.resolveCanonicalDecision);
+    registerWorldForgeTools(this.actionGateway, this.futureSimulator);
+    registerConsequenceEcologyTools(this.actionGateway, this.futureSimulator);
   }
 }
