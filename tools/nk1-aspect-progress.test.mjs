@@ -55,6 +55,13 @@ function baseDoc() {
   };
 }
 
+test('an unknown aspect line is an integrity error', () => {
+  const doc = baseDoc();
+  doc.aspects[0].aspectLine = 'missing-line';
+  const { errors } = validateTracker(doc);
+  assert.ok(errors.some((e) => e.includes('A01') && e.includes('unknown aspect line')), errors.join('; '));
+});
+
 test('a PASS aspect with no evidence is an integrity error', () => {
   const doc = baseDoc();
   doc.aspects[0].status = 'PASS';

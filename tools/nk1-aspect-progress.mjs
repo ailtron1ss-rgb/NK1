@@ -39,7 +39,7 @@ export function validateTracker(doc) {
   const lineEntries = aspectLines && typeof aspectLines === 'object' && !Array.isArray(aspectLines)
     ? Object.entries(aspectLines)
     : [];
-  if (lineEntries.length !== 10) errors.push(`expected 10 shared aspect lines, found ${lineEntries.length}`);
+  if (lineEntries.length === 0 || lineEntries.length > 10) errors.push(`expected 1-10 shared aspect lines, found ${lineEntries.length}`);
   const lineKeys = new Set(lineEntries.map(([key]) => key));
   const lineBranches = new Set();
   for (const [key, line] of lineEntries) {
