@@ -1,6 +1,6 @@
 # Neuro Kurisu / NK1 — актуальный статус проекта
 
-<sub>Снимок состояния на 2026-11-01. Этот блок — единственный активный статус. Весь прежний текст ниже сохранён как исторический архив и не является текущим release pointer.</sub>
+<sub>Снимок состояния на 2026-11-02. Этот блок — единственный активный статус. Весь прежний текст ниже сохранён как исторический архив и не является текущим release pointer.</sub>
 
 ## Канонический источник и опубликованный артефакт
 
@@ -8,7 +8,7 @@
 |---|---|
 | Рабочий репозиторий | `ailtron1ss-rgb/NK1` |
 | Рабочая ветка | `workpass70-source` |
-| Кодовый baseline до этого doc-only обновления | `795bb672fd3af0a5ec85cc7d783d00a9226fe083` |
+| Канонический source baseline для текущего инженерного прохода | `608435493b4af3b4a222d385f1b77d978d18583b` |
 | Приложение | `35.90.0` |
 | Organism Core | `100.32.0-r26-hierarchical-lowrank-causal` |
 | State schema | `225` |
@@ -32,6 +32,21 @@
 | Download count at snapshot | `3` |
 
 **Release/source separation:** ZIP остаётся главным опубликованным артефактом. Указанный digest взят из метаданных GitHub Release; в этом проходе ZIP не скачивался и digest независимо не пересчитывался. Содержимое ZIP не сравнивалось с текущей исходной веткой. Поэтому parity / artifact-content verification = **NOT VERIFIED**. Новая публикация не выполнялась.
+
+## Новый инженерный проход — 2026-11-02
+
+**PR #649 — ActionGateway restore snapshot integrity**  
+Ветка: `fix/action-gateway-restore-snapshot-integrity-2026-11-02` · базовая ветка: `workpass70-source` · base SHA: `608435493b4af3b4a222d385f1b77d978d18583b`.
+
+- Добавлена bounded JSON-like копия persisted snapshot до доступа к данным: getters/accessors, Proxy, exotic/inherited prototypes, sparse arrays, cycles, non-finite numbers и чрезмерные глубина/размер отклоняются.
+- Restore строит новый ledger и permission state до изменения текущего состояния; ошибочный snapshot не должен частично заменить живой state.
+- Валидный v1 receipt сохраняет idempotent replay; unsupported version отклоняется.
+- Добавлен regression-файл `tests/action-gateway-restore-boundary-workpass647.mjs`; workflow `nk1-action-gateway-governance.yml` запускает его.
+- RED evidence: изолированное воспроизведение текущего ingress-кода на Node 22.16 вызвало getter дважды (ожидалось 0), что подтверждает первопричину.
+- GREEN evidence: точный PR-head `74be80d4f731a594529bf5a3aecf100e390b852f` прошёл все 12 pull-request workflows. Включая Action Gateway governance #41407817320 (15/15 steps; новый restore-boundary regression), memory integrity #41407817092 (12/12), unified organism runtime #41407817108 (16/16), NeuroCore core regression, planner cadence, Hexis, UserModel, WorkPass79/110 и embodiment contract.
+- Статус: **Implemented / exact-head CI 12/12 PASS / review pending / not merged / not released**.
+
+**Параллельные aspect PRs остаются отдельными:** #637 planner cadence, #640 test-registry duplicate guard, #642 P80 self-state, #644 memory lifecycle, #646 locale-neutral ActionGateway classification. Их не объединять в одну ветку и не объявлять merged до отдельной проверки.
 
 ## Последний подтверждённый инженерный результат
 

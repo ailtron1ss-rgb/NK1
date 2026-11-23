@@ -1,3 +1,22 @@
+## [NK1][Mobile] Parse the canonical Termux SensorAPI wire shape (2026-11-02)
+- Support the documented object-keyed sensor payload (`{"Accelerometer":{"values":[x,y,z]}}`) while retaining array-based adapter compatibility.
+- Change the sensor-only regression to use the official object-keyed shape, so a host-side mock cannot hide a real Termux integration gap.
+- Context7 documentation and the Termux wiki were checked; this is protocol compatibility, not physical-device calibration.
+
+## [NK1][Mobile] Preserve truthful Android sensor provenance (2026-11-02)
+- Reject null, blank and non-finite Termux sensor readings instead of coercing them to zero; require a complete three-axis accelerometer sample before deriving motion.
+- Mark telemetry as Android/Termux only when a valid battery, sensor or Wi-Fi payload is observed, including valid sensor-only operation when battery data is unavailable.
+- Preserve previous battery, temperature, network and motion values when the corresponding provider payload is invalid; expose diagnostics from the parsed payload rather than stale fallback state.
+- Add a dependency-free behavioral regression and dedicated exact-path CI workflow. This does not claim physical-device calibration, audio synchronization or phone soak.
+
+## [NK1][Governance] Reject unsafe ActionGateway restore snapshots atomically (2026-11-02)
+- Treat persisted execution-ledger and permission snapshots as untrusted input; reject Proxy objects, accessors, inherited/exotic prototypes, sparse arrays, cycles, non-finite numbers, excessive depth/size and non-data properties before reading values.
+- Clone a bounded JSON-like snapshot before parsing it, so restore never invokes persisted getters or Proxy traps.
+- Build the next execution ledger and permission state before mutating the live gateway; invalid snapshots cannot partially replace either state.
+- Preserve valid version-1 snapshots and idempotent receipt replay; reject unsupported snapshot versions.
+- Add adversarial regressions for root/row getters, Proxy ingress, sparse arrays, cycles, atomicity and valid replay; wire them into the dedicated Action Gateway governance workflow.
+- This hardens persistence integrity only; it does not claim broader tool-adapter coverage, CI success, autonomy improvement or release readiness.
+
 ## [NK1][Cognition] Port OmeStro governed cognitive and developmental contracts (2026-11-23)
 
 - Add the 32-concept status registry and bounded contracts for intent, ChronoTruth, negative-space memory, open-loop commitments, undo-first planning, developmental genome, research review and neural-adaptation candidates.
