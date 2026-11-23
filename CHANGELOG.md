@@ -1,3 +1,9 @@
+## [NK1][Cognition] Route safety-escalated domains through interrupt and wake paths (2026-11-23)
+
+- Build interrupt domain lists and compact wake masks from the final `dirtyDomains` set, so resource-safety escalation cannot be omitted when ordinary domain activation is false.
+- Add a focused regression covering thermal-strain governance wake routing through `CognitiveFrame` and `CognitiveDependencyGraph`.
+- Preserve existing runtime ownership and scheduler contracts; no new service or second state owner is introduced.
+
 ## [NK1][Autonomy] Attribute social feedback only to the relevant initiative (2026-11-22)
 
 - Prevent unrelated negative/positive conversational remarks from being recorded as feedback for the most recent proactive thought.
