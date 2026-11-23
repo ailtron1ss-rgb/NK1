@@ -1912,6 +1912,8 @@
     "test:neuroforge": "node --experimental-strip-types tests/neuroforge-engine.mjs",
     "neuroforge": "node --experimental-strip-types scripts/neuroforge.mjs",
     "test:invention-loop": "node --experimental-strip-types tests/p23-signed-outcome-artifact.mjs && node --experimental-strip-types tests/the-invention-loop.mjs",
+    "test:memoryos2-capacity-lifecycle-integrity": "node --experimental-strip-types tests/memoryos2-capacity-lifecycle-integrity.mjs",
+    "test:memory-encode-overflow-projection-reconcile": "node --experimental-strip-types tests/memory-encode-overflow-projection-reconcile.mjs",
     "test:memory-maintenance-projection-reconcile": "node --experimental-strip-types tests/memory-maintenance-projection-reconcile.mjs",
     "test:device-evidence-certification": "node --experimental-strip-types tests/device-evidence-certification-threshold.mjs"
   }
