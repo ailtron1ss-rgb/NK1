@@ -1,0 +1,69 @@
+{
+  "schemaVersion": 1,
+  "title": "NK1 evidence-weighted implementation scorecard — WorkPass355",
+  "date": "2026-10-26",
+  "workpass": "WorkPass355",
+  "sourceHeadAtSnapshot": "1e6a9f6581fc97401e6fdcc1458e4dd262ad0af9",
+  "testedCodeSha": null,
+  "validationStatus": "PENDING exact-head CI after freshness guard and metadata updates",
+  "scoreType": "provisional engineering readiness estimate; not a measured cognition or learning benchmark",
+  "overallPercent": 38.25,
+  "workstreams": [
+    {
+      "id": "release-integrity",
+      "name": "Release lineage, metadata and provenance",
+      "weight": 20,
+      "completionPercent": 45
+    },
+    {
+      "id": "cognitive-runtime",
+      "name": "Cognitive runtime and event consistency",
+      "weight": 20,
+      "completionPercent": 55
+    },
+    {
+      "id": "memory-continuity",
+      "name": "Memory and experience continuity",
+      "weight": 15,
+      "completionPercent": 45
+    },
+    {
+      "id": "learning",
+      "name": "Independent learning evaluation and rollback",
+      "weight": 15,
+      "completionPercent": 30
+    },
+    {
+      "id": "autonomy-safety",
+      "name": "Autonomy, user/self model and policy enforcement",
+      "weight": 10,
+      "completionPercent": 35
+    },
+    {
+      "id": "embodiment",
+      "name": "Real voice/avatar/device validation",
+      "weight": 10,
+      "completionPercent": 15
+    },
+    {
+      "id": "install-release",
+      "name": "Clean installation and release artifact",
+      "weight": 10,
+      "completionPercent": 20
+    }
+  ],
+  "normalizedTaskInventory": {
+    "count": 12,
+    "counts": {
+      "DONE": 3,
+      "PARTIAL": 4,
+      "TODO": 5
+    }
+  },
+  "limitations": [
+    "Exact-head CI after this checkpoint is pending.",
+    "No independent measured learning uplift is claimed.",
+    "No real-device voice/avatar pass is claimed.",
+    "The latest confirmed published archive remains WorkPass70 Hotfix; this candidate is not a published release."
+  ]
+}
