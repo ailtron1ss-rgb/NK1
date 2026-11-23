@@ -1,4 +1,74 @@
-# NK1 Branch Integration Ledger — 2026-11-23 (post-#1104)
+# NK1 Branch Integration Ledger — 2026-11-23 (post-#1099)
+
+## Latest verified state — canonical source `workpass70-source` @ `10b3e8f306f861eff69aa008cc514aa6ba3eac06`
+
+### Verified integrations
+
+| PR | Result | Exact-head validation |
+|---|---|---:|
+| #1103 — ActionGateway redaction, autonomous batching, cognitive wake routing | Merged `272b1dc8431121efc3d948e194b99b29afd2a275` | 27/27 PASS |
+| #1104 — P34, Active Information Gain, HMX restart integrity | Merged `4972c2d5228141ef9673be94fca243614d28d9d6` | 14/14 PASS |
+| #1109 — risk-aware recovery on current runtime | Merged `89a7047cab3dfb3fd23f45c99622435cb3611a7d` | 27 PASS, 1 duplicate run cancelled |
+| #1115 — cognitive health supervision | Merged `8960ff21de7e704b084ccabb2dd70ff59d1bfce5` | 26/26 PASS |
+| #1116 — branch analysis/report/ledger | Merged `77ec03806648a8da68b22b47e84b49002e9532fa` | 3/3 PASS |
+| #1114 — resource-routing test entry and HMX test isolation | Merged `770f61beb8305a78d81526d0c0841e4f9094d479` | 57/57 PASS |
+| #1099 — NMCN 0.4.2 optional numeric compute advisor | Merged `10b3e8f306f861eff69aa008cc514aa6ba3eac06` | 63 PASS, 2 duplicate runs cancelled |
+
+### Important integration outcomes
+
+- **Risk-aware recovery (#1109):** ported from a donor 37 commits behind the source. External/user-directed turns and explicit Core actions remain canonical; recovery is limited to autonomous decisions. The original #1101 donor PR was closed as superseded; its branch remains.
+- **NMCN (#1099):** the original donor failed the dependency budget at runtime outdegree 46/45. The current-source port removes all NMCN implementation imports from `OrganismRuntime.ts`; a local structural advisor interface is injected by the server composition root. The focused NMCN bridge, HMX bridge, unified runtime and core regression checks passed.
+- **Dependency boundary:** the NMCN Module Dependency Audit reports `DEPENDENCY_BUDGET=PASS checks=65 violations=0`; the transitive import audit passes; clean architecture reports `cycles=0`, `boundaryViolations=0`, `dependencyBudgetViolations=0`.
+- **HMX test isolation (#1114):** the HMX integration test sets `NK_TEST_DISABLE_AUTORUN=1` for its test process only. Production autoRun remains enabled by default. This prevents unrelated autonomous cycles from racing a review-only consent assertion.
+- **Cognitive health (#1115):** merged onto current source with 26/26 exact-head checks. Original donor #1095 was closed as superseded; its branch remains.
+- **Branch report (#1116):** project map and live consolidation evidence were carried into source; original #1084 was closed unmerged after its useful documents were salvaged.
+
+### Donor PR dispositions
+
+| Donor PR | Integrated / disposition | Branch refs |
+|---|---|---|
+| #1095 cognitive health supervision | Superseded by merged #1115; closed | Retained |
+| #1101 risk-aware recovery | Superseded by merged #1109; closed | Retained |
+| #1102 resource-wake routing + early ledger | Runtime superseded by #1103; ledger superseded by #1116; closed | Retained |
+| #1107 intermediate ledger/test-script branch | Superseded by #1114/#1116; closed | Retained |
+| #1084 project map and tracker | Closed unmerged; useful artifacts salvaged by #1116 | Retained |
+| #1111 resource-routing script duplicate | Superseded by #1114; closed | Retained |
+| #1117 cognitive-health alternative | Superseded by #1115; closed | Retained |
+
+### Live repository census — 2026-11-23
+
+- Branch refs: **1,110**; unique tip SHAs: **1,092**; exact duplicate-tip groups: **3**; excess alias refs: **18**.
+- Open PRs: **271**; unique PR head SHAs: **271**; Draft: **205**; Ready: **66**.
+- The branch count rose by seven refs since the previous 1,103-ref census due to concurrent branch creation. No branch refs were deleted in this pass.
+- Exact duplicate group A — SHA `f9621bf3e4411ce17bc809922a5f90126001f4fd`: `aspect/consequence-ecology-20261117`, `integrate/consequence-calibration-lineage-followup-20261120`.
+- Exact duplicate group B — SHA `68a03799ca0c9f18e4c6e19399ed8018e0215e60`: `aspect/world-forge-integrated-20261117`, `integrate/worldforge-to-sharedfuture-after-calibration-20261120`.
+- Exact duplicate group C — SHA `82ea7a8b7c9b036e65c8b056acedd1176952dd8f` (17 refs): `nk1-all-branches-merge-2026-10-23`, `nk1-integration-workspace-2026-10-22`, `rebuild`, `workpass79-cognitive-rebuild`, `workpass116-seed-clustered-learning-eval`, `workpass117-verified-replay-admission`, `workpass118-multi-source-learning-integration`, `workpass119-skill-retrieval-feedback-curriculum`, `workpass120-verified-skill-revision-gate`, `workpass121-ledger-bound-promotion-proposals`, `workpass122-promotion-gate-coverage-hardening`, `workpass123-authenticated-skill-lifecycle`, `workpass124-learning-evidence-hardening`, `workpass135-durable-shadow-run-registry`, `workpass203-independent-candidate-evaluator`, `workpass206-runtime-evaluator-wiring`, `workpass313-actions-history-audit`.
+- All 21 branch refs in these groups report `protected=false`. Repository rulesets endpoint returned an empty list. No duplicate branch is the head of an open PR.
+- Four open PRs use `workpass206-runtime-evaluator-wiring` as their base: #124, #109, #91 and #86. #109, #91 and #86 were retargeted from duplicate base names (`nk1-all-branches-merge-2026-10-23` / `rebuild`) to this canonical base; exact base SHA `82ea7a8b7c9b036e65c8b056acedd1176952dd8f`, head SHA, merge base, ahead/behind and changed-file/addition/deletion statistics were verified unchanged. #124 already used the canonical base.
+- Canonical keepers: `aspect/consequence-ecology-20261117`, `aspect/world-forge-integrated-20261117`, and `workpass206-runtime-evaluator-wiring`.
+- **18 excess refs are safe cleanup candidates at the ref level:** delete one alias from each 2-ref pair and 16 aliases from the 17-ref group, keeping `workpass206-runtime-evaluator-wiring` because four open PRs use it as a base. The 16 legacy candidates are every name in group C except `workpass206-runtime-evaluator-wiring`.
+- No delete-ref action is exposed by the connected GitHub tool. Therefore no branch deletion or force-push was attempted; all donor histories and commits remain preserved. Before any future deletion, repeat the full ref/open-PR/ruleset scan.
+
+### Remaining high-collision PRs — inspect, do not merge blindly
+
+| PR | Current base / size | Safe next action |
+|---|---|---|
+| #124 — unified-cycle restore integrity | `workpass206-runtime-evaluator-wiring`; 9 files, 1,336 additions / 127 deletions | Audit restore semantics, source ownership and current-source conflicts before any port. |
+| #109 — dependency contracts | `workpass206-runtime-evaluator-wiring`; 5 files, 1,896 additions / 1 deletion | Inspect each contract and dependency boundary; base retarget preserved the exact diff. |
+| #91 — Operation Omega / Hexis archive | `workpass206-runtime-evaluator-wiring`; 4 files, 44,896 additions | Do not merge wholesale; inventory assets, licenses, duplicate code and archive-only material first. |
+| #86 — upstream donor gate | `workpass206-runtime-evaluator-wiring`; 2 files, 3,014 additions | Audit provenance, test coverage and integration ownership before porting. |
+
+### Release boundary
+
+- `main` and the published Release ZIP were not modified by these source integrations.
+- Merged into `workpass70-source` does not mean present in the published Release ZIP, tested on the target F6 device, or ready for product release.
+- NMCN remains opt-in; no claim of target-device latency, real sidecar installation or production durability is made.
+
+---
+
+## Historical snapshot from the #1106 checkpoint
+
+The sections below retain the original #1104/#1109 analysis as provenance. Their source SHAs, branch counts, donor queues and cleanup references are historical; the **Latest verified state** section above is authoritative for the current repository.
 
 ## Baseline and safety boundary
 
