@@ -215,6 +215,8 @@ export interface PersistedShapeCurrent {
     identityCausality?: any;
     longHorizonPrediction?: any;
     autonomousProjectExecutor?: any;
+    /** Bounded evidence-derived decision explanations; sanitized by the canonical agency owner on restore. */
+    autonomousDecisionReceipts?: unknown;
     cognitiveSpineSchedule?: any;
     skillAcquisitionBenchmark?: any;
     evidenceFirewall?: any;
@@ -1235,6 +1237,7 @@ export function migratePersistedOrganism(input: unknown): PersistedShapeCurrent 
       identityCausality: raw.system?.identityCausality,
       longHorizonPrediction: raw.system?.longHorizonPrediction,
       autonomousProjectExecutor: raw.system?.autonomousProjectExecutor,
+      autonomousDecisionReceipts: raw.system?.autonomousDecisionReceipts,
       cognitiveSpineSchedule: raw.system?.cognitiveSpineSchedule,
       skillAcquisitionBenchmark: raw.system?.skillAcquisitionBenchmark,
       evidenceFirewall: evidenceFirewallState,

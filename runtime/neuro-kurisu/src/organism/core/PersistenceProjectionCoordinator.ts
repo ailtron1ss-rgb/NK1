@@ -376,6 +376,7 @@ export class PersistenceProjectionCoordinator {
     target.system.identityCausality=this.snapshotOnce('snap:evidenceResearchSubsystem.identityCausality', ctx.evidenceResearchSubsystem.identityCausality);
     target.system.longHorizonPrediction=this.snapshotOnce('snap:evidenceResearchSubsystem.longHorizonPrediction', ctx.evidenceResearchSubsystem.longHorizonPrediction);
     target.system.autonomousProjectExecutor=this.snapshotOnce('snap:agencySubsystem.projectExecutor', ctx.agencySubsystem.projectExecutor);
+    target.system.autonomousDecisionReceipts=ctx.agencySubsystem.decisionReceipts.snapshot();
     target.system.skillAcquisitionBenchmark=this.snapshotOnce('snap:evidenceResearchSubsystem.skillAcquisitionBenchmark', ctx.evidenceResearchSubsystem.skillAcquisitionBenchmark);
     target.system.evidenceFirewall=this.snapshotOnce('snap:evidenceResearchSubsystem.evidenceFirewall', ctx.evidenceResearchSubsystem.evidenceFirewall);
     target.system.projectResearchSession=this.snapshotOnce('snap:evidenceResearchSubsystem.projectResearchSession', ctx.evidenceResearchSubsystem.projectResearchSession);
