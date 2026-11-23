@@ -1,3 +1,8 @@
+## [NK1][Mobile] Parse the canonical Termux SensorAPI wire shape (2026-11-02)
+- Support the documented object-keyed sensor payload (`{"Accelerometer":{"values":[x,y,z]}}`) while retaining array-based adapter compatibility.
+- Change the sensor-only regression to use the official object-keyed shape, so a host-side mock cannot hide a real Termux integration gap.
+- Context7 documentation and the Termux wiki were checked; this is protocol compatibility, not physical-device calibration.
+
 ## [NK1][Cognition] Port OmeStro governed cognitive and developmental contracts (2026-11-23)
 
 - Add the 32-concept status registry and bounded contracts for intent, ChronoTruth, negative-space memory, open-loop commitments, undo-first planning, developmental genome, research review and neural-adaptation candidates.
