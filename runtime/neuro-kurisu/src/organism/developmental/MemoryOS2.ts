@@ -1929,7 +1929,18 @@ export class MemoryOS2{
   if(tracked)this.state.estimatedBytes=Math.max(0,this.state.estimatedBytes-before+estimateMemoryBytes(m));
  }
  revise(id:string,to:EpistemicStatus,reason:string){
-  const m=this.state.items.find(x=>x.id===id);if(!m||m.epistemicStatus===to)return;
+  const requested=this.itemIndex.get(String(id))??this.state.items.find(x=>x.id===id);if(!requested)return;
+  const group=requested.revisionGroupId??requested.id;
+  // A status transition requested by a historical ID applies to the current
+  // revision tip; mutating a superseded parent would move its recordedFromAt
+  // beyond its child and invalidate the persisted supersedes edge on restore.
+  const chain=[...(this.revisionGroupIndex.get(group)??new Set([requested.id]))]
+   .map(itemId=>this.itemIndex.get(itemId)).filter((x):x is MemoryItem2=>Boolean(x));
+  const m=chain.filter(x=>x.validUntilAt==null).sort((a,b)=>
+   Number(b.revisionSequence??1)-Number(a.revisionSequence??1)||
+   Number(b.observedAt??b.createdAt)-Number(a.observedAt??a.createdAt)
+  )[0]??requested;
+  if(m.epistemicStatus===to)return;
   const from=m.epistemicStatus;
   const recordedAt=Math.max(Date.now(),Number(m.recordedFromAt??m.createdAt)+1);
   this.beginBitemporalRevision(m,recordedAt);
