@@ -30,6 +30,7 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
+          package-manager-cache: false
       - name: Verify explicit IDs remain unique through write and restore
         working-directory: runtime/neuro-kurisu
         run: node --experimental-strip-types tests/memory-duplicate-id-write-guard.mjs
