@@ -224,7 +224,13 @@ export class CanonicalCognitiveKernel {
       ['action', input.action],
     ] as const;
     for (const [label, value] of stageInputs) assertStageInput(label, value);
-    const at=this.resolveAt(input.at);
+    const priorCycle=this.unifiedCycle.snapshot();
+    // If this logical tick already has an observation record, omitted 'at' means
+    // replay the original decision time, not invent a new timestamp on every retry.
+    const priorObservation=this.eventFabric.getById(this.stageEventId(input.tick,'observation'));
+    const at=input.at===undefined&&priorObservation
+      ? priorObservation.at
+      : this.resolveAt(input.at);
     const idFor=(stage:CognitiveStage)=>this.stageEventId(input.tick,stage);
     const parents=(...ids:Array<string|undefined>):string[]=>
       ids.filter((id):id is string=>typeof id==='string'&&id.length>0);
@@ -246,6 +252,39 @@ export class CanonicalCognitiveKernel {
     // Preflight the full stage set before writing any event. This also covers a
     // partially restored ledger where only a later stage has a conflicting ID.
     this.assertNoConflictingPreparedStages(prepared);
+
+    if(input.tick<=priorCycle.lastTick) {
+      // The monotonic cycle ledger has moved beyond this decision. Permit read-only
+      // replay only while every canonical stage remains available and matches;
+      // never recreate evicted old stages as if the decision were new.
+      const storedEvents=prepared.map(item=>({
+        stage:item.stage,
+        event:this.eventFabric.getById(this.stageEventId(input.tick,item.stage)),
+      }));
+      if(storedEvents.some(item=>item.event===null)) {
+        throw new Error('canonical-cognitive-kernel-stale-decision');
+      }
+      const events=new Map<CognitiveStage,CognitiveEventNode>(
+        storedEvents.map(item=>[item.stage,item.event!] as const),
+      );
+      const observationEvent=events.get('observation')!;
+      const predictionEvent=events.get('prediction')!;
+      const appraisalEvent=events.get('appraisal')!;
+      const attentionEvent=events.get('attention')!;
+      const memoryEvent=events.get('memory')!;
+      const goalEvent=events.get('goal')!;
+      const planEvent=events.get('plan')!;
+      const actionEvent=events.get('action')!;
+      const anchors:CanonicalDecisionCycleAnchors={
+        tick:input.tick,at:observationEvent.at,observation:observationEvent.id,prediction:predictionEvent.id,
+        appraisal:appraisalEvent.id,attention:attentionEvent.id,memory:memoryEvent.id,
+        goal:goalEvent.id,plan:planEvent.id,action:actionEvent.id,
+      };
+      return {
+        anchors,observationEvent,predictionEvent,appraisalEvent,attentionEvent,
+        memoryEvent,goalEvent,planEvent,actionEvent,
+      };
+    }
 
     const events=new Map<CognitiveStage,CognitiveEventNode>();
     for(const item of prepared) {

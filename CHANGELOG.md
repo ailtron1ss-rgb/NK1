@@ -1,3 +1,29 @@
+# WorkPass352 — block stale decision resurrection after event retention (2026-10-26)
+
+- [FIXED] `CanonicalCognitiveKernel.beginDecisionCycle()` now reads the monotonic `UnifiedCognitiveCycle.lastTick` before writing. A decision tick at or below the finalized watermark can only be returned as a read-only replay when all eight canonical stage records still exist and match; otherwise it fails with `canonical-cognitive-kernel-stale-decision` without recreating evicted events.
+- [CI-CORRECTED] The first exact-head run caught a double-escaped control-character regex in the dependent WorkPass351 event-ID guard, causing the first kernel event to be rejected. The same correction is applied here; rerun exact-head CI before considering this pass validated.
+- [FIXED] When `at` is omitted on a retry, the kernel reuses the saved observation timestamp for that logical tick, preserving stable fingerprints and idempotent retries.
+- [REGRESSION] Added a bounded-capacity test that creates/completes a decision, replays it with omitted `at`, evicts its stages using newer events, and proves a stale replay fails without increasing journal totals or resurrecting an evicted observation.
+- [CI] Existing WorkPass331 workflow already typechecks runtime and runs the canonical kernel test plus live wiring, smoke, autonomy, initiative-clock and restart checks. Exact-head CI remains required.
+- [VALIDATION] New source and regression committed; exact-head workflow for WorkPass352 has not completed yet. No pass is claimed until success is observed.
+- [RELEASE] WorkPass352 is stacked on WorkPass351; `main` and the published Release ZIP are unchanged.
+
+---
+
+# WorkPass351 — enforce full event identity on causal-ledger replay (2026-10-26)
+
+- [FIXED] `CognitiveEventFabric.append()` no longer treats an existing `id` as an identical replay based only on tick, stage and source.
+- [HARDENED] Replays now fingerprint the normalized timestamp, causal parents, external flag, confidence and payload as well as tick/stage/source. A reused stable ID with changed evidence or lineage fails with `cognitive-event-id-conflict` before state mutation.
+- [HARDENED] New events receive a detached structured-clone of the payload; serialization/fingerprint validation runs before the event is appended. Caller mutation cannot rewrite nested ledger payload, circular payloads fail before state mutation, and top-level accessors are omitted without execution.
+- [CI-CORRECTED] The first exact-head kernel regression exposed a double-escaped control-character regex introduced in the append rewrite, which rejected stable kernel event IDs. Fixed the literal on this branch; re-run exact-head CI to confirm the correction.
+- [COMPATIBILITY] Calls that omit a finite `at` value can still replay the stored event without manufacturing a new arrival timestamp; explicit finite timestamp changes are conflicts. JSON objects with equivalent key order remain equivalent.
+- [REGRESSION] Extended `tests/canonical-cognitive-kernel.mjs` to test payload, parent order/omission, external flag, confidence, timestamp, stage, source and tick conflicts; each rejection must preserve the lifetime event count and the original event. Also verifies nested payload detachment, zero-write failure on circular payload, and non-execution of top-level getters. Exact key-order-equivalent replay remains idempotent.
+- [CI] Existing WorkPass331 workflow already triggers for `CognitiveEventFabric.ts` and `canonical-cognitive-kernel.mjs`, and runs the full runtime typecheck plus canonical kernel contract. Exact-head CI is required for this new change.
+- [VALIDATION] Source changes and tests are committed; the new WorkPass351 exact-head run has not yet completed. No pass is claimed until workflow completion.
+- [RELEASE] This is a draft follow-on to WorkPass350; `main` and the published Release ZIP are unchanged.
+
+---
+
 # WorkPass350 — prevent partial writes in the canonical cognitive kernel (2026-10-26)
 
 - [FIXED] `CanonicalCognitiveKernel.beginDecisionCycle()` now prepares all eight stage payloads and checks all stable event IDs before adding any stage, preventing a collision on a later stage from leaving earlier stages newly written.
