@@ -982,7 +982,7 @@ export class ConsequenceEcologyEngine {
           !Array.isArray(classes) || classes.length > 5 ||
           !classes.every(value => typeof value === 'string' && allowedClasses.has(value)) ||
           row.authority !== 'independent-external' || row.independentlyVerified !== true ||
-          seen.has(row.outcomeId)) continue;
+          seen.has(calibration.outcomeId)) continue;
 
       const analysis = analyses.find(item => item.id === calibration.analysisId);
       const option = analysis?.options.find(item => item.id === calibration.optionId);
