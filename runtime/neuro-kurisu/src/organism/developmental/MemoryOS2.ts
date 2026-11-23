@@ -240,9 +240,16 @@ const MEMORY_RETRIEVAL_CONCEPT_GROUPS:ReadonlyArray<ReadonlyArray<string>>=[
 // alias for every candidate memory; with 192 candidates this repeated allocation was
 // pure overhead on mobile and after broad retrievals.
 const MEMORY_RETRIEVAL_CONCEPT_TERM_GROUPS:ReadonlyArray<ReadonlyArray<ReadonlyArray<string>>>=MEMORY_RETRIEVAL_CONCEPT_GROUPS.map(group=>group.map(alias=>tokenize(alias.replace(/-/g,' '))));
+function conceptStemPrefixMatches(documentToken:string,aliasToken:string):boolean{
+ if(documentToken===aliasToken)return true;
+ if(documentToken.length<5||aliasToken.length<5)return false;
+ const limit=Math.min(documentToken.length,aliasToken.length);
+ const required=Math.max(5,Math.ceil(0.7*limit));
+ let shared=0;while(shared<limit&&documentToken[shared]===aliasToken[shared])shared++;
+ return shared>=required;
+}
 function conceptAliasMatchScore(token:string,alias:string):number{
- if(token===alias)return 1;
- if(token.length>=5&&alias.length>=5&&(token.startsWith(alias.slice(0,5))||alias.startsWith(token.slice(0,5))))return .86;
+ if(conceptStemPrefixMatches(token,alias))return token===alias?1:.86;
  const similarity=charDiceSimilarity(token,alias);
  return similarity>=.72?similarity:0;
 }
@@ -286,13 +293,13 @@ function conceptGroupCoverage(groups:ReadonlyArray<number>,documentTokens:Set<st
  * in time proportional to the document length instead of re-scanning the whole
  * alias dictionary for every candidate memory.
  */
-const MEMORY_CONCEPT_GROUP_INDEX:ReadonlyMap<string,ReadonlySet<number>>=(()=>{
- const index=new Map<string,Set<number>>();
+const MEMORY_CONCEPT_GROUP_INDEX:ReadonlyMap<string,ReadonlyArray<readonly[number,string]>>=(()=>{
+ const index=new Map<string,Array<readonly[number,string]>>();
  for(let groupIndex=0;groupIndex<MEMORY_RETRIEVAL_CONCEPT_GROUPS.length;groupIndex++){
   for(const alias of MEMORY_RETRIEVAL_CONCEPT_GROUPS[groupIndex]){
    for(const token of tokenize(alias.replace(/-/g,' '))){
     const keys=token.length>=5?[token,token.slice(0,5)]:[token];
-    for(const key of keys){let owners=index.get(key);if(!owners){owners=new Set<number>();index.set(key,owners);}owners.add(groupIndex);}
+    for(const key of keys){let owners=index.get(key);if(!owners){owners=[];index.set(key,owners);}owners.push([groupIndex,token] as const);}
    }
   }
  }
@@ -309,10 +316,10 @@ function memoryConceptGroupsForTokens(tokens:Iterable<string>):Set<number>{
  const groups=new Set<number>();
  for(const token of tokens){
   const exact=MEMORY_CONCEPT_GROUP_INDEX.get(token);
-  if(exact)for(const groupIndex of exact)groups.add(groupIndex);
+  if(exact)for(const [groupIndex,aliasToken] of exact)if(conceptStemPrefixMatches(token,aliasToken))groups.add(groupIndex);
   if(token.length>=5){
    const stemmed=MEMORY_CONCEPT_GROUP_INDEX.get(token.slice(0,5));
-   if(stemmed)for(const groupIndex of stemmed)groups.add(groupIndex);
+   if(stemmed)for(const [groupIndex,aliasToken] of stemmed)if(conceptStemPrefixMatches(token,aliasToken))groups.add(groupIndex);
   }
  }
  return groups;
@@ -1636,8 +1643,7 @@ export class MemoryOS2{
          // roots (e.g. live ↔ lives) without treating arbitrary four-letter prefixes
          // such as live ↔ liver as the same lexical evidence.
          const inflectionalMatch=shorter.length>=4&&longer.startsWith(shorter)&&/^(?:s|es)$/u.test(suffix);
-         const stableRootMatch=queryToken.length>=5&&memoryToken.length>=5&&
-           (queryToken.startsWith(memoryToken.slice(0,5))||memoryToken.startsWith(queryToken.slice(0,5)));
+         const stableRootMatch=conceptStemPrefixMatches(queryToken,memoryToken);
          return inflectionalMatch||stableRootMatch;
        }));
      const metadataEvidence=this.metadataRecallEnabled&&evidence.metadata>=.66;
