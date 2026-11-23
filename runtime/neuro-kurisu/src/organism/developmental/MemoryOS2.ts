@@ -1349,7 +1349,13 @@ export class MemoryOS2{
     const recordedAt=Math.max(at,Number(older.recordedFromAt??older.createdAt)+1);
     this.beginBitemporalRevision(older,recordedAt);
     older.validUntilAt=newerAt;older.supersededById=newer.id;
-    this.recordRevision(older,{at:recordedAt,from:older.epistemicStatus,to:older.epistemicStatus,reason:signal.contextConflict?'implicit-state-conflict-context':'implicit-state-conflict'});newer.supersedesId=older.id;older.contradictionLinks=[...new Set([...(older.contradictionLinks??[]),newer.id])].slice(0,6);newer.contradictionLinks=[...new Set([...(newer.contradictionLinks??[]),older.id])].slice(0,6);this.state.implicitConflictsResolved++;this.state.reconsolidations++;resolved++;
+    this.recordRevision(older,{at:recordedAt,from:older.epistemicStatus,to:older.epistemicStatus,reason:signal.contextConflict?'implicit-state-conflict-context':'implicit-state-conflict'});
+    newer.supersedesId=older.id;
+    const olderBytesBeforeLinks=estimateMemoryBytes(older),newerBytesBeforeLinks=estimateMemoryBytes(newer);
+    older.contradictionLinks=[...new Set([...(older.contradictionLinks??[]),newer.id])].slice(0,6);
+    newer.contradictionLinks=[...new Set([...(newer.contradictionLinks??[]),older.id])].slice(0,6);
+    this.state.estimatedBytes=Math.max(0,this.state.estimatedBytes-olderBytesBeforeLinks-newerBytesBeforeLinks+estimateMemoryBytes(older)+estimateMemoryBytes(newer));
+    this.state.implicitConflictsResolved++;this.state.reconsolidations++;resolved++;
    }
   }
   this.state.implicitConflictCandidates+=candidates;this.state.lastConflictScanAt=at;return {candidates,resolved,at};
