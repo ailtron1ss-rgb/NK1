@@ -1364,12 +1364,20 @@ export class MemoryOS2{
     const group=older.revisionGroupId??older.id; const previousNewGroup=this.revisionGroupIndex.get(newer.revisionGroupId??newer.id); if(previousNewGroup)previousNewGroup.delete(newer.id); newer.revisionGroupId=group; newer.revisionSequence=Math.max(Number(older.revisionSequence??1)+1,Number(newer.revisionSequence??1)); let groupSet=this.revisionGroupIndex.get(group); if(!groupSet){groupSet=new Set<string>();this.revisionGroupIndex.set(group,groupSet);} groupSet.add(older.id);groupSet.add(newer.id);
     const recordedAt=Math.max(at,Number(older.recordedFromAt??older.createdAt)+1);
     this.beginBitemporalRevision(older,recordedAt);
-    // The child may have been created in the same millisecond as the parent.
-    // Keep the child knowledge timestamp at or after the parent supersession so
-    // the reciprocal edge remains valid when the revision graph is restored.
+    // The successor's valid-time start is the supersession boundary. Merely
+    // closing the parent at observedAt leaves a backdated child that restore's
+    // revision normalizer correctly clamps back to the parent's validFromAt.
+    const supersessionValidAt=Math.max(newerAt,Number(older.validFromAt??older.createdAt)+1);
     const newerRecordedFrom=Number(newer.recordedFromAt??newer.createdAt);
-    if(newerRecordedFrom<recordedAt)this.beginBitemporalRevision(newer,recordedAt);
-    older.validUntilAt=newerAt;older.supersededById=newer.id;
+    const newerValidFrom=Number(newer.validFromAt??newer.createdAt);
+    if(newerRecordedFrom<recordedAt||newerValidFrom<supersessionValidAt){
+      const childRecordedAt=Math.max(recordedAt,newerRecordedFrom+1);
+      const childStatus=newer.epistemicStatus;
+      this.beginBitemporalRevision(newer,childRecordedAt);
+      newer.validFromAt=supersessionValidAt;
+      this.recordRevision(newer,{at:childRecordedAt,from:childStatus,to:childStatus,reason:'implicit-state-conflict-supersession'});
+    }
+    older.validUntilAt=supersessionValidAt;older.supersededById=newer.id;
     this.recordRevision(older,{at:recordedAt,from:older.epistemicStatus,to:older.epistemicStatus,reason:signal.contextConflict?'implicit-state-conflict-context':'implicit-state-conflict'});
     newer.supersedesId=older.id;
     const olderBytesBeforeLinks=estimateMemoryBytes(older),newerBytesBeforeLinks=estimateMemoryBytes(newer);
