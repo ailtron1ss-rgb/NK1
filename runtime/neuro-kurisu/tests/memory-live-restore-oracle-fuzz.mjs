@@ -96,6 +96,38 @@ function assertOracle(label, memory) {
   assert.equal(reloaded.size(), memory.size(), `${label}: reload must preserve the item count`);
 }
 
+function assertHistoricalWriteRouting() {
+  const memory = new MemoryOS2({ embeddingProvider: null });
+  const root = memory.encode({ content: 'The original reactor safety threshold is 12 units.', kind: 'semantic', source: 'historical-write-fixture', context: { topic: 'original-threshold' } });
+  const target = memory.encode({ content: 'The reactor inspection checklist is stored separately.', kind: 'semantic', source: 'historical-write-fixture' });
+  const tip = memory.reviseContent(root.id, 'The corrected reactor safety threshold is 14 units.', { reason: 'fixture-correction' });
+  assert.ok(tip && tip.id !== root.id, 'fixture must create a second revision');
+  const initial = new Map(memory.snapshot().items.map(item => [item.id, structuredClone(item)]));
+  memory.attachEvidenceSource(root.id, { source: 'independent-sensor', provenanceClass: 'device', sourceAuthority01: 0.96, independenceKey: 'sensor:reactor:42', observedAt: Date.now() + 1000, evidenceFreshnessAt: Date.now() + 1000 }, 'historical-id-evidence');
+  memory.updateContext(root.id, { topic: 'corrected-threshold' });
+  memory.addLinks(root.id, { semanticLinks: [target.id] }, 'historical-id-links');
+  const after = new Map(memory.snapshot().items.map(item => [item.id, item]));
+  const beforeRoot = initial.get(root.id);
+  const afterRoot = after.get(root.id);
+  const afterTip = after.get(tip.id);
+  assert.ok(beforeRoot && afterRoot && afterTip);
+  assert.equal(afterRoot.recordedFromAt, beforeRoot.recordedFromAt, 'historical parent transaction time must remain immutable');
+  assert.deepEqual(afterRoot.evidenceSources, beforeRoot.evidenceSources, 'new evidence must attach to the active tip, not the historical parent');
+  assert.deepEqual(afterRoot.context, beforeRoot.context, 'context updates through a historical ID must not rewrite the old revision');
+  assert.deepEqual(afterRoot.semanticLinks, beforeRoot.semanticLinks, 'relationship updates through a historical ID must not rewrite the old revision');
+  assert.ok(afterTip.evidenceSources.some(row => row.source === 'independent-sensor'), 'evidence must attach to the active tip');
+  assert.equal(afterTip.context.topic, 'corrected-threshold', 'context must update the active tip');
+  assert.ok(afterTip.semanticLinks.includes(target.id), 'relationships must update the active tip');
+  assert.equal(memory.doctor().pass, true, 'historical-ID updates must keep the live revision graph valid');
+  const restored = new MemoryOS2({ embeddingProvider: null });
+  restored.restore(structuredClone(memory.snapshot()));
+  assert.equal(restored.doctor().pass, true, 'historical-ID updates must survive restore without repair flags');
+  assert.equal(restored.snapshot().estimatedBytes, memory.snapshot().estimatedBytes, 'historical-ID updates must preserve byte accounting');
+  assert.ok(restored.snapshot().items.every(item => !(item.revisionIntegrityIssues ?? []).length), 'no revision integrity repair should be required');
+}
+
+assertHistoricalWriteRouting();
+
 for (const seed of [1, 7, 42, 1337, 20260101]) {
   const memory = runSeed(seed, 700);
   assertOracle(`seed ${seed}`, memory);
