@@ -13,6 +13,7 @@ jobs:
     if: github.ref == 'refs/heads/workpass70-source'
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with:
           node-version: 24
