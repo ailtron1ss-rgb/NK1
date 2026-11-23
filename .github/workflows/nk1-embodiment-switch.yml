@@ -39,6 +39,7 @@ on:
       - "app/src/components/avatar/rendererRegistryDefaults.ts"
       - "app/src/components/avatar/originalStageChannels.ts"
       - "app/src/components/avatar/vrmRuntimeAdapter.ts"
+      - "app/scripts/vrm-runtime-adapter.test.mjs"
       - "app/scripts/body-systems.test.mjs"
       - "app/package.json"
       - ".github/workflows/nk1-embodiment-switch.yml"
@@ -123,6 +124,8 @@ jobs:
         run: npm --prefix app run test:avatar-model-preflight
       - name: Test procedural and VRM 3D avatar contract
         run: node --test app/scripts/avatar-3d-stage.test.mjs
+      - name: Test VRM affect-to-expression and speech coexistence
+        run: npm --prefix app run test:vrm-runtime-adapter
       - name: Test deterministic GLB action resolution and clip crossfades
         run: npm --prefix app run test:avatar-animation-runtime
       - name: Test real Three.js toon material lifecycle
