@@ -195,7 +195,7 @@ export class B272EndogenousGoalGenesis {
     const counts=new Map<string,number>(); for(const g of hist)counts.set(g.id,(counts.get(g.id)??0)+1); const n=hist.length; let h=0; for(const c of counts.values()){const p=c/n;h-=p*Math.log(Math.max(1e-9,p));} return clamp01(h/Math.log(Math.max(2,Math.min(32,n))));
   }
   private goalVectorDiversity(){
-    const hist=this.state.goalHistory.slice(-32); if(hist.length<2)return 0; let s=0,n=0; for(let i=0;i<hist.length;i++)for(let j=i+1;j<hist.length;j++){s+=(1+cosine(hist[i]!.vector,hist[j]!.vector))*.5;n++;} return clamp01(s/n);
+    const hist=this.state.goalHistory.slice(-32); if(hist.length<2)return 0; let s=0,n=0; for(let i=0;i<hist.length;i++)for(let j=i+1;j<hist.length;j++){s+=(1-cosine(hist[i]!.vector,hist[j]!.vector))*.5;n++;} return clamp01(s/n);
   }
   private actionDiversity(){
     const hist=this.state.goalHistory.slice(-64); if(!hist.length)return 0; return clamp01(new Set(hist.map(x=>x.action)).size/ACTIONS.length);

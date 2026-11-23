@@ -19,6 +19,36 @@ assert.deepEqual(net.snapshot(),afterCreditedOutcome,'replaying the same tick mu
 assert.equal(afterCreditedOutcome.lastOutcomeTick,359,'the last credited tick must persist');
 
 const d=net.diagnostics();
+
+// Goal-vector diversity must increase as cosine similarity decreases. This
+// calibration catches an inverted metric that can otherwise look non-zero on
+// random goals while reporting clones as maximally diverse.
+const hashVectorForFixture = vector => vector.reduce(
+  (h, x, i) => ((h * 131 + Math.round((x + .5) * 997) + i * 17) >>> 0),
+  2166136261,
+).toString(16).padStart(8, '0');
+const diversityFor = vectors => {
+  const raw = net.snapshot();
+  raw.goalHistory = vectors.map((vector, index) => ({
+    tick: raw.tick - vectors.length + 1 + index,
+    id: `g-${hashVectorForFixture(vector)}`,
+    vector,
+    action: 'reflect',
+    reward01: .5,
+    predictionError01: .5,
+    accepted: false,
+  }));
+  const restored = new B272EndogenousGoalGenesis();
+  restored.restore(raw);
+  return restored.diagnostics().goalVectorDiversity01;
+};
+const repeatedGoal = [.3, 0, 0, 0, 0, 0, 0, 0];
+const oppositeGoal = [-.3, 0, 0, 0, 0, 0, 0, 0];
+assert.ok(Math.abs(diversityFor([repeatedGoal, repeatedGoal])) < 1e-9,
+  'identical goal vectors must have zero pairwise diversity');
+assert.ok(Math.abs(diversityFor([repeatedGoal, oppositeGoal]) - 1) < 1e-9,
+  'opposite normalized goal vectors must have maximal pairwise diversity');
+
 assert.ok(d.learningUpdates>=340,'B272 did not learn enough');
 assert.ok(d.generatedGoals>=340,'B272 did not generate goals');
 assert.ok(d.goalEntropy01>.15,'goal generation collapsed to one fixed representation');

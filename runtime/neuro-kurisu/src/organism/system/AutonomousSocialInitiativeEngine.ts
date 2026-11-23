@@ -118,7 +118,7 @@ export class AutonomousSocialInitiativeEngine {
     const d = defaultAutonomousSocialInitiative();
     const r = raw ?? {};
     const items = Array.isArray(r.initiatives) ? r.initiatives.slice(0, 64) : [];
-    let privacyDeferredCount = 0;
+    let invalidDeferredCount = 0;
     const initiatives: SocialInitiative[] = items.map((rawItem: any, index: number) => {
       const oldStatus = rawItem?.status;
       let status: SocialInitiativeStatus = oldStatus === 'ready' || oldStatus === 'executed' || oldStatus === 'deferred' ? oldStatus : 'planned';
@@ -128,9 +128,12 @@ export class AutonomousSocialInitiativeEngine {
       const safeMessage = typeof rawItem?.message === 'string' ? sanitizeAutonomousDialogueMessage(rawItem.message) : null;
       const unsafeTopic = !safeTopic;
       const unsafeReadyMessage = typeof rawItem?.message === 'string' && !safeMessage && (status === 'ready' || status === 'planned');
-      if ((unsafeTopic || unsafeReadyMessage) && status !== 'executed' && status !== 'deferred') {
+      // A restored `ready` row is only valid when it has a deliverable, sanitized message.
+      // Otherwise latestReady() cannot deliver it, but hasPending() would block newer work.
+      const invalidReadyState = status === 'ready' && !safeMessage;
+      if ((unsafeTopic || unsafeReadyMessage || invalidReadyState) && status !== 'executed' && status !== 'deferred') {
         status = 'deferred';
-        privacyDeferredCount++;
+        invalidDeferredCount++;
       }
       const safeReason = sanitizeAutonomousTopicText(rawItem?.reason ?? 'restored autonomous initiative', 240) ?? 'restored autonomous initiative';
       return {
@@ -140,7 +143,7 @@ export class AutonomousSocialInitiativeEngine {
         priority01: clamp(Number(rawItem?.priority01 ?? .4)),
         status,
         createdAt: Number.isFinite(Number(rawItem?.createdAt)) ? Number(rawItem.createdAt) : 0,
-        reason: unsafeTopic || unsafeReadyMessage ? 'privacy-filtered-restored-initiative' : safeReason,
+        reason: unsafeTopic || unsafeReadyMessage ? 'privacy-filtered-restored-initiative' : invalidReadyState ? 'ready-initiative-missing-safe-message' : safeReason,
         topic: safeTopic ?? 'A previously stored topic was withheld after a privacy check',
         topicSource: validSource(rawItem?.topicSource),
         openingIntent: rawItem?.openingIntent === 'ask-a-real-question' || rawItem?.openingIntent === 'offer-an-idea' || rawItem?.openingIntent === 'continue-a-thread' ? rawItem.openingIntent : 'share-observation',
@@ -170,7 +173,7 @@ export class AutonomousSocialInitiativeEngine {
       cycles: Math.max(0, Math.floor(Number(r.cycles ?? 0) || 0)),
       planned: Math.max(0, Math.floor(Number(r.planned ?? 0) || 0)),
       executed: Math.max(0, Math.floor(Number(r.executed ?? 0) || 0)),
-      deferred: Math.max(0, Math.floor(Number(r.deferred ?? 0) || 0)) + privacyDeferredCount,
+      deferred: Math.max(0, Math.floor(Number(r.deferred ?? 0) || 0)) + invalidDeferredCount,
       reciprocity01: clamp(Number(r.reciprocity01 ?? d.reciprocity01)),
       initiative01: clamp(Number(r.initiative01 ?? d.initiative01)),
       startedAt: Math.max(0, Number(r.startedAt ?? 0) || 0),

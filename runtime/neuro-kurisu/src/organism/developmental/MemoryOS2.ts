@@ -110,6 +110,15 @@ export interface MemoryEvictionWitness {
  id:string; kind:MemoryItem2['kind']; at:number; tick:number; bytes:number; value01:number; netValuePerByte01:number; reason:string; tokens:string[]; matchedQueries:number; realizedRegret01:number; counterfactualRegret01:number;
 }
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
+const isSafeEmbeddingVector=(value:unknown,dimensions?:number):value is number[]=>{
+ if(!Array.isArray(value)||value.length===0||value.length>4096||(dimensions!==undefined&&value.length!==dimensions))return false;
+ let squaredNorm=0;
+ for(const component of value){
+  if(typeof component!=='number'||!Number.isFinite(component)||Math.abs(component)>1e6)return false;
+  squaredNorm+=component*component;
+ }
+ return squaredNorm>1e-24&&Number.isFinite(squaredNorm);
+};
 // Keep single-digit numeric tokens: status codes, ratings, short versions and measured values are meaningful retrieval terms. Single-letter words remain excluded.
 const tokenize=(text:string)=>text.toLocaleLowerCase().normalize('NFKC').match(/[\p{L}\p{N}]{2,}|\p{N}/gu)??[];
 const characterGramCache=new Map<string,Set<string>>();
@@ -257,7 +266,7 @@ type MemoryEstimateShape=Pick<MemoryItem2,'content'|'tags'|'context'|'semanticLi
 const estimateMemoryBytes=(m:MemoryEstimateShape)=>Math.max(96,new TextEncoder().encode(JSON.stringify({content:m.content,tags:m.tags,context:m.context,s:m.semanticLinks,t:m.temporalLinks,c:m.causalLinks,k:m.contradictionLinks,e:m.evidenceSources,ek:m.evidenceLineageKeys,r:normalizeRevisionHistory(m.revisionHistory)})).byteLength);
 export type MemoryTemporalMode='current'|'at'|'all';
 export interface MemoryTemporalQueryOptions { temporalMode?:MemoryTemporalMode; asOfAt?:number; }
-export interface SemanticMemoryPreview { items:MemoryItem2[]; semantic:{enabled:boolean;provider:string;model:string;indexedItems:number;corpusItems:number;coverage01:number;newlyIndexed:number;fallbackReason:string|null;cacheEntries:number;requests:number;failures:number;lastLatencyMs:number}; }
+export interface SemanticMemoryPreview { items:MemoryItem2[]; semantic:{enabled:boolean;provider:string;model:string;indexedItems:number;corpusItems:number;coverage01:number;newlyIndexed:number;candidateCount?:number;fallbackReason:string|null;cacheEntries:number;requests:number;failures:number;lastLatencyMs:number}; }
 export interface SemanticRetrievalPerformanceOptions { maxIndexItems?:number; maxLexicalPool?:number; providerTimeoutMs?:number; }
 export interface SemanticIndexMaintenanceResult {
  enabled:boolean; provider:string; model:string; considered:number; indexed:number; failed:number; staleSkipped:number;
@@ -381,9 +390,9 @@ export class MemoryOS2{
    const dimensions=Number(vectors[0]?.length??0);
    for(let index=0;index<candidates.length;index++){
     const item=candidates[index],raw=vectors[index];
-    if(!Array.isArray(raw)||!dimensions||dimensions>4096||raw.length!==dimensions||raw.some(value=>!Number.isFinite(Number(value)))){failRow(item);continue;}
-    const clean=raw.map(Number);const norm=Math.sqrt(clean.reduce((sum,value)=>sum+value*value,0));
-    if(!(norm>1e-12)){failRow(item);continue;}
+    if(!dimensions||!isSafeEmbeddingVector(raw,dimensions)){failRow(item);continue;}
+    const clean=raw;const norm=Math.sqrt(clean.reduce((sum,value)=>sum+value*value,0));
+    if(!(norm>1e-12)||!Number.isFinite(norm)){failRow(item);continue;}
     const current=this.state.items.find(row=>row.id===item.id);
     if(!current||current.dormant||current.epistemicStatus==='quarantined'||memoContentHash(current.content)!==memoContentHash(item.content)){staleSkipped++;continue;}
     this.semanticEmbeddingIndex.set(item.id,{contentHash:memoContentHash(current.content),providerId:provider.providerId,vector:clean.map(value=>value/norm),lastUsedAt:now});
@@ -454,11 +463,12 @@ export class MemoryOS2{
    let newlyIndexed=0;
    try{
      const vectors=await provider.embedBatch([query,...missing.map(item=>item.content)],performanceOptions.providerTimeoutMs?{timeoutMs:performanceOptions.providerTimeoutMs}:undefined);
-     if(vectors.length!==missing.length+1||!vectors[0]?.length)throw new Error('embedding-vector-count-mismatch');
+     if(vectors.length!==missing.length+1)throw new Error('embedding-vector-count-mismatch');
      const queryVector=vectors[0];
+     if(!isSafeEmbeddingVector(queryVector))throw new Error('invalid-query-embedding-vector');
      for(let index=0;index<missing.length;index++){
        const item=missing[index],vector=vectors[index+1];
-       if(!Array.isArray(vector)||vector.length!==queryVector.length)continue;
+       if(!isSafeEmbeddingVector(vector,queryVector.length))continue;
        this.semanticEmbeddingIndex.set(item.id,{contentHash:memoContentHash(item.content),providerId:provider.providerId,vector,lastUsedAt:now});newlyIndexed++;
      }
      // Keep one compact index for the canonical memory's maximum 1600 rows.
@@ -486,7 +496,8 @@ export class MemoryOS2{
      semanticRows.sort((a,b)=>b.score-a.score||b.similarity-a.similarity||a.lexicalRank-b.lexicalRank||a.item.id.localeCompare(b.item.id));
      const items=semanticRows.slice(0,safeLimit).map(row=>structuredClone(row.item));
      const diag=provider.diagnostics();
-     return {items,semantic:{enabled:true,provider:diag.provider,model:diag.model,indexedItems:this.semanticEmbeddingIndex.size,corpusItems:corpus.length,coverage01:corpus.length?clamp(this.semanticEmbeddingIndex.size/corpus.length):0,newlyIndexed,fallbackReason:null,cacheEntries:diag.cacheEntries,requests:diag.requests,failures:diag.failures,lastLatencyMs:diag.lastLatencyMs}};
+     const fallbackReason=items.length===0&&fallbackItems.length>0?'no-valid-semantic-candidates':null;
+     return {items:fallbackReason?fallbackItems:items,semantic:{enabled:fallbackReason===null,provider:diag.provider,model:diag.model,indexedItems:this.semanticEmbeddingIndex.size,corpusItems:corpus.length,coverage01:corpus.length?clamp(this.semanticEmbeddingIndex.size/corpus.length):0,newlyIndexed,candidateCount:new Set([...semanticRows.map(row=>row.item.id),...lexicalPool.map(item=>item.id),...missing.map(item=>item.id)]).size,fallbackReason,cacheEntries:diag.cacheEntries,requests:diag.requests,failures:diag.failures,lastLatencyMs:diag.lastLatencyMs}};
    }catch(error){
      const diag=provider.diagnostics();
      return {items:fallbackItems,semantic:{enabled:false,provider:diag.provider,model:diag.model,indexedItems:this.semanticEmbeddingIndex.size,corpusItems:corpus.length,coverage01:corpus.length?clamp(this.semanticEmbeddingIndex.size/corpus.length):0,newlyIndexed:0,fallbackReason:String(error instanceof Error?error.message:error).slice(0,200),cacheEntries:diag.cacheEntries,requests:diag.requests,failures:diag.failures,lastLatencyMs:diag.lastLatencyMs}};
@@ -737,6 +748,39 @@ export class MemoryOS2{
    for(const linkedId of item.contradictionLinks??[]){const linked=this.itemIndex.get(linkedId);if(linked){linked.contradictionLinks=[...new Set([...(linked.contradictionLinks??[]),item.id])].slice(0,6);this.state.linkUpdates++;}}
    this.state.linkUpdates+=item.semanticLinks.length+item.temporalLinks.length;
    if(item.epistemicStatus==='quarantined')this.state.quarantined++;return options.clone===false?(item as MemoryItem2):structuredClone(item as MemoryItem2);
+ }
+ /**
+  * Commit access/freshness signals for a cognitive result chosen from read-only
+  * previews. Speculative lexical candidates must not be treated as remembered reads.
+  */
+ recordSelectedRetrieval(query:string,ids:string[],goalRelevance=0,identityRelevance=0,temporalOptions:MemoryTemporalQueryOptions={},candidateCountHint=ids.length):MemoryItem2[]{
+   const wallClockNow=Date.now();
+   const requestedAsOf=typeof temporalOptions.asOfAt==='number'&&Number.isFinite(temporalOptions.asOfAt)?temporalOptions.asOfAt:undefined;
+   const temporalMode:MemoryTemporalMode=temporalOptions.temporalMode??'current';
+   const now=temporalMode==='at'&&requestedAsOf!==undefined?requestedAsOf:wallClockNow;
+   this.state.semanticQueries++;
+   const contextCausal=/\b(why|cause|causal|because|reason|effect|причин|почему|следств)/iu.test(query)?1:clamp(this.state.linkUpdates/100);
+   const contextTemporal=/\b(today|now|yesterday|recent|recently|last|earlier|week|month|year|сегодня|сейчас|вчера|недав|послед|раньше|недел|месяц|год)/iu.test(query)?1:clamp(this.state.semanticQueries/100);
+   this.activePolicy=this.adaptivePolicy.choose({pressure01:clamp(this.state.items.length/1600),goal01:clamp(goalRelevance),causal01:contextCausal,temporal01:contextTemporal,mobile:true},now);
+   this.state.adaptiveMemoryPolicy=this.adaptivePolicy.snapshot();
+   this.lastCandidateCount=Math.max(0,Math.min(1600,Math.floor(Number.isFinite(candidateCountHint)?candidateCountHint:ids.length)));
+   const selected:MemoryItem2[]=[];
+   const seen=new Set<string>();
+   for(const id of (Array.isArray(ids)?ids:[]).slice(0,32)){
+     if(typeof id!=='string'||seen.has(id))continue;
+     seen.add(id);
+     const item=this.itemIndex.get(id);
+     if(!item||item.dormant||item.epistemicStatus==='quarantined')continue;
+     if(temporalMode!=='all'&&((item.validUntilAt!=null&&Number(item.validUntilAt)<=now)||(item.supersededById!=null&&item.validUntilAt==null)||!this.validAt(item,now))){
+       this.state.staleRetrievalsAvoided++;
+       continue;
+     }
+     item.temperature01=memoryTemperature(item,now);
+     item.lastAccessAt=now;
+     item.retrievalCount++;
+     selected.push(item);
+   }
+   return selected.map(item=>structuredClone(item));
  }
  retrieve(query:string,limit=8,goalRelevance=0,identityRelevance=0,temporalOptions:MemoryTemporalQueryOptions={},clone=true){
    const qTokens=this.tokensFor(query);

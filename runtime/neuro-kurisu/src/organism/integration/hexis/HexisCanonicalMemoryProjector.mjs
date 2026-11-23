@@ -62,7 +62,7 @@ export const isValidHmxApplyReceipt = (stage, receipt) => {
       receipt.createdMemoryIds.length !== receipt.importedCount ||
       new Set(receipt.memoryIds).size !== receipt.memoryIds.length ||
       new Set(receipt.createdMemoryIds).size !== receipt.createdMemoryIds.length ||
-      receipt.createdMemoryIds.some(id => !receipt.memoryIds.includes(id)) ||
+      (() => { const memoryIdSet = new Set(receipt.memoryIds); return receipt.createdMemoryIds.some(id => !memoryIdSet.has(id)); })() ||
       receipt.semanticEdgeIds.length > receipt.projectedRelationships ||
       new Set(receipt.semanticEdgeIds).size !== receipt.semanticEdgeIds.length) return false;
 

@@ -184,6 +184,11 @@ function fingerprint(value: unknown): string {
   return createHash('sha256').update(canonicalJson).digest('hex');
 }
 
+/** Canonical SHA-256 used by the versioned skill store for exact payload identity. */
+export function fingerprintSkillPayload(value: unknown): string {
+  return fingerprint(value);
+}
+
 function activeFor(snapshot: VersionedSkillStoreSnapshot, skillId: string): ActiveSkillVersion | null {
   return snapshot.active.find(item => item.skillId === skillId) ?? null;
 }

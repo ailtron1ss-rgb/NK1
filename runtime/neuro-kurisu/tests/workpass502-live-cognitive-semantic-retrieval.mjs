@@ -28,8 +28,14 @@ assert.match(method, /this\.memoryOS\.previewRetrieveWithEmbeddings\(/,
   'semantic recall must use the canonical MemoryOS2 embedding adapter');
 assert.match(method, /NK_EMBEDDINGS_RUNTIME_BUDGET_MS/,
   'semantic work must have a bounded foreground budget');
-assert.match(method, /outcome\.kind!=='complete'.*return fallback/s,
+assert.match(method, /outcome\.kind!=='complete'.*return accountFallback\(\)/s,
   'slow, busy, or failed semantic retrieval must preserve deterministic lexical fallback');
+assert.match(method, /recordOutcome:false/,
+  'provisional lexical candidates must not mutate retrieval metrics before semantic selection');
+assert.match(method, /recordSelectedRetrieval\(query,rows\.map\(row=>row\.id\)/,
+  'semantic preview IDs must be committed through the canonical MemoryOS2 selected-read path');
+assert.match(method, /recordRetrievalOutcome\(query,selected/,
+  'the selected canonical semantic rows must be registered through outcome accounting');
 
 console.log('WORKPASS502_LIVE_COGNITIVE_SEMANTIC_RETRIEVAL=PASS', JSON.stringify({
   observeRoutesThroughSemanticAdapter: true,

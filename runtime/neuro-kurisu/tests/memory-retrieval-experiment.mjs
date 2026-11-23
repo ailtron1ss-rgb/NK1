@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
@@ -6,7 +7,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { MemoryOS2 } from '../src/organism/developmental/MemoryOS2.ts';
 import { runMemoryOS2RetrievalExperiment } from '../src/organism/memory/MemoryRetrievalExperiment.ts';
-import { runMemoryOS2RetrievalBenchmark } from '../src/organism/memory/MemoryRetrievalBenchmark.ts';
+import { fingerprintMemoryRetrievalDataset, runMemoryOS2RetrievalBenchmark } from '../src/organism/memory/MemoryRetrievalBenchmark.ts';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const now = 2_000_000_000_000;
@@ -27,6 +28,28 @@ const provenance = { datasetId: 'controlled-fixture', datasetVersion: '1.0', sou
 const options = { now, k: 5, bootstrapSamples: 200, maxExamples: 512, datasetProvenance: provenance, seeds: [13, 29, 53] };
 const before = structuredClone(snapshot);
 const experiment = runMemoryOS2RetrievalExperiment(snapshot, examples, options);
+
+const duplicateLabelExamples = structuredClone(examples);
+duplicateLabelExamples[0].relevantIds.push(duplicateLabelExamples[0].relevantIds[0]);
+const duplicateLabelFingerprint = fingerprintMemoryRetrievalDataset(duplicateLabelExamples);
+const duplicateLabelReport = runMemoryOS2RetrievalBenchmark(snapshot, duplicateLabelExamples, {
+  ...options,
+  datasetProvenance: {
+    ...provenance,
+    licenseId: 'LicenseRef-NK1-TestFixture',
+    contentSha256: duplicateLabelFingerprint,
+  },
+});
+assert.equal(duplicateLabelReport.datasetProvenance.contentHashValid, true,
+  'the fingerprint must bind the exact duplicate-labelled dataset');
+assert.equal(duplicateLabelReport.datasetIntegrity.provenanceComplete, true,
+  'duplicate-label integrity must be checked with complete provenance');
+assert.equal(duplicateLabelReport.datasetIntegrity.duplicateRelevantLabelCount, 1);
+assert.equal(duplicateLabelReport.datasetIntegrity.validForPromotion, false);
+assert.equal(duplicateLabelReport.promotion.gates.datasetIntegrity, false);
+assert.equal(duplicateLabelReport.promotion.allowed, false,
+  'duplicate ground-truth labels must block promotion even when the hash is correct');
+
 assert.equal(experiment.schemaVersion, 1);
 assert.equal(experiment.seedCount, 3);
 assert.equal(experiment.holdoutQueries, 9, 'explicitly unanswerable holdout queries must survive the CLI/benchmark contract');
@@ -138,17 +161,28 @@ try {
   const provenancePath = path.join(temp, 'provenance.json');
   const reportPath = path.join(temp, 'report.json');
   await writeFile(snapshotPath, JSON.stringify(snapshot));
-  await writeFile(labelsPath, `${examples.map(row => JSON.stringify(row)).join('\n')}\n`);
-  await writeFile(provenancePath, JSON.stringify(provenance));
+  const labelsSource = `${examples.map(row => JSON.stringify(row)).join('\n')}\n`;
+  await writeFile(labelsPath, labelsSource);
+  const rawSourceSha256 = createHash('sha256').update(Buffer.from(labelsSource, 'utf8')).digest('hex');
+  await writeFile(provenancePath, JSON.stringify({ ...provenance, rawSourceSha256 }));
   const cli = spawnSync(process.execPath, ['--experimental-strip-types', path.join(root, 'scripts/run-memory-retrieval-experiment.mjs'), '--snapshot', snapshotPath, '--labels', labelsPath, '--provenance', provenancePath, '--out', reportPath, '--seeds', '13,29,53', '--k', '5', '--now', String(now)], { cwd: root, encoding: 'utf8', timeout: 120000 });
   assert.equal(cli.status, 0, `CLI failed: ${cli.stderr}\n${cli.stdout}`);
   const emitted = JSON.parse(await readFile(reportPath, 'utf8'));
   assert.equal(emitted.seedCount, 3);
   assert.equal(emitted.input.labelRowsParsed, examples.length);
+  assert.equal(emitted.input.rawLabelsSha256, rawSourceSha256);
+  assert.equal(emitted.input.rawSourceSha256Verified, true, 'the supplied source-file hash must be checked before benchmarking');
   assert.equal(emitted.runs[0].candidateHoldout.unanswerableQueries, 1, 'CLI must preserve answerable:false labels and allow empty relevantIds only for them');
   assert.equal(emitted.promotion.allowed, false);
   assert.equal(emitted.runs.every(row => Array.isArray(row.failedPromotionGates) && typeof row.mrrConfidenceNonInferioritySupported === 'boolean'), true);
   assert.equal((await readdir(temp)).some(name => name.endsWith('.tmp')), false, 'successful publication must clean temporary output files');
+  const badRawProvenancePath = path.join(temp, 'bad-raw-provenance.json');
+  const badRawReportPath = path.join(temp, 'bad-raw-report.json');
+  await writeFile(badRawProvenancePath, JSON.stringify({ ...provenance, rawSourceSha256: '0'.repeat(64) }));
+  const badRawHash = spawnSync(process.execPath, ['--experimental-strip-types', path.join(root, 'scripts/run-memory-retrieval-experiment.mjs'), '--snapshot', snapshotPath, '--labels', labelsPath, '--provenance', badRawProvenancePath, '--out', badRawReportPath, '--seeds', '13,29,53'], { cwd: root, encoding: 'utf8', timeout: 120000 });
+  assert.equal(badRawHash.status, 2, 'a dataset whose raw artifact hash does not match provenance must fail closed');
+  assert.match(badRawHash.stderr, /provenance-raw-source-sha256-mismatch/);
+  assert.equal((await readdir(temp)).includes('bad-raw-report.json'), false, 'mismatched raw-source provenance must not publish a report');
   const overwrite = spawnSync(process.execPath, ['--experimental-strip-types', path.join(root, 'scripts/run-memory-retrieval-experiment.mjs'), '--snapshot', snapshotPath, '--labels', labelsPath, '--provenance', provenancePath, '--out', reportPath, '--seeds', '13,29,53', '--now', String(now)], { cwd: root, encoding: 'utf8', timeout: 120000 });
   assert.equal(overwrite.status, 2, 'CLI must not silently overwrite a report');
   assert.match(overwrite.stderr, /MEMORY_EXPERIMENT_FAILED/);
