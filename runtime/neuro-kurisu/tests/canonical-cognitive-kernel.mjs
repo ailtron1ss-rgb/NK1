@@ -882,5 +882,56 @@ assert.equal(receiptFabric.appendToolExternalObservation(accessorExternalObserva
 assert.equal(observationGetterExecuted,false,'external observation accessors must not execute');
 
 console.log('WorkPass366 provider revision and external observation ingress: PASS');
+
+// WorkPass367: persisted extension evidence must retain exact causal edges to the original receipt.
+const brokenObservationParentSnapshot=receiptFabric.snapshot();
+const brokenObservationNode=brokenObservationParentSnapshot.recent.find(event=>event.id===externalObservationResult.eventId);
+assert.ok(brokenObservationNode,'external observation should be represented in the bounded snapshot');
+brokenObservationNode.parentIds=[receiptDecision.id];
+const brokenObservationRestored=new CognitiveEventFabric(128);
+brokenObservationRestored.restore(brokenObservationParentSnapshot);
+assert.throws(()=>brokenObservationRestored.appendToolExternalObservation(externalObservationInput),
+  /external-observation-projection-conflict/,
+  'a deterministic observation ID with a broken receipt parent must not be re-adopted as valid replay evidence');
+
+const brokenObservationReceiptLinkSnapshot=receiptFabric.snapshot();
+const brokenObservationReceiptLink=brokenObservationReceiptLinkSnapshot.recent.find(event=>event.id===externalObservationResult.eventId);
+assert.ok(brokenObservationReceiptLink);
+brokenObservationReceiptLink.payload.receiptOutcomeEventId=receiptDecision.id;
+const brokenObservationReceiptLinkRestored=new CognitiveEventFabric(128);
+brokenObservationReceiptLinkRestored.restore(brokenObservationReceiptLinkSnapshot);
+assert.throws(()=>brokenObservationReceiptLinkRestored.appendToolExternalObservation(externalObservationInput),
+  /external-observation-projection-conflict/,
+  'external evidence must point to the same action/outcome pair named in its payload');
+
+const brokenRevisionParentSnapshot=receiptFabric.snapshot();
+const brokenRevisionNode=brokenRevisionParentSnapshot.recent.find(event=>event.id===revisionResult.eventId);
+assert.ok(brokenRevisionNode,'provider revision should be represented in the bounded snapshot');
+brokenRevisionNode.parentIds=[receiptDecision.id];
+const brokenRevisionRestored=new CognitiveEventFabric(128);
+brokenRevisionRestored.restore(brokenRevisionParentSnapshot);
+assert.throws(()=>brokenRevisionRestored.appendToolReceiptRevision(revisionInput),
+  /tool-receipt-revision-conflict/,
+  'a deterministic revision ID with a broken base-outcome edge must not be replayed as valid evidence');
+
+const brokenRevisionChainSnapshot=receiptFabric.snapshot();
+const brokenRevisionChainNode=brokenRevisionChainSnapshot.recent.find(event=>event.id===revisionResult.eventId);
+assert.ok(brokenRevisionChainNode);
+brokenRevisionChainNode.payload.previousRevisionEventId='receipt-test:fake-prior-revision';
+const brokenRevisionChainRestored=new CognitiveEventFabric(128);
+brokenRevisionChainRestored.restore(brokenRevisionChainSnapshot);
+assert.throws(()=>brokenRevisionChainRestored.appendToolReceiptRevision(revisionInput),
+  /tool-receipt-revision-conflict/,
+  'restore must not replay a provider revision whose previous-revision link cannot be proven');
+
+const brokenBaseReceiptSnapshot=receiptFabric.snapshot();
+const brokenBaseOutcome=brokenBaseReceiptSnapshot.recent.find(event=>event.id===receiptTrace.outcomeEventId);
+assert.ok(brokenBaseOutcome);
+brokenBaseOutcome.parentIds=[receiptDecision.id];
+const brokenBaseReceiptRestored=new CognitiveEventFabric(128);
+brokenBaseReceiptRestored.restore(brokenBaseReceiptSnapshot);
+assert.equal(brokenBaseReceiptRestored.hasToolReceiptTrace(receiptInput.executionId),false,
+  'the main receipt guard must require the outcome-to-action causal edge after restore');
+console.log('WorkPass367 receipt extension lineage integrity: PASS');
 console.log('WorkPass362 event-fabric restore boundary: PASS');
 

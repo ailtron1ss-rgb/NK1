@@ -314,24 +314,53 @@ export class CognitiveEventFabric {
         typeof projectionHash!=='string'||!/^[a-f0-9]{64}$/i.test(projectionHash)||
         typeof projectedAt!=='number'||!Number.isFinite(projectedAt)||projectedAt<0)return null;
       const event=restoredById.get(eventId);
+      const deterministicId=kind==='observation'
+        ?'cef:tool-external-observation:'+sha256Stable({executionId,observationId:refId}).slice(0,48)
+        :'cef:tool-receipt-revision:'+sha256Stable({executionId,revisionId:refId}).slice(0,48);
+      if(eventId!==deterministicId)return null;
       if(kind==='observation'){
-        if(event?.stage!=='external-evidence'||
-          ownDataValue(event.payload,'executionId')!==executionId||
-          ownDataValue(event.payload,'observationId')!==refId||
-          ownDataValue(event.payload,'projectionHash')!==projectionHash.toLowerCase())return null;
+        if(event) {
+          const action=restoredById.get(ownDataValue(event.payload,'receiptActionEventId') as string);
+          const outcome=restoredById.get(ownDataValue(event.payload,'receiptOutcomeEventId') as string);
+          if(event.stage!=='external-evidence'||event.external!==true||
+            ownDataValue(event.payload,'executionId')!==executionId||
+            ownDataValue(event.payload,'observationId')!==refId||
+            ownDataValue(event.payload,'projectionHash')!==projectionHash.toLowerCase()||
+            !action||!outcome||action.stage!=='tool-action'||outcome.stage!=='tool-outcome'||
+            ownDataValue(outcome.payload,'executionId')!==executionId||
+            ownDataValue(action.payload,'tool')!==ownDataValue(event.payload,'toolId')||
+            ownDataValue(outcome.payload,'tool')!==ownDataValue(event.payload,'toolId')||
+            ownDataValue(event.payload,'receiptActionEventId')!==action.id||
+            ownDataValue(event.payload,'receiptOutcomeEventId')!==outcome.id||
+            !outcome.parentIds.includes(action.id)||!event.parentIds.includes(outcome.id))return null;
+        }
         return {observationId:refId,eventId,projectionHash:projectionHash.toLowerCase(),projectedAt};
       }
-      if(event?.stage!=='tool-reconciliation'||
+      if(event&&(
+        event.stage!=='tool-reconciliation'||
         ownDataValue(event.payload,'executionId')!==executionId||
         ownDataValue(event.payload,'revisionId')!==refId||
-        ownDataValue(event.payload,'projectionHash')!==projectionHash.toLowerCase())return null;
-      const eventRevisionNumber=ownDataValue(event.payload,'revisionNumber');
+        ownDataValue(event.payload,'projectionHash')!==projectionHash.toLowerCase()))return null;
+      const eventRevisionNumber=event?ownDataValue(event.payload,'revisionNumber'):undefined;
       const storedRevisionNumber=ownDataValue(value,'revisionNumber');
       const hasStoredRevisionNumber=hasOwnField(value,'revisionNumber');
       if((hasStoredRevisionNumber&&(typeof storedRevisionNumber!=='number'||!Number.isSafeInteger(storedRevisionNumber)||storedRevisionNumber<1))||
-        (typeof eventRevisionNumber!=='number'||!Number.isSafeInteger(eventRevisionNumber)||eventRevisionNumber<1)||
-        (hasStoredRevisionNumber&&storedRevisionNumber!==eventRevisionNumber))return null;
-      return {revisionId:refId,eventId,projectionHash:projectionHash.toLowerCase(),projectedAt,revisionNumber:eventRevisionNumber};
+        (event&& (typeof eventRevisionNumber!=='number'||!Number.isSafeInteger(eventRevisionNumber)||eventRevisionNumber<1))||
+        (hasStoredRevisionNumber&&event&&storedRevisionNumber!==eventRevisionNumber))return null;
+      if(!event&&!hasStoredRevisionNumber)return null;
+      if(event) {
+        const baseOutcomeEventId=ownDataValue(event.payload,'baseOutcomeEventId');
+        const baseOutcome=typeof baseOutcomeEventId==='string'?restoredById.get(baseOutcomeEventId):undefined;
+        const baseAction=baseOutcome?.parentIds.length?restoredById.get(baseOutcome.parentIds[0]):undefined;
+        const previousRevisionEventId=ownDataValue(event.payload,'previousRevisionEventId');
+        if(!baseOutcome||baseOutcome.id!==baseOutcomeEventId||baseOutcome.stage!=='tool-outcome'||
+          !event.parentIds.includes(baseOutcome.id)||
+          (previousRevisionEventId!==null&&(!hasOnlyCanonicalEventId(previousRevisionEventId)||
+            !event.parentIds.includes(previousRevisionEventId)))||
+          (baseAction&&ownDataValue(baseAction.payload,'tool')!==ownDataValue(event.payload,'toolId')))return null;
+      }
+      return {revisionId:refId,eventId,projectionHash:projectionHash.toLowerCase(),projectedAt,
+        ...(typeof (eventRevisionNumber??storedRevisionNumber)==='number'?{revisionNumber:(eventRevisionNumber??storedRevisionNumber) as number}:{})};
     };
 
     for(const value of receiptRows){
@@ -388,7 +417,14 @@ export class CognitiveEventFabric {
       const observationsRaw=ownDataValue(value,'externalObservations');
       const observations=ownArrayValues(observationsRaw,32)
         .map(ref=>sanitizeReceiptRef(ref,'observation',executionId))
-        .filter((ref):ref is ExternalObservationProjectionRef=>ref!==null);
+        .filter((ref):ref is ExternalObservationProjectionRef=>ref!==null)
+        .filter(ref=>{
+          const event=restoredById.get(ref.eventId);
+          return !event||(event.external===true&&event.parentIds.includes(outcome.id)&&
+            ownDataValue(event.payload,'receiptActionEventId')===action.id&&
+            ownDataValue(event.payload,'receiptOutcomeEventId')===outcome.id&&
+            ownDataValue(event.payload,'toolId')===ownDataValue(action.payload,'tool'));
+        });
       const revisionsRaw=ownDataValue(value,'receiptRevisions');
       const revisionCandidates=ownArrayValues(revisionsRaw,32)
         .map(ref=>sanitizeReceiptRef(ref,'revision',executionId))
@@ -407,7 +443,15 @@ export class CognitiveEventFabric {
         seenRevisionEventIds.add(revision.eventId);
         previousRevisionNumber=revision.revisionNumber!;
       }
-      const revisions=revisionSequenceValid?revisionCandidates:[];
+      const revisions=revisionSequenceValid?revisionCandidates.filter((revision,index)=>{
+        const event=restoredById.get(revision.eventId);
+        if(!event)return true;
+        const expectedPrevious=index===0?null:revisionCandidates[index-1].eventId;
+        return event.stage==='tool-reconciliation'&&event.parentIds.includes(outcome.id)&&
+          ownDataValue(event.payload,'baseOutcomeEventId')===outcome.id&&
+          ownDataValue(event.payload,'previousRevisionEventId')===expectedPrevious&&
+          ownDataValue(event.payload,'toolId')===ownDataValue(action.payload,'tool');
+      }):[];
       const seenObservationIds=new Set<string>();
       const seenObservationEventIds=new Set<string>();
       const observationsUnique=observations.every(observation=>{
@@ -731,12 +775,26 @@ export class CognitiveEventFabric {
   }
 
   hasToolReceiptTrace(executionId:string):boolean{
-    const id=String(executionId??'').trim();
-    if(!id)return false;
-    const entry=this.receiptProjectionIndex.get(id);
+    if(!hasOnlyCanonicalEventId(executionId))return false;
+    const entry=this.receiptProjectionIndex.get(executionId);
     if(!entry)return false;
     const byId=new Map(this.events.map(event=>[event.id,event] as const));
-    return byId.get(entry.actionEventId)?.stage==='tool-action'&&byId.get(entry.outcomeEventId)?.stage==='tool-outcome'&&byId.get(entry.evidenceEventId)?.stage==='tool-evidence';
+    const action=byId.get(entry.actionEventId);
+    const outcome=byId.get(entry.outcomeEventId);
+    const evidence=byId.get(entry.evidenceEventId);
+    if(action?.stage!=='tool-action'||outcome?.stage!=='tool-outcome'||evidence?.stage!=='tool-evidence')return false;
+    if(ownDataValue(action.payload,'executionId')!==executionId||
+      ownDataValue(outcome.payload,'executionId')!==executionId||
+      ownDataValue(evidence.payload,'executionId')!==executionId||
+      ownDataValue(action.payload,'tool')!==ownDataValue(outcome.payload,'tool')||
+      ownDataValue(outcome.payload,'tool')!==ownDataValue(evidence.payload,'tool')||
+      !outcome.parentIds.includes(action.id)||!evidence.parentIds.includes(outcome.id))return false;
+    const hashes=[ownDataValue(action.payload,'projectionHash'),ownDataValue(outcome.payload,'projectionHash'),ownDataValue(evidence.payload,'projectionHash')];
+    const present=[hasOwnField(action.payload,'projectionHash'),hasOwnField(outcome.payload,'projectionHash'),hasOwnField(evidence.payload,'projectionHash')];
+    if(present.some(Boolean)&&(!present.every(Boolean)||!hashes.every(isSha256Hex)||
+      hashes.some(hash=>hash!==hashes[0])||
+      (entry.projectionHash!==undefined&&entry.projectionHash!==hashes[0])))return false;
+    return true;
   }
 
   /**
@@ -816,6 +874,13 @@ export class CognitiveEventFabric {
     const prior=refs.find(ref=>ref.revisionId===revisionId);
     if(prior){
       if(prior.projectionHash!==projectionHash)throw new Error('tool-receipt-revision-conflict');
+      const archivedNode=this.events.find(event=>event.id===prior.eventId);
+      if(archivedNode&&(
+        archivedNode.stage!=='tool-reconciliation'||archivedNode.payload.executionId!==executionId||
+        archivedNode.payload.revisionId!==revisionId||archivedNode.payload.projectionHash!==projectionHash||
+        archivedNode.payload.baseOutcomeEventId!==entry.outcomeEventId||
+        !archivedNode.parentIds.includes(entry.outcomeEventId)
+      ))throw new Error('tool-receipt-revision-conflict');
       return {resolved:true,replayed:true,eventId:prior.eventId,projectionHash};
     }
     if(refs.length>=32)return invalid('tool-receipt-revision-ledger-full');
@@ -824,8 +889,14 @@ export class CognitiveEventFabric {
     const byId=new Map(this.events.map(event=>[event.id,event] as const));
     const existing=byId.get(eventId);
     if(existing){
+      const expectedPrevious=refs.at(-1)?.eventId??null;
       if(existing.stage!=='tool-reconciliation'||existing.payload.executionId!==executionId||
-        existing.payload.revisionId!==revisionId||existing.payload.projectionHash!==projectionHash) {
+        existing.payload.revisionId!==revisionId||existing.payload.projectionHash!==projectionHash||
+        existing.payload.toolId!==toolId||existing.payload.revisionNumber!==revisionNumber||
+        existing.payload.baseOutcomeEventId!==entry.outcomeEventId||
+        !existing.parentIds.includes(entry.outcomeEventId)||
+        existing.payload.previousRevisionEventId!==expectedPrevious||
+        (expectedPrevious!==null&&!existing.parentIds.includes(expectedPrevious))) {
         throw new Error('tool-receipt-revision-conflict');
       }
       const ref:ToolReceiptRevisionProjectionRef={revisionId,eventId,projectionHash,projectedAt:existing.at,revisionNumber};
@@ -924,13 +995,25 @@ export class CognitiveEventFabric {
     const prior=refs.find(ref=>ref.observationId===observationId);
     if(prior){
       if(prior.projectionHash!==projectionHash)throw new Error('external-observation-projection-conflict');
+      const archivedNode=byId.get(prior.eventId);
+      if(archivedNode&&(
+        archivedNode.stage!=='external-evidence'||archivedNode.external!==true||
+        archivedNode.payload.executionId!==executionId||archivedNode.payload.observationId!==observationId||
+        archivedNode.payload.projectionHash!==projectionHash||
+        archivedNode.payload.receiptActionEventId!==action.id||
+        archivedNode.payload.receiptOutcomeEventId!==outcome.id||
+        archivedNode.payload.toolId!==toolId||
+        !archivedNode.parentIds.includes(outcome.id)
+      ))throw new Error('external-observation-projection-conflict');
       return {resolved:true,replayed:true,eventId:prior.eventId,archived:!byId.has(prior.eventId)};
     }
     const eventId='cef:tool-external-observation:'+sha256Stable({executionId,observationId}).slice(0,48);
     const existing=byId.get(eventId);
     if(existing){
-      if(existing.stage!=='external-evidence'||existing.payload.projectionHash!==projectionHash||
-        existing.payload.executionId!==executionId||existing.payload.observationId!==observationId) {
+      if(existing.stage!=='external-evidence'||existing.external!==true||existing.payload.projectionHash!==projectionHash||
+        existing.payload.executionId!==executionId||existing.payload.observationId!==observationId||
+        existing.payload.toolId!==toolId||existing.payload.receiptActionEventId!==action.id||
+        existing.payload.receiptOutcomeEventId!==outcome.id||!existing.parentIds.includes(outcome.id)) {
         throw new Error('external-observation-projection-conflict');
       }
       const ref:ExternalObservationProjectionRef={observationId,eventId,projectionHash,projectedAt:existing.at};
