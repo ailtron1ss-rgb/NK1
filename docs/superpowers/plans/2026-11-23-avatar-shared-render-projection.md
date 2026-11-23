@@ -44,11 +44,11 @@
   - AvatarRenderProjection with action, motorPlan, expression, expressionIntensity, gaze, speech, speaking, mouthPose, voiceEmphasis.
   - buildAvatarRenderProjection(input): AvatarRenderProjection.
 
-- [ ] **Step 1: Write tests** for canonical emotion/action planning, shared gaze plus valence offset, bounded gaze, confirmed speaking mouth, terminal-phase mouth closure, and malformed clock/IDs.
-- [ ] **Step 2: Run RED** using node --experimental-strip-types --test app/scripts/avatar-render-projection.test.mjs; expected: the projection tests fail on the stub's missing fields/incorrect mouth decision, not on imports or setup.
-- [ ] **Step 3: Implement** the pure projection with one call to planAvatarMotorIntent, existing EXPRESSION_TEXT values, a single gaze-by-action table, and a closed-mouth fail-safe.
-- [ ] **Step 4: Run GREEN** using the identical focused command; expected: all projection assertions pass.
-- [ ] **Step 5: Commit** feat(avatar): add shared render projection.
+- [x] **Step 1: Write tests** for canonical emotion/action planning, shared gaze plus valence offset, bounded gaze, confirmed speaking mouth, terminal-phase mouth closure, and malformed clock/IDs.
+- [x] **Step 2: Run RED** using node --experimental-strip-types --test app/scripts/avatar-render-projection.test.mjs; expected: the projection tests fail on the stub's missing fields/incorrect mouth decision, not on imports or setup.
+- [x] **Step 3: Implement** the pure projection with one call to planAvatarMotorIntent, existing EXPRESSION_TEXT values, a single gaze-by-action table, and a closed-mouth fail-safe.
+- [x] **Step 4: Run GREEN** using the identical focused command; expected: all projection assertions pass.
+- [x] **Step 5: Commit** feat(avatar): add shared render projection.
 
 ### Task 2: Renderer-specific motor adapters
 
@@ -63,11 +63,11 @@
 - Produces: resolveVrmArmIntent(plan, frame): { leftArmIntent: number; rightArmIntent: number }.
 - Extends VrmNormalizedMotorFrame with optional headTilt?: number without breaking current callers.
 
-- [ ] **Step 1: Write tests** for rest/listen neutral pose, explain/reflect/comfort/inspect/respond mappings, affect modifiers, asleep damping and out-of-range values; add a normalized-bone head-roll test.
-- [ ] **Step 2: Run RED** with the two focused Node test commands; expected: exported adapter is missing and the head-tilt assertion fails because the adapter ignores the field.
-- [ ] **Step 3: Implement** deterministic bounded mapping and add shared head tilt to VRM roll; retain legacy fallback when headTilt is absent.
-- [ ] **Step 4: Run GREEN** with both identical commands; expected: new tests and existing normalized motor tests pass.
-- [ ] **Step 5: Commit** feat(avatar): adapt shared motor intent to VRM.
+- [x] **Step 1: Write tests** for rest/listen neutral pose, explain/reflect/comfort/inspect/respond mappings, affect modifiers, asleep damping and out-of-range values; add a normalized-bone head-roll test.
+- [x] **Step 2: Run RED** with the two focused Node test commands; expected: exported adapter is missing and the head-tilt assertion fails because the adapter ignores the field.
+- [x] **Step 3: Implement** deterministic bounded mapping and add shared head tilt to VRM roll; retain legacy fallback when headTilt is absent.
+- [x] **Step 4: Run GREEN** with both identical commands; expected: new tests and existing normalized motor tests pass.
+- [x] **Step 5: Commit** feat(avatar): adapt shared motor intent to VRM.
 
 ### Task 3: Wire the single projection through every UI renderer
 
@@ -83,13 +83,13 @@
 - KurisuOriginalStage consumes a required motorPlan: AvatarMotorIntentPlan; it must not independently call planAvatarMotorIntent when mounted from the main stage.
 - Avatar3DStage consumes the same motorPlan, projection gaze and projection mouth/speaking state. It keeps action: ActionKind separately for existing clip selection.
 
-- [ ] **Step 1: Write a failing integration test** proving the Original 2D stage is supplied the shared plan and 3D arm/head mapping receives that same plan, while raw organism action remains the clip-selection input.
-- [ ] **Step 2: Run RED** with the focused renderer integration test; expected: current stage recomputes Original 2D intent and 3D does not receive a motor plan.
-- [ ] **Step 3: Implement** one projection in AvatarStage; use it for Live2D v1, Original 2D and 3D. Remove duplicated gaze planning and Original 2D planner invocation. Keep body-channel arbitration separate and additive.
-- [ ] **Step 4: Run GREEN** with the focused renderer integration test and owning test commands:
+- [x] **Step 1: Write a failing integration test** proving the Original 2D stage is supplied the shared plan and 3D arm/head mapping receives that same plan, while raw organism action remains the clip-selection input.
+- [x] **Step 2: Run RED** with the focused renderer integration test; expected: current stage recomputes Original 2D intent and 3D does not receive a motor plan.
+- [x] **Step 3: Implement** one projection in AvatarStage; use it for Live2D v1, Original 2D and 3D. Remove duplicated gaze planning and Original 2D planner invocation. Keep body-channel arbitration separate and additive.
+- [x] **Step 4: Run GREEN** with the focused renderer integration test and owning test commands:
   - node --experimental-strip-types --test app/scripts/avatar-render-projection.test.mjs app/scripts/renderer-motor-adapters.test.mjs
   - node --experimental-strip-types --test app/scripts/embodiment-timeline.test.mjs app/scripts/avatar-motor-intent.test.mjs app/scripts/vrm-runtime-adapter.test.mjs
-- [ ] **Step 5: Commit** feat(avatar): share one motor projection across renderers.
+- [x] **Step 5: Commit** feat(avatar): share one motor projection across renderers.
 
 ### Task 4: Integration verification and evidence
 
@@ -101,10 +101,10 @@
 - Consumes: Tasks 1–3 and existing embodiment-switch, Original 2D coupling, normalized VRM motor, model preflight and core regression workflows.
 - Produces: one evidence note stating exact PR-head SHA, CI checks, applied behaviors, and deferred physical visual/audio gates.
 
-- [ ] **Step 1: Write the acceptance checklist**: same motor decision, same gaze, one mouth authority, closed-mouth terminal phases, renderer capability limits, raw action clip selection.
-- [ ] **Step 2: Run exact-head GitHub Actions** and inspect app script regression, app typecheck, development build, runtime typecheck, body-switch, Live2D, Original 2D, normalized VRM, clean startup and dependency checks.
-- [ ] **Step 3: Record** only confirmed outputs. State that browser/Android visual/audio acceptance is still open if the environment cannot render/sound the models.
-- [ ] **Step 4: Commit** docs(avatar): record shared projection acceptance.
+- [x] **Step 1: Write the acceptance checklist**: same motor decision, same gaze, one mouth authority, closed-mouth terminal phases, renderer capability limits, raw action clip selection.
+- [x] **Step 2: Run exact-head GitHub Actions** and inspect app script regression, app typecheck, development build, runtime typecheck, body-switch, Live2D, Original 2D, normalized VRM, clean startup and dependency checks.
+- [x] **Step 3: Record** only confirmed outputs. State that browser/Android visual/audio acceptance is still open if the environment cannot render/sound the models.
+- [x] **Step 4: Commit** docs(avatar): record shared projection acceptance.
 
 ## Completion contract
 
@@ -114,3 +114,14 @@
 - Live2D continues to use the existing v1 message contract and exact cancellation/source checks.
 - Projection and adapter tests, full app script suite, typechecks and bundle build pass on exact PR head.
 - PR remains Draft until human-facing browser/Android visual and audio acceptance can be performed. No Release ZIP update in this slice.
+
+
+## Verified completion snapshot
+
+- Final source verification candidate: PR #1150 at exact head `ddb837972571819954ec839c82651893c65d3bc4`.
+- GitHub Actions: 15/15 required checks successful on that exact head.
+- App script regression, app typecheck, app development bundle, and runtime typecheck all completed successfully.
+- Normalized VRM motor, body-switch UI bridge, Original 2D motor coupling, GLB/VRM preflight, dependency audit, brain bridge, and clean-start smoke all completed successfully.
+- Evidence: `docs/consolidation/visual-evidence/AVATAR_SHARED_RENDER_PROJECTION_2026-11-23.md`.
+- Remaining non-CI acceptance: real-browser v5/v7 visual comparison, Android/Termux device/audio soak, and external asset rights review. The 3D mode remains preview; 2.5D remains unavailable until the layered art pack exists.
+- No Release ZIP was modified or published. PR remains Draft until visual/device acceptance.
