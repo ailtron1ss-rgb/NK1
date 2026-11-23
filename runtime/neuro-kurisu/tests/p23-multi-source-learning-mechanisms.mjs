@@ -5,7 +5,11 @@ const p=scoreReplayPriority(e,500,1,.9);assert.ok(p.priority01>.5);assert.ok(p.r
 assert.ok(scoreReplayPriority({...e,surprise:.01,success:.2},500,20,.1).priority01<p.priority01);
 const health={predictionError01:.5,recentPredictionError01:.9,replayTdError01:.8,evidenceDebt01:.7,memoryPressure01:.2,energy01:.9};
 const options=adaptiveReplayOptions({maxBatchSize:64,recentQuota:32},health,100);assert.ok(options.maxBatchSize>=1&&options.maxBatchSize<=64);assert.ok(options.recentQuota<=options.maxBatchSize);
-assert.ok(adaptiveReplayOptions({maxBatchSize:64},{...health,energy01:.1},100).maxBatchSize<options.maxBatchSize);
+const lowEnergyReplayOptions=adaptiveReplayOptions({maxBatchSize:64,recentQuota:32},{...health,energy01:.1},100);
+assert.equal(lowEnergyReplayOptions.maxBatchSize, options.maxBatchSize,
+  'energy scheduling must not silently shrink the experiment replay batch cap');
+assert.equal(lowEnergyReplayOptions.recentQuota, options.recentQuota,
+  'energy scheduling must not perturb replay selection quota');
 assert.ok(importanceWeight01(.01)>importanceWeight01(.9));
 assert.ok(adaptiveReplayLearningRate({tdError:.8,surprise01:.9,confidence01:.2})>adaptiveReplayLearningRate({tdError:.1,surprise01:.1,confidence01:.9}));
 assert.ok(adaptiveReplayLearningRate({tdError:999,surprise01:1,confidence01:0})<=.12);

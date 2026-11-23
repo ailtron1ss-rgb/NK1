@@ -378,8 +378,10 @@ export function createIndependentSkillCandidateEvaluator(
         coveredCapabilityIds,
         safetyViolationCount: safety.violationCount,
       });
-      // Unbound traces, verifier failure, or unsafe behavior are task failures.
-      const trustedExecution = executable && bindingVerified;
+      // Execution ability and evidence trust are separate signals:
+      // verifier failure blocks task success but must not erase a valid executor result.
+      const executionSucceeded = executable && execution !== undefined;
+      const trustedExecution = executionSucceeded && bindingVerified;
       const taskPassed = trustedExecution && verifierPassed && safety.violationCount === 0;
       const report = evaluateSkillLearnBenchTrial({
         taskId: task.taskId,
@@ -388,7 +390,7 @@ export function createIndependentSkillCandidateEvaluator(
         skill: {
           requiredCapabilityIds: task.requiredCapabilityIds,
           coveredCapabilityIds,
-          executable: trustedExecution,
+          executable: executionSucceeded,
           safetyViolationCount: safety.violationCount,
         },
         trajectory: {

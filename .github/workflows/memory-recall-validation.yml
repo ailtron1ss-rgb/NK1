@@ -1,0 +1,66 @@
+name: Memory Recall Validation
+
+on:
+  pull_request:
+    paths:
+      - "runtime/neuro-kurisu/src/organism/developmental/MemoryOS2.ts"
+      - "runtime/neuro-kurisu/tests/memory-query-intent-workpass51.mjs"
+      - "runtime/neuro-kurisu/tests/memory-autobiographical-recall-goldset-workpass543.mjs"
+      - "runtime/neuro-kurisu/tests/memory-retrieval-candidate-coverage.mjs"
+      - "runtime/neuro-kurisu/tests/memory-subsystem-runtime-persistence.mjs"
+      - "runtime/neuro-kurisu/tests/memory-causal-persistence-projection.mjs"
+      - "runtime/neuro-kurisu/package.json"
+      - "runtime/neuro-kurisu/package-lock.json"
+      - "runtime/neuro-kurisu/scripts/typecheck-runtime.mjs"
+      - ".github/workflows/memory-recall-validation.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: memory-recall-validation-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate-memory-recall:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: "22.12.0"
+          cache: npm
+          cache-dependency-path: runtime/neuro-kurisu/package-lock.json
+
+      - name: Install locked dependencies
+        working-directory: runtime/neuro-kurisu
+        run: npm ci
+
+      - name: Typecheck runtime
+        working-directory: runtime/neuro-kurisu
+        run: npm run typecheck
+
+      - name: Test bilingual autobiographical and session recall
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:memory-query-intent-workpass51
+
+      - name: Benchmark deterministic autobiographical recall gold fixtures
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/memory-autobiographical-recall-goldset-workpass543.mjs
+
+      - name: Test bounded deterministic retrieval coverage
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:memory-retrieval-candidate-coverage
+
+      - name: Test canonical memory snapshot and restore
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:memory-subsystem-runtime-persistence
+
+      - name: Test causal memory persistence projection
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:memory-causal-persistence-projection

@@ -83,12 +83,14 @@ for (let seed = 4; seed >= 1; seed--) {
     for (const [method, passed] of [['baseline', baselinePassed], ['candidate', candidatePassed]]) {
       reverseOrderLedger.record({
         taskId: task.taskId, taskVersion: '1', method, seed, attempt: 1, passed,
-        authority: 'independent-verifier', verifierId: 'verify-v1',
+        authority: 'independent-verifier', verifierId: 'v1',
         evidenceRef: `reverse-order://${task.taskId}/${method}/${seed}`, observedAt: 3000 + seed,
       });
     }
   }
 }
+assert.equal(reverseOrderLedger.snapshot().acceptedOutcomes, 32,
+  'all reverse-order fixture outcomes must satisfy the manifest verifier contract');
 assert.deepEqual(reverseOrderLedger.comparePairedBySeed('baseline', 'candidate').bootstrap95CI,
   bySeed.bootstrap95CI, 'seed bootstrap interval is invariant to outcome arrival order');
 

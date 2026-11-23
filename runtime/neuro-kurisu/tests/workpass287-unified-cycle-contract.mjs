@@ -115,9 +115,14 @@ assert.throws(()=>cycle.evaluate({tick:6,stageIds:null,parentIntegrity01:1}),/st
 const inheritedIds=Object.assign(Object.create({observation:'obs-from-prototype'}),{
   prediction:'pred-6',action:'act-6',outcome:'out-6',learning:'learn-6','self-update':'self-6',
 });
-const inheritedResult=cycle.evaluate({tick:6,stageIds:inheritedIds,parentIntegrity01:1});
-assert.equal(inheritedResult.complete,false);
-assert.ok(inheritedResult.missingStages.includes('observation'));
+const beforeInheritedInput = cycle.snapshot();
+assert.throws(
+  () => cycle.evaluate({tick:6,stageIds:inheritedIds,parentIntegrity01:1}),
+  /input data boundary rejected/,
+  'prototype-backed stage IDs must be rejected at the input boundary rather than read through inheritance',
+);
+assert.deepEqual(cycle.snapshot(), beforeInheritedInput,
+  'rejected prototype-backed input must leave all cognitive-cycle counters unchanged');
 
 const saturated=new UnifiedCognitiveCycle();
 saturated.restore({cycles:Number.MAX_SAFE_INTEGER,completeCycles:Number.MAX_SAFE_INTEGER,incompleteCycles:0,brokenLineages:0,lastTick:0,lastComplete:true,lastMissingStages:[]});

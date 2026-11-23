@@ -55,8 +55,12 @@ assert.equal(restored.skills.length,1);
 assert.equal(restored.ablations.length,1);
 assert.equal(restored.evidenceDebt.length,1);
 assert.equal(restored.processedTraceIds.length,2048);
-assert.equal(restored.processedTraceIds[0],'trace-newest','retain newest trace IDs');
-assert.deepEqual(restored.replayedTraceIds,['replay-newest']);
+assert.equal(restored.processedTraceIds[0],'trace-127',
+  'valid durable experience IDs must lead reconciled dedupe caches so restored rows cannot be applied twice');
+assert.ok(restored.processedTraceIds.includes('trace-newest'),
+  'newest cache-only trace IDs must remain after durable experience IDs are reconciled');
+assert.deepEqual(restored.replayedTraceIds,['replay-1','replay-newest'],
+  'valid durable replay IDs lead the reconciled replay cache and preserve cache-only newest IDs');
 assert.equal(restored.checksum.digest,'');
 assert.equal(restored.checksum.verificationFailures,0);
 assert.equal(restored.metrics.outcomes,128,'outcome counter cannot be lower than persisted experience rows');

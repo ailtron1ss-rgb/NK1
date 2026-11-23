@@ -78,8 +78,8 @@ try {
   };
   const payloadFingerprint = createHash('sha256').update(canonical(skill)).digest('hex');
   const expectedCandidateId = createHash('sha256')
-    .update(JSON.stringify([skill.id, 1, proposal.proposalId, payloadFingerprint]))
-    .digest('hex');
+    .update(JSON.stringify([skill.id, 1, proposal.proposalId, payloadFingerprint, null]))
+    .digest('hex'); // The durable candidate ID includes an explicit null provenance fingerprint when no reflective revision is attached.
   const runtimeVersion = 'nk1-e2e-runtime-145';
   const stateFile = path.join(root, 'organism.json');
   const observationFileName = 'verified-skill-shadow-observation.json';
