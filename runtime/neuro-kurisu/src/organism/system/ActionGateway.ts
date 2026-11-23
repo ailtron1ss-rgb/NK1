@@ -9,6 +9,7 @@ import {
 } from './OutcomeVerificationService.ts';
 import { sha256Stable, stableJson } from '../core/StableSerialization.ts';
 import type { ExternalObservationChannel, ExternalObservationSourceClass } from './ExternalObserverFabric.ts';
+import { sanitizeActionAuditValue } from './ActionAuditRedaction.ts';
 import { cloneFrozenToolInputContract, cloneFrozenToolOutputContract, validateToolInputContract, validateToolOutputContract, type ToolInputContract, type ToolOutputContract } from './ToolInputContract.ts';
 
 export type ActionOutcomeClass =
@@ -1424,7 +1425,7 @@ export class ActionGateway {
   ) {
     let resultSummary:string|undefined;
     if(result) {
-      try { resultSummary=JSON.stringify(result).slice(0,300); }
+      try { resultSummary=JSON.stringify(sanitizeActionAuditValue(result)).slice(0,300); }
       catch { resultSummary='[unserializable-result]'; }
     }
     const rec:ActionAuditRecord={
