@@ -139,6 +139,7 @@ export class OrganismSystemFabric {
       budget:cognition.budget,
       quorum:system.cognitiveQuorum,
       executor:system.autonomousProjectExecutor,
+      decisionReceipts:system.autonomousDecisionReceipts,
       p67:advanced.p67AutonomousGoalGenesis,
       p68:advanced.p68GoalEcology,
     });
