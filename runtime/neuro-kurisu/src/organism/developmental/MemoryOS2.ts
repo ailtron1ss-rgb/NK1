@@ -192,6 +192,7 @@ export interface MemoryEvictionWitness {
  id:string; kind:MemoryItem2['kind']; at:number; tick:number; bytes:number; value01:number; netValuePerByte01:number; reason:string; tokens:string[]; matchedQueries:number; realizedRegret01:number; counterfactualRegret01:number;
 }
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
+const normalizeMemorySignal=(value:unknown,fallback:number):number=>clamp(typeof value==='number'&&Number.isFinite(value)?value:fallback);
 // Keep single-digit numeric tokens: status codes, ratings, short versions and measured values are meaningful retrieval terms. Single-letter words remain excluded.
 const tokenize=(text:string)=>text.toLowerCase().normalize('NFKC').match(/[\p{L}\p{N}]{2,}|\p{N}/gu)??[];
 const characterGramCache=new Map<string,Set<string>>();
@@ -1356,12 +1357,27 @@ export class MemoryOS2{
  }
 
  private buildMemoryItem(input:MemoryEncodeInput,identity:{stableId:string;contentHash:string},entities:string[],semanticVector:number[],now:number):MemoryItem2{
-  const provenanceClass=this.provenanceClassFor(input.source,input.provenanceClass);
+  const source=typeof input.source==='string'&&input.source.trim()?input.source.trim().slice(0,240):'unknown';
+  const confidenceValid=typeof input.confidence==='number'&&Number.isFinite(input.confidence)&&input.confidence>=0&&input.confidence<=1;
+  const confidence=confidenceValid?clamp(input.confidence):.5;
+  const statusIsValid=EPISTEMIC_STATUSES.has(input.epistemicStatus);
+  const epistemicStatus=statusIsValid&&source!=='unknown'&&(input.epistemicStatus!=='fact'||confidenceValid)
+    ?input.epistemicStatus:'unknown';
+  const normalizedInput:MemoryEncodeInput={
+    ...input,source,confidence,epistemicStatus,
+    salience:normalizeMemorySignal(input.salience,.5),
+    emotionalWeight:normalizeMemorySignal(input.emotionalWeight,0),
+    identityRelevance:normalizeMemorySignal(input.identityRelevance,0),
+    goalRelevance:normalizeMemorySignal(input.goalRelevance,0),
+    socialRelevance:normalizeMemorySignal(input.socialRelevance,0),
+    predictionError:normalizeMemorySignal(input.predictionError,0),
+  };
+  const provenanceClass=this.provenanceClassFor(source,input.provenanceClass);
   const defaults={device:.95,external:.9,user:.86,agent:.68,derived:.52,simulation:.28,unknown:.5} as Record<MemoryProvenanceClass,number>;
-  const evidenceSources=this.normalizeEvidenceSources({...input,sourceAuthority01:input.sourceAuthority01??defaults[provenanceClass],provenanceClass,observedAt:input.observedAt??now,evidenceFreshnessAt:input.evidenceFreshnessAt??input.observedAt??now});
+  const evidenceSources=this.normalizeEvidenceSources({...normalizedInput,sourceAuthority01:input.sourceAuthority01??defaults[provenanceClass],provenanceClass,observedAt:input.observedAt??now,evidenceFreshnessAt:input.evidenceFreshnessAt??input.observedAt??now});
   const evidenceLineageKeys=[...new Set([...(Array.isArray(input.evidenceLineageKeys)?input.evidenceLineageKeys:[]),...evidenceSources.map(row=>this.evidenceKey(row))])].slice(-32);
   return {
-    ...input,
+    ...normalizedInput,
     id:input.id??identity.stableId,
     contentHash:input.contentHash??identity.contentHash,
     entities,
@@ -1373,7 +1389,7 @@ export class MemoryOS2{
     recordedFromAt:Number.isFinite(Number(input.recordedFromAt))?Number(input.recordedFromAt):now,
     recordedUntilAt:input.recordedUntilAt==null?null:(Number.isFinite(Number(input.recordedUntilAt))?Number(input.recordedUntilAt):now),
     freshnessUntilAt:input.freshnessUntilAt==null?null:(Number.isFinite(Number(input.freshnessUntilAt))?Number(input.freshnessUntilAt):null),
-    temporalKind:input.temporalKind!==undefined&&MEMORY_TEMPORAL_KINDS.has(input.temporalKind)?input.temporalKind:(input.epistemicStatus==='fact'?'fact':'assessment'),
+    temporalKind:input.temporalKind!==undefined&&MEMORY_TEMPORAL_KINDS.has(input.temporalKind)?input.temporalKind:(epistemicStatus==='fact'?'fact':'assessment'),
     bitemporalHistory:normalizeBitemporalHistory(input.bitemporalHistory),
     supersedesId:input.supersedesId??null,supersededById:input.supersededById??null,
     revisionGroupId:String(input.revisionGroupId??(input.id??identity.stableId)),
@@ -1385,6 +1401,7 @@ export class MemoryOS2{
     freshnessHalfLifeMs:normalizeFreshnessHalfLife(input.freshnessHalfLifeMs),
     evidenceSources, evidenceLineageKeys,
   };
+ };
  }
 
  encode(input:MemoryEncodeInput, options:{clone?:boolean;forceDistinct?:boolean}={}){
@@ -1408,13 +1425,28 @@ export class MemoryOS2{
     const previousFreshnessAt=Number(existing.evidenceFreshnessAt??0);
     if(Number.isFinite(incomingFreshnessAt)&&incomingFreshnessAt>previousFreshnessAt)existing.evidenceFreshnessAt=incomingFreshnessAt;
     existing.lastAccessAt=now;
-    existing.salience=clamp(existing.salience*.8+input.salience*.2);
+    // Omitted signals are neutral on reconsolidation: preserve existing state
+    // rather than introducing undefined/NaN or silently zeroing salience.
+    const incomingSalience=normalizeMemorySignal(input.salience,existing.salience);
+    const incomingConfidence=normalizeMemorySignal(input.confidence,existing.confidence);
+    const incomingPredictionError=normalizeMemorySignal(input.predictionError,existing.predictionError);
+    existing.salience=clamp(existing.salience*.8+incomingSalience*.2);
     // A repeated import from the same source/lineage is not independent evidence
     // and must not drive confidence towards 1 by replaying the same observation.
-    if(evidenceMerge.addedIndependentSource)existing.confidence=clamp(existing.confidence*.82+input.confidence*.18);
-    existing.predictionError=clamp(existing.predictionError*.75+input.predictionError*.25);
+    if(evidenceMerge.addedIndependentSource)existing.confidence=clamp(existing.confidence*.82+incomingConfidence*.18);
+    existing.predictionError=clamp(existing.predictionError*.75+incomingPredictionError*.25);
     existing.temperature01=memoryTemperature(existing);
-    existing.temperature01=clamp(existing.temperature01*.82+memoryTemperature({...existing,...input,lastAccessAt:now} as MemoryItem2,now)*.18);
+    const incomingTemperature=memoryTemperature({
+      ...existing,
+      salience:incomingSalience,
+      emotionalWeight:normalizeMemorySignal(input.emotionalWeight,existing.emotionalWeight),
+      identityRelevance:normalizeMemorySignal(input.identityRelevance,existing.identityRelevance),
+      goalRelevance:normalizeMemorySignal(input.goalRelevance,existing.goalRelevance),
+      socialRelevance:normalizeMemorySignal(input.socialRelevance,existing.socialRelevance),
+      predictionError:incomingPredictionError,
+      lastAccessAt:now,
+    },now);
+    existing.temperature01=clamp(existing.temperature01*.82+incomingTemperature*.18);
     existing.residencyTier='hot';
     existing.source=existing.source||input.source;
     existing.contentHash=existing.contentHash||memoContentHash(existing.content);
