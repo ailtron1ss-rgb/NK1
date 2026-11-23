@@ -406,7 +406,7 @@ export class OrganismRuntime {
     lastFailureCategory: null as string | null,
   };
   private readonly cognitiveImmuneSystem: RuntimeCognitiveHealthMonitor | null;
-  private readonly cognitiveImmuneStore: JsonStateStore<CognitiveImmuneState>;
+  private readonly cognitiveImmuneStore: JsonStateStore<any>;
   private readonly proceduralSkillLibrary = new ProceduralSkillLibrary();
   private readonly proceduralSkillStore: JsonStateStore<SkillLibraryState>;
   private readonly openLoopStore: JsonStateStore<OpenLoopRadarState>;
@@ -1751,11 +1751,11 @@ export class OrganismRuntime {
     let timeout:ReturnType<typeof setTimeout>|undefined;
     let timedOut=false;
     try{
-      const input=await Promise.race<CognitiveHealthInput|null>([
+      const input=await Promise.race<RuntimeCognitiveHealthInput|null>([
         Promise.resolve().then(()=>provider(tick)),
         new Promise<null>(resolve=>{
           timeout=setTimeout(()=>{timedOut=true;resolve(null);},COGNITIVE_HEALTH_PROVIDER_TIMEOUT_MS);
-          timeout.unref?.();
+          (timeout as any).unref?.();
         }),
       ]);
       if(timeout)clearTimeout(timeout);
