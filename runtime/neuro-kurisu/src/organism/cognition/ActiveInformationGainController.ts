@@ -126,7 +126,9 @@ export class ActiveInformationGainController {
       return {a,info:clamp(info-budgetPenalty),utility:clamp(utility-riskPenalty)};
     });
     const best=candidates.slice().sort((a,b)=>(b.info*.62+b.utility*.38)-(a.info*.62+a.utility*.38))[0]!;
-    const shouldExperiment=clamp(best.info*.72+novelty*.10+predictionError*.10+(1-grounding)*.08)>.48&&computeBudget>.24&&risk<.82;
+    // Let novelty and prediction error reopen exploration after successful outcomes have driven action uncertainty low.
+    // Keep the independent resource and risk ceilings strict; only the evidence-score threshold is calibrated.
+    const shouldExperiment=clamp(best.info*.72+novelty*.10+predictionError*.10+(1-grounding)*.08)>.45&&computeBudget>.24&&risk<.82;
     const selected=shouldExperiment?best.a:null;
     const rawQuery=typeof i.externalQuery==='string'?i.externalQuery.normalize('NFKC').trim().slice(0,160):'';
     const hId=rawQuery||'action:'+best.a;
