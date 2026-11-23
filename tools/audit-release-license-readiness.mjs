@@ -95,6 +95,38 @@ function checkCoverage(errors, label, currentRows, reviewedRows, now) {
   }
 }
 
+function summarizeErrors(errors) {
+  const definitions = [
+    ["global-review", (error) => error.startsWith("global release license review") || error.startsWith("global review:")],
+    ["root-project", (error) => error.startsWith("root project:")],
+    ["runtime-project", (error) => error.startsWith("runtime project:")],
+    ["locked-npm-dependencies", (error) => error.startsWith("locked npm dependency inventory:") || error.startsWith("locked npm dependency ")],
+    ["source-archives", (error) => error.startsWith("source archives:")],
+    ["repository-license-files", (error) => error.startsWith("repository license files:")],
+  ];
+  const assigned = new Set();
+  const byScope = [];
+  const indexedErrors = errors.map((error, index) => ({ error, index }));
+
+  for (const [scope, matches] of definitions) {
+    const scoped = indexedErrors.filter(({ error, index }) => !assigned.has(index) && matches(error));
+    if (scoped.length === 0) continue;
+    for (const { index } of scoped) assigned.add(index);
+    const scopedErrors = scoped.map(({ error }) => error);
+    byScope.push({ scope, errorCount: scopedErrors.length, errors: scopedErrors });
+  }
+
+  const otherErrors = indexedErrors.filter(({ index }) => !assigned.has(index)).map(({ error }) => error);
+  if (otherErrors.length > 0) {
+    byScope.push({ scope: "other", errorCount: otherErrors.length, errors: otherErrors });
+  }
+
+  return {
+    total: errors.length,
+    byScope,
+  };
+}
+
 export async function auditReleaseLicenseReadiness({ root = defaultRoot, now = new Date() } = {}) {
   const errors = [];
   const superVersion = await readJson(root, "SUPER_VERSION.json", errors);
@@ -165,6 +197,7 @@ export async function auditReleaseLicenseReadiness({ root = defaultRoot, now = n
     archiveCount: Array.isArray(provenance?.sourceArchives) ? provenance.sourceArchives.length : 0,
     repositoryLicenseFileCount: Array.isArray(provenance?.repositoryLicenseFiles) ? provenance.repositoryLicenseFiles.length : 0,
     errorCount: errors.length,
+    errorSummary: summarizeErrors(errors),
     errors,
     policy: "Fail closed: no license or redistribution permission is inferred from a detected license file."
   };
