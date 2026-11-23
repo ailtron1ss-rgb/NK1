@@ -1,14 +1,14 @@
 import type { ActionKind, EmotionLabel, OrganismSnapshot } from "@/organism/types";
-import type { AvatarMotorIntentPlan } from "./motorIntent";
-import { planAvatarMotorIntent } from "./motorIntent";
-import { EXPRESSION_TEXT } from "./embodimentUiBridge";
+import type { AvatarMotorIntentPlan } from "./motorIntent.ts";
+import { planAvatarMotorIntent } from "./motorIntent.ts";
+import { EXPRESSION_TEXT } from "./embodimentUiBridge.ts";
 import {
   CLOSED_MOUTH,
   type EmbodimentIntentV1,
   type MouthPose,
   type SpeechPhase,
   type VisemeName,
-} from "./embodimentTimeline";
+} from "./embodimentTimeline.ts";
 
 const GAZE_BY_ACTION: Record<ActionKind, { x: number; y: number }> = {
   explore: { x: 0.24, y: 0.04 },
