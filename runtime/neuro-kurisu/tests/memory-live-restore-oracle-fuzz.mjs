@@ -81,6 +81,21 @@ function assertOracle(label, memory) {
     const rowDiffs = liveSnapshot.items.map((item) => {
       const restored = restoredSnapshot.items.find((row) => row.id === item.id);
       if (!restored) return { id: item.id, missing: true };
+      const projections = (row) => ({
+        content: row.content,
+        tags: row.tags?.length ? row.tags : undefined,
+        context: row.context,
+        s: row.semanticLinks, t: row.temporalLinks, c: row.causalLinks, k: row.contradictionLinks,
+        e: row.evidenceSources, ek: row.evidenceLineageKeys,
+        ri: row.revisionIntegrityIssues?.length ? row.revisionIntegrityIssues : undefined,
+        r: row.revisionHistory, bh: row.bitemporalHistory,
+        rf: row.recordedFromAt, ru: row.recordedUntilAt, fu: row.freshnessUntilAt,
+        fh: row.freshnessHalfLifeMs, tk: row.temporalKind,
+      });
+      const liveProjection = projections(item), restoredProjection = projections(restored);
+      const projectionFieldDiffs = Object.keys(liveProjection).filter((key) =>
+        JSON.stringify(liveProjection[key] ?? null) !== JSON.stringify(restoredProjection[key] ?? null))
+        .map((key) => ({ key, live: liveProjection[key] ?? null, restored: restoredProjection[key] ?? null }));
       const keys = [...new Set([...Object.keys(item), ...Object.keys(restored)])];
       const changedKeys = keys.filter((key) =>
         JSON.stringify(item[key] ?? null) !== JSON.stringify(restored[key] ?? null));
@@ -88,7 +103,7 @@ function assertOracle(label, memory) {
       const restoredEstimate = estimateProjectionBytes(restored);
       const delta = restoredEstimate - liveEstimate;
       return delta !== 0 || changedKeys.length
-        ? { id: item.id, liveEstimate, restoredEstimate, delta, changedKeys }
+        ? { id: item.id, liveEstimate, restoredEstimate, delta, changedKeys, projectionFieldDiffs }
         : null;
     }).filter(Boolean).sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta));
     console.log('MEMORY_FUZZ_BYTE_DIAGNOSTICS=', JSON.stringify({
