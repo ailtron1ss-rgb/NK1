@@ -299,7 +299,7 @@ export class WorldForgeToolAdapter {
         properties: {
           count: { type: 'integer', minimum: 1, maximum: 16 },
           difficulty01: { type: 'number', minimum: 0.2, maximum: 0.95 },
-          focus: { type: 'string', enum: AUTO_FOCUS_VALUES },
+          focus: { type: 'string', enum: [...AUTO_FOCUS_VALUES] },
           candidateMultiplier: { type: 'integer', minimum: 2, maximum: 4 },
         },
         required: ['count','difficulty01','focus','candidateMultiplier'],
