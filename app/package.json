@@ -41,6 +41,7 @@
     "test:embodiment-ui-bridge": "node --experimental-strip-types --test scripts/embodiment-ui-bridge.test.mjs",
     "test:body-systems": "node --experimental-strip-types --test scripts/body-systems.test.mjs",
     "test:vrm-runtime-adapter": "node --experimental-strip-types --test scripts/vrm-runtime-adapter.test.mjs",
+    "test:vrm-humanoid-rig-audit": "node --experimental-strip-types --test scripts/vrm-humanoid-rig-audit.test.mjs scripts/vrm-humanoid-node-map.test.mjs",
     "test:glb-mouth-morph-adapter": "node --experimental-strip-types --test scripts/glb-mouth-morph-adapter.test.mjs",
     "test:vrm-normalized-humanoid": "node --experimental-strip-types --test scripts/vrm-normalized-humanoid.integration.test.mjs",
     "verify:hosted-kurisu-model": "node --experimental-strip-types scripts/verify-hosted-kurisu-model.mjs",

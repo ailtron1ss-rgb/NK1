@@ -41,6 +41,10 @@ on:
       - "app/src/components/avatar/vrmRuntimeAdapter.ts"
       - "app/scripts/vrm-runtime-adapter.test.mjs"
       - "app/scripts/body-systems.test.mjs"
+      - "app/src/components/avatar/vrmHumanoidRigAudit.ts"
+      - "app/src/components/avatar/vrmHumanoidNodeMap.ts"
+      - "app/scripts/vrm-humanoid-rig-audit.test.mjs"
+      - "app/scripts/vrm-humanoid-node-map.test.mjs"
       - "app/package.json"
       - ".github/workflows/nk1-embodiment-switch.yml"
   workflow_dispatch:
@@ -126,6 +130,8 @@ jobs:
         run: node --test app/scripts/avatar-3d-stage.test.mjs
       - name: Test VRM affect-to-expression and speech coexistence
         run: npm --prefix app run test:vrm-runtime-adapter
+      - name: Audit VRM 0.x/1.0 humanoid node maps and full-body capabilities
+        run: npm --prefix app run test:vrm-humanoid-rig-audit
       - name: Test deterministic GLB action resolution and clip crossfades
         run: npm --prefix app run test:avatar-animation-runtime
       - name: Test real Three.js toon material lifecycle
