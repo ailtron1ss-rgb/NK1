@@ -6,6 +6,7 @@ import {
   applyVrmNormalizedMotorFrame,
   configureVrmForNk1NormalizedMotorDrive,
   resolveVrmNormalizedMotorRig,
+  resolveVrmEmotionExpression,
   summarizeVrmMeta,
   updateVrmForNk1Frame,
 } from "../src/components/avatar/vrmRuntimeAdapter.ts";
@@ -122,7 +123,9 @@ test("VRM expression mapping follows NK1 affect and speech frame", () => {
     mouthForm: -0.6,
     blink: true,
   });
-  assert.equal(vrm.values.get("happy"), 0.78);
+  assert.equal(vrm.values.get("happy"), resolveVrmEmotionExpression({
+    emotion: "joy", speaking: true, mouthOpen: 0.7, mouthForm: -0.6, blink: true,
+  }).weight);
   assert.equal(vrm.values.get("oh"), 0.7);
   assert.equal(vrm.values.get("blink"), 1);
 
@@ -134,7 +137,9 @@ test("VRM expression mapping follows NK1 affect and speech frame", () => {
     blink: false,
   });
   assert.equal(vrm.values.has("happy"), false);
-  assert.equal(vrm.values.get("angry"), 0.72);
+  assert.equal(vrm.values.get("angry"), resolveVrmEmotionExpression({
+    emotion: "anger", speaking: true, mouthOpen: 2, mouthForm: 0.8, blink: false,
+  }).weight);
   assert.equal(vrm.values.get("ee"), 1);
   assert.equal(vrm.values.has("blink"), false);
 });
@@ -214,4 +219,93 @@ test("VRM joy expression intensity responds to canonical organism affect", () =>
     high.values.get("happy") > low.values.get("happy"),
     "higher positive arousal/valence/warmth should increase the VRM happy expression",
   );
+});
+
+
+test("VRM curiosity uses a bounded surprised preset and responds to novelty", () => {
+  const low = resolveVrmEmotionExpression({
+    emotion: "curiosity", speaking: false, mouthOpen: 0, mouthForm: 0, blink: false,
+    curiosity: 0.1, novelty: 0.1,
+  });
+  const high = resolveVrmEmotionExpression({
+    emotion: "curiosity", speaking: false, mouthOpen: 0, mouthForm: 0, blink: false,
+    curiosity: 0.95, novelty: 0.95,
+  });
+  assert.equal(low.expression, "surprised");
+  assert.equal(high.expression, "surprised");
+  assert.ok(high.weight > low.weight);
+  assert.ok(high.weight <= 0.36);
+});
+
+test("VRM anger and frustration distinguish perceived control", () => {
+  const angerLowControl = resolveVrmEmotionExpression({
+    emotion: "anger", speaking: false, mouthOpen: 0, mouthForm: 0, blink: false,
+    arousal: 0.8, dominance: 0.1,
+  });
+  const angerHighControl = resolveVrmEmotionExpression({
+    emotion: "anger", speaking: false, mouthOpen: 0, mouthForm: 0, blink: false,
+    arousal: 0.8, dominance: 0.9,
+  });
+  const frustrationLowControl = resolveVrmEmotionExpression({
+    emotion: "frustration", speaking: false, mouthOpen: 0, mouthForm: 0, blink: false,
+    arousal: 0.8, dominance: 0.1,
+  });
+  const frustrationHighControl = resolveVrmEmotionExpression({
+    emotion: "frustration", speaking: false, mouthOpen: 0, mouthForm: 0, blink: false,
+    arousal: 0.8, dominance: 0.9,
+  });
+  assert.ok(angerHighControl.weight > angerLowControl.weight);
+  assert.ok(frustrationLowControl.weight > frustrationHighControl.weight);
+});
+
+test("VRM calm and protective expressions use composure, warmth and social need", () => {
+  const composed = resolveVrmEmotionExpression({
+    emotion: "calm", speaking: false, mouthOpen: 0, mouthForm: 0, blink: false,
+    arousal: 0.1, composure: 0.95,
+  });
+  const agitated = resolveVrmEmotionExpression({
+    emotion: "calm", speaking: false, mouthOpen: 0, mouthForm: 0, blink: false,
+    arousal: 0.9, composure: 0.1,
+  });
+  const protectiveWarm = resolveVrmEmotionExpression({
+    emotion: "protective", speaking: false, mouthOpen: 0, mouthForm: 0, blink: false,
+    warmth: 0.95, socialNeed: 0.95,
+  });
+  const protectiveGuarded = resolveVrmEmotionExpression({
+    emotion: "protective", speaking: false, mouthOpen: 0, mouthForm: 0, blink: false,
+    warmth: 0.1, socialNeed: 0.1,
+  });
+  assert.ok(composed.weight > agitated.weight);
+  assert.ok(protectiveWarm.weight > protectiveGuarded.weight);
+});
+
+test("VRM expression projection rejects malformed affect values and keeps legacy callers safe", () => {
+  const malformed = resolveVrmEmotionExpression({
+    emotion: "joy", speaking: false, mouthOpen: 0, mouthForm: 0, blink: false,
+    arousal: Number.NaN, valence: Number.POSITIVE_INFINITY, warmth: -100,
+    dominance: "0.9",
+  });
+  const legacy = resolveVrmEmotionExpression({
+    emotion: "joy", speaking: false, mouthOpen: 0, mouthForm: 0, blink: false,
+  });
+  assert.ok(Number.isFinite(malformed.weight));
+  assert.ok(malformed.weight >= 0 && malformed.weight <= 0.78);
+  assert.ok(Number.isFinite(legacy.weight));
+  assert.ok(legacy.weight > 0);
+  assert.equal(resolveVrmEmotionExpression({
+    emotion: "unmapped", speaking: false, mouthOpen: 0, mouthForm: 0, blink: false,
+  }), null);
+});
+
+test("VRM expression application preserves speech visemes while using affect intensity", () => {
+  const vrm = createFakeVrm();
+  applyVrmExpressionFrame(vrm, {
+    emotion: "curiosity", speaking: true, mouthOpen: 0.64, mouthForm: -0.5, blink: false,
+    arousal: 0.8, novelty: 0.9, curiosity: 0.95,
+  });
+  assert.equal(vrm.values.get("surprised"), resolveVrmEmotionExpression({
+    emotion: "curiosity", speaking: true, mouthOpen: 0.64, mouthForm: -0.5, blink: false,
+    arousal: 0.8, novelty: 0.9, curiosity: 0.95,
+  }).weight);
+  assert.equal(vrm.values.get("oh"), 0.64);
 });
