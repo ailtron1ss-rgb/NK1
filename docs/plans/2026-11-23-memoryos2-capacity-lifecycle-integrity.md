@@ -105,3 +105,18 @@ Record expected pre-fix failures from the current implementation. Import/setup e
 - Create a Draft PR against workpass70-source.
 - Do not merge automatically. Preserve the branch and test evidence for reviewer integration.
 - Do not create or update a published Release.
+
+
+---
+
+## Execution status — 23 November 2026
+
+- [x] Task 1 RED regressions added. Run 45124160080 reproduced protected identity eviction at the expected assertion.
+- [x] Task 2 unified protected-aware canonical removal added.
+- [x] Task 3 encode preflight and maintenance safe-cap policy added.
+- [x] Task 4 full bounded restore selection, external-link-aware pruning, protected overrun diagnostics and defensive snapshots added.
+- [x] Task 5 MemoryFabric removal-receipt reconciliation and bounded read APIs added.
+- [x] Task 6 focused workflow passed on code commit 79395d0aa4e1201d429b08779998c90c3c29ac2a; all 13 checks passed including runtime TypeScript check.
+- [ ] Task 7 integration remains pending: PR #1121 is Draft and not merged. No Release was created.
+- The new default hot cap remains 1,600. A 10,000-record durable/cold-memory architecture is explicitly deferred to a separate measured aspect.
+- Detailed before/after evidence and next waves: runtime/neuro-kurisu/docs/MEMORYOS2_CAPACITY_LIFECYCLE_2026-11-23.md.
