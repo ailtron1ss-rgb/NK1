@@ -60,12 +60,30 @@ function assertOracle(label, memory) {
   assert.equal(danglingLinks, 0, `${label}: no surviving link may reference a forgotten memory`);
   assert.equal(danglingRevision, 0, `${label}: no revision pointer may reference a forgotten memory`);
 
+  const liveSnapshot = memory.snapshot();
   const reloaded = new MemoryOS2({ embeddingProvider: null });
-  reloaded.restore(structuredClone(memory.snapshot()));
+  reloaded.restore(structuredClone(liveSnapshot));
   assert.equal(reloaded.doctor().pass, true, `${label}: the reloaded store must be coherent`);
   assert.equal(reloaded.indexDiagnostics().pass, true, `${label}: the reloaded index must agree`);
+  const restoredSnapshot = reloaded.snapshot();
+  if (restoredSnapshot.estimatedBytes !== memory.budgetDiagnostics().estimatedBytes) {
+    const rowDiffs = liveSnapshot.items.map((item) => {
+      const restored = restoredSnapshot.items.find((row) => row.id === item.id);
+      if (!restored) return { id: item.id, missing: true };
+      const keys = [...new Set([...Object.keys(item), ...Object.keys(restored)])];
+      const changed = Object.fromEntries(keys
+        .filter((key) => JSON.stringify(item[key] ?? null) !== JSON.stringify(restored[key] ?? null))
+        .map((key) => [key, { live: item[key] ?? null, restored: restored[key] ?? null }]));
+      return Object.keys(changed).length ? { id: item.id, changed } : null;
+    }).filter(Boolean);
+    console.log('MEMORY_FUZZ_BYTE_DIAGNOSTICS=', JSON.stringify({
+      label, liveBytes: memory.budgetDiagnostics().estimatedBytes,
+      restoredBytes: restoredSnapshot.estimatedBytes, liveCount: liveSnapshot.items.length,
+      restoredCount: restoredSnapshot.items.length, rowDiffs: rowDiffs.slice(0, 12),
+    }));
+  }
   assert.equal(
-    reloaded.snapshot().estimatedBytes,
+    restoredSnapshot.estimatedBytes,
     memory.budgetDiagnostics().estimatedBytes,
     `${label}: live and reloaded durable byte budgets must agree (no accounting drift)`,
   );
