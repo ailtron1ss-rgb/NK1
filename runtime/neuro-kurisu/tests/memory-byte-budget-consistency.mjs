@@ -8,9 +8,32 @@ import { MemoryOS2 } from '../src/organism/developmental/MemoryOS2.ts';
 // nonzero drift here. These paths previously leaked bytes.
 
 const recompute = (memory) => {
+  const before = structuredClone(memory.snapshot());
   const restored = new MemoryOS2({ embeddingProvider: null });
-  restored.restore(structuredClone(memory.snapshot()));
-  return restored.snapshot().estimatedBytes;
+  restored.restore(before);
+  const after = restored.snapshot();
+  if (before.estimatedBytes !== after.estimatedBytes) {
+    const afterById = new Map(after.items.map((item) => [item.id, item]));
+    for (const row of before.items) {
+      const normalized = afterById.get(row.id);
+      if (!normalized) {
+        console.log('BYTE_RESTORE_ROW_DROPPED', JSON.stringify({ id: row.id, content: row.content }));
+        continue;
+      }
+      const fields = ['revisionIntegrityIssues', 'supersedesId', 'supersededById', 'revisionGroupId',
+        'revisionSequence', 'validFromAt', 'validUntilAt', 'recordedFromAt', 'recordedUntilAt',
+        'bitemporalHistory', 'revisionHistory', 'epistemicStatus'];
+      const changed = Object.fromEntries(fields
+        .filter((key) => JSON.stringify(row[key]) !== JSON.stringify(normalized[key]))
+        .map((key) => [key, { before: row[key] ?? null, after: normalized[key] ?? null }]));
+      if (Object.keys(changed).length) console.log('BYTE_RESTORE_ROW_DIFF', JSON.stringify({ id: row.id, changed }));
+    }
+    console.log('BYTE_RESTORE_TOTAL', JSON.stringify({
+      before: before.estimatedBytes, after: after.estimatedBytes,
+      beforeItems: before.items.length, afterItems: after.items.length,
+    }));
+  }
+  return after.estimatedBytes;
 };
 const assertConsistent = (memory, label) => {
   assert.equal(memory.snapshot().estimatedBytes, recompute(memory), `byte accounting drifted after ${label}`);
