@@ -2214,6 +2214,19 @@ export class MemoryOS2{
   this.lowerContentCache.delete(id);
   this.state.items.splice(index,1);
   this.itemIndex.delete(id);
+  const revisionGroup=String(item.revisionGroupId??item.id);
+  const groupMembers=this.revisionGroupIndex.get(revisionGroup);
+  if(groupMembers){groupMembers.delete(id);if(groupMembers.size===0)this.revisionGroupIndex.delete(revisionGroup);}
+  // Forgetting the last successor makes its predecessor the active tip again.
+  // Clearing only supersededById leaves validUntilAt closed, so the surviving
+  // record remains unreachable in current-time recall after the successor is gone.
+  if(!item.supersededById&&item.supersedesId){
+   const predecessor=this.itemIndex.get(item.supersedesId);
+   if(predecessor?.supersededById===id){
+    predecessor.supersededById=null;
+    predecessor.validUntilAt=null;
+   }
+  }
   this.rebuildDedupIndexesFor(item);
   for(const remaining of this.state.items){
    if(remaining.contradictionLinks?.includes(id))remaining.contradictionLinks=remaining.contradictionLinks.filter(value=>value!==id);
