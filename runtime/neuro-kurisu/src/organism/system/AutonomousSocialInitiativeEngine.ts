@@ -55,6 +55,12 @@ export interface SocialInitiativeState {
   startedAt: number;
   lastExternalInputAt: number;
   lastInitiativeAt: number;
+  consentGranted: boolean;
+  quietHoursEnabled: boolean;
+  quietStartHourUtc: number;
+  quietEndHourUtc: number;
+  suppressedByConsent: number;
+  suppressedByQuietHours: number;
 }
 
 export interface SocialTopicCandidate { topic: string; source?: SocialInitiativeTopicSource; salience01?: number; freshness01?: number; interestFit01?: number; affectFit01?: number; interestDomain?: string; interestContext?: SocialInterestContext; }
@@ -62,6 +68,8 @@ export const defaultAutonomousSocialInitiative = (): SocialInitiativeState => ({
   version: 1, cycles: 0, planned: 0, executed: 0, deferred: 0,
   reciprocity01: .54, initiative01: .34, initiatives: [],
   startedAt: 0, lastExternalInputAt: 0, lastInitiativeAt: 0,
+  consentGranted:true,quietHoursEnabled:false,quietStartHourUtc:22,quietEndHourUtc:8,
+  suppressedByConsent:0,suppressedByQuietHours:0,
 });
 
 const validSource = (value: unknown): SocialInitiativeTopicSource =>
@@ -71,6 +79,15 @@ const TONES: SocialToneHint[] = ['curious', 'playful', 'direct', 'reflective', '
 const validEmotion = (value: unknown): SocialEmotionLabel | null => EMOTIONS.includes(value as SocialEmotionLabel) ? value as SocialEmotionLabel : null;
 const validTone = (value: unknown): SocialToneHint | null => TONES.includes(value as SocialToneHint) ? value as SocialToneHint : null;
 const validFeedback = (value: unknown): SocialInitiative['feedbackSignal'] => value === 'positive' || value === 'engaged' || value === 'negative' ? value : undefined;
+const safeHour=(value:unknown,fallback:number):number=>{
+  const parsed=Number(value);return Number.isInteger(parsed)&&parsed>=0&&parsed<=23?parsed:fallback;
+};
+function withinQuietHoursUtc(at:number,startHour:number,endHour:number):boolean{
+  if(!Number.isFinite(at)||at<0)return false;
+  if(startHour===endHour)return true;
+  const hour=new Date(at).getUTCHours();
+  return startHour<endHour?hour>=startHour&&hour<endHour:hour>=startHour||hour<endHour;
+}
 const normalizeTopic = (value: unknown): string => String(value ?? '').normalize('NFKC').replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 360);
 const TOPIC_STOPWORDS = new Set('a an the and or but of to in on for from with how what why when where which who can could should would that this these those about into through between becomes become becoming is are was were be been being we i my our your its their it as than then without after before worth possible idea question connection а без более бы быть в во вот все всего где да для до его ее если за здесь из или их к как когда кто ли либо мне на над не него нее нет ни но о об от по под при про раз с со так такой там те то того тогда тоже той только том у уже что чтобы это этот эти я мы они он она вы вас ваш моя моей свой своей оно которыми который которая которые которое между через после перед потому при этом однако также ещё еще или же ли потому пусть может могут будет были есть был была было они оно им их мне мой моя мои нам наш наша наши само сама сами собой свой свою свои своего этому этой эти этих такое такие такой какой какие какая какие некоторых некоторый многие много мало всё все именно если иначе например действительно'.split(' '));
 const topicTokens = (value: string): Set<string> => new Set(normalizeTopic(value).toLocaleLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').split(/\s+/).filter(token => token.length > 2 && !TOPIC_STOPWORDS.has(token)));
@@ -251,6 +268,12 @@ export class AutonomousSocialInitiativeEngine {
         lastExternalInputAt: safeTime(ownData(raw, 'lastExternalInputAt')) ?? 0,
         lastInitiativeAt: safeTime(ownData(raw, 'lastInitiativeAt')) ?? 0,
         initiatives,
+        consentGranted:ownData(raw,'consentGranted')===undefined?defaults.consentGranted:ownData(raw,'consentGranted')===true,
+        quietHoursEnabled:ownData(raw,'quietHoursEnabled')===true,
+        quietStartHourUtc:safeHour(ownData(raw,'quietStartHourUtc'),defaults.quietStartHourUtc),
+        quietEndHourUtc:safeHour(ownData(raw,'quietEndHourUtc'),defaults.quietEndHourUtc),
+        suppressedByConsent:safeCounter(ownData(raw,'suppressedByConsent'),0),
+        suppressedByQuietHours:safeCounter(ownData(raw,'suppressedByQuietHours'),0),
       };
     } catch {
       // Restore is atomic: accessors, proxies, descriptor traps and malformed arrays reset safely.
@@ -259,6 +282,31 @@ export class AutonomousSocialInitiativeEngine {
   }
 
   snapshot(): SocialInitiativeState { return structuredClone(this.state); }
+
+  setConsent(granted:boolean):void{
+    this.state.consentGranted=granted===true;
+    if(!this.state.consentGranted){
+      const at=Date.now();
+      for(const item of this.state.initiatives.filter(item=>item.status==='planned'||item.status==='ready'))
+        this.defer(item.id,Math.max(at,item.createdAt));
+    }
+  }
+  setQuietHours(input:{enabled:boolean;startHourUtc?:number;endHourUtc?:number}):void{
+    this.state.quietHoursEnabled=input.enabled===true;
+    this.state.quietStartHourUtc=safeHour(input.startHourUtc,this.state.quietStartHourUtc);
+    this.state.quietEndHourUtc=safeHour(input.endHourUtc,this.state.quietEndHourUtc);
+  }
+  mayDeliverUserVisible(at=Date.now()):boolean{
+    if(!this.state.consentGranted)return false;
+    return !this.state.quietHoursEnabled||!withinQuietHoursUtc(at,this.state.quietStartHourUtc,this.state.quietEndHourUtc);
+  }
+  deliveryPolicy(at=Date.now()){
+    const quietNow=this.state.quietHoursEnabled&&withinQuietHoursUtc(at,this.state.quietStartHourUtc,this.state.quietEndHourUtc);
+    return {consentGranted:this.state.consentGranted,quietHoursEnabled:this.state.quietHoursEnabled,
+      quietStartHourUtc:this.state.quietStartHourUtc,quietEndHourUtc:this.state.quietEndHourUtc,
+      mayDeliverUserVisible:this.state.consentGranted&&!quietNow,
+      suppressedByConsent:this.state.suppressedByConsent,suppressedByQuietHours:this.state.suppressedByQuietHours};
+  }
 
   private expirePending(at: number): void {
     if (!Number.isFinite(at) || at < 0) return;
@@ -324,6 +372,14 @@ export class AutonomousSocialInitiativeEngine {
     if (input.externalInput) this.state.lastExternalInputAt = at;
     this.expirePending(at);
     const hasPending = this.state.initiatives.some(item => item.status === 'planned' || item.status === 'ready');
+    if(!this.state.consentGranted){
+      this.state.suppressedByConsent=Math.min(MAX_SOCIAL_COUNTER,this.state.suppressedByConsent+1);
+      return {shouldInitiate:false,initiative:null};
+    }
+    if(this.state.quietHoursEnabled&&withinQuietHoursUtc(at,this.state.quietStartHourUtc,this.state.quietEndHourUtc)){
+      this.state.suppressedByQuietHours=Math.min(MAX_SOCIAL_COUNTER,this.state.suppressedByQuietHours+1);
+      return {shouldInitiate:false,initiative:null};
+    }
     const quietPeriodMs = Math.max(0, input.quietPeriodMs ?? 180_000);
     const cooldownMs = Math.max(0, input.cooldownMs ?? 300_000);
     const startupGraceMs = Math.max(0, input.startupGraceMs ?? 45_000);
@@ -502,6 +558,7 @@ export class AutonomousSocialInitiativeEngine {
   latestPlanned(now = Date.now()): SocialInitiative | null {
     const at = safeTime(now) ?? Date.now();
     this.expirePending(at);
+    if(!this.mayDeliverUserVisible(at))return null;
     const item = this.state.initiatives.find(i => i.status === 'planned'
       && at >= i.createdAt && at - i.createdAt <= INITIATIVE_PENDING_TTL_MS);
     return item ? structuredClone(item) : null;
@@ -511,6 +568,7 @@ export class AutonomousSocialInitiativeEngine {
     const item = this.state.initiatives.find(i => i.id === id);
     const stagedAt = safeTime(at);
     if (!item || item.status !== 'planned' || stagedAt === undefined || stagedAt < item.createdAt) return false;
+    if(!this.mayDeliverUserVisible(stagedAt)){this.defer(id,stagedAt);return false;}
     if (stagedAt - item.createdAt > INITIATIVE_PENDING_TTL_MS) {
       this.defer(id, stagedAt);
       return false;
@@ -530,6 +588,7 @@ export class AutonomousSocialInitiativeEngine {
   latestReady(now = Date.now()): SocialInitiative | null {
     const at = safeTime(now) ?? Date.now();
     this.expirePending(at);
+    if(!this.mayDeliverUserVisible(at))return null;
     const item = this.state.initiatives.find(i => i.status === 'ready'
       && Boolean(i.message?.trim())
       && typeof i.stagedAt === 'number'
