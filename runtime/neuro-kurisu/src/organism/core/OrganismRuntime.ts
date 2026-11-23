@@ -24,8 +24,7 @@ import { choosePhonePolicyDelay, type PhonePolicyConfig } from '../system/PhoneR
 import { RuntimeClockScheduler, type RuntimeClockDecision } from '../system/RuntimeClockScheduler.ts';
 import { ContinuityLedger } from '../system/ContinuityLedger.ts';
 import { RuntimeEvidenceBus } from '../system/RuntimeEvidenceBus.ts';
-import { CognitiveEventFabric } from '../system/CognitiveEventFabric.ts';
-import { normalizeMetacognitiveEpisode } from '../cognition/MetacognitiveEpisode.ts';
+import { CognitiveEventFabric, normalizeMetacognitiveEpisode } from '../system/CognitiveEventFabric.ts';
 import { buildIndependentEvaluationEvidenceBundle } from '../system/IndependentEvaluationEvidence.ts';
 import { CognitiveResourceEconomy, cognitiveAttentionIntentFromAction, CognitiveSpineScheduler, type CognitiveSpineScheduleState } from '../system/CognitiveResourceEconomy.ts';
 import { UnifiedCognitiveCycle, type RiskAwareRecoveryControllerState } from '../system/UnifiedCognitiveCycle.ts';

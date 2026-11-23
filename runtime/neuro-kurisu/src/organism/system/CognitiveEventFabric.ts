@@ -1,3 +1,4 @@
+export { normalizeMetacognitiveEpisode } from '../cognition/MetacognitiveEpisode.ts';
 import { sha256Stable } from '../core/StableSerialization.ts';
 
 /**
