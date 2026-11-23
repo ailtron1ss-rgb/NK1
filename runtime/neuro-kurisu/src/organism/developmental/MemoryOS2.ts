@@ -642,7 +642,7 @@ export class MemoryOS2{
  private captureRankedChannelIds=false;
  private rankedChannelCaptureLimit=64;
  private lastRankedChannelIds:Record<string,string[]>={};
- private lastHybridDiagnostics:{bm25Enabled:boolean;bm25CandidateCount:number;bm25Max:number;rrfEnabled:boolean;identifierBias:boolean;temporalMode:MemoryTemporalMode;asOfAt:number;queryIntentMode:MemoryQueryIntent;maxQueryIntentBoost01:number;candidateSelection:'idf-coverage-fuzzy-concept-rrf-stable-id'|'idf-coverage-fuzzy-concept-metadata-rrf-stable-id';candidateSelectionLimit:number;fuzzyEnabled:boolean;fuzzyCandidateCount:number;semanticVectorUsedForRanking:boolean;semanticEmbeddingProvider:string;rrfSignals:string[];answerabilityGate:'direct-evidence-or-typed-recall-v1';rankedBeforeGate:number;groundedAfterGate:number;abstained:boolean;abstentionReason:'no-grounded-evidence'|null;spatialRequested:boolean;spatialInvalidQuery:boolean;spatialFrameId:string|null;spatialCandidateCount:number}={bm25Enabled:true,bm25CandidateCount:0,bm25Max:0,rrfEnabled:true,identifierBias:false,temporalMode:'current',asOfAt:0,queryIntentMode:'general',maxQueryIntentBoost01:0,candidateSelection:'idf-coverage-fuzzy-concept-rrf-stable-id',candidateSelectionLimit:192,fuzzyEnabled:true,fuzzyCandidateCount:0,semanticVectorUsedForRanking:false,semanticEmbeddingProvider:'none',rrfSignals:['bm25','token-coverage','character-fuzzy','entity','graph-temporal'],answerabilityGate:'direct-evidence-or-typed-recall-v1',rankedBeforeGate:0,groundedAfterGate:0,abstained:false,abstentionReason:null,spatialRequested:false,spatialInvalidQuery:false,spatialFrameId:null,spatialCandidateCount:0};
+ private lastHybridDiagnostics:{bm25Enabled:boolean;bm25CandidateCount:number;bm25Max:number;rrfEnabled:boolean;identifierBias:boolean;temporalMode:MemoryTemporalMode;asOfAt:number;queryIntentMode:MemoryQueryIntent;maxQueryIntentBoost01:number;candidateSelection:'idf-coverage-fuzzy-concept-rrf-stable-id'|'idf-coverage-fuzzy-concept-metadata-rrf-stable-id';candidateSelectionLimit:number;fuzzyEnabled:boolean;fuzzyCandidateCount:number;semanticVectorUsedForRanking:boolean;semanticEmbeddingProvider:string;rrfSignals:string[];answerabilityGate:'direct-evidence-or-typed-recall-v1';rankedBeforeGate:number;groundedAfterGate:number;abstained:boolean;abstentionReason:'no-grounded-evidence'|null;partialActivations:Array<{conceptGroupIndex:number;queryTermMatches:string[];bestLexicalSupport01:number}>;spatialRequested:boolean;spatialInvalidQuery:boolean;spatialFrameId:string|null;spatialCandidateCount:number}={bm25Enabled:true,bm25CandidateCount:0,bm25Max:0,rrfEnabled:true,identifierBias:false,temporalMode:'current',asOfAt:0,queryIntentMode:'general',maxQueryIntentBoost01:0,candidateSelection:'idf-coverage-fuzzy-concept-rrf-stable-id',candidateSelectionLimit:192,fuzzyEnabled:true,fuzzyCandidateCount:0,semanticVectorUsedForRanking:false,semanticEmbeddingProvider:'none',rrfSignals:['bm25','token-coverage','character-fuzzy','entity','graph-temporal'],answerabilityGate:'direct-evidence-or-typed-recall-v1',rankedBeforeGate:0,groundedAfterGate:0,abstained:false,abstentionReason:null,partialActivations:[],spatialRequested:false,spatialInvalidQuery:false,spatialFrameId:null,spatialCandidateCount:0};
  private linkSupportCache:Map<string,number>|null=null;
  private linkSupportCacheVersion=-1;
  private readonly removalReceipts:MemoryRemovalReceipt[]=[];
@@ -1968,7 +1968,28 @@ export class MemoryOS2{
      relationship:take(relationshipRank),
     };
    }
-   this.lastHybridDiagnostics={...this.lastHybridDiagnostics,spatialRequested,spatialInvalidQuery:spatialRequested&&!spatialQuery,spatialFrameId:spatialQuery?.frameId??null,spatialCandidateCount:spatialHits.length,bm25Enabled:true,bm25CandidateCount:rawRows.filter(x=>x.bm25>0).length,bm25Max:maxBm25,rrfEnabled:true,identifierBias,temporalMode,asOfAt:now,queryIntentMode,maxQueryIntentBoost01:Math.max(0,...groundedRows.map(x=>x.intentBoost01)),candidateSelection:this.metadataRecallEnabled?'idf-coverage-fuzzy-concept-metadata-rrf-stable-id':'idf-coverage-fuzzy-concept-rrf-stable-id',candidateSelectionLimit:192,fuzzyEnabled:true,fuzzyCandidateCount:fuzzyCandidateIds.size,semanticVectorUsedForRanking:false,semanticEmbeddingProvider:'none',rrfSignals:this.metadataRecallEnabled?['bm25','token-coverage','character-fuzzy','metadata-tags-entities-topic','bilingual-concept-bridge','entity','graph-temporal','intent-kind-fit']:['bm25','token-coverage','character-fuzzy','bilingual-concept-bridge','entity','graph-temporal','intent-kind-fit'],answerabilityGate:'direct-evidence-or-typed-recall-v1',rankedBeforeGate:topRows.length,groundedAfterGate:groundedRows.length,abstained:groundedRows.length===0,abstentionReason:groundedRows.length===0?'no-grounded-evidence':null};
+   // When the answerability gate abstains, report which curated concepts the
+   // query activated but the eligible corpus could not support. This is a
+   // retrieval diagnostic only: it never creates a candidate or bypasses the
+   // grounding gate.
+   const partialActivations=groundedRows.length?[]:conceptQuery.groups.flatMap(groupIndex=>{
+    const aliases=MEMORY_RETRIEVAL_CONCEPT_GROUPS[groupIndex]??[];
+    const queryTermMatches=[...qTokens].filter(token=>aliases.some(alias=>conceptAliasMatchScore(token,alias)>0));
+    if(!queryTermMatches.length)return [];
+    const supportIds=this.conceptGroupIndex.get(groupIndex)??new Set<string>();
+    let bestLexicalSupport01=0;
+    for(const id of supportIds){
+     const item=this.itemIndex.get(id);
+     if(!item||item.dormant||item.epistemicStatus==='quarantined'||(temporalMode!=='all'&&!isValidAt(item,now)))continue;
+     const memoryTokens=this.tokensFor(item.content);
+     const matched=queryTermMatches.filter(queryToken=>
+      memoryTokens.has(queryToken)||[...memoryTokens].some(memoryToken=>conceptStemPrefixMatches(queryToken,memoryToken))
+     ).length;
+     bestLexicalSupport01=Math.max(bestLexicalSupport01,clamp(matched/Math.max(1,queryTermMatches.length)));
+    }
+    return [{conceptGroupIndex:groupIndex,queryTermMatches,bestLexicalSupport01}];
+   });
+   this.lastHybridDiagnostics={...this.lastHybridDiagnostics,spatialRequested,spatialInvalidQuery:spatialRequested&&!spatialQuery,spatialFrameId:spatialQuery?.frameId??null,spatialCandidateCount:spatialHits.length,bm25Enabled:true,bm25CandidateCount:rawRows.filter(x=>x.bm25>0).length,bm25Max:maxBm25,rrfEnabled:true,identifierBias,temporalMode,asOfAt:now,queryIntentMode,maxQueryIntentBoost01:Math.max(0,...groundedRows.map(x=>x.intentBoost01)),candidateSelection:this.metadataRecallEnabled?'idf-coverage-fuzzy-concept-metadata-rrf-stable-id':'idf-coverage-fuzzy-concept-rrf-stable-id',candidateSelectionLimit:192,fuzzyEnabled:true,fuzzyCandidateCount:fuzzyCandidateIds.size,semanticVectorUsedForRanking:false,semanticEmbeddingProvider:'none',rrfSignals:this.metadataRecallEnabled?['bm25','token-coverage','character-fuzzy','metadata-tags-entities-topic','bilingual-concept-bridge','entity','graph-temporal','intent-kind-fit']:['bm25','token-coverage','character-fuzzy','bilingual-concept-bridge','entity','graph-temporal','intent-kind-fit'],answerabilityGate:'direct-evidence-or-typed-recall-v1',rankedBeforeGate:topRows.length,groundedAfterGate:groundedRows.length,abstained:groundedRows.length===0,abstentionReason:groundedRows.length===0?'no-grounded-evidence':null,partialActivations};
    // semanticHits is retained only for persisted-state compatibility. It is not
    // incremented by retrieval: the legacy hashed token projection is not a semantic
    // retrieval channel, and its previous calculation silently warmed cold memories.
