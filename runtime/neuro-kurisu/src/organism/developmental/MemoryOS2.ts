@@ -1495,7 +1495,18 @@ export class MemoryOS2{
    this.state.items.unshift(item as MemoryItem2);this.state.estimatedBytes+=estimateMemoryBytes(item as MemoryItem2);this.itemIndex.set(item.id,item as MemoryItem2);this.linkSupportCache=null;
    this.exactIndex.set(`${item.kind}|${item.source}|${canonicalizeMemoryContent(item.content)}`,item.id);
    this.contentIndex.set(`${item.kind}|${canonicalizeMemoryContent(item.content)}`,item.id);this.indexItem(item);this.lowerContentCache.delete(item.id);
-   for(const linkedId of item.contradictionLinks??[]){const linked=this.itemIndex.get(linkedId);if(linked){linked.contradictionLinks=[...new Set([...(linked.contradictionLinks??[]),item.id])].slice(0,6);this.state.linkUpdates++;}}
+   for(const linkedId of item.contradictionLinks??[]){
+     const linked=this.itemIndex.get(linkedId);if(!linked)continue;
+     const previousLinks=linked.contradictionLinks??[];
+     const nextLinks=[...new Set([...previousLinks,item.id])].slice(0,6);
+     const changed=nextLinks.length!==previousLinks.length||nextLinks.some((id,index)=>id!==previousLinks[index]);
+     if(changed){
+      const previousBytes=estimateMemoryBytes(linked);
+      linked.contradictionLinks=nextLinks;
+      this.state.estimatedBytes=Math.max(0,this.state.estimatedBytes-previousBytes+estimateMemoryBytes(linked));
+      this.state.linkUpdates++;
+     }
+    }
    this.state.linkUpdates+=item.semanticLinks.length+item.temporalLinks.length;
    if(item.epistemicStatus==='quarantined')this.state.quarantined++;return options.clone===false?(item as MemoryItem2):structuredClone(item as MemoryItem2);
  }
