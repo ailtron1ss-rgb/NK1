@@ -1365,7 +1365,20 @@ export class MemoryOS2{
     let groupSet=this.revisionGroupIndex.get(group);
     if(!groupSet){groupSet=new Set<string>();this.revisionGroupIndex.set(group,groupSet);}
     groupSet.add(older.id);groupSet.add(newer.id);
-    older.validUntilAt=Math.max(Number(older.validFromAt??older.createdAt),newerAt);
+    // A revision transition must have one half-open valid-time boundary. The
+    // old row closes exactly where the new row begins; otherwise a backdated
+    // child is silently repaired on restore and live/loaded state diverges.
+    const supersessionValidAt=Math.max(
+      newerAt,
+      Number(older.validFromAt??older.createdAt)+1,
+      Number(newer.validFromAt??newer.createdAt),
+    );
+    if(Number(newer.validFromAt??newer.createdAt)<supersessionValidAt){
+      const childStatus=newer.epistemicStatus;
+      newer.validFromAt=supersessionValidAt;
+      this.recordRevision(newer,{at:recordedAt,from:childStatus,to:childStatus,reason:'implicit-state-conflict-supersession'});
+    }
+    older.validUntilAt=supersessionValidAt;
     older.supersededById=newer.id;
     this.recordRevision(older,{at:recordedAt,from:older.epistemicStatus,to:older.epistemicStatus,reason:signal.contextConflict?'implicit-state-conflict-context':'implicit-state-conflict'});
     newer.supersedesId=older.id;
