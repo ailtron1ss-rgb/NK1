@@ -1199,6 +1199,8 @@ export class OrganismCore {
     private get conscioAdaptation() { return this.organismSystems.conscioAdaptation; }
     /** Runs reduced-resolution life ticks without reintroducing operational control-flow into Core. */
     private readonly operationalMicroCycle = new OperationalMicroCycleRuntime(() => this.operationalMicroCycleContext());
+    /** Read-only composition root for aspect-fabric wiring and diagnostics. */
+    get organismSystemFabric(): OrganismSystemFabric { return this.organismSystems; }
     private get selfSubsystem() { return this.organismSystems.self; }
     private get agencySubsystem() { return this.organismSystems.agency; }
     private get governanceSubsystem() { return this.organismSystems.governance; }
