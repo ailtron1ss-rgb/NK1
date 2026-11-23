@@ -42,10 +42,10 @@ assert.match(runtimeSource,
   /const projectAllowed = executionPlan\?\.run\?\.project !== false && spineDecision\.run\.project;/,
   'project gating must be driven by the execution plan');
 assert.match(runtimeSource,
-  /const planningBudget = projectAllowed\s*\?\s*this\.core\.cognitiveBudgetSpend\('planning',[\s\S]*?:\s*\{ accepted: false \};/,
+  /const planningBudget = projectAllowed\s*&&\s*!riskRecoveryApplied\s*\?\s*this\.core\.cognitiveBudgetSpend\('planning',[\s\S]*?:\s*\{ accepted: false \};/,
   'a planner-disabled project operation must not spend planning budget');
 assert.match(runtimeSource,
-  /const plan = planningBudget\.accepted && projectAllowed\s*\?\s*this\.plans\.build\([\s\S]*?:\s*this\.plans\.buildBudgetFallback\(/,
+  /const plan = riskRecoveryApplied\s*\?\s*this\.plans\.buildBudgetFallback\([\s\S]*?:\s*planningBudget\.accepted && projectAllowed\s*\?\s*this\.plans\.build\([\s\S]*?:\s*this\.plans\.buildBudgetFallback\(/,
   'failed or gated planning must choose the one-step fallback rather than beam search');
 assert.match(runtimeSource,
   /const worldRolloutAllowed = executionPlan\?\.run\?\.\['world-rollout'\] !== false && spineDecision\.run\['world-rollout'\];/,
@@ -59,6 +59,8 @@ assert.match(runtimeSource,
 assert.match(runtimeSource,
   /const matchedProjections = shadowPassAllowed\s*\?\s*matchedCandidates\.map\([\s\S]*?:\s*\[\];/,
   'matched shadow projections must be skipped when shadow is gated');
+
+assert.match(runtimeSource, /const autonomousRecoveryAllowed = !externalText && cycle\.decision\.userRequestedAction == null;/, 'risk recovery must not override external/user-requested actions');
 
 console.log('COGNITIVE_RUNTIME_PLANNER_EXECUTION_GATE=PASS', JSON.stringify({
   fallbackSteps: fallback.steps.length,
