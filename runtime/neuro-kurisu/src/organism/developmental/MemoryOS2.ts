@@ -386,6 +386,40 @@ function bm25Score(queryTokens:string[],content:string,docCount:number,documentF
   for(const q of uniqueQ){const f=tf.get(q)||0;if(!f)continue;const df=documentFrequency.get(q)||0;const idf=Math.log(1+(docCount-df+0.5)/(df+0.5));const denom=f+k1*(1-b+b*dl/avgLen);score+=idf*((f*(k1+1))/denom);}
   return Math.max(0,score);
 }
+/** Bounded deterministic top-k selection; avoids sorting high-fanout postings in full. */
+function takeTopBy<T>(values:Iterable<T>,limit:number,compare:(a:T,b:T)=>number):T[]{
+ const cap=Math.max(0,Math.floor(limit));
+ if(cap===0)return [];
+ const heap:T[]=[];
+ const swap=(a:number,b:number)=>{const value=heap[a];heap[a]=heap[b];heap[b]=value;};
+ const siftDown=(start:number)=>{
+  let index=start;
+  while(true){
+   const left=index*2+1,right=left+1;
+   let worst=index;
+   if(left<heap.length&&compare(heap[left],heap[worst])>0)worst=left;
+   if(right<heap.length&&compare(heap[right],heap[worst])>0)worst=right;
+   if(worst===index)return;
+   swap(index,worst);index=worst;
+  }
+ };
+ for(const value of values){
+  if(heap.length<cap){
+   heap.push(value);
+   let index=heap.length-1;
+   while(index>0){
+    const parent=Math.floor((index-1)/2);
+    if(compare(heap[index],heap[parent])<=0)break;
+    swap(index,parent);index=parent;
+   }
+   continue;
+  }
+  // The root is the worst retained row. Replace it only with a strictly
+  // better candidate; the caller's total comparator includes a stable ID tie-break.
+  if(compare(value,heap[0])<0){heap[0]=value;siftDown(0);}
+ }
+ return heap.sort(compare);
+}
 type MemoryEncodeInput=Omit<MemoryItem2,'id'|'createdAt'|'lastAccessAt'|'retrievalCount'|'revisionHistory'|'dormant'|'semanticVector'|'temperature01'|'residencyTier'> & {id?:string};
 export const defaultMemoryOS2=():MemoryOSState2=>({items:[],forgetCount:0,reconsolidations:0,quarantined:0,lastMaintenanceAt:0,semanticQueries:0,semanticHits:0,linkUpdates:0,version:7,implicitConflictCandidates:0,implicitConflictsResolved:0,staleRetrievalsAvoided:0,lastConflictScanAt:0,implicitConflictsDeferred:0,provenanceProtected:0,estimatedBytes:0,byteBudget:524288,budgetEvictions:0,budgetMisses:0,meanEvictionRegret01:0,evictionWitnesses:[],restoreIntegrityFindings:[]});
 const MAX_MEMORY_REVISION_HISTORY=64;
@@ -1766,7 +1800,9 @@ export class MemoryOS2{
      const ids=this.conceptGroupIndex.get(groupIndex);if(!ids)continue;
      for(const id of ids){const priority=priorityFor(id);priority.conceptSupport+=.9;priority.conceptMatches++;}
    }
-   const rankedSeedIds=[...candidatePriority.entries()].map(([id,priority])=>{
+   const compareRankedSeeds=(a:{id:string;score:number;matchedTerms:number;fuzzyMatches:number;exactPhrase:number;validAt:number;lastAccessAt:number;salience:number;createdAt:number;revisionSequence:number},b:{id:string;score:number;matchedTerms:number;fuzzyMatches:number;exactPhrase:number;validAt:number;lastAccessAt:number;salience:number;createdAt:number;revisionSequence:number})=>
+    b.score-a.score||b.matchedTerms-a.matchedTerms||b.fuzzyMatches-a.fuzzyMatches||b.exactPhrase-a.exactPhrase||b.validAt-a.validAt||b.revisionSequence-a.revisionSequence||b.lastAccessAt-a.lastAccessAt||b.salience-a.salience||b.createdAt-a.createdAt||a.id.localeCompare(b.id);
+   const rankedSeedRows=takeTopBy(candidatePriority.entries().map(([id,priority])=>{
      const item=this.itemIndex.get(id);
      if(!item)return {id,score:priority.idfSupport+priority.fuzzySupport,matchedTerms:priority.matchedTerms,fuzzyMatches:priority.fuzzyMatches,exactPhrase:0,validAt:0,lastAccessAt:0,salience:0,createdAt:0,revisionSequence:0};
      const exactPhrase=queryPhrase.length>=4&&this.lowerFor(id,item.content).includes(queryPhrase)?1:0;
@@ -1775,7 +1811,8 @@ export class MemoryOS2{
      // recency overpower a genuinely rarer query match.
      const score=priority.idfSupport+priority.fuzzySupport*.70+priority.metadataSupport*.72+priority.conceptSupport*.30+exactPhrase*.65+Math.min(priority.matchedTerms,8)*.035;
      return {id,score,matchedTerms:priority.matchedTerms,fuzzyMatches:priority.fuzzyMatches,exactPhrase,validAt,lastAccessAt:Number(item.lastAccessAt??0),salience:clamp(Number(item.salience??0)),createdAt:Number(item.observedAt??item.createdAt??0),revisionSequence:Number(item.revisionSequence??1)};
-   }).sort((a,b)=>b.score-a.score||b.matchedTerms-a.matchedTerms||b.fuzzyMatches-a.fuzzyMatches||b.exactPhrase-a.exactPhrase||b.validAt-a.validAt||b.revisionSequence-a.revisionSequence||b.lastAccessAt-a.lastAccessAt||b.salience-a.salience||b.createdAt-a.createdAt||a.id.localeCompare(b.id)).slice(0,spatialQuery?128:192).map(row=>row.id);
+   }),spatialQuery?128:192,compareRankedSeeds);
+   const rankedSeedIds=rankedSeedRows.map(row=>row.id);
    const candidateIds=new Set<string>(rankedSeedIds);
    // Reserve at most 64 slots for explicit spatial evidence while preserving the
    // global 192-candidate ceiling and ordinary lexical candidate ordering.
