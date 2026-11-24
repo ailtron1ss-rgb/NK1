@@ -110,3 +110,14 @@
 - Новых внешних исследований или runtime dependencies в этом цикле не добавлено.
 
 **Следующий запуск:** начать с live `workpass70-source` HEAD/PR/Actions, затем продолжить MemoryOS2 hunk matrix или актуализировать один из существующих P0 PR; не начинать новые ветки до проверки существующих owners/dependencies.
+
+
+## Дополнительная проверка job logs
+
+После завершения exact-head Actions прочитаны логи конкретных jobs:
+
+- PR #1169: run `45404907366`, job `138482844556`. Лог подтверждает запуск `tests/cognitive-immune-plugin-runtime-gate.mjs`; вывод содержит `authenticatedPluginIngress=true`, `hostilePluginQuarantined=true` и `immuneSidecarRestoredAcrossRuntimeRestart=true`.
+- PR #1167: run `45385415177`, job `138414930033`. Лог подтверждает запуск `tests/metacognitive-episode-decision-lineage.mjs`; вывод содержит `decisionLineageComplete=true`, `tamperRejected=true` и `legacyCompatible=true`.
+- В обоих jobs строка typecheck сообщает `TYPECHECK=PASS mode=node-strip-syntax-only files=746`, но также явно указывает: TypeScript compiler not installed; semantic `tsc` check unavailable.
+
+**Ограничение:** 68/68 и 73/73 exact checks остаются успешными, а целевые regression scripts действительно исполнялись. Однако эти jobs не дают доказательства semantic TypeScript typecheck; это отдельный tooling gap, который нужно закрыть без установки зависимостей наугад.
