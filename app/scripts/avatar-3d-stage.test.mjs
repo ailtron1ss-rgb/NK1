@@ -174,7 +174,7 @@ test("3D stage consumes canonical avatar brain channels for head, face and VRM",
  assert.match(stage, /avatarBrainFrame\?: AvatarBrainProjectionV1/);
  assert.match(stage, /brainGazeX=brain\?\.gazeX\?\?p\.gazeX/);
  assert.match(stage, /brain\?\.lipSyncGain\?\?1/);
- assert.match(stage, /fullBodyChannels\.headPitch=brain\.headTilt/);
+ assert.match(stage, /headTilt:brain\?\.headTilt\?\?0,headYaw:brain\?\.headYaw\?\?0/);
  assert.match(stage, /arousal:brainAffect\?\.arousal01/);
  assert.match(stage, /brain\?\.browRaise/);
 });
