@@ -1,7 +1,11 @@
-import type { ActionKind, EmotionLabel, OrganismSnapshot } from "@/organism/types";
+import type { ActionKind, EmotionLabel, OrganismSnapshot, AvatarBrainProjectionV1, AvatarBrainChannelsV1 } from "@/organism/types";
 import type { AvatarMotorIntentPlan } from "./motorIntent.ts";
 import { planAvatarMotorIntent } from "./motorIntent.ts";
 import { EXPRESSION_TEXT } from "./embodimentUiBridge.ts";
+import {
+  avatarBrainBodyChannels, avatarBrainFrameForTick, avatarBrainGaze,
+  avatarBrainHeadTilt, avatarBrainLive2DExpression, avatarBrainMouthPose,
+} from "./avatarBrainUi.ts";
 import {
   CLOSED_MOUTH,
   type EmbodimentIntentV1,
@@ -70,6 +74,9 @@ export interface AvatarRenderProjection {
   /** Raw organism option; 3D clip selection must continue to use this value. */
   action: ActionKind;
   motorPlan: AvatarMotorIntentPlan;
+  brainFrame: AvatarBrainProjectionV1 | null;
+  brainChannels: AvatarBrainChannelsV1 | null;
+  bodyChannels: Partial<Record<string, number>>;
   expression: string;
   expressionIntensity: number;
   gaze: { x: number; y: number };
@@ -95,6 +102,7 @@ export interface AvatarRenderProjection {
 export function buildAvatarRenderProjection(input: AvatarRenderProjectionInput): AvatarRenderProjection {
   const snapshot = input.snapshot;
   const action = snapshot.lastOption;
+  const brainFrame = avatarBrainFrameForTick(snapshot.avatarBrain, snapshot.tick);
   const phase = SPEECH_PHASES.includes(input.speechPhase) ? input.speechPhase : "unknown";
   const speechEventId = boundedId(input.speechEventId, 180);
   const audioClockId = boundedId(input.audioClockId, 220);
@@ -109,12 +117,13 @@ export function buildAvatarRenderProjection(input: AvatarRenderProjectionInput):
   const arousal = clamp(snapshot.emotion.arousal, 0, 1, 0);
   const baseGaze = GAZE_BY_ACTION[action] ?? GAZE_BY_ACTION.wait;
   const valenceOffset = (valence - 0.5) * 0.16;
-  const gaze = {
+  const fallbackGaze = {
     x: clamp(baseGaze.x + valenceOffset, -0.4, 0.4, 0),
     y: clamp(baseGaze.y, -0.4, 0.4, 0),
   };
+  const gaze = avatarBrainGaze(brainFrame, fallbackGaze);
 
-  const motorPlan = planAvatarMotorIntent({
+  const plannedMotorPlan = planAvatarMotorIntent({
     emotion: snapshot.emotion.label as EmotionLabel,
     valence,
     arousal,
@@ -133,12 +142,20 @@ export function buildAvatarRenderProjection(input: AvatarRenderProjectionInput):
     predictionError: snapshot.predictionError,
     traits: snapshot.identity.traits,
   });
+  // The semantic planner remains the one action/gesture owner. The brain frame
+  // can contribute bounded physical offsets without creating another motor plan.
+  const motorPlan = brainFrame
+    ? { ...plannedMotorPlan, headTilt: avatarBrainHeadTilt(brainFrame, plannedMotorPlan.headTilt) }
+    : plannedMotorPlan;
 
   return {
     action,
     motorPlan,
-    expression: EXPRESSION_TEXT[snapshot.emotion.label] ?? "neutral",
-    expressionIntensity: arousal,
+    brainFrame,
+    brainChannels: brainFrame?.channels ?? null,
+    bodyChannels: avatarBrainBodyChannels(brainFrame),
+    expression: brainFrame ? avatarBrainLive2DExpression(brainFrame) : (EXPRESSION_TEXT[snapshot.emotion.label] ?? "neutral"),
+    expressionIntensity: brainFrame?.expressionWeight ?? arousal,
     gaze,
     speech: {
       phase: speechPhase,
@@ -149,7 +166,7 @@ export function buildAvatarRenderProjection(input: AvatarRenderProjectionInput):
     },
     hasFreshTurn,
     speaking,
-    mouthPose: speaking ? normalizeMouthPose(input.mouthPose) : { ...CLOSED_MOUTH },
+    mouthPose: avatarBrainMouthPose(speaking ? normalizeMouthPose(input.mouthPose) : { ...CLOSED_MOUTH }, brainFrame, speaking),
     voiceEmphasis: speaking ? clamp(input.voiceEmphasis, 0, 1, 0) : 0,
   };
 }
