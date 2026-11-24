@@ -1957,6 +1957,7 @@ export class OrganismRuntime {
         external: episodeCandidate.outcome.provenance === 'observed',
         confidence01: episodeCandidate.prediction.confidence01,
         payload: {
+          decisionId: cycle.decision.id,
           episodeId: episodeCandidate.id,
           cycleId: episodeCandidate.cycleId,
           memoryOwner: 'MemoryOS2',

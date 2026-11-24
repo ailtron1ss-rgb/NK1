@@ -118,6 +118,14 @@ try {
   assert.equal(runtimeLineage.decisionId,runtimeDecisionId);
   assert.equal(runtimeLineage.decisionLineageComplete,true);
   assert.equal(runtimeLineage.fullComplete,true);
+  const episodeEvent=runtimeSnapshot.recent.find(event=>event.tick===tick&&event.stage==='metacognitive-episode');
+  assert.ok(episodeEvent,'a completed runtime cycle must emit its metacognitive episode');
+  assert.equal(episodeEvent.payload.decisionId,runtimeDecisionId,
+    'metacognitive reflection must retain the exact decision identity');
+  assert.equal(episodeEvent.parentIds.length,11,
+    'the metacognitive episode must reference all eleven operational stages');
+  assert.ok(episodeEvent.parentIds.every(id=>runtimeSnapshot.recent.find(event=>event.id===id)?.payload.decisionId===runtimeDecisionId),
+    'metacognitive reflection parents must all belong to the same Core decision');
   await runtime.flush();
   console.log(JSON.stringify({
     decisionId:runtimeDecisionId,
