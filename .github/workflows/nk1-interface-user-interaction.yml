@@ -14,6 +14,7 @@ on:
       - "app/src/organism/**"
       - "app/src/routes/index.tsx"
       - "app/scripts/chat-draft.test.mjs"
+      - "app/scripts/chat-delivery.test.mjs"
       - "app/scripts/organism-snapshot-sync.test.mjs"
       - "app/package.json"
       - "app/package-lock.json"
