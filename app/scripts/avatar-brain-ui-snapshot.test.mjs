@@ -71,3 +71,10 @@ test("older backend snapshots remain compatible without an avatar brain frame", 
   const normalized = toOrganismSnapshot(remote, []);
   assert.equal(normalized.avatarBrain, null);
 });
+
+test("normalization rejects malformed or unbounded renderer channels", () => {
+  const remote = backendSnapshot();
+  remote.avatarBrain.frame.channels.gazeX = 8;
+  const normalized = toOrganismSnapshot(remote, []);
+  assert.equal(normalized.avatarBrain, null);
+});
