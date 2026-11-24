@@ -15,6 +15,10 @@ on:
       - "runtime/neuro-kurisu/tests/memory-retrieval-numeric-terms.mjs"
       - "runtime/neuro-kurisu/tests/memory-decision-receipt-workpass74.mjs"
       - "runtime/neuro-kurisu/tests/big-pass-205-memory-world-causal.mjs"
+      - "runtime/neuro-kurisu/src/organism/memory/MemoryFabric.ts"
+      - "runtime/neuro-kurisu/src/organism/memory/CanonicalMemoryLifecycleAuthority.ts"
+      - "runtime/neuro-kurisu/src/organism/developmental/P75MemoryContinuumOS.ts"
+      - "runtime/neuro-kurisu/src/organism/core/OrganismCore.ts"
   pull_request:
     paths:
       - ".github/workflows/nk1-memory-metadata-ablation-workpass75.yml"
@@ -25,6 +29,13 @@ on:
       - "runtime/neuro-kurisu/tests/memory-decision-receipt-workpass74.mjs"
       - "runtime/neuro-kurisu/tests/big-pass-205-memory-world-causal.mjs"
 
+      - "runtime/neuro-kurisu/src/organism/core/MemorySubsystemRuntime.ts"
+      - "runtime/neuro-kurisu/src/organism/memory/MemoryFabric.ts"
+      - "runtime/neuro-kurisu/src/organism/memory/CanonicalMemoryLifecycleAuthority.ts"
+      - "runtime/neuro-kurisu/src/organism/developmental/P75MemoryContinuumOS.ts"
+      - "runtime/neuro-kurisu/src/organism/core/OrganismCore.ts"
+      - "runtime/neuro-kurisu/tests/memory-capacity-boundary-workpass76.mjs"
+      - "runtime/neuro-kurisu/tests/memory-runtime-capacity-config-workpass76.mjs"
 permissions:
   contents: read
 
