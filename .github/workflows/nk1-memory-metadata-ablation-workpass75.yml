@@ -37,7 +37,9 @@ on:
       - "runtime/neuro-kurisu/src/organism/developmental/P75MemoryContinuumOS.ts"
       - "runtime/neuro-kurisu/src/organism/core/OrganismCore.ts"
       - "runtime/neuro-kurisu/tests/memory-capacity-boundary-workpass76.mjs"
-      - "runtime/neuro-kurisu/tests/memory-runtime-capacity-config-workpass76.mjs"
+      - "runtime/neuro-kurisu/tests/memory-runtime-capacity-config-workpass76.mjs"      - "runtime/neuro-kurisu/tests/memory-to-action-paired-ablation-workpass77.mjs"
+      - "runtime/neuro-kurisu/src/organism/developmental/P70MemoryLifecycleGovernor.ts"
+
 permissions:
   contents: read
 
