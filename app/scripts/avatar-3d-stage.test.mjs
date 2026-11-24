@@ -64,7 +64,7 @@ test("procedural 3D fallback uses the extracted shared cel-shading material adap
 });
 test("non-VRM GLB imports use the extracted toon adapter while VRM materials remain native",async()=>{
  const stage=await readFile(stagePath,"utf8"),toon=await readFile(path.join(root,"src/components/avatar/threeToonMaterials.ts"),"utf8");
- assert.ok(stage.includes("if(!vrm)applyAnimeToonMaterials(root)"));
+ assert.ok(stage.includes('if(!vrm){if(name===KURISU_HYBRID_MODEL_V7_CANDIDATE.filename)applyAvatarPbrMaterials(root);else applyAnimeToonMaterials(root);}'));
  assert.ok(toon.includes("source.isMeshStandardMaterial"));
  assert.ok(toon.includes("source.isMeshPhysicalMaterial"));
  assert.ok(toon.includes("new THREE_TOON.MeshToonMaterial"));
@@ -76,8 +76,8 @@ test("non-VRM GLB imports use the extracted toon adapter while VRM materials rem
 
 test("avatar stage delegates material conversion and renderer-owned texture preservation",async()=>{
  const stage=await readFile(stagePath,"utf8"),toon=await readFile(path.join(root,"src/components/avatar/threeToonMaterials.ts"),"utf8");
- assert.match(stage,/import \{ applyAnimeToonMaterials, createProceduralToonMaterial, getSharedAnimeGradientTexture \}/);
- assert.match(stage,/if\(!vrm\)applyAnimeToonMaterials\(root\)/);
+ assert.match(stage,/import \{ applyAnimeToonMaterials, applyAvatarPbrMaterials, createProceduralToonMaterial, getSharedAnimeGradientTexture \}/);
+ assert.match(stage,/if\(!vrm\)\{if\(name===KURISU_HYBRID_MODEL_V7_CANDIDATE\.filename\)applyAvatarPbrMaterials\(root\);else applyAnimeToonMaterials\(root\);\}/);
  assert.match(stage,/const gradient=getSharedAnimeGradientTexture\(\)/);
  assert.match(toon,/const replaced = new Set<any>\(\)/);
  assert.match(toon,/replaced\.add\(source\)/);
