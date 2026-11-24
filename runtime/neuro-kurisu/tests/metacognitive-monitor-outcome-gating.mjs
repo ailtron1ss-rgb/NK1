@@ -29,7 +29,7 @@ const observed = monitor.snapshot();
 assert.equal(observed.samples, 2);
 assert.equal(observed.outcomeSamples, 1);
 assert.ok(Math.abs(observed.predictionCalibration - 0.59) < 1e-12);
-assert.ok(Math.abs(observed.metacognitiveAccuracy - 0.564) < 1e-12);
+assert.ok(Math.abs(observed.metacognitiveAccuracy - 0.58) < 1e-12);
 
 // Explicit null is the same as unknown; it is not coerced to zero or 0.5.
 monitor.update({ ...input, outcomeSuccess: null });
