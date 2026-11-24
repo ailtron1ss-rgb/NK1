@@ -39,10 +39,37 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           package-manager-cache: false
+      - name: Confirm regression tests fail on the pre-fix checkpoint (TDD red)
+        env:
+          BASELINE_WITH_REGRESSIONS: 2c3cc33978aed1829846233e5e6f01b050c10592
+        run: |
+          set -euo pipefail
+          RED_WORKTREE="$RUNNER_TEMP/nk1-tdd-red"
+          git worktree add --detach "$RED_WORKTREE" "$BASELINE_WITH_REGRESSIONS"
+          cd "$RED_WORKTREE/runtime/neuro-kurisu"
+          assert_expected_failure() {
+            local test_file="$1"
+            local expected_message="$2"
+            local output
+            if output=$(node --experimental-strip-types "$test_file" 2>&1); then
+              echo "Expected pre-fix failure but test passed: $test_file"
+              exit 1
+            fi
+            printf '%s\n' "$output"
+            printf '%s\n' "$output" | grep -F "$expected_message" >/dev/null
+          }
+          assert_expected_failure tests/memoryos2-explicit-id-collision-workpass70.mjs "different canonical content must not reuse a caller-owned ID"
+          assert_expected_failure tests/memoryos2-byte-accounting-workpass70.mjs "encode-time reverse contradiction-link updates must reconcile bytes"
+          assert_expected_failure tests/memoryos2-byte-roundtrip-workpass70.mjs "restore must not change the canonical byte estimate"
+          assert_expected_failure tests/self-authorship-verified-execution-workpass70.mjs "selection alone is not an executed autonomous action"
+          cd "$GITHUB_WORKSPACE"
+          git worktree remove "$RED_WORKTREE"
       - name: Explicit ID collision regression
         working-directory: runtime/neuro-kurisu
         run: npm run test:memoryos2-explicit-id-collision-workpass70
