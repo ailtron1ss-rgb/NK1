@@ -4,6 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { CognitiveEventFabric } from '../src/organism/system/CognitiveEventFabric.ts';
 import { OrganismRuntime } from '../src/organism/core/OrganismRuntime.ts';
+import { normalizeMetacognitiveEpisode } from '../src/organism/cognition/MetacognitiveEpisode.ts';
 
 const stagePayload=(source,payload={})=>({source,confidence01:0.8,payload});
 const verifierIds=(ids)=>({
@@ -88,6 +89,8 @@ const runtime=new OrganismRuntime({
   autoRun:false,
   intervalMs:100000,
 });
+let restoredRuntime;
+let runtimeStopped=false;
 try {
   await runtime.init();
   const result=await runtime.step('decision lineage integration check',{deliberate:true});
@@ -126,15 +129,53 @@ try {
     'the metacognitive episode must reference all eleven operational stages');
   assert.ok(episodeEvent.parentIds.every(id=>runtimeSnapshot.recent.find(event=>event.id===id)?.payload.decisionId===runtimeDecisionId),
     'metacognitive reflection parents must all belong to the same Core decision');
+
+  const storedEpisodeEvent=runtime.core.snapshot().facets.memory.eventLog.find(event=>event.type==='metacognitive-episode'&&event.tick===tick);
+  assert.ok(storedEpisodeEvent,'the metacognitive episode must be stored in the canonical memory event log');
+  assert.equal(storedEpisodeEvent.payload.episode.decisionId,runtimeDecisionId,
+    'the persisted episode object must retain the same Core decision identity');
+  const canonicalMemory=runtime.core.memorySubstrateCanonicalItems(64).find(item=>item.id===`metacognitive-cycle-${tick}`);
+  assert.ok(canonicalMemory,'the metacognitive episode must have a canonical MemoryOS2 item');
+  assert.equal(canonicalMemory.context?.decisionId,runtimeDecisionId,
+    'the canonical MemoryOS2 projection must retain the decision identity');
+  const diagnostics=runtime.core.metacognitiveEpisodeDiagnostics(4);
+  assert.equal(diagnostics.episodes[0]?.decisionId,runtimeDecisionId,
+    'bounded metacognitive diagnostics must expose the canonical decision identity');
+  const legacyEpisode={...storedEpisodeEvent.payload.episode};
+  delete legacyEpisode.decisionId;
+  assert.ok(normalizeMetacognitiveEpisode(legacyEpisode),
+    'pre-decision-identity episodes must remain readable after schema extension');
+
   await runtime.flush();
+  await runtime.stop();
+  runtimeStopped=true;
+  restoredRuntime=new OrganismRuntime({
+    stateFile:path.join(directory,'organism.json'),
+    worldStateFile:path.join(directory,'world.json'),
+    enableLanguage:false,
+    autoRun:false,
+    intervalMs:100000,
+  });
+  await restoredRuntime.init();
+  const restoredSnapshot=restoredRuntime.core.snapshot();
+  const restoredEpisodeEvent=restoredSnapshot.facets.memory.eventLog.find(event=>event.type==='metacognitive-episode'&&event.tick===tick);
+  assert.ok(restoredEpisodeEvent,'the persisted metacognitive episode must survive runtime restore');
+  assert.equal(restoredEpisodeEvent.payload.episode.decisionId,runtimeDecisionId,
+    'restored episode lineage must preserve the exact decision identity');
+  const restoredMemory=restoredRuntime.core.memorySubstrateCanonicalItems(64).find(item=>item.id===`metacognitive-cycle-${tick}`);
+  assert.equal(restoredMemory?.context?.decisionId,runtimeDecisionId,
+    'the restored canonical memory item must preserve the same decision identity');
   console.log(JSON.stringify({
     decisionId:runtimeDecisionId,
     stages:cycleEvents.map(event=>event.stage),
     decisionLineageComplete:runtimeLineage.decisionLineageComplete,
     tamperRejected:!broken.decisionLineageComplete,
     legacyCompatible:legacy.decisionLineageComplete,
+    persistedDecisionIdentity:storedEpisodeEvent.payload.episode.decisionId,
+    restoredDecisionIdentity:restoredEpisodeEvent.payload.episode.decisionId,
   },null,2));
 } finally {
-  await runtime.stop();
+  if(restoredRuntime) await restoredRuntime.stop();
+  if(!runtimeStopped) await runtime.stop();
   fs.rmSync(directory,{recursive:true,force:true});
 }
