@@ -382,6 +382,7 @@ export class B273AutonomousGoalLifecycle{
       if (replacement) {
         replacement.status = 'active';
         this.state.activeGoalId = replacement.id;
+        if(!replacement.parentId)this.state.rootGoalId=replacement.id;
       } else {
         const newGoal: B273GoalNode = {
           id: nextFingerprint+':'+input.tick+':'+(this.state.goalCreations+1),

@@ -44,19 +44,27 @@ for (let tick = 1; tick <= 10; tick += 1) {
 assert.equal(outcome?.completed, true, 'strong independently evidenced progress must complete the goal');
 assert.equal(engine.snapshot().goals.find(goal => goal.id === completedGoalId)?.status, 'completed');
 
-const afterCompletion = engine.step(input(11));
-const snapshot = engine.snapshot();
-assert.notEqual(afterCompletion.goalId, completedGoalId,
-  'a completed goal must never be reused as the active goal');
+const heldByCooldown = engine.step(input(11));
+assert.equal(heldByCooldown.goalId, null, 'a completed goal fingerprint must not immediately reopen');
+assert.equal(heldByCooldown.action, 'defer');
+assert.equal(heldByCooldown.mode, 'cooldown');
+let snapshot = engine.snapshot();
 assert.equal(snapshot.goals.find(goal => goal.id === completedGoalId)?.status, 'completed',
   'terminal completed goals must not be reopened by goal synthesis');
 assert.equal(snapshot.goals.filter(goal => goal.id === completedGoalId).length, 1,
   'goal generations must not create duplicate IDs when a prior goal is terminal');
-assert.equal(snapshot.goals.filter(goal => goal.status === 'active').length, 1,
-  'only one active B273 goal may own the lifecycle at a time');
+assert.equal(snapshot.goals.filter(goal => goal.status === 'active').length, 0,
+  'a cooldown hold must not leave a stale active-goal owner');
 
 const restored = new B273AutonomousGoalLifecycle();
 restored.restore(snapshot);
 assert.deepEqual(restored.snapshot(), snapshot, 'goal lifecycle must survive snapshot/restore without reopening terminal goals');
+const newGeneration = restored.step(input(12));
+assert.ok(newGeneration.goalId, 'a new goal generation may be admitted after cooldown');
+assert.notEqual(newGeneration.goalId, completedGoalId);
+snapshot = restored.snapshot();
+assert.equal(snapshot.goals.find(goal => goal.id === completedGoalId)?.status, 'completed');
+assert.equal(snapshot.goals.filter(goal => goal.status === 'active').length, 1,
+  'after cooldown, exactly one new goal owns the lifecycle');
 
 console.log('B273_GOAL_LIFECYCLE_TERMINAL_IMMUTABILITY=PASS');
