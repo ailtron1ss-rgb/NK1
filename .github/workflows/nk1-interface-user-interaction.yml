@@ -1,0 +1,48 @@
+name: NK1 interface and user interaction
+
+on:
+  pull_request:
+    branches: [workpass70-source]
+    paths:
+      - "app/src/components/AvatarStage.tsx"
+      - "app/src/components/ChatPanel.tsx"
+      - "app/src/components/MindHud.tsx"
+      - "app/src/components/AppNavigation.tsx"
+      - "app/src/components/ConnectionStatus.tsx"
+      - "app/src/components/SettingsPanel.tsx"
+      - "app/src/components/MotivationPanel.tsx"
+      - "app/src/organism/**"
+      - "app/src/routes/index.tsx"
+      - "app/scripts/chat-draft.test.mjs"
+      - "app/scripts/organism-snapshot-sync.test.mjs"
+      - "app/package.json"
+      - "app/package-lock.json"
+      - ".github/workflows/nk1-interface-user-interaction.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nk1-interface-user-interaction-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  app:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - name: Install pinned app dependencies
+        run: npm ci --prefix app --ignore-scripts --no-audit --no-fund
+      - name: Run the complete app script regression suite
+        run: npm --prefix app run test:scripts
+      - name: Typecheck the complete app
+        run: npm --prefix app run typecheck
+      - name: Build the app bundle
+        run: npm --prefix app run build:dev
