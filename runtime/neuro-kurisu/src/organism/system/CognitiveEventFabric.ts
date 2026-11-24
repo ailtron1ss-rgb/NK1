@@ -100,6 +100,10 @@ const ownData=(value:unknown,key:string):unknown=>{
   const descriptor=Object.getOwnPropertyDescriptor(value,key);
   return descriptor&&Object.prototype.hasOwnProperty.call(descriptor,'value')?descriptor.value:undefined;
 };
+const hasControlCharacters=(value:string):boolean=>Array.from(value).some(character=>{
+  const code=character.charCodeAt(0);
+  return code<=31||code===127;
+});
 const ownArray=(value:unknown,max:number):unknown[]=>{
   if(!Array.isArray(value))return [];
   const length=ownData(value,'length');
@@ -464,12 +468,13 @@ export class CognitiveEventFabric {
     at?:number;
   }){
     const ids:Partial<Record<'observation'|'prediction'|'appraisal'|'attention'|'memory'|'goal'|'plan'|'action'|'outcome'|'learning'|'selfUpdate',string>>={};
-    const decisionId = input.decisionId === undefined ? undefined : input.decisionId.trim();
+    if (input.decisionId !== undefined && typeof input.decisionId !== 'string')
+      throw new Error('cognitive-cycle-decision-id-invalid');
+    const decisionId = input.decisionId?.trim();
     if (input.decisionId !== undefined && (
-      typeof input.decisionId !== 'string' ||
       !decisionId ||
       decisionId.length > 180 ||
-      /[\\u0000-\\u001f\\u007f]/.test(decisionId)
+      hasControlCharacters(decisionId)
     )) throw new Error('cognitive-cycle-decision-id-invalid');
     const phases = [input.observation,input.prediction,input.appraisal,input.attention,input.memory,input.goal,input.plan,input.action,input.outcome,input.learning,input.selfUpdate];
     if (decisionId !== undefined && phases.some(phase => {
@@ -649,8 +654,9 @@ export class CognitiveEventFabric {
         const rawDecisionId = ownData(event.payload,'decisionId');
         if (typeof rawDecisionId !== 'string' ||
             !rawDecisionId.trim() ||
+            rawDecisionId !== rawDecisionId.trim() ||
             rawDecisionId.length > 180 ||
-            /[\\u0000-\\u001f\\u007f]/.test(rawDecisionId)) {
+            hasControlCharacters(rawDecisionId)) {
           decisionLineageIssues.push(stage + ':decision-id-invalid');
           continue;
         }
@@ -798,7 +804,10 @@ export class CognitiveEventFabric {
     }
     const fullStageCoverage = (11 - fullMissingStages.length) / 11;
     const fullEdgeCoverage = fullValidEdges / fullEdges.length;
-    const fullIntegrity01 = clamp01(.50 * fullStageCoverage + .50 * fullEdgeCoverage);
+    const fullIntegrity01 = clamp01(
+      .50 * fullStageCoverage + .50 * fullEdgeCoverage -
+      (decisionLineageComplete ? 0 : .15)
+    );
     const coreComplete = missingStages.length === 0 && !coreInvalid && coreMissingEdges.length === 0;
     const fullComplete = fullMissingStages.length === 0 && invalidStages.length === 0 &&
       fullMissingEdges.length === 0 && decisionLineageComplete;
