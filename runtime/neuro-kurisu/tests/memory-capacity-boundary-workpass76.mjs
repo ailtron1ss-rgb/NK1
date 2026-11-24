@@ -69,6 +69,37 @@ assert.equal(result[0]?.id, targetId, 'retained target must be searchable after 
 const index = memory.indexDiagnostics();
 assert.equal(index.pass, true, 'indexes must remain consistent after bounded 10k-row restore');
 
+const extended = new MemoryOS2({ embeddingProvider: null, itemCap: SOURCE_ROWS });
+const extendedStarted = performance.now();
+extended.restore(restoreSnapshot);
+const extendedRestoreMs = performance.now() - extendedStarted;
+const extendedDiagnostics = extended.restoreDiagnostics();
+const extendedIndex = extended.indexDiagnostics();
+assert.equal(extendedDiagnostics.sourceRows, SOURCE_ROWS);
+assert.equal(extendedDiagnostics.acceptedRows, SOURCE_ROWS,
+  'the explicit 10k profile must retain all 10k valid rows');
+assert.equal(extendedDiagnostics.truncatedRows, 0);
+assert.equal(extended.capacityDiagnostics().hardCap, SOURCE_ROWS);
+assert.equal(extendedIndex.pass, true);
+assert.equal(extendedIndex.items, SOURCE_ROWS);
+
+const directRetrievalTimes = [];
+for (let iteration = 0; iteration < 16; iteration++) {
+  const directStarted = performance.now();
+  const direct = extended.retrieve('capacityprobe sentinelomega', 5);
+  directRetrievalTimes.push(performance.now() - directStarted);
+  assert.equal(direct[0]?.id, targetId,
+    'the 10k configured profile must retrieve the retained high-value target');
+}
+const sortedDirectTimes = [...directRetrievalTimes].sort((a, b) => a - b);
+const directP50Ms = sortedDirectTimes[Math.floor(sortedDirectTimes.length * .50)];
+const directP95Ms = sortedDirectTimes[Math.min(sortedDirectTimes.length - 1, Math.ceil(sortedDirectTimes.length * .95) - 1)];
+const previewStarted = performance.now();
+const extendedPreview = extended.previewRetrieve('capacityprobe sentinelomega', 5);
+const extendedPreviewMs = performance.now() - previewStarted;
+assert.equal(extendedPreview[0]?.id, targetId,
+  'preview cloning must preserve the configured 10k capacity');
+
 const tooMany = { ...emptySnapshot, items: new Array(SCAN_LIMIT + 1) };
 assert.throws(
   () => new MemoryOS2({ embeddingProvider: null }).restore(tooMany),
@@ -88,5 +119,15 @@ console.log('MEMORY_CAPACITY_BOUNDARY_WORKPASS76=PASS', JSON.stringify({
   indexIntegrity: index.pass,
   indexItems: index.items,
   estimatedBytes: after.estimatedBytes,
-  capacityStatus: '10k inputs scanned; only 1.6k rows retained/searchable by this MemoryOS2 instance',
+  capacityStatus: 'default 1.6k cap is enforced; 10k profile is measured separately',
+  extended10k: {
+    acceptedRows: extendedDiagnostics.acceptedRows,
+    truncatedRows: extendedDiagnostics.truncatedRows,
+    restoreMs: Number(extendedRestoreMs.toFixed(2)),
+    directRetrieveP50Ms: Number(directP50Ms.toFixed(2)),
+    directRetrieveP95Ms: Number(directP95Ms.toFixed(2)),
+    isolatedPreviewMs: Number(extendedPreviewMs.toFixed(2)),
+    indexIntegrity: extendedIndex.pass,
+    capacity: extended.capacityDiagnostics(),
+  },
 }));
