@@ -76,6 +76,11 @@ export class SelfAuthorshipEngine {
         reason: typeof row.reason === 'string' ? row.reason.slice(0, 240) : null,
         createdAt: row.createdAt,
       }))
+      // observeDecision prepends the newest record; preserve that first record and
+      // discard any stale/corrupt duplicates before the bounded ledger is restored.
+      .filter((row, index, rows) =>
+        rows.findIndex(candidate => candidate.decisionId === row.decisionId) === index
+      )
       .slice(0, PENDING_DECISION_LIMIT);
     this.state = {
       ...defaultSelfAuthorship(),

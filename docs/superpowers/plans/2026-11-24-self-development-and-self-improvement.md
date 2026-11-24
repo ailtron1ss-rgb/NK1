@@ -48,7 +48,7 @@
 - Core finalizer settles only a real selected trace after host-attested external postcondition; persisted facet shares the action receipt snapshot boundary.
 - CEF stores sanitized decision correlation even when no matching CEF parent event exists; `decisionLinked=false` means no parent edge.
 
-- [ ] Add regression tests for selection-without-credit, unrelated/duplicate decision IDs, external goals, restore, ambiguous receipt, process restart and idempotent replay.
+- [ ] Add regression tests for selection-without-credit, unrelated/duplicate decision IDs, duplicate restored pending IDs, external goals, restore, ambiguous receipt, process restart and idempotent replay.
 - [ ] Verify each regression fails on its explicit test-only pre-fix checkpoint.
 - [ ] Implement pending ledger with a finite limit and expiry; preserve backwards restore from legacy snapshots without pendingDecisions.
 - [ ] Wire full, spine-only and tool-execution paths; ensure feedback is attributed to the prior decision, not the next newly selected trace.
