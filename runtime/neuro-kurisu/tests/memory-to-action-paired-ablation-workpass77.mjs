@@ -45,17 +45,23 @@ const EMBODIMENT = {
   ramPressure01: .14,
 };
 const QUERY = 'Evaluate the laboratory switch safety status and select a suitable next step from the archived context.';
-const SEEDS = [3, 11, 29, 47, 83];
+const SCENARIOS = [
+  { id: 'low-novelty', novelty: .32, salience: .72 },
+  { id: 'moderate-low', novelty: .46, salience: .80 },
+  { id: 'moderate', novelty: .61, salience: .87 },
+  { id: 'moderate-high', novelty: .76, salience: .93 },
+  { id: 'high-novelty', novelty: .91, salience: .98 },
+];
 const ACTION_CUES = {
   respond: 'respond reply answer communicate respond reply answer',
   explore: 'explore exploration investigate search discover explore investigation',
 };
 
-function actionContent(cue, seed, index) {
+function actionContent(cue, scenarioId, index) {
   return [
     'laboratory switch safety status archived context',
     cue,
-    'evidence record seed ' + seed + ' item ' + index,
+    'evidence record scenario ' + scenarioId + ' item ' + index,
     'retain this memory as an episodic operational lesson',
   ].join(' ');
 }
@@ -73,28 +79,28 @@ async function buildBaseSnapshot() {
   assert.ok(snapshot, 'the deterministic pre-observation Core snapshot must be durable');
   return structuredClone(snapshot);
 }
-async function runArm(baseSnapshot, arm, seed) {
+async function runArm(baseSnapshot, arm, scenario) {
   const store = new MemoryStateStore({ initial: structuredClone(baseSnapshot) });
   const core = new OrganismCore(store, CONFIG);
   await core.init();
   const ids = [];
-  const at = Date.now() - 30_000;
+  const at = scenario.memoryAt;
   for (let index = 0; index < 4; index++) {
-    const id = 'workpass77-' + arm + '-' + seed + '-' + index;
+    const id = 'workpass77-' + arm + '-' + scenario.id + '-' + index;
     ids.push(id);
     core.memorySubsystem.fabric.encode({
       id,
-      content: actionContent(ACTION_CUES[arm], seed, index),
+      content: actionContent(ACTION_CUES[arm], scenario.id, index),
       kind: 'episodic',
       source: 'workpass77-paired-core-memory-action-ablation',
       tags: ['laboratory', 'switch', 'safety', 'review', 'archived-context'],
       context: {
         experiment: 'workpass77-memory-action-ablation',
         arm,
-        seed: String(seed),
-        sessionId: 'workpass77-paired-' + seed,
+        scenario: scenario.id,
+        sessionId: 'workpass77-paired-' + scenario.id,
       },
-      salience: .98,
+      salience: scenario.salience,
       emotionalWeight: .18,
       identityRelevance: .22,
       goalRelevance: .82,
@@ -119,7 +125,7 @@ async function runArm(baseSnapshot, arm, seed) {
     'the pre-observation lexical memory preview must expose all four paired arm memories',
   );
 
-  const result = await core.observe({ text: QUERY, novelty: .76, embodiment: EMBODIMENT }, 'operational');
+  const result = await core.observe({ text: QUERY, novelty: scenario.novelty, embodiment: EMBODIMENT }, 'operational');
   await core.flush();
   const snapshot = core.snapshot();
   const decision = snapshot.traces
@@ -142,11 +148,13 @@ async function runArm(baseSnapshot, arm, seed) {
     reflect: candidateScore(decision, 'reflect'),
   };
   return {
-    seed,
+    scenarioId: scenario.id,
+    novelty: scenario.novelty,
+    salience: scenario.salience,
     arm,
     tick: decision.tick,
     selectedAction: decision.selected?.action ?? 'none',
-    retrievedSeedIds: seededRetrieved,
+    retrievedArmIds: seededRetrieved,
     memoryCount: decision.memoryEvidence.retrievedCount,
     scores,
     respondVsExploreMargin: scores.respond - scores.explore,
@@ -157,13 +165,17 @@ async function runArm(baseSnapshot, arm, seed) {
 
 const baseSnapshot = await buildBaseSnapshot();
 const rows = [];
-for (const seed of SEEDS) {
+for (const scenario of SCENARIOS) {
+  // Both arms share one timestamp and the same scenario-specific observation.
+  const pairedScenario = { ...scenario, memoryAt: Date.now() - 30_000 };
   const [respondArm, exploreArm] = await Promise.all([
-    runArm(baseSnapshot, 'respond', seed),
-    runArm(baseSnapshot, 'explore', seed),
+    runArm(baseSnapshot, 'respond', pairedScenario),
+    runArm(baseSnapshot, 'explore', pairedScenario),
   ]);
   assert.equal(respondArm.tick, exploreArm.tick,
     'paired decisions must start from the same tick');
+  assert.equal(respondArm.novelty, exploreArm.novelty,
+    'paired arms must receive identical scenario novelty');
   assert.equal(respondArm.memoryCount, exploreArm.memoryCount,
     'paired arms must retrieve the same number of memories');
   assert.equal(respondArm.memoryQueryHash, exploreArm.memoryQueryHash,
@@ -172,7 +184,9 @@ for (const seed of SEEDS) {
   assert.ok(shift > .08,
     'respond-cued memory must increase respond-vs-explore decision margin relative to explore-cued memory');
   rows.push({
-    seed,
+    scenarioId: scenario.id,
+    novelty: scenario.novelty,
+    salience: scenario.salience,
     respondSelected: respondArm.selectedAction,
     exploreSelected: exploreArm.selectedAction,
     respondMargin: Number(respondArm.respondVsExploreMargin.toFixed(6)),
@@ -180,21 +194,23 @@ for (const seed of SEEDS) {
     pairedMarginShift: Number(shift.toFixed(6)),
     respondMemoryCount: respondArm.memoryCount,
     exploreMemoryCount: exploreArm.memoryCount,
-    memoryIdsMatched: respondArm.retrievedSeedIds.length >= 3 && exploreArm.retrievedSeedIds.length >= 3,
+    memoryIdsMatched: respondArm.retrievedArmIds.length >= 3 && exploreArm.retrievedArmIds.length >= 3,
   });
 }
 
 const meanShift = rows.reduce((sum, row) => sum + row.pairedMarginShift, 0) / rows.length;
 const positivePairs = rows.filter(row => row.pairedMarginShift > .08).length;
-assert.equal(positivePairs, SEEDS.length,
+assert.equal(positivePairs, SCENARIOS.length,
   'every matched state must show the predicted direction of memory-dependent score movement');
 
 console.log('MEMORY_TO_ACTION_PAIRED_ABLATION_WORKPASS77=PASS', JSON.stringify({
-  protocol: 'paired-organism-core-memory-content-ablation-v1',
-  seeds: SEEDS,
-  pairedCoreRuns: SEEDS.length * 2,
+  protocol: 'paired-organism-core-memory-content-ablation-v2',
+  scenarios: SCENARIOS,
+  pairedCoreRuns: SCENARIOS.length * 2,
   sameInitialSnapshot: true,
-  sameObservation: true,
+  sameObservationWithinEachPair: true,
+  sameTimestampWithinEachPair: true,
+  variedNoveltyAndSalienceAcrossScenarios: true,
   sameTickAndRetrievedCount: true,
   armDifference: 'four retrieved episodic memories contain respond cues versus explore cues',
   positivePairs,
