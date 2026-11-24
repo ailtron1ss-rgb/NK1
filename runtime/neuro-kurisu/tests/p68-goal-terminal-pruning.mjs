@@ -17,7 +17,7 @@ const makeGoal = (id, status, importance, updatedAt = 1_000) => ({
 
 const ecology = new P68GoalEcology();
 const goals = [
-  makeGoal('terminal-cancelled', 'cancelled', .99, 1),
+  makeGoal('terminal-cancelled', 'cancelled', .4, 1),
   makeGoal('terminal-expired', 'expired', .98, 2),
   makeGoal('terminal-superseded', 'superseded', .97, 3),
   makeGoal('candidate-low-importance', 'candidate', .01, 4),
