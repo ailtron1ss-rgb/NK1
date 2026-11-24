@@ -397,6 +397,7 @@ import { B305CriticalPathVerificationLedger, defaultB305CriticalPathState } from
 import { clamp, goalVectorFallback } from './ExecutionPrimitives.ts';
 import type { ExternalProjectResearchResult } from '../system/ExternalProjectResearchTool.ts';
 import { CognitiveParliament } from '../system/CognitiveParliament.ts';
+import { createLanguageInvokerParliamentRoleExecutors, ParliamentModelAttestationRegistry } from '../system/CognitiveParliamentLocalAdapter.ts';
 import { IntentExecutionRuntime, INTENT_APPROVAL_TOOL_ID, type IntentApprovalScope, type IntentApprovalEvidence, type TrustedAutonomousDecisionEvidence } from '../system/IntentExecutionRuntime.ts';
 import type { IntentContract, IntentContractInput, IntentExtractionProvider } from '../cognition/IntentCompiler.ts';
 import type { IntentBoundAction, IntentBridgeResult, IntentBridgeReconciliationResult } from '../system/IntentActionGatewayBridge.ts';
@@ -1210,6 +1211,17 @@ function activeGoalVectorFromState(goals: any[], state: any): number[] {
     return Array.from({ length: 16 }, (_, i) => clamp(Number(v[i] ?? (i === 0 ? state.needs.goalPressure : 0))));
 }
 export class OrganismCore {
+    /** Host-language adapter factory lives at the Core composition boundary so the
+     * thin OrganismRuntime entry seam does not acquire a new production dependency. */
+    static createLanguageInvokerParliamentAdapter(
+        languageInvoker: import('../language/LanguageOrgan.ts').LanguageInvoker,
+    ): Pick<OrganismConfig, 'parliamentRoleExecutors' | 'parliamentModelAttestationRegistry'> {
+        const registry = new ParliamentModelAttestationRegistry();
+        return {
+            parliamentRoleExecutors: createLanguageInvokerParliamentRoleExecutors(languageInvoker, registry),
+            parliamentModelAttestationRegistry: registry,
+        };
+    }
     private readonly config: Required<OrganismConfig>;
     private readonly store: JsonStateStore<PersistedOrganism>;
     private readonly actionExecutionLedgerArchive?: FileActionExecutionLedgerArchive;

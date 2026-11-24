@@ -54,7 +54,6 @@ import { P23CompoundRepairRevisionCoordinator, type CompoundRepairRetryBackoffSn
 import { withIndependentCandidateEvaluation } from '../learning/P23IndependentEvaluationProvider.ts';
 import type { IndependentCandidateEvaluationConfig } from '../learning/IndependentSkillCandidateEvaluator.ts';
 import { createHostOwnedIndependentEvaluationConfigFactory, type HostOwnedIndependentEvaluationFactoryOptions } from '../learning/HostOwnedIndependentEvaluationServices.ts';
-import { createLanguageInvokerParliamentRoleExecutors, ParliamentModelAttestationRegistry } from '../system/CognitiveParliamentLocalAdapter.ts';
 
 function currentBudgetAllowsLanguage(mode: string | undefined): boolean { return mode !== 'sleep' && mode !== 'defer'; }
 const clamp01=(n:number)=>Math.max(0,Math.min(1,Number.isFinite(n)?n:0));
@@ -504,14 +503,11 @@ export class OrganismRuntime {
       !config.parliamentRoleExecutors &&
       !config.parliamentModelAttestor &&
       !config.parliamentModelAttestationRegistry;
-    const autoParliamentRegistry = autoParliament ? new ParliamentModelAttestationRegistry() : undefined;
-    const runtimeCoreConfig: RuntimeConfig = autoParliament && autoParliamentRegistry
-      ? {
-          ...config,
-          enableCognitiveParliament: true,
-          parliamentRoleExecutors: createLanguageInvokerParliamentRoleExecutors(this.config.languageInvoker!, autoParliamentRegistry),
-          parliamentModelAttestationRegistry: autoParliamentRegistry,
-        }
+    const runtimeParliament = autoParliament
+      ? OrganismCore.createLanguageInvokerParliamentAdapter(this.config.languageInvoker!)
+      : undefined;
+    const runtimeCoreConfig: RuntimeConfig = runtimeParliament
+      ? { ...config, enableCognitiveParliament: true, ...runtimeParliament }
       : config;
     this.core = new OrganismCore(stateStore, { ...runtimeCoreConfig, cycleResultMode:'operational' });
     this.undoFirstWorkspaceRoot = stateStore instanceof FileStateStore ? stateStore.siblingPath('workspace') : null;

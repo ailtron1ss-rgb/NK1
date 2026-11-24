@@ -44,7 +44,7 @@ assert.match(wrapper, /options\.idempotencyKey \|\| result\.idempotentReplay/,
   'keyed execution and replay must not be finalized twice by the wrapper');
 
 
-const projectStart = source.indexOf('const reconcileExistingOperation =');
+const projectStart = source.indexOf('const projectIntentAction: IntentBoundAction = {');
 assert.notEqual(projectStart, -1, 'project execution/reconciliation path must remain identifiable');
 const projectEnd = source.indexOf('const unresolvedReceipt = [', projectStart);
 assert.ok(projectEnd > projectStart, 'project execution path must have an explicit receipt outcome boundary');
