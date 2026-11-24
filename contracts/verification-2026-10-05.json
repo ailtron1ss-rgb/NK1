@@ -1,0 +1,82 @@
+{
+  "ok": false,
+  "environmentBlocked": true,
+  "results": [
+    {
+      "label": "exists:runtime/neuro-kurisu/src/server/server.mjs",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "label": "exists:app/src/neuro-kurisu/api.ts",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "label": "exists:app/src/legacy/avatar/LegacySpriteDeck.tsx",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "label": "exists:app/public/live2d/Kurisu/Kurisu.model3.json",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "label": "exists:app/public/live2d/vendor/pixi.min.js",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "label": "exists:research/research_bridge.py",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "label": "exists:contracts/integration-manifest.json",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "label": "runtime:ui-snapshot",
+      "ok": true,
+      "detail": "version=35.40.0 schema=223"
+    },
+    {
+      "label": "runtime:chat",
+      "ok": true,
+      "detail": "backend=local-fallback"
+    },
+    {
+      "label": "research:status",
+      "ok": true,
+      "detail": "neurocore=1.43.0 nomega=1.36.0-dev / Pass20"
+    },
+    {
+      "label": "research:neurocore-probe",
+      "ok": true,
+      "detail": "delta=-0.8120256662368774"
+    },
+    {
+      "label": "research:nomega-registry",
+      "ok": true,
+      "detail": "modules=313 cycles=0"
+    },
+    {
+      "label": "research:deepcode-probe",
+      "ok": true,
+      "detail": "smoke=— learn_steps=—"
+    },
+    {
+      "label": "ui:typecheck",
+      "ok": false,
+      "detail": "error TS2688: Cannot find type definition file for 'vite/client'. |   The file is in the program because: |     Entry point of type library 'vite/client' specified in compilerOptions"
+    },
+    {
+      "label": "runtime:typecheck",
+      "ok": true,
+      "detail": "> node scripts/typecheck-runtime.mjs |  | TYPECHECK=PASS mode=tsc"
+    }
+  ],
+  "generatedAt": "2026-10-05T09:12:47.664Z"
+}

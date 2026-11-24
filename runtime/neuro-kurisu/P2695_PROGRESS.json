@@ -1,0 +1,30 @@
+{
+  "release": "P2695",
+  "version": "35.6.95",
+  "phase": "Stage-78/Exact-Policy-Flow/P2695",
+  "goal": "carry exact policyDecisionId through real OrganismCore retrieval to replay validation and persistent delayed policy outcome",
+  "implemented": [
+    "real OrganismCore retrieval exposes policy decision id",
+    "ReplayValidation carries optional policyDecisionId",
+    "exact decisionId resolution in delayed policy outcome",
+    "policy ledger persistence survives state migration",
+    "memoryFabric snapshot is synchronized after replay validation",
+    "restart integration test"
+  ],
+  "verification": {
+    "typecheck": "PASS",
+    "organismPolicyFlow": "PASS",
+    "p2694PolicyAblation": "PASS",
+    "p2693DelayedCredit": "PASS",
+    "p2692AdaptiveHoldout": "PASS",
+    "p2688LongHorizon": "PASS"
+  },
+  "pathEstimate01": 0.455,
+  "provenEndToEndLearning01": 0.49,
+  "next": [
+    "repeat policy ablation with real OrganismCore integration",
+    "measure mobile RSS residency before/after bounded ledger changes",
+    "improve adaptive context routing because P2694 selection accuracy remained 0.2"
+  ],
+  "verified": true
+}

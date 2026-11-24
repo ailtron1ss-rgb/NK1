@@ -1,0 +1,12 @@
+import assert from 'node:assert/strict';
+import { P57RealityFirstObservatory } from '../src/organism/system/P57RealityFirstObservatory.ts';
+const o=new P57RealityFirstObservatory();
+const absent=o.observe({tick:1,at:10,source:'external-feedback',predicted01:.8,note:'no actual'});
+assert.equal(absent.accepted,false);
+const a=o.observe({tick:2,at:20,source:'external-feedback',predicted01:.8,actual01:.55,confidence01:.7});
+assert.equal(a.accepted,true); assert.ok(a.gap01>.2);
+const dup=o.observe({tick:2,at:20,source:'external-feedback',predicted01:.8,actual01:.55,confidence01:.7});
+assert.equal(dup.accepted,false);
+const snap=o.snapshot(); const o2=new P57RealityFirstObservatory(); o2.restore(snap); assert.deepEqual(o2.snapshot(),snap);
+assert.equal(o.summary().anchorsAccepted,1); assert.equal(o.summary().anchorsRejected,1);
+console.log('P57 reality-first observatory: PASS');

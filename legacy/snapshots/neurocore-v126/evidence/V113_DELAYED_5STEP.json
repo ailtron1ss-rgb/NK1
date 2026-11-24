@@ -1,0 +1,38 @@
+{
+  "version": 113,
+  "rows": [
+    {
+      "seed": 113,
+      "mode": "single",
+      "delay": 16,
+      "steps": 5,
+      "final_loss": 2.671365261077881,
+      "delayed_cosine": 0.004998359363526106
+    },
+    {
+      "seed": 113,
+      "mode": "dual",
+      "delay": 16,
+      "steps": 5,
+      "final_loss": 2.6876120567321777,
+      "delayed_cosine": 0.007841933518648148
+    },
+    {
+      "seed": 113,
+      "mode": "selective",
+      "delay": 16,
+      "steps": 5,
+      "final_loss": 2.7326102256774902,
+      "delayed_cosine": 0.014167038723826408
+    },
+    {
+      "seed": 113,
+      "mode": "cascade",
+      "delay": 16,
+      "steps": 5,
+      "final_loss": 2.839479684829712,
+      "delayed_cosine": 0.019846072420477867
+    }
+  ],
+  "decision": "diagnostic"
+}

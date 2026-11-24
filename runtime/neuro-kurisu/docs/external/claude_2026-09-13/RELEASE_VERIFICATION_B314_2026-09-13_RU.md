@@ -1,0 +1,23 @@
+# RELEASE VERIFICATION B314 — 13.09.2026
+
+- Typecheck: PASS
+- B314 scar/recovery: PASS
+- B314 migration: PASS
+- B313 longitudinal: PASS
+- B312 handoff: PASS
+- B306 autonomy causal: PASS (isolated run)
+- B305 critical path: PASS
+- B298 closed loop: PASS
+- Function liveness: 175
+- Parameterized probes: 899/933, failures 0
+- Semantic coverage: 38 VERIFIED / 3789 total
+- Architecture: PASS
+- Integrity: PASS, schema 127
+- Forensics: PASS, duplicates 0, stale 0
+- Hygiene: PASS, errors 0, warnings 0
+- Release contract: PASS
+- Syntax: PASS, js 797, sh 5, json 202
+- UI smoke: PASS
+- Server smoke: PASS
+- Release source: PASS
+- Aggregate `audit:b314:reality`: RESOURCE-LIMITED after reaching B313; no assertion failure observed there; isolated B313 PASS is the authoritative executable result.

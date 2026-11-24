@@ -1,0 +1,7 @@
+# NeuroCore V119 — прочитать первым
+
+Это чистая интегрированная current-ветка. Current execution surface: `src/neurocore/current/`.
+
+Новые research candidates: causal HiPPO credit, hybrid HiPPO+cascade credit, product-key sparse memory. Они изолированы и не являются автоматически включённой архитектурой.
+
+Проверять проект кодом и тестами, а не только документацией.

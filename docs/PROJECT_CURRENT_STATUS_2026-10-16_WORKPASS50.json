@@ -1,0 +1,227 @@
+{
+  "title": "Neuro-Kurisu current project status — WorkPass50",
+  "date": "2026-10-16",
+  "workpass": 50,
+  "runtime": "35.71.0",
+  "schema": 225,
+  "baseArchive": "Neuro_Kurisu_WORKPASS49_2026-10-16.zip",
+  "counts": {
+    "DONE": 14,
+    "PARTIAL": 5,
+    "TODO": 7
+  },
+  "officialWeightedRoadmapPercent": 78.0,
+  "releaseStatus": "implementation-workpass; release gates remain open",
+  "items": [
+    {
+      "id": "P48-01",
+      "workstream": "A",
+      "title": "Исходные архивы сохранены в библиотеке",
+      "status": "DONE",
+      "evidence": "one.7z, two.7z, three.7z и four.7z подтверждены в /Нейро Курису/Исходники/ с исходными байтами и именами.",
+      "nextStep": ""
+    },
+    {
+      "id": "P48-02",
+      "workstream": "A",
+      "title": "Единая release metadata line",
+      "status": "DONE",
+      "evidence": "Root/runtime manifests, lockfiles, ReleaseContract, SUPER_VERSION and integration manifest aligned to WorkPass48 / 35.69.0 / schema 225.",
+      "nextStep": ""
+    },
+    {
+      "id": "P48-03",
+      "workstream": "B",
+      "title": "Инициатива получает предметные темы из целей и памяти",
+      "status": "DONE",
+      "evidence": "OrganismCore passes active goals and evidence-backed pattern/goal-learning/self-model memories to the existing initiative engine.",
+      "nextStep": ""
+    },
+    {
+      "id": "P48-04",
+      "workstream": "B",
+      "title": "Новизна тем и защита от циклических повторов",
+      "status": "DONE",
+      "evidence": "Fourteen-day token-overlap near-duplicate suppression, candidate dedupe and no generic fallback when all candidates are duplicates; focused queue regression passes.",
+      "nextStep": ""
+    },
+    {
+      "id": "P48-05",
+      "workstream": "E",
+      "title": "Appraisal-linked expression",
+      "status": "DONE",
+      "evidence": "Existing emotion appraisal maps to a confidence-gated transient toneHint; prompt keeps stable Kurisu identity, does not reveal telemetry and does not authorize tools. Shared sanitization rejects common credential/medical-secret patterns and contact/phone-like values in candidate topics and autonomous recent-memory context; it is a targeted filter, not a universal PII detector.",
+      "nextStep": ""
+    },
+    {
+      "id": "P48-06",
+      "workstream": "B",
+      "title": "Правдивая модель доставки и взаимности",
+      "status": "DONE",
+      "evidence": "A UI delivery ACK marks only delivery/execution; it no longer increases reciprocity. Test asserts unchanged reciprocity after delivery.",
+      "nextStep": ""
+    },
+    {
+      "id": "P48-07",
+      "workstream": "B",
+      "title": "Runtime typecheck and focused tests",
+      "status": "DONE",
+      "evidence": "npm run test:workpass48 passes typecheck, autonomous queue, prompt and trait-salience tests.",
+      "nextStep": ""
+    },
+    {
+      "id": "P48-08",
+      "workstream": "B",
+      "title": "Legacy integration regressions",
+      "status": "DONE",
+      "evidence": "big-pass-229-233 personhood/restart test and big-pass-288 social consolidation test pass after correcting outdated fixture assumptions.",
+      "nextStep": ""
+    },
+    {
+      "id": "P48-09",
+      "workstream": "B",
+      "title": "Server import and UI/API linkage",
+      "status": "DONE",
+      "evidence": "server relative import audit checks 11 imports; UI/API linkage reports 127 routes, 49 runtime atlas surfaces and no missing required seams.",
+      "nextStep": ""
+    },
+    {
+      "id": "P48-10",
+      "workstream": "H",
+      "title": "Provider-backed self-initiated dialogue idle/restart E2E",
+      "status": "TODO",
+      "evidence": "Queue and prompt contracts are tested but there is no long live provider/UI run in this environment.",
+      "nextStep": "Run with installed dependencies and a real configured language provider; observe idle initiation, restart and replay; continue provider-side data minimization review."
+    },
+    {
+      "id": "P48-11",
+      "workstream": "H",
+      "title": "Production app build and browser Live2D E2E",
+      "status": "TODO",
+      "evidence": "App dependencies are absent; production Vite build and interactive browser E2E were not verified.",
+      "nextStep": "Install through canonical project installer, build app and run browser tests including fallback and UI message delivery."
+    },
+    {
+      "id": "P48-12",
+      "workstream": "E",
+      "title": "True audio-to-avatar viseme/lipsync",
+      "status": "PARTIAL",
+      "evidence": "Existing intent/state mapping drives gaze/head motion; no verified audio envelope or phoneme/viseme path was added here.",
+      "nextStep": "Connect a real audio/viseme source to the canonical avatar body mapping."
+    },
+    {
+      "id": "P48-13",
+      "workstream": "C",
+      "title": "Full source archive integration and license sign-off",
+      "status": "PARTIAL",
+      "evidence": "Four archives are preserved and 21 unique nested source ZIPs were inventoried in previous review; this pass did not claim line-by-line integration of every upstream source.",
+      "nextStep": "Integrate the next source only when it closes a concrete missing capability, with license/provenance and single-owner review."
+    },
+    {
+      "id": "P48-14",
+      "workstream": "D",
+      "title": "Real receipt → Reafference → temporal credit → checkpoint",
+      "status": "TODO",
+      "evidence": "Current pass did not validate a physical/provider result end-to-end or an independent retrieval uplift.",
+      "nextStep": "Build a real adapter-driven replay/restart study and retain unknown outcomes as unknown."
+    },
+    {
+      "id": "P49-01",
+      "workstream": "A",
+      "title": "Recall privacy gate shared by all three provider prompt routes",
+      "status": "DONE",
+      "evidence": "Normal cognitive, autonomous-dialogue and cognitive-proposal prompt paths now sanitize stored memory summaries, known-entity fact statements and world facts; unsafe facts are omitted as whole records.",
+      "nextStep": ""
+    },
+    {
+      "id": "P49-02",
+      "workstream": "D",
+      "title": "Unsafe restored proactive messages and generated output fail closed",
+      "status": "DONE",
+      "evidence": "Persisted unsafe topics/messages are stripped and pending work is deferred; unsafe generated unsolicited text cannot be marked ready for UI delivery.",
+      "nextStep": ""
+    },
+    {
+      "id": "P49-03",
+      "workstream": "H",
+      "title": "Privacy regression coverage across retrieval, prompt and restore seams",
+      "status": "DONE",
+      "evidence": "Focused regressions cover secret/API-key patterns and email-like data in all recalled context classes, old persisted queue state and outgoing proactive text; safe context remains available.",
+      "nextStep": ""
+    },
+    {
+      "id": "P49-04",
+      "workstream": "A",
+      "title": "Universal privacy classification and explicit cloud-context policy",
+      "status": "PARTIAL",
+      "evidence": "A shared heuristic gate covers known credential/contact patterns; it is not a complete PII detector or a user-consent policy for every provider.",
+      "nextStep": "Implement classification, local/cloud policy and network-level evidence."
+    },
+    {
+      "id": "P49-05",
+      "workstream": "H",
+      "title": "Production Vite build and interactive browser/Live2D E2E",
+      "status": "TODO",
+      "evidence": "Still not run because app dependencies are absent in the current work environment.",
+      "nextStep": "Install from lockfile in an environment with dependencies and execute actual browser E2E."
+    },
+    {
+      "id": "P49-06",
+      "workstream": "D",
+      "title": "Real provider/device receipt to Reafference and temporal credit",
+      "status": "TODO",
+      "evidence": "Synthetic reconciliation/causal tests exist; actual provider/device authoritative receipt loop remains unverified.",
+      "nextStep": "Close one real executor end-to-end and fault-inject around side effects."
+    },
+    {
+      "id": "P49-07",
+      "workstream": "B",
+      "title": "Actual audio/viseme Live2D synchronization",
+      "status": "PARTIAL",
+      "evidence": "State-linked motion selection exists; real audio-envelope/viseme source and browser proof remain open.",
+      "nextStep": "Connect actual TTS playback audio to mouth parameters and test finish/cancel."
+    },
+    {
+      "id": "P49-08",
+      "workstream": "B",
+      "title": "Independent labelled memory retrieval holdout",
+      "status": "TODO",
+      "evidence": "Current documented retrieval uplift is zero and no candidate is promoted.",
+      "nextStep": "Build fixed independent labelled set and compare end-task outcomes."
+    },
+    {
+      "id": "P49-09",
+      "workstream": "G",
+      "title": "Target-host local inference profile",
+      "status": "TODO",
+      "evidence": "llama.cpp adapter exists but real target-hardware inference and performance are unverified.",
+      "nextStep": "Benchmark latency, memory, thermal and no-cloud-fallback behavior on target host."
+    },
+    {
+      "id": "P50-01",
+      "workstream": "B",
+      "title": "Единый контур интересов, целей, памяти и реакции пользователя",
+      "status": "DONE",
+      "evidence": "OrganismCore derives candidate themes from active goals, evidence-backed memory and self-authored goals; P33 owns graded interest profiles; explicit thread-linked positive/engaged/negative feedback updates the matching profile idempotently with source/evidence IDs. Affect and selected profile context reach autonomous dialogue generation.",
+      "nextStep": "Run a live provider idle dialogue to evaluate topic quality and long-run stability."
+    },
+    {
+      "id": "P50-02",
+      "workstream": "B",
+      "title": "Фоновый autonomous scheduler до durable delivery/restart",
+      "status": "DONE",
+      "evidence": "Deterministic provider test exercises actual OrganismRuntime background clock -> cognitive cycle -> language-provider seam -> ready message -> UI acknowledgement -> explicit response feedback -> durable flush -> restart with no redelivery. Sensor-only cycles preserve social quiet-time.",
+      "nextStep": "Repeat with installed application and an actual configured provider in a real browser."
+    },
+    {
+      "id": "P50-03",
+      "workstream": "E",
+      "title": "Opt-in browser speech with state-driven Live2D movement and mouth mapping",
+      "status": "PARTIAL",
+      "evidence": "AvatarStage implements opt-in SpeechSynthesis, voice choice, cancel paths, word-boundary mouth-shape approximation, and sends emotion/gaze/thinking/gesture/motion to Live2D viewer. Actual production browser and audio timing were not available in this environment.",
+      "nextStep": "Run Vite production build and browser/Live2D E2E; replace word-boundary approximation with audio/phoneme sync when output provider supplies timing."
+    }
+  ],
+  "scopeNote": "WorkPass50 connects canonical graded interests to active goals, evidence-backed memories, self-authored goals and explicit scoped user feedback; the actual runtime background scheduler test reaches the configured fake-provider seam, staged/ACK message, durable checkpoint and restart without replay. Opt-in browser speech and approximate Live2D mouth mapping are implemented but not browser-tested. The official weighted roadmap remains 78.0%; live provider, production browser, true audio/phoneme sync, device receipts, independent memory retrieval improvement, rollback, license review and soak remain open.",
+  "readinessNote": "implementation-workpass; release gates remain open"
+}

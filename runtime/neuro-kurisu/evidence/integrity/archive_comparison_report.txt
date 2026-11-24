@@ -1,0 +1,10 @@
+Archive integrity comparison
+
+Checked chain:
+P2696 -> P2721 -> P2751 -> P2801 -> P2861
+
+All archives passed ZIP extraction checks.
+SHA256 values recorded externally during validation.
+No extraction corruption detected.
+
+Note: hash differences between versions are expected because each update adds content.

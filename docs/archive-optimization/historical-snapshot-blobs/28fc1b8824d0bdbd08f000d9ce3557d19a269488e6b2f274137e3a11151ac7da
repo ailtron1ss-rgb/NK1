@@ -1,0 +1,12 @@
+node_modules/
+app/node_modules/
+runtime/neuro-kurisu/node_modules/
+.super-state/
+.verify-state/
+**/state/
+**/.cache/
+**/__pycache__/
+**/*.pyc
+*.log
+npm-debug.log*
+.DS_Store

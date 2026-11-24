@@ -1,0 +1,72 @@
+name: Actions history audit
+
+on:
+  push:
+    branches:
+      - workpass313-actions-history-audit
+    paths:
+      - '.github/workflows/actions-history-audit.yml'
+      - 'tools/audit-actions-history.mjs'
+      - 'tools/audit-actions-history.test.mjs'
+      - 'docs/ACTIONS_HISTORY_AUDIT.md'
+      - 'CHANGELOG.md'
+  workflow_dispatch:
+    inputs:
+      max_pages:
+        description: Maximum number of 100-run history pages to inspect
+        required: false
+        default: '1000'
+        type: string
+      max_log_jobs:
+        description: Maximum number of failed-job log archives to inspect
+        required: false
+        default: '150'
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: actions-history-audit-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  audit:
+    name: Inventory history and diagnose failed jobs
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js 24
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          package-manager-cache: false
+
+      - name: Test pagination and diagnostics
+        run: node --test tools/audit-actions-history.test.mjs
+
+      - name: Inspect every available Actions history page
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          AUDIT_MAX_PAGES: ${{ github.event.inputs.max_pages || '1000' }}
+          AUDIT_MAX_DETAIL_RUNS: '400'
+          AUDIT_MAX_LOG_JOBS: ${{ github.event.inputs.max_log_jobs || '150' }}
+          AUDIT_OUTPUT_DIR: artifacts/actions-history-audit
+        run: node tools/audit-actions-history.mjs
+
+      - name: Upload sanitized audit report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: nk1-actions-history-audit
+          path: artifacts/actions-history-audit/
+          if-no-files-found: warn
+          retention-days: 14

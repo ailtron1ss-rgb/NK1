@@ -1,0 +1,164 @@
+{
+  "title": "Neuro-Kurisu WorkPass41 changed files manifest",
+  "date": "2026-10-14",
+  "workpass": 41,
+  "baselineArchive": "Neuro_Kurisu_WORKPASS40_2026-10-14.zip",
+  "baselineArchiveSha256": "5c9729d964c6f5f1b785f5cea882c7cccabc66d2f92d63a47461dd7f66716325",
+  "baselineFileCount": 9126,
+  "addedFileCount": 13,
+  "addedPaths": [
+    "SEMANTIC_DYNAMIC_EVIDENCE.json",
+    "contracts/SOURCE_PROVENANCE_LICENSES_WORKPASS41.json",
+    "docs/INTEGRATION_MATRIX_WORKPASS41_2026-10-14.md",
+    "docs/PROJECT_CURRENT_STATUS_2026-10-14_WORKPASS41.json",
+    "docs/PROJECT_CURRENT_STATUS_2026-10-14_WORKPASS41.md",
+    "docs/PROJECT_PROGRESS_SCORECARD_2026-10-14_WORKPASS41.json",
+    "docs/WORKPASS41_ARCHIVE_VERIFICATION_2026-10-14.json",
+    "docs/WORKPASS41_AUDIT_RESULTS_2026-10-14.json",
+    "docs/WORKPASS41_CHANGED_FILES_2026-10-14.json",
+    "docs/WORKPASS41_REPORT_2026-10-14.md",
+    "docs/WORKPASS41_TASKS_2026-10-14.md",
+    "runtime/neuro-kurisu/tests/cognitive-cycle-local-lineage-workpass41.mjs",
+    "runtime/neuro-kurisu/tests/memory-retention-net-value-workpass41.mjs"
+  ],
+  "modifiedFileCount": 20,
+  "modifiedFiles": [
+    {
+      "path": "CHANGELOG.md",
+      "beforeSha256": "b967943a9ace28e51c139e2305e7536a32584a6580937617d2584b51aa0660d5",
+      "afterSha256": "ce5a05828b8d5a1f93801f30a19e54c8b5d594d764ce3d78033336fc99764897",
+      "sizeBytes": 64343
+    },
+    {
+      "path": "README.md",
+      "beforeSha256": "21ff3eb9d06e50b3c340449b6f7690e9e5608825d7bd3e2ec776680c79605ecf",
+      "afterSha256": "e8143d941911e1cc60e930d6042bfc701353c99d1d28affe987dc7c80adce836",
+      "sizeBytes": 24361
+    },
+    {
+      "path": "SUPER_VERSION.json",
+      "beforeSha256": "5bf65be14397e4452a4d90d1d6ed84e647777bf1d53ae26f5f36fee85df238e7",
+      "afterSha256": "a61578a8b0dfd4463ff068cd54ed216c5d480a4a9464a668279d42606c2a974a",
+      "sizeBytes": 2177
+    },
+    {
+      "path": "contracts/SBOM.final.json",
+      "beforeSha256": "9ea8657594a4dcfc9b1147409740476b5747d0bc2f828142a950cc7b0316c917",
+      "afterSha256": "0f4449c3e61cfbf0ecc6c7698c04ca5e09cb8bf2a81c31f01e23d86386b360b9",
+      "sizeBytes": 363127
+    },
+    {
+      "path": "contracts/SOURCE_PROVENANCE_LICENSES_WORKPASS40.json",
+      "beforeSha256": "82af9916a3342d8286e4bb204c721cd369c3d33dc6fb25f4567fba3b2f581af8",
+      "afterSha256": "b925edd115f42b41d6a84f0a6ed7b0424c82bac779a1bb8e72b352996fbb7e3e",
+      "sizeBytes": 8053
+    },
+    {
+      "path": "contracts/integration-manifest.json",
+      "beforeSha256": "bdbd545a6c885ea1b220859c0dd5348e9e19181ebdcc9491c66340e83e8947ee",
+      "afterSha256": "c3b47043da41041ba40a523f37fa346a19b07e862042dbc3ac104bbf7d6e1652",
+      "sizeBytes": 12586
+    },
+    {
+      "path": "docs/NEURO_KURISU_FULL_RELEASE_BACKLOG_CANONICAL.md",
+      "beforeSha256": "85208561781c8f569d639e6b3ebb5d1e6e36ff27163798e93e05e0d603764d11",
+      "afterSha256": "c5fe145af6273feb753a0cab2f3057997fd4f55dd4612f3537e1196cd7511171",
+      "sizeBytes": 115814
+    },
+    {
+      "path": "docs/Neuro_Kurisu_Список_дел_CURRENT.md",
+      "beforeSha256": "3cd7082fca4a6fde75e02cff97604b2c87b3cf50c3cd10a9460d3e93d1f049b9",
+      "afterSha256": "ec47fbc11167faf4b5010b3512c091257c24e3ecb956e732c8431b94903bb64f",
+      "sizeBytes": 143039
+    },
+    {
+      "path": "package.json",
+      "beforeSha256": "85d9785c9b45d47a411c2e6113f64bd9ec89939e099c19cd118e39591ccfd79c",
+      "afterSha256": "a2456aefeaef7c6a2fcfbd4c981e73fcbf3ed808ba20d5755153b5a297ae64c8",
+      "sizeBytes": 22600
+    },
+    {
+      "path": "runtime/neuro-kurisu/RELEASE_MANIFEST.json",
+      "beforeSha256": "52b601b3dfab3224fac96d940f28d414a3279905b1b0bb6cc4c99d0222e7f97e",
+      "afterSha256": "62ba5d49cbaa16c572867d2046d60df86bb3cef8050b3a02eab262a027fc90dd",
+      "sizeBytes": 1012
+    },
+    {
+      "path": "runtime/neuro-kurisu/VERSION.json",
+      "beforeSha256": "ce0a68f1ac1cc65d47dda4f16d2fd4514e8a89ea510015bcdc981404c762aba3",
+      "afterSha256": "ffc946cad2f2484a45d8f54fb135b4721d86cd302a7a0a6fed3e7098bc0f3f42",
+      "sizeBytes": 276
+    },
+    {
+      "path": "runtime/neuro-kurisu/package-lock.json",
+      "beforeSha256": "27618408fc32c34c5ffbdb6ae72504ac9d9441460d523b795245c71d9a3bad23",
+      "afterSha256": "56346982de6b3d470f09b1266596dadb7b19d5d4eaa565c4f1f09e7a5632b557",
+      "sizeBytes": 1041
+    },
+    {
+      "path": "runtime/neuro-kurisu/package.json",
+      "beforeSha256": "8ae1c5bf02676f3367833df9aa6e9bfc007fe08e1e23d41266cd16ff7037eb8d",
+      "afterSha256": "093c8cfed812398d8780eae84fb7146873c1cdc984596d4ac22961e506d81e6c",
+      "sizeBytes": 242517
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/core/OrganismCore.ts",
+      "beforeSha256": "d615264b48442510282a46ffa5708c5bcc94e377c3a1561123bfe5f792401e3d",
+      "afterSha256": "b2fb559b8f109e6ad53d3760045e4d13982f3f1bdf7a85d9cda8330f09260938",
+      "sizeBytes": 1219384
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts",
+      "beforeSha256": "cf4a2128539e9dcf5a61599baaa349635bf9a1e0b888706e68e4bf5fc139fea5",
+      "afterSha256": "02c64cc660d7eca275e7514dcc8d02987f972484931e7ab0c7a31802825f0197",
+      "sizeBytes": 90674
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/system/CognitiveEventFabric.ts",
+      "beforeSha256": "15a79a5fe845f5d949a7a6a36e9d9b9ade3dafe6a2ffb1ffa576f3a5d2185ad0",
+      "afterSha256": "45626c385bf19c588e79273f2423ef60a4849c8b266548a5c69b6e4acc678511",
+      "sizeBytes": 10897
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/system/MemoryRetentionEconomy.ts",
+      "beforeSha256": "d2a76eb41aa6fad57119854c1f7341312e2af1b3ef18c16236e625ee34b2d17d",
+      "afterSha256": "a2a08750d774fbd1aded335d780219c39826e5bcab62a67341991705267cfb7b",
+      "sizeBytes": 12439
+    },
+    {
+      "path": "tools/super-sbom.mjs",
+      "beforeSha256": "9de250bfb19bbedd76e23516f9d812d0914fd5519cf7bb13e573a359bac9f0cb",
+      "afterSha256": "ececc373e872a16db4615f34071160d14040d8e7b937084264b804232a7b588b",
+      "sizeBytes": 9711
+    },
+    {
+      "path": "tools/super-sbom.test.mjs",
+      "beforeSha256": "77cf5e530b6b4a488d8aa7c37025370023f4aa1bdcec60de0afa4e8764a3526d",
+      "afterSha256": "df38c9dfaf5a833d454b0d2df00738f764cb79643040bebc3317815f1e9dd299",
+      "sizeBytes": 3111
+    },
+    {
+      "path": "Список дел.md",
+      "beforeSha256": "aa431986d55c0917edc408be23dd3b6d9cb2fd19ae3015c74176235a8d20d214",
+      "afterSha256": "ea5d4466eeeae0dca6c8130c41ab12ee213a75ed65379f12292621567998f1ce",
+      "sizeBytes": 25601
+    }
+  ],
+  "deletedFileCount": 0,
+  "deletedPaths": [],
+  "manifestSelfHashOmitted": true,
+  "excludedGeneratedContent": [
+    "node_modules",
+    "state/cache directories",
+    "__pycache__",
+    "coverage",
+    "*.pyc",
+    "*.pyo",
+    "*.log"
+  ],
+  "notes": [
+    "All baseline file paths are preserved.",
+    "Historical source archives and their embedded files are retained.",
+    "See external WORKPASS41_ARCHIVE_VERIFICATION JSON for final output hash and byte-for-byte packaging results."
+  ]
+}

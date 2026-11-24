@@ -1,0 +1,436 @@
+      const predictionTarget=clamp(existing.predictionError*.62 + surprise*.38);
+      const salienceTarget=clamp(existing.salience*.80 + Math.abs(success-.5)*.20 + feedbackEmotion.interoceptiveDelta.attentionCapture01*.08);
+      const reconsolidated=this.memorySubsystem.memoryOS.updateSignals(memoryId,{emotionalWeight:emotionalTarget,predictionError:predictionTarget,salience:salienceTarget,dormant:false},`feedback-reconsolidation:${feedbackEmotion.label}`);
+      if(reconsolidated){
+        this.memoryRetentionEconomy.recordConsolidation({memoryId,tick:state.tick,at:state.at,mode:'strengthen',score01:clamp(salienceTarget*.5+emotionalTarget*.25+predictionTarget*.25),emotionalGain01:clamp(feedbackEmotion.arousal01*.22),identityGain01:0,goalGain01:0,reason:`feedback=${success.toFixed(2)};surprise=${surprise.toFixed(2)};emotion=${feedbackEmotion.label}`});
+      }
+    }
+    this.persisted.system.memoryRetentionEconomy=this.memoryRetentionEconomy.snapshot();
+    this.persisted.facets.advanced.memoryOS=this.memorySubsystem.memoryOS.snapshot();
+    if (trace) trace.outcome = { success, reward: outcome.reward, surprise, notes: outcome.notes, at: Date.now() };
+    if (trace?.selected) {
+      this.worldCausalCalibration.observe({ action: trace.selected.action, actual01: success, source: outcome.worldTransition ? 'intervention' : outcome.evidenceSource ? 'observation' : 'feedback', confidence01: trace.selected.confidence, at: state.at });
+      this.persisted.system.worldCausalCalibration=this.worldCausalCalibration.snapshot();
+    }
+    if (trace?.selected) {
+      const candidateUtilities = trace.predictedOutcomes.map(p=>p.utility);
+      const meanUtility = candidateUtilities.length ? candidateUtilities.reduce((a,b)=>a+b,0)/candidateUtilities.length : .5;
+      this.evidenceResearchSubsystem.modelOlympics.scoreRound({ actual01:success, at:state.at, predictions:{
+        policy:{predicted01:trace.selected.predictedUtility},
+        confidence:{predicted01:trace.selected.confidence},
+        meanCandidates:{predicted01:meanUtility},
+        p10:{predicted01:Number(trace.reasoningSignals.modelP10Prediction01 ?? .5)},
+        p27:{predicted01:Number(trace.reasoningSignals.modelP27Prediction01 ?? .5)},
+        p26:{predicted01:Number(trace.reasoningSignals.modelP26Prediction01 ?? .5)},
+        p30:{predicted01:Number((trace.reasoningSignals as any).modelP30Prediction01 ?? .5)},
+      }});
+      const shadowAction=this.evidenceResearchSubsystem.shadowOrganism.snapshot().recent[0]?.shadowAction;
+      const shadowCandidate=shadowAction ? trace.predictedOutcomes.find(p=>p.action===shadowAction) : undefined;
+      if(shadowCandidate) this.evidenceResearchSubsystem.modelOlympics.scoreRound({ actual01:success, at:state.at, predictions:{ shadow:{predicted01:shadowCandidate.utility} } });
+    }
+    this.evidenceResearchSubsystem.shadowOrganism.observeOutcome({tick:state.tick,actualSuccess:success,actualAction:trace?.selected?.action ?? 'wait'});
+    this.longitudinal.recordOutcome(success);
+    const outcomeEvent=this.cognitiveEventFabric.append({tick:state.tick,stage:'outcome',source:outcome.evidenceSource??(outcome.worldTransition?'simulator':'feedback'),parentIds:[this.cognitiveCycleAnchors.action,this.cognitiveCycleAnchors.prediction].filter(Boolean) as string[],external:externalEvidenceSources.includes(String(outcome.evidenceSource??'').toLowerCase()),confidence01:clamp(1-surprise),payload:{success,reward:outcome.reward??null,surprise}});
+    const learningEvent=this.cognitiveEventFabric.append({tick:state.tick,stage:'learning',source:'outcome-learning',parentIds:[outcomeEvent.id],confidence01:clamp(1-surprise),payload:{predictionError:state.predictionError,uncertainty:state.needs.uncertainty}});
+    const selfUpdateEvent=this.cognitiveEventFabric.append({tick:state.tick,stage:'self-update',source:'self-model',parentIds:[learningEvent.id],confidence01:clamp(state.needs.identityCoherence),payload:{identityCoherence:state.needs.identityCoherence}});
+    const fabricSnapshot=this.cognitiveEventFabric.snapshot();
+    this.unifiedCognitiveCycle.evaluate({tick:state.tick,stageIds:{observation:this.cognitiveCycleAnchors.observation,prediction:this.cognitiveCycleAnchors.prediction,action:this.cognitiveCycleAnchors.action,outcome:outcomeEvent.id,learning:learningEvent.id,'self-update':selfUpdateEvent.id},parentIntegrity01:fabricSnapshot.lineageIntegrity01});
+    this.cognitiveCycleAnchors={};
+    const feedbackRealityClass = externalEvidenceSources.includes(String(outcome.evidenceSource??'').toLowerCase()) ? 'external-observation' : outcome.worldTransition ? 'simulator' : 'derived';
+    this.realityEvidenceLedger.record({tick:state.tick,realityClass:feedbackRealityClass,claim:`outcome:${trace?.selected?.action??'none'}`,confidence01:clamp(1-surprise),independenceKey:`${feedbackRealityClass}:${state.tick}`,parentIds:[outcomeEvent.id],at:state.at});
+    const p57External = externalEvidenceSources.includes(String(outcome.evidenceSource ?? '').toLowerCase());
+    this.worldSubsystem.p57RealityFirstObservatory.observe({tick:state.tick,at:Date.now(),source:p57External?'external-feedback':'unknown',predicted01:trace?.selected?.predictedUtility ?? null,actual01:success,confidence01:trace?.selected?.confidence ?? .5,note:outcome.notes ?? (p57External?'feedback':'internal feedback; not external evidence')});
+    this.evidenceResearchSubsystem.externalEvidenceTrust.observe({claimKey:`action:${trace?.selected?.action ?? 'none'}:outcome`,source:outcome.evidenceSource ?? (outcome.worldTransition ? 'simulator' : 'unknown'),independenceKey:outcome.worldTransition ? `sim:${outcome.worldTransition.at}` : `feedback:${state.tick}`,confidence01:clamp(1-surprise),contradiction01:surprise,at:Date.now()});
+    this.persisted.system.externalEvidenceTrust=this.evidenceResearchSubsystem.externalEvidenceTrust.snapshot();
+    this.persisted.system.predictionDebt=this.evidenceResearchSubsystem.predictionDebt.snapshot();
+    this.persisted.system.cognitiveQuorum=this.agencySubsystem.quorum.snapshot();
+    this.persisted.system.shadowOrganism=this.evidenceResearchSubsystem.shadowOrganism.snapshot();
+    this.persisted.system.identityCausality=this.evidenceResearchSubsystem.identityCausality.snapshot();
+    this.persisted.system.longHorizonPrediction=this.evidenceResearchSubsystem.longHorizonPrediction.snapshot();
+    this.persisted.system.autonomousProjectExecutor=this.agencySubsystem.projectExecutor.snapshot();
+    this.persisted.system.skillAcquisitionBenchmark=this.evidenceResearchSubsystem.skillAcquisitionBenchmark.snapshot();
+    this.persisted.system.cognitiveSpineSchedule=this.cognitiveSpineScheduler.snapshot();
+    this.persisted.system.resourceAllocation=this.resourceAllocator.snapshot();
+    this.persisted.system.unifiedCognitiveSubstrate=this.unifiedCognitiveSubstrate.snapshot();
+    this.persisted.system.memoryRetentionEconomy=this.memoryRetentionEconomy.snapshot();
+    this.persisted.system.behavioralInfluenceLedger=this.behavioralInfluenceLedger.snapshot();
+    this.persisted.system.cognitiveEventFabric=this.cognitiveEventFabric.snapshot();
+    this.persisted.system.cognitiveResourceEconomy=this.cognitiveResourceEconomy.snapshot();
+    this.persisted.system.realityEvidenceLedger=this.realityEvidenceLedger.snapshot();
+    this.persisted.system.unifiedCognitiveCycle=this.unifiedCognitiveCycle.snapshot();
+    this.persisted.system.emotionAppraisal=this.emotionAppraisal.snapshot();
+    this.persisted.system.worldModelEnsemble=this.worldSubsystem.worldModelEnsemble.snapshot();
+    this.persisted.system.memoryCausalEconomy=this.memoryCausalEconomy.snapshot();
+    this.persisted.facets.advanced.p57RealityFirstObservatory=this.worldSubsystem.p57RealityFirstObservatory.snapshot();
+    this.persisted.facets.advanced.p58CognitiveKernel=this.p58CognitiveKernel.snapshot();
+    this.persisted.facets.advanced.p59MemoryOperatingSystem=this.memorySubsystem.p59MemoryOperatingSystem.snapshot();
+    this.persisted.facets.advanced.p60IdentityGuardian=this.selfSubsystem.p60IdentityGuardian.snapshot();
+    this.adaptiveDevelopment.observeOutcome(success);
+    const value = success > 0.6 ? 'truth' : 'responsibility';
+    const legacyRevision = (!this.config.enableValueEvolution && this.config.enableValuePlasticity) ? this.memorySubsystem.valuePlasticity.update({ value, success, surprise }) : null;
+    this.worldSubsystem.activeInference.learn({ epistemicSurprise: surprise, actionSuccess: success });
+    this.metacognition.update({ confidence: trace?.selected?.confidence ?? 0.5, outcomeSuccess: success, predictionError: state.predictionError, worldUncertainty: state.needs.uncertainty, identityDrift: this.selfSubsystem.identityContinuity.snapshot().drift });
+    this.persisted.facets.consciousness.metacognition = this.metacognition.snapshot();
+    const metaCentral = this.centralBrain.globalState();
+    const metaWorkspace = this.globalWorkspace.globalState();
+    this.metacognitiveNeural.observe({
+      centralLatent:metaCentral.latent.slice(0,12), workspace:metaWorkspace.broadcast.slice(0,6),
+      selfLatent:[this.selfSubsystem.p80UnifiedSelfState.snapshot().continuity01,this.selfSubsystem.p80UnifiedSelfState.snapshot().coherence01,this.selfSubsystem.p80UnifiedSelfState.snapshot().agency01],
+      predictionError01:state.predictionError, confidence01:trace?.selected?.confidence ?? .5,
+      worldUncertainty01:state.needs.uncertainty, identityDrift01:this.selfSubsystem.identityContinuity.snapshot().drift,
+      actionOutcome01:success, tick:state.tick, at:state.at
+    });
+    (this.persisted.facets.cognition as any).metacognitiveNeural=this.metacognitiveNeural.snapshot(); (this.persisted.facets.advanced as any).predictiveAllostasis=this.predictiveAllostasis.snapshot(); (this.persisted.facets.advanced as any).multiHorizonAllostasis=this.multiHorizonAllostasis.snapshot(); (this.persisted.facets.advanced as any).neuromodulatoryPlasticity=this.neuromodulatoryPlasticity.snapshot();
+    this.persisted.facets.consciousness.identityContinuity = this.selfSubsystem.identityContinuity.update({ values: this.persisted.facets.memory.adaptiveValues, identityCoherence: state.needs.identityCoherence, activeGoalTitles: this.persisted.goals.filter(g=>g.status==='active').map(g=>g.title), memoryIds: this.persisted.facets.memory.lastRetrievedMemoryIds, authorshipScore: this.selfSubsystem.selfAuthorship.snapshot().authorshipScore });
+    this.persisted.facets.consciousness.activeInference = this.worldSubsystem.activeInference.snapshot();
+    const selectedGoalTitle = trace?.selected?.goalId ? this.persisted.goals.find(g => g.id === trace?.selected?.goalId)?.title ?? null : null;
+    if (trace?.selected) {
+      this.selfSubsystem.p32CausalSelf.observeOutcome({ action:trace.selected.action, success01:success, reward01:clamp((outcome.reward ?? success + 0.5) / 1.5), surprise01:surprise, externallyRequested:Boolean(trace.userRequestedAction), observationId:trace.id, state });
+      this.persisted.facets.consciousness.p32=this.selfSubsystem.p32CausalSelf.snapshot();
+      this.selfSubsystem.p31Consciousness.observeOutcome({ action:trace.selected.action, success01:success, reward01:clamp((outcome.reward ?? success + 0.5) / 1.5), surprise01:surprise, predictedSameAction:trace.selected.action===state.predictedNextAction, externallyRequested:Boolean(trace.userRequestedAction) });
+      this.centralBrain.learnAction(trace.selected.action, clamp((outcome.reward ?? success + 0.5) / 1.5), this.worldSubsystem.p27NeuralWorld.snapshot().world.predictionError01);
+      this.globalWorkspace.learnReward(clamp((outcome.reward ?? success + 0.5) / 1.5));
+      const causalMatch01=clamp(1-surprise);
+      this.predictiveSelfAgency.learnOutcome(trace.selected.action, clamp((outcome.reward ?? success + 0.5) / 1.5), state, Boolean(trace.userRequestedAction), causalMatch01);
+      this.persisted.facets.cognition.predictiveSelfAgency=this.predictiveSelfAgency.snapshot(); this.persisted.facets.cognition.globalWorkspace=this.globalWorkspace.snapshot(); (this.persisted.facets.cognition as any).metacognitiveNeural=this.metacognitiveNeural.snapshot(); (this.persisted.facets.advanced as any).predictiveAllostasis=this.predictiveAllostasis.snapshot(); (this.persisted.facets.advanced as any).multiHorizonAllostasis=this.multiHorizonAllostasis.snapshot(); (this.persisted.facets.advanced as any).neuromodulatoryPlasticity=this.neuromodulatoryPlasticity.snapshot();
+      this.persisted.facets.cognition.centralBrain=this.centralBrain.snapshot();
+      this.persisted.facets.consciousness.p31=this.selfSubsystem.p31Consciousness.snapshot();
+      this.selfSubsystem.p33Personhood.observeOutcome({ action:trace.selected.action, success01:success, reward01:clamp((outcome.reward ?? success + 0.5) / 1.5), externallyRequested:Boolean(trace.userRequestedAction), momentId:this.persisted.facets.consciousness.p31.presentMomentId });
+      this.persisted.facets.consciousness.p33=this.selfSubsystem.p33Personhood.snapshot();
+      this.selfSubsystem.p34Personhood.integrateOutcome({ action:trace.selected.action, success01:success, reward01:clamp((outcome.reward ?? success + 0.5) / 1.5), momentId:this.persisted.facets.consciousness.p31.presentMomentId, predictedAction:trace.selected.action });
+      this.persisted.facets.consciousness.p34=this.selfSubsystem.p34Personhood.snapshot();
+    }
+    const socialActualNeed = trace?.selected?.action === 'respond' ? 'dialogue' : trace?.selected?.action === 'verify' ? 'information' : trace?.selected?.action === 'explore' ? 'assistance' : 'dialogue';
+    const socialError = this.config.enableSocialDevelopment ? this.socialDevelopment.feedback('user', socialActualNeed, success >= 0.62 ? 0.45 : 0.02, this.lastSocialPredictionTicketId ?? undefined) : 0;
+    this.lastSocialPredictionTicketId = null;
+    if (this.config.enableSocialDevelopment) this.socialDevelopment.observeOutcome('user', success, success < 0.4);
+    if (this.config.enableSocialDevelopment) {
+      const agentActionForSocial=trace?.selected?.action ?? 'none';
+      const repairProposal=this.socialMind.proposeRepair('user');
+      const repairAttempted=repairProposal.needed && ['respond','reflect','verify'].includes(agentActionForSocial) && success >= .45;
+      const independentIntentEvidence = this.socialMind.person('user')?.knownClaims.find(claim => claim.claim.startsWith('likely-intent:'));
+      const observedSocialIntent = independentIntentEvidence && independentIntentEvidence.confidence01 >= .86 ? independentIntentEvidence.claim.slice('likely-intent:'.length) : undefined;
+      this.socialMind.recordOutcome('user', { actualIntent: observedSocialIntent as any, outcome01: success, surprise01: surprise, at: state.at, agentAction: agentActionForSocial, repairAttempted });
+      const socialIntentIndex=observedSocialIntent ? ['assistance','information','connection','dialogue','agreement','boundary'].indexOf(observedSocialIntent) : -1;
+      this.socialPredictiveNeural.learnOutcome({actualIntent01:clamp(socialIntentIndex>=0 ? socialIntentIndex/5 : .5),actualValence01:clamp((success+.5)/1.5),actualResponse01:clamp(agentActionForSocial==='respond'?1:.5),success01:success,socialMismatch01:surprise});
+      (this.persisted.facets.cognition as any).socialPredictiveNeural=this.socialPredictiveNeural.snapshot();
+      this.persisted.facets.advanced.socialMind=this.socialMind.snapshot();
+    (this.persisted.facets.cognition as any).socialPredictiveNeural=this.socialPredictiveNeural.snapshot();
+    }
+    if (this.config.enableUnifiedMemory) {
+      const beliefClaim=trace?.selected?.goalId ? (this.persisted.goals.find(g => g.id === trace.selected?.goalId)?.title ?? selectedGoalTitle ?? 'current objective') : (selectedGoalTitle ?? 'current objective');
+      const beliefOutcome=success >= 0.62 ? 'support' : success < 0.4 ? 'contradict' : 'unknown';
+      const belief=this.memorySubsystem.unifiedMemory.updateBelief(beliefClaim, beliefOutcome, `tick:${state.tick};action:${trace?.selected?.action ?? 'none'};socialError:${socialError.toFixed(3)}`, Math.max(0.04, surprise * 0.18 + Math.abs(success - 0.5) * 0.08));
+      this.recordIdentityLineage({tick:state.tick,fromKind:'belief',fromLabel:`${belief.id}:${belief.claim}`,strength01:clamp(belief.confidence*.42),evidence01:clamp((belief.evidence.length+belief.contradictions.length)/24),reason:`belief-${beliefOutcome}-after-action-consequence`,relation:beliefOutcome==='support'?'supports':beliefOutcome==='contradict'?'contradicts':'influences',source:'unified-memory'});
+    }
+    if (this.config.enableSocialDevelopment && success < 0.4 && trace?.selected?.goalId) {
+      const goalId = trace.selected.goalId;
+      const person = this.socialDevelopment.snapshot().persons.find(p => p.id === 'user');
+      if (person?.openCommitments.includes(goalId)) this.socialDevelopment.repairCommitment('user', goalId, 'low-outcome on a shared commitment', 're-evaluate plan and communicate the correction');
+    }
+    this.selfSubsystem.selfAuthorship.observeOutcome({ success, surprise, selectedGoal: selectedGoalTitle });
+    if (trace?.selected) {
+      const trajectoryTrust = projectEvidenceExternal ? 1 : outcome.worldTransition ? .78 : .55;
+      this.identityTrajectory.observeOutcome({
+        action: trace.selected.action, success01: success, surprise01: surprise, trust01: trajectoryTrust,
+        phase: this.lastDevelopmentalIdentity.phase, attractor: this.developmentalAttractors.summary().dominant,
+        motive: this.lastMotiveEcology.dominant, goalFamily: selectedGoalTitle ?? trace.selected.goalId ?? 'general',
+        identityPressure01: this.lastDevelopmentalIdentity.identityPressure01, predictionError01: state.predictionError,
+      });
+      this.persisted.facets.evolution.identityTrajectory = this.identityTrajectory.snapshot();
+
+      // One bounded developmental consequence connects social experience, identity pressure,
+      // causal evidence, future-self calibration and shared learning. It is a bridge, not a
+      // second policy engine and it never asserts user intent without independent evidence.
+      const socialDiagnostics = this.socialMind.diagnostics();
+      const p84Summary = this.selfSubsystem.p84AutobiographicalContinuity.summary();
+      const learningDiagnostics = this.unifiedLearning.diagnostics();
+      const futureMismatch = this.futureSelf.resolveDevelopmental({
+        identityContinuity01: this.selfSubsystem.identityContinuity.snapshot().continuity,
+        agency01: state.autonomyScore,
+        socialBinding01: p84Summary.socialBinding01,
+      });
+      const evidenceQuality = clamp(
+        (projectEvidenceExternal ? 0.82 : 0.54) +
+        (1 - surprise) * 0.12 +
+        (socialDiagnostics.evidenceCount > 0 ? 0.06 : 0)
+      );
+      const developmentalConsequence = this.selfSubsystem.p84AutobiographicalContinuity.recordDevelopmentalConsequence({
+        tick: state.tick,
+        at: state.at,
+        action: trace.selected.action,
+        socialSignal01: socialDiagnostics.socialDemand01,
+        identityPressure01: this.lastDevelopmentalIdentity.identityPressure01,
+        selfChange01: p84Summary.selfChangeLoad01,
+        causalSignal01: clamp(0.45 + state.predictionError * 0.35 + learningDiagnostics.crossTaskTransfer01 * 0.20),
+        evidenceQuality01: evidenceQuality,
+        futureSelfDelta01: futureMismatch,
+        verified01: projectEvidenceExternal || Boolean(outcome.worldTransition),
+        sourceMomentId: this.persisted.facets.advanced.p84AutobiographicalContinuity.lastMomentId || null,
+        summary: `action=${trace.selected.action}; social=${socialDiagnostics.socialDemand01.toFixed(2)}; futureMismatch=${futureMismatch.toFixed(2)}`,
+      });
+      const developmentalTransfer = this.unifiedLearning.observeDevelopmentalSignal({
+        identityContinuity01: this.selfSubsystem.identityContinuity.snapshot().continuity,
+        socialBinding01: p84Summary.socialBinding01,
+        identityPressure01: this.lastDevelopmentalIdentity.identityPressure01,
+        causalSignal01: developmentalConsequence.causalSignal01,
+        evidenceQuality01: developmentalConsequence.evidenceQuality01,
+        selfChange01: developmentalConsequence.selfChange01,
+      });
+      this.futureSelf.forecastDevelopmental({
+        identityContinuity01: this.selfSubsystem.identityContinuity.snapshot().continuity,
+        agency01: state.autonomyScore,
+        socialBinding01: p84Summary.socialBinding01,
+        identityPressure01: this.lastDevelopmentalIdentity.identityPressure01,
+        socialDemand01: socialDiagnostics.socialDemand01,
+        horizonCycles: 8,
+        confidence01: clamp(0.44 + evidenceQuality * 0.24 + developmentalTransfer * 0.18),
+        sourceMomentId: developmentalConsequence.sourceMomentId ?? undefined,
+      });
+      this.persisted.facets.advanced.p84AutobiographicalContinuity = this.selfSubsystem.p84AutobiographicalContinuity.snapshot();
+      this.persisted.facets.advanced.futureSelf = this.futureSelf.snapshot();
+      this.persisted.facets.advanced.unifiedLearning = this.unifiedLearning.snapshot();
+    }
+    this.evidenceResearchSubsystem.identityCausality.observe({ tick:state.tick, identityLabel:'Kurisu', causeKind:trace?.selected?.goalId?'goal':'event', causeLabel:selectedGoalTitle ?? (trace?.selected?.action ?? 'outcome'), strength01:clamp((1-surprise)*.6 + success*.4), reason:`feedback action=${trace?.selected?.action ?? 'none'} success=${success.toFixed(2)}`, relation: success>=.62?'supports':success<.4?'contradicts':'influences', evidence01:clamp((1-surprise)*.45+success*.55), source:'outcome-feedback' });
+    if (trace?.selected?.action) {
+      const actionLabel=trace.selected.action;
+      const personalityEvidence01 = clamp((projectEvidenceExternal ? 0.82 : outcome.worldTransition ? 0.70 : 0.52) + (1 - surprise) * 0.10);
+      const personalityConfidence01 = clamp(0.56 + personalityEvidence01 * 0.30 + Math.abs(success - 0.5) * 0.14);
+      const personalitySupport = success >= 0.62;
+      const personalityTraitByAction: Partial<Record<string,string[]>> = {
+        explore:['curiosity'], verify:['truth-seeking','caution'], reflect:['self-reflection'], respond:['social-attunement','care'], rest:['self-preservation']
+      };
+      for (const trait of personalityTraitByAction[actionLabel] ?? []) {
+        this.multiHypothesisPersonality.observeCausal({
+          tick:state.tick, at:state.at, context:'life', trait, support:personalitySupport,
+          strength01:clamp(0.48 + Math.abs(success - 0.5) * 0.7),
+          confidence01:personalityConfidence01, evidence01:personalityEvidence01, source:'verified-outcome',
+        });
+      }
+      if (success < 0.42 && surprise > 0.58) {
+        this.multiHypothesisPersonality.observeCausal({
+          tick:state.tick, at:state.at, context:'life', trait:'caution', support:true,
+          strength01:clamp(0.55 + surprise * 0.35), confidence01:personalityConfidence01, evidence01:personalityEvidence01, source:'surprising-negative-outcome',
+        });
+      }
+      this.persisted.facets.advanced.multiHypothesisPersonality=this.multiHypothesisPersonality.snapshot();
+
+      this.recordIdentityLineage({tick:state.tick,fromKind:'action',fromLabel:actionLabel,strength01:clamp(.24+success*.28),evidence01:clamp((1-surprise)*.5+success*.5),reason:'action-consequence-updates-autobiographical-identity-lineage',relation:'changed-by',source:'p84'});
+      this.recordIdentityLineage({tick:state.tick,fromKind:'outcome',fromLabel:`${actionLabel}@${state.tick}:success=${success.toFixed(2)}`,strength01:clamp(.20+Math.abs(success-.5)*.45),evidence01:clamp((1-surprise)*.5+success*.5),reason:'outcome-is-part-of-self-authored-life-history',relation:'resulted-in',source:'outcome-feedback'});
+    }
+    const project = this.agencySubsystem.selfProjects.activeProject();
+    const independentSources = trace?.selected ? this.evidenceResearchSubsystem.externalEvidenceTrust.independenceCount(`action:${trace.selected.action}:outcome`) : 0;
+    let revision: import('../cognition/ValuePlasticity.ts').ValueRevision|null = null;
+    if (project && trace?.selected) {
+      const action = trace.selected.action;
+      const actionWasRelevant = ['explore', 'verify', 'reflect'].includes(action)
+        || Boolean(trace.selected.goalId && trace.selected.goalId === project.linkedGoalId);
+      const projectEvidenceClass = !projectEvidenceExternal ? 'internal' : independentSources >= 2 ? 'replicated' : 'external';
+      this.agencySubsystem.selfProjects.observeOutcome({ projectId: project.id, success, surprise, actionWasRelevant, evidenceClass: projectEvidenceClass, externalEvidence01: projectEvidenceExternal ? clamp(1 - surprise) : 0, skillGain01: success >= .65 && actionWasRelevant ? .08 : 0 });
+      this.syncProjectGoalState(project.id);
+    }
+    if (trace?.selected && this.config.enableValueEvolution) {
+      const provenanceAttribution = this.valueEvolution.attributeExperience({
+        action: trace.selected.action,
+        goalTitle: selectedGoalTitle ?? project?.title ?? null,
+        goalSource: trace.selected.goalId ? (this.persisted.goals.find(g=>g.id===trace.selected?.goalId)?.source ?? null) : null,
+        projectOrigin: project?.origin ?? 'intrinsic-development',
+      });
+      const valueEvidenceRecord = this.valueProvenance.snapshot().records.find(r=>r.value===provenanceAttribution.value);
+      const memoryAssessments = feedbackMemoryIds.map(id=>this.memoryCausalEconomy.assessMemory(id));
+      const validMemoryAssessments = memoryAssessments.filter(m=>m.observationCount>0 && !['quarantined','contested'].includes(m.status));
+      const memoryIndependentSources = validMemoryAssessments.reduce((m,a)=>Math.max(m,a.independentSources),0);
+      const memoryOutcomeCount = validMemoryAssessments.reduce((s,a)=>s+a.outcomeCount,0);
+      const memoryEvidenceCount = validMemoryAssessments.reduce((s,a)=>s+a.observationCount+a.outcomeCount,0);
+      const memoryReadiness = validMemoryAssessments.length ? Math.max(...validMemoryAssessments.map(a=>this.memoryCausalEconomy.promotionReadiness(a.memoryId))) : 0;
+      const valueIndependentSources = Math.max(
+        projectEvidenceExternal ? independentSources : 0,
+        valueEvidenceRecord?.independentSourceCount ?? 0,
+        memoryIndependentSources,
+      );
+      const evidenceCount = Math.max(
+        project?.evidenceCount ?? 0,
+        memoryEvidenceCount,
+        valueEvidenceRecord ? (valueEvidenceRecord.supporting.length + valueEvidenceRecord.violating.length) : 0,
+      );
+      const causalSupport = clamp(Math.max(
+        memoryReadiness,
+        valueEvidenceRecord?.confidence ?? 0,
+        projectEvidenceExternal ? 0.62 + (1-surprise)*.18 : 0,
+      ));
+      const attributedConfidence = clamp(provenanceAttribution.confidence01*.5 + causalSupport*.5);
+      revision = this.valueEvolution.observeExperience({
+        values:this.persisted.facets.memory.adaptiveValues,
+        success, surprise,
+        projectOrigin:project?.origin ?? 'intrinsic-development',
+        evidenceCount, independentSourceCount:valueIndependentSources,
+        causalSupport01:causalSupport,
+        value:provenanceAttribution.value as any, direction:1,
+        reference01:clamp(trace.selected.predictedUtility ?? .5),
+        attributionConfidence01:attributedConfidence,
+      });
+      this.memorySubsystem.events.append(makeEvent('value-attribution', this.persisted.state.tick, {
+        value:provenanceAttribution.value, confidence01:provenanceAttribution.confidence01,
+        causalSupport01:causalSupport, independentSourceCount:valueIndependentSources, evidenceCount, memoryEvidenceCount,
+        rationale:provenanceAttribution.rationale, reference01:clamp(trace.selected.predictedUtility ?? .5),
+        projectOrigin:project?.origin ?? 'intrinsic-development',
+      } as any));
+      if (revision) this.applyVerifiedValueRevision(revision);
+    }
+    if (legacyRevision) this.persisted.facets.learning.valueRevisionLog = [legacyRevision, ...this.persisted.facets.learning.valueRevisionLog].slice(0, 256);
+    if (trace?.selected) {
+      this.causalLifeGraph.recordCycle({
+        tick:state.tick,at:state.at,
+        decision:{id:trace.id,label:trace.selected.action,confidence01:trace.selected.confidence},
+        action:{id:trace.id,label:trace.selected.action,confidence01:trace.selected.confidence},
+        outcome:{id:`outcome:${state.tick}`,label:`success=${success.toFixed(2)}`,confidence01:1-surprise,external01:Boolean(outcome.evidenceSource)?1:0},
+        learning:{id:`learning:${state.tick}`,label:'outcome-driven-learning',confidence01:clamp(1-surprise*.5)},
+        selfChange:{
+          id:revision?.id ?? legacyRevision?.id ?? `self:${state.tick}`,
+          label:revision ? `value-revision:${revision.value}` : legacyRevision ? `legacy-value-revision:${legacyRevision.value}` : (state.lastActionSuccess!==null?'post-outcome-self-state':'self-state'),
+          confidence01:clamp(revision ? .62+Math.abs(revision.delta)*8 : legacyRevision ? .58+Math.abs(legacyRevision.delta)*6 : .5+Math.abs(success-.5)*.4),
+        },
+      });
+      this.persisted.system.causalLifeGraph=this.causalLifeGraph.snapshot();
+    this.persisted.system.selfModelValidation=this.selfModelValidation.snapshot();
+    }
+
+
+    if (this.config.enableWorldModel && outcome.worldTransition) {
+      this.worldSubsystem.world.observeTransition(outcome.worldTransition);
+      this.worldSubsystem.observeActionOutcome({
+        action: trace?.selected?.action ?? 'wait',
+        before: outcome.worldTransition.before as any,
+        after: outcome.worldTransition.after as any,
+        reward: clamp(outcome.reward ?? success),
+        surprise,
+        at: outcome.worldTransition.at ?? Date.now(),
+      }, trace?.stateBefore ?? this.persisted.state);
+    }
+    if (this.config.enableLearnedResidualWorld && trace?.selected) {
+      const predicted = this.worldSubsystem.world.predict(this.persisted.state.needs, trace.selected.action).utility;
+      this.worldSubsystem.residualWorld.observe(trace.selected.action, predicted, outcome.reward == null ? success : clamp(outcome.reward));
+      const nextNeeds=state.needs;
+      this.worldSubsystem.contextualWorld.observe(trace.stateBefore, trace.selected.action, { reward01: outcome.reward == null ? success : clamp(outcome.reward), nextEnergy01:nextNeeds.energy, nextLoad01:nextNeeds.cognitiveLoad, nextUncertainty01:nextNeeds.uncertainty, nextNovelty01:nextNeeds.novelty });
+    }
+    this.persisted.system.worldModelEnsemble=this.worldSubsystem.worldModelEnsemble.snapshot();
+    if (project && (projectEvidenceExternal || Boolean(outcome.worldTransition))) {
+      this.agencySubsystem.projectExecutor.reopenBlockedStep({ tick:state.tick, reason: projectEvidenceExternal ? 'external-evidence' : 'world-transition' });
+    }
+    if (this.config.enableProceduralSkills && trace?.selected) {
+      const skillContext = selectedGoalTitle ?? 'general';
+      this.skillLibrary.observeOutcome(
+        trace.selected.action,
+        skillContext,
+        success,
+        trace.selected.predictedCost,
+        success < 0.45 ? 'low-outcome' : undefined,
+        {
+          verified: Boolean(outcome.worldTransition) || projectEvidenceExternal,
+          independent: projectEvidenceExternal || Boolean(outcome.worldTransition?.after),
+          context: skillContext,
+        },
+      );
+      const skillRecord = this.skillLibrary.snapshot().skills.find(
+        skill => skill.id === `${trace.selected!.action}|${skillContext}`,
+      );
+      const skillPromoted = skillRecord?.status === 'habit' && skillRecord.uses >= 4;
+      if (project) {
+        const projectActionRelevant =
+          ['explore', 'verify', 'reflect'].includes(trace.selected.action) ||
+          Boolean(trace.selected.goalId && trace.selected.goalId === project.linkedGoalId);
+        this.agencySubsystem.projectExecutor.observe({
+          action: trace.selected.action as ActionKind,
+          success01: success,
+          evidence01: projectEvidenceExternal ? clamp(1 - surprise) : 0,
+          relevant: projectActionRelevant,
+          tick: state.tick,
+          skillPromoted,
+        });
+      }
+      this.evidenceResearchSubsystem.skillAcquisitionBenchmark.observe({ action: trace.selected.action, contextKey: `${skillContext}|energy:${Math.round(state.needs.energy*4)}|unc:${Math.round(state.needs.uncertainty*4)}|goal:${selectedGoalTitle ?? 'general'}`, outcome01: success });
+      if (this.config.enableLifelongLearning) this.lifelong.observeOutcome(trace.selected.action, success, 'active', trace.selected.predictedCost, success < 0.45 ? 'low-outcome' : undefined);
+      if (this.config.enableLifelongLearning) {
+        const beforeContext = this.adaptivePolicy.contextKey(trace.stateBefore, trace.stateBefore.needs.goalPressure);
+        const nextContext = this.adaptivePolicy.contextKey(state, state.needs.goalPressure);
+        this.adaptivePolicy.update(beforeContext, trace.selected.action, success, nextContext, ['respond','explore','verify','rest','reflect','wait','defer'], this.persisted.facets.learning.neuromodulation.updateRate01*.24 + .08, .72, surprise);
+      }
+    }
+    if (trace?.selected) {
+      this.neuromodulatoryPlasticity.learnFromOutcome(success, clamp((success-.5) - surprise*.15));
+      const alternatives = trace.predictedOutcomes.map(p => ({ action:p.action, estimated:p.utility }));
+      this.regretEngine.observe(trace.selected.action, success, alternatives);
+      const provenanceAttribution = this.valueEvolution.attributeExperience({
+        action: trace.selected.action,
+        goalTitle: selectedGoalTitle,
+        goalSource: trace.selected.goalId ? (this.persisted.goals.find(g=>g.id===trace.selected?.goalId)?.source ?? null) : null,
+        projectOrigin: project?.origin,
+      });
+      const reference01 = clamp(trace.selected.predictedUtility ?? 0.5);
+      const aligned = success >= reference01;
+      this.valueProvenance.observe(provenanceAttribution.value, { at:state.at, source:'world-feedback', success, surprise, episodeId:trace?.selected?.id ?? `tick:${state.tick}`, evidenceKey:`outcome:${trace?.selected?.id ?? 'none'}:${state.tick}:${provenanceAttribution.value}`, reason:aligned?`outcome-support:${provenanceAttribution.value}`:`outcome-violation:${provenanceAttribution.value}` }, aligned);
+      if (success < .4 && trace.selected.goalId) this.commitmentRepair.repair(trace.selected.goalId, 'low-outcome');
+    }
+    this.persisted.facets.advanced.regret = this.regretEngine.snapshot();
+    this.persisted.facets.advanced.valueProvenance = this.valueProvenance.snapshot();
+    this.persisted.facets.advanced.commitmentRepair = this.commitmentRepair.snapshot();
+    if (this.config.enableScientificMethod) {
+      const latest = this.scientificMethod.snapshot().projects[0];
+      if (latest) {
+        this.scientificMethod.observe(latest.id, { evidence: `tick:${state.tick}; action:${trace?.selected?.action ?? 'none'}`, success });
+      }
+      this.persisted.facets.cognition.scientific = this.scientificMethod.snapshot();
+    }
+    if (trace?.selected) {
+      trace.stateAfter = structuredClone(state);
+      this.p30Continual.captureRollback({p26:this.p26TrueLearning.snapshot(),p27:this.worldSubsystem.p27NeuralWorld.snapshot(),p28:this.p28Plasticity.snapshot()});
+      const taskId = trace.selected.goalId ?? trace.selected.action;
+      const taskRecord = this.p30Continual.recordTaskScore(taskId, success, state, trace.selected.action);
+      this.p30Continual.noteTransferApplication(this.p30Continual.transferBias(trace.stateBefore, taskId, trace.selected.action));
+      this.worldSubsystem.p24WorldIdentity.observeOutcome(success);
+      this.p25ScientificDevelopment.observeRuntimeOutcome(trace.selected.action, success, state.at);
+      this.embodimentSubsystem.p37EmbodiedSensorium.observeOutcome(success, state.predictionError);
+      this.p39Life.recordOutcome(success, Boolean(trace?.selected));
+    this.centralSubjectDynamics.recordOutcome(success);
+    this.persisted.facets.cognition.centralSubjectDynamics=this.centralSubjectDynamics.snapshot();
+      this.embodimentSubsystem.p40SemanticIntelligence.learnActionOutcome(trace.selected.action, clamp(outcome.reward ?? success));
+      this.embodimentSubsystem.p41SemanticPerception.observeOutcome(success, clamp(outcome.surprise ?? state.predictionError));
+      this.persisted.facets.embodiment.p40SemanticIntelligence=this.embodimentSubsystem.p40SemanticIntelligence.snapshot();
+      this.persisted.facets.embodiment.p41SemanticPerception=this.embodimentSubsystem.p41SemanticPerception.snapshot();
+      this.persisted.facets.embodiment.p41NativePerception=this.embodimentSubsystem.p41NativePerception.snapshot();
+      this.persisted.facets.embodiment.p41TemporalPerception=this.embodimentSubsystem.p41TemporalPerception.snapshot();
+      (this.persisted.facets.embodiment as any).p37=this.embodimentSubsystem.p37EmbodiedSensorium.snapshot();
+      this.worldSubsystem.p24WorldIdentity.identityObserve({ action: trace.selected.action, goal: selectedGoalTitle, summary: `outcome=${success.toFixed(2)}`, confidence01: clamp(1 - surprise) });
+      this.p23Learning.recordExperience(trace, state, { success, reward: clamp(outcome.reward ?? success), surprise }, this.adaptivePolicy);
+      if (!outcome.worldTransition) {
+        const p27Before = this.lastP27Latent ?? this.worldSubsystem.p27NeuralWorld.fuse(this.worldSubsystem.p27NeuralWorld.encode({sensorState:trace.stateBefore}));
+        const p27After=this.worldSubsystem.p27NeuralWorld.fuse(this.worldSubsystem.p27NeuralWorld.encode({sensorState:state,world:this.lastGroundedWorldContext ?? undefined}));
+        this.worldSubsystem.p27NeuralWorld.train(p27Before, trace.selected.action, clamp(outcome.reward ?? success), p27After);
+      }
+      const currentP42Vector=this.embodimentSubsystem.p42Experience.vector();
+      const p44Actual=currentP42Vector.slice();
+      p44Actual[6]=clamp(state.needs.energy);
+      p44Actual[8]=clamp(1-state.needs.cognitiveLoad);
+      p44Actual[9]=clamp(state.needs.uncertainty);
+      p44Actual[10]=clamp(state.needs.novelty);
+      p44Actual[11]=clamp(state.autonomyScore || .5);
+      p44Actual[12]=clamp(state.needs.identityCoherence);
+      this.worldSubsystem.p44PredictiveWorld.observe(currentP42Vector, trace.selected.action, p44Actual, clamp(outcome.reward ?? success));
+      this.persisted.facets.learning.p44PredictiveWorld=this.worldSubsystem.p44PredictiveWorld.snapshot();
+      const causalRecord=this.causalExperience.recordOutcome(trace,state,{reward01:clamp(outcome.reward ?? success),success01:success,surprise01:surprise,novelty01:state.needs.novelty});
+      const causalPacket=this.causalExperience.learningPacket(32);
+      const unifiedSignal=this.unifiedLearning.ingest(trace,state,causalRecord,causalPacket);
+      const sharedLearningSignal01=clamp(.55*(causalRecord?.causalStrength01 ?? causalPacket.learningOpportunity01)+.45*unifiedSignal.learningOpportunity01);
+      const cdlContextKey=this.causalDevelopmentLoop.contextKey(this.lastGroundedWorldContext, trace.stateBefore, taskId);
+      const cdlOutcome=this.causalDevelopmentLoop.observeOutcome({
+        tick:state.tick,at:state.at,taskId,action:trace.selected.action,before:trace.stateBefore,after:state,
+        reward01:clamp(outcome.reward ?? success),success01:success,surprise01:surprise,
+        verified:Boolean(outcome.worldTransition)||projectEvidenceExternal,
+        independent:Boolean(outcome.worldTransition?.after)||projectEvidenceExternal,
+        worldTransition:Boolean(outcome.worldTransition),externalEvidence:projectEvidenceExternal,contextKey:cdlContextKey,
+      });
+      const synthBefore=this.developmentalSynthesis.snapshot();
+      const synthComposition=this.developmentalSynthesis.synthesize(cdlOutcome.behavioral?.promoted?.flatMap((x:any)=>x ? [x] : []) ?? [], this.causalDevelopmentLoop.snapshot().samples, this.persisted.facets.advanced.p52CounterfactualDevelopment?.counterfactualCalibration01 ?? .5);
+      const seq=cdlOutcome.behavioral?.sequence ?? [];
+      const synthContext=this.causalDevelopmentLoop.contextKey(this.lastGroundedWorldContext, trace.stateBefore, taskId);
+      const verifiedNow=Boolean(outcome.worldTransition)||projectEvidenceExternal;

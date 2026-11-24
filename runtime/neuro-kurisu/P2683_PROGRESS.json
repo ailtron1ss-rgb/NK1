@@ -1,0 +1,119 @@
+{
+  "release": "35.6.83",
+  "pass": "P2683",
+  "goal": "autonomous cognitive artificial organism",
+  "functionReality": {
+    "pass": 190,
+    "generatedAt": "2026-09-19T10:31:06.690Z",
+    "gate": true,
+    "checks": [
+      {
+        "name": "runtime.stepInternal -> fabric.step",
+        "ok": true
+      },
+      {
+        "name": "runtime.init -> fabric.restore",
+        "ok": true
+      },
+      {
+        "name": "runtime diagnostics -> fabric.diagnostics",
+        "ok": true
+      },
+      {
+        "name": "fabric.step -> integration.process",
+        "ok": true
+      },
+      {
+        "name": "fabric.step -> memory.ingest",
+        "ok": true
+      },
+      {
+        "name": "fabric.step -> memory.consolidate",
+        "ok": true
+      },
+      {
+        "name": "fabric.step -> identity.absorb",
+        "ok": true
+      },
+      {
+        "name": "fabric.step -> identity.snapshot",
+        "ok": true
+      },
+      {
+        "name": "fabric.step -> dream.consolidate",
+        "ok": true
+      },
+      {
+        "name": "fabric.step -> conflict.analyze",
+        "ok": true
+      },
+      {
+        "name": "fabric.step -> spine.integrate",
+        "ok": true
+      }
+    ],
+    "runtimeReachableFunctions": 113,
+    "testOnlyFunctions": 425,
+    "referencedNotRuntimeReachable": 4545,
+    "orphanFunctions": 328,
+    "semanticVerified": 50,
+    "semanticUnverified": 4431,
+    "parameterized": {
+      "attempted": 1098,
+      "passed": 1044,
+      "failed": 0,
+      "skipped": 40,
+      "lifecycleNeeded": 9
+    },
+    "liveness": {
+      "declarations": 5004,
+      "withBody": 4975,
+      "zeroReference": 288,
+      "oneOrLessReference": 879
+    }
+  },
+  "graphCounts": {
+    "RUNTIME_REACHABLE": 113,
+    "TEST_ONLY": 425,
+    "REFERENCED_NOT_RUNTIME_REACHABLE": 4545,
+    "ORPHAN": 328
+  },
+  "semantic": {
+    "VERIFIED": 50,
+    "INTEGRATION_ONLY": 10,
+    "UNSAFE_TO_AUTO_RUN": 309,
+    "UNVERIFIED": 4431
+  },
+  "parameterized": {
+    "attempted": 1098,
+    "passed": 1044,
+    "failed": 0,
+    "skipped": 40,
+    "lifecycleNeeded": 9
+  },
+  "liveness": {
+    "functionLikeDeclarations": 5004,
+    "withBody": 4975,
+    "exported": 145,
+    "zeroReference": 288,
+    "oneOrLessReference": 879
+  },
+  "mobile": {
+    "smokeCycles": 30,
+    "status": "PASS",
+    "observedTimeSec": 34.1,
+    "observedRssMb": 372
+  },
+  "gates": {
+    "typecheck": true,
+    "architecture": true,
+    "integrity": true,
+    "hygiene": true,
+    "contract": true,
+    "releaseSource": true,
+    "forensics": true,
+    "syntax": true,
+    "archiveManifest": true
+  },
+  "next": "P2684 Runtime Closure + Critical Cognitive Surface"
+}

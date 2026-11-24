@@ -1,0 +1,34 @@
+{
+  "release": "P2690",
+  "version": "35.6.90",
+  "schemaVersion": 196,
+  "date": "2026-09-19",
+  "implementation": {
+    "memorySignalFusion": 1,
+    "retrievalAuditTouchedIds": 1,
+    "p2689MobileDurabilityRetained": 1
+  },
+  "tests": {
+    "typecheck": "PASS",
+    "memorySignalFusion": "PASS",
+    "retrievalAuditLinks": "PASS",
+    "p2688LongHorizon": "PASS",
+    "p2688Migration": "PASS"
+  },
+  "controlledHoldout": {
+    "cases": 7,
+    "fusionTop1": 7,
+    "semanticOnlyTop1": 5,
+    "delta": 2
+  },
+  "mobile30": {
+    "cycles": 30,
+    "tick": 30,
+    "peakRssMb": 301.0,
+    "elapsedSecApprox": 32.0,
+    "activeRequestsAfterStop": 0,
+    "harnessNote": "container runner may retain stdio PipeWrap"
+  },
+  "codeWorkPct": 92,
+  "overallProjectPathPct": 37
+}

@@ -1,0 +1,11 @@
+{
+  "seeds": 3,
+  "sparse_trainable_tensor_count": 10,
+  "live_across_at_least_one_probe": 10,
+  "all_live_across_probe_sweep": true,
+  "per_seed_live_tensor_counts": {
+    "0": 4,
+    "1": 8,
+    "2": 10
+  }
+}

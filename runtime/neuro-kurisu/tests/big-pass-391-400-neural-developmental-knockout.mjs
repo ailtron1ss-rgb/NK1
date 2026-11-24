@@ -1,0 +1,8 @@
+import assert from 'node:assert/strict';
+import { B391B400NeuralDevelopmentalIntegrationCore } from '../src/organism/system/B391B400NeuralDevelopmentalIntegrationCore.ts';
+const actions=['respond','explore','verify','rest','reflect','wait','defer'];
+const c=new B391B400NeuralDevelopmentalIntegrationCore();
+for(let i=1;i<=64;i++){const ctx=Array.from({length:8},(_,j)=>.22+((i*9+j*5)%61)/100);c.beforeDecision({tick:i,context01:ctx,baseProbabilities:Object.fromEntries(actions.map((a,j)=>[a,j===1?.34:.11])),baseUtilities:Object.fromEntries(actions.map((a,j)=>[a,j===1?.78:j===2?.67:.44])),energy01:.74,uncertainty01:.58,novelty01:.66,cognitiveLoad01:.24,autonomy01:.84,predictionError01:.19,goal:{id:'g',vector:ctx,ownership01:.81,commitment01:.72}});if(i%2===0)c.afterOutcome({tick:i,action:'explore',context01:ctx,reward01:.87,predictionError01:.12,verified01:1,independent01:1,salience01:.77,goalId:'g'});}
+const input={tick:1001,context01:[.94,.12,.89,.31,.82,.43,.73,.91],baseProbabilities:Object.fromEntries(actions.map(a=>[a,.14])),baseUtilities:Object.fromEntries(actions.map(a=>[a,.5])),energy01:.72,uncertainty01:.61,novelty01:.70,cognitiveLoad01:.21,autonomy01:.86,predictionError01:.17,goal:{id:'g',vector:[.9,.15,.84,.32,.8,.4,.7,.88],ownership01:.81,commitment01:.74}};
+const c0=c.evaluateKnockout(input);assert.ok(c0.causalDelta01>.01);const n=c.evaluateLesion(input,{neural:true});assert.ok(n.delta01>0.0001);const m=c.evaluateLesion(input,{memory:true});assert.ok(m.delta01>0.0001);
+console.log(JSON.stringify({pass:true,status:'B391_B400_NEURAL_DEVELOPMENTAL_KNOCKOUT_PASS',causalDelta01:c0.causalDelta01,neuralLesion01:n.delta01,memoryLesion01:m.delta01},null,2));

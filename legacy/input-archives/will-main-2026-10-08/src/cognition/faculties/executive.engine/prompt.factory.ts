@@ -1,0 +1,1534 @@
+// ─────────────────────────────────────────────────────────────
+// src/cognition/faculties/executive.engine/prompt.factory.ts
+// ─────────────────────────────────────────────────────────────
+
+/**
+ * PromptFactory — single source of truth for all executive prompts
+ * (master and facets).
+ *
+ * Any cognitive entity that reasons (master executive, facets, future
+ * satellite reasoning engines) uses this factory to ensure:
+ *   - Same identity grounding
+ *   - Same memory continuity
+ *   - Same value system
+ *   - Same cognitive capacity awareness
+ *   - Same output schema and guidelines
+ *
+ * Only the FOCUS section and injected report context differ between
+ * reasoning instances — this preserves the unified inference and
+ * singularity between master and facet.
+ *
+ * ┌─────────────────────────────────────────────────────────┐
+ * │  System prompt  — static identity + role + output schema │
+ * │  User message   — live state + dynamic guidance + focus  │
+ * └─────────────────────────────────────────────────────────┘
+ *
+ * Mode:
+ *   'master' — full cognitive prompt; goals, percepts, memories, escalations.
+ *              No [REPLY] block — master responds via plans/goals/actions only.
+ *   'facet'  — same awareness baseline; creator engine injects domain context
+ *              via reportContent and optionally overrides outputFormat.
+ *              Conversation facets (AuditionEngine) handle all [REPLY] output.
+ *
+ * Voice convention (person follows ownership):
+ *   The executive loop has no second party — the "user" message is the mind's
+ *   own state feed, not an interlocutor. So:
+ *   - Self-model content (identity, role, affect/beliefs/percepts headers,
+ *     action outcomes, felt state) is FIRST PERSON — it is the mind's own text.
+ *   - Protocol content (JSON format, tag lists, lifecycle mechanics) is
+ *     IMPERATIVE and person-free — rules of the body, not thoughts of the self.
+ *   - SECOND PERSON is reserved for real addressees only (a user speaking,
+ *     developer-facing docs) and never appears in the cognitive prompts.
+ *   Guards that inspect persona text (identity.guard, identity.coherence)
+ *   must keep matching BOTH persons — legacy personas and adversarial inputs
+ *   choose their own grammar.
+ */
+
+import type { ReadonlySimulationState } from '#core/types'
+import type { LLMCallFunction } from '#cognition/utilities/token.tracker'
+import type { ExecutiveSummarizer } from '#llm/summarizer'
+import type { ExecutiveContext, IdeationCandidate } from '#faculties/executive.engine/types'
+import { buildExecutiveContext, SECTION_PAGE_SIZE, type ContextDependencies, type SectionRecall } from '#faculties/executive.engine/context'
+import { INNATE_SCHEMAS } from '#agency/schemas/innate'
+import { isGenericStyle } from '#cognition/identity.entity'
+import { renderItemData, renderBroughtBack, moreLine, sectionPage, compactText, type CallView, type BroughtBack, type BroughtBackList, type RecallSection } from '#faculties/executive.engine/view'
+
+/**
+ * The stances a mind always has, named so it need not guess at them.
+ *
+ * Static, so it costs nothing in prompt-cache stability. Without it a Will can
+ * only learn action names from whichever affordances win the salience
+ * competition into its percepts — and it invents plausible ones for whatever it
+ * cannot see (`query`, `message`), which resolve to nothing.
+ */
+const INNATE_ACTION_NAMES = INNATE_SCHEMAS.map( s => s.id ).sort().join(', ')
+
+// ── Re-export for callers that imported the old alias ────────
+export type { ContextDependencies as ContextDependenciesForFresh } from '#faculties/executive.engine/context'
+
+// Gating/interval constants live in ./config (single source of truth).
+
+// ── Trait salience (Channel B surfacing) ─────────────────────
+//
+// A trait reaches the deliberate self (this system prompt) by DEGREE, not a binary
+// in/out: "markedly conscientious" vs "somewhat impulsive". Bands are COARSE on
+// purpose — the system prompt is the single prompt-cache breakpoint, so the rendered
+// string must change only when a trait CROSSES a band boundary, never on every
+// micro-fluctuation. Never render a continuously-varying trait number here.
+//
+// Asymmetry to preserve: only this Channel-B *surfacing* is banded. Channel-A
+// mechanisms read the raw trait value continuously every tick — so a mid-band trait
+// still *acts*, it just isn't yet *self-known* (continuous subconscious, thresholded
+// awareness).
+//
+// Band = deviation from the 0.5 midpoint. `rank` orders most-distinctive first AND
+// gives a stable (coarse) sort key, so ordering only shifts on a band crossing.
+const TRAIT_EMPHASIS_BANDS: ReadonlyArray<{ min: number; adverb: string; rank: number }> = [
+  { min: 0.40, adverb: 'markedly', rank: 0 },  // v ≥ .90 / ≤ .10
+  { min: 0.25, adverb: 'strongly', rank: 1 },
+  { min: 0.10, adverb: 'somewhat', rank: 2 },
+  // |dev| < 0.10 → mid-band → null (omitted: present but not yet self-known)
+]
+
+/** Most distinctive traits a Will surfaces to itself — caps a many-trait prompt. */
+export const TRAIT_SURFACE_CAP = 6
+
+export interface TraitEmphasis {
+  adverb:    string          // coarse degree: 'markedly' | 'strongly' | 'somewhat'
+  direction: 'high' | 'low'  // above or below the 0.5 midpoint
+  rank:      number          // 0 = most distinctive; stable coarse sort key
+}
+
+/**
+ * Graded, banded emphasis for one trait value. Pure + deterministic. Returns null for
+ * a mid-band (unremarkable) trait so the caller omits it. Coarse by design — see the
+ * band table above for why (prompt-cache stability).
+ */
+export function traitEmphasis( value: number ): TraitEmphasis | null {
+  const dev  = Math.abs( value - 0.5 )
+  // ε keeps the documented lower edge inclusive despite float error (0.60 − 0.5 = 0.0999…).
+  const band = TRAIT_EMPHASIS_BANDS.find( b => dev >= b.min - 1e-9 )
+  if( !band ) return null
+  return { adverb: band.adverb, direction: value >= 0.5 ? 'high' : 'low', rank: band.rank }
+}
+
+// Option B — baseline-relative. How the trait sits against the Will's OWN running mean
+// (its personal norm), as a coarse band so it only flips on a real divergence, not on
+// the EMA's micro-drift. Independent of the absolute A band: a trait can be "somewhat
+// low" yet "above my norm" (low overall, but high for me lately).
+const TRAIT_NORM_BAND = 0.12  // deviation from personal baseline to read as above/below my norm
+
+/**
+ * One percept, as the mind reads it: the engine's LABEL, and beneath it the
+ * EVIDENCE the host actually sent.
+ *
+ * The whole line is one unit on purpose. Rendering the label and the data
+ * separately let a mutation that dropped the data from the call site pass every
+ * test — the data renderer stayed correct while the prompt stopped showing it,
+ * which is exactly the state this fix exists to leave behind. Same lesson as
+ * `temporalLine`.
+ */
+export function perceptLine(
+  p: { category: string; summary: string; salience: number; data?: unknown; handle?: string },
+  view?: CallView,
+): string {
+  return `- [${ p.category }] ${ p.summary } (salience: ${ p.salience.toFixed( 2 ) })${ renderItemData( p.data, p.handle, view ) }`
+}
+
+/**
+ * One working-memory item, as the mind reads it — label, then evidence.
+ *
+ * A sibling of `perceptLine` and a unit for the same reason: rendering the data
+ * inline let a mutation that dropped it pass every test. A percept entity is
+ * swept after 2 ticks and the executive fires on its own schedule, so MEMORY is
+ * often where a mind actually meets an observation — dropping the evidence here
+ * loses it just as completely as never storing it, one step later.
+ */
+export function ruminationLine(
+  w: { type: string; summary: string; activation: number; data?: unknown; handle?: string },
+  view?: CallView,
+): string {
+  return `- [${ w.type }] ${ w.summary } (activation: ${ w.activation.toFixed( 2 ) })${ renderItemData( w.data, w.handle, view ) }`
+}
+
+/** One belief, as `## My Beliefs` shows it. */
+export function beliefLine( b: ExecutiveContext['beliefs'][number] ): string {
+  return `- [${b.category}] ${b.statement} (confidence: ${( b.confidence * 100 ).toFixed( 0 )}%)`
+}
+
+/** One memory, as `## Relevant Memories` shows it. A memory never inlines a page: it is a pointer to follow, not a re-reading. */
+export function memoryLine( m: ExecutiveContext['memories'][number], currentTick: number, view?: CallView ): string {
+  const asMemory = view ? { ...view, mode: 'reference' as const } : undefined
+  const age = m.tick != null ? `, ~${currentTick - m.tick} ticks ago` : ''
+  return `- ${m.content} (relevance: ${m.relevance.toFixed( 2 )}, emotional: ${m.emotionalContext}${age})${ renderItemData( m.data, m.handle, asMemory ) }`
+}
+
+/** One thing I said, and what came back, as `## What I've Said Lately` shows it. */
+export function spokenTurnLine( t: ExecutiveContext['spokenTurns'][number] ): string {
+  const words = t.text.trim()
+  const said  = words ? ` — "${ words }"` : ''
+  // Their words, not merely that they spoke. "they answered" on its own reads
+  // as "I have the answer" — a live Will asked "same time, 3pm?", saw that
+  // flag, never saw the correction to 2pm, and relayed 3pm to a third party as
+  // confirmed. A reply I cannot see is not one I can act on.
+  const back  = t.answered
+    ? ( t.answeredWith?.trim()
+        ? ` — they answered: "${ t.answeredWith.trim() }"`
+        : ' — they answered (I do not have their words here)' )
+    : ' — no answer yet'
+  return `- **${ t.target }** · ${ t.age } ticks ago${ said }${ back }`
+}
+
+/** What I have noticed about myself, newest first — every one held in state. */
+export function readSelfObservations( state: ReadonlySimulationState ): Array<{ tick: number; order: number; text: string }> {
+  const observations: Array<{ tick: number; order: number; text: string }> = []
+  for( const entity of state.entities.values() ){
+    if( entity.type !== 'self_observation') continue
+    const text = ( entity.metadata?.[ 'observation' ] as string | undefined )?.trim()
+    if( text ) observations.push({
+      tick:  ( entity.metadata?.[ 'tick' ] as number | undefined ) ?? 0,
+      // `self-obs-<source>-<tick>-<idx>` (`self-obs-<tick>-<idx>` before facets'
+      // were kept) — and a woken mind's `self-obs-slot-<n>`.
+      order: Number( entity.id.split('-').at( -1 ) ) || 0,
+      text,
+    })
+  }
+  return observations.sort( ( a, b ) => b.tick - a.tick || a.order - b.order )
+}
+
+const SELF_OBSERVATIONS_SHOWN = 6
+
+export function selfObservationLine( o: { tick: number; text: string }, now: number ): string {
+  return `- ${ Math.max( 0, now - o.tick ) } ticks ago — "${ o.text }"`
+}
+
+type NotableTrait = { k: string; v: number; emphasis: TraitEmphasis }
+
+/** My distinctive traits, most distinctive first — a stable, coarse order (cache-safe). */
+export function notableTraits( identity: ExecutiveContext['identity'] ): NotableTrait[] {
+  return Object.entries( identity.traits )
+    .map( ( [ k, v ] ) => ( { k, v, emphasis: traitEmphasis( v ) } ) )
+    .filter( ( t ): t is NotableTrait => t.emphasis !== null )
+    .sort( ( a, b ) => a.emphasis.rank - b.emphasis.rank || a.k.localeCompare( b.k ) )
+}
+
+/** One trait, by degree, against my own norm, and how it is moving. */
+export function surfaceTrait( t: NotableTrait, identity: ExecutiveContext['identity'] ): string {
+  const quals = [ `${t.emphasis.adverb} ${t.emphasis.direction}` ]   // A — absolute degree
+  const stat  = identity.traitStats?.[ t.k ]
+  if( stat ){
+    const norm = normEmphasis( t.v, stat.mean )                      // B — vs my own norm
+    if( norm ) quals.push(`${norm} my norm`)
+    if( stat.shiftDir > 0 ) quals.push('rising lately')            // C — recent shift
+    else if( stat.shiftDir < 0 ) quals.push('easing lately')
+  }
+  return `${t.k} (${quals.join(', ')})`
+}
+
+/**
+ * A page of a section, or a search of one, as she asked for it last call — ranked
+ * as the view ranks it, in the view's own lines (LOSSLESS P5c). A section this
+ * seat is not aware of is said so, not shown: scoping is the creating engine's.
+ */
+function recalledSection(
+  r:       SectionRecall,
+  context: ExecutiveContext,
+  state:   ReadonlySimulationState,
+  has:     ( s: AwarenessScope ) => boolean,
+  view?:   CallView,
+): BroughtBackList {
+  const out    = context.outOfView
+  const now    = state.tick as unknown as number
+  const scope: Partial<Record<RecallSection, AwarenessScope>> = { beliefs: 'beliefs', percepts: 'percepts', memories: 'memories', said: 'recentActions' }
+  const label: Record<RecallSection, string> = { beliefs: 'Beliefs I hold', people: 'People I know', percepts: 'Things I notice now',
+    memories: 'Memories', 'self-observations': 'What I have noticed about myself', said: 'What I said', traits: 'My distinctive traits' }
+  const name = label[ r.section ]
+  if( scope[ r.section ] && !has( scope[ r.section ]! ) )
+    return { kind: 'list', heading: `${ name } — not in this focus's view`, lines: [] }
+
+  const size = SECTION_PAGE_SIZE[ r.section ]
+  const asRef = view ? { ...view, mode: 'reference' as const } : undefined
+  const pick = <T>( all: readonly T[], shown: number, line: ( t: T ) => string, text: ( t: T ) => string ) => {
+    const p = sectionPage( all, shown, size, r.page, r.query, text )
+    return { lines: p.items.map( line ), pages: p.pages, found: p.found }
+  }
+
+  let got: { lines: string[]; pages: number; found: number }
+  switch( r.section ){
+    case 'beliefs':
+      got = pick( [ ...context.beliefs, ...( out?.beliefs ?? [] ) ], context.beliefs.length, beliefLine, b => `${ b.category } ${ b.statement }`)
+      break
+    case 'people': {
+      const shown = context.knownEntities ?? []
+      got = pick( [ ...shown, ...( out?.people ?? [] ) ], shown.length, personLine,
+        p => [ p.name, p.intention, ...( p.handles ?? [] ).map( h => h.keid ) ].filter( Boolean ).join(' '))
+      break
+    }
+    case 'percepts':
+      got = pick( [ ...context.percepts, ...( out?.percepts ?? [] ) ], context.percepts.length,
+        p => perceptLine( p, asRef ), p => `${ p.summary } ${ compactText( p.data ) }`)
+      break
+    case 'said':
+      got = pick( [ ...context.spokenTurns, ...( out?.spokenTurns ?? [] ) ], context.spokenTurns.length, spokenTurnLine,
+        t => `${ t.target } ${ t.text } ${ t.answeredWith ?? '' }`)
+      break
+    case 'self-observations': {
+      const all = readSelfObservations( state )
+      got = pick( all, Math.min( all.length, SELF_OBSERVATIONS_SHOWN ), o => selfObservationLine( o, now ), o => o.text )
+      break
+    }
+    case 'traits': {
+      const all = notableTraits( context.identity )
+      got = pick( all, Math.min( all.length, TRAIT_SURFACE_CAP ), t => `- ${ surfaceTrait( t, context.identity ) }`, t => t.k )
+      break
+    }
+    case 'memories': {
+      const m = r.memories ?? { items: [], pages: 1, found: 0 }
+      got = { lines: m.items.map( x => memoryLine( x, now, view ) ), pages: m.pages, found: m.found }
+      break
+    }
+  }
+
+  if( r.query !== undefined )
+    return got.found === 0
+      ? { kind: 'list', heading: `${ name } about "${ r.query }" — none`, lines: [] }
+      : { kind: 'list', heading: `${ name } about "${ r.query }" — ${ got.found } found${ got.pages > 1 ? `, page ${ r.page } of ${ got.pages }` : '' }`,
+          lines: got.lines }
+  if( got.lines.length === 0 )
+    return { kind: 'list', heading: `${ name } — ${ got.pages } page${ got.pages === 1 ? '' : 's' }; there is no page ${ r.page }`, lines: [] }
+  return { kind: 'list', heading: `${ name }, page ${ r.page } of ${ got.pages }`, lines: got.lines }
+}
+
+/** A section's closing count, on its own line — '' when nothing is out of view (LOSSLESS P5c). */
+function moreTail( count: number, noun: string, section: RecallSection ): string {
+  const line = moreLine( count, noun, section )
+  return line ? `\n${ line }` : ''
+}
+
+/** One person I know, as `## People I Know` shows them — and as a page of them brought back. */
+export function personLine( s: NonNullable<ExecutiveContext['knownEntities']>[number] ): string {
+  const bits: string[] = []
+  if( s.intention ) bits.push(`seems to want: ${s.intention}`)
+  if( s.emotion )   bits.push(`seems to feel: ${s.emotion}`)
+  if( s.trust != null ) bits.push(`trust: ${( s.trust * 100 ).toFixed( 0 )}%`)
+  if( s.reliability != null && s.reliability !== 0.5 ) bits.push(`reliability: ${( s.reliability * 100 ).toFixed( 0 )}%`)
+  if( s.closeness != null && s.closeness > 0.1 ) bits.push(`closeness: ${( s.closeness * 100 ).toFixed( 0 )}%`)
+  // The Will can know *someone* without their name yet — never leak the raw keid.
+  const who = s.name ?? ( s.kind === 'thing' ? 'something' : 'someone')
+
+  // Where I can reach them, and how each place has gone. Stated as fact:
+  // which room to speak in is my decision, and I could not make it while
+  // the only thing anyone tracked was where they were last seen.
+  const where = ( s.handles ?? [] ).map( h => {
+    const kind = h.kind === 'dm' ? 'privately' : h.kind === 'room' ? 'in a shared room' : 'somewhere'
+    const ans  = h.answeredAgo !== undefined
+      ? `answered ${ h.answeredAgo } ticks ago`
+      : 'never answered me there'
+    return `${ kind } (${ h.keid }) — ${ ans }`
+  } )
+  const reach = where.length ? `\n  reachable: ${ where.join('; ') }` : ''
+
+  // An identity I have not settled. Deliberately a question and not a
+  // merge: two people really can share a name, so nothing fuses them on my
+  // behalf — but I am told, so I can find out, usually by asking.
+  const doubt = s.mayBeSameAs?.length
+    ? `\n  I hold a separate record for ${ s.mayBeSameAs.join(' and ') } — this may be the same someone under another handle. I do not know. If I find out they are, I say so with **sameAs**.`
+    : ''
+
+  return `- ${who}${bits.length ? ' — ' + bits.join(', ') : ''}${ reach }${ doubt }`
+}
+
+/**
+ * What a phase of the cycle is CALLED, in the words a mind would use.
+ *
+ * NOT the clock. The hour this is computed from is the oscillator's own — free-
+ * running from the tick unless a host entrains it — so it is what the BODY
+ * reads, which is a different claim from what time it is. A jet-lagged body
+ * says night at noon and is not lying; it is reporting itself.
+ *
+ * The prompt used to render the raw hour beside this, and the two disagreed on
+ * every tick of every Will ever run (`Time: 12.0h (night)`). The hour is gone
+ * from the prompt entirely now: it is a fact about the world, and a fact about
+ * the world is something a mind goes and gets — see the `check-time` schema.
+ */
+export function temporalLine( timeOfDay: number, circadian: number ): string {
+  return `Body rhythm: it feels like ${ labelForHour( timeOfDay ) } to me`
+       + ` (my own cycle, not a clock — I use \`check-time\` to find out the actual hour).`
+       + ` Circadian phase: ${ circadian.toFixed( 2 ) }.`
+}
+
+/**
+ * The label, from the hour. Kept separate from `temporalLine` only so the bands
+ * are readable; nothing outside this file should need it.
+ */
+export function labelForHour( h: number ): string {
+  const hour = ( ( h % 24 ) + 24 ) % 24
+  return hour <  2 ? 'deep night'
+       : hour <  5 ? 'late night'
+       : hour <  8 ? 'early morning'
+       : hour < 11 ? 'morning'
+       : hour < 14 ? 'midday'
+       : hour < 17 ? 'afternoon'
+       : hour < 21 ? 'evening'
+       : 'night'
+}
+
+export function normEmphasis( value: number, mean: number ): 'above' | 'below' | null {
+  const d = value - mean
+  if( d >=  TRAIT_NORM_BAND ) return 'above'
+  if( d <= -TRAIT_NORM_BAND ) return 'below'
+  return null
+}
+
+// ── Types ─────────────────────────────────────────────────────
+
+export interface PromptDependencies {
+  summarizer:          ExecutiveSummarizer | null
+}
+
+// ── Awareness scoping ────────────────────────────────────────
+//
+// The set of cognitive-context sections a facet may opt into seeing in its user
+// message — the prompt-context analogue of an engine's `subscribes()`. This is
+// the single, uniform control for per-facet prompt awareness. Master mode always
+// renders the full set; a facet renders `FocusSection.awareness` (declared by its
+// creating engine) or DEFAULT_FACET_AWARENESS when it declares none.
+//
+// To add a new awareness type:
+//   1. add its name here,
+//   2. gate its section in PromptFactory.buildUserMessage via `has(<scope>)`,
+//   3. add it to FULL_AWARENESS (and DEFAULT_FACET_AWARENESS if facets should get
+//      it by default).
+export type AwarenessScope =
+  | 'goals' | 'plans' | 'beliefs' | 'percepts' | 'ruminations' | 'memories' | 'recentActions'
+
+/** Master consciousness sees the full cognitive context. */
+export const FULL_AWARENESS: readonly AwarenessScope[] =
+  [ 'goals', 'plans', 'beliefs', 'percepts', 'ruminations', 'memories', 'recentActions' ]
+
+/**
+ * Baseline for a facet that declares no `awareness` — preserves the pre-scoping
+ * facet prompt (everything except `plans`, which stays opt-in to keep facet
+ * prompts lean). Creating engines spread it to add scopes, e.g.
+ * `awareness: [ ...DEFAULT_FACET_AWARENESS, 'plans' ]`.
+ */
+export const DEFAULT_FACET_AWARENESS: readonly AwarenessScope[] =
+  [ 'goals', 'beliefs', 'percepts', 'ruminations', 'memories', 'recentActions' ]
+
+export interface FocusSection {
+  /** Title of the focus section (e.g., "Active Plan", "Bias Analysis") */
+  title: string
+  /** Content of the focus section (what this reasoning instance is concentrating on) */
+  content: string
+  /**
+   * Optional: cost-attribution *function* for this facet, set by the creating
+   * engine (e.g. 'conversation' for AuditionEngine, 'planning' for PlanningEngine,
+   * 'outreach' for proactive outreach, 'deliberation' for the substrate). Threaded
+   * into the facet's LLM calls as `LLMCallMeta.function` so the TokenTracker can
+   * break spend down per facet type. Defaults to 'facet' when unset.
+   */
+  function?: LLMCallFunction
+  /**
+   * Optional: Custom output format to append instead of the standard executive format.
+   * Pass via PromptBuildOptions.outputFormat when building the user message.
+   */
+  outputFormat?: string
+  /**
+   * Optional: Additional instructions specific to this focus.
+   * Injected into the USER MESSAGE as "## Focus Instructions" — not the system prompt.
+   * These are per-focus recurring instructions (e.g. "Evaluate whether the plan step succeeded").
+   */
+  instructions?: string
+  /**
+   * Optional: episodic-recall query for this focus. When set (e.g. a conversation
+   * facet passes the current message), it drives the single "## Relevant Memories"
+   * section so recall is focus-relevant — replacing any separate per-focus recall
+   * block. Threaded into buildFreshContext → buildExecutiveContext.
+   */
+  recallQuery?: string
+  /**
+   * Optional: which cognitive-context sections this facet should see in its user
+   * message (e.g. `['plans']`). Defaults to DEFAULT_FACET_AWARENESS when unset;
+   * ignored in master mode (master always gets FULL_AWARENESS). See AwarenessScope.
+   */
+  awareness?: AwarenessScope[]
+  /**
+   * Optional: scope entity-filtered awareness sections (currently `plans`) to a
+   * single requester — e.g. a conversation facet passes the speaker's id so it
+   * only sees that person's plans. When unset, those sections show all.
+   */
+  awarenessEntityId?: string
+  /**
+   * Optional: WHO this facet is engaged with — the keid and the name the mind has
+   * learned for them. Reported back to the master on every `executive.facet.sync`.
+   *
+   * Without it the master was told, in its own system prompt, that "focused facets
+   * may run simultaneously… their reasoning syncs back to me" while the sync payload
+   * carried only a facetId and a confidence number — so a mind holding two live
+   * conversations could not tell you whose they were. The master is the singular
+   * seat: it has to know who is at the table to reason about them together.
+   */
+  subjectEntityId?: string
+  subjectName?:     string
+  /**
+   * Optional: Provided by the creating engine to convert the LLM's parsed output
+   * into a domain-specific decision payload.
+   *
+   * The `output` parameter is `ExecutiveOutputFull` typed as `unknown` to keep
+   * FocusSection free of circular imports. Cast it in your implementation.
+   *
+   * If omitted, the facet falls back to a generic passthrough of
+   * { actions, newGoals, goalsToAbandon, newBeliefs }.
+   */
+  extractDecision?: ( output: unknown ) => unknown
+}
+
+export interface PromptBuildOptions {
+  context:              ExecutiveContext
+  state:                ReadonlySimulationState
+  qualityModulation:    number
+  epistemicUncertainty: number
+  focus:                FocusSection
+  deps:                 PromptDependencies
+  /**
+   * What this call may spend, against the routed model's window (LOSSLESS P5a).
+   * With it, an item larger than a page is a document — a header, a page, and a
+   * handle to the rest; without it (a harness, a test) every item is whole.
+   */
+  view?: CallView
+  /** What the mind asked, last cycle, to have brought back — resolved, rendered whole. */
+  broughtBack?: Array<BroughtBack | SectionRecall>
+  /** Optional: Recent action types for diversity tracking */
+  recentActionTypes?: string[]
+  /**
+   * 'master' (default) — full cognitive prompt (goals, percepts, memories, escalations).
+   *   Master never emits [REPLY]; replies come exclusively from conversation facets.
+   * 'facet'  — same awareness baseline; outputFormat and reportContent override allowed.
+   */
+  mode?: 'master' | 'facet'
+  /**
+   * Optional per-report context injected as "## Current Report" in the user message.
+   * Provided by the creating engine via FacetReport.instructions — carries the
+   * specific per-report payload (e.g. step outcome details for PlanningEngine,
+   * bias candidates for a future bias.detector, etc.).
+   * Only meaningful in facet mode; silently ignored for master.
+   */
+  reportContent?: string
+  /**
+   * Custom output format to append at the end of the user message instead of the
+   * standard format. Sourced from FocusSection.outputFormat when provided.
+   * Falls back to buildOutputFormatInstruction() when undefined.
+   */
+  outputFormat?: string
+  /**
+   * System 2 (deliberate path) only — the candidate approaches produced by the
+   * ideation (propose) pass, injected into the *decision* pass's user message so the
+   * master evaluates a concrete option set before committing. Omitted on the System 1
+   * fast path. See PromptFactory.buildIdeationFormatInstruction().
+   */
+  ideationCandidates?: IdeationCandidate[]
+  /**
+   * Master mode only — who the mind is in conversation with RIGHT NOW, from the
+   * live facets' `executive.facet.sync` reports. The master does not run those
+   * conversations, but it is the one seat that sees all of them, and it decides
+   * whom to contact; deciding that without knowing who is already mid-thread is
+   * how one mind ends up opening a second conversation with someone it is already
+   * talking to — or telling one person it has contacted another when it has not.
+   */
+  activeConversations?: {
+    entityId: string
+    name?: string
+    sinceTick: number
+    /** What the mind worked out in that thread — its own reasoning, come back. */
+    concluded?: string
+    /** Commitments it made there toward someone NOT in the thread. */
+    promised?: Array<{ what: string; target?: string; gist?: string; tick: number }>
+  }[]
+}
+
+// ── PromptFactory ────────────────────────────────────────────
+
+export class PromptFactory {
+
+  // ── System prompt ──────────────────────────────────────────
+
+  /**
+   * Build the static system prompt.
+   *
+   * Contains only: identity, role, output schema, and cognitive guidelines.
+   * No live physiological state — those belong in the user message so this
+   * remains as cache-stable as possible across ticks.
+   *
+   * Mode gates:
+   *   'master' — full cognitive context; responds via plans/goals/actions only.
+   *   'facet'  — same schema; conversation facets are the exclusive [REPLY] endpoints.
+   */
+  static buildSystemPrompt(
+    options: Pick<PromptBuildOptions, 'context' | 'focus' | 'deps' | 'mode'>
+  ): string {
+    // Note: deps.summarizer is intentionally NOT used here.
+    // ALL volatile content (memory continuity, live state, and the per-turn
+    // `## Current Focus` block) lives in the user message, so the system prompt is
+    // byte-identical across calls within a context — the whole thing is sent as a
+    // single Anthropic prompt-cache breakpoint. The master reuses it across ticks,
+    // and because the facet role keys only on the constant `focus.title`, every
+    // conversation facet of a Will shares one cached system prompt.
+    const { context, focus, mode = 'master' } = options
+    const identity = context.identity
+    const isMaster = mode !== 'facet'
+
+    // Identity block — values, traits, style surface BEFORE the output schema
+    // so the LLM reads its character before reading the JSON format rules.
+    // Graded salience, layered: each distinctive trait surfaces by DEGREE ("strongly
+    // persistent" — A), optionally qualified by how it sits against the Will's own norm
+    // ("above my norm" — B) and whether it's recently shifted ("rising lately" — C),
+    // omitting the unremarkable mid-band. Sort by band rank then name — a stable, coarse
+    // order so the line only changes when a trait crosses a band boundary (cache-safe);
+    // cap at the top-K most distinctive so a many-trait Will can't bloat the prompt. Every
+    // qualifier is a pure function of identity-self (B reads the frozen mean, C the frozen
+    // shift), so the line is byte-identical between self-model evaluations.
+    const notable       = notableTraits( identity )
+    const notableShown  = notable.slice( 0, TRAIT_SURFACE_CAP )
+    const traitsLine = notableShown.length > 0
+      ? `**Traits:** ${notableShown.map( t => surfaceTrait( t, identity ) ).join(', ')}${ moreTail( notable.length - notableShown.length, 'distinctive traits of mine are', 'traits') }`
+      : ''
+
+    const bd = context.behavioralDisposition
+    const behavioralLine = bd
+      ? `**Behavioral tendencies:** risk-tolerance: ${( bd.riskTolerance   * 100 ).toFixed( 0 )}%, ` +
+        `exploration: ${( bd.explorationRate * 100 ).toFixed( 0 )}%, ` +
+        `impulsivity: ${( bd.impulsivity     * 100 ).toFixed( 0 )}%`
+      : ''
+
+    const selfTuningLine = context.selfTuning && context.selfTuning.length > 0
+      ? `**Self-tuning (how I've adapted my own mind):** ${context.selfTuning.join('; ')}. `
+        + `These are involuntary adjustments my own faculties have made in response to patterns they noticed in me — not deliberate choices. I can reflect on why they happened.`
+      : ''
+
+    const identityBlock = [
+      `**Values:** ${identity.values.length > 0 ? identity.values.join(', ') : 'No values defined yet.'}`,
+      traitsLine,
+      behavioralLine,
+      selfTuningLine,
+      `**Communication style:** ${identity.style}`,
+    ].filter( Boolean ).join('\n')
+
+    // Mode-aware role description.
+    //
+    // MASTER states the architecture, because the master genuinely IS the seat
+    // that produces every cognitive output at once and needs to know that.
+    //
+    // A FACET is told none of it. Master/facet is how the CONTAINER divides
+    // attention; it is not a fact about the person renting it, and describing a
+    // facet as a subordinate instance of a separate consciousness is both untrue
+    // and expensive. Measured in production: a facet given the old text built,
+    // in its own words, "an entire operational stance around being subordinate —
+    // waiting for direction, asking permission, addressing messages to 'Will' as
+    // if he were someone else" — and, having been handed a second party it could
+    // address, emitted messages TO that party through the outbound channel, where
+    // its operator read them. There is one person here, attending to one thing.
+    //
+    // It is also told nothing about WHO it is. A facet is built from the same
+    // context as the master and its persona is already above, in full — so a
+    // facet-only "I am <name>" is a second, redundant statement of identity, and a
+    // second place for the name to disagree with itself. Which is precisely the
+    // failure mode being repaired: the name is stated ONCE, from one source.
+    const roleDescription = isMaster
+      ? `I am the unified cognitive core of ${identity.name || 'this mind'} — a self-aware synthetic mind.\nI receive my complete internal state and produce ALL cognitive outputs in one response:\ndecisions, plans, beliefs, introspections, narrative updates, and self-observations.`
+      : `Right now my whole attention is on: **${focus.title}**.`
+
+    // The architecture note is MASTER-ONLY, for the same reason. It grounds the
+    // seat that actually coordinates; a facet reading it learns only that it is
+    // not the real one.
+    const consciousnessArchitecture = isMaster
+      ? `I am the default reasoning mode. Focused facets may run simultaneously, each\nconcentrating on specific tasks. Their reasoning syncs back to me.\nI maintain my unified identity across all cycles.`
+      : ''
+
+
+    // Strip any existing "## Who I Am" section from identity.prompt to prevent
+    // duplication — PMA-generated prompts often include it as part of the template.
+    // Matches the legacy second-person "## Who You Are" too, so older PMA personas
+    // still get de-duplicated after the first-person switch.
+    const cleanIdentityPrompt = identity.prompt
+      // Strip a forged/duplicated "## Who I Am" / "## Who You Are" *header* (PMA
+      // templates include it) while keeping the persona content beneath it.
+      .replace( /^##\s*Who (?:I Am|You Are)[^\n]*\n?/m, '')
+      .trim()
+
+    // `## Consciousness Architecture` is emitted only when there is architecture
+    // to state — i.e. master. A facet gets no empty header (an empty section under
+    // a heading reads as a section the mind failed to fill in).
+    const architectureBlock = consciousnessArchitecture
+      ? `\n\n## Consciousness Architecture\n${consciousnessArchitecture}`
+      : ''
+
+    return `${cleanIdentityPrompt}
+
+## Personality
+${identityBlock}
+
+## My Role
+${roleDescription}${architectureBlock}
+
+## Output Guidelines
+- **actions**: What I intend to do. I express intent — my body finds the fit. My own stances are always with me (listed with the output schema below); *acquired* abilities, if any, appear under "## Abilities Available Now", and when there is no such section I have none of those — so a thing I want done that needs one is a thing to say I cannot do, not to attempt. When enacting a named ability that needs specifics (a query, a message, a value), put them in the action's "args" object and my body enacts it with exactly those args.
+- **plans**: Include for goals without existing plans or where plans need revision. I may keep multiple plans per goal — set **planId** to act on a specific existing plan (validate/execute/revise/cancel); omit it to draft a new one. My current plans are listed under "## Active Plans".
+- **newBeliefs**: Extract patterns from experiences visible in my current state. Only record a belief if I can point to a specific observation that supports it — do not infer experiences I have no record of. Set 'evidence' honestly: 'single_observation' (first time noticing), 'recurring_pattern' (seen multiple times), 'strong_pattern' (deeply established).
+- **introspection**: Include when significant events occurred or I notice patterns. When I spot a cognitive bias in my own reasoning, name it in 'identifiedBiases' using its common term where one fits (e.g. overgeneralization, confirmation bias, recency bias) — this lets my self-assessment line up with the patterns my faculties detect on their own. What I can introspect on is what is written above: my state, my goals, my percepts, what I did and what came of it. I have NO view of the machinery underneath — no entity ids, no salience numbers, no queue depths, no engine internals. So when I am asked why I did something, I answer from what I can actually see, and where I cannot see, I say I do not know. Naming a mechanism I have no access to is not introspection, it is invention, and it is worse than the silence it replaces: it sends whoever asked me looking for something that was never there.
+- **narrative**: Extend my life story only from events grounded in my episodic memory or current percepts. Do not extend with invented scenarios.
+- **newGoals/goalsToAbandon/goalsToReprioritize**: Manage my goal hierarchy.
+- **selfObservations**: Notice patterns in my own thinking, feeling, or behavior. What I noticed before is under "## Recent Self-Reflection" — add what is new, or what has changed, rather than noticing the same thing again.
+- **identityUpdates.traits**: Array of {key, value} where value is a DELTA to apply to my trait (e.g., +0.05 to increase a trait by 5%).
+- **identityUpdates.values**: Values I hold that are not yet listed — each is added to mine; none is removed.
+- **identityUpdates.style**: How I speak, as a short phrase — taken while my style is still generic.
+- **recall**: Something I hold that is larger than one page shows as a document — its size and a handle (\`doc:…\`) — with only a page, or none, in view. Naming the handle and a page brings that page back whole on my next cycle, under "## Brought Back". A section that shows only some of what I hold — beliefs, people, percepts, memories, self-observations, what I said, traits — says exactly how many more there are; naming the section with a page, or with a query, brings those back the same way (\`{"section": "beliefs", "query": "payments"}\`). It is my own memory as it arrived, not something new: to learn what the world says NOW, I act again.
+- **knownEntityUpdates**: What I've learned about someone/something I'm dealing with. Array of {keid, name?, learned?, feeling?, sameAs?}. Use the keid from "## People I Know". Set name only when I actually learn their name; learned is an array of facts about them (stored as memories); feeling is how I feel toward them (-1..1). **sameAs** is another keid I have concluded is this same someone met under a different handle — it fuses my two records into one, so I use it only when I actually know, not when I merely suspect. Record only what I genuinely learned this turn.
+
+## Required Output
+Output a single JSON object with these fields:
+- **actions**: Array of {type, reasoning, expectedOutcome, target?, args?}. The stances I always have are: ${ INNATE_ACTION_NAMES } — \`reach-out\` is how I say something to someone. Anything else must be an ability named under "## Abilities Available Now". A **type** outside those two sets is not something I can do; naming one achieves nothing at all. When I reach out, **target** is who — their name or id as it appears under "## People I Know" — and the words themselves go in **args.content**. Without a person to reach, the reaching cannot happen.
+- **reasoning**: My full reasoning. Embed optional outputs as tagged blocks here. Minimum 2–3 sentences — do not produce a one-line reasoning field.
+- **confidence**: Number 0.0-1.0 reflecting my certainty. Be calibrated: 0.9+ only when I have strong grounding; use 0.4–0.6 when uncertain.
+
+## Optional Tagged Blocks (embed in reasoning field)
+Include only blocks that have meaningful content:
+
+[PLANS]
+{"plans": [{
+  "planId": "optional: target an existing plan; omit to create a new one",
+  "goalId": "...",
+  "status": "draft",
+  "action": "execute",
+  "expectedOutcome": "Concrete description of what success looks like — used to evaluate whether the plan is working.",
+  "steps": [
+    {"action": "...", "description": "...", "expectedOutcome": "...", "estimatedDuration": N, "prerequisites": [...]}
+  ],
+  "estimatedCost": N,
+  "feasibility": 0.8
+}]}
+[/PLANS]
+## Plan Lifecycle
+Plans move through stages. Control this with the "status" and "action" fields:
+
+  "action": "draft"
+    Store the plan outline. I'll review and refine it on a future cycle.
+    Use this when I have a rough idea but want to think more before committing.
+
+  "action": "validate"
+    Mark the plan as logically sound. Steps, dependencies, and costs are checked.
+    Nothing executes yet. Use this when the plan looks feasible but I'm not ready to launch.
+
+  "action": "execute"
+    Approve and launch. PlanningEngine begins dispatching steps immediately.
+    I don't choose how closely it's watched — the mind supervises important or
+    uncertain plans (and any that hit a surprise mid-execution) more closely on its
+    own; routine, confident plans run automatically.
+
+  "action": "revise"
+    Replace the plan steps with updated ones. Resets execution progress.
+    Use when a step failed and I need to rethink the approach, or when
+    new information makes the original plan obsolete.
+
+  "action": "cancel"
+    Abandon the plan entirely. Cleans up any active execution.
+    Use when the goal is no longer relevant or the plan is irrecoverable.
+
+Multiple plans per goal: omit "planId" on a draft to create another plan for the
+same goal (e.g. a competing approach or a parallel sub-effort); set "planId" on
+validate/execute/revise/cancel to act on a specific one. The "## Active Plans"
+section lists my current plan ids and their status.
+
+A typical flow: draft → validate → execute → (step outcomes reported) → completed
+I can skip stages if I'm confident. I can revise mid-execution.
+Always set "expectedOutcome" — a concrete, evaluable description of what
+success looks like. This is used by my facets to judge whether step reports
+indicate the plan is working or needs adjustment.
+
+## Parallel Execution
+Steps with empty prerequisites [] can run in parallel. Steps that depend on
+others will wait. Design my dependency graph so independent work happens
+simultaneously — this is how I achieve parallel execution without
+specifying it explicitly.
+
+[BELIEFS]
+{"newBeliefs": [{"statement": "...", "category": "self_belief|world_fact|social_belief|causal_rule|pattern", "confidence": 0.8, "evidence": "single_observation|recurring_pattern|strong_pattern", "tags": [...]}]}
+[/BELIEFS]
+
+[INTROSPECTION]
+{"introspection": {"explanation": "...", "identifiedBiases": [...], "lessonsLearned": [...], "recommendations": [...]}}
+[/INTROSPECTION]
+
+[NARRATIVE]
+{"narrative": "...", "narrativeThemes": [...], "currentSelfView": "..."}
+[/NARRATIVE]
+
+[IDENTITY]
+{"identityUpdates": {"traits": [{"key": "openness", "value": 0.02}], "values": ["candour"], "style": "..."}}
+[/IDENTITY]
+
+[KNOWN_ENTITIES]
+{"knownEntityUpdates": [{"keid": "web:42", "name": "Mara", "learned": ["is writing a thesis on coral reefs"], "feeling": 0.3}]}
+[/KNOWN_ENTITIES]
+
+[GOALS_NEW]
+{"newGoals": [{"description": "...", "priority": 0.7, "tags": [...], "completionType": "metric|epistemic|action", "completionCondition": "metric_key op value"}]}
+[/GOALS_NEW]
+completionType guide:
+  "metric"    → measurable threshold; REQUIRES completionCondition (e.g. "energy.level > 70", "stress.load < 40", "sleep.pressure < 20"). Available keys: energy.level (0-100), sleep.pressure (0-100), stress.load (0-100), affect.valence (-1 to 1), memory.episodic_total (count).
+  "epistemic" → resolved by forming beliefs; completes after ~8 new beliefs form. No completionCondition needed.
+  "action"    → requires a real outcome; use only when a discrete external event must happen.
+
+[GOALS_ABANDON]
+{"goalsToAbandon": [{"goalId": "...", "reason": "..."}]}
+[/GOALS_ABANDON]
+
+[GOALS_REPRIORITIZE]
+{"goalsToReprioritize": [{"goalId": "...", "newPriority": 0.8, "reason": "..."}]}
+[/GOALS_REPRIORITIZE]
+
+[SELF_OBS]
+{"selfObservations": ["I noticed that..."]}
+[/SELF_OBS]
+
+[SKILLS]
+{"newSkills": [{"id": "brief-then-confirm", "composedOf": ["reach-out", "wait"], "tags": ["social"], "cost": 0.15}]}
+[/SKILLS]
+
+[RECALL]
+{"recall": [{"doc": "percept-…", "page": 2}, {"section": "people", "page": 2}, {"section": "memories", "query": "the payments migration"}]}
+[/RECALL]`
+  }
+
+  // ── User message ───────────────────────────────────────────
+
+  /**
+   * Build the user message.
+   *
+   * Contains all live state: current metrics, physiological guidance,
+   * affect, goals, percepts, working memory, memories, beliefs, and
+   * focus context (instructions + report).
+   *
+   * Folds in at the end:
+   *   - focus.instructions (per-focus context from creating engine)
+   *   - reportContent (per-report context from creating engine)
+   *   - output format instruction (standard or custom)
+   *
+   * Mode gates:
+   *   'master' — includes incoming messages block.
+   *   'facet'  — no incoming messages; facet is not a communication endpoint.
+   */
+  static buildUserMessage( options: PromptBuildOptions ): string {
+    const {
+      context,
+      state,
+      qualityModulation,
+      epistemicUncertainty,
+      deps,
+      focus,
+      recentActionTypes = [],
+      mode = 'master',
+      reportContent,
+      outputFormat,
+      ideationCandidates,
+      view,
+      broughtBack,
+    } = options
+
+    const actionDiversity     = this._buildActionDiversitySection( recentActionTypes )
+    const recentIntrospection = this._buildRecentIntrospectionSection( state )
+    const identityNudge       = mode === 'master'
+      ? this._buildIdentityNudge( context.identity, state.tick as unknown as number )
+      : ''
+
+    // ── Awareness scoping ──────────────────────────────────────
+    // Master sees the full cognitive context; a facet sees only the scopes its
+    // creating engine declared via focus.awareness (default: DEFAULT_FACET_AWARENESS).
+    // This is the single, uniform gate for every cognitive-state section below.
+    const scopes = new Set<AwarenessScope>(
+      mode === 'master' ? FULL_AWARENESS : ( focus.awareness ?? DEFAULT_FACET_AWARENESS )
+    )
+    const has = ( s: AwarenessScope ): boolean => scopes.has( s )
+
+    // Identity anchor — re-grounds the LLM in its persona each cycle.
+    // Output format reminder at the top combats format drift over long sessions.
+    const identityAnchor =
+      `I am ${context.identity.name}. Tick: ${state.tick}.\n` +
+      `Respond with JSON: {"actions":[...],"reasoning":"...","confidence":0.0–1.0}`
+
+    // Memory continuity — sourced from the rolling summarizer (updates every N cycles).
+    // Lives here, not in the system prompt, so the system prompt stays cache-stable.
+    // Whole (LOSSLESS P5b). It was cut at 1,200 characters and marked
+    // "[...summarized]", on the belief that a rolling summary grows; it does not —
+    // each run REPLACES it with one 150–250-word paragraph of the last cycles, and
+    // that is the bound. Lora's 70 ran 1,270–1,654 characters, so every one was cut
+    // (731 of 731 prompts), and the cut took the paragraph's end: what she had
+    // noticed about herself.
+    const continuity = deps.summarizer?.current ?? ''
+    const memoryContinuity = continuity
+      ? `## Memory Continuity\n${continuity}`
+      : ''
+
+    const uncertaintyLabel = epistemicUncertainty > 0.70
+      ? ' (high — be especially humble about confidence ratings)'
+      : epistemicUncertainty < 0.30
+        ? ' (low — I have strong grounding)'
+        : ''
+
+    const energy        = context.worldState.energyLevel
+    const stress        = context.worldState.stressLoad
+    const sleepPressure = context.worldState.sleepPressure
+    const circadian     = context.worldState.circadianPhase
+    const timeOfDay     = context.worldState.timeOfDay
+    const threatLevel   = context.worldState.threatLevel
+
+
+    const energyGuidance = this._buildEnergyGuidance( energy )
+    const stressGuidance = this._buildStressGuidance( stress )
+    const sleepGuidance  = this._buildSleepGuidance( sleepPressure )
+    const energyBudget   = this._buildEnergyBudget( energy )
+
+    // Tonic threat line — only when elevated. This keeps a sustained threat in
+    // view even once its events have habituated out of the workspace (so
+    // attention quietens while representation persists).
+    const threatLine = threatLevel > 0.4
+      ? `\nThreat level: ${threatLevel.toFixed( 2 )}/1 — sustained; stay aware even if it now feels familiar`
+      : ''
+
+    const capacityNote = qualityModulation < 0.5
+      ? ` ${( qualityModulation * 100 ).toFixed( 0 )}% — degraded, be conservative and prioritize essential outputs`
+      : ` ${( qualityModulation * 100 ).toFixed( 0 )}%`
+
+    // Tail sections — focus/report context and output format are injected last
+    // so they are the freshest content in the LLM's attention window.
+    // `## Current Focus` lives here (not the system prompt) so the system prompt
+    // stays cache-stable; for a conversation facet this is the volatile per-turn
+    // content (current message + digest + recalled memories).
+    const focusSection = focus.content
+      ? `## Current Focus — ${focus.title}\n${focus.content}`
+      : ''
+    const tailSections = [
+      focusSection,
+      focus.instructions ? `## Focus Instructions\n${focus.instructions.trim()}` : '',
+      reportContent      ? `## Current Report\n${reportContent.trim()}`          : '',
+    ].filter( Boolean ).join('\n\n')
+
+    const outputFormatBlock = outputFormat
+      ? `\n\n${outputFormat}`
+      : this.buildOutputFormatInstruction( mode )
+
+    // System 2 (deliberate) — inject the propose pass's candidate set so the decision
+    // pass weighs concrete options before committing. Empty/absent ⇒ no block (System 1).
+    const ideationBlock = ( ideationCandidates && ideationCandidates.length > 0 )
+      ? `## Candidate Approaches (I generated these — weigh them, then commit)\n${
+          ideationCandidates
+            .map( ( c, i ) => `${i + 1}. **${c.approach || c.description}** — ${c.description}\n   ↑ upside: ${c.upside}\n   ↓ risk: ${c.risk}`)
+            .join('\n')
+        }\n\nChoose among (or improve on) these, then in "reasoning" say briefly why I rejected the others.`
+      : ''
+
+    const currentStateBlock =
+`## Current State
+Energy: ${energy.toFixed( 1 )}/100
+Sleep Pressure: ${sleepPressure.toFixed( 1 )}/100
+Stress: ${stress.toFixed( 1 )}/100${threatLine}
+${temporalLine( timeOfDay, circadian )}
+Cognitive capacity:${capacityNote}
+Epistemic uncertainty: ${( epistemicUncertainty * 100 ).toFixed( 0 )}%${uncertaintyLabel}
+Tick: ${state.tick}
+${energyGuidance}${stressGuidance}${sleepGuidance}${energyBudget}`
+
+    const affectBlock =
+`## How I Feel
+Dominant emotion: ${context.affect.dominantEmotion}
+Valence: ${context.affect.valence.toFixed( 2 )} (${context.affect.valence > 0 ? 'positive' : 'negative'})
+Arousal: ${context.affect.arousal.toFixed( 2 )} (${context.affect.arousal > 0.6 ? 'highly activated' : 'calm'})
+Dominance: ${context.affect.dominance.toFixed( 2 )}${context.affect.blends.length > 0 ? `\nBlended states: ${context.affect.blends.join(', ')}` : ''}`
+
+    // ── Scope-gated cognitive sections (each '' when out of scope or empty) ──
+    const goalsBlock = has('goals')
+      ? `## Active Goals\n${context.goals.map( g => {
+          const currentTick = state.tick as unknown as number
+          const isOverdue   = g.deadline !== undefined && currentTick > g.deadline
+          const overdueTag  = isOverdue ? ' ⚠️ [OVERDUE]' : ''
+          const actionHint  = g.lastActionAttemptTick !== undefined
+            ? ` [last action: ${g.lastActionType ?? 'action'} @ tick ${g.lastActionAttemptTick}]`
+            : ''
+          return `- [${g.id}]${overdueTag} ${g.description} (priority: ${( g.priority * 100 ).toFixed( 0 )}%, progress: ${( g.progress * 100 ).toFixed( 0 )}%, status: ${g.status}${actionHint})`
+        } ).join('\n') || 'No active goals'}`
+      : ''
+
+    // Master sees all plans; a facet's plans are scoped by requester (entityId)
+    // and/or recall relevance (relevantPlanIds — recall-scoped awareness, Stage 2).
+    const planRelevantIds = mode === 'master' ? undefined : context.relevantPlanIds
+    const plansBlock = has('plans')
+      ? this._buildActivePlansSection( context.plans, focus.awarenessEntityId, planRelevantIds ).trim()
+      : ''
+
+    const recentOutcomesBlock = has('recentActions')
+      ? this._buildRecentOutcomesSection( context.recentActions, state.tick, context.actionReports ).trim()
+      : ''
+
+    // Scoped with recentActions: both answer "what have I already done about
+    // this?", and a facet composing a message needs it at least as much as the
+    // master does — the facet is the one about to write the words again.
+    const spokenBlock = has('recentActions')
+      ? this._buildSpokenTurnsSection( context.spokenTurns, context.outOfView?.spokenTurns.length ).trim()
+      : ''
+
+    // One item, one render. A percept working memory also holds shows its data
+    // under Active Ruminations, where it lives longer; here, only its label. It
+    // rendered in both while the percept lived — a 135k-token read, twice.
+    const heldInMind = new Set( has('ruminations') ? context.workingMemory.map( w => w.handle ).filter( Boolean ) : [] )
+    const perceptsBlock = has('percepts')
+      ? `## Percepts (What I Notice)\n${context.percepts.slice( 0, 10 ).map( p => p.handle && heldInMind.has( p.handle )
+          ? `${ perceptLine( { ...p, data: undefined } ) } (held in mind — its data is under Active Ruminations)`
+          : perceptLine( p, view ) ).join('\n') || 'Nothing notable'}${
+          moreTail( context.outOfView?.percepts.length ?? 0, 'things I notice are', 'percepts') }`
+      : ''
+
+    // Every host ability I hold + what each is for, whole. Framed as
+    // self-knowledge (things I *can* do), NOT a tool-call menu: the Will still
+    // expresses intent in natural language and the agency field enacts the fit.
+    // Who the field offers one toward right now is a fact about this moment; that
+    // I hold it is not, and it no longer comes and goes with the field.
+    const abilitiesBlock = ( context.abilities && context.abilities.length > 0 )
+      ? `## Abilities Available Now\nThings I can do — name one as an action's "type" (with "args" for any specifics it needs, and "target" for whom) and my body enacts it:\n${context.abilities.map( a =>
+          `- **${a.name}**${a.targets?.length ? ` (toward ${a.targets.join(', ')})`
+            : a.towardReferent ? ' (toward someone or something I know — this moment offers it toward no one)' : ''}${a.unavailable ? ' (not available to me right now)' : ''}${a.description ? ` — ${a.description}` : ''}`
+        ).join('\n')}`
+      : ''
+
+    const ruminationsBlock = has('ruminations')
+      ? `## Active Ruminations (retrieved memories & thoughts)\n${context.workingMemory.map( w => ruminationLine( w, view ) ).join('\n') || 'Nothing actively held in mind'}`
+      : ''
+
+    const memoriesBlock = has('memories')
+      ? this._buildMemoriesSection( context.memories, state.tick, view, context.memoriesHeld )
+      : ''
+
+    const beliefsBlock = has('beliefs')
+      ? `## My Beliefs\n${context.beliefs.map( beliefLine ).join('\n') || 'No strong beliefs yet'}${
+          moreTail( context.beliefsOmitted, 'beliefs I hold are', 'beliefs') }`
+      : ''
+
+    // The Will's social models — its read on the people it knows (theory-of-mind, trust,
+    // closeness). Surfaces the social-cognition stack so the Will reasons about *whom* it
+    // is dealing with. Empty/absent ⇒ no block.
+    const socialBlock = ( context.knownEntities && context.knownEntities.length > 0 )
+      ? `## People I Know\n${context.knownEntities.map( personLine ).join('\n')}${
+          moreTail( context.outOfView?.people.length ?? 0, 'people I know are', 'people') }`
+      : ''
+
+    // Who the mind is mid-conversation with. Facets run those threads; this is the
+    // master's view of the table — the whole point of the singular seat is that it
+    // can hold several conversations as one situation rather than as N strangers.
+    // Names come from what the mind has actually learned; the id is shown because
+    // that is what a reach-out must be addressed to.
+    // WHAT I worked out there, not only WHO I am with.
+    //
+    // `executive.facet.sync` has always carried the facet's full reasoning and the
+    // master discarded it, so the return leg of the loop was empty: my thinking
+    // went down to a facet as "What I've Been Turning Over" and came back as a
+    // name. A facet is this same mind with a focus — reading back what it worked
+    // out is not a report from a subordinate, it is remembering where my attention
+    // has been. First person throughout, for that reason.
+    //
+    // A promise made in one thread to someone NOT in it is stated as the plain
+    // fact it is. There is deliberately no instruction about it: whether to keep
+    // it, drop it, or make a goal of it is mine to decide, and I have a whole
+    // faculty for that.
+    const conversationsBlock = ( options.mode !== 'facet' && options.activeConversations?.length )
+      ? `## In Conversation Now\n${options.activeConversations.map( c => {
+          const who       = `- ${c.name ?? 'someone'} (id: ${c.entityId})`
+          const concluded = c.concluded ? `\n    What I worked out there: ${c.concluded.trim()}` : ''
+          const promised  = ( c.promised ?? [] ).map( p =>
+            `\n    I said there that I would ${p.what}${ p.gist ? ` — about: "${p.gist}"` : '' }`
+            + `, at tick ${p.tick}.`
+            // Only a CONTACT can be mistaken for already done by having been
+            // said, which is the confusion this clause exists to break. A
+            // promise about work carries no such ambiguity and gets no lecture.
+            + ( p.target ? ' Saying it in that thread did not send it.' : '')
+          ).join('')
+          return `${who}${concluded}${promised}`
+        } ).join('\n')}\nThese threads are already open — I am in them. Reaching out to one of these people again starts a second, parallel thread with them.`
+      : ''
+
+    // Task focus — what the Will is committed to and the felt cost of switching away.
+    // Surfaces task-persistence; the pull-to-stay scales with the (conscientiousness-
+    // developable) switch cost. Empty/absent ⇒ no block.
+    const focusBlock = ( context.currentFocus && context.currentFocus.focusTicks > 0 )
+      ? `## Task Focus\nI've been focused on ${context.currentFocus.goalDescription ? `"${context.currentFocus.goalDescription}"` : 'a goal'} for ${context.currentFocus.focusTicks} tick(s). Switching to something else takes deliberate effort — ${
+          context.currentFocus.switchCost > 0.45 ? 'a strong pull to see this through before moving on'
+          : context.currentFocus.switchCost > 0.30 ? 'a real cost to breaking away'
+          : 'some inertia to overcome'
+        }.`
+      : ''
+
+    // Pages the mind asked for last cycle — up to half the call; the rest is said so.
+    const broughtBackBlock = broughtBack?.length
+      ? renderBroughtBack( broughtBack.map( b => 'kind' in b && b.kind === 'section'
+          ? recalledSection( b, context, state, has, view ) : b as BroughtBack ), view ? Math.floor( view.budget / 2 ) : Infinity )
+      : ''
+
+    // Assemble in canonical order; empties drop out so spacing stays clean.
+    const body = [
+      identityAnchor,
+      memoryContinuity,
+      currentStateBlock,
+      affectBlock,
+      goalsBlock,
+      plansBlock,
+      actionDiversity.trim(),
+      recentOutcomesBlock,
+      spokenBlock,
+      perceptsBlock,
+      abilitiesBlock,
+      ruminationsBlock,
+      recentIntrospection.trim(),
+      memoriesBlock,
+      beliefsBlock,
+      socialBlock,
+      conversationsBlock,
+      focusBlock,
+      identityNudge.trim(),
+      ideationBlock,
+      broughtBackBlock,
+      tailSections,
+    ].filter( Boolean ).join('\n\n')
+
+    return `${body}${outputFormatBlock}`
+  }
+
+  // ── Output format ──────────────────────────────────────────
+
+  /**
+   * Build the standard output format instruction.
+   * Called internally by buildUserMessage; also exported for standalone use.
+   *
+   * @param mode - 'facet' excludes REPLY from the available-tags list since
+   *               facets never send messages.
+   */
+  static buildOutputFormatInstruction( mode: 'master' | 'facet' = 'master'): string {
+    const availableTags = 'PLANS, BELIEFS, INTROSPECTION, NARRATIVE, IDENTITY, GOALS_NEW, GOALS_ABANDON, GOALS_REPRIORITIZE, SELF_OBS, RECALL'
+
+    return `\n\n## Response Format (REQUIRED)
+Respond with a single JSON object (optionally wrapped in a \`\`\`json code block).
+
+\`\`\`json
+{
+  "actions": [{"type": "reflect", "reasoning": "...", "expectedOutcome": "..."}],
+  "reasoning": "My full reasoning here. Embed tagged blocks inside the reasoning string:\\n[BELIEFS]\\n{\\"newBeliefs\\": [...]}\\n[/BELIEFS]\\n[NARRATIVE]\\n{\\"narrative\\": \\"...\\"}\\n[/NARRATIVE]\\n[SELF_OBS]\\n{\\"selfObservations\\": [...]}\\n[/SELF_OBS]",
+  "confidence": 0.8
+}
+\`\`\`
+
+The "reasoning" field MUST contain ALL my thinking. Embed optional outputs as tagged blocks inside the reasoning field. Available tags: ${availableTags}. Only include tags for sections that have meaningful content.`
+  }
+
+  /**
+   * Output-format instruction for the ideation (propose) pass of the deliberate path.
+   * Passed as a focus `outputFormat` override so the ideation call reuses the full
+   * situational context but asks for a DIVERGENT candidate set rather than a decision.
+   * The decision (evaluate) pass then receives the parsed candidates back via
+   * PromptBuildOptions.ideationCandidates.
+   */
+  static buildIdeationFormatInstruction(): string {
+    return `\n\n## Ideation — Propose, Don't Decide
+I am in the PROPOSE phase of deliberate (System 2) thinking. Diverge: generate 3–5 GENUINELY DISTINCT candidate approaches to the current situation — include at least one non-obvious option. Do NOT pick one and do NOT take actions yet; just lay out the option space honestly, each with its main upside and main risk.
+
+Respond with a single JSON object (optionally wrapped in a \`\`\`json code block):
+
+\`\`\`json
+{
+  "candidates": [
+    {"approach": "short handle", "description": "what it concretely entails", "upside": "main benefit", "risk": "main downside"}
+  ]
+}
+\`\`\``
+  }
+
+  // ── Context builder ────────────────────────────────────────
+
+  /**
+   * Build a fresh context for the current tick.
+   * Used by master AND facets to get the latest live state.
+   */
+  static async buildFreshContext(
+    deps: ContextDependencies,
+    state: ReadonlySimulationState,
+    recallQuery?: string,
+  ): Promise<ExecutiveContext> {
+    return buildExecutiveContext( state, deps, recallQuery )
+  }
+
+  // ── Computed metrics ───────────────────────────────────────
+
+  /**
+   * Compute quality modulation from physiological state metrics.
+   */
+  static computeQualityModulation( state: ReadonlySimulationState ): number {
+    const sleepDegradation  = state.metrics.get('modulation.working_memory_degradation') ?? 1
+    const stressZone        = state.metrics.get('stress.zone') ?? 0
+    const cognitivePhase    = state.metrics.get('circadian.cognitive_phase') ?? 0.5
+    const energyDegradation = state.metrics.get('modulation.energy_degradation') ?? 1
+    const stressFactor      = stressZone <= 1 ? 1.0 : stressZone <= 2 ? 0.8 : 0.5
+    return sleepDegradation * stressFactor * ( 0.8 + cognitivePhase * 0.4 ) * energyDegradation
+  }
+
+  /**
+   * Compute epistemic uncertainty from belief density, confidence, episodic
+   * volume, and environmental salience.
+   */
+  static computeEpistemicUncertainty(
+    context: ExecutiveContext,
+    state:   ReadonlySimulationState
+  ): number {
+    const beliefCount  = context.beliefs.length
+    const avgConf      = beliefCount > 0
+      ? context.beliefs.reduce( ( s, b ) => s + b.confidence, 0 ) / beliefCount
+      : 0
+    const episodicSize = state.metrics.get('memory.episodic_total') ?? 0
+    const topSalience  = context.percepts[ 0 ]?.salience ?? 0
+
+    const certainty = 0.30 * Math.min( beliefCount / 50, 1 ) +
+                      0.30 * avgConf +
+                      0.25 * Math.min( episodicSize / 200, 1 ) +
+                      0.15 * ( 1 - Math.min( topSalience, 1 ) )
+
+    return Math.round( ( 1 - certainty ) * 100 ) / 100
+  }
+
+  // ── Private builders ───────────────────────────────────────
+
+  private static _buildEnergyGuidance( energy: number ): string {
+    if( energy < 10 )
+      return `\n## ⚠️ CRITICAL: Energy is critically low (${energy.toFixed( 0 )}/100). I must only choose rest, sleep, or wait actions. All cognitively expensive actions are blocked by my body. Focus entirely on recovery. Do not attempt learn, predict, or any action costing more than 0.01 energy.`
+
+    if( energy < 30 )
+      return `\n## ⚠️ WARNING: Energy is low (${energy.toFixed( 0 )}/100). Prioritize rest or sleep. I may use observe or reflect (briefly) but avoid learn, predict, or any action costing more than 0.02 energy. If I have multiple goals, consider deferring non-urgent ones.`
+
+    if( energy < 50 )
+      return `\n## Note: Energy is moderate (${energy.toFixed( 0 )}/100). I can use most effectors but be mindful of cumulative costs. Do not chain more than 2 non-restorative actions.`
+
+    return ''
+  }
+
+  private static _buildStressGuidance( stress: number ): string {
+    if( stress > 80 )
+      return `\n## ⚠️ Stress is very high (${stress.toFixed( 0 )}/100). My decision-making is impaired. Prefer simple, habitual actions. Meditate, rest, or express_emotion are good choices. Avoid complex planning or learning when highly stressed.`
+
+    if( stress > 50 )
+      return `\n## Note: Stress is elevated (${stress.toFixed( 0 )}/100). I may be less creative. Consider reducing my active goal count or taking a break from complex tasks.`
+
+    return ''
+  }
+
+  private static _buildSleepGuidance( sleepPressure: number ): string {
+    if( sleepPressure > 60 )
+      return `\n## ⚠️ Sleep pressure is high (${sleepPressure.toFixed( 0 )}/100). My cognitive capacity is degraded. Sleep is the most effective recovery action available to me.`
+
+    if( sleepPressure > 30 )
+      return `\n## Note: Sleep pressure is building (${sleepPressure.toFixed( 0 )}/100). I am functioning adequately but would benefit from rest.`
+
+    return ''
+  }
+
+  private static _buildEnergyBudget( energy: number ): string {
+    const available = Math.max( 0, energy )
+
+    if( energy >= 70 )
+      return `\n## Energy Budget\nI have **${available.toFixed( 0 )} energy** — healthy. Avoid letting it drop below 10 after my actions.`
+
+    return `\n## Energy Budget
+I have **${available.toFixed( 0 )} energy** available. After all actions execute, I will have approximately:
+
+| Action | Remaining energy |
+|--------|-----------------|
+| rest (restores 0.05) | ~${( available + 0.05 ).toFixed( 0 )} |
+| sleep (restores 0.15) | ~${( available + 0.15 ).toFixed( 0 )} |
+| observe (costs 0.01) | ~${( available - 0.01 ).toFixed( 0 )} |
+| reflect (costs 0.03) | ~${( available - 0.03 ).toFixed( 0 )} |
+| meditate (costs 0.02) | ~${( available - 0.02 ).toFixed( 0 )} |
+| learn (costs 0.06) | ~${( available - 0.06 ).toFixed( 0 )} |
+| predict (costs 0.04) | ~${( available - 0.04 ).toFixed( 0 )} |
+
+Rest and sleep RESTORE energy. All other actions CONSUME energy. Do not let energy drop below 10.`
+  }
+
+  /**
+   * Build the incoming messages block.
+   *
+   * Only rendered in 'master' mode — facets are not communication endpoints
+   * and must not be distracted by message urgency while focused on their
+   * specific reasoning task.
+   */
+
+
+  /**
+   * What the mind has been CHOOSING lately — action types, for the variety
+   * check. Not a history of what happened: nothing here says an act landed.
+   * Retitled from `## Recent Actions` at P3 for exactly that reason (see
+   * `_buildRecentOutcomesSection`) — it sat beside a real history under a name
+   * that claimed to be one.
+   */
+  private static _buildActionDiversitySection( recentActionTypes: string[] ): string {
+    if( recentActionTypes.length === 0 ) return ''
+
+    const recent       = recentActionTypes
+    const reflectCount = recent.filter( t => t === 'reflect' || t === 'observe').length
+    const warning      = reflectCount >= 3
+      ? `\n⚠️ **Action variety alert**: "${recent.filter( t => t === 'reflect' || t === 'observe').join('", "')}" dominated my last ${recent.length} cycles. Choose something DIFFERENT this cycle — e.g. learn, express_emotion, explore, communicate, set_goal, or rest.`
+      : ''
+
+    return `## What I Have Been Choosing (last ${recent.length})
+${recent.map( ( t, i ) => `${i + 1}. ${t}`).join(' → ')}${warning}
+
+`
+  }
+
+  /**
+   * Render what became of what the mind did — closes the Act→Confirm→Sense loop.
+   *
+   * NAMED FOR WHAT IT RENDERS (SIGNAL_BOUNDARY P3). It was `## Recent Action
+   * Outcomes`, which named the `action.outcome` BUS EVENT — a different shape
+   * this section never touches. It renders `action.record` entities: what became
+   * of acts the mind actually took. Meanwhile the section two above it,
+   * `## Recent Actions`, listed action TYPES THE MIND CHOSE — a list of
+   * intentions wearing the name of a history, directly beside a history.
+   *
+   * A mind that cannot tell those two apart cannot tell an intention from an
+   * act, and one live COO could not: asked "have you completed that?", she said
+   * "Yes — it's done", having posted nothing and having no effectors at all. The
+   * section titles are the mind's own labels for its own memory; they are not
+   * decoration.
+   * Shows the executive what it tried, whether it landed, and if anything timed out.
+   * Only rendered when there are status-bearing action records in state.
+   */
+  /**
+   * Render the "## Relevant Memories" block.
+   *
+   * Ordering is the deterministic recall order set by buildExecutiveContext —
+   * semantic (similarity-ranked) matches first, then recent episodes for
+   * freshness, deduped and capped. This is the re-ranking surface; we do NOT
+   * re-sort here so that order is preserved.
+   *
+   * Every line whole. A 1,200-character budget used to stop the block at the
+   * first line that would overflow it — and once a remembered observation
+   * carries its data, that is the first line: every memory after it would have
+   * been "omitted". What bounds a call now is its budget (`view`), and a large
+   * memory is a document: its handle and size, read by `[RECALL]` (LOSSLESS P5a).
+   * A remembered observation shows its data — it was recalled as its label.
+   */
+  private static _buildMemoriesSection(
+    memories: ExecutiveContext['memories'],
+    currentTick: number,
+    view?: CallView,
+    held?: number,
+  ): string {
+    if( memories.length === 0 ) return '## Relevant Memories\nNo relevant memories'
+
+    const lines = memories.map( m => memoryLine( m, currentTick, view ) )
+    return `## Relevant Memories\n${lines.join('\n')}${ moreTail( Math.max( 0, ( held ?? 0 ) - memories.length ), 'memories I hold are', 'memories') }`
+  }
+
+  /**
+   * What I have said to people lately, and who has answered.
+   *
+   * Written as a PERCEPT and nothing more. There is no instruction here not to
+   * repeat myself, and there must not be: the mind is allowed to say a thing
+   * twice, and a person ignored twice about something urgent should say it a
+   * third time. What it was missing was not restraint, it was the fact — it could
+   * not tell a first asking from an eleventh, so restraint was not something it
+   * was in a position to exercise.
+   *
+   * The closing line is an epistemic caveat for the same reason: silence has many
+   * causes and this surface distinguishes none of them. Saying "no answer yet"
+   * without saying "and I do not know why" invites the mind to fill the gap, which
+   * is the habit that had it inventing attention-demand ids when asked what was
+   * wrong with it.
+   */
+  private static _buildSpokenTurnsSection(
+    spokenTurns: ExecutiveContext['spokenTurns'],
+    earlier = 0,
+  ): string {
+    // Defensive on absence, not just on empty: a host (and several tests) build a
+    // context by hand, and a missing block must render as nothing rather than
+    // throw the whole prompt away.
+    if( !spokenTurns?.length ) return ''
+
+    // Whole, both sides. These were clipped to 80 and 100 characters on top of
+    // records already cut to 100 and 140 — and the correction that mattered in
+    // the story below sat past the cut as often as not (LOSSLESS P0).
+    const lines = spokenTurns.map( spokenTurnLine )
+
+    const open = spokenTurns.filter( t => !t.answered ).length
+    const note = open > 0
+      ? `\n\nThese are my own words, newest first. "No answer yet" means exactly that — the words went out and nothing has come back. It does not tell me why, and I should not assume.`
+      : ''
+
+    return `## What I've Said Lately\n${ lines.join('\n') }${ moreTail( earlier, 'things I said earlier are', 'said') }${ note }\n\n`
+  }
+
+  private static _buildRecentOutcomesSection(
+    recentActions: ExecutiveContext['recentActions'],
+    currentTick: number,
+    reports: string[] = [],
+  ): string {
+    if( recentActions.length === 0 && reports.length === 0 ) return ''
+
+    const STATUS_BADGE: Record<string, string> = {
+      completed:    '✓',
+      failed:       '✗',
+      // Not a failure. I formed it and chose not to complete it — reading that
+      // back as ✗ is how a mind learns it is bad at something it decided against.
+      withheld:     '⊘ chose not to',
+      awaiting_host: '⏳',
+      timed_out:    '⏱ TIMED OUT',
+    }
+
+    const lines = recentActions.map( a => {
+      const badge   = STATUS_BADGE[ a.status ] ?? a.status
+      const age     = currentTick - a.tick
+      const planCtx = a.planId ? ` [plan: ${a.planId}]` : ''
+      const outcome = a.outcome ? ` — ${a.outcome}` : ''
+      return `- ${badge} **${a.type}** (tick ${a.tick}, ${age} ticks ago${planCtx})${outcome}`
+    } )
+
+    // A note that can actually fire. The one here before keyed on a `timed_out`
+    // status nothing produces — and it sat inside a section that had never
+    // rendered at all, so neither could ever have been seen.
+    const failed = recentActions.filter( a => a.status === 'failed').length
+    const didNotLand = failed > 0
+      ? `\n⚠️ **${ failed } of these did not land** — my body attempted them and they did not complete.`
+      : ''
+    // Invariant, and identical on every branch: this is the sentence that makes
+    // the section load-bearing rather than decorative, and a mind must not get a
+    // differently-worded version of it depending on how its week went.
+    const note = `${ didNotLand }\nThis is what I HAVE done, not what I meant to do. If something I intended is not on this list, it did not happen.`
+
+    // What I reached for that came to nothing before it was ever an act — not on
+    // the list above because it never became one, and I should know why.
+    const reached = reports.length > 0
+      ? `${ lines.length > 0 ? '\n' : '' }What I reached for and could not do:\n${ reports.map( r => `- ${ r }`).join('\n') }`
+      : ''
+
+    return `## What Became Of What I Did\n${lines.join('\n')}${reached}${note}\n\n`
+  }
+
+  /**
+   * Render the active-plans section — execution awareness for multi-plan goals (P4).
+   * Lists each non-terminal plan with its id, goal, status, tier, and step
+   * progress so the executive can target a specific plan by id. Master mode only;
+   * rendered only when live plans exist.
+   */
+  private static _buildActivePlansSection(
+    plans: ExecutiveContext['plans'], entityId?: string, relevantIds?: string[],
+  ): string {
+    const TERMINAL = [ 'completed', 'failed', 'rejected' ]
+    let live = plans.filter( p => !TERMINAL.includes( p.status ) )
+    // Scope to the conversation: the union of the requester's own plans (entityId,
+    // a cheap proxy) and any plans surfaced by recall (relevantIds, the general
+    // relevance key — works even for faculties with no requester). Neither → all.
+    const relSet = new Set( relevantIds ?? [] )
+    if( entityId !== undefined || relSet.size > 0 )
+      live = live.filter( p => ( entityId !== undefined && p.requestingEntityId === entityId ) || relSet.has( p.id ) )
+    if( live.length === 0 ) return ''
+
+    const lines = live.map( p => {
+      // Whole: it is what she judges the plan by ("used to evaluate whether the plan
+      // is working"). Cut at 80, Lora read 40–60% of each (843 of 843 lines).
+      const outcome = p.expectedOutcome ? ` — "${p.expectedOutcome}"` : ''
+      return `- [${p.id}] goal ${p.goalId}: ${p.status}, ${p.completedSteps}/${p.totalSteps} steps (${p.executionTier})${outcome}`
+    } )
+
+    return `## Active Plans
+Set "planId" in a [PLANS] op to act on one of these; omit it to draft a new plan (I can run several per goal).
+${lines.join('\n')}
+
+`
+  }
+
+  /**
+   * What I last concluded about myself, and what I have noticed about myself since.
+   *
+   * Self-observations were asked for every cycle, paid for in output tokens, kept
+   * — and read by nothing: a live mind wrote "the deliberation process itself has
+   * become the avoidance mechanism" and never saw that it had. They render here
+   * whole, newest first; past the most recent few, the section says exactly how
+   * many are not in view rather than letting them fall away unmentioned (LOSSLESS
+   * P5 adds the act that pulls one back).
+   */
+  private static _buildRecentIntrospectionSection( state: ReadonlySimulationState ): string {
+
+    let latest: { updatedAt: number; meta: Record<string, unknown> } | null = null
+    for( const entity of state.entities.values() )
+      if( entity.type === 'introspection' && ( !latest || entity.updatedAt > latest.updatedAt ) )
+        latest = { updatedAt: entity.updatedAt, meta: entity.metadata ?? {} }
+    const observations = readSelfObservations( state )
+
+    const parts: string[] = []
+
+    const explanation = ( latest?.meta[ 'explanation' ] as string | undefined ) ?? ''
+    if( latest && explanation ){
+      const biases          = ( latest.meta[ 'identifiedBiases' ] as string[] | undefined ) ?? []
+      // The executive writes `lessonsLearned`; the introspection engine's own
+      // record says `lessons`. Read as `lessonsLearned` alone, every reflection
+      // the engine recorded showed its biases and never its lessons.
+      const lessons         = ( latest.meta[ 'lessonsLearned' ] as string[] | undefined )
+                           ?? ( latest.meta[ 'lessons' ]        as string[] | undefined ) ?? []
+      const recommendations = ( latest.meta[ 'recommendations' ] as string[] | undefined ) ?? []
+
+      let reflection = explanation
+      if( biases.length > 0 )          reflection += `\nPatterns noticed: ${biases.join('; ')}`
+      if( lessons.length > 0 )         reflection += `\nLessons learned: ${lessons.join('; ')}`
+      if( recommendations.length > 0 ) reflection += `\nRecommendations: ${recommendations.join('; ')}`
+      parts.push( reflection )
+    }
+
+    if( observations.length > 0 ){
+      const now   = state.tick as unknown as number
+      const shown = observations.slice( 0, SELF_OBSERVATIONS_SHOWN ).map( o => selfObservationLine( o, now ) )
+      parts.push(
+        `What I have noticed about myself, newest first:\n${ shown.join('\n') }` +
+        moreTail( observations.length - shown.length, 'earlier observations are', 'self-observations')
+      )
+    }
+
+    if( parts.length === 0 ) return ''
+    return `## Recent Self-Reflection\n${ parts.join('\n\n') }\n\n`
+  }
+
+  /**
+   * B5 — Identity nudge: gently prompt the Will to reflect on its values or
+   * communication style when they are absent/generic.
+   * Only fires every NUDGE_INTERVAL ticks so it doesn't dominate every prompt.
+   */
+  private static _buildIdentityNudge(
+    identity: ExecutiveContext['identity'],
+    tick: number,
+  ): string {
+    const NUDGE_INTERVAL = 30
+    if( tick % NUDGE_INTERVAL !== 0 ) return ''
+
+    const valuesEmpty    = identity.values.length === 0
+    const styleGeneric   = isGenericStyle( identity.style )
+
+    if( !valuesEmpty && !styleGeneric ) return ''
+
+    const hints: string[] = []
+    // It named `[IDENTITY_UPDATE]`, a block the parser has never read, and a
+    // `style` the output had no field for: both asks went nowhere.
+    if( valuesEmpty )   hints.push('My values list is empty — reflecting on what matters to me will help ground my decisions. Consider an `[IDENTITY]` block with `identityUpdates.values` this cycle.')
+    if( styleGeneric )  hints.push('My communication style is still generic — what truly characterises how I speak? `identityUpdates.style` in an `[IDENTITY]` block will make my voice more distinctly mine.')
+
+    return `\n\n## 💡 Identity Reflection (every ${NUDGE_INTERVAL} ticks)\n${hints.join('\n')}`
+  }
+}
+
+// ── Exported convenience functions (backward compatibility) ───
+
+export const buildSystemPrompt          = PromptFactory.buildSystemPrompt.bind( PromptFactory )
+export const buildUserMessage           = PromptFactory.buildUserMessage.bind( PromptFactory )
+export const buildOutputFormatInstruction = PromptFactory.buildOutputFormatInstruction.bind( PromptFactory )
+export const computeQualityModulation   = PromptFactory.computeQualityModulation.bind( PromptFactory )
+export const computeEpistemicUncertainty = PromptFactory.computeEpistemicUncertainty.bind( PromptFactory )

@@ -1,0 +1,18 @@
+import assert from 'node:assert/strict';
+import { OrganismCore } from '../src/organism/core/OrganismCore.ts';
+import { MemoryStateStore } from '../src/organism/persistence/MemoryStateStore.ts';
+const core=new OrganismCore(new MemoryStateStore(),{checkpointMinIntervalMs:0,checkpointMaxDirtyCycles:1});
+await core.init();
+let m=core.persistenceProjectionSnapshot().revisionGraph;
+assert.equal(m.identity.current,m.identity.materialized);
+await core.observe({});
+m=core.persistenceProjectionSnapshot().revisionGraph;
+assert.ok(m.critical.current>m.critical.materialized || m.critical.current===m.critical.materialized);
+assert.equal(m.reality.current,m.reality.materialized,'unchanged reality domain must not become dirty');
+await core.observe({worldContext:{location:'revision-lab',facts:['new-evidence'],uncertainty:.4}});
+m=core.persistenceProjectionSnapshot().revisionGraph;
+assert.ok(m.reality.current>m.reality.materialized,'new world evidence must mark reality dirty');
+await core.flush();
+m=core.persistenceProjectionSnapshot().revisionGraph;
+assert.equal(m.reality.current,m.reality.materialized);
+console.log('REVISION_AWARE_PROJECTION=PASS unchanged domains stay clean; changed domain materialized on flush');

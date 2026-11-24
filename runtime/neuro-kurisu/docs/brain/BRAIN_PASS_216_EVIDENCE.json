@@ -1,0 +1,11 @@
+{
+  "pass": "BIG_PASS_216_DISTRIBUTED_CONSOLIDATION",
+  "verified": true,
+  "ranked": [
+    {"id":"uncertain","route":"hippocampal","priority01":0.851662,"plasticity01":0.9150000000000001,"retention01":0.72},
+    {"id":"procedural","route":"procedural","priority01":0.716348,"plasticity01":0.6725,"retention01":0.795},
+    {"id":"low","route":"defer","priority01":0.126456,"plasticity01":0.2875,"retention01":0.625}
+  ],
+  "persistence": {"restoredRuns":1},
+  "regression": {"B215":{"separationHealthy01":0.6619541097592867,"separationNoDG01":0.08038459426978645,"completionHealthy01":0.8134532861108399,"completionNoCA3":0.44739930736096195,"replayRuns":12},"B214":{"loopClosed":true,"closedLoops":4}}
+}

@@ -1,0 +1,25 @@
+{
+  "version": "35.6.52",
+  "organismCore": "79.5.0-embodied-developmental-neural-stack-b2509-b2510",
+  "stateSchema": 172,
+  "verification": {
+    "typecheck": "PASS",
+    "architecture": "PASS",
+    "forensics": "PASS",
+    "hygiene": "PASS",
+    "integrity": "PASS",
+    "contract": "PASS",
+    "releaseSource": "PASS",
+    "fullAudit": "PASS",
+    "coreOwnership": "PASS",
+    "syntax": "PASS",
+    "b2509B2510Direct": "PASS",
+    "b2509B2510Runtime": "PASS",
+    "b2509B2510Mobile": "PASS",
+    "b2504B2508Regression": "PASS",
+    "b2501Regression": "PASS",
+    "lifeCourseRegression": "PASS",
+    "b365Regression": "PASS"
+  },
+  "researchStatus": "functional computational research architecture; not a claim of biological equivalence or phenomenal consciousness"
+}

@@ -1,0 +1,330 @@
+name: WorkPass110 continual learning metrics
+on:
+  pull_request:
+    paths:
+      - 'runtime/neuro-kurisu/src/organism/learning/ContinualLearningMetrics.ts'
+      - 'runtime/neuro-kurisu/src/organism/learning/CausalExperienceStream.ts'
+      - 'runtime/neuro-kurisu/tests/big-pass-90-causal-learning-stream.mjs'
+      - 'app/src/legacy/avatar/LegacySpriteDeck.tsx'
+      - 'app/scripts/legacy-sprite-deck-runtime.test.mjs'
+      - 'app/public/live2d/viewer.html'
+      - 'runtime/neuro-kurisu/src/organism/learning/ContinualOutcomeMatrix.ts'
+      - 'runtime/neuro-kurisu/tests/p23-continual-learning-metrics.mjs'
+      - 'runtime/neuro-kurisu/tests/p23-continual-outcome-matrix.mjs'
+      - 'runtime/neuro-kurisu/src/organism/learning/ContinualBenchmarkComparison.ts'
+      - 'runtime/neuro-kurisu/tests/p23-continual-benchmark-comparison.mjs'
+      - 'runtime/neuro-kurisu/src/organism/learning/LearningExperimentPlan.ts'
+      - 'runtime/neuro-kurisu/tests/p23-learning-execution-audit.mjs'
+      - 'runtime/neuro-kurisu/src/organism/learning/LearningExecutionAudit.ts'
+      - 'runtime/neuro-kurisu/tests/p23-learning-execution-evidence.mjs'
+      - 'runtime/neuro-kurisu/src/organism/learning/LearningExecutionEvidence.ts'
+      - 'runtime/neuro-kurisu/src/organism/learning/LearningProcessSupervisor.ts'
+      - 'runtime/neuro-kurisu/tests/p23-learning-process-supervisor.mjs'
+      - 'runtime/neuro-kurisu/tests/p23-learning-experiment-plan.mjs'
+      - 'runtime/neuro-kurisu/tests/p23-learning-experiment-plan-cli.mjs'
+      - 'runtime/neuro-kurisu/scripts/create-learning-experiment-plan.mjs'
+      - 'runtime/neuro-kurisu/src/organism/learning/VerifiedOutcomeLedger.ts'
+      - 'runtime/neuro-kurisu/src/organism/learning/VerifiedOutcomeArtifact.ts'
+      - 'runtime/neuro-kurisu/src/organism/learning/VerifiedSkillShadowEvidence.ts'
+      - 'runtime/neuro-kurisu/src/organism/learning/TrustedSkillShadowRunRegistry.ts'
+      - 'runtime/neuro-kurisu/src/organism/learning/VerifiedSkillLifecycleBootstrap.ts'
+      - 'runtime/neuro-kurisu/src/organism/learning/AuthenticatedSkillPromotionApproval.ts'
+      - 'runtime/neuro-kurisu/tests/p23-verified-skill-lifecycle-bootstrap.mjs'
+      - 'runtime/neuro-kurisu/src/organism/core/OrganismCore.ts'
+      - 'runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts'
+      - 'runtime/neuro-kurisu/src/organism/system/RuntimeClockScheduler.ts'
+      - 'runtime/neuro-kurisu/src/organism/learning/P23TrustedShadowLearningScheduler.ts'
+      - 'runtime/neuro-kurisu/tests/p23-runtime-trusted-shadow-scheduler.mjs'
+      - 'runtime/neuro-kurisu/tests/p23-trusted-shadow-runtime-config.mjs'
+      - 'runtime/neuro-kurisu/tests/p23-runtime-signed-shadow-observation.mjs'
+      - 'runtime/neuro-kurisu/scripts/stage-verified-skill-candidate.mjs'
+      - 'runtime/neuro-kurisu/tests/p23-stage-verified-skill-candidate.mjs'
+      - 'runtime/neuro-kurisu/scripts/create-skill-promotion-approval-request.mjs'
+      - 'runtime/neuro-kurisu/tests/p23-create-skill-promotion-approval-request.mjs'
+      - 'runtime/neuro-kurisu/src/organism/learning/P23LearningEngine.ts'
+      - 'runtime/neuro-kurisu/src/server/server.mjs'
+      - 'runtime/neuro-kurisu/tests/p23-verified-skill-shadow-evidence.mjs'
+      - 'runtime/neuro-kurisu/tests/p23-trusted-skill-shadow-run-registry.mjs'
+      - 'runtime/neuro-kurisu/tests/workpass239-durable-signed-promotion-e2e.mjs'
+      - 'runtime/neuro-kurisu/tests/p23-trusted-shadow-supervisor-registration.mjs'
+      - 'runtime/neuro-kurisu/src/organism/learning/TrustedShadowLearningRunCoordinator.ts'
+      - 'runtime/neuro-kurisu/tests/p23-trusted-shadow-run-coordinator.mjs'
+      - 'runtime/neuro-kurisu/tests/p23-verified-outcome-artifact-authentication.mjs'
+      - 'runtime/neuro-kurisu/src/organism/learning/VersionedSkillCandidateStore.ts'
+      - 'runtime/neuro-kurisu/src/organism/learning/AtomicFileSkillStorePersistence.ts'
+      - 'runtime/neuro-kurisu/tests/p23-versioned-skill-candidate-store.mjs'
+      - 'runtime/neuro-kurisu/tests/p23-learning-engine-verified-skill-lifecycle.mjs'
+      - 'runtime/neuro-kurisu/tests/p23-verified-skill-promotion-proposal.mjs'
+      - 'runtime/neuro-kurisu/tests/p23-seed-clustered-outcome-comparison.mjs'
+      - 'runtime/neuro-kurisu/src/organism/learning/ResetRetentionEvaluation.ts'
+      - 'runtime/neuro-kurisu/tests/p23-reset-retention-evaluation.mjs'
+      - 'runtime/neuro-kurisu/src/organism/learning/VerifiedReplayAdmission.ts'
+      - 'runtime/neuro-kurisu/tests/p23-verified-replay-admission.mjs'
+      - 'runtime/neuro-kurisu/src/organism/learning/MultiSourceLearningMechanisms.ts'
+      - 'runtime/neuro-kurisu/tests/p23-multi-source-learning-mechanisms.mjs'
+      - 'runtime/neuro-kurisu/src/organism/learning/P23LearningEngine.ts'
+      - 'runtime/neuro-kurisu/src/organism/learning/SkillRetrievalAugmentation.ts'
+      - 'runtime/neuro-kurisu/src/organism/learning/OutcomeReflectionCurriculum.ts'
+      - 'runtime/neuro-kurisu/tests/p23-skill-retrieval-reflection-curriculum.mjs'
+      - 'runtime/neuro-kurisu/src/organism/learning/SkillRevisionGate.ts'
+      - 'runtime/neuro-kurisu/tests/p23-verified-skill-revision-gate.mjs'
+      - 'runtime/neuro-kurisu/src/organism/learning/VerifiedSkillPromotion.ts'
+      - 'runtime/neuro-kurisu/src/organism/learning/VerifiedOutcomeArtifact.ts'
+      - 'runtime/neuro-kurisu/tests/p23-verified-outcome-artifact-authentication.mjs'
+      - 'runtime/neuro-kurisu/src/organism/learning/VersionedSkillCandidateStore.ts'
+      - 'runtime/neuro-kurisu/src/organism/learning/AtomicFileSkillStorePersistence.ts'
+      - 'runtime/neuro-kurisu/src/organism/learning/SkillEvaluationReport.ts'
+      - 'runtime/neuro-kurisu/tests/p23-skill-evaluation-report.mjs'
+      - 'runtime/neuro-kurisu/tests/p23-skill-store-failure-boundaries.mjs'
+      - 'runtime/neuro-kurisu/tests/p23-verified-skill-promotion-proposal.mjs'
+      - 'runtime/neuro-kurisu/tests/p23-versioned-skill-candidate-store.mjs'
+      - 'runtime/neuro-kurisu/tests/p23-learning-engine-verified-skill-lifecycle.mjs'
+      - 'CHANGELOG.md'
+      - 'docs/P23_WORKPASS123_AUTHENTICATED_SKILL_LIFECYCLE.md'
+      - 'runtime/neuro-kurisu/package.json'
+      - 'runtime/neuro-kurisu/src/organism/learning/IndependentSkillCandidateEvaluator.ts'
+      - 'runtime/neuro-kurisu/src/organism/learning/HermesVerifiedEvidenceBinding.ts'
+      - 'runtime/neuro-kurisu/tests/p23-hermes-verified-evidence-binding.mjs'
+      - 'runtime/neuro-kurisu/tests/p23-hermes-production-promotion-gate.mjs'
+      - 'runtime/neuro-kurisu/src/organism/learning/P23LearningEngine.ts'
+      - 'runtime/neuro-kurisu/src/organism/learning/P23IndependentEvaluationProvider.ts'
+      - 'runtime/neuro-kurisu/tests/workpass203-independent-candidate-evaluator.mjs'
+      - 'runtime/neuro-kurisu/tests/workpass206-independent-evaluation-provider.mjs'
+      - 'runtime/neuro-kurisu/tests/workpass224-production-independent-evaluation-required.mjs'
+      - 'runtime/neuro-kurisu/tests/workpass225-matched-independent-evaluation.mjs'
+      - 'runtime/neuro-kurisu/tests/workpass227-bounded-independent-evaluation.mjs'
+      - 'runtime/neuro-kurisu/src/organism/learning/HostOwnedIndependentEvaluationServices.ts'
+      - 'runtime/neuro-kurisu/tests/workpass243-host-owned-independent-evaluation-services.mjs'
+      - '.github/workflows/workpass110-continual-learning-metrics.yml'
+      - 'runtime/neuro-kurisu/package-lock.json'
+      - 'runtime/neuro-kurisu/tsconfig.clean.json'
+      - 'runtime/neuro-kurisu/src/node-shims.d.ts'
+      - '.nvmrc'
+      - 'runtime/neuro-kurisu/scripts/typecheck-runtime.mjs'
+      - 'app/package.json'
+      - 'app/package-lock.json'
+      - 'runtime/neuro-kurisu/tests/workpass310-p23-learning-restore-integrity.mjs'
+  push:
+    branches: [workpass79-cognitive-rebuild, workpass116-seed-clustered-learning-eval, workpass117-verified-replay-admission, workpass118-multi-source-learning-integration, workpass119-skill-retrieval-feedback-curriculum, workpass120-verified-skill-revision-gate, workpass121-ledger-bound-promotion-proposals, workpass122-promotion-gate-coverage-hardening, workpass123-authenticated-skill-lifecycle, workpass124-learning-evidence-hardening, workpass135-durable-shadow-run-registry, workpass206-runtime-evaluator-wiring]
+    paths:
+      - 'runtime/neuro-kurisu/src/organism/learning/ContinualLearningMetrics.ts'
+      - 'runtime/neuro-kurisu/src/organism/learning/CausalExperienceStream.ts'
+      - 'runtime/neuro-kurisu/tests/big-pass-90-causal-learning-stream.mjs'
+      - 'app/src/legacy/avatar/LegacySpriteDeck.tsx'
+      - 'app/scripts/legacy-sprite-deck-runtime.test.mjs'
+      - 'app/public/live2d/viewer.html'
+      - 'runtime/neuro-kurisu/src/organism/learning/ContinualOutcomeMatrix.ts'
+      - 'runtime/neuro-kurisu/src/organism/learning/ContinualBenchmarkComparison.ts'
+      - 'runtime/neuro-kurisu/tests/p23-continual-learning-metrics.mjs'
+      - 'runtime/neuro-kurisu/tests/p23-continual-outcome-matrix.mjs'
+      - 'runtime/neuro-kurisu/tests/p23-continual-benchmark-comparison.mjs'
+      - 'runtime/neuro-kurisu/src/organism/learning/LearningExperimentPlan.ts'
+      - 'runtime/neuro-kurisu/tests/p23-learning-execution-audit.mjs'
+      - 'runtime/neuro-kurisu/src/organism/learning/LearningExecutionAudit.ts'
+      - 'runtime/neuro-kurisu/tests/p23-learning-execution-evidence.mjs'
+      - 'runtime/neuro-kurisu/src/organism/learning/LearningExecutionEvidence.ts'
+      - 'runtime/neuro-kurisu/tests/p23-learning-experiment-plan.mjs'
+      - 'runtime/neuro-kurisu/tests/p23-learning-experiment-plan-cli.mjs'
+      - 'runtime/neuro-kurisu/scripts/create-learning-experiment-plan.mjs'
+      - 'runtime/neuro-kurisu/src/organism/learning/VerifiedOutcomeLedger.ts'
+      - 'runtime/neuro-kurisu/src/organism/learning/VerifiedOutcomeArtifact.ts'
+      - 'runtime/neuro-kurisu/src/organism/learning/TrustedSkillShadowRunRegistry.ts'
+      - 'runtime/neuro-kurisu/tests/p23-verified-outcome-artifact-authentication.mjs'
+      - 'runtime/neuro-kurisu/tests/p23-trusted-skill-shadow-run-registry.mjs'
+      - 'runtime/neuro-kurisu/src/organism/learning/VerifiedSkillPromotion.ts'
+      - 'runtime/neuro-kurisu/src/organism/learning/VersionedSkillCandidateStore.ts'
+      - 'runtime/neuro-kurisu/src/organism/learning/AtomicFileSkillStorePersistence.ts'
+      - 'runtime/neuro-kurisu/src/organism/learning/SkillEvaluationReport.ts'
+      - 'runtime/neuro-kurisu/tests/p23-verified-skill-promotion-proposal.mjs'
+      - 'runtime/neuro-kurisu/tests/p23-versioned-skill-candidate-store.mjs'
+      - 'runtime/neuro-kurisu/tests/p23-learning-engine-verified-skill-lifecycle.mjs'
+      - 'runtime/neuro-kurisu/tests/p23-skill-evaluation-report.mjs'
+      - 'runtime/neuro-kurisu/tests/p23-seed-clustered-outcome-comparison.mjs'
+      - 'runtime/neuro-kurisu/src/organism/learning/ResetRetentionEvaluation.ts'
+      - 'runtime/neuro-kurisu/tests/p23-reset-retention-evaluation.mjs'
+      - 'runtime/neuro-kurisu/src/organism/learning/VerifiedReplayAdmission.ts'
+      - 'runtime/neuro-kurisu/tests/p23-verified-replay-admission.mjs'
+      - 'runtime/neuro-kurisu/src/organism/learning/MultiSourceLearningMechanisms.ts'
+      - 'runtime/neuro-kurisu/tests/p23-multi-source-learning-mechanisms.mjs'
+      - 'runtime/neuro-kurisu/src/organism/learning/P23LearningEngine.ts'
+      - 'runtime/neuro-kurisu/src/organism/learning/SkillRetrievalAugmentation.ts'
+      - 'runtime/neuro-kurisu/src/organism/learning/OutcomeReflectionCurriculum.ts'
+      - 'runtime/neuro-kurisu/tests/p23-skill-retrieval-reflection-curriculum.mjs'
+      - 'CHANGELOG.md'
+      - 'docs/P23_WORKPASS123_AUTHENTICATED_SKILL_LIFECYCLE.md'
+      - 'runtime/neuro-kurisu/package.json'
+      - 'runtime/neuro-kurisu/src/organism/learning/IndependentSkillCandidateEvaluator.ts'
+      - 'runtime/neuro-kurisu/src/organism/learning/P23IndependentEvaluationProvider.ts'
+      - 'runtime/neuro-kurisu/tests/workpass203-independent-candidate-evaluator.mjs'
+      - 'runtime/neuro-kurisu/tests/workpass206-independent-evaluation-provider.mjs'
+      - 'runtime/neuro-kurisu/tests/workpass224-production-independent-evaluation-required.mjs'
+      - 'runtime/neuro-kurisu/tests/workpass225-matched-independent-evaluation.mjs'
+      - 'runtime/neuro-kurisu/tests/workpass227-bounded-independent-evaluation.mjs'
+      - 'runtime/neuro-kurisu/src/organism/learning/HostOwnedIndependentEvaluationServices.ts'
+      - 'runtime/neuro-kurisu/tests/workpass243-host-owned-independent-evaluation-services.mjs'
+      - '.github/workflows/workpass110-continual-learning-metrics.yml'
+      - 'runtime/neuro-kurisu/src/organism/learning/VerifiedSkillLifecycleBootstrap.ts'
+      - 'runtime/neuro-kurisu/src/organism/learning/AuthenticatedSkillPromotionApproval.ts'
+      - 'runtime/neuro-kurisu/tests/p23-verified-skill-lifecycle-bootstrap.mjs'
+      - 'runtime/neuro-kurisu/src/organism/core/OrganismCore.ts'
+      - 'runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts'
+      - 'runtime/neuro-kurisu/src/organism/system/RuntimeClockScheduler.ts'
+      - 'runtime/neuro-kurisu/src/organism/learning/P23TrustedShadowLearningScheduler.ts'
+      - 'runtime/neuro-kurisu/tests/p23-runtime-trusted-shadow-scheduler.mjs'
+      - 'runtime/neuro-kurisu/tests/p23-trusted-shadow-runtime-config.mjs'
+      - 'runtime/neuro-kurisu/tests/p23-runtime-signed-shadow-observation.mjs'
+      - 'runtime/neuro-kurisu/scripts/stage-verified-skill-candidate.mjs'
+      - 'runtime/neuro-kurisu/tests/p23-stage-verified-skill-candidate.mjs'
+      - 'runtime/neuro-kurisu/scripts/create-skill-promotion-approval-request.mjs'
+      - 'runtime/neuro-kurisu/tests/p23-create-skill-promotion-approval-request.mjs'
+      - 'runtime/neuro-kurisu/src/organism/learning/P23LearningEngine.ts'
+      - 'runtime/neuro-kurisu/src/server/server.mjs'
+      - 'runtime/neuro-kurisu/package-lock.json'
+      - 'runtime/neuro-kurisu/tsconfig.clean.json'
+      - 'runtime/neuro-kurisu/src/node-shims.d.ts'
+      - '.nvmrc'
+      - 'runtime/neuro-kurisu/scripts/typecheck-runtime.mjs'
+      - 'app/package.json'
+      - 'app/package-lock.json'
+      - 'runtime/neuro-kurisu/tests/workpass310-p23-learning-restore-integrity.mjs'
+concurrency:
+  group: nk1-${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  metrics:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - name: Install pinned TypeScript compiler from app lockfile
+        run: npm ci --prefix app --ignore-scripts --no-audit --no-fund
+      - name: Run causal experience identity, replay diversity and restore regression
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:big-pass-90:causal-stream
+      - name: Run Legacy avatar rendering lifecycle regression
+        run: node --test app/scripts/legacy-sprite-deck-runtime.test.mjs
+      - name: Run Live2D runtime and asset integrity regression
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/live2d-integrity.mjs
+      - name: Run continual-learning metric regressions
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:p23:continual-metrics
+      - name: Run seed-clustered verified outcome comparison regression
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:p23:seed-clustered-outcomes
+      - name: Run evidence-gated replay admission regression
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/p23-verified-replay-admission.mjs
+      - name: Run multi-source learning mechanisms regression
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/p23-multi-source-learning-mechanisms.mjs
+      - name: Run skill retrieval, reflection and curriculum regression
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:p23:skill-retrieval-reflection-curriculum
+      - name: Run verified skill revision gate regression
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:p23:verified-skill-revision-gate
+      - name: Run ledger-bound verified skill promotion proposal regression
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:p23:verified-skill-promotion-proposal
+      - name: Run signed outcome artifact authentication regression
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/p23-verified-outcome-artifact-authentication.mjs
+      - name: Run signed shadow execution evidence regression
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:p23:verified-skill-shadow-evidence
+      - name: Run trusted shadow-run registry regression
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:p23:trusted-skill-shadow-run-registry
+      - name: Run verified skill lifecycle bootstrap regression
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:p23:verified-skill-lifecycle-bootstrap
+      - name: Run trusted shadow registration before process spawn regression
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:p23:trusted-shadow-supervisor-registration
+      - name: Run canonical trusted shadow run coordinator regression
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:p23:trusted-shadow-run-coordinator
+      - name: Run versioned skill candidate lifecycle regression
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/p23-versioned-skill-candidate-store.mjs
+      - name: Run runtime resolver verified skill lifecycle regression
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/p23-learning-engine-verified-skill-lifecycle.mjs
+      - name: Run three-level skill evaluation report regression
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/p23-skill-evaluation-report.mjs
+      - name: Run durable skill-store failure-boundary regression
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:p23:skill-store-failure-boundaries
+      - name: Run reset-retention evaluation regression
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/p23-reset-retention-evaluation.mjs
+      - name: Run reproducible learning experiment plan regression
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:p23:learning-experiment-plan
+      - name: Run execution coverage audit
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:p23:learning-execution-audit
+      - name: Run execution-backed outcome evidence regression
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:p23:learning-execution-evidence
+      - name: Run bounded learning process supervisor regression
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:p23:learning-process-supervisor
+      - name: Run production runtime trusted shadow scheduler integration
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:p23:runtime-trusted-shadow-scheduler
+      - name: Run production trusted shadow config validation
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:p23:trusted-shadow-runtime-config
+      - name: Run signed shadow observation end-to-end integration
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:p23:runtime-signed-shadow-observation
+      - name: Run authenticated verified-skill candidate staging regression
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:p23:stage-verified-skill-candidate
+      - name: Run candidate-bound promotion approval request regression
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:p23:create-skill-promotion-approval-request
+      - name: Run independent candidate execution and experiment-ledger regressions
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:workpass203:independent-candidate-evaluator
+      - name: Run independent evaluation provider wiring regression
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:workpass206:independent-evaluation-provider
+      - name: Require independent evaluation authorities for production revision wiring
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:workpass224:production-independent-evaluation-required
+      - name: Run matched independent baseline/candidate evaluation regression
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:workpass225:matched-independent-evaluation
+      - name: Run bounded independent evaluation service regression
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:workpass227:bounded-independent-evaluation
+      - name: Run host-owned independent evaluation subprocess integration regression
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:workpass243:host-owned-independent-evaluation-services
+      - name: Run P23 to Hermes signed-evidence binding regression
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:p23:hermes-verified-evidence-binding
+      - name: Require matched evidence envelopes before promotion
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:p23:hermes-production-promotion-gate
+      - name: Run durable signed promotion restart and replay regression
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:workpass239:durable-signed-promotion-e2e
+      - name: Validate P23 persisted learning restore integrity
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:workpass310:p23-restore-integrity
+      - name: Typecheck runtime
+        working-directory: runtime/neuro-kurisu
+        run: npm run typecheck

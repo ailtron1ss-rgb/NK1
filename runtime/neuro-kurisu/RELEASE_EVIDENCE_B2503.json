@@ -1,0 +1,24 @@
+{
+  "release": "35.6.43",
+  "organismCore": "79.3.0-actionable-neural-predictive-b2503",
+  "schema": 172,
+  "overallResearchMaturity01": 0.76,
+  "tests": {
+    "typecheck": "PASS",
+    "b2502": {"status":"PASS","minLesion01":0.01408,"prototypeHitsSeededHoldout":[483,487],"seedCount":6},
+    "b2503": {"status":"PASS","cycles":61,"learningUpdates":60,"rollouts":1281,"transitions":28,"causalEffect01":0.15332756078540039,"calibration01":0.6405198101448684},
+    "runtime": {"status":"PASS","b2502Cycles":6,"b2502PrototypeHits":3,"b2503Cycles":6,"disabledB2502Cycles":0,"disabledB2503Cycles":0},
+    "performance": {"status":"PASS","p50Ms":0.096,"p95Ms":0.227,"maxMs":0.227,"heapMiB":9.75,"note":"host benchmark, not physical Android"},
+    "syntheticHoldout": {"status":"PASS","baseReward":0.27576,"b2502Reward":0.33352,"b2503Reward":0.43232,"comboReward":0.43232,"b2502RewardGain":0.05776,"b2503RewardGain":0.15656,"comboVsBestSingleReward":0},
+    "regression": {"b2501":"PASS","b2501Runtime":"PASS","lifeCourse":"PASS"},
+    "audits": {"coreOwnership":"PASS","architecture":"PASS","forensics":"PASS","hygiene":"PASS","integrity":"PASS","contract":"PASS","releaseSource":"PASS","sourceTruth":"PASS"}
+  },
+  "limitations": [
+    "B2502/B2503 are computational neural-inspired mechanisms, not biological neural tissue.",
+    "B2503 is not yet a deep differentiable world model.",
+    "Neural layers are not yet the sole decision bottleneck.",
+    "No physical Android sensorimotor benchmark was run in this release.",
+    "The release makes no claim of phenomenal consciousness.",
+    "Synthetic combo did not exceed B2503 alone; synergy remains an open experiment."
+  ]
+}

@@ -1,0 +1,6 @@
+import { performance } from 'node:perf_hooks';
+import { EmbodiedRecoveryController } from '../src/organism/body/EmbodiedRecoveryController.ts';
+const controller=new EmbodiedRecoveryController();
+for(let i=0;i<100;i++) controller.record({tick:i,action:'explore',status:'executed',realityClass:'device-observation',source:'android-termux',verified01:1,independent01:1,effect01:.5,consequenceError01:.1,at:i});
+const samples=[]; const heap=[]; for(let i=0;i<2000;i++){const t0=performance.now();controller.advise(i%3===0?'explore':'respond',Date.now());controller.record({tick:i+100,action:i%3===0?'explore':'respond',status:i%101===0?'failed':'executed',realityClass:i%101===0?'device-actuation':'device-observation',source:'android-termux',verified01:i%101===0?0:1,independent01:i%101===0?0:1,effect01:.4,consequenceError01:i%101===0?1:.1,at:Date.now()});samples.push(performance.now()-t0); heap.push(process.memoryUsage().heapUsed/1048576);}
+samples.sort((a,b)=>a-b); const q=p=>samples[Math.floor((samples.length-1)*p)]; console.log(JSON.stringify({pass:true,status:'B379_EMBODIED_RECOVERY_PERFORMANCE_PASS',cycles:2000,p50Ms:q(.5),p95Ms:q(.95),p99Ms:q(.99),maxMs:samples.at(-1),heapMiB:Math.max(...heap)},null,2));

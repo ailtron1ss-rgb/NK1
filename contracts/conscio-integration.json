@@ -1,0 +1,42 @@
+{
+  "name": "Conscio 4.8.2 integration contract",
+  "schema": 1,
+  "mode": "adapter-only",
+  "source": "legacy/input-archives/external-sources/conscio-4.8.2.tar.gz",
+  "sourceSha256": "05cc43c834029a02e841f6318e353af3f7681c4863c176d9396715a7446b1fb6",
+  "canonicalOwner": "Neuro-Kurisu 35.40.0",
+  "owners": {
+    "organism": "OrganismCore",
+    "memory": "MemoryOS / MemoryFabric",
+    "agency": "DecisionActionPipeline / ActionGateway",
+    "retrieval": "ConscioAdaptationFabric lexical index + canonical semantic retrieval",
+    "skills": "ProceduralSkillLibrary via quarantined federation adapter",
+    "peers": "ConscioAdaptationFabric liaison adapter",
+    "claims": "ExternalObserver / evidence ledger with Conscio verification receipt",
+    "ui": "ConscioControlConsole + RuntimeAtlas"
+  },
+  "importedMechanisms": [
+    "FTS5/BM25/trigram/RRF hybrid retrieval",
+    "quarantined skill federation with evidence-gated promotion",
+    "liaison peer queue/ACK/idempotency",
+    "confidence calibration and evidence receipts",
+    "source-state boundaries",
+    "metabolic context advisory"
+  ],
+  "explicitlyNotImportedAsOwners": [
+    "Conscio ConsciousnessEngine",
+    "Conscio standalone Memory DB",
+    "Conscio Agent Loop",
+    "Conscio PostgreSQL schema/function owner",
+    "Conscio standalone MCP server",
+    "Conscio dreaming engine",
+    "Conscio provider router"
+  ],
+  "security": {
+    "foreignArtifactsDefault": "quarantine",
+    "canonicalPromotion": "evidence-gated",
+    "sourceBoundary": "deny legacy/research/provenance-to-canonical promotion",
+    "credentialsImported": false,
+    "externalNetworkTransport": "not enabled by adapter"
+  }
+}

@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';
+import { P41NativePerceptionEngine } from '../src/organism/cognition/P41NativePerception.ts';
+const p=new P41NativePerceptionEngine();
+const samples=Array.from({length:1024},(_,i)=>Math.sin(2*Math.PI*220*i/16000)*.25);
+const start=performance.now();
+for(let i=0;i<10000;i++) p.ingest({audio:{samples},vision:{features:[.1,.2,.3,.4]},at:i});
+const ms=performance.now()-start;
+assert.ok(ms<10000);
+assert.ok(p.snapshot().audioFrames===10000 && p.snapshot().imageFrames===10000);
+console.log('P41_PERFORMANCE=PASS');
+console.log(`cycles=10000 elapsedMs=${ms.toFixed(1)}`);

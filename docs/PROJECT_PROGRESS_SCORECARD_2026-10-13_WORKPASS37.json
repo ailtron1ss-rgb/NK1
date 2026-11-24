@@ -1,0 +1,161 @@
+{
+  "title": "Neuro-Kurisu SUPER — reconciled weighted implementation roadmap scorecard — WorkPass37",
+  "date": "2026-10-13",
+  "workpass": 37,
+  "baseArchive": "Neuro_Kurisu_WORKPASS36_2026-10-13.zip + durable ActionGateway receipts and external-observer/reafference integration",
+  "runtime": "35.59.0",
+  "schema": 225,
+  "method": "WorkPass37 adds durable, fail-closed ActionGateway idempotency across direct actions, reusable skill steps and project APIs; verified independently sourced postconditions flow through ExternalObserverFabric and can receive temporal credit only through an exact supplied decisionId. Receipt, outcome and observer projection finalize before completed receipt commit; receipt persistence failure blocks replay. Schema 225 migration is aligned and regression-tested from schemas 223/224. Retrieval benchmark time semantics now match baseline/candidate; synthetic uplift remains zero and candidate not promoted. Pass implementation progress is 85/100, distinct from weighted roadmap readiness. Real provider/device receipts, labelled temporal holdout, dependency-installed app build/browser Live2D E2E, clean-room restore/rollback and soak remain open.",
+  "overallPercent": 73.7,
+  "previousOfficialScorePercent": 72.9,
+  "deltaPercentagePoints": 0.8,
+  "remainingWeightedRoadmapPoints": 26.3,
+  "workstreams": [
+    {
+      "id": "A",
+      "name": "Canonical source lineage and single-owner architecture",
+      "weight": 15,
+      "completionPercent": 100,
+      "weightedPoints": 15,
+      "previousPercent": 100,
+      "rationale": "MemoryOS2 remains the sole writable owner. WorkPass31 centralizes all current production mutation classes behind MemoryFabric and persists a bounded receipt ledger through ordinary state migration; legacy direct-write adapter methods remain only for historical consumers."
+    },
+    {
+      "id": "B",
+      "name": "Runtime integration, API/UI routes and smoke/linkage coverage",
+      "weight": 15,
+      "completionPercent": 96,
+      "weightedPoints": 14.4,
+      "previousPercent": 95,
+      "rationale": "Runtime/server integration, route linkage and focused app script smoke pass; release metadata is synchronized to 35.59.0/schema 225. Full dependency-installed React/Vite build and real desktop/mobile browser Live2D E2E remain open."
+    },
+    {
+      "id": "C",
+      "name": "Memory 2.0, retrieval/admission and benchmark evidence",
+      "weight": 15,
+      "completionPercent": 70,
+      "weightedPoints": 10.5,
+      "previousPercent": 69,
+      "rationale": "MemoryOS2 canonical retrieval and bounded semantic path remain in place; WorkPass37 fixes the timestamp semantics of the synthetic benchmark. Current candidate is not promoted because synthetic recall uplift is zero; independent labelled temporal holdout and actual local model inference remain open."
+    },
+    {
+      "id": "D",
+      "name": "Agency, action schema, execution, outcome and reafference",
+      "weight": 20,
+      "completionPercent": 72,
+      "weightedPoints": 14.4,
+      "previousPercent": 68,
+      "rationale": "WorkPass37 now has tested durable, fail-closed ActionGateway receipt replay, idempotent skill steps, independently sourced postcondition integration and exact decision-linked temporal credit through the canonical observer path. Simulated end-to-end proof exists; actual external provider/device receipts and multi-provider reconnect/rollback remain open."
+    },
+    {
+      "id": "E",
+      "name": "Portable subject continuity and social/known-entity dossier",
+      "weight": 10,
+      "completionPercent": 75,
+      "weightedPoints": 7.5,
+      "previousPercent": 75,
+      "rationale": "Read-only dossier and fidelity contracts are present; browser-backed corrections and behavioral equivalence remain open."
+    },
+    {
+      "id": "F",
+      "name": "External transport, SDK, idempotency and replay",
+      "weight": 10,
+      "completionPercent": 40,
+      "weightedPoints": 4,
+      "previousPercent": 40,
+      "rationale": "Conscio/Hexis/WILL local idempotency, queue backpressure and ACK/replay contracts improved; remote provider receipt/reconnect proof remains open."
+    },
+    {
+      "id": "G",
+      "name": "Research promotion and controlled experiments",
+      "weight": 5,
+      "completionPercent": 66,
+      "weightedPoints": 3.3,
+      "previousPercent": 63,
+      "rationale": "WorkPass25 supplies a deterministic private-first temperature-scaling fitter with a group-disjoint validation fold, version/dataset-bound artifact contract, NLL/Brier/ECE eligibility thresholds and provenance propagation into evidence/restore. This is an implemented pipeline only: the real pinned pretrained model and independent final holdout have not been run."
+    },
+    {
+      "id": "H",
+      "name": "Release durability: build, E2E, rollback, soak, SBOM/provenance",
+      "weight": 10,
+      "completionPercent": 46,
+      "weightedPoints": 4.6,
+      "previousPercent": 45,
+      "rationale": "Release metadata and operational readiness reporting improved; dependency-complete app install/build, browser E2E, clean-room restore/rollback, soak and final SBOM/provenance remain open."
+    }
+  ],
+  "normalizedTaskInventory": {
+    "count": 91,
+    "counts": {
+      "DONE": 70,
+      "PARTIAL": 11,
+      "TODO": 10
+    },
+    "strictDonePercent": 76.92,
+    "partialPercent": 12.09,
+    "todoPercent": 10.99,
+    "halfCreditEquivalentPercent": 82.97,
+    "note": "Normalized unique deliverables. PARTIAL is not treated as DONE. Inventory completion does not establish release readiness."
+  },
+  "openReleaseGates": [
+    "Real autonomous research on at least two allowed external HTTPS hosts with distinct evidence and persisted source receipt",
+    "Real pretrained NLI inference on a fixed labelled, domain-relevant adversarial holdout; threshold review must remain separate from evaluation; multilingual/domain compatibility is unproven",
+    "Complete agency loop from competition to independent postcondition, persistence and reafference with cross-consumer no-double-credit",
+    "Entity correction/expiry/conflict across browser-backed multi-session flows",
+    "Portable subject continuity and behavioral fidelity",
+    "Capability evidence graph for critical user journeys",
+    "External provider delivery receipts, reconnect and replay guarantees",
+    "Clean-room backup/restore, schema migration and rollback drill",
+    "Research candidate integrations from NeuroCore/NOMEGA/DeepCode only where they measurably beat canonical baselines",
+    "Authorization/abuse/rate-limit review for diagnostic and benchmark APIs",
+    "Independent labelled temporal MemoryOS2 holdout run against the implemented Okapi BM25 baseline; corrected synthetic fixture is at parity; no real-corpus uplift is established",
+    "Dependency-complete app install and root/app semantic typecheck",
+    "React/Vite production build",
+    "Desktop/mobile browser E2E, including actual Live2D interaction",
+    "Multi-hour soak with memory and resource-growth limits",
+    "Final SBOM, license inventory and immutable release provenance sign-off",
+    "Release-candidate sign-off"
+  ],
+  "environmentNote": "WorkPass37: runtime typecheck and focused action gateway suite 13/13 pass; schema 223/224 migration alignment passes; WILL 17/17; app script suite and release metadata tests pass at earlier/current audit checkpoints. Retrieval fixture now has matched temporalMode=at; recallDelta=0 so candidate is not promoted. Real provider inference, independent labelled temporal holdout, dependency-installed app build/browser Live2D E2E, clean-room recovery/rollback and soak remain open.",
+  "releaseStatus": "implementation-workpass; durable action receipts and decision-bound external evidence integrated; release gates remain open",
+  "limitations": [
+    "The action/observer/temporal-credit end-to-end regression uses a controlled test tool; an independent real provider/device postcondition and reconnect/replay have not been demonstrated.",
+    "Synthetic temporal retrieval benchmark passes at parity only (recall uplift 0); candidate remains not-promoted until an independent labelled holdout demonstrates improvement.",
+    "Dependency-installed React/Vite production build and real browser Live2D E2E have not been completed.",
+    "Actual local-model/provider inference, clean-room restore/rollback, soak and release sign-off remain open."
+  ],
+  "workpassImplementationProgressPercent": 92,
+  "implementationDeltasWorkPass36": [
+    {
+      "area": "Shared primitives",
+      "status": "DONE",
+      "evidence": "NumericPrimitives, StableSerialization, shared action cost policy; targeted runtime and adapter tests pass."
+    },
+    {
+      "area": "Memory durability/compatibility",
+      "status": "DONE",
+      "evidence": "64-entry bounded revision history, byte accounting, restore normalization, legacy source-lineage round trip."
+    },
+    {
+      "area": "Source archive immutability",
+      "status": "DONE",
+      "evidence": "8,512/8,512 source member SHA256 checks; 10,427 historical snapshot entries and 3,873 legacy dedup entries resolved."
+    },
+    {
+      "area": "Release deployment E2E",
+      "status": "OPEN",
+      "evidence": "Dependency-installed app build, browser and interactive Live2D E2E not completed in this environment."
+    },
+    {
+      "area": "Independent capability evidence",
+      "status": "OPEN",
+      "evidence": "Real local model/provider inference, independent temporal holdout, external postcondition/reafference, rollback and soak remain open."
+    },
+    "Shared Unicode tokenizer preserving Lumina/Conscio separators as options",
+    "Immutable SHA-256 content-addressed preimages for source-archive and historical snapshots",
+    "Revision-history memory-budget accounting and legacy memory lineage round-trip",
+    "Shared stable serialization retaining persisted legacy fingerprint bytes",
+    "ReleaseContract aligned to runtime package/integration manifest; schema-223 migration regression added"
+  ],
+  "passImplementationProgressPercent": 85
+}

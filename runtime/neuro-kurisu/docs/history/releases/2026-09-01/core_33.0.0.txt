@@ -1,0 +1,420 @@
+import { randomUUID } from 'node:crypto';
+import type {
+  ActionKind,
+  OrganismDecisionTrace,
+  IntentCandidate,
+  OrganismCycleResult,
+  OrganismGoal,
+  OrganismObservation,
+  OrganismState,
+  OrganismNeeds,
+  EmbodimentFacet,
+  WorkspaceFrame,
+  ConsolidatedMemory,
+} from './types.ts';
+import type { JsonStateStore } from '../persistence/FileStateStore.ts';
+import { WorldModel, type PredictedOutcome, type InternalWorldState, type WorldModelSnapshot } from '../world/WorldModel.ts';
+import { migratePersistedOrganism, ORGANISM_STATE_SCHEMA } from '../persistence/StateMigrations.ts';
+import { EventLog, makeEvent } from '../memory/EventSourcing.ts';
+import { MultiTimescaleMemory } from '../memory/MultiTimescaleMemory.ts';
+import { AutobiographicalMemory } from '../memory/AutobiographicalMemory.ts';
+import { SelfModelEngine, defaultSelfModel } from '../cognition/SelfModelV2.ts';
+import { attend } from '../cognition/AttentionSchema.ts';
+import { SocialWorldModel } from '../cognition/SocialWorldModel.ts';
+import { ValuePlasticity, DEFAULT_ADAPTIVE_VALUES } from '../cognition/ValuePlasticity.ts';
+import { RecurrentWorkspaceV2 } from '../cognition/RecurrentWorkspaceV2.ts';
+import { IntrinsicExperimentGenerator } from '../cognition/IntrinsicExperimentGenerator.ts';
+import { KURISU_ORGANISM_CANON } from '../language/KurisuCanonProfile.ts';
+import { defaultBodyState } from '../body/EmbodiedBody.ts';
+import { SelfAuthorshipEngine, defaultSelfAuthorship } from '../cognition/SelfAuthorship.ts';
+import { SensorimotorLoop, defaultSensorimotorState } from '../cognition/SensorimotorLoop.ts';
+import { IntrinsicMotivationEngine, defaultIntrinsicDriveState } from '../cognition/IntrinsicMotivationEngine.ts';
+import { ActiveInferenceEngine, defaultActiveInferenceState, type ActiveInferenceScore } from '../world/ActiveInferenceEngine.ts';
+import { IdentityContinuityEngine, defaultIdentityContinuity } from '../cognition/IdentityContinuity.ts';
+import { MetaCognitiveMonitor, defaultMetaCognitiveState } from '../cognition/MetaCognitiveMonitor.ts';
+import { updateWorkspaceIgnition, defaultWorkspaceIgnition } from '../cognition/WorkspaceIgnitionMetrics.ts';
+import { ConsciousnessEvidenceLedger, defaultConsciousnessEvidence } from '../cognition/ConsciousnessEvidenceLedger.ts';
+import { SelfProjectEngine } from '../cognition/evolution/SelfProjectEngine.ts';
+import { AgencyDeliberationEngine } from '../cognition/evolution/AgencyDeliberationEngine.ts';
+import { ValueEvolutionEngine } from '../cognition/evolution/ValueEvolutionEngine.ts';
+import { IdentityTrajectoryEngine } from '../cognition/evolution/IdentityTrajectoryEngine.ts';
+import { AutobiographicalNarrativeEngine } from '../cognition/evolution/AutobiographicalNarrative.ts';
+import { RELEASE_CONTRACT } from '../system/ReleaseContract.ts';
+import { CapabilityRegistry } from '../system/CapabilityRegistry.ts';
+import { IntegritySentinel } from '../system/IntegritySentinel.ts';
+import { ReplayEngine } from '../system/ReplayEngine.ts';
+import { ActionGateway } from '../system/ActionGateway.ts';
+import { CognitiveNetworkBus, type SpecialistSignal } from '../cognition/CognitiveNetworkBus.ts';
+import { NeuromodulationSystem } from '../cognition/NeuromodulationSystem.ts';
+import { SemanticMemoryGraph } from '../memory/SemanticMemoryGraph.ts';
+import { CognitiveFieldEngine, defaultCognitiveField } from '../cognition/CognitiveField.ts';
+import { ContradictionReservoir, defaultContradictionReservoir } from '../cognition/ContradictionReservoir.ts';
+import { CognitiveBudgetManager, defaultCognitiveBudget } from '../cognition/CognitiveBudgetManager.ts';
+import { CognitiveImmuneSystem, defaultCognitiveImmune } from '../cognition/CognitiveImmuneSystem.ts';
+import { SourceMonitor, defaultSourceMonitor } from '../memory/SourceMonitor.ts';
+import { ProceduralSkillLibrary, defaultSkillLibrary } from '../learning/ProceduralSkillLibrary.ts';
+import { ScientificMethodEngine, defaultScientificMethod } from '../learning/ScientificMethodEngine.ts';
+import { LearnedResidualWorldModel, defaultLearnedResidual } from '../world/LearnedResidualWorldModel.ts';
+
+import { MemoryOS2, defaultMemoryOS2 } from '../developmental/MemoryOS2.ts';
+import { WorldModel2, defaultWorldModel2 } from '../developmental/WorldModel2.ts';
+import { RegretEngine, defaultRegretState } from '../developmental/RegretEngine.ts';
+import { SemanticScarEngine, defaultSemanticScarState } from '../developmental/SemanticScarEngine.ts';
+import { ValueProvenance, defaultValueProvenance } from '../developmental/ValueProvenance.ts';
+import { CommitmentRepair, defaultCommitmentRepair } from '../developmental/CommitmentRepair.ts';
+import { ModelSwitchContinuity, defaultModelSwitchContinuity } from '../developmental/ModelSwitchContinuity.ts';
+import { MicroDreamEngine, defaultMicroDream } from '../developmental/MicroDreamEngine.ts';
+import { DevelopmentalForks, defaultDevelopmentalForks } from '../developmental/DevelopmentalForks.ts';
+import { RelationshipSelf, defaultRelationshipSelf } from '../developmental/RelationshipSelf.ts';
+import { MultiHypothesisPersonality, defaultMultiHypothesisPersonality } from '../developmental/MultiHypothesisPersonality.ts';
+import { FutureSimulator, defaultFutureSimulator } from '../developmental/FutureSimulator.ts';
+import { LongTermSocialMind, defaultLongTermSocialMind } from '../developmental/LongTermSocialMind.ts';
+import { SelfGovernanceEngine, defaultSelfGovernance } from '../cognition/evolution/SelfGovernanceEngine.ts';
+import { FutureSelfModel, defaultFutureSelf } from '../cognition/evolution/FutureSelfModel.ts';
+
+
+const clamp = (x: number) => Math.max(0, Math.min(1, Number.isFinite(x) ? x : 0));
+const now = () => Date.now();
+
+export interface OrganismConfig {
+  enableHomeostasis?: boolean;
+  enableIntrinsicGoals?: boolean;
+  enableWorldModel?: boolean;
+  enableSelfPrediction?: boolean;
+  enableWorkspace?: boolean;
+  enableActiveInference?: boolean;
+  enableIntrinsicMotivation?: boolean;
+  enableValuePlasticity?: boolean;
+  enableSelfProjects?: boolean;
+  enableAgencyModel?: boolean;
+  enableValueEvolution?: boolean;
+  enableIdentityTrajectory?: boolean;
+  enableCognitiveNetwork?: boolean;
+  enableNeuromodulation?: boolean;
+  enableSemanticMemory?: boolean;
+  enableCognitiveField?: boolean;
+  enableContradictions?: boolean;
+  enableCognitiveBudget?: boolean;
+  enableCognitiveImmune?: boolean;
+  enableProceduralSkills?: boolean;
+  enableScientificMethod?: boolean;
+  enableLearnedResidualWorld?: boolean;
+}
+
+export interface OrganismFacets {
+  memory: import('./types.ts').MemoryFacet;
+  embodiment: EmbodimentFacet;
+  learning: import('./types.ts').LearningFacet;
+  consciousness: import('./types.ts').ConsciousnessFacet;
+  evolution: import('./types.ts').EvolutionFacet;
+  cognition: import('./types.ts').DevelopmentalCognitionFacet;
+  advanced: import('./types.ts').AdvancedDevelopmentFacet;
+}
+
+export interface OrganismSystemState {
+  release: string;
+  organismCore: string;
+  schemaVersion: number;
+  capabilities: import('../system/CapabilityRegistry.ts').CapabilitySnapshot;
+  integrity: import('../system/InvariantEngine.ts').IntegritySnapshot;
+  lastStateHash: string;
+  replaySignature: string;
+  lastReplayAt: number;
+  evolution: import('./types.ts').EvolutionResearchState;
+}
+
+export interface PersistedOrganism {
+  schemaVersion: number;
+  state: OrganismState;
+  goals: OrganismGoal[];
+  traces: OrganismDecisionTrace[];
+  memories: ConsolidatedMemory[];
+  worldModel: WorldModelSnapshot;
+  facets: OrganismFacets;
+  system: OrganismSystemState;
+}
+
+const defaultNeeds = (): OrganismNeeds => ({
+  energy: 0.82,
+  cognitiveLoad: 0.18,
+  uncertainty: 0.35,
+  socialNeed: 0.28,
+  novelty: 0.42,
+  identityCoherence: 0.88,
+  goalPressure: 0.18,
+});
+
+const defaultState = (): OrganismState => ({
+  version: ORGANISM_STATE_SCHEMA,
+  tick: 0,
+  at: now(),
+  needs: defaultNeeds(),
+  predictionError: 0.18,
+  attentionBudget: 0.82,
+  lastAction: 'none',
+  lastActionSuccess: null,
+  autonomyScore: 0,
+  selfPredictionError: 0,
+  predictedNextAction: 'none',
+  lastPredictionConfidence: 0,
+  worldContextVersion: 1,
+});
+
+function defaultMemoryFacet(): import('./types.ts').MemoryFacet { return { eventLog: [], autobiographicalMemories: [], selfModel: defaultSelfModel(), attention: attend({target:'none',reason:'initialization',salience:0,confidence:0.4,budget:0.82}), socialModel: [], adaptiveValues: { ...DEFAULT_ADAPTIVE_VALUES }, workspace: { capacity:5, items:[], broadcastId:'', recurrence:0,lastCompetition:0 }, semanticGraph: { nodes:[], edges:[], updates:0 }, experiments: [], counterfactuals: [], lastRetrievedMemoryIds: [] }; }
+function defaultEmbodimentFacet(): EmbodimentFacet { return { body: defaultBodyState(), bodyEvents: [], sleepSessions: [], lastSensorAt: 0, sensorFailures: 0 }; }
+function defaultLearningFacet(): import('./types.ts').LearningFacet { return { selfAuthorship: defaultSelfAuthorship(), sensorimotor: defaultSensorimotorState(), valueRevisionLog: [], longitudinal: { cycles: 0, lastBenchmarkAt: 0, lastScore: 0 }, neuromodulation: { dopamine01:.5,norepinephrine01:.42,acetylcholine01:.55,serotonin01:.58,explorationBias01:.5,exploitationBias01:.5,attentionGain01:.65,updateRate01:.35 } }; }
+function defaultConsciousnessFacet(): import('./types.ts').ConsciousnessFacet { return { intrinsic: defaultIntrinsicDriveState(), activeInference: defaultActiveInferenceState(), identityContinuity: defaultIdentityContinuity(), metacognition: defaultMetaCognitiveState(), workspaceIgnition: defaultWorkspaceIgnition(), consciousnessEvidence: defaultConsciousnessEvidence(), causalExperiments: [], researchQuestionsCompleted: [] }; }
+function defaultCognitionFacet(): import('./types.ts').DevelopmentalCognitionFacet {
+  return { cognitiveField: defaultCognitiveField(), contradictions: defaultContradictionReservoir(), budget: defaultCognitiveBudget(), immune: defaultCognitiveImmune(), sources: defaultSourceMonitor(), skills: defaultSkillLibrary(), scientific: defaultScientificMethod(), residualWorld: defaultLearnedResidual() };
+}
+
+function defaultEvolutionFacet(): import('./types.ts').EvolutionFacet {
+  return {
+    selfProjects: {
+      version: 1, projects: [], selectedProjectId: null, completedProjects: 0, abandonedProjects: 0,
+      ownProjectContinuity: 0.5, authorshipScore: 0.15, lastCreatedAt: 0,
+    },
+    agency: { version: 1, records: [], overrideRate: 0, autonomousChoiceRate: 0, lastDecisionAt: 0 },
+    valueEvolution: {
+      version: 1, revisions: [], evidenceStreaks: {},
+      protectedFloor: { truth: 0.9, autonomy: 0.78, responsibility: 0.82, care: 0.55, curiosity: 0.65, evidence: 0.82, social: 0.25 },
+      totalRevisionMagnitude: 0, lastRevisionAt: 0,
+    },
+    identityTrajectory: {
+      version: 1, samples: 0, continuity: 0.8, trajectoryStability: 0.8, projectContinuity: 0.5,
+      valueContinuity: 1, narrativeContinuity: 0.5, authoredContinuity: 0.5, chapters: [], anchorValues: [], anchorProjects: [], lastAt: 0,
+    },
+    narrative: { version: 1, chapters: [], continuity: 0.5, lastUpdatedAt: 0 },
+    network: {tick:0,capacity:3,lastBroadcast:null,history:[],totalIgnitions:0}, authoredProjectHistory: [], longitudinalMilestones: [],
+  };
+}
+
+function defaultAdvancedFacet(): import('./types.ts').AdvancedDevelopmentFacet { return {
+  memoryOS: defaultMemoryOS2(), worldModel2: defaultWorldModel2(), regret: defaultRegretState(), semanticScars: defaultSemanticScarState(),
+  valueProvenance: defaultValueProvenance(), commitmentRepair: defaultCommitmentRepair(), modelSwitch: defaultModelSwitchContinuity(),
+  microDreams: defaultMicroDream(), developmentalForks: defaultDevelopmentalForks(), relationshipSelf: defaultRelationshipSelf(), multiHypothesisPersonality: defaultMultiHypothesisPersonality(), futureSimulator: defaultFutureSimulator(), longTermSocialMind: defaultLongTermSocialMind(), selfGovernance: defaultSelfGovernance(), futureSelf: defaultFutureSelf(), consequenceAttribution: [],
+}; }
+
+function defaultPersisted(): PersistedOrganism {
+  return {
+    schemaVersion: ORGANISM_STATE_SCHEMA,
+    state: defaultState(),
+    goals: [],
+    traces: [],
+    memories: [],
+    worldModel: { belief: null, transitions: [] },
+    facets: {
+      memory: defaultMemoryFacet(),
+      embodiment: defaultEmbodimentFacet(),
+      learning: defaultLearningFacet(),
+      consciousness: defaultConsciousnessFacet(),
+      evolution: defaultEvolutionFacet(),
+      cognition: defaultCognitionFacet(),
+      advanced: defaultAdvancedFacet(),
+    },
+    system: {
+      release: RELEASE_CONTRACT.application, organismCore: RELEASE_CONTRACT.organismCore, schemaVersion: ORGANISM_STATE_SCHEMA,
+      capabilities: { version: 1, features: [], refreshedAt: 0 },
+      integrity: { ok: true, violations: [], warnings: [], checkedAt: 0 },
+      lastStateHash: '', replaySignature: '', lastReplayAt: 0,
+      evolution: {
+        version: 1, stage: 'emergence', intrinsicProjectCycles: 0, selfAuthoredActions: 0,
+        valueRevisionCycles: 0, identitySamples: 0, replaySignature: '', lastReplayAt: 0,
+      },
+    },
+  };
+}
+
+function goalScore(g: OrganismGoal): number {
+  return clamp(
+    g.importance * 0.34 +
+    g.urgency * 0.18 +
+    g.confidence * 0.16 +
+    (1 - g.progress) * 0.12 +
+    (g.source === 'intrinsic' || g.source === 'homeostatic' ? 0.12 : 0.05)
+  );
+}
+
+function needRelief(action: ActionKind, n: OrganismNeeds): number {
+  const relief = {
+    respond: n.socialNeed * 0.7 + n.goalPressure * 0.2,
+    explore: n.novelty * 0.65 + n.uncertainty * 0.55,
+    verify: n.uncertainty * 0.85 + n.identityCoherence * 0.08,
+    rest: (1 - n.energy) * 0.95 + n.cognitiveLoad * 0.55,
+    reflect: n.identityCoherence * 0.35 + n.uncertainty * 0.35 + n.goalPressure * 0.18,
+    wait: 0.2 + (1 - n.cognitiveLoad) * 0.2,
+    defer: n.cognitiveLoad * 0.3 + n.uncertainty * 0.25,
+  }[action];
+  return clamp(relief);
+}
+
+function actionCost(action: ActionKind): number {
+  return {
+    respond: 0.18,
+    explore: 0.42,
+    verify: 0.36,
+    rest: 0.05,
+    reflect: 0.22,
+    wait: 0.02,
+    defer: 0.08,
+  }[action];
+}
+
+function predictedUtility(action: ActionKind, g: OrganismGoal | null, n: OrganismNeeds): number {
+  const goalUtility = g ? goalScore(g) : 0;
+  const relief = needRelief(action, n);
+  const cost = actionCost(action);
+  const autonomyBonus = action === 'explore' || action === 'verify' || action === 'reflect' ? 0.06 : 0;
+  return clamp(goalUtility * 0.54 + relief * 0.46 + autonomyBonus - cost * 0.26);
+}
+
+function activeGoalPressureFallback(goals: OrganismGoal[]): string { return goals.find(g=>g.status==='active')?.title || ''; }
+
+export class OrganismCore {
+  private readonly config: Required<OrganismConfig>;
+  private readonly store: JsonStateStore<PersistedOrganism>;
+  private readonly world = new WorldModel();
+  private readonly events = new EventLog();
+  private readonly memories = new MultiTimescaleMemory();
+  private readonly autobiographical = new AutobiographicalMemory();
+  private readonly selfModel = new SelfModelEngine();
+  private readonly socialModel = new SocialWorldModel();
+  private readonly valuePlasticity = new ValuePlasticity();
+  private readonly workspaceV2 = new RecurrentWorkspaceV2();
+  private readonly selfAuthorship = new SelfAuthorshipEngine();
+  private readonly sensorimotor = new SensorimotorLoop();
+  private readonly experimentGenerator = new IntrinsicExperimentGenerator();
+  private readonly intrinsicMotivation = new IntrinsicMotivationEngine();
+  private readonly activeInference = new ActiveInferenceEngine();
+  private readonly identityContinuity = new IdentityContinuityEngine();
+  private readonly metacognition = new MetaCognitiveMonitor();
+  private readonly evidenceLedger = new ConsciousnessEvidenceLedger();
+  private readonly selfProjects = new SelfProjectEngine();
+  private readonly agencyDeliberation = new AgencyDeliberationEngine();
+  private readonly valueEvolution = new ValueEvolutionEngine();
+  private readonly identityTrajectory = new IdentityTrajectoryEngine();
+  private readonly narrative = new AutobiographicalNarrativeEngine();
+  private readonly capabilities = new CapabilityRegistry();
+  private readonly integrity = new IntegritySentinel();
+  private readonly replay = new ReplayEngine();
+  private readonly actionGateway = new ActionGateway({ live: /^(1|true|yes|on)$/i.test(process.env.ACTIONS_LIVE || '') });
+  private readonly cognitiveNetwork = new CognitiveNetworkBus();
+  private readonly neuromodulation = new NeuromodulationSystem();
+  private readonly semanticMemory = new SemanticMemoryGraph();
+  private readonly cognitiveField = new CognitiveFieldEngine();
+  private readonly contradictions = new ContradictionReservoir();
+  private readonly cognitiveBudget = new CognitiveBudgetManager();
+  private readonly cognitiveImmune = new CognitiveImmuneSystem();
+  private readonly sourceMonitor = new SourceMonitor();
+  private readonly skillLibrary = new ProceduralSkillLibrary();
+  private readonly scientificMethod = new ScientificMethodEngine();
+  private readonly residualWorld = new LearnedResidualWorldModel();
+  private readonly memoryOS = new MemoryOS2();
+  private readonly worldModel2 = new WorldModel2();
+  private readonly regretEngine = new RegretEngine();
+  private readonly semanticScars = new SemanticScarEngine();
+  private readonly valueProvenance = new ValueProvenance();
+  private readonly commitmentRepair = new CommitmentRepair();
+  private readonly modelSwitch = new ModelSwitchContinuity();
+  private readonly microDreams = new MicroDreamEngine();
+  private readonly developmentalForks = new DevelopmentalForks();
+  private readonly relationshipSelf = new RelationshipSelf();
+  private readonly multiHypothesisPersonality = new MultiHypothesisPersonality();
+  private readonly futureSimulator = new FutureSimulator();
+  private readonly longTermSocialMind = new LongTermSocialMind();
+  private readonly selfGovernance = new SelfGovernanceEngine();
+  private readonly futureSelf = new FutureSelfModel();
+  private capabilityRefreshedAt = 0;
+  private persistenceDepth = 0;
+  private persistenceDirty = false;
+  private persisted: PersistedOrganism = defaultPersisted();
+  private ready = false;
+
+  constructor(store: JsonStateStore<PersistedOrganism>, config: OrganismConfig = {}) {
+    this.store = store;
+    this.config = { enableHomeostasis: true, enableIntrinsicGoals: true, enableWorldModel: true, enableSelfPrediction: true, enableWorkspace: true, enableActiveInference: true, enableIntrinsicMotivation: true, enableValuePlasticity: true, enableSelfProjects: true, enableAgencyModel: true, enableValueEvolution: true, enableIdentityTrajectory: true, enableCognitiveNetwork: true, enableNeuromodulation: true, enableSemanticMemory: true, enableCognitiveField: true, enableContradictions: true, enableCognitiveBudget: true, enableCognitiveImmune: true, enableProceduralSkills: true, enableScientificMethod: true, enableLearnedResidualWorld: true, ...config };
+  }
+
+  async init(): Promise<void> {
+    const loaded = await this.store.load();
+    this.persisted = loaded ? migratePersistedOrganism(loaded) as PersistedOrganism : defaultPersisted();
+    const facets = this.persisted.facets ?? { memory: defaultMemoryFacet(), embodiment: defaultEmbodimentFacet(), learning: defaultLearningFacet(), consciousness: defaultConsciousnessFacet(), evolution: defaultEvolutionFacet(), cognition: defaultCognitionFacet() };
+    const evolutionDefault = defaultEvolutionFacet();
+    this.persisted = { ...defaultPersisted(), ...this.persisted, facets: {
+      memory: { ...defaultMemoryFacet(), ...(facets.memory ?? {}) },
+      embodiment: { ...defaultEmbodimentFacet(), ...(facets.embodiment ?? {}) },
+      learning: { ...defaultLearningFacet(), ...(facets.learning ?? {}) },
+      consciousness: { ...defaultConsciousnessFacet(), ...(facets.consciousness ?? {}) },
+      evolution: { ...evolutionDefault, ...(facets.evolution ?? {}),
+        selfProjects: { ...evolutionDefault.selfProjects, ...(facets.evolution?.selfProjects ?? {}) },
+        agency: { ...evolutionDefault.agency, ...(facets.evolution?.agency ?? {}) },
+        valueEvolution: { ...evolutionDefault.valueEvolution, ...(facets.evolution?.valueEvolution ?? {}) },
+        identityTrajectory: { ...evolutionDefault.identityTrajectory, ...(facets.evolution?.identityTrajectory ?? {}) },
+        narrative: { ...evolutionDefault.narrative, ...(facets.evolution?.narrative ?? {}) },
+      },
+      cognition: { ...defaultCognitionFacet(), ...(facets.cognition ?? {}) },
+      advanced: { ...defaultAdvancedFacet(), ...(facets.advanced ?? {}) },
+    }, system: { ...defaultPersisted().system, ...(this.persisted.system ?? {}) } };
+    this.persisted.facets.memory.semanticGraph = { ...defaultMemoryFacet().semanticGraph, ...(this.persisted.facets.memory.semanticGraph ?? {}) };
+    this.persisted.facets.learning.neuromodulation = { ...defaultLearningFacet().neuromodulation, ...(this.persisted.facets.learning.neuromodulation ?? {}) };
+    this.persisted.facets.evolution.network = { ...defaultEvolutionFacet().network, ...(this.persisted.facets.evolution.network ?? {}) };
+    this.persisted.facets.advanced = { ...defaultAdvancedFacet(), ...(this.persisted.facets.advanced ?? {}) };
+    this.persisted.state.version = ORGANISM_STATE_SCHEMA;
+    this.world.restore(this.persisted.worldModel);
+    this.events.restore(this.persisted.facets.memory.eventLog);
+    this.memories.restore(this.persisted.facets.memory.autobiographicalMemories);
+    this.selfModel.restore(this.persisted.facets.memory.selfModel);
+    this.socialModel.restore(this.persisted.facets.memory.socialModel);
+    this.valuePlasticity.restore(this.persisted.facets.memory.adaptiveValues);
+    this.workspaceV2.restore(this.persisted.facets.memory.workspace);
+    this.semanticMemory.restore(this.persisted.facets.memory.semanticGraph);
+    this.cognitiveField.restore(this.persisted.facets.cognition.cognitiveField);
+    this.contradictions.restore(this.persisted.facets.cognition.contradictions);
+    this.cognitiveBudget.restore(this.persisted.facets.cognition.budget);
+    this.cognitiveImmune.restore(this.persisted.facets.cognition.immune);
+    this.sourceMonitor.restore(this.persisted.facets.cognition.sources);
+    this.skillLibrary.restore(this.persisted.facets.cognition.skills);
+    this.scientificMethod.restore(this.persisted.facets.cognition.scientific);
+    this.residualWorld.restore(this.persisted.facets.cognition.residualWorld);
+    this.memoryOS.restore(this.persisted.facets.advanced.memoryOS);
+    this.worldModel2.restore(this.persisted.facets.advanced.worldModel2);
+    this.regretEngine.restore(this.persisted.facets.advanced.regret);
+    this.semanticScars.restore(this.persisted.facets.advanced.semanticScars);
+    this.valueProvenance.restore(this.persisted.facets.advanced.valueProvenance);
+    this.commitmentRepair.restore(this.persisted.facets.advanced.commitmentRepair);
+    this.modelSwitch.restore(this.persisted.facets.advanced.modelSwitch);
+    this.microDreams.restore(this.persisted.facets.advanced.microDreams);
+    this.developmentalForks.restore(this.persisted.facets.advanced.developmentalForks);
+    this.relationshipSelf.restore(this.persisted.facets.advanced.relationshipSelf);
+    this.multiHypothesisPersonality.restore(this.persisted.facets.advanced.multiHypothesisPersonality);
+    this.futureSimulator.restore(this.persisted.facets.advanced.futureSimulator);
+    this.longTermSocialMind.restore(this.persisted.facets.advanced.longTermSocialMind);
+    this.selfGovernance.restore(this.persisted.facets.advanced.selfGovernance);
+    this.futureSelf.restore(this.persisted.facets.advanced.futureSelf);
+    this.neuromodulation.restore(this.persisted.facets.learning.neuromodulation);
+    this.cognitiveNetwork.restore(this.persisted.facets.evolution.network);
+    this.selfAuthorship.restore(this.persisted.facets.learning.selfAuthorship);
+    this.sensorimotor.restore(this.persisted.facets.learning.sensorimotor);
+    this.intrinsicMotivation.restore(this.persisted.facets.consciousness.intrinsic);
+    this.activeInference.restore(this.persisted.facets.consciousness.activeInference);
+    this.identityContinuity.restore(this.persisted.facets.consciousness.identityContinuity);
+    this.metacognition.restore(this.persisted.facets.consciousness.metacognition);
+    this.evidenceLedger.restore(this.persisted.facets.consciousness.consciousnessEvidence);
+    this.selfProjects.restore(this.persisted.facets.evolution.selfProjects);
+    this.agencyDeliberation.restore(this.persisted.facets.evolution.agency);
+    this.valueEvolution.restore(this.persisted.facets.evolution.valueEvolution);
+    this.identityTrajectory.restore(this.persisted.facets.evolution.identityTrajectory);
+    this.narrative.restore(this.persisted.facets.evolution.narrative);
+    this.ready = true;
+    await this.capabilities.refresh();
+    this.capabilityRefreshedAt = Date.now();
+    await this.checkpoint();
+  }
+
+  async beginBatch(): Promise<void> { this.persistenceDepth += 1; }
+
+  async endBatch(): Promise<void> {
+    if (this.persistenceDepth === 0) return;
+    this.persistenceDepth -= 1;
+    if (this.persistenceDepth === 0 && this.persistenceDirty) {
+      this.persistenceDirty = false;

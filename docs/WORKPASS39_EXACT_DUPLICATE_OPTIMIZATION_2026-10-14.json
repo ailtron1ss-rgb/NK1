@@ -1,0 +1,50 @@
+{
+  "schemaVersion": 1,
+  "pass": "WorkPass39",
+  "date": "2026-10-14",
+  "sharedArchiveBlobsDeduplicated": 3,
+  "duplicateBlobBytesRemoved": 51660,
+  "sharedBlobs": [
+    {
+      "path": "docs/archive-optimization/historical-snapshot-blobs/5b8b25aa8cb28054dc2ef27838d5ca49e53a708744b1e5c756458d040760466c",
+      "sharedPath": "docs/archive-optimization/source-archive-blobs/5b8b25aa8cb28054dc2ef27838d5ca49e53a708744b1e5c756458d040760466c",
+      "sha256": "5b8b25aa8cb28054dc2ef27838d5ca49e53a708744b1e5c756458d040760466c",
+      "sizeBytes": 26417
+    },
+    {
+      "path": "docs/archive-optimization/historical-snapshot-blobs/8c66e2285673963a0b3280814ad6fc8f9a737d2f908cd448e69188cbf32f6661",
+      "sharedPath": "docs/archive-optimization/source-archive-blobs/8c66e2285673963a0b3280814ad6fc8f9a737d2f908cd448e69188cbf32f6661",
+      "sha256": "8c66e2285673963a0b3280814ad6fc8f9a737d2f908cd448e69188cbf32f6661",
+      "sizeBytes": 20927
+    },
+    {
+      "path": "docs/archive-optimization/historical-snapshot-blobs/6c08dac7d47d47a0cb4022a7669f76429f86e069e699b737d07c3509d4d94148",
+      "sharedPath": "docs/archive-optimization/source-archive-blobs/6c08dac7d47d47a0cb4022a7669f76429f86e069e699b737d07c3509d4d94148",
+      "sha256": "6c08dac7d47d47a0cb4022a7669f76429f86e069e699b737d07c3509d4d94148",
+      "sizeBytes": 4316
+    }
+  ],
+  "duplicateDocumentPointers": [
+    {
+      "path": "WORKPASS29_REPORT_2026-10-13.md",
+      "canonicalPath": "docs/PROJECT_CURRENT_STATUS_2026-10-13_WORKPASS29.md",
+      "oldBytes": 4805,
+      "newBytes": 283
+    },
+    {
+      "path": "WORKPASS32_TASKS_2026-10-13.md",
+      "canonicalPath": "docs/WORKPASS32_TASKS_2026-10-13.md",
+      "oldBytes": 2475,
+      "newBytes": 249
+    },
+    {
+      "path": "WORKPASS34_REPORT_2026-10-13.md",
+      "canonicalPath": "docs/WORKPASS34_REPORT_2026-10-13.md",
+      "oldBytes": 4814,
+      "newBytes": 251
+    }
+  ],
+  "allRemovedBlobPathsUnreferenced": true,
+  "removedBlobBytesRemainAvailableInSharedPool": true,
+  "restorationManifestsVerifiedBeforeRemoval": true
+}

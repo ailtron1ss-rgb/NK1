@@ -1,0 +1,78 @@
+{
+  "date": "2026-09-19",
+  "release": "P2687",
+  "methods": [
+    {
+      "name": "Titans-inspired surprise memory",
+      "source": "Google Research / arXiv 2501.00663",
+      "status": "adopted-partially",
+      "implementation": "predictionImpact01 + novelty01 in replay scoring"
+    },
+    {
+      "name": "Nested Learning / Continuum Memory",
+      "source": "Google Research, NeurIPS 2025",
+      "status": "adopted-partially",
+      "implementation": "fast/medium/slow replay lanes with different cadence"
+    },
+    {
+      "name": "Replay harm / sample-choice sensitivity",
+      "source": "Lifelong Learning Agents / PMLR 2026",
+      "status": "adopted",
+      "implementation": "interference guard + cooldown + redundancy penalty + independent validation"
+    },
+    {
+      "name": "FOREVER forgetting-curve replay",
+      "source": "ACL 2026",
+      "status": "adopted-partially",
+      "implementation": "exponential decayNeed with lane-specific half-life"
+    },
+    {
+      "name": "Multiple short-term + long-term memory networks",
+      "source": "Neural Networks 2026",
+      "status": "adopted-partially",
+      "implementation": "multiple replay timescales"
+    },
+    {
+      "name": "ALMA / meta-learning memory designs",
+      "source": "ICLR 2026 Workshop",
+      "status": "adopted-safely",
+      "implementation": "bounded online replay-weight feedback"
+    },
+    {
+      "name": "V-JEPA 2.1",
+      "source": "Meta AI Research 2026",
+      "status": "future-research",
+      "implementation": "none; principle tracked for latent world-model work"
+    },
+    {
+      "name": "Full gradient-based test-time training",
+      "source": "ICML 2025 TTT analysis",
+      "status": "deferred",
+      "reason": "mobile cost + risk of destabilizing persistent identity"
+    },
+    {
+      "name": "Order/signal-aware replay",
+      "source": "AISTATS/PMLR 2026, Provable Effects of Data Replay",
+      "status": "adopted-partially",
+      "implementation": "adaptive signal features + interference gate; task-order modeling remains future work"
+    },
+    {
+      "name": "Long-horizon continual-agent evaluation",
+      "source": "AgentOdyssey 2026",
+      "status": "adopted-for-evaluation",
+      "implementation": "planned holdout dimensions: retention, world acquisition, exploration, action diversity, cost"
+    },
+    {
+      "name": "Contextual replay policy mixture",
+      "source": "P2687 engineering extension",
+      "status": "adopted",
+      "implementation": "contextual weights from surprise, pressure, memory-pressure and energy with bounded floors"
+    },
+    {
+      "name": "Hot-path shared-state checkpoint projection",
+      "source": "P2687 engineering benchmark",
+      "status": "adopted",
+      "implementation": "ExperienceContinuum snapshot({clone:false}) internally; serializer remains durability boundary"
+    }
+  ]
+}

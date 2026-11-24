@@ -1,0 +1,479 @@
+{
+  "title": "Neuro Kurisu Project Progress Scorecard — WorkPass 70",
+  "date": "2026-10-19",
+  "workpass": "WorkPass70",
+  "baseArchive": "Neuro_Kurisu_WORKPASS69_2026-10-19.zip",
+  "runtime": "35.90.0",
+  "schema": 225,
+  "method": "Weighted engineering roadmap score, carried forward unchanged unless a release-relevant behavior is demonstrated by implementation plus reproducible evidence. Tests, report count and file count are not independent progress.",
+  "overallPercent": 80.1,
+  "previousOfficialScorePercent": 80.1,
+  "deltaPercentagePoints": 0,
+  "remainingWeightedRoadmapPoints": 19.9,
+  "workstreams": [
+    {
+      "id": "A",
+      "name": "Canonical source lineage and single-owner architecture",
+      "weight": 15,
+      "completionPercent": 100,
+      "weightedPoints": 15.0,
+      "previousPercent": 100,
+      "rationale": "Single writable organism state/memory authorities preserved. WorkPass39 adds a read-only cognitive ownership map and typed flow validation without parallel runtime state."
+    },
+    {
+      "id": "B",
+      "name": "Runtime integration, API/UI routes and smoke/linkage coverage",
+      "weight": 15,
+      "completionPercent": 99,
+      "weightedPoints": 14.85,
+      "previousPercent": 98,
+      "rationale": "Any structured API approvalRequired challenge can now pause the actual originating call, show a redacted preview and resume its captured JSON request exactly once after explicit approval. The cross-surface queue is now read-only to avoid conflicting approvals. Dependency-installed Vite and browser E2E remain open. WorkPass62 adds an authenticated, read-only ActionGateway recovery endpoint and a visible redacted Runtime Atlas queue; installed Vite/browser E2E remains open. WorkPass66 fixes runtime typecheck compiler selection so a fully installed project prefers the app lockfile-pinned TypeScript; production app/browser E2E is still blocked. WorkPass70 unifies browser Live2D parent-to-viewer control into a versioned EmbodimentIntent v1 envelope; per-utterance speech IDs and monotonic viseme/audio clocks are aligned to SpeechSynthesis boundary events when exposed, with stale callback/state rejection and target-bound cancellation. Nine targeted timeline/viewer-handler tests and 227 app-script tests pass; dependency-complete production app build and real browser/audio/Live2D timing remain unverified, so score is unchanged."
+    },
+    {
+      "id": "C",
+      "name": "Memory 2.0, retrieval/admission and benchmark evidence",
+      "weight": 15,
+      "completionPercent": 72,
+      "weightedPoints": 10.8,
+      "previousPercent": 70,
+      "rationale": "Memory admission now respects net utility, harm/redundancy and provenance even without budget pressure. Independent labelled temporal holdout remains open and retrieval uplift is still zero."
+    },
+    {
+      "id": "D",
+      "name": "Agency, action schema, execution, outcome and reafference",
+      "weight": 20,
+      "completionPercent": 87,
+      "weightedPoints": 17.4,
+      "previousPercent": 86,
+      "rationale": "WorkPass57 hardens outcome truth and delayed evidence correlation: external postcondition mismatch is distinct from success; inferred durable idempotency protects legacy mutation registrations; late observations survive bounded-index eviction/migration; learning credit now requires source provenance and independence. Simulated integrations pass; real provider/device postconditions and reconnect/replay remain open. WorkPass58 adds preflight across the complete reusable-skill candidate set and project tool path before partial execution/budget spend; real adapter E2E remains open. WorkPass59 closes the false-outcome/false-learning gap: non-execution gates are audit-only, skill/project competence updates require actual executor entry, and partial replay plus a blocked step is not treated as full replay. Real adapter postconditions and restart reconciliation remain open. WorkPass60 added versioned project-step checkpointing and reconciliation-first resume. WorkPass61 closes the code-level authoritative provider-found receipt conflict using append-only evidence revisions: base execution/outcome fingerprint and original action/outcome/evidence event IDs remain immutable; receipt replay is idempotent, changed content conflicts, and revision refs persist through snapshots/migration. Real provider/device postconditions, actual process restart and live receipt semantics remain unverified. WorkPass62 forces process death after a simulated provider accepts the action and again after finalization but before receipt commit; read-only reconciliation and idempotent recovery keep the simulated side-effect count at one. Physical adapter E2E remains open. WorkPass63: ambiguous keyed mutator exceptions and negative responses stay pending, and reusable skill fallback/learning is suppressed; local filesystem read-after-write is proven, but live provider/device postconditions remain open, so score is unchanged. WorkPass68 routes EmbodimentRuntime speech through OrganismCore.executeTool and ActionGateway with stable speechEventId/idempotency; post-start TTS timeout, signal and non-zero exit remain unknown and do not trigger blind retry or failure learning. Fake-process coverage passes; live Android playback postcondition remains open."
+    },
+    {
+      "id": "E",
+      "name": "Portable subject continuity and social/known-entity dossier",
+      "weight": 10,
+      "completionPercent": 76,
+      "weightedPoints": 7.6,
+      "previousPercent": 75,
+      "rationale": "Unified cycle verification is tied to actual same-tick causal edges; this improves continuity evidence but is not a claim of subjective consciousness."
+    },
+    {
+      "id": "F",
+      "name": "External transport, SDK, idempotency and replay",
+      "weight": 10,
+      "completionPercent": 48,
+      "weightedPoints": 4.8,
+      "previousPercent": 46,
+      "rationale": "Stable IDs for new evidence and legacy ID continuity are improved; external transport delivery receipts/reconnect and multi-provider reconciliation remain open. WorkPass58 stops external HTTP callers from self-asserting autonomous provenance and keeps normalized decision identity across approval/resume; live transport validation remains open. WorkPass60 resumes unresolved work through read-only provider reconciliation and retains the exact operation identity while blocking changed payloads. Real provider receipt finalization and multi-provider transport validation remain open. WorkPass61 maps authoritative provider-found outcomes to a separate persisted evidence-revision record and CognitiveEventFabric reconciliation event without replaying the side effect or rewriting the original receipt trace. Real multi-provider delivery, live receipts and device transport recovery remain open. WorkPass62 adds a redacted unresolved execution inventory and exercises two SIGKILL/restart windows over the durable file store; live multi-provider/device delivery remains open. WorkPass63: lost-ACK/restart/receipt/read-after-write is now tested against a real local filesystem target with the provider receipt stored separately; live provider/device semantics still remain open, so score is unchanged. WorkPass68 aligns speech execution with canonical gateway receipts and maps post-start uncertainty to unresolved reconciliation. This still lacks physical device/remote provider semantics and independent playback evidence."
+    },
+    {
+      "id": "G",
+      "name": "Research promotion and controlled experiments",
+      "weight": 5,
+      "completionPercent": 70,
+      "weightedPoints": 3.5,
+      "previousPercent": 66,
+      "rationale": "WorkPass40 reviews the existing source archives and upstream contracts, adds SBOM/provenance inventory, and adapts the documented OpenAI-compatible llama.cpp endpoint into the existing P40 model ecology. External source clones and target-hardware inference remain pending where network or target hardware is unavailable."
+    },
+    {
+      "id": "H",
+      "name": "Release durability: build, E2E, rollback, soak, SBOM/provenance",
+      "weight": 10,
+      "completionPercent": 61.5,
+      "weightedPoints": 6.15,
+      "previousPercent": 59,
+      "rationale": "WorkPass57 aligns root/runtime pass metadata, expands architecture audit to cross-package source imports, and passes source hygiene, integrity, syntax, receipt and recovery checks. Installed Vite/browser E2E, live provider/device validation, clean-room rollback, manual nested-source license sign-off and soak remain open. WorkPass58 aligns root/runtime release metadata and current-pass docs; root metadata contract and final packaged archive are revalidated before delivery, while actual release gates remain open. WorkPass60 adds scoped restart/reconciliation regression tests and release metadata, but production browser/device validation, clean-room rollback and soak are still open. WorkPass61 regenerates runtime release/architecture/archive manifests and synchronizes the current scorecard; this does not close production build, browser/device E2E, rollback or soak gates. WorkPass62 adds a child-process crash/restart integration with durable FileStateStore and visible recovery queue. App dependencies are not installed in this environment, so production Vite/browser/Live2D E2E, rollback and soak remain open. WorkPass63 adds the local filesystem failure-path E2E and release metadata contract; npm registry DNS prevented app dependency installation, so production app build/browser E2E, remote provider/device, rollback, license review and soak remain open. WorkPass66 fixes install:all to govern both app/runtime lockfiles and repairs the stale release manifest contract. Actual app install/build remains blocked by registry DNS; external provider/device, browser E2E, rollback, license review and soak remain open. WorkPass68 adds deterministic Termux TTS and gateway-boundary regressions plus manifest alignment. The long nested suite timed out in the wrapper and was decomposed; no single aggregate PASS is claimed, and networked install/app build, browser/Live2D E2E, live device/provider, rollback, licensing and soak remain open."
+    }
+  ],
+  "normalizedTaskInventory": {
+    "count": 111,
+    "counts": {
+      "DONE": 92,
+      "PARTIAL": 11,
+      "TODO": 8
+    }
+  },
+  "openReleaseGates": [
+    "Install app dependencies from committed lockfile in a network-enabled clean environment; run production Vite build, app typecheck, desktop/mobile browser E2E and capture real browser audio / Live2D parameter timing. Measure p95 audio-to-mouth offset on target hardware.",
+    "Validate voice interruption and stale-event behavior using actual browser output audio and a real Android/Termux TTS target; process exit alone is not proof of silence.",
+    "Run exact acceptance/ACK-gap/process-kill/reconnect/duplicate-replay/postcondition protocol against a configured real HTTP/provider/device adapter; local filesystem fixtures do not close this gate.",
+    "Run independent labelled Russian/English memory holdout; retrieval delta remains zero / candidate not promoted.",
+    "Complete causal learning validation over real provider receipt, independent observation, causal projection, temporal credit and restart; ambiguous/refused outcomes must not affect competence learning.",
+    "Run live initiative/interest feedback soak, controlled self-improvement promotion/rollback, target-host GTX 1650 4GB model profile, clean-room restore and 24h minimum (72h recommended) soak; complete manual path/model/dataset license review."
+  ],
+  "environmentNote": "Node 22 and globally available TypeScript 5.8.3 are present; runtime typecheck and targeted checks run. Chromium is installed but hangs before rendering a simple page in this container because of graphics/zygote initialization; actual browser audio/Live2D E2E is unavailable. App dependencies are absent and previous npm registry DNS/network errors block clean install.",
+  "releaseStatus": "implementation-workpass; release gates remain open",
+  "limitations": [
+    "WorkPass63 tests an actual temporary filesystem target with a separate durable receipt; it is not a live HTTP, Android or device provider.",
+    "Production app build/browser/Live2D journeys remain unverified because dependency installation was blocked by npm DNS/network failure.",
+    "Independent memory retrieval holdout remains open with recallDelta=0; candidates remain not-promoted.",
+    "Real remote provider/device receipt guarantees, clean-room rollback, manual nested-source license sign-off, target GPU profiling and endurance soak remain open.",
+    "The app dependency tree is not installed in this environment; production Vite build, dependency-complete app typecheck, real desktop/mobile browser E2E and target-device performance remain open.",
+    "WorkPass70 speech-to-Live2D synchronization uses boundary elapsedTime where exposed plus a monotonic fallback clock and grapheme estimates. Chromium could not be launched successfully in this environment; actual browser audio/Live2D parameter timing and p95 offset remain unmeasured."
+  ],
+  "workpassImplementationProgressPercent": 100.0,
+  "implementationDeltasWorkPass36": [
+    {
+      "area": "Shared primitives",
+      "status": "DONE",
+      "evidence": "NumericPrimitives, StableSerialization, shared action cost policy; targeted runtime and adapter tests pass."
+    },
+    {
+      "area": "Memory durability/compatibility",
+      "status": "DONE",
+      "evidence": "64-entry bounded revision history, byte accounting, restore normalization, legacy source-lineage round trip."
+    },
+    {
+      "area": "Source archive immutability",
+      "status": "DONE",
+      "evidence": "8,512/8,512 source member SHA256 checks; 10,427 historical snapshot entries and 3,873 legacy dedup entries resolved."
+    },
+    {
+      "area": "Release deployment E2E",
+      "status": "OPEN",
+      "evidence": "Dependency-installed app build, browser and interactive Live2D E2E not completed in this environment."
+    },
+    {
+      "area": "Independent capability evidence",
+      "status": "OPEN",
+      "evidence": "Real local model/provider inference, independent temporal holdout, external postcondition/reafference, rollback and soak remain open."
+    },
+    "Shared Unicode tokenizer preserving Lumina/Conscio separators as options",
+    "Immutable SHA-256 content-addressed preimages for source-archive and historical snapshots",
+    "Revision-history memory-budget accounting and legacy memory lineage round-trip",
+    "Shared stable serialization retaining persisted legacy fingerprint bytes",
+    "ReleaseContract aligned to runtime package/integration manifest; schema-223 migration regression added"
+  ],
+  "passImplementationProgressPercent": 100.0,
+  "passImplementationProgress": 100.0,
+  "workpassImplementationProgress": 100.0,
+  "lastVerification": "2026-10-19: targeted embodiment/viewer protocol tests 9/9; app script suite 227/227; runtime typecheck PASS; viewer JS syntax/schema pass; release metadata and runtime contract/integrity/source checks PASS. Actual Chromium rendering could not start in this container; real browser audio E2E not claimed.",
+  "remainingPercent": 19.9,
+  "workpass43Evidence": {
+    "runtime": "35.64.0",
+    "schema": 225,
+    "receiptCausalTests": "8/8 PASS",
+    "idempotencyTests": "13/13 PASS",
+    "ledgerArchiveTests": "4/4 PASS",
+    "reafferenceIntegration": "1/1 PASS",
+    "sourceArchivesVerified": "8512/8512",
+    "historicalSnapshotEntriesVerified": "10427/10427",
+    "historicalSnapshotSourcesChecked": 18935,
+    "legacyDedupEntries": 3873,
+    "historicalDuplicatePaths": 56,
+    "immutableHistoricalSourceBlobsAdded": 3,
+    "memoryRecallDelta": 0,
+    "memoryCandidatePromotion": "not-promoted",
+    "aggregateAudit": "TIMEOUT (not pass)",
+    "appBuild": "NOT RUN: app dependencies absent"
+  },
+  "workpass44Evidence": {
+    "runtime": "35.65.0",
+    "schema": 225,
+    "receiptCausalTests": "9/9 PASS",
+    "externalEvidenceReplay": "PASS",
+    "actionCrashReconciliation": "PASS",
+    "memoryTombstoneSafety": "PASS",
+    "memoryRecallDelta": 0,
+    "memoryCandidatePromotion": "not-promoted",
+    "providerSideIdempotency": "not yet evidenced with real provider/device",
+    "appBuild": "not run: dependencies absent",
+    "browserE2E": "not run",
+    "overallOfficialScorePercent": 78,
+    "passImplementationProgressPercent": 90,
+    "sourceArchiveMembersVerified": "8512/8512",
+    "historicalSnapshotEntriesVerified": "10427/10427",
+    "historicalSnapshotContentSourcesChecked": 18935,
+    "immutableHistoricalSourceBlobsAdded": 3,
+    "sourceManifestReferencesPinned": 12,
+    "metadataContract": "34/34 + contract tests 6/6 PASS",
+    "appScriptTests": "218/218 PASS",
+    "browserSmokeContract": "51/51 PASS",
+    "uiApiLinkage": "125 routes / 49 surfaces / zero missing required seams",
+    "assets": "PASS; zero errors",
+    "provenance": "PASS; 464 locked npm components / 8 source archives",
+    "officialScorePercent": 78
+  },
+  "latestPassEvidence": "WorkPass70 adds one versioned browser-to-Live2D EmbodimentIntent, a monotonic speech audio clock shared by audioTimeMs and viseme sampling, character-boundary recalibration and stale event rejection. Nine targeted tests exercise the actual viewer message handler in a VM with instrumented telemetry. This is not actual browser rendering/audio E2E; production app build and acoustic timing remain unverified.",
+  "previousCumulativeImplementationProgressPercent": 71.9,
+  "passCompletion": {
+    "completed": 4,
+    "total": 4,
+    "percent": 100,
+    "formula": "Four scoped WorkPass69 code deliverables are complete locally. Tests are evidence, not independent roadmap progress. Overall weighted roadmap remains 80.1% until actual device/provider, dependency-complete app/browser, independent memory holdout and release gates close.",
+    "items": [
+      {
+        "id": "W69-A",
+        "title": "Remove duplicate physical speech executor and canonicalize android.speak alias",
+        "status": "DONE"
+      },
+      {
+        "id": "W69-B",
+        "title": "Route keyed target-bound speech interruption through ActionGateway with unknown-state preservation",
+        "status": "DONE"
+      },
+      {
+        "id": "W69-C",
+        "title": "Expose honest voice interruption status via server API, API client and operator UI",
+        "status": "DONE"
+      },
+      {
+        "id": "W69-D",
+        "title": "Add actual HTTP/UI smoke and concurrency/race regression coverage",
+        "status": "DONE"
+      }
+    ]
+  },
+  "implementationDeltasWorkPass61": [
+    {
+      "area": "Outcome evidence revisions",
+      "status": "DONE",
+      "evidence": "Authoritative provider-found receipt recorded as append-only revision tied to same execution; original outcome fingerprint remains immutable; receipt replay deduplicates; changed payload conflicts."
+    },
+    {
+      "area": "Causal trace integration",
+      "status": "DONE",
+      "evidence": "CausalAccountabilityGraph stores evidence-revision node/supersedes edge; CognitiveEventFabric appends sanitized reconciliation revision without duplicating canonical receipt trio."
+    },
+    {
+      "area": "Core finalization and durable state",
+      "status": "DONE",
+      "evidence": "Real OrganismCore integration test confirms provider-found path finalizes, persists snapshot refs, and does not rerun the side-effect executor."
+    },
+    {
+      "area": "Live provider/device/process-restart E2E",
+      "status": "OPEN",
+      "evidence": "Simulated provider-found lifecycle passes; real external provider/device and process-kill/restart evidence not obtained."
+    }
+  ],
+  "runtimeArchiveManifestFiles": 4261,
+  "resultArchiveFileEntries": 10207,
+  "archiveNamesEncoding": "PASS: UTF-8 ZIP names; all 10,197 WorkPass69 baseline entries retained; 9 new files; 16 changed existing files; zero removed baseline paths; target archive has 10,207 entries.",
+  "originalArchiveFilePathsRetained": 9337,
+  "newFiles": 9,
+  "changedExistingFiles": 16,
+  "archiveCRC": "PASS: final ZIP verified with ZipFile.testzip and unzip -t; all file contents matched the working tree.",
+  "workpass61Evidence": {
+    "workpass": 61,
+    "passCompletionPercent": 100.0,
+    "completedDeliverables": 8,
+    "totalDeliverables": 8,
+    "completedCodeChanges": [
+      "OutcomeCognitionFabric stores authoritative provider-receipt evidence revisions in a bounded append-only ledger without rewriting the original execution/outcome fingerprint.",
+      "CausalAccountabilityGraph records a dedicated evidence-revision node and supersedes edge, preserving the original tool action/outcome.",
+      "CognitiveEventFabric appends sanitized tool-reconciliation revision events and persists revision references independently of the canonical receipt trio.",
+      "OrganismCore finalization routes reconciled authoritative provider-found receipts through the revision contract and prevents duplicate side-effect execution.",
+      "State migrations and snapshots preserve revision identities and trace references; exact replay deduplicates and changed payloads fail closed.",
+      "Added direct OCF/CEF tests and an OrganismCore integration test for provider-found finalization, replay, conflict, migration and no duplicate side effect.",
+      "Runtime/root release metadata, generated manifests, current status, task inventory, scorecard and next-pass handover updated."
+    ],
+    "stillOpen": [
+      "Real provider/device execution, process termination/restart and live read-after-write postcondition E2E remain unverified.",
+      "Production Vite/browser/Live2D E2E; connected voice/audio synchronization and target hardware inference remain open.",
+      "Independent labelled memory retrieval holdout still has no demonstrated broad uplift (recallDelta=0, not-promoted).",
+      "Clean-room rollback, manual nested-source license sign-off and endurance soak remain release gates."
+    ]
+  },
+  "workpass61Completion": {
+    "completed": 8,
+    "total": 8,
+    "percent": 100.0,
+    "formula": "DONE code deliverables / all eight scoped WorkPass61 implementation deliverables * 100; tests are evidence, not separate progress items.",
+    "items": [
+      {
+        "id": "W61-A",
+        "title": "Append-only revision schema for authoritative provider receipts",
+        "status": "DONE"
+      },
+      {
+        "id": "W61-B",
+        "title": "Immutable base OutcomeCognition projection plus strict receipt identity/fingerprint replay guard",
+        "status": "DONE"
+      },
+      {
+        "id": "W61-C",
+        "title": "Causal accountability evidence-revision node and supersedes edge",
+        "status": "DONE"
+      },
+      {
+        "id": "W61-D",
+        "title": "Append-only CognitiveEventFabric receipt-revision event without rewriting canonical receipt trio",
+        "status": "DONE"
+      },
+      {
+        "id": "W61-E",
+        "title": "OrganismCore reconciliation finalizer routes provider-found receipts through revision contract",
+        "status": "DONE"
+      },
+      {
+        "id": "W61-F",
+        "title": "Snapshot/restore and schema migration preserve revision ledger and receipt trace references",
+        "status": "DONE"
+      },
+      {
+        "id": "W61-G",
+        "title": "Direct OCF/CEF plus real OrganismCore reconciliation regressions cover replay, conflict and no duplicate side effect",
+        "status": "DONE"
+      },
+      {
+        "id": "W61-H",
+        "title": "Version metadata, generated manifests, scorecard, current status and handover synchronized",
+        "status": "DONE"
+      }
+    ]
+  },
+  "implementationDeltasWorkPass62": [
+    {
+      "area": "Crash/restart durability",
+      "status": "DONE",
+      "evidence": "Two actual child-process SIGKILL windows pass with durable FileStateStore; side-effect before ACK and finalizer-before-completed-receipt windows both recover without duplicate effect."
+    },
+    {
+      "area": "Action recovery visibility",
+      "status": "DONE",
+      "evidence": "A bounded redacted unresolved-action queue is surfaced through the core, authorized API and Runtime Atlas; no raw request, key hash, fingerprint or provider payload is exposed."
+    },
+    {
+      "area": "Read-only reconciliation/replay",
+      "status": "DONE",
+      "evidence": "The provider lookup is read-only; same execution identity and evidence revision replay; final ledger becomes completed once and side-effect counter stays 1."
+    },
+    {
+      "area": "Live external and release validation",
+      "status": "OPEN",
+      "evidence": "Provider receipt is simulated; live provider/device, production browser/Live2D E2E, rollback, licenses and soak remain unverified."
+    }
+  ],
+  "archiveSha256": "External sidecar: Neuro_Kurisu_WORKPASS70_2026-10-19.zip.sha256 (computed after final packaging).",
+  "implementationDeltasWorkPass63": [
+    {
+      "area": "Action result semantics",
+      "status": "DONE",
+      "evidence": "Keyed mutator generic exception and `ok:false` without explicit no-effect evidence return idempotency-recovery-required while keeping the durable ledger pending; explicit no-effect and partial remain distinct typed terminal/unresolved outcomes."
+    },
+    {
+      "area": "Skill/project learning firewall",
+      "status": "DONE",
+      "evidence": "Unverified/contradicted/partial and uncertain receipt states stop reusable skill attempts before fallback and suppress repair/learning. Completed unverified results remain redacted and reconcilable."
+    },
+    {
+      "area": "Late authoritative reconciliation",
+      "status": "DONE",
+      "evidence": "When no terminal outcome exists, a provider-found receipt produces the one canonical outcome and receipt trio; when a prior terminal outcome exists, WorkPass61 append-only evidence revision remains in effect."
+    },
+    {
+      "area": "Local acceptance/ACK-gap E2E",
+      "status": "DONE",
+      "evidence": "Independent child processes, durable FileStateStore, actual temporary target write, separate fsynced provider receipt, lost ACK, restore, read-only receipt lookup, independent target read-after-write and idempotent replay confirm a single local side effect."
+    },
+    {
+      "area": "Real external provider/release gates",
+      "status": "OPEN",
+      "evidence": "Live provider/device receipts, production browser/Live2D, app build, independent memory holdout, rollback, source-license review, target hardware profile and soak remain unproven."
+    }
+  ],
+  "workpass63Evidence": {
+    "runtime": "35.83.0",
+    "schema": 225,
+    "actionUncertaintyFirewall": "PASS",
+    "filesystemSideEffectRecovery": "PASS local filesystem target; not live provider/device",
+    "pendingFirstCoreReconciliation": "PASS",
+    "workpass62SigkillRegression": "PASS",
+    "memoryRecallDelta": 0,
+    "memoryCandidatePromotion": "not-promoted",
+    "appBuild": "blocked: npm registry DNS EAI_AGAIN",
+    "overallWeightedRoadmapPercent": 80.1,
+    "releaseStatus": "implementation-workpass; release gates remain open"
+  },
+  "implementationDeltasWorkPass65": {
+    "done": [
+      "Archive revision requires bounded provider receipt evidence or explicit authoritative confirmed-not-executed state",
+      "Revision preserves key/request/execution/tool identity and finite monotonic timestamp",
+      "Regression test rejects reconciled flag without provider evidence"
+    ],
+    "notClaimed": [
+      "Live provider/device E2E",
+      "Production app build and real browser/Live2D E2E",
+      "Independent memory retrieval uplift"
+    ]
+  },
+  "workpass64Evidence": {
+    "runtime": "35.85.0",
+    "schema": 225,
+    "typecheck": "PASS",
+    "archivedReceiptReconciliation": "PASS (3 scenarios; unresolved retention, archive revision, restart/replay)",
+    "legacyArchiveSpillReplay": "PASS (4 subtests)",
+    "workpass63Regression": "PASS (separate command; bounded child-process fault-injection harness)",
+    "workpass62ProcessKillRecovery": "PASS (two actual SIGKILL windows; local simulated provider receipt)",
+    "workpass61ReceiptRevision": "PASS",
+    "memoryRecallDelta": 0,
+    "memoryCandidatePromotion": "not-promoted",
+    "appBuild": "BLOCKED_NOT_RUN: current `npm run install:all` attempt timed out after npm ci reported EAI_AGAIN fetching ajv@^8.12.0; no app/node_modules were created; production build/browser E2E not run.",
+    "overallWeightedRoadmapPercent": 80.1,
+    "releaseStatus": "implementation-workpass; release gates remain open",
+    "runtimeArchiveManifest": "PASS (4256 runtime files; no missing/extra/hash mismatches)",
+    "memoryBenchmark": {
+      "corpus": 18,
+      "train": 4,
+      "holdout": 8,
+      "bootstrapSamples": 400,
+      "recallDelta": 0,
+      "promotion": "not-promoted"
+    }
+  },
+  "workpass66Evidence": {
+    "installerTests": "PASS 4/4 using deterministic fake npm executable; download not attempted by tests",
+    "runtimeCompilerSelection": "PASS app-lock TypeScript selected before global PATH in isolated fixture",
+    "runtimeTypecheck": "PASS with available PATH TypeScript 5.8.3; locked TypeScript 5.9.3 not installed because registry DNS fails",
+    "releaseContract": "PASS after regenerating stale release metadata; baseline was failing on 35.84.0 / WorkPass64 mismatch",
+    "appScripts": "PASS 218/218; browser smoke comparator contract PASS 51/51",
+    "memoryBenchmark": {
+      "recallDelta": 0,
+      "promotion": "not-promoted"
+    },
+    "appBuild": "BLOCKED by EAI_AGAIN DNS failure for registry.npmjs.org; npm warned that @hookform/resolvers 5.9.1 optional peer ajv ^8.12.0 differs from root ajv 6.15.0. Lockfile left unchanged pending registry-enabled reproducible resolution; no production build claim.",
+    "releaseStatus": "implementation-workpass; release gates remain open"
+  },
+  "workpass67Evidence": {
+    "runtime": "35.87.0",
+    "schema": 225,
+    "dependencyPruning": "@hookform/resolvers unused in active app source; removed direct manifest dependency and only-owned @standard-schema/utils lock entry; Ajv 6 retained for ESLint.",
+    "verification": "Dependency-contract and installer tests pass; runtime suite exits 0; app scripts 218/218; browser-smoke contract 51/51; memory benchmark passes with recallDelta=0/not-promoted; server imports, UI/API linkage, assets, integrity, release contract/source and metadata 34/34 pass separately. Aggregate wrapper timed out during long sequence, so no aggregate exit status claimed. Production build remains blocked by registry DNS; score unchanged.",
+    "weightedRoadmap": "80.1% unchanged; removing unused package is not counted as closing a release gate.",
+    "installerTimeout": "Process-group timeout fix added; 5/5 installer tests pass, including killing a child process launched by fake npm; actual 5 s retry exits fail-fast with SUPER_INSTALL=TIMEOUT."
+  },
+  "workpass69Evidence": {
+    "runtime": "35.89.0",
+    "schema": 225,
+    "typecheck": "PASS with available PATH TypeScript compiler",
+    "speechInterruptGateway": "PASS; canonical owner, key required, same-speech targeting, unknown result retained, no false playback verification",
+    "ttsConcurrency": "PASS with controlled child-process shim; no overlapping speech and no cancellation of a different utterance",
+    "serverSmoke": "PASS; actual server route POST /api/organism/voice/interrupt",
+    "uiSmoke": "PASS; actual local UI route and updated approvalRequired assertions",
+    "priorRecovery": "WorkPass64 archived receipt reconciliation, WorkPass38 ledger archive and WorkPass61 receipt revisions run as separate commands",
+    "memoryRecallDelta": 0,
+    "memoryCandidatePromotion": "not-promoted",
+    "appBuild": "BLOCKED_NOT_RUN: dependency tree absent and npm registry DNS unavailable",
+    "liveAndroidPlayback": "NOT VERIFIED; process termination is not proof of audible silence",
+    "overallWeightedRoadmapPercent": 80.1,
+    "releaseStatus": "implementation-workpass; release gates remain open",
+    "aggregateAudit": "PASS: root npm run audit:workpass69 exit 0; includes runtime acceptance, app scripts, browser-smoke contract, memory benchmark, server import, UI/API linkage, assets, runtime contract, integrity and release source.",
+    "appScriptTests": "PASS 218/218; browser-smoke contract 51/51 (not real browser E2E).",
+    "uiApiLinkage": "PASS routes=132 runtimeAtlas=50 requiredSeams=5.",
+    "runtimeArchiveManifest": "PASS 4261 manifest entries; final archive still checked independently."
+  },
+  "workpass70Evidence": {
+    "runtime": "35.90.0",
+    "schema": 225,
+    "intentContract": "PASS: one versioned EmbodimentIntent v1 envelope covers speech identity/clock/phase, mouth, face, gaze, body and cancellation.",
+    "visemeTimeline": "PASS: RU/EN grapheme-level timeline, UTF-16 SpeechSynthesis charIndex mapping, monotonic playback sampling and boundary re-anchoring.",
+    "lifecycle": "PASS: per-utterance stale callback guards; single monotonic audio clock shared by audioTimeMs and viseme sampling; delayed elapsedTime cannot lower the high-water mark; actual viewer handler protocol test verifies duplicate/rewound state, wrong cancellation token, origin and source rejection.",
+    "targetedTests": "PASS 9/9; app script suite 227/227; strict helper TypeScript check; viewer inline JavaScript syntax and in-VM message-handler protocol test; JSON-schema parse; runtime typecheck.",
+    "acousticAccuracy": "NOT VERIFIED: no actual browser/Live2D audio E2E; this remains approximate boundary-driven viseme timing, not PCM/phoneme-perfect synchronization.",
+    "appBuild": "BLOCKED_NOT_RUN: app dependencies absent and npm registry DNS/network previously unavailable.",
+    "memoryRecallDelta": 0,
+    "memoryCandidatePromotion": "not-promoted",
+    "overallWeightedRoadmapPercent": 80.1,
+    "releaseStatus": "implementation-workpass; release gates remain open"
+  },
+  "formula": "WorkPass70 scoped implementation is complete locally for its defined code deliverables. Tests and file counts are evidence, not independent roadmap progress. Overall weighted roadmap remains 80.1% until actual device/provider, dependency-complete app/browser, independent memory holdout and release gates close."
+}

@@ -1,0 +1,57 @@
+{
+  "version": 124,
+  "engine_version": "v124-memory-truth",
+  "verification": {
+    "current_tests": "84 passed",
+    "compileall": "PASS",
+    "verify_current": "PASS",
+    "checkpoint": "108/108",
+    "decontamination": "PASS",
+    "executable_stub_suspects": 0
+  },
+  "target_truth": {
+    "default": "fixed non-neural projection of x[t+1] and goal[t+1]",
+    "trainable_parameters": 0,
+    "persistent_state_dict_entries": 0,
+    "self_supervised_target_removed": true
+  },
+  "sparse_memory_causal_probe": {
+    "pre_query_read_mean_last": 0.050232477486133575,
+    "latent_intervention_effect_mean_abs": 0.0003720051026903093
+  },
+  "sparse_memory_gradient_probe": {
+    "trainable_parameter_tensors": 10,
+    "finite_nonzero_gradient_tensors": 10,
+    "coverage": 1.0
+  },
+  "end_to_end_benchmark": {
+    "dense_mean_query_cosine": 0.016476814945538838,
+    "sparse_mean_query_cosine": 0.032639747795959316,
+    "dense_mean_loss_delta_fraction": 0.009824157344005916,
+    "sparse_mean_loss_delta_fraction": 0.010126071914532714,
+    "candidate_status": "not promoted"
+  },
+  "parameter_report": {
+    "total_parameters": 71993.0,
+    "trainable_parameters": 71993.0,
+    "trainable_fraction": 1.0,
+    "current_neural_version": 124.0,
+    "abi_version": 18.0,
+    "spine_rank": 8.0,
+    "spine_topk": 3.0,
+    "data_grounded_target_enabled": 1.0,
+    "data_grounded_target_trainable_parameters": 0.0,
+    "current_abi_version": 20.0,
+    "compatibility_engine_source_version": 124.0,
+    "upstream_backend_count": 53.0,
+    "temporal_credit_enabled": 0.0,
+    "temporal_credit_mode": 1.0,
+    "erase_control_mode": 0.0,
+    "uncertainty_write_enabled": 0.0,
+    "delta_integrator_mode": 0.0,
+    "adaptive_compute_enabled": 0.0,
+    "gradient_subspace_enabled": 0.0,
+    "gradient_arbitration_enabled": 0.0
+  },
+  "next": "V125 collision-resistant addressing + sparse state execution + memory consolidation"
+}

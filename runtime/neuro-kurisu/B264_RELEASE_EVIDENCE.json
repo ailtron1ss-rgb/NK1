@@ -1,0 +1,54 @@
+{
+  "pass": "B264_CAUSAL_POLICY_LEARNING",
+  "verified": true,
+  "synthetic": {
+    "decisions": 364,
+    "policyUpdates": 353,
+    "policyReward01": 0.7992619047619045,
+    "baselineReward01": 0.28,
+    "unseenImprovement01": 0.5192619047619043,
+    "holdoutGain01": 0.47734740602756137,
+    "replayGain01": 0.0023958333333333193,
+    "policyGain01_after_replay": 0.1595145833333334,
+    "restorePreserved": true
+  },
+  "core": {
+    "decisions": 68,
+    "policyUpdates": 44,
+    "policyGain01": 0.11048973646244886,
+    "baselineMeanReward01": 0.2776920817193696,
+    "causalMeanReward01": 0.38818181818181846,
+    "meanRegret01": 0.1132635023290251,
+    "causalReliance01": 0.14491578935810379,
+    "replayRows": 10,
+    "replayGain01": 0.00856358778298777,
+    "restartPreserved": true
+  },
+  "regression": {
+    "b259": "PASS",
+    "b260": "PASS",
+    "b261": "PASS",
+    "b261_core": "PASS",
+    "b262_world": "PASS",
+    "b262_core": "PASS",
+    "b263_causal": "PASS",
+    "b263_core": "PASS",
+    "b264_policy": "PASS",
+    "b264_core": "PASS"
+  },
+  "gates": {
+    "typecheck": "PASS",
+    "architecture": "PASS",
+    "integrity": "PASS",
+    "hygiene": "PASS",
+    "forensics": "PASS",
+    "contract": "PASS",
+    "lockfile": "PASS",
+    "release_source": "PASS",
+    "doctor": "PASS",
+    "archive_manifest": "PASS",
+    "archive_verify": "PASS",
+    "syntax": "BLOCKED_BY_ENV_TIMEOUT",
+    "full_historical_audit": "NOT_CLAIMED_PASS"
+  }
+}

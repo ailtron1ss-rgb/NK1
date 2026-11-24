@@ -1,0 +1,24 @@
+import assert from 'node:assert/strict';
+import { EvidenceFirewallEngine } from '../src/organism/system/EvidenceFirewall.ts';
+import { ProjectResearchSession } from '../src/organism/system/ProjectResearchSession.ts';
+
+const fw=new EvidenceFirewallEngine();
+const session=new ProjectResearchSession(fw);
+session.begin('project-x');
+const base=(host,hash,at)=>({ok:true,verified:true,externalEvidence:true,url:`https://${host}/a`,finalUrl:`https://${host}/a`,status:200,contentType:'text/html',title:'t',contentHash:hash,bytes:100,snippet:'s',fetchedAt:at,trust01:.88,independenceKey:host});
+const now=Date.now();
+let state=session.ingest(base('a.example','h1',now));
+assert.equal(state.promoted,false);
+assert.equal(state.independentSources,1);
+state=session.ingest(base('a.example','h1',now+10));
+assert.equal(state.promoted,false,'same-source duplicate must not promote');
+state=session.ingest(base('b.example','h2',now+20));
+assert.equal(state.promoted,true,'two independent sources should promote');
+assert.ok(state.independentSources>=2);
+const snap=fw.snapshot();
+assert.equal(snap.promotedCount,1);
+assert.equal(fw.canPromote('project:project-x:research'),true);
+fw.observe({claimKey:'project:project-x:research',sourceClass:'external-api',sourceKey:'a.example',contentHash:'contradiction',confidence01:.1,trust01:.1,contradiction01:.95,at:now+30});
+assert.equal(fw.canPromote('project:project-x:research'),false);
+assert.equal(fw.claim('project:project-x:research').status,'contested');
+console.log('BIG_PASS_48_FIREWALL=PASS',JSON.stringify({independentSources:state.independentSources,promotionScore01:state.promotionScore01,promoted:state.promoted}));

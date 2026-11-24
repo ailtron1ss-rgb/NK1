@@ -1,0 +1,78 @@
+import { randomUUID } from 'node:crypto';
+
+export type SpecialistName = 'salience' | 'executive' | 'default' | 'sensorimotor' | 'memory' | 'social' | 'language';
+
+export interface SpecialistSignal {
+  specialist: SpecialistName;
+  score: number;
+  confidence: number;
+  target: string;
+  evidence: string[];
+  energyCost: number;
+}
+
+export interface NetworkBroadcast {
+  id: string;
+  tick: number;
+  winner: SpecialistName;
+  selected: SpecialistSignal[];
+  inhibited: SpecialistName[];
+  broadcastGain: number;
+  recurrentCycles: number;
+  weights: Record<SpecialistName, number>;
+  rationale: string[];
+}
+
+export interface CognitiveNetworkState {
+  tick: number;
+  capacity: number;
+  lastBroadcast: NetworkBroadcast | null;
+  history: NetworkBroadcast[];
+  totalIgnitions: number;
+}
+
+const clamp = (v:number,min=0,max=1) => Math.max(min, Math.min(max, v));
+const names: SpecialistName[] = ['salience','executive','default','sensorimotor','memory','social','language'];
+
+export class CognitiveNetworkBus {
+  private state: CognitiveNetworkState = { tick:0, capacity:3, lastBroadcast:null, history:[], totalIgnitions:0 };
+  private weights: Record<SpecialistName, number> = {
+    salience:1, executive:1, default:0.9, sensorimotor:1, memory:0.95, social:0.8, language:0.75,
+  };
+
+  restore(state: CognitiveNetworkState | undefined): void {
+    if (!state) return;
+    this.state = { tick:Number(state.tick||0), capacity:Math.max(1,Math.min(5,Number(state.capacity||3))), lastBroadcast:state.lastBroadcast ?? null, history:Array.isArray(state.history)?state.history.slice(0,64):[], totalIgnitions:Number(state.totalIgnitions||0) };
+    if (state.lastBroadcast?.weights) this.weights = { ...this.weights, ...state.lastBroadcast.weights };
+  }
+
+  stimulate(signals: SpecialistSignal[], tick:number, attentionBudget:number): NetworkBroadcast {
+    this.state.tick = tick;
+    const ranked = signals.map(s => ({ ...s, score: clamp(s.score) * (0.55 + 0.45 * clamp(this.weights[s.specialist])) * (0.65 + 0.35 * clamp(attentionBudget)) }))
+      .sort((a,b)=>b.score-a.score);
+    const selected = ranked.slice(0, this.state.capacity);
+    const winner = selected[0]?.specialist ?? 'default';
+    const selectedNames = new Set(selected.map(s=>s.specialist));
+    const inhibited = names.filter(n=>!selectedNames.has(n));
+    const winnerScore = selected[0]?.score ?? 0;
+    const runnerScore = selected[1]?.score ?? 0;
+    const ignition = clamp((winnerScore - runnerScore + 0.35) * (0.65 + 0.35 * clamp(attentionBudget)));
+    const recurrentCycles = Math.max(1, Math.min(4, Math.round(1 + ignition * 3)));
+    const broadcast: NetworkBroadcast = {
+      id: randomUUID(), tick, winner, selected, inhibited, broadcastGain: ignition,
+      recurrentCycles, weights:{...this.weights},
+      rationale:[`winner=${winner}`,`capacity=${this.state.capacity}`,`ignition=${ignition.toFixed(3)}`,`recurrent=${recurrentCycles}`],
+    };
+    this.state.lastBroadcast = broadcast;
+    this.state.history = [broadcast, ...this.state.history].slice(0,64);
+    if (ignition >= 0.45) this.state.totalIgnitions += 1;
+    for (const item of selected) {
+      this.weights[item.specialist] = clamp(this.weights[item.specialist] + (item.specialist===winner ? 0.012 : -0.003));
+    }
+    return structuredClone(broadcast);
+  }
+
+  broadcast(): NetworkBroadcast | null { return this.state.lastBroadcast ? structuredClone(this.state.lastBroadcast) : null; }
+  updateCapacity(capacity:number): void { this.state.capacity = Math.max(1, Math.min(5, Math.round(capacity))); }
+  snapshot(): CognitiveNetworkState { return structuredClone(this.state); }
+}

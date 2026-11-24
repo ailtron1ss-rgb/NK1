@@ -1,0 +1,178 @@
+import type { ActionKind } from '../core/types.ts';
+import type { TransferableSkill } from './TransferableEmbodiedSkillSystem.ts';
+
+const ACTIONS: ActionKind[] = ['respond','explore','verify','rest','reflect','wait','defer'];
+const RECOVERY_ACTIONS: ActionKind[] = ['verify','explore','reflect'];
+const clamp=(x:number,a=0,b=1)=>Math.max(a,Math.min(b,Number.isFinite(x)?x:(a+b)/2));
+const finite=(x:number,f=0)=>Number.isFinite(x)?x:f;
+const cosine=(a:number[],b:number[])=>{let d=0,aa=0,bb=0;for(let i=0;i<Math.min(a.length,b.length);i++){const x=finite(a[i]),y=finite(b[i]);d+=x*y;aa+=x*x;bb+=y*y;}return d/(Math.sqrt(aa*bb)+1e-9);};
+const deep=<T>(x:T):T=>structuredClone(x);
+const sig=(v:number[],n=8)=>Array.from({length:n},(_,i)=>clamp(Math.tanh(Math.max(-6,Math.min(6,finite(v[i%Math.max(1,v.length)]))))));
+
+export interface MetaSkill {
+  id:string;
+  actionMix:number[];
+  contextPrototype:number[];
+  outcomePrototype:number[];
+  childSkillIds:string[];
+  reward01:number;
+  success01:number;
+  confidence01:number;
+  uncertainty01:number;
+  stability01:number;
+  contradiction01:number;
+  usage:number;
+  sourceCount:number;
+  transfer01:number;
+  optionLength01:number;
+  lastTick:number;
+}
+
+export interface HierarchicalProceduralSkillEngineState {
+  version:1;
+  tick:number;
+  decisions:number;
+  transitions:number;
+  metaSkillCreations:number;
+  metaSkillUpdates:number;
+  childAssignments:number;
+  skillCompressions:number;
+  recoveryRoutes:number;
+  failedRoutes:number;
+  crossContextEvaluations:number;
+  crossContextSuccesses:number;
+  metaCoverage01:number;
+  hierarchyDepth01:number;
+  compressionRatio01:number;
+  transfer01:number;
+  recoveryQuality01:number;
+  abstractionGain01:number;
+  negativeTransfer01:number;
+  searchCost01:number;
+  selectedMetaSkillId:string|null;
+  selectedMetaConfidence01:number;
+  selectedAction:ActionKind|null;
+  lastActionScore01:number;
+  previousMetaSkillId:string|null;
+  metaSkills:MetaSkill[];
+}
+
+const defaultState=():HierarchicalProceduralSkillEngineState=>({
+  version:1,tick:0,decisions:0,transitions:0,metaSkillCreations:0,metaSkillUpdates:0,childAssignments:0,skillCompressions:0,recoveryRoutes:0,failedRoutes:0,crossContextEvaluations:0,crossContextSuccesses:0,
+  metaCoverage01:0,hierarchyDepth01:0,compressionRatio01:0,transfer01:0,recoveryQuality01:.5,abstractionGain01:0,negativeTransfer01:0,searchCost01:0,
+  selectedMetaSkillId:null,selectedMetaConfidence01:0,selectedAction:null,lastActionScore01:.5,previousMetaSkillId:null,metaSkills:[]
+});
+
+export class HierarchicalProceduralSkillEngine {
+  private state=defaultState();
+  readonly maxMetaSkills=16;
+
+  snapshot(){return deep(this.state);}
+  restore(raw?:Partial<HierarchicalProceduralSkillEngineState>|null){
+    const d=defaultState(),r:any=raw??{};
+    const arr=(v:any,n:number,f=0)=>Array.isArray(v)?v.slice(0,n).concat(new Array(Math.max(0,n-v.length)).fill(f)).slice(0,n):new Array(n).fill(f);
+    const metas=Array.isArray(r.metaSkills)?r.metaSkills.slice(-this.maxMetaSkills):[];
+    this.state={...d,...deep(r),version:1,
+      metaSkills:metas.map((m:any)=>({...m,actionMix:arr(m.actionMix,ACTIONS.length),contextPrototype:arr(m.contextPrototype,8),outcomePrototype:arr(m.outcomePrototype,8),childSkillIds:Array.isArray(m.childSkillIds)?m.childSkillIds.slice(0,8):[]})),
+      metaCoverage01:clamp(Number(r.metaCoverage01??0)),hierarchyDepth01:clamp(Number(r.hierarchyDepth01??0)),compressionRatio01:clamp(Number(r.compressionRatio01??0)),transfer01:clamp(Number(r.transfer01??0)),recoveryQuality01:clamp(Number(r.recoveryQuality01??.5)),abstractionGain01:clamp(Number(r.abstractionGain01??0)),negativeTransfer01:clamp(Number(r.negativeTransfer01??0)),searchCost01:clamp(Number(r.searchCost01??0))
+    };
+  }
+
+  private findMeta(context:number[],action:ActionKind,skills:TransferableSkill[]){
+    let best:MetaSkill|undefined,bestScore=-Infinity;
+    const ai=Math.max(0,ACTIONS.indexOf(action));
+    for(const m of this.state.metaSkills){
+      const actionFit=m.actionMix[ai]??0;
+      const ctx=cosine(m.contextPrototype,context);
+      const childFit=m.childSkillIds.length?clamp(m.childSkillIds.reduce((s,id)=>s+(skills.find(k=>k.id===id)?.confidence01??0),0)/m.childSkillIds.length):0;
+      const score=.58*ctx+.22*actionFit+.12*m.confidence01+.08*childFit-.18*m.contradiction01-.10*m.uncertainty01;
+      if(score>bestScore){bestScore=score;best=m;}
+    }
+    return {meta:best,score:bestScore};
+  }
+
+  private createMeta(skills:TransferableSkill[],tick:number){
+    if(this.state.metaSkills.length>=this.maxMetaSkills)return null;
+    const groups:TransferableSkill[][]=[];
+    for(const s of skills){
+      let g=groups.find(x=>x[0]&&x[0].action===s.action && cosine(x[0].contextPrototype,s.contextPrototype)>.66 && cosine(x[0].deltaPrototype,s.deltaPrototype)>.58);
+      if(!g){g=[];groups.push(g);}g.push(s);
+    }
+    let group=groups.filter(g=>g.length>=2).sort((a,b)=>b.length-a.length)[0];
+    if(!group){
+      const byAction=ACTIONS.map(a=>skills.filter(s=>s.action===a).sort((x,y)=>y.usage-x.usage).slice(0,4)).filter(g=>g.length>=2).sort((a,b)=>b.length-a.length)[0];
+      group=byAction;
+    }
+    if(!group)return null;
+    const w=group.reduce((s,x)=>s+Math.max(1,x.usage),0);
+    const avg=(f:(x:TransferableSkill)=>number)=>clamp(group.reduce((s,x)=>s+f(x)*Math.max(1,x.usage),0)/w);
+    const context=Array.from({length:8},(_,i)=>clamp(group.reduce((s,x)=>s+(x.contextPrototype[i]??0)*Math.max(1,x.usage),0)/w));
+    const outcome=Array.from({length:8},(_,i)=>clamp(group.reduce((s,x)=>s+(x.successorFeature[i]??0)*Math.max(1,x.usage),0)/w));
+    const actionMix=new Array(ACTIONS.length).fill(0);const first=group[0]!;actionMix[ACTIONS.indexOf(first.action)]=1;
+    const meta:MetaSkill={id:`meta-${tick}-${this.state.metaSkillCreations+1}`,actionMix,contextPrototype:context,outcomePrototype:outcome,childSkillIds:group.slice(0,8).map(x=>x.id),reward01:avg(x=>x.reward01),success01:avg(x=>x.success01),confidence01:avg(x=>x.confidence01),uncertainty01:avg(x=>x.uncertainty01),stability01:avg(x=>x.stability01),contradiction01:avg(x=>x.contradiction01),usage:group.reduce((s,x)=>s+x.usage,0),sourceCount:group.length,transfer01:avg(x=>x.confidence01*(1-x.contradiction01)),optionLength01:avg(x=>x.optionLength01),lastTick:tick};
+    this.state.metaSkills.push(meta);this.state.metaSkillCreations++;this.state.childAssignments+=meta.childSkillIds.length;return meta;
+  }
+
+  private maybeConsolidate(skills:TransferableSkill[],tick:number){
+    if(skills.length<12 || this.state.transitions%24!==0)return;
+    const created=this.createMeta(skills,tick);
+    if(created)this.state.abstractionGain01=clamp(this.state.abstractionGain01*.92+.12);
+    for(const m of this.state.metaSkills){
+      for(const s of skills){
+        if(m.actionMix[ACTIONS.indexOf(s.action)]<.5)continue;
+        const sim=cosine(m.contextPrototype,s.contextPrototype);
+        if(sim>.78 && !m.childSkillIds.includes(s.id) && m.childSkillIds.length<8){m.childSkillIds.push(s.id);this.state.childAssignments++;}
+      }
+    }
+    const raw=skills.length+this.state.metaSkills.length;this.state.compressionRatio01=clamp(1-(raw/(raw+Math.max(1,this.state.metaSkills.length*3))));this.state.skillCompressions++;
+  }
+
+  beforeDecision(args:{tick:number;context:number[];skills:TransferableSkill[];actionUtilities:Record<ActionKind,number>;goalPressure01:number;uncertainty01:number;predictionError01:number;computeBudget01:number;}):{actionBias:Record<ActionKind,number>;selectedMetaSkillId:string|null;selectedMetaConfidence01:number;selectedAction:ActionKind|null;recoveryAction:ActionKind|null;metaCoverage01:number;searchCost01:number}{
+    this.state.tick=args.tick;this.state.decisions++;
+    const context=sig(args.context),budget=clamp(args.computeBudget01);
+    this.maybeConsolidate(args.skills,args.tick);
+    const actionScores=ACTIONS.map(a=>{const f=this.findMeta(context,a,args.skills);const base=args.actionUtilities[a]??.5;return {a:a as ActionKind,f,v:base+clamp(f.score)*.045};});
+    actionScores.sort((a,b)=>b.v-a.v);
+    const top=actionScores[0],meta=top?.f.meta??null;
+    this.state.selectedMetaSkillId=meta?.id??null;this.state.selectedMetaConfidence01=meta?clamp(.55*top!.f.score+.45*meta.confidence01):0;this.state.selectedAction=top?.a??null;this.state.lastActionScore01=clamp(top?.v??.5);
+    const bias=Object.fromEntries(ACTIONS.map(a=>[a,0])) as Record<ActionKind,number>;
+    const evaluated=budget>.72?ACTIONS.length:budget>.48?5:3;
+    for(let i=0;i<evaluated;i++){
+      const e=actionScores[i];if(!e)break;const s=clamp(e.f.score);const metaPenalty=e.f.meta?(e.f.meta.contradiction01*.018+e.f.meta.uncertainty01*.012):0;bias[e.a]=clamp((s-.60)*.11-metaPenalty,-.08,.08);
+    }
+    let recovery:null|ActionKind=null;
+    if(args.predictionError01>.62 || (args.uncertainty01>.72 && this.state.selectedMetaConfidence01<.48)){
+      recovery=RECOVERY_ACTIONS.slice().sort((a,b)=>(args.actionUtilities[b]??.5)-(args.actionUtilities[a]??.5))[0]??'verify';
+      bias[recovery]=clamp((bias[recovery]??0)+.028,-.08,.08);this.state.recoveryRoutes++;
+    }
+    this.state.metaCoverage01=clamp(this.state.metaCoverage01*.95+(meta?.childSkillIds.length?1:0)*.05);
+    this.state.hierarchyDepth01=clamp(this.state.hierarchyDepth01*.94+(meta?1:0)*.06);
+    this.state.searchCost01=clamp(this.state.searchCost01*.94+(evaluated/ACTIONS.length)*.06);
+    this.state.previousMetaSkillId=this.state.selectedMetaSkillId;
+    return {actionBias:bias,selectedMetaSkillId:this.state.selectedMetaSkillId,selectedMetaConfidence01:this.state.selectedMetaConfidence01,selectedAction:this.state.selectedAction,recoveryAction:recovery,metaCoverage01:this.state.metaCoverage01,searchCost01:this.state.searchCost01};
+  }
+
+  afterOutcome(args:{tick:number;context:number[];action:ActionKind;reward01:number;predictionError01:number;verified01:number;skills:TransferableSkill[]}):{transfer01:number;negativeTransfer01:number;recoveryQuality01:number;metaSkillCount:number}{
+    this.state.tick=args.tick;this.state.transitions++;
+    const context=sig(args.context),found=this.findMeta(context,args.action,args.skills);const meta=found.meta;
+    if(meta){
+      const lr=.02+clamp(args.verified01)*.05;
+      meta.contextPrototype=meta.contextPrototype.map((v,i)=>clamp(v*(1-lr)+(context[i]??0)*lr));
+      meta.reward01=clamp(meta.reward01*(1-lr)+args.reward01*lr);meta.success01=clamp(meta.success01*.95+(args.reward01>.55?1:0)*.05);meta.confidence01=clamp(meta.confidence01*.94+(1-args.predictionError01)*.06);meta.uncertainty01=clamp(meta.uncertainty01*.92+args.predictionError01*.08);meta.stability01=clamp(meta.stability01*.96+args.verified01*.04);meta.contradiction01=clamp(meta.contradiction01*.92+Math.max(0,args.predictionError01-.45)*.08);meta.usage++;meta.lastTick=args.tick;this.state.metaSkillUpdates++;
+      const transfer=clamp(found.score*(1-args.predictionError01)*(.55+.45*clamp(args.verified01)));this.state.transfer01=clamp(this.state.transfer01*.93+transfer*.07);
+      if(args.reward01<.35 && args.predictionError01>.65){this.state.negativeTransfer01=clamp(this.state.negativeTransfer01*.95+found.score*.05);}
+      if(args.predictionError01>.62){const q=clamp(args.verified01*.65+(1-args.predictionError01)*.35);this.state.recoveryQuality01=clamp(this.state.recoveryQuality01*.92+q*.08);if(q<.42)this.state.failedRoutes++;}
+      this.state.crossContextEvaluations++;if(transfer>.52)this.state.crossContextSuccesses++;
+    }
+    const n=this.state.crossContextSuccesses/Math.max(1,this.state.crossContextEvaluations);this.state.transfer01=clamp(this.state.transfer01*.96+n*.04);this.state.metaCoverage01=clamp(this.state.metaCoverage01*.97+(meta?1:0)*.03);
+    return {transfer01:this.state.transfer01,negativeTransfer01:this.state.negativeTransfer01,recoveryQuality01:this.state.recoveryQuality01,metaSkillCount:this.state.metaSkills.length};
+  }
+
+  evaluateCrossContext(args:{context:number[];action:ActionKind;reward01:number;predictionError01:number;verified01:number}={context:[],action:'respond',reward01:.5,predictionError01:.5,verified01:.5}){
+    this.state.crossContextEvaluations++;const found=this.findMeta(sig(args.context),args.action,[]);const usable=!!found.meta&&found.score>.58;const success=usable&&args.reward01>.52&&args.predictionError01<.62&&args.verified01>.5;if(success)this.state.crossContextSuccesses++;const rate=this.state.crossContextSuccesses/Math.max(1,this.state.crossContextEvaluations);this.state.transfer01=clamp(this.state.transfer01*.97+rate*.03);return {usable,success,score:clamp(found.score),successRate01:rate};
+  }
+
+  metrics(){return deep(this.state);}
+}
+
+export const defaultHierarchicalProceduralSkillEngine=defaultState;

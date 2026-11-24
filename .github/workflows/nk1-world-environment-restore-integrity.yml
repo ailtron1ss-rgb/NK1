@@ -1,0 +1,60 @@
+name: NK1 world environment restore integrity
+
+on:
+  push:
+    branches:
+      - aspect/world-environment-restore-integrity-20261106
+    paths:
+      - "runtime/neuro-kurisu/src/organism/world/WorldEnvironment.ts"
+      - "runtime/neuro-kurisu/tests/world-environment-restore-integrity.mjs"
+      - ".github/workflows/nk1-world-environment-restore-integrity.yml"
+      - "engineering-os/aspects.v1.json"
+      - "docs/NK1_75_ASPECTS_EXECUTION_BACKLOG_RU.md"
+      - "README.md"
+      - "AGENTS.md"
+      - "NEUROCORE_START_HERE.md"
+      - "docs/NK1_DAILY_ENGINEERING_CYCLE_2026-11-06.md"
+  pull_request:
+    branches:
+      - workpass70-source
+    paths:
+      - "runtime/neuro-kurisu/src/organism/world/WorldEnvironment.ts"
+      - "runtime/neuro-kurisu/tests/world-environment-restore-integrity.mjs"
+      - ".github/workflows/nk1-world-environment-restore-integrity.yml"
+      - "engineering-os/aspects.v1.json"
+      - "docs/NK1_75_ASPECTS_EXECUTION_BACKLOG_RU.md"
+      - "README.md"
+      - "AGENTS.md"
+      - "NEUROCORE_START_HERE.md"
+      - "docs/NK1_DAILY_ENGINEERING_CYCLE_2026-11-06.md"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nk1-world-environment-restore-${{ github.event_name }}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  restore-integrity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: runtime/neuro-kurisu/package-lock.json
+      - name: Install locked runtime dependencies
+        working-directory: runtime/neuro-kurisu
+        run: npm ci
+      - name: Run atomic world restore integrity regressions
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/world-environment-restore-integrity.mjs
+      - name: Run world perception regression suite
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:world-perception
+      - name: Type-check canonical runtime
+        working-directory: runtime/neuro-kurisu
+        run: npm run typecheck

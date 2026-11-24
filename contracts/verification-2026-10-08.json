@@ -1,0 +1,75 @@
+{
+  "ok": true,
+  "releaseReady": false,
+  "releaseVersion": "0.1.2-super-will-pass2",
+  "build": "v20-WILL-PASS2",
+  "generatedAt": "2026-10-08T09:44:08Z",
+  "status": "verified-current-tree-with-environment-gated-release-items",
+  "canonical": {
+    "application": "35.40.0",
+    "organismCore": "100.32.0-r26-hierarchical-lowrank-causal",
+    "schema": 223
+  },
+  "gates": {
+    "runtimeTypecheck": "PASS",
+    "willIntegration": "9/9 PASS",
+    "willSurfaces": "3/3 PASS",
+    "serverSmoke": "PASS",
+    "organismSmoke": "PASS",
+    "selfAgency": "PASS",
+    "concurrency": "PASS",
+    "restartPersistence": "PASS",
+    "replay": "PASS",
+    "memoryDedup": "PASS",
+    "p34Integration": "PASS",
+    "p26TrueLearning": "PASS",
+    "p38Integration": "PASS",
+    "syntaxAudit": "PASS",
+    "lockAudit": "PASS",
+    "releaseSource": "PASS",
+    "integrityAudit": "PASS",
+    "architectureAudit": "PASS",
+    "coreOwnershipAudit": "PASS",
+    "contractAudit": "PASS",
+    "hygieneAudit": "PASS",
+    "sourceTruthAudit": "PASS",
+    "forensicsAudit": "PASS",
+    "fullProjectAudit": "PASS",
+    "archiveManifest": "PASS",
+    "p7Organism": "PASS",
+    "p8Genesis": "PASS"
+  },
+  "willIntegration": {
+    "implemented": "16/16",
+    "mode": "canonical-adapter",
+    "secondBrain": false,
+    "secondMemoryOwner": false,
+    "vectorEngine": "deterministic-hnsw-style",
+    "promotion": "evidence-gated"
+  },
+  "projectHardening": [
+    "serialized FileStateStore saves per store to avoid concurrent temporary-file commit races",
+    "restored read-only canonicalSelfAgencyAuthority bridge expected by live integration test",
+    "server rate limiting, payload bound, request timeout and malformed JSON handling",
+    "actual HNSW-style distance-comparison accounting in benchmark",
+    "replay timestamp preservation and idempotent ACK accounting"
+  ],
+  "environmentConstraints": [
+    "app/node_modules is absent, so clean UI TypeScript/Vite/browser E2E cannot be honestly marked PASS in this environment",
+    "the Library exposes the 2026-10-08 v20 archive checksum but not its raw archive bytes; the executable baseline used here is Neuro_Kurisu_SUPER_FINAL_2026-10-06_UPDATED.zip",
+    "the monolithic audit:all command exceeded the execution window after reaching historical test:p7; test:p7 was rerun independently and passed"
+  ],
+  "sourceBaseline": "Neuro_Kurisu_SUPER_FINAL_2026-10-06_UPDATED.zip",
+  "versionEvidence": {
+    "v20": "b85b1ffcc77505af38d24de29e050b867a927f0cd209b00450933559aacb8a88",
+    "v19": "690fd061c9ae5d641276687204c210d50dd575fbc054151d9ed123a1821baa81",
+    "v17": "f15431927793359126e3a26a57dc77cb3b0cbbd38a01164c046e2f9ecd5d9298",
+    "v13": "c977ce170b89d8b1948fd13b86c73d0a938a83df4db500610591cf1ac7217e22",
+    "v10": "2e2e297d0d14167b621e0fd1c846353a4c9740a1956bdaf89e491a970c7708eb"
+  },
+  "releaseArtifact": {
+    "archiveName": "Neuro_Kurisu_SUPER_WILL_INTEGRATED_v20_PASS2_2026-10-08.zip",
+    "archiveSha256": "external-sidecar: Neuro_Kurisu_SUPER_WILL_INTEGRATED_v20_PASS2_2026-10-08.sha256",
+    "sourceManifestSha256": "11e4c6ce9fbd71bf133fbfe233b4130ab26eef552835d7f5a9c90175a5a838ac"
+  }
+}

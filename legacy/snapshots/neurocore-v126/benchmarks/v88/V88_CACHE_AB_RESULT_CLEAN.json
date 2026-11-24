@@ -1,0 +1,14 @@
+{
+  "protocol": "3 seeds (0,1,2), A\u2192B\u2192C\u2192A\u2192B\u2192C, 12 optimizer steps/run",
+  "mean_wall_v87": 1.7456159219999943,
+  "mean_wall_v88": 1.6894580270000006,
+  "wall_delta_pct": -3.2170819647229343,
+  "mean_loss_delta_v87": 0.24360108375549316,
+  "mean_loss_delta_v88": 0.29812248547871906,
+  "mean_utility_refresh_events_v87": 6.0,
+  "mean_cache_refresh_events_v88": 3.0,
+  "mean_cache_refresh_slots_v88": 15.0,
+  "mean_cache_hit_rate_v88": 0.75,
+  "mean_selection_changes_v88": 7.333333333333333,
+  "note": "Attempted 5-seed rerun exceeded 120s and produced no result; only the completed 3-seed run is reported."
+}

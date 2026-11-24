@@ -1,0 +1,4 @@
+export interface DevelopmentalFork{ id:string;at:number;label:string;counterfactual:string;expectedDifference:string;}
+export interface DevelopmentalForkState{forks:DevelopmentalFork[];version:number;}
+export const defaultDevelopmentalForks=():DevelopmentalForkState=>({forks:[],version:1});
+export class DevelopmentalForks{private state=defaultDevelopmentalForks();restore(s:DevelopmentalForkState|undefined){this.state={...defaultDevelopmentalForks(),...(s??{}),forks:Array.isArray(s?.forks)?s!.forks.slice(0,64):[]};}create(label:string,counterfactual:string,expectedDifference:string){const row={id:`fork-${Date.now()}`,at:Date.now(),label,counterfactual,expectedDifference};this.state.forks=[row,...this.state.forks].slice(0,64);return structuredClone(row);}snapshot(){return structuredClone(this.state);}}

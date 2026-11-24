@@ -1,0 +1,110 @@
+{
+  "generatedAt": "2026-10-06",
+  "version": "0.1.0-super-merge",
+  "canonicalRuntime": "runtime/neuro-kurisu",
+  "ui": "app",
+  "research": [
+    "research/neurocore-v143",
+    "research/nomega-pass20",
+    "research/deepcode"
+  ],
+  "legacy": "legacy",
+  "buckets": {
+    "app/src": {
+      "files": 77,
+      "bytes": 309367,
+      "extensions": {
+        ".ts": 60,
+        ".tsx": 14,
+        ".css": 1,
+        ".md": 1,
+        ".json": 1
+      }
+    },
+    "runtime/neuro-kurisu/src": {
+      "files": 554,
+      "bytes": 5958021,
+      "extensions": {
+        ".ts": 553,
+        ".mjs": 1
+      }
+    },
+    "research": {
+      "files": 799,
+      "bytes": 4014913,
+      "extensions": {
+        ".py": 619,
+        ".md": 142,
+        ".json": 32,
+        ".toml": 2,
+        ".pyc": 2,
+        ".whl": 1,
+        ".jsonl": 1
+      }
+    },
+    "legacy": {
+      "files": 5185,
+      "bytes": 225808217,
+      "extensions": {
+        ".md": 2090,
+        ".mjs": 1202,
+        ".ts": 702,
+        ".py": 533,
+        ".json": 375,
+        ".txt": 109,
+        ".tsx": 61,
+        ".png": 35,
+        ".jsonl": 20,
+        ".docx": 15,
+        ".zip": 8,
+        ".sh": 7,
+        ".html": 6,
+        "[no-ext]": 5,
+        ".pdf": 4,
+        ".css": 3,
+        ".example": 2,
+        ".moc3": 2,
+        ".docs": 1,
+        ".cpuprofile": 1,
+        ".toml": 1,
+        ".whl": 1,
+        ".typed": 1,
+        ".js": 1
+      }
+    }
+  },
+  "spriteAssetMissing": [],
+  "visualProfileSpriteMissing": [],
+  "sourceMarkers": [
+    {
+      "file": "app/src/components/Labs.tsx",
+      "line": 82,
+      "text": "placeholder=\"Search memories…\""
+    },
+    {
+      "file": "app/src/components/ChatPanel.tsx",
+      "line": 76,
+      "text": "placeholder=\"Write to Kurisu…\""
+    },
+    {
+      "file": "app/src/components/ChatPanel.tsx",
+      "line": 78,
+      "text": "className=\"h-11 flex-1 rounded-md border border-border bg-bg px-3 text-sm text-fg placeholder:text-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40\""
+    },
+    {
+      "file": "research/neurocore-v143/src/neurocore/current/decontamination.py",
+      "line": 469,
+      "text": "treated as an external audit tool only; missing MEMO never degrades into a fake success."
+    },
+    {
+      "file": "research/nomega-pass20/core/meta_grammar.py",
+      "line": 279,
+      "text": "ir += [(I_LOAD, i), (I_LOADR, 0)]  # placeholder — use CMP via SELECT-like: load const 128"
+    },
+    {
+      "file": "research/nomega-pass20/core/nomega/program_acquisition_v2.py",
+      "line": 119,
+      "text": "# The placeholder above is patched by replacing self-add with subtract."
+    }
+  ]
+}

@@ -1,0 +1,101 @@
+{
+  "version": 1,
+  "release": "35.6.1-B290",
+  "generatedAt": "2026-09-13",
+  "b290": {
+    "standaloneCycles": 323,
+    "learningUpdates": 320,
+    "modesObserved": [
+      "verify",
+      "consolidate",
+      "reflect",
+      "protect"
+    ],
+    "evidenceStrength01": 0.852,
+    "causalConfidence01": 0.913,
+    "stability01": 0.6348,
+    "autonomy01": 0.6105,
+    "realityGate01": 0.87467,
+    "plasticityBudget01": 0.66032
+  },
+  "functionReality": {
+    "total": 3550,
+    "verified": 38,
+    "integrationOnly": 730,
+    "unsafeToAutoRun": 259,
+    "unverified": 2523,
+    "verifiedRate01": 0.010704225352112675
+  },
+  "runtime": {
+    "typecheck": "PASS",
+    "b289": "PASS",
+    "b290": "PASS",
+    "organismSmoke": "PASS",
+    "uiSmoke": "PASS",
+    "serverSmoke": "PASS",
+    "concurrency": "PASS",
+    "restart": "PASS",
+    "mobileHorizon1000": {
+      "pass": true,
+      "p95Ms": 143.51,
+      "ratio": 1.141,
+      "heapFirstMb": 71.1,
+      "heapLastMb": 144.9,
+      "memory": 131
+    },
+    "mobileHorizon1000CleanExtraction": {
+      "workingTreeVerified": true,
+      "workingTreeP95Ms": 143.51,
+      "cleanExtractionColdRunPass": false,
+      "cleanExtractionColdRunP95Ms": 201.71,
+      "thresholdMs": 180,
+      "thresholdRelaxed": false,
+      "interpretation": "host/cold-start variance remains an open mobile gate; must be rechecked on target Android/Termux device"
+    }
+  },
+  "claimsBoundary": {
+    "consciousnessEstablished": false,
+    "humanEquivalentMindEstablished": false,
+    "biologicalNeuralEquivalenceEstablished": false
+  },
+  "auditGates": {
+    "architecture": {
+      "pass": true,
+      "canonicalFiles": 373,
+      "missing": 0,
+      "cycles": 0,
+      "legacyLeakage": 0
+    },
+    "integrity": {
+      "pass": true,
+      "files": 2203,
+      "schema": 127
+    },
+    "contract": {
+      "pass": true
+    },
+    "hygiene": {
+      "pass": true,
+      "errors": 0,
+      "warnings": 0
+    },
+    "forensics": {
+      "pass": true,
+      "activeFiles": 2182,
+      "empty": 0,
+      "duplicateContent": 0,
+      "duplicateNames": 0,
+      "pathMarkers": 0,
+      "staleMarkers": 0
+    },
+    "full": {
+      "pass": true,
+      "errors": 0
+    }
+  },
+  "report": {
+    "docx": "docs/brain/NEURO_KURISU_35.6.1_B290_BIG_UPDATE_MASTER_AUDIT_2026-09-13.docx",
+    "renderedPages": 28,
+    "visualQa": "PASS"
+  }
+}

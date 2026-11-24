@@ -1,0 +1,99 @@
+{
+  "name": "Neuro-Kurisu SUPER WorkPass 12 change manifest",
+  "date": "2026-10-10",
+  "canonicalBaseArchive": "Neuro_Kurisu_SUPER_WILL_LUMINA_HEXIS_LETTA_CONSCIO_INTEGRATED_WORKPASS11_2026-10-10.zip",
+  "canonicalBaseSha256": "e167873c2254d7097cf2a4e479020a59ac55da49e830113e1ea5ebe8336771ce",
+  "runtime": "Neuro-Kurisu 35.40.0",
+  "schema": 223,
+  "scope": "Confidence-aware MRR non-inferiority gate, per-gate diagnostics, bootstrap seed validation, atomic exclusive publication for offline benchmark reports.",
+  "counts": {
+    "addedIncludingThisManifest": 2,
+    "addedListedExcludingThisManifest": 1,
+    "modifiedFilesWithContentHashes": 11,
+    "removed": 0
+  },
+  "manifestSelfReference": "This manifest excludes itself from addedFiles to avoid self-referential hashing.",
+  "addedFiles": [
+    {
+      "path": "docs/WORKPASS12_MEMORY_EVIDENCE_GATES_2026-10-10.md",
+      "bytes": 3944,
+      "sha256": "ab99ca16e1d333aeb29d0fb6c1be5c58fd65d10b3ad3853b14729230ba8bd61b"
+    }
+  ],
+  "modifiedFiles": [
+    {
+      "path": "CHANGELOG.md",
+      "bytes": 21536,
+      "sha256": "c1385822fc4fe972880bc9aa875b072b4ddd02df45f864d9a2cda258aee61db3",
+      "previousSha256": "cff90aee2b8392ba3f81bee34b18ee6691d476aa6a81fe0339be3ebfeaa4a167"
+    },
+    {
+      "path": "README.md",
+      "bytes": 5395,
+      "sha256": "2fe2794a2d5ed76da1ae60ae4e9ce92ddbb651b7cb8742025637ba696aca9351",
+      "previousSha256": "d359c453625845e3fc62dafece69ab1518ab65feab772b459eaf218de3904d72"
+    },
+    {
+      "path": "SUPER_VERSION.json",
+      "bytes": 3163,
+      "sha256": "62fac3a15f53d0e3eca4efb0a32ff4741f473798414c56d8b32731e4e384d011",
+      "previousSha256": "3d93c769ef0a0cc14d9529adcf720a210462004ee368bd07d66e79a212d48255"
+    },
+    {
+      "path": "runtime/neuro-kurisu/package.json",
+      "bytes": 227478,
+      "sha256": "4040566f4256a75769eb5708836d1f19663bcb0ed4b11baf05f0264a5568ee7a",
+      "previousSha256": "b27cfcdeb93dcf06476fd429a27dd0193d75d08e025112147cf974b98c7fd3cc"
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/memory/MemoryRetrievalBenchmark.ts",
+      "bytes": 21088,
+      "sha256": "a12b99cbdc47cb9cc2fbc3c005d6c08f7402e4beac1df83b2daf57a8e5515e9c",
+      "previousSha256": "b86547e28166973d9cb1c537c2aa9e698255c997812164406cccfa90335b5eb3"
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/memory/MemoryRetrievalExperiment.ts",
+      "bytes": 8017,
+      "sha256": "f7dab202d63cd77b5c22d8a90203cbc4f01c6eae9e6f301b89efd898893339e5",
+      "previousSha256": "49b7b9fcdee59d768349db9bc6adadf8d553535ab25d1d42e23a87fca4d0eb01"
+    },
+    {
+      "path": "runtime/neuro-kurisu/scripts/run-memory-retrieval-experiment.mjs",
+      "bytes": 7848,
+      "sha256": "785f90f0ed19eabfe6f961daca0db24660d2783b0d01d22bcbfb5df3f9269d4c",
+      "previousSha256": "a31fb4390641cef2236f86043a2566c8935886ff8acf37ab073f5378ffa0b5bb"
+    },
+    {
+      "path": "runtime/neuro-kurisu/tests/big-pass-126-memory-retrieval-benchmark.mjs",
+      "bytes": 10727,
+      "sha256": "b2350d8489ca167a3eb1be94f8b972d45b98648db368ae7241d92f305b164b3c",
+      "previousSha256": "e4b492f2adec0fe14e8255196ea5d34291462f57c3beecaa3a899682ee51cc10"
+    },
+    {
+      "path": "runtime/neuro-kurisu/tests/memory-retrieval-experiment.mjs",
+      "bytes": 8126,
+      "sha256": "ead6e3814a4d68fce5b8b0ada4068925cd2e7c0a0054dda2f0d8473fd6e4d28a",
+      "previousSha256": "b038b7c9e8b4b0a237737c3cfe87cf0e713770dc8af94bfe314be509ddf5656c"
+    },
+    {
+      "path": "docs/MEMORY_RETRIEVAL_EXPERIMENT_PROTOCOL_2026-10-10.md",
+      "bytes": 6695,
+      "sha256": "d5f5af9fce1291a5c28993443aa10e89c2632ecaa4e0ea6acd9eb358534b2060",
+      "previousSha256": "49e3f82033e280619f661f82c73b268bab7d3a6231c788ce66913d108406fa2e"
+    },
+    {
+      "path": "Список дел.md",
+      "bytes": 72116,
+      "sha256": "24059368fbad4a0afa8420389712ea49929bc245b51dc469e08122ec855cfda5",
+      "previousSha256": "5d7fa9b3fc943e63650cd090301100f01ac694b9d1d4b83076cca9cb98dc2c49"
+    }
+  ],
+  "removedFiles": [],
+  "verification": {
+    "command": "npm run audit:workpass12",
+    "result": "PASS",
+    "productionMemoryUpliftClaimed": false,
+    "fullAppBuildOrBrowserE2EClaimed": false,
+    "autoPromotion": false
+  }
+}

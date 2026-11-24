@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';
+import { TemporalResolutionGovernor } from '../src/organism/core/TemporalResolutionGovernor.ts';
+const g=new TemporalResolutionGovernor();
+const low=g.decide({profile:'mobile',externalSignal:false,pressure01:.25,predictionError01:.20,goalPressure01:.22,uncertainty01:.18,energy01:.82,thermal01:.18,ramPressure01:.18,battery01:.82,cpuLoad01:.22,tick:1,enabled:true,baseFullEvery:4});
+const pressured=g.decide({profile:'mobile',externalSignal:false,pressure01:.20,predictionError01:.18,goalPressure01:.18,uncertainty01:.12,energy01:.42,thermal01:.82,ramPressure01:.88,battery01:.33,cpuLoad01:.84,tick:2,enabled:true,baseFullEvery:4});
+const external=g.decide({profile:'mobile',externalSignal:true,pressure01:.20,predictionError01:.18,goalPressure01:.18,uncertainty01:.12,energy01:.42,thermal01:.82,ramPressure01:.88,battery01:.33,cpuLoad01:.84,tick:3,enabled:true,baseFullEvery:4});
+assert.ok(pressured.fullEvery>=6,'B304 resource governor did not reduce full-pulse cadence under pressure');
+assert.equal(external.runFullCognition,true,'B304 resource pressure incorrectly suppressed external signal');
+assert.equal(g.snapshot().lastReason,'external-signal','B304 external signal reason mismatch');
+console.log(JSON.stringify({pass:true,low,pressured,external,snapshot:g.snapshot()},null,2));
+process.exit(0);

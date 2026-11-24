@@ -1,0 +1,12 @@
+import assert from 'node:assert/strict';
+import { spawn } from 'node:child_process';
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+const dir=await mkdtemp(path.join(tmpdir(),'nk155-server-')); const port=35670+(process.pid%500);
+const child=spawn(process.execPath,['--experimental-strip-types','src/server/server.mjs'],{cwd:process.cwd(),env:{...process.env,HOST:'127.0.0.1',PORT:String(port),STATE_DIR:dir,NEURO_RUNTIME_PROFILE:'mobile',NEURO_CHECKPOINT_MIN_INTERVAL_MS:'0',NEURO_CHECKPOINT_MAX_DIRTY_CYCLES:'1',PHONE_MODE:'research'},stdio:['ignore','pipe','pipe']});
+let out=''; let err=''; child.stdout.on('data',d=>out+=d); child.stderr.on('data',d=>err+=d);
+const started=await new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(new Error('server-start-timeout\n'+out+'\n'+err)),12000); child.stdout.on('data',()=>{if(out.includes(`http://127.0.0.1:${port}`)){clearTimeout(timer);resolve(true);}}); child.on('exit',code=>{clearTimeout(timer); if(code!==null&&code!==0) reject(new Error(`server-exit-${code}\n${out}\n${err}`));});}); assert(started);
+const res=await fetch(`http://127.0.0.1:${port}/api/organism/verified-autonomous-life`); const data=await res.json(); assert.equal(res.status,200); assert.equal(data.ok,true); assert.equal(typeof data.benchmark.overall01,'number'); assert.equal(data.audit.pass,true);
+child.kill('SIGTERM'); await new Promise(r=>setTimeout(r,300)); await rm(dir,{recursive:true,force:true});
+console.log(`BIG_PASS_155_SERVER=PASS overall=${data.benchmark.overall01.toFixed(3)} audit=${data.audit.pass}`);

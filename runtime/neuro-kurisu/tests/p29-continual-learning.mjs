@@ -1,0 +1,10 @@
+import assert from 'node:assert/strict';
+import { P29LearningGovernanceEngine, defaultP29Governance } from '../src/organism/learning/P29LearningGovernance.ts';
+const g=new P29LearningGovernanceEngine();g.restore(defaultP29Governance());
+for(let i=0;i<5;i++) g.recordContinualTask('A',.82+.01*i);
+for(let i=0;i<5;i++) g.recordContinualTask('B',.74+.015*i);
+g.recordContinualTask('A',.55);
+const s=g.snapshot();
+assert.ok(s.continual.forgetting01>.1);
+assert.ok(s.continual.retention01<1);
+console.log(`P29_CONTINUAL=PASS forgetting=${s.continual.forgetting01.toFixed(3)} retention=${s.continual.retention01.toFixed(3)}`);

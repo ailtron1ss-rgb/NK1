@@ -1,0 +1,189 @@
+{
+  "title": "WorkPass44 independently executed gate results",
+  "date": "2026-10-15",
+  "workpass": 44,
+  "runtime": "35.65.0",
+  "schema": 225,
+  "status": "IMPLEMENTATION PASS; NOT RELEASE APPROVAL",
+  "officialWeightedScorePercent": 78.0,
+  "taskInventory": {
+    "DONE": 94,
+    "PARTIAL": 14,
+    "TODO": 12,
+    "total": 120
+  },
+  "passImplementationProgressPercent": 90,
+  "gates": [
+    {
+      "id": "release-metadata",
+      "status": "PASS",
+      "result": "34/34"
+    },
+    {
+      "id": "release-metadata-contract",
+      "status": "PASS",
+      "result": "6/6"
+    },
+    {
+      "id": "runtime-typecheck",
+      "status": "PASS",
+      "result": "TypeScript compiler"
+    },
+    {
+      "id": "workpass44-focused-chain",
+      "status": "PASS",
+      "result": "PASS: metadata + receipt/CEF + evidence replay + crash recovery + action idempotency/archive + typecheck"
+    },
+    {
+      "id": "receipt-cef-integration",
+      "status": "PASS",
+      "result": "9/9"
+    },
+    {
+      "id": "evidence-replay-memory-tombstones",
+      "status": "PASS",
+      "result": "unknown-vs-contradicted; exact execution identity; CEF restore; temporal credit; observer/trust/P84 replay; retired receipts"
+    },
+    {
+      "id": "action-crash-reconciliation",
+      "status": "PASS",
+      "result": "before effect / after effect / finalizer / completed commit / restart replay / conflict"
+    },
+    {
+      "id": "action-gateway-idempotency",
+      "status": "PASS",
+      "result": "13/13"
+    },
+    {
+      "id": "action-ledger-archive",
+      "status": "PASS",
+      "result": "4/4"
+    },
+    {
+      "id": "memory-lifecycle",
+      "status": "PASS",
+      "result": "canonical MemoryOS2; receiptCount=512; replayEventDelta=0"
+    },
+    {
+      "id": "reafference-integration",
+      "status": "PASS",
+      "result": "1/1; durable restore and delayed assignment applied once"
+    },
+    {
+      "id": "runtime-smoke",
+      "status": "PASS",
+      "result": "standalone CLEAN_ORGANISM_SMOKE=PASS"
+    },
+    {
+      "id": "runtime-restart-persistence",
+      "status": "PASS",
+      "result": "standalone CLEAN_RESTART_PERSISTENCE=PASS"
+    },
+    {
+      "id": "app-script-contracts",
+      "status": "PASS",
+      "result": "218/218"
+    },
+    {
+      "id": "browser-smoke-contract",
+      "status": "PASS",
+      "result": "51/51; contract tests only"
+    },
+    {
+      "id": "ui-api-linkage",
+      "status": "PASS",
+      "result": "125 client routes / 49 surfaces / zero missing seams"
+    },
+    {
+      "id": "asset-audit",
+      "status": "PASS",
+      "result": "0 errors; canonical Live2D source/refs and sprite assets resolved"
+    },
+    {
+      "id": "canonical-assets",
+      "status": "PASS",
+      "result": "6/6"
+    },
+    {
+      "id": "server-imports",
+      "status": "PASS",
+      "result": "11 checked; missing 0"
+    },
+    {
+      "id": "historical-path-restoration",
+      "status": "PASS",
+      "result": "4/4"
+    },
+    {
+      "id": "compacted-source-archives",
+      "status": "PASS",
+      "result": "8512/8512 members PASS; three exact WorkPass43 source blobs restored historical hash verification"
+    },
+    {
+      "id": "historical-snapshot",
+      "status": "PASS",
+      "result": "10427/10427 entries; 18935 source refs"
+    },
+    {
+      "id": "source-provenance-sbom",
+      "status": "PASS",
+      "result": "464 locked npm components; 8 source archives"
+    },
+    {
+      "id": "memory-retrieval-benchmark",
+      "status": "PASS",
+      "result": "corpus 18/train 4/holdout 8/400 CI samples; recallDelta 0; not-promoted"
+    },
+    {
+      "id": "vite-production-build",
+      "status": "NOT RUN",
+      "result": "app dependencies absent; not represented as pass"
+    },
+    {
+      "id": "interactive-browser-live2d-e2e",
+      "status": "OPEN",
+      "result": "no installed dependency browser run; contract-level tests do not satisfy this gate"
+    },
+    {
+      "id": "provider-device-idempotency-and-receipt-recovery",
+      "status": "OPEN",
+      "result": "token context propagation tested locally; actual provider/device has not proven honoring token/authoritative lookup"
+    },
+    {
+      "id": "target-host-inference",
+      "status": "OPEN",
+      "result": "needs target hardware/model measurement"
+    },
+    {
+      "id": "independent-retrieval-holdout-improvement",
+      "status": "OPEN",
+      "result": "measured recallDelta=0; candidate not promoted"
+    },
+    {
+      "id": "clean-room-upgrade-rollback",
+      "status": "OPEN",
+      "result": "needs fault-injected full upgrade/rollback evidence"
+    },
+    {
+      "id": "manual-nested-source-license-review",
+      "status": "OPEN",
+      "result": "provenance recorded; manual release disposition not complete"
+    },
+    {
+      "id": "long-soak",
+      "status": "OPEN",
+      "result": "not performed"
+    }
+  ],
+  "historicalFix": {
+    "issue": "WorkPass44 edits changed bytes used directly as source for 6 compact-manifest and 6 snapshot references",
+    "resolution": "copied WorkPass43 bytes of P83, CausalAccountabilityGraph and P84 to SHA-256 content-addressed blobs; pointed 12 manifest entries to immutable blobs while canonicalPath remains current source",
+    "recheck": "compact source archives 8512/8512; snapshot 10427/10427 / 18935 source refs"
+  },
+  "notes": [
+    "The focused aggregate chain passed. The full audit:workpass44 chain was attempted, but the tool returned while runtime typecheck was still running after preceding tests; no full aggregate PASS is claimed. Installed React/Vite build and real browser E2E remain open because app dependencies are absent.",
+    "Provider-facing idempotency token is capability plumbing, not proof of exactly-once execution at a remote service. A real adapter must propagate it and support authoritative receipt reconciliation.",
+    "Official weighted score remains 78.0% by policy; WorkPass44 implementation progress is 90%, a distinct measure.",
+    "During the pass, source archive verification exposed 6 hash mismatches across three actively evolved files. Exact prior WorkPass43 bytes were recovered from the original archive and pinned into SHA-256 content-addressed blobs; 12 compact-manifest/snapshot source references now resolve to those immutable bytes, and both history verifiers pass."
+  ]
+}

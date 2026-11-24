@@ -1,0 +1,27 @@
+import assert from 'node:assert/strict';
+import { MemoryStateStore } from '../src/organism/persistence/MemoryStateStore.ts';
+import { OrganismCore } from '../src/organism/core/OrganismCore.ts';
+
+const store=new MemoryStateStore();
+const core=new OrganismCore(store,{checkpointMinIntervalMs:0,checkpointMaxDirtyCycles:1});
+await core.init();
+const first=await core.observe({text:'исследуй и проверь экспериментальную ситуацию',novelty:.76,worldContext:{tick:1,location:'lab',energy:.8,attention:.82,uncertainty:.64,facts:['sensor stable'],objects:[{id:'sensor',label:'sensor',location:'lab',value:.7,visible:true,collected:false}],events:[]}});
+assert.ok(first.decision.selected);
+await core.feedback({success:.88,reward:.84,surprise:.1,worldTransition:{action:first.decision.selected.action,before:{tick:1,location:'lab',energy:.8,attention:.82,uncertainty:.64,facts:['sensor stable'],objects:[],events:[]},after:{tick:2,location:'lab',energy:.79,attention:.8,uncertainty:.41,facts:['sensor stable','verified'],objects:[],events:['transition']},reward:.84,surprise:.1,at:Date.now()}});
+const saved=await store.load();
+saved.goals=[{id:'exec-goal',title:'Автономно развить исследовательскую стратегию',reason:'big-pass-120-test',source:'intrinsic',status:'active',importance:.9,urgency:.82,confidence:.86,progress:0,createdAt:Date.now(),updatedAt:Date.now()},...(saved.goals??[])];
+await store.save(saved);
+const restored=new OrganismCore(store,{checkpointMinIntervalMs:0,checkpointMaxDirtyCycles:1});
+await restored.init();
+const second=await restored.observe({novelty:.64,worldContext:{tick:3,location:'lab-2',energy:.74,attention:.8,uncertainty:.58,facts:['new-context'],objects:[],events:[]}});
+const d=restored.developmentalExecutiveDiagnostics();
+assert.ok(d.projects>=1,JSON.stringify(d));
+assert.ok(d.activeProjects>=1,JSON.stringify(d));
+assert.ok(d.autonomousPlanning01>=.2,JSON.stringify(d));
+assert.ok(second.decision.selected);
+await restored.feedback({success:.78,reward:.76,surprise:.2});
+await restored.flush();
+const saved2=await store.load();
+assert.ok(saved2.facets.learning.developmentalExecutive);
+assert.ok(saved2.facets.learning.developmentalExecutive.decisions.length>=1);
+console.log(`BIG_PASS_120_CORE=PASS projects=${d.projects} active=${d.activeProjects} planning=${d.autonomousPlanning01.toFixed(3)} phase=${d.activeProject?.phase??'none'} persisted=${Boolean(saved2.facets.learning.developmentalExecutive)}`);

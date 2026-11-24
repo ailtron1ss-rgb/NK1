@@ -1,0 +1,13 @@
+import { B294CausalNeuralEventSpine } from '../src/organism/system/B294CausalNeuralEventSpine.ts';
+const assert=(x,m)=>{if(!x)throw new Error(m)};
+const spine=new B294CausalNeuralEventSpine();
+const contracts=[];
+const d=spine.beginDecision({tick:1,goalId:'reality',action:'verify',mode:'verify',autonomy01:.7,predictionError01:.2,uncertainty01:.3,predictedSelf01:.8,predictedWorld01:.75,channelSignals:{b269:.7,b270:.7,b289:.7,b290:.65,b291:.72,b292:.68,b293:.75,world:.74}});
+contracts.push({name:'beginDecision',ok:Boolean(d.episodeId)&&d.causalReadiness01>0});
+const o=spine.closeOutcome({tick:2,reward01:.8,predictionError01:.16,actualSelf01:.82,actualWorld01:.78,external01:0,identityContinuity01:.81,causalEffect01:.62});
+contracts.push({name:'closeOutcome',ok:o.updated&&o.causalConfidence01>=0});
+contracts.push({name:'actionBias',ok:Number.isFinite(spine.actionBias('verify'))});
+contracts.push({name:'snapshot',ok:spine.snapshot().records.length===1});
+spine.lesion(.5);contracts.push({name:'lesion',ok:spine.metrics().lesion01===.5});spine.clearLesion();contracts.push({name:'clearLesion',ok:spine.metrics().lesion01===0});
+for(const c of contracts)assert(c.ok,`contract failed: ${c.name}`);
+console.log(JSON.stringify({pass:true,total:contracts.length,verified:contracts.filter(x=>x.ok).length,contracts},null,2));

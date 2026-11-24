@@ -1,0 +1,64 @@
+import { detectTermuxCapabilities } from '../body/AndroidEmbodimentBridge.ts';
+
+export type CapabilityStatus = 'implemented' | 'runtime-available' | 'device-verified' | 'simulation-only' | 'unavailable' | 'experimental';
+export type CapabilityEvidence = 'source-code' | 'runtime-detection' | 'live-device' | 'simulation-contract' | 'configuration';
+
+export interface CapabilityRecord {
+  id: string;
+  available: boolean;
+  status: CapabilityStatus;
+  evidence: CapabilityEvidence;
+  owner: string;
+  source: 'core' | 'android' | 'network' | 'language' | 'simulation';
+  reason: string;
+  refreshedAt: number;
+}
+
+export interface CapabilitySnapshot {
+  version: 1;
+  features: CapabilityRecord[];
+  refreshedAt: number;
+}
+
+const envBool = (key: string, fallback = false) => {
+  const v = process.env[key];
+  if (v == null) return fallback;
+  return /^(1|true|yes|on)$/i.test(v);
+};
+
+export class CapabilityRegistry {
+  private snapshotState: CapabilitySnapshot = { version: 1, features: [], refreshedAt: 0 };
+
+  async refresh(): Promise<CapabilitySnapshot> {
+    const now = Date.now();
+    const termux = await detectTermuxCapabilities().catch(() => ({ battery:false, sensors:false, tts:false, stt:false, camera:false, wifi:false }));
+    const anyTermux = Object.values(termux).some(Boolean);
+    const core=(id:string,owner:string,reason:string):CapabilityRecord=>({id,available:true,status:'implemented',evidence:'source-code',owner,source:'core',reason,refreshedAt:now});
+    const features: CapabilityRecord[] = [
+      core('core.persistence','OrganismCore','canonical state store'),
+      core('core.replay','BoundedOperationalJournal','bounded operational replay/journal available'),
+      core('core.continuous_life','OrganismRuntime','persistent lifecycle, recovery and host-lineage engine'),
+      core('core.semantic_intelligence','CognitiveEventFabric','temporal semantic situations, provenance and action-relevant semantic state'),
+      core('core.semantic_perception','ActivePerceptionRuntime','bounded temporal perception graph, unresolved modality queue and action-relevant perception priorities'),
+      core('core.model_ecology','NeuralEcologyRouter','resource-aware backend selection with observed runtime reliability'),
+      core('core.native_perception','P27NeuralWorldFoundation','bounded local audio/image signal extraction with persisted provenance; semantic model backends remain optional'),
+      core('core.temporal_perception','P27NeuralWorldFoundation','bounded online transition model over fused perceptual states with next-state prediction'),
+      core('core.unified_experience','UnifiedExperienceRuntime','shared embodied experience representation joining perception, body, self and goals instead of a separate scene-decoder brain'),
+      core('core.representational_imagery','MentalScene','bounded internal scene/workspace simulation grounded in perception, memory, prediction and self-location'),
+      core('core.embodied_predictive_world','B261UnifiedWorldModel','lightweight learned multi-step predictive state model coupled to action selection'),
+      { id:'android.termux_api',available:anyTermux || envBool('TERMUX_API_AVAILABLE',false),status:anyTermux?'device-verified':(envBool('TERMUX_API_AVAILABLE',false)?'runtime-available':'unavailable'),evidence:anyTermux?'live-device':'configuration',owner:'AndroidEmbodimentBridge',source:'android',reason:anyTermux?'Termux:API commands detected':'Termux:API not available',refreshedAt:now },
+      ...(['battery','sensors','tts','stt','camera','wifi'] as const).map(kind=>({
+        id:`android.${kind}`, available:termux[kind], status:termux[kind]?'device-verified':'unavailable' as CapabilityStatus, evidence:termux[kind]?'live-device':'runtime-detection' as CapabilityEvidence, owner:'AndroidEmbodimentBridge', source:'android' as const, reason:termux[kind]?`${kind} Termux API detected`:`${kind} API unavailable`, refreshedAt:now
+      })),
+      { id:'language.gemini', available:Boolean(process.env.GEMINI_API_KEY), status:process.env.GEMINI_API_KEY?'runtime-available':'unavailable', evidence:'configuration', owner:'LanguageOrgan', source:'language', reason:process.env.GEMINI_API_KEY?'API key present':'no API key', refreshedAt:now },
+      { id:'language.koboldcpp', available:Boolean(process.env.KOBOLD_URL), status:process.env.KOBOLD_URL?'runtime-available':'unavailable', evidence:'configuration', owner:'LanguageOrgan', source:'language', reason:process.env.KOBOLD_URL?'Kobold endpoint configured':'local endpoint not explicitly configured', refreshedAt:now },
+      { id:'world.simulation',available:true,status:'simulation-only',evidence:'simulation-contract',owner:'WorldEnvironment',source:'simulation',reason:'embedded deterministic environment; never external ground truth',refreshedAt:now },
+      { id:'network', available:envBool('NETWORK_ONLINE',false), status:envBool('NETWORK_ONLINE',false)?'runtime-available':'unavailable', evidence:'configuration', owner:'NetworkRuntime', source:'network', reason:envBool('NETWORK_ONLINE')?'declared online':'not asserted online', refreshedAt:now },
+    ];
+    this.snapshotState = { version: 1, features, refreshedAt: now };
+    return this.snapshot();
+  }
+
+  snapshot(): CapabilitySnapshot { return structuredClone(this.snapshotState); }
+  has(id: string): boolean { return this.snapshotState.features.find(x => x.id === id)?.available ?? false; }
+}

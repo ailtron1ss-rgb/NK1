@@ -1,0 +1,86 @@
+{
+  "release": "35.6.85",
+  "pass": "P2685",
+  "title": "Runtime Closure + Mobile Hot-Path",
+  "timestamp": "2026-09-19",
+  "runtimeClosure": {
+    "checks": 146,
+    "passes": 142,
+    "degraded": 2,
+    "failures": 0,
+    "restartVerified": true,
+    "durableFingerprint": true
+  },
+  "hotPath": {
+    "fullSnapshotCallsDuringAutonomousCycles": 1,
+    "newFullSnapshotCallsInClosurePath": 0,
+    "lightweightOperationalViews": true,
+    "doubleDirtyClosurePressureRemoved": true
+  },
+  "continuity": {
+    "processedBeforeRestart": 10,
+    "processedAfterRestore": 12,
+    "tickBeforeRestart": 10,
+    "tickAfterRestore": 12
+  },
+  "mobile": {
+    "cycles": 30,
+    "latestObservedElapsedSec": 31.05,
+    "latestObservedPeakRssMb": 359.8,
+    "earlierObservedElapsedSec": 29.48,
+    "earlierObservedPeakRssMb": 352.9,
+    "v8OldSpaceMb": 256,
+    "pass": true,
+    "processExitCode": 0,
+    "latestProcessExitCode": 0
+  },
+  "version": {
+    "stateSchema": 193,
+    "application": "35.6.85",
+    "organismCore": "92.3.0-runtime-closure-p2685"
+  },
+  "verification": {
+    "functionRealityGraph": {
+      "runtimeReachable": 2388,
+      "testOnly": 426,
+      "referencedNotRuntimeReachable": 2291,
+      "orphan": 329,
+      "criticalPathVerified": "11/11"
+    },
+    "functionLiveness": {
+      "functionLikeDeclarations": 5027,
+      "zeroReference": 289,
+      "oneOrLessReference": 882
+    },
+    "parameterizedSafeProbe": {
+      "attempted": 1100,
+      "passed": 1045,
+      "failed": 0,
+      "inputSynthesisNeeded": 45,
+      "lifecycleNeeded": 10,
+      "skipped": 40
+    },
+    "semanticCoverage": {
+      "totalFunctions": 4821,
+      "verified": 42,
+      "integrationOnly": 9,
+      "unsafeToAutoRun": 309,
+      "unverified": 4461,
+      "verifiedRate01": 0.0087,
+      "evidenceCoverage01": 0.0092
+    },
+    "regressions": {
+      "p2679": true,
+      "b504": true,
+      "memoryResidency": true,
+      "serverSmoke": true,
+      "architecture": true,
+      "integrity": true,
+      "forensics": true,
+      "hygiene": true,
+      "syntax": true,
+      "releaseContract": true,
+      "releaseSource": true
+    }
+  }
+}

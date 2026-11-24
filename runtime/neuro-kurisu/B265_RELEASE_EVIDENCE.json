@@ -1,0 +1,43 @@
+{
+  "pass": "B265",
+  "title": "Independent Multi-Step Policy Evaluation",
+  "date": "2026-09-12",
+  "standalone": {
+    "trainEpisodes": 6,
+    "holdoutEpisodes": 5,
+    "steps": 88,
+    "holdoutPolicyReturn01": 0.6485337383593166,
+    "holdoutBaselineReturn01": 0.3330641005715457,
+    "holdoutAdvantage01": 0.31546963778777093,
+    "holdoutRandomReturn01": 0.28781420630169197,
+    "counterfactualGain01": 0.06019611245226667,
+    "calibration01": 0.9924187316649473,
+    "restorePreserved": true
+  },
+  "core": {
+    "evaluations": 7,
+    "steps": 56,
+    "holdoutEpisodes": 3,
+    "holdoutPolicyReturn01": 0.34641852756305913,
+    "holdoutBaselineReturn01": 0.2951591849094144,
+    "holdoutAdvantage01": 0.051259342653644735,
+    "randomReturn01": 0.25703295461393066,
+    "counterfactualGain01": 0.05197328582948565,
+    "persistedSteps": 56
+  },
+  "migration": {"pass": true, "schema": 127, "evaluations": 7, "steps": 56, "lastTaskId": "migration-b265"},
+  "regression": {"b264Standalone": true, "b264Core": true},
+  "releaseGates": {
+    "typecheck": "PASS",
+    "architecture": "PASS",
+    "integrity": "PASS",
+    "hygiene": "PASS",
+    "forensics": "PASS",
+    "contract": "PASS",
+    "lockfile": "PASS",
+    "releaseSource": "PASS",
+    "doctor": "PASS",
+    "syntaxFullTree": "BLOCKED_BY_ENV_TIMEOUT",
+    "fullHistoricalAudit": "NOT_CLAIMED_PASS"
+  }
+}

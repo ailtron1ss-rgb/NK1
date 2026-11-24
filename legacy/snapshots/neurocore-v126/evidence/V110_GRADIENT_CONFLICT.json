@@ -1,0 +1,91 @@
+{
+  "version": 110,
+  "benchmark": "objective_gradient_conflict_probe",
+  "rows": [
+    {
+      "seed": 110,
+      "strength": 0.0,
+      "conflict_rate": 0.5,
+      "mean_cosine": -0.012426142580807209,
+      "pairs": 14,
+      "selected_parameters": [
+        "trunk.spine.q_proj.weight",
+        "trunk.spine.k_proj.weight",
+        "trunk.spine.state_to_hidden.2.weight",
+        "trunk.spine.state_to_hidden.2.bias",
+        "trunk.predictor.0.weight"
+      ]
+    },
+    {
+      "seed": 110,
+      "strength": 0.35,
+      "conflict_rate": 0.5,
+      "mean_cosine": 0.029872966930270195,
+      "pairs": 14,
+      "selected_parameters": [
+        "trunk.spine.q_proj.weight",
+        "trunk.spine.k_proj.weight",
+        "trunk.spine.state_to_hidden.2.weight",
+        "trunk.spine.state_to_hidden.2.bias",
+        "trunk.predictor.0.weight"
+      ]
+    },
+    {
+      "seed": 111,
+      "strength": 0.0,
+      "conflict_rate": 0.6071428571428571,
+      "mean_cosine": -0.012353530153632164,
+      "pairs": 17,
+      "selected_parameters": [
+        "trunk.spine.q_proj.weight",
+        "trunk.spine.k_proj.weight",
+        "trunk.spine.state_to_hidden.2.weight",
+        "trunk.spine.state_to_hidden.2.bias",
+        "trunk.predictor.0.weight"
+      ]
+    },
+    {
+      "seed": 111,
+      "strength": 0.35,
+      "conflict_rate": 0.5357142857142857,
+      "mean_cosine": 0.01426007505506277,
+      "pairs": 15,
+      "selected_parameters": [
+        "trunk.spine.q_proj.weight",
+        "trunk.spine.k_proj.weight",
+        "trunk.spine.state_to_hidden.2.weight",
+        "trunk.spine.state_to_hidden.2.bias",
+        "trunk.predictor.0.weight"
+      ]
+    },
+    {
+      "seed": 112,
+      "strength": 0.0,
+      "conflict_rate": 0.5357142857142857,
+      "mean_cosine": -0.00728915398940444,
+      "pairs": 15,
+      "selected_parameters": [
+        "trunk.spine.q_proj.weight",
+        "trunk.spine.k_proj.weight",
+        "trunk.spine.state_to_hidden.2.weight",
+        "trunk.spine.state_to_hidden.2.bias",
+        "trunk.predictor.0.weight"
+      ]
+    },
+    {
+      "seed": 112,
+      "strength": 0.35,
+      "conflict_rate": 0.5714285714285714,
+      "mean_cosine": 0.03025561198592186,
+      "pairs": 16,
+      "selected_parameters": [
+        "trunk.spine.q_proj.weight",
+        "trunk.spine.k_proj.weight",
+        "trunk.spine.state_to_hidden.2.weight",
+        "trunk.spine.state_to_hidden.2.bias",
+        "trunk.predictor.0.weight"
+      ]
+    }
+  ],
+  "note": "single forward diagnostic; arbitration effect measured separately by V108 benchmark"
+}

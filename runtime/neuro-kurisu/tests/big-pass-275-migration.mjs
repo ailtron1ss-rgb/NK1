@@ -1,0 +1,5 @@
+import assert from 'node:assert/strict';
+import { OrganismCore } from '../src/organism/core/OrganismCore.ts';
+import { MemoryStateStore } from '../src/organism/persistence/MemoryStateStore.ts';
+const core=new OrganismCore(new MemoryStateStore(),{performanceProfile:'mobile',cycleResultMode:'operational'});await core.init();
+for(let i=0;i<6;i++){await core.observe({text:'compose and test a better strategy',novelty:.5,surprise:.2,embodiment:{bodyEnergy01:.8,cognitiveCapacity01:.8,thermalStrain01:.2,sensoryFreshness01:.85,awake:true,battery01:.7,cpuLoad01:.2,ramPressure01:.2}},'operational');await core.feedback({success:.7,reward:.65,surprise:.15,evidenceSource:'unknown'});}const before=core.b275PolicyDiagnostics();const restored=new OrganismCore(new MemoryStateStore({initial:core.snapshot()}),{performanceProfile:'mobile',cycleResultMode:'operational'});await restored.init();assert.deepEqual(restored.b275PolicyDiagnostics(),before);console.log(JSON.stringify({pass:true,before,after:restored.b275PolicyDiagnostics()},null,2));

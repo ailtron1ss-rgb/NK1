@@ -1,0 +1,154 @@
+{
+  "version": 1,
+  "seeds": [
+    11,
+    17,
+    29
+  ],
+  "conditions": [
+    "baseline",
+    "governance-off",
+    "future-self-off",
+    "consequence-off"
+  ],
+  "results": [
+    {
+      "seed": 11,
+      "condition": "baseline",
+      "records": 40,
+      "consequences": 40,
+      "governanceScore": 0.9924204270728546,
+      "ownership": 0.879859836610017,
+      "regret": 0.16014467113399666,
+      "autonomous": 26,
+      "overrides": 11
+    },
+    {
+      "seed": 11,
+      "condition": "governance-off",
+      "records": 0,
+      "consequences": 40,
+      "governanceScore": 0.7374343792705903,
+      "ownership": 0.8837018677248986,
+      "regret": 0.16014467113399666,
+      "autonomous": 26,
+      "overrides": 14
+    },
+    {
+      "seed": 11,
+      "condition": "future-self-off",
+      "records": 40,
+      "consequences": 40,
+      "governanceScore": 0.9924204270728546,
+      "ownership": 0.879859836610017,
+      "regret": 0.16014467113399666,
+      "autonomous": 26,
+      "overrides": 11
+    },
+    {
+      "seed": 11,
+      "condition": "consequence-off",
+      "records": 40,
+      "consequences": 0,
+      "governanceScore": 1,
+      "ownership": 0.5,
+      "regret": 0,
+      "autonomous": 26,
+      "overrides": 11
+    },
+    {
+      "seed": 17,
+      "condition": "baseline",
+      "records": 40,
+      "consequences": 40,
+      "governanceScore": 0.9472885944960174,
+      "ownership": 0.8884332587438193,
+      "regret": 0.1525040246075496,
+      "autonomous": 26,
+      "overrides": 7
+    },
+    {
+      "seed": 17,
+      "condition": "governance-off",
+      "records": 0,
+      "consequences": 40,
+      "governanceScore": 0.7371648578059296,
+      "ownership": 0.8903505048187497,
+      "regret": 0.1525040246075496,
+      "autonomous": 26,
+      "overrides": 14
+    },
+    {
+      "seed": 17,
+      "condition": "future-self-off",
+      "records": 40,
+      "consequences": 40,
+      "governanceScore": 0.9472885944960174,
+      "ownership": 0.8884332587438193,
+      "regret": 0.1525040246075496,
+      "autonomous": 26,
+      "overrides": 7
+    },
+    {
+      "seed": 17,
+      "condition": "consequence-off",
+      "records": 40,
+      "consequences": 0,
+      "governanceScore": 0.9384153495814207,
+      "ownership": 0.5,
+      "regret": 0,
+      "autonomous": 26,
+      "overrides": 7
+    },
+    {
+      "seed": 29,
+      "condition": "baseline",
+      "records": 40,
+      "consequences": 40,
+      "governanceScore": 0.9980147203890393,
+      "ownership": 0.8981260854733515,
+      "regret": 0.13487625601104666,
+      "autonomous": 26,
+      "overrides": 13
+    },
+    {
+      "seed": 29,
+      "condition": "governance-off",
+      "records": 0,
+      "consequences": 40,
+      "governanceScore": 0.7442935916806214,
+      "ownership": 0.8997676271655957,
+      "regret": 0.13487625601104666,
+      "autonomous": 26,
+      "overrides": 14
+    },
+    {
+      "seed": 29,
+      "condition": "future-self-off",
+      "records": 40,
+      "consequences": 40,
+      "governanceScore": 0.9980147203890393,
+      "ownership": 0.8981260854733515,
+      "regret": 0.13487625601104666,
+      "autonomous": 26,
+      "overrides": 13
+    },
+    {
+      "seed": 29,
+      "condition": "consequence-off",
+      "records": 40,
+      "consequences": 0,
+      "governanceScore": 1,
+      "ownership": 0.5,
+      "regret": 0,
+      "autonomous": 26,
+      "overrides": 13
+    }
+  ],
+  "summary": {
+    "baselineGovernanceRecords": 40,
+    "baselineConsequences": 40,
+    "baselineOwnership": 0.8888063936090626,
+    "baselineRegret": 0.149174983917531
+  }
+}

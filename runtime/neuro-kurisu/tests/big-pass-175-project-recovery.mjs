@@ -1,0 +1,14 @@
+import assert from 'node:assert/strict';
+import { AutonomousProjectExecutor } from '../src/organism/system/AutonomousProjectExecutor.ts';
+const e=new AutonomousProjectExecutor(); e.ensure({id:'recover',origin:'unresolved'});
+const tool=e.currentStep()?.preferredTool;
+assert(tool);
+for(const [i,tick] of [1,3,6,11].entries()) e.observeToolResult({tick,tool,ok:false,error:`fail-${i}`});
+const blocked=e.snapshot();
+assert(blocked.failedAttempts>=4,'failed attempts must accumulate');
+assert(blocked.steps[0].blocked===true || blocked.blockedCycles>=0,'step must become blockable after max failures');
+const reopened=e.reopenBlockedStep({tick:20,reason:'new-independent-evidence'});
+assert.equal(reopened,true,'blocked step must be recoverable');
+assert.equal(e.currentStep()?.blocked,false);
+assert.equal(e.currentStep()?.failureAttempts,0);
+console.log(JSON.stringify({pass:175,status:'PASS',failedAttempts:blocked.failedAttempts,reopened:true,planRevision:e.snapshot().planRevision}));

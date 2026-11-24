@@ -1,0 +1,45 @@
+import assert from 'node:assert/strict';
+import { B365UnifiedNeuroCausalCore } from '../src/organism/cognition/B365UnifiedNeuroCausalCore.ts';
+import { OrganismRuntime } from '../src/organism/core/OrganismRuntime.ts';
+import { MemoryStateStore } from '../src/organism/persistence/MemoryStateStore.ts';
+import { certifyAndroidHardware } from '../src/organism/body/AndroidEmbodimentBridge.ts';
+
+const vector=(t)=>Array.from({length:64},(_,i)=>Math.sin((i+3)*0.17+t*0.03));
+const ctx=(bias=0)=>Object.fromEntries(['respond','explore','verify','rest','reflect','wait','defer'].map(a=>[a,{worldUtility01:a==='explore'?0.72+bias:0.42,worldConfidence01:.8,worldUncertainty01:.2}]));
+const core=new B365UnifiedNeuroCausalCore();
+for(let t=1;t<=18;t++){
+  core.recordGroundedObservation({tick:t,source:'node-host',freshness01:1,sensorConfidence01:.8,verified01:0,energy01:.8-0.01*t,thermal01:.2+0.01*t,motion01:t%4===0?.9:.2,light01:.55,proximity01:.4,network01:1});
+  core.step({tick:t,vector:vector(t),novelty01:.4,uncertainty01:.35,goalPressure01:.5,autonomy01:.8,learningEnabled:true,actionContext:ctx()});
+  core.learnFromOutcome({tick:t,action:core.diagnostics().lastAction,reward01:t%4===0?.8:.35,predictionError01:.2,verified01:1,externalEvidence01:1,novelty01:.4,actualUtility01:t%4===0?.8:.35,predictedReward01:core.diagnostics().rewardPrediction01,predictedUtility01:core.forecast(core.diagnostics().lastAction)?.utility01??.5,actualStateDelta01:t%4===0?.7:.2,actualWorldConfidence01:.8,temporalCreditEnabled:true,delayedReward01:t%4===0?.8:.35});
+}
+const base=core.step({tick:19,vector:vector(19),novelty01:.2,uncertainty01:.25,goalPressure01:.3,autonomy01:.8,learningEnabled:false,actionContext:ctx()});
+core.recordGroundedObservation({tick:20,source:'node-host',freshness01:.2,sensorConfidence01:.25,verified01:0,energy01:.15,thermal01:.9,motion01:.95,light01:.1,proximity01:.9,network01:0});
+const perturbed=core.step({tick:20,vector:vector(20),novelty01:.75,uncertainty01:.8,goalPressure01:.3,autonomy01:.8,learningEnabled:false,actionContext:ctx(-.05)});
+const actions=['respond','explore','verify','rest','reflect','wait','defer'];
+const l1=actions.reduce((s,a)=>s+Math.abs(base.actionProbabilities[a]-perturbed.actionProbabilities[a]),0);
+assert.ok(l1>0.01,`grounding context did not change policy enough: ${l1}`);
+const d=core.diagnostics();
+assert.equal(d.grounding.verified01,0,'host input was incorrectly promoted to verified device evidence');
+assert.ok(d.grounding.observations>=19,'grounding observations missing');
+assert.ok(d.grounding.activePerceptionDemand01>.5,'active perception demand did not respond to degraded evidence');
+const tl=core.learnActionTransition({tick:21,action:d.lastAction,expectedReward01:.75,actualReward01:.2,expectedStateDelta01:.2,actualStateDelta01:.8,verified01:1,evidence01:1});
+assert.ok(tl.updates>0,'transition learning produced no updates');
+assert.ok(tl.predictionError01>.3,'transition error not detected');
+const cert=await certifyAndroidHardware({battery01:0.75,batteryTemperatureC:null,thermalPressure01:0.2,cpuLoad01:0.1,ramPressure01:0.2,networkOnline:true,screenInteractive:true,ambientLight01:0.5,proximity01:0.5,motion01:0,sampledAt:Date.now(),source:'node-host',staleMs:0,charging:false});
+assert.ok(['UNAVAILABLE','HOST_PROBE','REAL_DEVICE_VERIFIED'].includes(cert.status));
+if(cert.status!=='REAL_DEVICE_VERIFIED') assert.notEqual(cert.telemetry?.telemetry.source,'android-termux' );
+const runtime=new OrganismRuntime({stateFile:'/tmp/b370-grounded-runtime.json',stateStore:new MemoryStateStore(),enableLanguage:false,autoRun:false,performanceProfile:'balanced'});
+await runtime.init();
+const bd=runtime.core.b365UnifiedNeuroCausalDiagnostics();
+assert.equal(bd.grounding.verified01,0,'runtime host fallback incorrectly verified as physical Android');
+await runtime.sampleEmbodiment();
+const after=runtime.core.b365UnifiedNeuroCausalDiagnostics();
+assert.ok(after.grounding.observations>bd.grounding.observations,'runtime embodiment sample did not enter B365 grounding');
+const neutral=runtime.core.b365RecordGroundedObservation({tick:10,source:'node-host',freshness01:1,sensorConfidence01:.8,verified01:0,energy01:.8,thermal01:.2,motion01:.1,light01:.7,proximity01:.2,network01:1});
+const rtA=await runtime.autonomousStep();
+runtime.core.b365RecordGroundedObservation({tick:11,source:'node-host',freshness01:.2,sensorConfidence01:.2,verified01:0,energy01:.15,thermal01:.9,motion01:.95,light01:.1,proximity01:.9,network01:0});
+const rtB=await runtime.autonomousStep();
+const scoreMap=(r)=>Object.fromEntries(r.cycle.decision.candidates.map(c=>[c.action,c.score]));
+const ram=scoreMap(rtA), rbm=scoreMap(rtB); const rtL1=[...new Set([...Object.keys(ram),...Object.keys(rbm)])].reduce((sum,k)=>sum+Math.abs((ram[k]??0)-(rbm[k]??0)),0);
+assert.ok(rtL1>0.01,`full runtime grounding did not change decision candidates: ${rtL1}`);
+console.log(JSON.stringify({pass:true,status:'B370_REALITY_GROUNDED_NEURAL_CLOSURE_PASS',policyL1:Number(l1.toFixed(6)),grounding:after.grounding,groundingPolicyReliability01:after.groundingPolicyReliability01,transition:tl,runtimeSource:after.grounding.lastSource,deviceCertification:cert.status,fullRuntimeGroundingL1:Number(rtL1.toFixed(6))},null,2));

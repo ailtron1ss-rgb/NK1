@@ -1,0 +1,42 @@
+{
+  "date": "2026-09-29",
+  "sources": [
+    {
+      "id": "KDN_2026",
+      "title": "Kalman Delta Networks: Uncertainty-aware Associative Memory",
+      "url": "https://arxiv.org/abs/2609.07816",
+      "use": "candidate uncertainty-aware write; not default"
+    },
+    {
+      "id": "CET_ICLR2026",
+      "title": "Learning From the Past with Cascading Eligibility Traces",
+      "url": "https://openreview.net/",
+      "use": "cascade temporal-credit baseline; implemented as candidate"
+    },
+    {
+      "id": "TTTLA_ICML2026",
+      "title": "Test-Time Training with KV Binding Is Secretly Linear Attention",
+      "url": "https://github.com/nv-tlabs/tttla",
+      "use": "supports reducing duplicated TTT/optimizer-like subsystems to a linear-associative substrate"
+    },
+    {
+      "id": "DELTA_MEM_2026",
+      "title": "delta-Mem: Efficient Online Memory for Large Language Models",
+      "url": "https://github.com/declare-lab/delta-Mem",
+      "use": "compact online state candidate"
+    },
+    {
+      "id": "GPM_ICLR2021",
+      "title": "Gradient Projection Memory for Continual Learning",
+      "url": "https://github.com/sahagobinda/GPM",
+      "use": "candidate subspace protection"
+    },
+    {
+      "id": "GDN2_2026",
+      "title": "Gated DeltaNet-2",
+      "url": "https://github.com/NVlabs/GatedDeltaNet-2",
+      "use": "erase/write separation and gated delta reference"
+    }
+  ],
+  "policy": "Research sources inform candidates; no external mechanism is promoted into default current behavior without local benchmark and ablation evidence."
+}

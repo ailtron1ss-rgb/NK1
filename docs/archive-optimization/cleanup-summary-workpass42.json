@@ -1,0 +1,402 @@
+{
+  "root": ".",
+  "appLive2dCopiesRemoved": 21,
+  "appLive2dSourceBytesRemoved": 16690663,
+  "sourceZipDuplicatesRemoved": 2,
+  "sourceZipBytesRemoved": 3265456,
+  "historicalExactCopiesRemoved": 27,
+  "historicalBytesRemoved": 39582,
+  "rootHistoricalFilesMoved": 68,
+  "rootHistoricalBytesReorganized": 749059,
+  "manifestFilesUpdated": [
+    "docs/archive-optimization/historical-duplicate-paths-workpass42.json",
+    "docs/archive-optimization/historical-snapshot-2026-10-06.manifest.json",
+    "docs/archive-optimization/source-archive-manifests/Kurisu_v9_Sprites_Live.manifest.json",
+    "docs/archive-optimization/source-archive-manifests/Neuro_Kurisu_35.30.0_R16_PASS_11_SEMANTIC_ISOLATION_2026-09-29.manifest.json",
+    "docs/archive-optimization/source-archive-manifests/Neuro_Kurisu_35.40.0_R26_PASS20_RESTORE_SYMMETRY_2026-10-01.manifest.json",
+    "docs/archive-optimization/source-archive-manifests/Neuro_Kurisu_v56_TraitsHierarchy.manifest.json"
+  ],
+  "removedAssets": [
+    {
+      "path": "app/public/live2d/Kurisu/Kurisu.4096/texture_00.png",
+      "canonicalPath": "runtime/neuro-kurisu/public/live2d/Kurisu/Kurisu.4096/texture_00.png",
+      "sizeBytes": 8236235,
+      "sha256": "c1551392e9f62ed69d7e12233ff0d2700711164b51667ae9072c1f3161841f33",
+      "reason": "byte-identical Live2D shadow; restored by app/scripts/sync-canonical-public-assets.mjs before Vite dev/build"
+    },
+    {
+      "path": "app/public/live2d/Kurisu/Kurisu.cdi3.json",
+      "canonicalPath": "runtime/neuro-kurisu/public/live2d/Kurisu/Kurisu.cdi3.json",
+      "sizeBytes": 8478,
+      "sha256": "26465ad680f5d6380e09edff8c3e1a79ed8bc9ce0f19a6dcd8d2d83a3c69561b",
+      "reason": "byte-identical Live2D shadow; restored by app/scripts/sync-canonical-public-assets.mjs before Vite dev/build"
+    },
+    {
+      "path": "app/public/live2d/Kurisu/Kurisu.moc3",
+      "canonicalPath": "runtime/neuro-kurisu/public/live2d/Kurisu/Kurisu.moc3",
+      "sizeBytes": 6001152,
+      "sha256": "d6b2ef7f8f93bb9313c0a117a9dcfe2286de314204657bfa88b17b7531fe5718",
+      "reason": "byte-identical Live2D shadow; restored by app/scripts/sync-canonical-public-assets.mjs before Vite dev/build"
+    },
+    {
+      "path": "app/public/live2d/Kurisu/Kurisu.model3.json",
+      "canonicalPath": "runtime/neuro-kurisu/public/live2d/Kurisu/Kurisu.model3.json",
+      "sizeBytes": 1846,
+      "sha256": "f7ae31d85349850a54dfc42999d03d7ac2cc428bf8292d1c7d0f033f65aea351",
+      "reason": "byte-identical Live2D shadow; restored by app/scripts/sync-canonical-public-assets.mjs before Vite dev/build"
+    },
+    {
+      "path": "app/public/live2d/Kurisu/Kurisu.physics3.json",
+      "canonicalPath": "runtime/neuro-kurisu/public/live2d/Kurisu/Kurisu.physics3.json",
+      "sizeBytes": 25386,
+      "sha256": "a911ba4b3db5a09005ec3e2387e8ad0d1e26598f86b488c03cfcf40425e6b0bb",
+      "reason": "byte-identical Live2D shadow; restored by app/scripts/sync-canonical-public-assets.mjs before Vite dev/build"
+    },
+    {
+      "path": "app/public/live2d/Kurisu/exp/Arm Change.exp3.json",
+      "canonicalPath": "runtime/neuro-kurisu/public/live2d/Kurisu/exp/Arm Change.exp3.json",
+      "sizeBytes": 117,
+      "sha256": "0f63c57e0ad71de202f759d6fa3668919a6fe39cfb134a32a10a90204942a516",
+      "reason": "byte-identical Live2D shadow; restored by app/scripts/sync-canonical-public-assets.mjs before Vite dev/build"
+    },
+    {
+      "path": "app/public/live2d/Kurisu/exp/Blush 1.exp3.json",
+      "canonicalPath": "runtime/neuro-kurisu/public/live2d/Kurisu/exp/Blush 1.exp3.json",
+      "sizeBytes": 119,
+      "sha256": "8c0e7b321b15d7525ad5934b07793539d0ae4e53350c33a3dcf264fda8f25d06",
+      "reason": "byte-identical Live2D shadow; restored by app/scripts/sync-canonical-public-assets.mjs before Vite dev/build"
+    },
+    {
+      "path": "app/public/live2d/Kurisu/exp/Blush 2.exp3.json",
+      "canonicalPath": "runtime/neuro-kurisu/public/live2d/Kurisu/exp/Blush 2.exp3.json",
+      "sizeBytes": 117,
+      "sha256": "f80b9bc8239acc343aa98341ceb9b7fe302545e10c2ea22ec745bb018f1adf34",
+      "reason": "byte-identical Live2D shadow; restored by app/scripts/sync-canonical-public-assets.mjs before Vite dev/build"
+    },
+    {
+      "path": "app/public/live2d/Kurisu/exp/Stanby Angry.exp3.json",
+      "canonicalPath": "runtime/neuro-kurisu/public/live2d/Kurisu/exp/Stanby Angry.exp3.json",
+      "sizeBytes": 112,
+      "sha256": "385605494d6ba8ff5aa5276c89b51ca36906cc08093970fd953dd31d8ebd0784",
+      "reason": "byte-identical Live2D shadow; restored by app/scripts/sync-canonical-public-assets.mjs before Vite dev/build"
+    },
+    {
+      "path": "app/public/live2d/Kurisu/exp/Stanby Sad.exp3.json",
+      "canonicalPath": "runtime/neuro-kurisu/public/live2d/Kurisu/exp/Stanby Sad.exp3.json",
+      "sizeBytes": 110,
+      "sha256": "dea3bf8875b12c032fcd662afb82364e015c71a693025037a3b4e973755c33b2",
+      "reason": "byte-identical Live2D shadow; restored by app/scripts/sync-canonical-public-assets.mjs before Vite dev/build"
+    },
+    {
+      "path": "app/public/live2d/Kurisu/exp/Stanby Scared.exp3.json",
+      "canonicalPath": "runtime/neuro-kurisu/public/live2d/Kurisu/exp/Stanby Scared.exp3.json",
+      "sizeBytes": 113,
+      "sha256": "6bb4c22998b8041c1fb00ccbf34d303d4ed012c7e78877426aeef43f651abbd5",
+      "reason": "byte-identical Live2D shadow; restored by app/scripts/sync-canonical-public-assets.mjs before Vite dev/build"
+    },
+    {
+      "path": "app/public/live2d/Kurisu/exp/Stanby Smile.exp3.json",
+      "canonicalPath": "runtime/neuro-kurisu/public/live2d/Kurisu/exp/Stanby Smile.exp3.json",
+      "sizeBytes": 112,
+      "sha256": "ce3333bf411e643a0220aab1339a3039272636c9868c280d6937f0a6d2e6bf71",
+      "reason": "byte-identical Live2D shadow; restored by app/scripts/sync-canonical-public-assets.mjs before Vite dev/build"
+    },
+    {
+      "path": "app/public/live2d/Kurisu/exp/Stanby Surprised.exp3.json",
+      "canonicalPath": "runtime/neuro-kurisu/public/live2d/Kurisu/exp/Stanby Surprised.exp3.json",
+      "sizeBytes": 117,
+      "sha256": "db7f7cdf837945fc73f6adb8bb43ac2df9cfef81b4d82da6bee295c2399a63f1",
+      "reason": "byte-identical Live2D shadow; restored by app/scripts/sync-canonical-public-assets.mjs before Vite dev/build"
+    },
+    {
+      "path": "app/public/live2d/Kurisu/motions/58Loop.motion3.json",
+      "canonicalPath": "runtime/neuro-kurisu/public/live2d/Kurisu/motions/58Loop.motion3.json",
+      "sizeBytes": 770163,
+      "sha256": "e80636a0fd68bcfe311f3ab702f9f20b322e79430bb4a3681f35db3baf54aeb0",
+      "reason": "byte-identical Live2D shadow; restored by app/scripts/sync-canonical-public-assets.mjs before Vite dev/build"
+    },
+    {
+      "path": "app/public/live2d/Kurisu/motions/Out From Camera.motion3.json",
+      "canonicalPath": "runtime/neuro-kurisu/public/live2d/Kurisu/motions/Out From Camera.motion3.json",
+      "sizeBytes": 5798,
+      "sha256": "955d0d344e3b7ac0139f3eabd3da1fdc9dce7f02c844ef3f2c9eead69da9b2a9",
+      "reason": "byte-identical Live2D shadow; restored by app/scripts/sync-canonical-public-assets.mjs before Vite dev/build"
+    },
+    {
+      "path": "app/public/live2d/Kurisu/motions/haru_g_idle.motion3.json",
+      "canonicalPath": "runtime/neuro-kurisu/public/live2d/Kurisu/motions/haru_g_idle.motion3.json",
+      "sizeBytes": 2555,
+      "sha256": "d34abb158fa5b007d307b8ca08bdc33b3394b0435ac3e07f5516211ffd359b46",
+      "reason": "byte-identical Live2D shadow; restored by app/scripts/sync-canonical-public-assets.mjs before Vite dev/build"
+    },
+    {
+      "path": "app/public/live2d/Kurisu/motions/mtn_07.motion3.json",
+      "canonicalPath": "runtime/neuro-kurisu/public/live2d/Kurisu/motions/mtn_07.motion3.json",
+      "sizeBytes": 19460,
+      "sha256": "8b12022b7bdf01e7a9e6f124f043452c6c49432368da0aecc82a550b79e72182",
+      "reason": "byte-identical Live2D shadow; restored by app/scripts/sync-canonical-public-assets.mjs before Vite dev/build"
+    },
+    {
+      "path": "app/public/live2d/Kurisu/motions/xhiyori_m03.motion3.json",
+      "canonicalPath": "runtime/neuro-kurisu/public/live2d/Kurisu/motions/xhiyori_m03.motion3.json",
+      "sizeBytes": 13630,
+      "sha256": "de4913417e572ab1cc30924768c885ece73f65cbfba6975e2c9ab98e909164bc",
+      "reason": "byte-identical Live2D shadow; restored by app/scripts/sync-canonical-public-assets.mjs before Vite dev/build"
+    },
+    {
+      "path": "app/public/live2d/Kurisu.mobile/Kurisu-mobile.model3.json",
+      "canonicalPath": "runtime/neuro-kurisu/public/live2d/Kurisu.mobile/Kurisu-mobile.model3.json",
+      "sizeBytes": 2371,
+      "sha256": "c886fec1313e4bc20207c5c4e0cd41684ced6bf6e9ce4386fabfcd4eddb35d64",
+      "reason": "byte-identical Live2D shadow; restored by app/scripts/sync-canonical-public-assets.mjs before Vite dev/build"
+    },
+    {
+      "path": "app/public/live2d/Kurisu.mobile/Kurisu.2048/texture_00_mobile_2048.png",
+      "canonicalPath": "runtime/neuro-kurisu/public/live2d/Kurisu.mobile/Kurisu.2048/texture_00_mobile_2048.png",
+      "sizeBytes": 1601788,
+      "sha256": "a7050e00fc067fa22ce2df86e17684277ccb36167b95f6fe9b0de3ec3cddbd25",
+      "reason": "byte-identical Live2D shadow; restored by app/scripts/sync-canonical-public-assets.mjs before Vite dev/build"
+    },
+    {
+      "path": "app/public/live2d/PROVENANCE.json",
+      "canonicalPath": "runtime/neuro-kurisu/public/live2d/PROVENANCE.json",
+      "sizeBytes": 884,
+      "sha256": "c09b01f86a03fdb05b1795a8136df7ce154c38a09adadd32d19977227b4976ee",
+      "reason": "byte-identical Live2D shadow; restored by app/scripts/sync-canonical-public-assets.mjs before Vite dev/build"
+    }
+  ],
+  "removedArchives": [
+    {
+      "path": "legacy/input-archives/lumina-main-2026-10-08.zip",
+      "canonicalPath": "legacy/input-archives/raw-source-archives/lumina-main.zip",
+      "sizeBytes": 3240773,
+      "sha256": "a820cb1b394018451c8ee5863ae0a1f74666bd10519007d6e37e69e42452d467",
+      "reason": "exact duplicate explicitly marked omittedDuplicatePath by source archive map"
+    },
+    {
+      "path": "legacy/input-archives/letta-main-2026-10-08.zip",
+      "canonicalPath": "legacy/input-archives/raw-source-archives/letta-main.zip",
+      "sizeBytes": 24683,
+      "sha256": "5d28f152aba633fcc26fe20125fad28f73c6773e6526fc65249656b2d0c61075",
+      "reason": "exact duplicate explicitly marked omittedDuplicatePath by source archive map"
+    }
+  ],
+  "historicalDuplicates": [
+    {
+      "path": "runtime/neuro-kurisu/docs/history/releases/33.0.0/RELEASE_NOTES_15_RU.md",
+      "canonicalPath": "runtime/neuro-kurisu/RELEASE_NOTES_15_RU.md",
+      "sha256": "081f8eff1d44f09875f54d8bbe834bb4756b8d0b29784afb733ae3f5b9f12379",
+      "sizeBytes": 854,
+      "reason": "byte-identical historical report is preserved at canonical path; removed redundant forensic-history copy"
+    },
+    {
+      "path": "runtime/neuro-kurisu/docs/history/releases/33.0.0/RELEASE_NOTES_13_RU.md",
+      "canonicalPath": "runtime/neuro-kurisu/RELEASE_NOTES_13_RU.md",
+      "sha256": "0233c8621a2de74610ef3e47841f87a61f7207be02dfbdfe26d484dd0ee6f700",
+      "sizeBytes": 773,
+      "reason": "byte-identical historical report is preserved at canonical path; removed redundant forensic-history copy"
+    },
+    {
+      "path": "runtime/neuro-kurisu/docs/history/p-phases/2026-09-01/README_P49_BIG_STEP_RU.md",
+      "canonicalPath": "runtime/neuro-kurisu/README_P49_BIG_STEP_RU.md",
+      "sha256": "baaa51aaf531a9992faf662cf9e99ebfd8b221ba536af099354686966d47d2f5",
+      "sizeBytes": 2424,
+      "reason": "byte-identical historical report is preserved at canonical path; removed redundant forensic-history copy"
+    },
+    {
+      "path": "runtime/neuro-kurisu/docs/history/FORENSIC_DEDUP_2026-09-15/RELEASE_NOTES_B324_RU.md",
+      "canonicalPath": "runtime/neuro-kurisu/BIG_PASS_324_RECOVERY_WATCHDOG_RU.md",
+      "sha256": "8d4d4ce893bc32c5aa961edd379a44ed9f366205bec03a8ccc944326d7714202",
+      "sizeBytes": 3099,
+      "reason": "byte-identical historical report is preserved at canonical path; removed redundant forensic-history copy"
+    },
+    {
+      "path": "runtime/neuro-kurisu/docs/history/p-phases/2026-09-18/P2659_P2674/RELEASE_NOTES_RU.md",
+      "canonicalPath": "runtime/neuro-kurisu/RELEASE_NOTES_35.6.75_P2659_P2674_RU.md",
+      "sha256": "f281c1425308236c8e16a4174bf5bc67b865476c03acfa5eb89cad7480b97096",
+      "sizeBytes": 1435,
+      "reason": "byte-identical historical report is preserved at canonical path; removed redundant forensic-history copy"
+    },
+    {
+      "path": "runtime/neuro-kurisu/docs/history/p-phases/2026-09-01/README_P53_P54_BIG_STEP_RU.md",
+      "canonicalPath": "runtime/neuro-kurisu/README_P53_P54_BIG_STEP_RU.md",
+      "sha256": "356d256703dfa07f609748a6e41924ba621ea68f31153b4efb8155e7cfcd1303",
+      "sizeBytes": 928,
+      "reason": "byte-identical historical report is preserved at canonical path; removed redundant forensic-history copy"
+    },
+    {
+      "path": "runtime/neuro-kurisu/docs/history/p-phases/2026-09-01/README_P48_BIG_STEP_RU.md",
+      "canonicalPath": "runtime/neuro-kurisu/README_P48_BIG_STEP_RU.md",
+      "sha256": "bbc8a35f5af2b613d2c844adf1d45a3a9b1e865d4652c5efbcf0214ded52697c",
+      "sizeBytes": 2289,
+      "reason": "byte-identical historical report is preserved at canonical path; removed redundant forensic-history copy"
+    },
+    {
+      "path": "runtime/neuro-kurisu/docs/history/releases/33.0.0/RELEASE_NOTES_19_RU.md",
+      "canonicalPath": "runtime/neuro-kurisu/RELEASE_NOTES_19_RU.md",
+      "sha256": "c0d3518ee22b98bc5b90aa041d99551cea70926d43b42c4ba439965145c46e1d",
+      "sizeBytes": 441,
+      "reason": "byte-identical historical report is preserved at canonical path; removed redundant forensic-history copy"
+    },
+    {
+      "path": "runtime/neuro-kurisu/docs/history/p-phases/2026-09-01/README_P51_BIG_STEP_RU.md",
+      "canonicalPath": "runtime/neuro-kurisu/README_P51_BIG_STEP_RU.md",
+      "sha256": "504ec2cd2946860e0c3d2a8d0ab88cc2430258fd27192a73575616f284c25be5",
+      "sizeBytes": 1301,
+      "reason": "byte-identical historical report is preserved at canonical path; removed redundant forensic-history copy"
+    },
+    {
+      "path": "runtime/neuro-kurisu/docs/history/p-phases/2026-09-01/README_P47_BIG_STEP_RU.md",
+      "canonicalPath": "runtime/neuro-kurisu/README_P47_BIG_STEP_RU.md",
+      "sha256": "0b34166249c873e8affcfd195cf361c7f05f3ce2fbe965edc372b35f6687b1a1",
+      "sizeBytes": 782,
+      "reason": "byte-identical historical report is preserved at canonical path; removed redundant forensic-history copy"
+    },
+    {
+      "path": "runtime/neuro-kurisu/docs/history/releases/33.0.0/RELEASE_NOTES_23_RU.md",
+      "canonicalPath": "runtime/neuro-kurisu/RELEASE_NOTES_23_RU.md",
+      "sha256": "e24e9e65b20554f048c478f5025bffbf4ce665915ee3ef0c1cf843fcb087e101",
+      "sizeBytes": 1000,
+      "reason": "byte-identical historical report is preserved at canonical path; removed redundant forensic-history copy"
+    },
+    {
+      "path": "runtime/neuro-kurisu/docs/history/releases/33.0.0/RELEASE_NOTES_11_RU.md",
+      "canonicalPath": "runtime/neuro-kurisu/RELEASE_NOTES_11_RU.md",
+      "sha256": "e74b97bc271466c0400bc52f07457a7404f80690d87af9e4bc495f7f8f895d97",
+      "sizeBytes": 866,
+      "reason": "byte-identical historical report is preserved at canonical path; removed redundant forensic-history copy"
+    },
+    {
+      "path": "runtime/neuro-kurisu/docs/history/FORENSIC_DEDUP_2026-09-15/BIG_PASS_338_PREVIOUS_B337_BASE_RU.md",
+      "canonicalPath": "runtime/neuro-kurisu/BIG_PASS_337_DECISION_ACTION_PIPELINE_EXTRACTION_RU.md",
+      "sha256": "3b754d7219caf61b05a4ee68d3ddcc1e57f9a085fcc92d8d055661015b0dec1a",
+      "sizeBytes": 2577,
+      "reason": "byte-identical historical report is preserved at canonical path; removed redundant forensic-history copy"
+    },
+    {
+      "path": "runtime/neuro-kurisu/docs/history/releases/33.0.0/RELEASE_NOTES_16_RU.md",
+      "canonicalPath": "runtime/neuro-kurisu/RELEASE_NOTES_16_RU.md",
+      "sha256": "8018fb72d035cce239382540ab617020795ec534fbc979e43737f1eda8f8a556",
+      "sizeBytes": 354,
+      "reason": "byte-identical historical report is preserved at canonical path; removed redundant forensic-history copy"
+    },
+    {
+      "path": "runtime/neuro-kurisu/docs/history/releases/33.0.0/RELEASE_NOTES_18_RU.md",
+      "canonicalPath": "runtime/neuro-kurisu/RELEASE_NOTES_18_RU.md",
+      "sha256": "27a0da087d7ded65e9f3a4079e243a2531b66a67d8c865fca2793882a2c7affc",
+      "sizeBytes": 531,
+      "reason": "byte-identical historical report is preserved at canonical path; removed redundant forensic-history copy"
+    },
+    {
+      "path": "runtime/neuro-kurisu/docs/history/releases/33.0.0/RELEASE_NOTES_14_RU.md",
+      "canonicalPath": "runtime/neuro-kurisu/RELEASE_NOTES_14_RU.md",
+      "sha256": "17dde7b002b73fc93385e0957f3f86049c924f566e6d0dd475165f74dfba0627",
+      "sizeBytes": 1378,
+      "reason": "byte-identical historical report is preserved at canonical path; removed redundant forensic-history copy"
+    },
+    {
+      "path": "runtime/neuro-kurisu/docs/history/releases/33.0.0/RELEASE_NOTES_17_RU.md",
+      "canonicalPath": "runtime/neuro-kurisu/RELEASE_NOTES_17_RU.md",
+      "sha256": "13a1671f34b316a71c0e3ed28bd4e6e928f5203942bcf1dcb2f37170ea272567",
+      "sizeBytes": 456,
+      "reason": "byte-identical historical report is preserved at canonical path; removed redundant forensic-history copy"
+    },
+    {
+      "path": "runtime/neuro-kurisu/docs/history/releases/33.0.0/RELEASE_NOTES_12_RU.md",
+      "canonicalPath": "runtime/neuro-kurisu/RELEASE_NOTES_12_RU.md",
+      "sha256": "96c8a901ce58f2b06094e620a5b4d738e3f6f36f3129e83eeeb8eddab0848499",
+      "sizeBytes": 340,
+      "reason": "byte-identical historical report is preserved at canonical path; removed redundant forensic-history copy"
+    },
+    {
+      "path": "runtime/neuro-kurisu/docs/history/p-phases/2026-09-01/README_P50_BIG_STEP_RU.md",
+      "canonicalPath": "runtime/neuro-kurisu/README_P50_BIG_STEP_RU.md",
+      "sha256": "a1dd4e2c989be5df4f87fdfd3505b5645849c473479e3ff8678cef310ad02108",
+      "sizeBytes": 606,
+      "reason": "byte-identical historical report is preserved at canonical path; removed redundant forensic-history copy"
+    },
+    {
+      "path": "runtime/neuro-kurisu/docs/history/p-phases/2026-09-01/README_P46_BIG_STEP_RU.md",
+      "canonicalPath": "runtime/neuro-kurisu/README_P46_BIG_STEP_RU.md",
+      "sha256": "fbda3b0a5bb486f8ec735cadc44d7d0c6badba68f1aa9bfa7f51722b29eb19de",
+      "sizeBytes": 1213,
+      "reason": "byte-identical historical report is preserved at canonical path; removed redundant forensic-history copy"
+    },
+    {
+      "path": "runtime/neuro-kurisu/docs/history/p-phases/2026-09-01/README_FIRST_STEP_11_RU.md",
+      "canonicalPath": "runtime/neuro-kurisu/README_FIRST_STEP_11_RU.md",
+      "sha256": "b28115bf1fff24b77c16ae8586eb68592351e2c95d5ab270688b27c981bb9273",
+      "sizeBytes": 2115,
+      "reason": "byte-identical historical report is preserved at canonical path; removed redundant forensic-history copy"
+    },
+    {
+      "path": "runtime/neuro-kurisu/docs/history/p-phases/2026-09-01/README_P52_BIG_STEP_RU.md",
+      "canonicalPath": "runtime/neuro-kurisu/README_P52_BIG_STEP_RU.md",
+      "sha256": "0e70d72b656338c873178f635bdcb8cd9b02dbfccff57ea733ff959ba32fc2c1",
+      "sizeBytes": 1159,
+      "reason": "byte-identical historical report is preserved at canonical path; removed redundant forensic-history copy"
+    },
+    {
+      "path": "runtime/neuro-kurisu/docs/history/FORENSIC_DEDUP_2026-09-15/BIG_PASS_320_MOBILE_DURABILITY_RU.md",
+      "canonicalPath": "runtime/neuro-kurisu/docs/BIG_PASS_320_MOBILE_DURABILITY_RU.md",
+      "sha256": "3b54a79e8d212ff7045d83d75ba26b403efd2361ddee2d159e4e33ae065357fe",
+      "sizeBytes": 5747,
+      "reason": "byte-identical historical report is preserved at canonical path; removed redundant forensic-history copy"
+    },
+    {
+      "path": "runtime/neuro-kurisu/docs/history/FORENSIC_DEDUP_2026-09-15/RELEASE_NOTES_B319_RU.md",
+      "canonicalPath": "runtime/neuro-kurisu/docs/RELEASE_NOTES_B319_RU.md",
+      "sha256": "a465c0f80ec3a24c43d61f752162c0f5aae1fa11747e417ed2c6f43d44cc30bc",
+      "sizeBytes": 1937,
+      "reason": "byte-identical historical report is preserved at canonical path; removed redundant forensic-history copy"
+    },
+    {
+      "path": "runtime/neuro-kurisu/docs/history/FORENSIC_DEDUP_2026-09-15/BIG_PASS_319_PROGRESS_RU.md",
+      "canonicalPath": "runtime/neuro-kurisu/docs/BIG_PASS_319_PROGRESS_RU.md",
+      "sha256": "b75cd9c9094d37843751bbb692029fe9c0435a4c5c24648ebc7101a1f4c62922",
+      "sizeBytes": 949,
+      "reason": "byte-identical historical report is preserved at canonical path; removed redundant forensic-history copy"
+    },
+    {
+      "path": "runtime/neuro-kurisu/docs/history/FORENSIC_DEDUP_2026-09-15/BIG_PASS_321_DEVICE_REALITY_RU.md",
+      "canonicalPath": "runtime/neuro-kurisu/docs/BIG_PASS_321_DEVICE_REALITY_RU.md",
+      "sha256": "2e9f4c6922e338aff6311a93cc81165ef9be12e4ef3ca8beccb64a979842016a",
+      "sizeBytes": 3188,
+      "reason": "byte-identical historical report is preserved at canonical path; removed redundant forensic-history copy"
+    },
+    {
+      "path": "runtime/neuro-kurisu/docs/history/FORENSIC_DEDUP_2026-09-15/RELEASE_NOTES_B320_RU.md",
+      "canonicalPath": "runtime/neuro-kurisu/docs/RELEASE_NOTES_B320_RU.md",
+      "sha256": "6f8fccb7241b868a0a07acd47d99319c00c03c89008457a93ccd3a259465c8f9",
+      "sizeBytes": 840,
+      "reason": "byte-identical historical report is preserved at canonical path; removed redundant forensic-history copy"
+    }
+  ],
+  "workpass": 42,
+  "canonicalLive2DShadowPaths": 21,
+  "canonicalLive2DShadowBytes": 16690663,
+  "duplicateUpstreamZipAliases": 2,
+  "duplicateUpstreamZipBytes": 3265456,
+  "duplicateHistoricalReportsRemoved": 27,
+  "duplicateHistoricalReportBytes": 39582,
+  "duplicateKurisuV9V56SourcePathsRemoved": 27,
+  "duplicateKurisuV9V56SourceBytes": 224067,
+  "restorableExactPathCount": 56,
+  "sourceArchiveMembersVerified": 8512,
+  "historicalSnapshotMembersVerified": 10427,
+  "sourceArchiveEntriesReboundToImmutableOrCanonicalContent": 81,
+  "historicalSnapshotEntriesReboundToImmutableBlobs": 10,
+  "uniqueHistoricSnapshotBlobsRestored": 8,
+  "claims": {
+    "uniqueContentLost": false,
+    "deletedPathsRestorable": true,
+    "ViteLive2DAssetHydrationHashLocked": true
+  },
+  "sharedImmutableBlobCopiesRemoved": 5,
+  "sharedImmutableBlobRawBytesSaved": 31893,
+  "remainingExactDuplicateGroups": 18,
+  "remainingExactDuplicateExtraPaths": 39,
+  "remainingExactDuplicateRawBytes": 91244,
+  "remainingDuplicatePolicy": "Retained only path-semantic duplicates: per-package LICENSE/SOURCE notices, migration vs bootstrap SQL entrypoints, named test fixtures, version-labelled evidence/manifests, Python package markers, and immutable source provenance.",
+  "releaseContractVersionReconciled": "35.63.0"
+}

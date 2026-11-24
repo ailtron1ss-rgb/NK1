@@ -1,0 +1,49 @@
+{
+  "schemaVersion": 1,
+  "sourceBaseline": "Neuro_Kurisu_WORKPASS41_2026-10-14.zip",
+  "restoredCount": 7,
+  "entries": [
+    {
+      "path": "nk_pass10/src/organism/learning/P40ModelEcology.ts",
+      "blobPath": "docs/archive-optimization/source-archive-blobs/3cf2c5235692b4effd14f912b55416168fe1a0ff405d0b80f65f25e0161bec22",
+      "sizeBytes": 5934,
+      "sha256": "3cf2c5235692b4effd14f912b55416168fe1a0ff405d0b80f65f25e0161bec22"
+    },
+    {
+      "path": "nk_pass10/src/organism/system/CognitiveEventFabric.ts",
+      "blobPath": "docs/archive-optimization/source-archive-blobs/15a79a5fe845f5d949a7a6a36e9d9b9ade3dafe6a2ffb1ffa576f3a5d2185ad0",
+      "sizeBytes": 6532,
+      "sha256": "15a79a5fe845f5d949a7a6a36e9d9b9ade3dafe6a2ffb1ffa576f3a5d2185ad0"
+    },
+    {
+      "path": "tests/p2901-runtime-claim-truth.mjs",
+      "blobPath": "docs/archive-optimization/source-archive-blobs/fe0421c7b496bef5571871157fe03d0f88208c139a43b2562cbca2db38227d72",
+      "sizeBytes": 1903,
+      "sha256": "fe0421c7b496bef5571871157fe03d0f88208c139a43b2562cbca2db38227d72"
+    },
+    {
+      "path": "src/organism/system/MemoryRetentionEconomy.ts",
+      "blobPath": "docs/archive-optimization/source-archive-blobs/d2a76eb41aa6fad57119854c1f7341312e2af1b3ef18c16236e625ee34b2d17d",
+      "sizeBytes": 12116,
+      "sha256": "d2a76eb41aa6fad57119854c1f7341312e2af1b3ef18c16236e625ee34b2d17d"
+    },
+    {
+      "path": "src/organism/system/CognitiveEventFabric.ts",
+      "blobPath": "docs/archive-optimization/source-archive-blobs/15a79a5fe845f5d949a7a6a36e9d9b9ade3dafe6a2ffb1ffa576f3a5d2185ad0",
+      "sizeBytes": 6532,
+      "sha256": "15a79a5fe845f5d949a7a6a36e9d9b9ade3dafe6a2ffb1ffa576f3a5d2185ad0"
+    },
+    {
+      "path": "src/organism/system/CapabilityRegistry.ts",
+      "blobPath": "docs/archive-optimization/source-archive-blobs/7eed92628e4e65733a2bbe601d3bb5fbc52b00f36189d20fc1af2143975da2e2",
+      "sizeBytes": 5408,
+      "sha256": "7eed92628e4e65733a2bbe601d3bb5fbc52b00f36189d20fc1af2143975da2e2"
+    },
+    {
+      "path": "src/organism/learning/P40ModelEcology.ts",
+      "blobPath": "docs/archive-optimization/source-archive-blobs/3cf2c5235692b4effd14f912b55416168fe1a0ff405d0b80f65f25e0161bec22",
+      "sizeBytes": 5934,
+      "sha256": "3cf2c5235692b4effd14f912b55416168fe1a0ff405d0b80f65f25e0161bec22"
+    }
+  ]
+}

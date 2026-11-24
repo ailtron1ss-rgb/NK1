@@ -1,0 +1,62 @@
+{
+  "version": "35.6.1",
+  "pass": "B294",
+  "date": "2026-09-13",
+  "feature": "Causal Neural Event Spine",
+  "currentStatus": "verified-integrated",
+  "claims": {
+    "b294Standalone": true,
+    "b294Core": true,
+    "mobile1000": true,
+    "restart": true,
+    "concurrency": true,
+    "ui": true,
+    "server": true,
+    "live2d": true,
+    "fullAudit": true,
+    "phenomenalConsciousness": false
+  },
+  "b294": {
+    "decisions": 1200,
+    "outcomes": 1200,
+    "learningUpdates": 1200,
+    "synapticUpdates": 66635,
+    "spikeEvents": 8752,
+    "causalConfidence01": 0.6290539711390283,
+    "learningGain01": 0.23055954514714855,
+    "globalEligibility01": 0.668333011561997,
+    "recordDepth": 192,
+    "localFunctionContracts": {"total": 6, "verified": 6, "failed": 0}
+  },
+  "functions": {
+    "functionLikeDeclarations": 3740,
+    "withBody": 3711,
+    "exported": 142,
+    "zeroReference": 211,
+    "oneOrLessReference": 672,
+    "semanticFunctions": 3620,
+    "verified": 38,
+    "integrationOnly": 830,
+    "unsafeToAutoRun": 259,
+    "unverified": 2493,
+    "verifiedRate01": 0.0105,
+    "evidenceCoverage01": 0.0678,
+    "parameterizedAttempted": 905,
+    "parameterizedPassed": 871,
+    "parameterizedFailed": 0
+  },
+  "mobile1000": {
+    "pass": true,
+    "ratio": 1.051,
+    "p95Ms": 144.8,
+    "firstMedianMs": 0.13,
+    "lastMedianMs": 0.14,
+    "heapFirstMb": 69.1,
+    "heapLastMb": 167.0,
+    "memory": 130
+  },
+  "architecture": {"sourceFiles":1113,"canonicalFiles":378,"missing":0,"cycles":0,"legacyLeakage":0},
+  "integrity": {"files":2244,"schema":127},
+  "forensics": {"activeFiles":2223,"duplicateContent":0,"duplicateNames":0,"pathMarkers":0,"staleMarkers":0},
+  "api": {"routes":110,"duplicates":0}
+}

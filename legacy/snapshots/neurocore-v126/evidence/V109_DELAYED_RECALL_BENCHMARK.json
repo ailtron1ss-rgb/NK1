@@ -1,0 +1,54 @@
+{
+  "version": 109,
+  "benchmark": "correlated_delayed_linear_recall",
+  "steps": 12,
+  "seeds": [
+    109
+  ],
+  "strengths": [
+    0.0,
+    0.35
+  ],
+  "delays": [
+    16
+  ],
+  "results": [
+    {
+      "seed": 109,
+      "strength": 0.0,
+      "delay": 16,
+      "initial_loss": 2.762336492538452,
+      "final_loss": 2.6874043941497803,
+      "mean_last3_loss": 2.7060698668162027,
+      "delayed_cosine": 0.049029767513275146,
+      "delayed_mse": 0.09509702026844025
+    },
+    {
+      "seed": 109,
+      "strength": 0.35,
+      "delay": 16,
+      "initial_loss": 2.770703077316284,
+      "final_loss": 2.688838481903076,
+      "mean_last3_loss": 2.7093493938446045,
+      "delayed_cosine": 0.046078309416770935,
+      "delayed_mse": 0.09539217501878738
+    }
+  ],
+  "summary": {
+    "16": {
+      "0.0": {
+        "final_loss": 2.6874043941497803,
+        "mean_last3_loss": 2.7060698668162027,
+        "delayed_cosine": 0.049029767513275146,
+        "delayed_mse": 0.09509702026844025
+      },
+      "0.35": {
+        "final_loss": 2.688838481903076,
+        "mean_last3_loss": 2.7093493938446045,
+        "delayed_cosine": 0.046078309416770935,
+        "delayed_mse": 0.09539217501878738
+      }
+    }
+  },
+  "decision": "diagnostic_only; full long-horizon sweep timed out on CPU and remains a required promotion gate"
+}

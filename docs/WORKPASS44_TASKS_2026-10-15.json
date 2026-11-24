@@ -1,0 +1,167 @@
+{
+  "title": "WorkPass44 implementation ledger and next integration queue",
+  "date": "2026-10-15",
+  "workpass": 44,
+  "baseArchive": "Neuro_Kurisu_WORKPASS43_2026-10-15.zip",
+  "summary": {
+    "DONE": 94,
+    "PARTIAL": 14,
+    "TODO": 12,
+    "total": 120,
+    "workpassImplementationProgressPercent": 90,
+    "officialWeightedRoadmapPercent": 78.0
+  },
+  "completedThisPass": [
+    {
+      "id": "WP44-01",
+      "workstream": "D",
+      "title": "Stable execution identity and provider-facing idempotency context",
+      "status": "DONE",
+      "evidence": "ActionGateway keyed execution derives stable executionId and hashed idempotency token; execution context includes decisionId/autonomous. Crash tests show pending/uncertain operations are not blindly repeated. Provider-side honoring remains separate/open.",
+      "nextStep": "Implement and demonstrate adapter-specific provider/device propagation."
+    },
+    {
+      "id": "WP44-02",
+      "workstream": "D",
+      "title": "Unknown verification is not contradictory/negative learning",
+      "status": "DONE",
+      "evidence": "Causal graph only creates contradiction from explicit negative verification; missing/unverified observation remains unknown. Regression covers semantic distinction.",
+      "nextStep": ""
+    },
+    {
+      "id": "WP44-03",
+      "workstream": "D",
+      "title": "OrganismCore external observations become exact CEF causal evidence nodes",
+      "status": "DONE",
+      "evidence": "External observations correlate to one exact execution/outcome, persist as separate external-evidence nodes with hashed/sanitized payload, and use deterministic IDs/replay semantics. OrganismCore integration test verifies parent and raw-postcondition omission.",
+      "nextStep": ""
+    },
+    {
+      "id": "WP44-04",
+      "workstream": "D",
+      "title": "CEF snapshot restore validates external evidence references and hashes",
+      "status": "DONE",
+      "evidence": "Restore keeps external evidence refs only when the target node, executionId, observationId and projection hash match; dangling/forged references are discarded.",
+      "nextStep": ""
+    },
+    {
+      "id": "WP44-05",
+      "workstream": "D",
+      "title": "Temporal credit outcome replay cannot double-reward",
+      "status": "DONE",
+      "evidence": "CanonicalTemporalCreditAuthority stores outcomeId/decisionId, returns no new assignments for exact replay and rejects ID conflicts; snapshot/restore retains identities.",
+      "nextStep": ""
+    },
+    {
+      "id": "WP44-06",
+      "workstream": "F",
+      "title": "External observation assessments and source trust are replay-safe",
+      "status": "DONE",
+      "evidence": "ExternalObserverFabric reuses a stored assessment rather than incrementing source counters again; ExternalEvidenceTrust binds updates to evidenceId and rejects conflicting reuse.",
+      "nextStep": ""
+    },
+    {
+      "id": "WP44-07",
+      "workstream": "E",
+      "title": "P84 autobiography/behavior continuity and P83 beliefs ignore duplicate observations",
+      "status": "DONE",
+      "evidence": "P84 ingestion and verified-outcome learning accept bounded idempotency/evidence IDs persisted in snapshots. P83 does not increase continuity/confidence for an already-applied observation ID.",
+      "nextStep": ""
+    },
+    {
+      "id": "WP44-08",
+      "workstream": "C",
+      "title": "MemoryFabric aged-out mutation receipt keys fail closed",
+      "status": "DONE",
+      "evidence": "Bloom tombstones record keys retired from the exact 512-entry journal; possible old-key reuse requires reconciliation; malformed/corrupt tombstone state fails closed for unknown mutations. Migration and lifecycle regressions pass.",
+      "nextStep": "Monitor false-positive rate and define explicit administrative reconciliation tooling before deployment to high-write workloads."
+    }
+  ],
+  "partial": [
+    {
+      "id": "WP44-09",
+      "workstream": "F",
+      "title": "Real provider/device honors passed stable idempotency token",
+      "status": "PARTIAL",
+      "evidence": "ActionGateway exposes deterministic executionId plus provider-facing hashed token to the executor, and local crash tests pass. No real provider/device adapter has yet demonstrated provider-side idempotency or receipt lookup.",
+      "nextStep": "Update each external adapter to forward the token and retrieve authoritative receipt after ambiguous disconnect."
+    },
+    {
+      "id": "WP44-10",
+      "workstream": "D",
+      "title": "Delayed external evidence drives a real-provider reafference/credit path",
+      "status": "PARTIAL",
+      "evidence": "Existing deterministic reafference integration and new CEF/temporal credit replay tests pass locally; the full delayed signal from a real external provider after disconnect/restart is not yet exercised.",
+      "nextStep": "Exercise real adapter accepted→disconnect→reconnect→evidence→credit flow end to end."
+    }
+  ],
+  "next": [
+    {
+      "id": "WP44-11",
+      "workstream": "F",
+      "title": "Provider/device receipt reconnect and ambiguous-outcome reconciliation E2E",
+      "status": "TODO",
+      "evidence": "No authoritative provider/device end-to-end run has been recorded.",
+      "nextStep": "Run on a real integration endpoint with crash injection before effect, after effect, before local commit and after restart."
+    },
+    {
+      "id": "WP44-12",
+      "workstream": "B",
+      "title": "Dependency-installed Vite build and browser Live2D/Legacy E2E",
+      "status": "TODO",
+      "evidence": "App dependencies are absent; static JS/UI contracts are not equivalent to a real browser session.",
+      "nextStep": "Install dependencies in a supported environment and run production build, browser launch, Legacy/Live2D switch, iframe origin and restore scenarios."
+    },
+    {
+      "id": "WP44-13",
+      "workstream": "H",
+      "title": "Close release gates: target inference, holdout, rollback, licenses and soak",
+      "status": "TODO",
+      "evidence": "Target-host inference, independent labelled temporal retrieval uplift, clean-room rollback, nested source license sign-off and long soak remain unconfirmed. Retrieval uplift remains zero and its candidate is not promoted.",
+      "nextStep": "Close each gate with dated evidence before recalculating the official weighted score."
+    }
+  ],
+  "nextPassPriorityQueue": [
+    {
+      "priority": "P0",
+      "task": "Pass ToolExecutionContext.idempotencyKey through real HTTP/SDK device/provider adapters and persist provider request/reference ID alongside canonical receipt.",
+      "acceptance": "A provider-accepted action followed by local disconnect/restart is recovered by authoritative lookup without a second provider side effect."
+    },
+    {
+      "priority": "P0",
+      "task": "Complete real external evidence → CEF → reafference/temporal credit over a real provider/device integration.",
+      "acceptance": "Evidence cites exact executionId and observationId; replay after restart produces no duplicate trust/reward/P84 revision; conflicts are rejected."
+    },
+    {
+      "priority": "P1",
+      "task": "Run installed React/Vite production build and interactive browser Live2D/Legacy E2E.",
+      "acceptance": "Clean app build; viewer load; iframe messages from trusted source pass; wrong origin/source/schema reject; Legacy fallback and restore function."
+    },
+    {
+      "priority": "P1",
+      "task": "Run clean-room upgrade/rollback fault injection with source blobs and state backups.",
+      "acceptance": "Injected failures at each phase restore exact bytes/state; no source-manifest drift or untracked deletions."
+    },
+    {
+      "priority": "P1",
+      "task": "Measure target-host local inference and independent labelled temporal retrieval holdout.",
+      "acceptance": "Record hardware, model, resources, cancellation; retrieval candidate promoted only with positive independently measured uplift."
+    },
+    {
+      "priority": "P1",
+      "task": "Complete manual nested-license review and runtime soak.",
+      "acceptance": "Every bundled source dependency has provenance/license disposition; soak logs include restarts, memory growth, errors and recovery."
+    }
+  ],
+  "gates": {
+    "providerSideIdempotency": "open",
+    "providerReceiptRecovery": "open",
+    "browserViteLive2DE2E": "open",
+    "targetHostInference": "open",
+    "independentRetrievalHoldout": "open",
+    "rollbackFaultInjection": "open",
+    "manualLicenses": "open",
+    "soak": "open"
+  },
+  "scorePolicy": "Do not increase the official 78.0% weighted roadmap score until external-provider, installed-app E2E, target-host, independent holdout, rollback, licensing and soak gates have evidence."
+}

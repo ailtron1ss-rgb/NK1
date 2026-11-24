@@ -1,0 +1,26 @@
+import assert from 'node:assert/strict';
+import { B297ExecutiveNeuralFusion } from '../src/organism/system/B297ExecutiveNeuralFusion.ts';
+
+const actions=['explore','verify','rest'];
+const candidates=actions.map(action=>({action,score:.5,predictedUtility:.5,confidence01:.9}));
+const personality={explore:.06,verify:-.06,rest:0};
+const sources={personality,policy:{explore:0,verify:0,rest:0},self:{explore:0,verify:0,rest:0},agency:{explore:0,verify:0,rest:0},predictive:{explore:0,verify:0,rest:0}};
+const base={tick:1,candidates,sources,identity01:.8,personality01:.8,agency01:.8,goalPressure01:.7,uncertainty01:.35,novelty01:.45,energy01:.85,cognitiveCapacity01:.9,externalInput:false};
+const weak=new B297ExecutiveNeuralFusion();
+const strong=new B297ExecutiveNeuralFusion();
+const weakOut=weak.fuse({...base, personalityConsolidation01:.50, personalityGeneralization01:.50});
+const strongOut=strong.fuse({...base, personalityConsolidation01:.95, personalityGeneralization01:.90});
+const weakRow=weakOut.actions.find(x=>x.action==='explore');
+const strongRow=strongOut.actions.find(x=>x.action==='explore');
+assert.ok(weakRow&&strongRow,'missing personality action frame');
+assert.ok(strongRow.fusedSignal01>weakRow.fusedSignal01,'consolidated personality did not increase executive influence');
+assert.ok((strongOut.selectedAction!==weakOut.selectedAction) || strongOut.candidates.find(c=>c.action==='explore').score>weakOut.candidates.find(c=>c.action==='explore').score,'personality consolidation produced no candidate-level behavioral change');
+const lesioned=new B297ExecutiveNeuralFusion();
+const before=lesioned.fuse({...base, personalityConsolidation01:.95, personalityGeneralization01:.90});
+lesioned.lesion('personality');
+const after=lesioned.fuse({...base,tick:2, personalityConsolidation01:.95, personalityGeneralization01:.90});
+const beforeRow=before.actions.find(x=>x.action==='explore');
+const afterRow=after.actions.find(x=>x.action==='explore');
+assert.ok(beforeRow&&afterRow,'missing lesion frame');
+assert.ok(afterRow.fusedSignal01<beforeRow.fusedSignal01,'personality lesion did not remove executive personality influence');
+console.log(JSON.stringify({pass:true,weak:{selected:weakOut.selectedAction,signal:weakRow.fusedSignal01},strong:{selected:strongOut.selectedAction,signal:strongRow.fusedSignal01},lesion:{before:beforeRow.fusedSignal01,after:afterRow.fusedSignal01}},null,2));

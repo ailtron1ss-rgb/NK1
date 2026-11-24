@@ -1,0 +1,11 @@
+{
+  "release": "35.6.1 BIG PASS 207",
+  "sourceMap": "KARTA_ISKUSSTVENNOGO_MOZGA_35.6.1_MACHINE.json",
+  "implementation": {
+    "B-M1": {"status":"implemented","component":"ArtificialBrainAtlas","regions":18,"edges":18,"criticalGaps":6},
+    "B-M2": {"status":"implemented-partial","component":"ThalamocorticalGate","integratedInto":["CognitiveKernelCoordinator","P61IntegratedMindKernel","P64IntegratedOrganismDynamics"]}
+  },
+  "next": ["B-M3","B-M4","B-M5","B-M6","B-M7","B-M8","B-M9","B-M10"],
+  "sourceCodeChanged": true,
+  "scientificStatus": "computational-analogue-not-anatomical-equivalence"
+}

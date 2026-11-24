@@ -1,0 +1,26 @@
+{
+  "cascade_peak_step": 95,
+  "cascade_peak_value": 0.002283565467223525,
+  "temporal": {
+    "128": {
+      "cascade": 0.004265802912414074,
+      "single": 4.903986709650724e-21
+    },
+    "32": {
+      "cascade": 0.0005615970003418624,
+      "single": 3.0194996725185774e-06
+    },
+    "64": {
+      "cascade": 0.001549747888930142,
+      "single": 2.642920431117357e-11
+    },
+    "8": {
+      "cascade": 8.832557796267793e-06,
+      "single": 0.00851626880466938
+    }
+  },
+  "uncertainty": {
+    "gain_high_variance_channels": 0.9334603548049927,
+    "gain_low_variance_channels": 1.0665396451950073
+  }
+}

@@ -1,0 +1,43 @@
+{
+  "release": "Neuro-Kurisu 35.6.1",
+  "pass": "B268",
+  "date": "2026-09-12",
+  "verified": true,
+  "b268": {
+    "standalone": {
+      "commitGain01": 0.05375,
+      "commitWinRate01": 1.0,
+      "commitRobustnessDrop01": 0.01,
+      "revertGain01": -0.0725,
+      "revertWinRate01": 0.0,
+      "revertRobustnessDrop01": 0.1
+    },
+    "core": {
+      "approvedMutation": "reflect",
+      "approvedPairedGain01": 0.020120105419328117,
+      "approvedWinRate01": 0.625,
+      "approvedRobustnessDrop01": 0.02416666666666667,
+      "rejectedMutation": "verify",
+      "rejectedPairedGain01": 0.02317118588030044,
+      "rejectedWinRate01": 0.5,
+      "rejectedRobustnessDrop01": 0.06134093153984754,
+      "committed": 1,
+      "reverted": 1,
+      "rollbackPreservedCommittedState": true,
+      "experiments": 2
+    }
+  },
+  "releaseGates": {
+    "typecheck": "PASS",
+    "syntax": {"status":"PASS","js":641,"sh":4,"json":164,"failures":[]},
+    "fullAudit": {"status":"PASS","files":1946,"canonicalFiles":351,"errors":[],"warnings":[]},
+    "architecture": {"status":"PASS","sourceFiles":973,"canonicalFiles":351,"missing":0,"cycles":0,"legacyLeakage":0},
+    "integrity": {"status":"PASS","files":1952,"stateSchema":127},
+    "hygiene": {"status":"PASS","files":1946,"errors":0,"warnings":0},
+    "forensics": {"status":"PASS","activeFiles":1931,"empty":0,"duplicateContent":0,"duplicateNames":0,"pathMarkers":0,"staleMarkers":0},
+    "contract": "PASS",
+    "releaseSource": "PASS",
+    "doctor": "PASS"
+  },
+  "note": "A single-process B259-B268 mega-regression exceeded the environment timeout. Individual B265-B268 suites and migration/Core checks were rerun separately and passed. No timeout was converted into PASS."
+}

@@ -1,0 +1,67 @@
+{
+  "schemaVersion": 1,
+  "sourceBaseline": "Neuro_Kurisu_WORKPASS34_2026-10-13.zip",
+  "restoredEntryCount": 10,
+  "entries": [
+    {
+      "snapshotPath": "Neuro_Kurisu_SUPER_2026-10-06/app/scripts/with-app-env.mjs",
+      "blobPath": "docs/archive-optimization/historical-snapshot-blobs/a846b68bd3645299c23eef965d9ef226df3a500d345d7576c23f7a2b2ff643c7",
+      "sizeBytes": 4601,
+      "sha256": "a846b68bd3645299c23eef965d9ef226df3a500d345d7576c23f7a2b2ff643c7"
+    },
+    {
+      "snapshotPath": "Neuro_Kurisu_SUPER_2026-10-06/legacy/snapshots/neuro-kurisu-35.30/src/organism/system/CognitiveEventFabric.ts",
+      "blobPath": "docs/archive-optimization/source-archive-blobs/15a79a5fe845f5d949a7a6a36e9d9b9ade3dafe6a2ffb1ffa576f3a5d2185ad0",
+      "sizeBytes": 6532,
+      "sha256": "15a79a5fe845f5d949a7a6a36e9d9b9ade3dafe6a2ffb1ffa576f3a5d2185ad0"
+    },
+    {
+      "snapshotPath": "Neuro_Kurisu_SUPER_2026-10-06/legacy/snapshots/neuro-kurisu-35.30/src/organism/learning/P40ModelEcology.ts",
+      "blobPath": "docs/archive-optimization/source-archive-blobs/3cf2c5235692b4effd14f912b55416168fe1a0ff405d0b80f65f25e0161bec22",
+      "sizeBytes": 5934,
+      "sha256": "3cf2c5235692b4effd14f912b55416168fe1a0ff405d0b80f65f25e0161bec22"
+    },
+    {
+      "snapshotPath": "Neuro_Kurisu_SUPER_2026-10-06/tools/audit-assets.mjs",
+      "blobPath": "docs/archive-optimization/historical-snapshot-blobs/7f7abf2ddc2666d5aa83889fd71e442c11b375dcffd4f460aa7feaaa47d7f67f",
+      "sizeBytes": 2619,
+      "sha256": "7f7abf2ddc2666d5aa83889fd71e442c11b375dcffd4f460aa7feaaa47d7f67f"
+    },
+    {
+      "snapshotPath": "Neuro_Kurisu_SUPER_2026-10-06/.gitignore",
+      "blobPath": "docs/archive-optimization/historical-snapshot-blobs/28fc1b8824d0bdbd08f000d9ce3557d19a269488e6b2f274137e3a11151ac7da",
+      "sizeBytes": 173,
+      "sha256": "28fc1b8824d0bdbd08f000d9ce3557d19a269488e6b2f274137e3a11151ac7da"
+    },
+    {
+      "snapshotPath": "Neuro_Kurisu_SUPER_2026-10-06/runtime/neuro-kurisu/src/organism/system/CapabilityRegistry.ts",
+      "blobPath": "docs/archive-optimization/source-archive-blobs/7eed92628e4e65733a2bbe601d3bb5fbc52b00f36189d20fc1af2143975da2e2",
+      "sizeBytes": 5408,
+      "sha256": "7eed92628e4e65733a2bbe601d3bb5fbc52b00f36189d20fc1af2143975da2e2"
+    },
+    {
+      "snapshotPath": "Neuro_Kurisu_SUPER_2026-10-06/runtime/neuro-kurisu/src/organism/system/CognitiveEventFabric.ts",
+      "blobPath": "docs/archive-optimization/source-archive-blobs/15a79a5fe845f5d949a7a6a36e9d9b9ade3dafe6a2ffb1ffa576f3a5d2185ad0",
+      "sizeBytes": 6532,
+      "sha256": "15a79a5fe845f5d949a7a6a36e9d9b9ade3dafe6a2ffb1ffa576f3a5d2185ad0"
+    },
+    {
+      "snapshotPath": "Neuro_Kurisu_SUPER_2026-10-06/runtime/neuro-kurisu/src/organism/system/MemoryRetentionEconomy.ts",
+      "blobPath": "docs/archive-optimization/source-archive-blobs/d2a76eb41aa6fad57119854c1f7341312e2af1b3ef18c16236e625ee34b2d17d",
+      "sizeBytes": 12116,
+      "sha256": "d2a76eb41aa6fad57119854c1f7341312e2af1b3ef18c16236e625ee34b2d17d"
+    },
+    {
+      "snapshotPath": "Neuro_Kurisu_SUPER_2026-10-06/runtime/neuro-kurisu/src/organism/learning/P40ModelEcology.ts",
+      "blobPath": "docs/archive-optimization/source-archive-blobs/3cf2c5235692b4effd14f912b55416168fe1a0ff405d0b80f65f25e0161bec22",
+      "sizeBytes": 5934,
+      "sha256": "3cf2c5235692b4effd14f912b55416168fe1a0ff405d0b80f65f25e0161bec22"
+    },
+    {
+      "snapshotPath": "Neuro_Kurisu_SUPER_2026-10-06/runtime/neuro-kurisu/tests/p2901-runtime-claim-truth.mjs",
+      "blobPath": "docs/archive-optimization/source-archive-blobs/fe0421c7b496bef5571871157fe03d0f88208c139a43b2562cbca2db38227d72",
+      "sizeBytes": 1903,
+      "sha256": "fe0421c7b496bef5571871157fe03d0f88208c139a43b2562cbca2db38227d72"
+    }
+  ]
+}

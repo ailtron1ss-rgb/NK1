@@ -1,0 +1,266 @@
+{
+  "schemaVersion": 1,
+  "purpose": "Repoint archive reconstruction entries to existing byte-identical canonical files, then delete only unreferenced content-addressed blobs. Archive entry paths/metadata remain unchanged; all rebinds are SHA-256 equal.",
+  "reboundEntries": [
+    {
+      "manifest": "docs/archive-optimization/historical-snapshot-2026-10-06.manifest.json",
+      "entryPath": "Neuro_Kurisu_SUPER_2026-10-06/legacy/snapshots/neuro-kurisu-35.30/src/organism/cognition/NeuroSymbolicConceptCompiler.ts",
+      "sha256": "f442d9c53f4eb0f7e94de19ade4b8c3365347b2e122d0fdbbcae589b83ce5ae3",
+      "oldBlobPath": "docs/archive-optimization/source-archive-blobs/f442d9c53f4eb0f7e94de19ade4b8c3365347b2e122d0fdbbcae589b83ce5ae3",
+      "canonicalPath": "legacy/snapshots/neuro-kurisu-35.30/src/organism/cognition/NeuroSymbolicConceptCompiler.ts",
+      "sizeBytes": 2312
+    },
+    {
+      "manifest": "docs/archive-optimization/historical-snapshot-2026-10-06.manifest.json",
+      "entryPath": "Neuro_Kurisu_SUPER_2026-10-06/legacy/snapshots/neuro-kurisu-35.30/src/organism/cognition/GlobalWorkspaceSubstrateV2.ts",
+      "sha256": "f02792c79bd90f6ea058b7ee0c7de04b672b5851cb384b2c697751d5b5262315",
+      "oldBlobPath": "docs/archive-optimization/source-archive-blobs/f02792c79bd90f6ea058b7ee0c7de04b672b5851cb384b2c697751d5b5262315",
+      "canonicalPath": "legacy/snapshots/neuro-kurisu-35.30/src/organism/cognition/GlobalWorkspaceSubstrateV2.ts",
+      "sizeBytes": 10451
+    },
+    {
+      "manifest": "docs/archive-optimization/historical-snapshot-2026-10-06.manifest.json",
+      "entryPath": "Neuro_Kurisu_SUPER_2026-10-06/legacy/snapshots/neuro-kurisu-35.30/src/organism/memory/HippocampalMemorySubstrate.ts",
+      "sha256": "a1e2fd32b1bddba90c86f3d29f7d55f3252cf0ea3fc93d6c75d2c500511072e9",
+      "oldBlobPath": "docs/archive-optimization/source-archive-blobs/a1e2fd32b1bddba90c86f3d29f7d55f3252cf0ea3fc93d6c75d2c500511072e9",
+      "canonicalPath": "legacy/snapshots/neuro-kurisu-35.30/src/organism/memory/HippocampalMemorySubstrate.ts",
+      "sizeBytes": 9246
+    },
+    {
+      "manifest": "docs/archive-optimization/historical-snapshot-2026-10-06.manifest.json",
+      "entryPath": "Neuro_Kurisu_SUPER_2026-10-06/legacy/snapshots/neuro-kurisu-35.30/src/organism/memory/HippocampalFormationCircuit.ts",
+      "sha256": "9aac98ff269555ca59811a62bc3577f02faa7e9649527add17d5f11367135154",
+      "oldBlobPath": "docs/archive-optimization/source-archive-blobs/9aac98ff269555ca59811a62bc3577f02faa7e9649527add17d5f11367135154",
+      "canonicalPath": "legacy/snapshots/neuro-kurisu-35.30/src/organism/memory/HippocampalFormationCircuit.ts",
+      "sizeBytes": 5963
+    },
+    {
+      "manifest": "docs/archive-optimization/historical-snapshot-2026-10-06.manifest.json",
+      "entryPath": "Neuro_Kurisu_SUPER_2026-10-06/legacy/snapshots/neuro-kurisu-35.30/src/organism/learning/ParametricPolicyLearner.ts",
+      "sha256": "7ded54c5e43c1618cb05c8832696e9c933f0ec79cd28599d5ea9450266c8c244",
+      "oldBlobPath": "docs/archive-optimization/source-archive-blobs/7ded54c5e43c1618cb05c8832696e9c933f0ec79cd28599d5ea9450266c8c244",
+      "canonicalPath": "legacy/snapshots/neuro-kurisu-35.30/src/organism/learning/ParametricPolicyLearner.ts",
+      "sizeBytes": 8922
+    },
+    {
+      "manifest": "docs/archive-optimization/historical-snapshot-2026-10-06.manifest.json",
+      "entryPath": "Neuro_Kurisu_SUPER_2026-10-06/legacy/snapshots/neuro-kurisu-35.30/tests/memory-substrate-coordinator.mjs",
+      "sha256": "159b95a6fe4fe579ea8c230ae6f41264ae739d08882badd83901589e7f2e34e1",
+      "oldBlobPath": "docs/archive-optimization/source-archive-blobs/159b95a6fe4fe579ea8c230ae6f41264ae739d08882badd83901589e7f2e34e1",
+      "canonicalPath": "legacy/snapshots/neuro-kurisu-35.30/tests/memory-substrate-coordinator.mjs",
+      "sizeBytes": 1183
+    },
+    {
+      "manifest": "docs/archive-optimization/historical-snapshot-2026-10-06.manifest.json",
+      "entryPath": "Neuro_Kurisu_SUPER_2026-10-06/runtime/neuro-kurisu/src/organism/cognition/NeuroSymbolicConceptCompiler.ts",
+      "sha256": "f442d9c53f4eb0f7e94de19ade4b8c3365347b2e122d0fdbbcae589b83ce5ae3",
+      "oldBlobPath": "docs/archive-optimization/source-archive-blobs/f442d9c53f4eb0f7e94de19ade4b8c3365347b2e122d0fdbbcae589b83ce5ae3",
+      "canonicalPath": "legacy/snapshots/neuro-kurisu-35.30/src/organism/cognition/NeuroSymbolicConceptCompiler.ts",
+      "sizeBytes": 2312
+    },
+    {
+      "manifest": "docs/archive-optimization/historical-snapshot-2026-10-06.manifest.json",
+      "entryPath": "Neuro_Kurisu_SUPER_2026-10-06/runtime/neuro-kurisu/src/organism/cognition/GlobalWorkspaceSubstrateV2.ts",
+      "sha256": "f02792c79bd90f6ea058b7ee0c7de04b672b5851cb384b2c697751d5b5262315",
+      "oldBlobPath": "docs/archive-optimization/source-archive-blobs/f02792c79bd90f6ea058b7ee0c7de04b672b5851cb384b2c697751d5b5262315",
+      "canonicalPath": "legacy/snapshots/neuro-kurisu-35.30/src/organism/cognition/GlobalWorkspaceSubstrateV2.ts",
+      "sizeBytes": 10451
+    },
+    {
+      "manifest": "docs/archive-optimization/historical-snapshot-2026-10-06.manifest.json",
+      "entryPath": "Neuro_Kurisu_SUPER_2026-10-06/runtime/neuro-kurisu/src/organism/memory/HippocampalMemorySubstrate.ts",
+      "sha256": "a1e2fd32b1bddba90c86f3d29f7d55f3252cf0ea3fc93d6c75d2c500511072e9",
+      "oldBlobPath": "docs/archive-optimization/source-archive-blobs/a1e2fd32b1bddba90c86f3d29f7d55f3252cf0ea3fc93d6c75d2c500511072e9",
+      "canonicalPath": "legacy/snapshots/neuro-kurisu-35.30/src/organism/memory/HippocampalMemorySubstrate.ts",
+      "sizeBytes": 9246
+    },
+    {
+      "manifest": "docs/archive-optimization/historical-snapshot-2026-10-06.manifest.json",
+      "entryPath": "Neuro_Kurisu_SUPER_2026-10-06/runtime/neuro-kurisu/src/organism/memory/HippocampalFormationCircuit.ts",
+      "sha256": "9aac98ff269555ca59811a62bc3577f02faa7e9649527add17d5f11367135154",
+      "oldBlobPath": "docs/archive-optimization/source-archive-blobs/9aac98ff269555ca59811a62bc3577f02faa7e9649527add17d5f11367135154",
+      "canonicalPath": "legacy/snapshots/neuro-kurisu-35.30/src/organism/memory/HippocampalFormationCircuit.ts",
+      "sizeBytes": 5963
+    },
+    {
+      "manifest": "docs/archive-optimization/historical-snapshot-2026-10-06.manifest.json",
+      "entryPath": "Neuro_Kurisu_SUPER_2026-10-06/runtime/neuro-kurisu/src/organism/learning/ParametricPolicyLearner.ts",
+      "sha256": "7ded54c5e43c1618cb05c8832696e9c933f0ec79cd28599d5ea9450266c8c244",
+      "oldBlobPath": "docs/archive-optimization/source-archive-blobs/7ded54c5e43c1618cb05c8832696e9c933f0ec79cd28599d5ea9450266c8c244",
+      "canonicalPath": "legacy/snapshots/neuro-kurisu-35.30/src/organism/learning/ParametricPolicyLearner.ts",
+      "sizeBytes": 8922
+    },
+    {
+      "manifest": "docs/archive-optimization/historical-snapshot-2026-10-06.manifest.json",
+      "entryPath": "Neuro_Kurisu_SUPER_2026-10-06/runtime/neuro-kurisu/tests/memory-substrate-coordinator.mjs",
+      "sha256": "159b95a6fe4fe579ea8c230ae6f41264ae739d08882badd83901589e7f2e34e1",
+      "oldBlobPath": "docs/archive-optimization/source-archive-blobs/159b95a6fe4fe579ea8c230ae6f41264ae739d08882badd83901589e7f2e34e1",
+      "canonicalPath": "legacy/snapshots/neuro-kurisu-35.30/tests/memory-substrate-coordinator.mjs",
+      "sizeBytes": 1183
+    },
+    {
+      "manifest": "docs/archive-optimization/historical-snapshot-2026-10-06.manifest.json",
+      "entryPath": "Neuro_Kurisu_SUPER_2026-10-06/contracts/inventory/provenance-2026-10-06.json",
+      "sha256": "122bf608d6a33fdbbb982e44f7f85e62d40ccdd7cb739fe15cd989b9c8881c26",
+      "oldBlobPath": "docs/archive-optimization/historical-snapshot-blobs/122bf608d6a33fdbbb982e44f7f85e62d40ccdd7cb739fe15cd989b9c8881c26",
+      "canonicalPath": "contracts/inventory/provenance-2026-10-06.json",
+      "sizeBytes": 1670
+    },
+    {
+      "manifest": "docs/archive-optimization/source-archive-manifests/Neuro_Kurisu_35.30.0_R16_PASS_11_SEMANTIC_ISOLATION_2026-09-29.manifest.json",
+      "entryPath": "nk_pass10/src/organism/cognition/NeuroSymbolicConceptCompiler.ts",
+      "sha256": "f442d9c53f4eb0f7e94de19ade4b8c3365347b2e122d0fdbbcae589b83ce5ae3",
+      "oldBlobPath": "docs/archive-optimization/source-archive-blobs/f442d9c53f4eb0f7e94de19ade4b8c3365347b2e122d0fdbbcae589b83ce5ae3",
+      "canonicalPath": "legacy/snapshots/neuro-kurisu-35.30/src/organism/cognition/NeuroSymbolicConceptCompiler.ts",
+      "sizeBytes": 2312
+    },
+    {
+      "manifest": "docs/archive-optimization/source-archive-manifests/Neuro_Kurisu_35.30.0_R16_PASS_11_SEMANTIC_ISOLATION_2026-09-29.manifest.json",
+      "entryPath": "nk_pass10/src/organism/cognition/GlobalWorkspaceSubstrateV2.ts",
+      "sha256": "f02792c79bd90f6ea058b7ee0c7de04b672b5851cb384b2c697751d5b5262315",
+      "oldBlobPath": "docs/archive-optimization/source-archive-blobs/f02792c79bd90f6ea058b7ee0c7de04b672b5851cb384b2c697751d5b5262315",
+      "canonicalPath": "legacy/snapshots/neuro-kurisu-35.30/src/organism/cognition/GlobalWorkspaceSubstrateV2.ts",
+      "sizeBytes": 10451
+    },
+    {
+      "manifest": "docs/archive-optimization/source-archive-manifests/Neuro_Kurisu_35.30.0_R16_PASS_11_SEMANTIC_ISOLATION_2026-09-29.manifest.json",
+      "entryPath": "nk_pass10/src/organism/memory/HippocampalMemorySubstrate.ts",
+      "sha256": "a1e2fd32b1bddba90c86f3d29f7d55f3252cf0ea3fc93d6c75d2c500511072e9",
+      "oldBlobPath": "docs/archive-optimization/source-archive-blobs/a1e2fd32b1bddba90c86f3d29f7d55f3252cf0ea3fc93d6c75d2c500511072e9",
+      "canonicalPath": "legacy/snapshots/neuro-kurisu-35.30/src/organism/memory/HippocampalMemorySubstrate.ts",
+      "sizeBytes": 9246
+    },
+    {
+      "manifest": "docs/archive-optimization/source-archive-manifests/Neuro_Kurisu_35.30.0_R16_PASS_11_SEMANTIC_ISOLATION_2026-09-29.manifest.json",
+      "entryPath": "nk_pass10/src/organism/memory/HippocampalFormationCircuit.ts",
+      "sha256": "9aac98ff269555ca59811a62bc3577f02faa7e9649527add17d5f11367135154",
+      "oldBlobPath": "docs/archive-optimization/source-archive-blobs/9aac98ff269555ca59811a62bc3577f02faa7e9649527add17d5f11367135154",
+      "canonicalPath": "legacy/snapshots/neuro-kurisu-35.30/src/organism/memory/HippocampalFormationCircuit.ts",
+      "sizeBytes": 5963
+    },
+    {
+      "manifest": "docs/archive-optimization/source-archive-manifests/Neuro_Kurisu_35.30.0_R16_PASS_11_SEMANTIC_ISOLATION_2026-09-29.manifest.json",
+      "entryPath": "nk_pass10/src/organism/learning/ParametricPolicyLearner.ts",
+      "sha256": "7ded54c5e43c1618cb05c8832696e9c933f0ec79cd28599d5ea9450266c8c244",
+      "oldBlobPath": "docs/archive-optimization/source-archive-blobs/7ded54c5e43c1618cb05c8832696e9c933f0ec79cd28599d5ea9450266c8c244",
+      "canonicalPath": "legacy/snapshots/neuro-kurisu-35.30/src/organism/learning/ParametricPolicyLearner.ts",
+      "sizeBytes": 8922
+    },
+    {
+      "manifest": "docs/archive-optimization/source-archive-manifests/Neuro_Kurisu_35.30.0_R16_PASS_11_SEMANTIC_ISOLATION_2026-09-29.manifest.json",
+      "entryPath": "nk_pass10/tests/memory-substrate-coordinator.mjs",
+      "sha256": "159b95a6fe4fe579ea8c230ae6f41264ae739d08882badd83901589e7f2e34e1",
+      "oldBlobPath": "docs/archive-optimization/source-archive-blobs/159b95a6fe4fe579ea8c230ae6f41264ae739d08882badd83901589e7f2e34e1",
+      "canonicalPath": "legacy/snapshots/neuro-kurisu-35.30/tests/memory-substrate-coordinator.mjs",
+      "sizeBytes": 1183
+    },
+    {
+      "manifest": "docs/archive-optimization/source-archive-manifests/Neuro_Kurisu_35.40.0_R26_PASS20_RESTORE_SYMMETRY_2026-10-01.manifest.json",
+      "entryPath": "tests/memory-substrate-coordinator.mjs",
+      "sha256": "159b95a6fe4fe579ea8c230ae6f41264ae739d08882badd83901589e7f2e34e1",
+      "oldBlobPath": "docs/archive-optimization/source-archive-blobs/159b95a6fe4fe579ea8c230ae6f41264ae739d08882badd83901589e7f2e34e1",
+      "canonicalPath": "legacy/snapshots/neuro-kurisu-35.30/tests/memory-substrate-coordinator.mjs",
+      "sizeBytes": 1183
+    },
+    {
+      "manifest": "docs/archive-optimization/source-archive-manifests/Neuro_Kurisu_35.40.0_R26_PASS20_RESTORE_SYMMETRY_2026-10-01.manifest.json",
+      "entryPath": "src/organism/learning/ParametricPolicyLearner.ts",
+      "sha256": "7ded54c5e43c1618cb05c8832696e9c933f0ec79cd28599d5ea9450266c8c244",
+      "oldBlobPath": "docs/archive-optimization/source-archive-blobs/7ded54c5e43c1618cb05c8832696e9c933f0ec79cd28599d5ea9450266c8c244",
+      "canonicalPath": "legacy/snapshots/neuro-kurisu-35.30/src/organism/learning/ParametricPolicyLearner.ts",
+      "sizeBytes": 8922
+    },
+    {
+      "manifest": "docs/archive-optimization/source-archive-manifests/Neuro_Kurisu_35.40.0_R26_PASS20_RESTORE_SYMMETRY_2026-10-01.manifest.json",
+      "entryPath": "src/organism/memory/HippocampalFormationCircuit.ts",
+      "sha256": "9aac98ff269555ca59811a62bc3577f02faa7e9649527add17d5f11367135154",
+      "oldBlobPath": "docs/archive-optimization/source-archive-blobs/9aac98ff269555ca59811a62bc3577f02faa7e9649527add17d5f11367135154",
+      "canonicalPath": "legacy/snapshots/neuro-kurisu-35.30/src/organism/memory/HippocampalFormationCircuit.ts",
+      "sizeBytes": 5963
+    },
+    {
+      "manifest": "docs/archive-optimization/source-archive-manifests/Neuro_Kurisu_35.40.0_R26_PASS20_RESTORE_SYMMETRY_2026-10-01.manifest.json",
+      "entryPath": "src/organism/memory/HippocampalMemorySubstrate.ts",
+      "sha256": "a1e2fd32b1bddba90c86f3d29f7d55f3252cf0ea3fc93d6c75d2c500511072e9",
+      "oldBlobPath": "docs/archive-optimization/source-archive-blobs/a1e2fd32b1bddba90c86f3d29f7d55f3252cf0ea3fc93d6c75d2c500511072e9",
+      "canonicalPath": "legacy/snapshots/neuro-kurisu-35.30/src/organism/memory/HippocampalMemorySubstrate.ts",
+      "sizeBytes": 9246
+    },
+    {
+      "manifest": "docs/archive-optimization/source-archive-manifests/Neuro_Kurisu_35.40.0_R26_PASS20_RESTORE_SYMMETRY_2026-10-01.manifest.json",
+      "entryPath": "src/organism/cognition/GlobalWorkspaceSubstrateV2.ts",
+      "sha256": "f02792c79bd90f6ea058b7ee0c7de04b672b5851cb384b2c697751d5b5262315",
+      "oldBlobPath": "docs/archive-optimization/source-archive-blobs/f02792c79bd90f6ea058b7ee0c7de04b672b5851cb384b2c697751d5b5262315",
+      "canonicalPath": "legacy/snapshots/neuro-kurisu-35.30/src/organism/cognition/GlobalWorkspaceSubstrateV2.ts",
+      "sizeBytes": 10451
+    },
+    {
+      "manifest": "docs/archive-optimization/source-archive-manifests/Neuro_Kurisu_35.40.0_R26_PASS20_RESTORE_SYMMETRY_2026-10-01.manifest.json",
+      "entryPath": "src/organism/cognition/NeuroSymbolicConceptCompiler.ts",
+      "sha256": "f442d9c53f4eb0f7e94de19ade4b8c3365347b2e122d0fdbbcae589b83ce5ae3",
+      "oldBlobPath": "docs/archive-optimization/source-archive-blobs/f442d9c53f4eb0f7e94de19ade4b8c3365347b2e122d0fdbbcae589b83ce5ae3",
+      "canonicalPath": "legacy/snapshots/neuro-kurisu-35.30/src/organism/cognition/NeuroSymbolicConceptCompiler.ts",
+      "sizeBytes": 2312
+    },
+    {
+      "manifest": "docs/archive-optimization/source-archive-manifests/Neuro_Kurisu_v56_TraitsHierarchy.manifest.json",
+      "entryPath": "kurisu_neuro_v40/kurisu_webapp/START_HERE_RU.md",
+      "sha256": "335813c088b5f2fda3aec9f1a3809e81bf6efe7f66447585f86bfc64d581e063",
+      "oldBlobPath": "docs/archive-optimization/source-archive-blobs/335813c088b5f2fda3aec9f1a3809e81bf6efe7f66447585f86bfc64d581e063",
+      "canonicalPath": "legacy/kurisu-v56/START_HERE_RU.md",
+      "sizeBytes": 357
+    }
+  ],
+  "updatedManifestFiles": [
+    "docs/archive-optimization/historical-snapshot-2026-10-06.manifest.json",
+    "docs/archive-optimization/source-archive-manifests/Neuro_Kurisu_35.30.0_R16_PASS_11_SEMANTIC_ISOLATION_2026-09-29.manifest.json",
+    "docs/archive-optimization/source-archive-manifests/Neuro_Kurisu_35.40.0_R26_PASS20_RESTORE_SYMMETRY_2026-10-01.manifest.json",
+    "docs/archive-optimization/source-archive-manifests/Neuro_Kurisu_v56_TraitsHierarchy.manifest.json"
+  ],
+  "removedOrphanBlobs": [
+    {
+      "path": "docs/archive-optimization/source-archive-blobs/9aac98ff269555ca59811a62bc3577f02faa7e9649527add17d5f11367135154",
+      "sha256": "9aac98ff269555ca59811a62bc3577f02faa7e9649527add17d5f11367135154",
+      "sizeBytes": 5963,
+      "reason": "no remaining archive manifest references this content-addressed blob"
+    },
+    {
+      "path": "docs/archive-optimization/source-archive-blobs/7ded54c5e43c1618cb05c8832696e9c933f0ec79cd28599d5ea9450266c8c244",
+      "sha256": "7ded54c5e43c1618cb05c8832696e9c933f0ec79cd28599d5ea9450266c8c244",
+      "sizeBytes": 8922,
+      "reason": "no remaining archive manifest references this content-addressed blob"
+    },
+    {
+      "path": "docs/archive-optimization/source-archive-blobs/159b95a6fe4fe579ea8c230ae6f41264ae739d08882badd83901589e7f2e34e1",
+      "sha256": "159b95a6fe4fe579ea8c230ae6f41264ae739d08882badd83901589e7f2e34e1",
+      "sizeBytes": 1183,
+      "reason": "no remaining archive manifest references this content-addressed blob"
+    },
+    {
+      "path": "docs/archive-optimization/source-archive-blobs/f02792c79bd90f6ea058b7ee0c7de04b672b5851cb384b2c697751d5b5262315",
+      "sha256": "f02792c79bd90f6ea058b7ee0c7de04b672b5851cb384b2c697751d5b5262315",
+      "sizeBytes": 10451,
+      "reason": "no remaining archive manifest references this content-addressed blob"
+    },
+    {
+      "path": "docs/archive-optimization/source-archive-blobs/a1e2fd32b1bddba90c86f3d29f7d55f3252cf0ea3fc93d6c75d2c500511072e9",
+      "sha256": "a1e2fd32b1bddba90c86f3d29f7d55f3252cf0ea3fc93d6c75d2c500511072e9",
+      "sizeBytes": 9246,
+      "reason": "no remaining archive manifest references this content-addressed blob"
+    },
+    {
+      "path": "docs/archive-optimization/source-archive-blobs/f442d9c53f4eb0f7e94de19ade4b8c3365347b2e122d0fdbbcae589b83ce5ae3",
+      "sha256": "f442d9c53f4eb0f7e94de19ade4b8c3365347b2e122d0fdbbcae589b83ce5ae3",
+      "sizeBytes": 2312,
+      "reason": "no remaining archive manifest references this content-addressed blob"
+    },
+    {
+      "path": "docs/archive-optimization/historical-snapshot-blobs/122bf608d6a33fdbbb982e44f7f85e62d40ccdd7cb739fe15cd989b9c8881c26",
+      "sha256": "122bf608d6a33fdbbb982e44f7f85e62d40ccdd7cb739fe15cd989b9c8881c26",
+      "sizeBytes": 1670,
+      "reason": "no remaining archive manifest references this content-addressed blob"
+    }
+  ],
+  "reboundBytes": 154335,
+  "removedBlobBytes": 39747
+}

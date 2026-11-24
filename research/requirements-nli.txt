@@ -1,0 +1,5 @@
+# Optional, isolated CPU dependency set for tools/research_nli_server.py.
+# Install in a dedicated virtual environment; never add to the main runtime graph.
+torch>=2.2,<3
+transformers>=4.41,<5
+safetensors>=0.4.3,<1

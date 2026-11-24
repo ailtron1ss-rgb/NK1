@@ -1,0 +1,21 @@
+import assert from 'node:assert/strict';
+import os from 'node:os';
+import path from 'node:path';
+import { mkdtemp } from 'node:fs/promises';
+import { OrganismRuntime } from '../src/organism/core/OrganismRuntime.ts';
+import { MemoryStateStore } from '../src/organism/persistence/MemoryStateStore.ts';
+import { NoopOperationalJournal } from '../src/organism/persistence/NoopOperationalJournal.ts';
+
+const dir=await mkdtemp(path.join(os.tmpdir(),'nk-p19-'));
+const rt=new OrganismRuntime({stateFile:path.join(dir,'organism.json'),worldStateFile:path.join(dir,'world.json'),autoRun:false,checkpointMinIntervalMs:0,checkpointMaxDirtyCycles:1,stateStore:new MemoryStateStore(),worldStateStore:new MemoryStateStore(),journal:new NoopOperationalJournal()});
+await rt.init();
+for(let i=0;i<32;i++) await rt.step(i%16===0?`Проанализируй новый контекст №${i}`:undefined);
+const dev=rt.adaptiveDevelopmentSnapshot();
+assert.ok(dev.cycles>=32);
+assert.ok(dev.autonomousCycles>0);
+assert.ok(Object.keys(dev.actionCounts).length>=2, `expected behavioral coverage, got ${JSON.stringify(dev.actionCounts)}`);
+assert.ok(dev.behaviorEntropy01>0, 'behavioral entropy must be non-zero after adaptive regulation');
+assert.ok(dev.diversityPressure01>=0 && dev.diversityPressure01<=1);
+assert.ok(dev.explorationPressure01>=0 && dev.explorationPressure01<=1);
+await rt.flush();
+console.log(`P19_ADAPTIVE_DEVELOPMENT=PASS cycles=${dev.cycles} autonomous=${dev.autonomousCycles} actions=${Object.keys(dev.actionCounts).length} entropy=${dev.behaviorEntropy01.toFixed(3)} diversity=${dev.diversityPressure01.toFixed(3)} recommendation=${dev.lastRecommendation}`); rt.stop();

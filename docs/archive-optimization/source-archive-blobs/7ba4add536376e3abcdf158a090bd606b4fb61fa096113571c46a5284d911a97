@@ -1,0 +1,43 @@
+import type { ActionKind, OrganismNeeds } from '../core/types.ts';
+import { WorldModel, type InternalWorldState, type PredictedOutcome } from './WorldModel.ts';
+
+export interface ActiveInferenceScore { action:ActionKind; expectedFreeEnergy:number; pragmaticValue:number; epistemicValue:number; risk:number; actionCost:number; confidence:number; reasons:string[]; }
+export interface ActiveInferenceState { version:1; lastAction:ActionKind|'none'; lastScore:number; epistemicWeight:number; pragmaticWeight:number; updatedAt:number; }
+const clamp=(n:number)=>Math.max(0,Math.min(1,Number.isFinite(n)?n:0));
+export function defaultActiveInferenceState():ActiveInferenceState{return{version:1,lastAction:'none',lastScore:0,epistemicWeight:0.52,pragmaticWeight:0.48,updatedAt:Date.now()};}
+
+const costs:Record<ActionKind,number>={respond:.18,explore:.42,verify:.36,rest:.05,reflect:.22,wait:.02,defer:.08};
+
+export class ActiveInferenceEngine {
+  private state=defaultActiveInferenceState();
+  snapshot(){return structuredClone(this.state);}
+  restore(v:ActiveInferenceState|undefined){this.state={...defaultActiveInferenceState(),...(v||{})};}
+  score(world:WorldModel,state:InternalWorldState,needs:OrganismNeeds,actions:ActionKind[]):Map<ActionKind,ActiveInferenceScore>{
+    const out=new Map<ActionKind,ActiveInferenceScore>();
+    for(const action of actions){
+      const p:PredictedOutcome=world.predict(state,action);
+      const epistemic=clamp((state.uncertainty-p.next.uncertainty)*0.9 + (p.confidence<0.6 ? (1-p.confidence)*0.35 : 0) + (action==='verify'||action==='explore'?0.08:0));
+      const pragmatic=clamp(p.utility*0.85 + (action==='rest' ? Math.max(0,0.5-needs.energy)*0.35 : 0));
+      const risk=clamp((1-p.confidence)*0.55 + costs[action]*0.28 + Math.max(0,0.55-p.next.energy)*0.24);
+      const efg=clamp(this.state.epistemicWeight*(1-epistemic)+this.state.pragmaticWeight*(1-pragmatic)+risk*0.28+costs[action]*0.18);
+      out.set(action,{action,expectedFreeEnergy:efg,pragmaticValue:pragmatic,epistemicValue:epistemic,risk,actionCost:costs[action],confidence:p.confidence,reasons:[...p.reasons,...p.worldEvidence]});
+    }
+    return out;
+  }
+  choose(scores:Map<ActionKind,ActiveInferenceScore>,preferred?:ActionKind):ActiveInferenceScore|null{
+    const rows=[...scores.values()];
+    if(!rows.length)return null;
+    rows.sort((a,b)=>a.expectedFreeEnergy-b.expectedFreeEnergy);
+    const top=rows[0];
+    if(preferred){const pref=scores.get(preferred); if(pref && pref.expectedFreeEnergy<=top.expectedFreeEnergy+0.07) return pref;}
+    this.state.lastAction=top.action; this.state.lastScore=top.expectedFreeEnergy; this.state.updatedAt=Date.now();
+    return top;
+  }
+  learn(input:{epistemicSurprise:number;actionSuccess:number;learningScale01?:number}){
+    const s=clamp(input.epistemicSurprise), success=clamp(input.actionSuccess), scale=clamp(input.learningScale01 ?? 1);
+    const targetE=clamp(this.state.epistemicWeight + (s-0.35)*0.018*scale);
+    const targetP=clamp(this.state.pragmaticWeight + (success-0.5)*0.018*scale);
+    const total=targetE+targetP || 1;
+    this.state.epistemicWeight=targetE/total; this.state.pragmaticWeight=targetP/total; this.state.updatedAt=Date.now();
+  }
+}

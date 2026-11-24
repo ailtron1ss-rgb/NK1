@@ -1,0 +1,131 @@
+{
+  "title": "Neuro-Kurisu SUPER — reconciled weighted implementation roadmap scorecard",
+  "date": "2026-10-13",
+  "workpass": "27 — canonical memory retrieval coverage and BM25 evaluation baseline",
+  "baseArchive": "Neuro_Kurisu_SUPER_WILL_LUMINA_HEXIS_LETTA_CONSCIO_INTEGRATED_WORKPASS26_2026-10-13.zip",
+  "runtime": "Neuro-Kurisu 35.50.0",
+  "schema": 224,
+  "method": "WorkPass27 improves the canonical MemoryOS2 retrieval algorithm: complete token postings under the existing 1600-row corpus bound, deterministic candidate selection with IDF/coverage/phrase/temporal/recency signals, no free 0.5 similarity for orthogonal hashed vectors, and a reproducible Okapi BM25 benchmark comparator with configuration fingerprint. The current small synthetic fixture shows candidate Recall@5 delta -0.25 with paired bootstrap interval [-0.75, 0.25]; this is a useful regression discovery, not an external quality estimate. Strategy remains not-promoted until candidate behavior is improved and an independent labelled temporal holdout is run.",
+  "overallPercent": 72.3,
+  "previousOfficialScorePercent": 72.15,
+  "deltaPercentagePoints": 0.15,
+  "remainingWeightedRoadmapPoints": 27.7,
+  "workstreams": [
+    {
+      "id": "A",
+      "name": "Canonical source lineage and single-owner architecture",
+      "weight": 15,
+      "completionPercent": 100,
+      "weightedPoints": 15.0,
+      "previousPercent": 100,
+      "rationale": "No duplicate canonical owner; source manifests and metadata contract reconciled."
+    },
+    {
+      "id": "B",
+      "name": "Runtime integration, API/UI routes and smoke/linkage coverage",
+      "weight": 15,
+      "completionPercent": 95,
+      "weightedPoints": 14.25,
+      "previousPercent": 95,
+      "rationale": "WorkPass16 makes browser smoke fail closed on required brand warnings and actual auth mismatch, exposes indeterminate auth state, validates bounded timeouts, and atomically publishes private verdict files. The 212/212 source-only UI script suite passes; dependency-complete UI build and actual browser E2E remain open."
+    },
+    {
+      "id": "C",
+      "name": "Memory 2.0, retrieval/admission and benchmark evidence",
+      "weight": 15,
+      "completionPercent": 67,
+      "weightedPoints": 10.05,
+      "previousPercent": 66,
+      "rationale": "WorkPass27 fixes arbitrary token-posting truncation, strengthens deterministic top-192 candidate selection, removes the hashed-vector cosine similarity floor, and upgrades the benchmark comparator to real Okapi BM25. The existing synthetic fixture now shows MemoryOS2 below BM25 by 0.25 Recall@5, so no uplift is claimed; independent temporal holdout and further retrieval improvement remain open."
+    },
+    {
+      "id": "D",
+      "name": "Agency, action schema, execution, outcome and reafference",
+      "weight": 20,
+      "completionPercent": 68,
+      "weightedPoints": 13.6,
+      "previousPercent": 65,
+      "rationale": "WorkPass20 adds exact action execution/step receipt correlation and a persisted bounded idempotency ledger; duplicate/stale receipts cannot advance later project steps. Entire action→independent external receipt→reafference chain remains partial."
+    },
+    {
+      "id": "E",
+      "name": "Portable subject continuity and social/known-entity dossier",
+      "weight": 10,
+      "completionPercent": 75,
+      "weightedPoints": 7.5,
+      "previousPercent": 75,
+      "rationale": "Read-only dossier and fidelity contracts are present; browser-backed corrections and behavioral equivalence remain open."
+    },
+    {
+      "id": "F",
+      "name": "External transport, SDK, idempotency and replay",
+      "weight": 10,
+      "completionPercent": 40,
+      "weightedPoints": 4.0,
+      "previousPercent": 40,
+      "rationale": "Conscio/Hexis/WILL local idempotency, queue backpressure and ACK/replay contracts improved; remote provider receipt/reconnect proof remains open."
+    },
+    {
+      "id": "G",
+      "name": "Research promotion and controlled experiments",
+      "weight": 5,
+      "completionPercent": 66,
+      "weightedPoints": 3.3,
+      "previousPercent": 63,
+      "rationale": "WorkPass25 supplies a deterministic private-first temperature-scaling fitter with a group-disjoint validation fold, version/dataset-bound artifact contract, NLL/Brier/ECE eligibility thresholds and provenance propagation into evidence/restore. This is an implemented pipeline only: the real pinned pretrained model and independent final holdout have not been run."
+    },
+    {
+      "id": "H",
+      "name": "Release durability: build, E2E, rollback, soak, SBOM/provenance",
+      "weight": 10,
+      "completionPercent": 46,
+      "weightedPoints": 4.6,
+      "previousPercent": 45,
+      "rationale": "Release metadata and operational readiness reporting improved; dependency-complete app install/build, browser E2E, clean-room restore/rollback, soak and final SBOM/provenance remain open."
+    }
+  ],
+  "normalizedTaskInventory": {
+    "count": 78,
+    "counts": {
+      "DONE": 57,
+      "PARTIAL": 11,
+      "TODO": 10
+    },
+    "strictDonePercent": 73.08,
+    "partialPercent": 14.1,
+    "todoPercent": 12.82,
+    "halfCreditEquivalentPercent": 80.13,
+    "note": "Normalized unique deliverables, not append-only historical tasklist line counts. PARTIAL is not treated as DONE. This inventory score does not establish release readiness."
+  },
+  "openReleaseGates": [
+    "Real autonomous research on at least two allowed external HTTPS hosts with distinct evidence and persisted source receipt",
+    "Real pretrained NLI inference on a fixed labelled, domain-relevant adversarial holdout; threshold review must remain separate from evaluation; multilingual/domain compatibility is unproven",
+    "Complete agency loop from competition to independent postcondition, persistence and reafference with cross-consumer no-double-credit",
+    "Entity correction/expiry/conflict across browser-backed multi-session flows",
+    "Portable subject continuity and behavioral fidelity",
+    "Capability evidence graph for critical user journeys",
+    "External provider delivery receipts, reconnect and replay guarantees",
+    "Clean-room backup/restore, schema migration and rollback drill",
+    "Research candidate integrations from NeuroCore/NOMEGA/DeepCode only where they measurably beat canonical baselines",
+    "Authorization/abuse/rate-limit review for diagnostic and benchmark APIs",
+    "Independent labelled temporal MemoryOS2 holdout run against the implemented Okapi BM25 baseline; current synthetic fixture reports candidate recall below baseline",
+    "Dependency-complete app install and root/app semantic typecheck",
+    "React/Vite production build",
+    "Desktop/mobile browser E2E, including actual Live2D interaction",
+    "Multi-hour soak with memory and resource-growth limits",
+    "Final SBOM, license inventory and immutable release provenance sign-off",
+    "Release-candidate sign-off"
+  ],
+  "environmentNote": "WorkPass27: runtime TypeScript and focused temporal/retrieval regressions pass. Candidate postings retain complete coverage within the 1600-item bound; candidate selection is deterministic and ranks high-value matches past the former arbitrary 96-posting cutoff. The offline benchmark now uses actual Okapi BM25. Current small synthetic fixture reports Recall@5 delta -0.25 (paired bootstrap [-0.75, 0.25]), so candidate remains not-promoted; do not extrapolate this fixture to production quality. Independent labelled temporal holdout is still missing. App production build/browser E2E remains blocked by absent frontend dependencies; model inference, live providers, rollback, soak and sign-off remain open.",
+  "releaseStatus": "implementation-workpass; NOT release-ready",
+  "limitations": [
+    "Actual pinned DeBERTa model weights and inference were not run in this environment; package/model registry DNS was unavailable. Calibration fitter tests use a loopback mock, not real inference.",
+    "Temperature fit uses its own training subset; NLL/Brier/ECE review checks are calculated on a deterministic group-disjoint validation subset from a dedicated calibration set. The final evaluation holdout must remain separate and untouched.",
+    "Temperature scaling calibrates NLI class scores for the represented distribution. It does not turn NLI into a probability that a sourced world claim is true and is never auto-promoted.",
+    "The test suite verifies contracts, group-disjoint split and provenance/failure handling but does not establish domain quality, multilingual behavior or improvement over baseline.",
+    "The MemoryOS2 candidate remains not-promoted. The benchmark now uses Okapi BM25, and a small synthetic fixture shows -0.25 Recall@5 with an interval that permits both regression and improvement; it is not an independent project holdout.",
+    "App dependency-complete installation, React/Vite production build and desktop/mobile browser E2E remain open because the sandbox cannot resolve package registries.",
+    "Live external research/provider receipts, complete agency→independent postcondition→reafference, clean-room restore/rollback, multi-hour soak, SBOM/provenance and final sign-off remain open.",
+    "No release-ready status or human-like/biological intelligence claim is made."
+  ]
+}

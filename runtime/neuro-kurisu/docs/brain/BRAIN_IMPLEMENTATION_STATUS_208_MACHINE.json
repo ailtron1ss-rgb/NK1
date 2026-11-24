@@ -1,0 +1,10 @@
+{
+  "release":"35.6.1 BIG PASS 208",
+  "previous":"35.6.1 BIG PASS 207",
+  "pass":"B-M3",
+  "component":"BasalGangliaSelectionCircuit",
+  "status":"implemented-computational-analogue",
+  "tested":["direct-pathway-like facilitation","indirect-pathway-like suppression","hyperdirect conflict brake","dopamine-gated plasticity","lesion ablation","snapshot-restore","coordinator integration","persistence mapping"],
+  "scientificStatus":"computational-analogue-not-anatomical-equivalence",
+  "remainingGaps":["explicit nucleus state dynamics","explicit dorsal/ventral striatal territory graph","full cortico-basal-ganglia-thalamo-cortical closed-loop motor execution"]
+}

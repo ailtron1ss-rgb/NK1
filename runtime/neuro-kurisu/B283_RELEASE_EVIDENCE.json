@@ -1,0 +1,35 @@
+{
+  "version": "B283",
+  "date": "2026-09-12",
+  "standalone": {
+    "steps": 260,
+    "learningUpdates": 260,
+    "predictionUpdates": 65696,
+    "hypothesisSwitches": 31,
+    "posteriorEntropy01": 0.9933924659730653,
+    "diversity01": 0.5689069090361843,
+    "lesionDrop01": 0.3937938099899927,
+    "commit": true,
+    "reject": true,
+    "snapshotRoundTrip": true
+  },
+  "hidden": {
+    "steps": 420,
+    "hiddenError": 0.16894758550796096,
+    "baselineError": 0.5,
+    "gain": 0.33105241449203904,
+    "hypothesisSwitches": 48,
+    "posteriorEntropy01": 0.9911597344246299,
+    "diversity01": 0.696744452679276,
+    "selfAlignment01": 0.9396971781410889,
+    "personalityFit01": 0.921765897436821,
+    "memoryContinuity01": 0.907898720006081
+  },
+  "core": {
+    "steps": 14,
+    "learningUpdates": 14,
+    "hypothesisSwitches": 2,
+    "restart": true
+  },
+  "migration": {"roundTrip": true}
+}

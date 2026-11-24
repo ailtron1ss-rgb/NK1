@@ -1,0 +1,21 @@
+import fs from 'node:fs';
+import path from 'node:path';
+const root=process.cwd();
+const coveragePath=path.join(root,'SEMANTIC_COVERAGE_AUDIT.json');
+const dynamicPath=path.join(root,'SEMANTIC_DYNAMIC_EVIDENCE.json');
+const coverage=fs.existsSync(coveragePath)?JSON.parse(fs.readFileSync(coveragePath,'utf8')):null;
+const dynamic=fs.existsSync(dynamicPath)?JSON.parse(fs.readFileSync(dynamicPath,'utf8')):{};
+const evidenceCount=Object.keys(dynamic).length;
+const rawContracts=coverage?.contracts ?? {};
+const list=Array.isArray(rawContracts)?rawContracts:Object.entries(rawContracts).map(([id,x])=>({id,...(x??{})}));
+const passports=list.map((x,i)=>{
+  const id=String(x.id??x.key??`${x.file??x.path??'unknown'}:${x.line??x.name??i}`);
+  const ev=dynamic[id];
+  const legacy=String(x.status??'').toUpperCase();
+  let status=['VERIFIED','INTEGRATION_ONLY','UNSAFE_TO_AUTO_RUN','UNVERIFIED'].includes(legacy)?legacy:'UNVERIFIED'; if(ev?.status==='VERIFIED') status='VERIFIED';
+  return {id,file:x.file??x.path??null,name:x.name??null,line:x.line??null,status,evidenceKinds:(ev?.evidence??[]).map(e=>e.kind)};
+});
+const counts=Object.fromEntries(['VERIFIED','INTEGRATION_ONLY','UNSAFE_TO_AUTO_RUN','UNVERIFIED'].map(k=>[k,passports.filter(p=>p.status===k).length]));
+const report={version:1,generatedAt:new Date().toISOString(),source:'semantic coverage contracts + dynamic evidence',total:passports.length,evidenceRecords:evidenceCount,counts,verifiedRate01:passports.length?counts.VERIFIED/passports.length:0,policy:'A capability is not considered implemented until direct or lifecycle behavioral evidence exists.',passports:passports.slice(0,50000)};
+fs.writeFileSync(path.join(root,'CAPABILITY_PASSPORT_AUDIT_B290.json'),JSON.stringify(report,null,2));
+console.log(JSON.stringify({pass:true,...counts,total:passports.length,evidenceRecords:evidenceCount,verifiedRate01:report.verifiedRate01},null,2));

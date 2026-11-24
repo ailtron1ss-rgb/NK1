@@ -1,0 +1,23 @@
+{
+  "version": 122,
+  "engine_version": "v122-memory",
+  "frontier": "v122-memory",
+  "architecture": "standalone_causal_trunk_with_opt_in_unified_sparse_memory_candidate",
+  "tests": "64/64 PASS",
+  "compileall": "PASS",
+  "verify_current": "PASS",
+  "default_parameters": 69137,
+  "candidate_parameters": 72249,
+  "candidate_parameter_delta": 3112,
+  "candidate_sparse_slots": 1024,
+  "candidate_integrated_state_floats": 10305,
+  "candidate_status": "candidate-not-promoted",
+  "collision_admission_status": "tested-not-promoted",
+  "evidence": [
+    "evidence/V122_MEMORY_QUALIFICATION.json",
+    "evidence/verify_current_V122.txt"
+  ],
+  "benchmark": "scripts/bench_v122_memory.py",
+  "upstream_backend_catalog_count": 53,
+  "registry_mechanism_count": 38
+}

@@ -1,0 +1,31 @@
+import assert from 'node:assert/strict';
+import { mkdtemp, rm } from 'node:fs/promises';
+import path from 'node:path';
+import { tmpdir } from 'node:os';
+import { OrganismRuntime } from '../src/organism/core/OrganismRuntime.ts';
+import { RELEASE_CONTRACT } from '../src/organism/system/ReleaseContract.ts';
+const dir=await mkdtemp(path.join(tmpdir(),'nk-p56p57-'));
+try{
+ const sf=path.join(dir,'state.json'), wf=path.join(dir,'world.json');
+ const a=new OrganismRuntime({stateFile:sf,worldStateFile:wf,enableLanguage:false});
+ await a.init();
+ for(let i=0;i<18;i++) await a.step(i%4===0?'Observe the situation and use evidence.':undefined);
+ const before=a.core.snapshot();
+ assert.equal(before.schemaVersion,RELEASE_CONTRACT.stateSchema);
+ assert.ok(before.facets.advanced.p56IntegratedDevelopmentalMind.assessments>0);
+ const anchorsBefore=before.facets.advanced.p57RealityFirstObservatory.anchorsAccepted;
+ await a.core.feedback({success:.78,reward:.56,surprise:.12,notes:'observed external outcome'});
+ await a.core.flush();
+ const mid=a.core.snapshot();
+ assert.equal(mid.facets.advanced.p57RealityFirstObservatory.anchorsAccepted,anchorsBefore+1);
+ a.stop();
+ const b=new OrganismRuntime({stateFile:sf,worldStateFile:wf,enableLanguage:false});
+ await b.init();
+ const after=b.core.snapshot();
+ assert.equal(after.schemaVersion,RELEASE_CONTRACT.stateSchema);
+ assert.equal(after.facets.advanced.p57RealityFirstObservatory.anchorsAccepted,anchorsBefore+1);
+ assert.equal(after.facets.advanced.p57RealityFirstObservatory.lastAnchorId,mid.facets.advanced.p57RealityFirstObservatory.lastAnchorId);
+ assert.ok(after.facets.advanced.p56IntegratedDevelopmentalMind.assessments>=before.facets.advanced.p56IntegratedDevelopmentalMind.assessments); assert.ok(after.facets.advanced.p61IntegratedMind.cycles>=before.facets.advanced.p61IntegratedMind.cycles); assert.ok(after.facets.advanced.p62MemoryFabric.queries>=before.facets.advanced.p62MemoryFabric.queries); assert.ok(after.facets.advanced.p63DevelopmentalOperatingSystem.cycles>=before.facets.advanced.p63DevelopmentalOperatingSystem.cycles);
+ console.log('P56_P57_INTEGRATION_PERSISTENCE=PASS');
+ b.stop();
+}finally{await rm(dir,{recursive:true,force:true});}

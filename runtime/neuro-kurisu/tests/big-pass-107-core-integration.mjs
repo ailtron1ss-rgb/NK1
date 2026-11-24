@@ -1,0 +1,14 @@
+import assert from 'node:assert/strict';
+import { OrganismCore } from '../src/organism/core/OrganismCore.ts';
+import { MemoryStateStore } from '../src/organism/persistence/MemoryStateStore.ts';
+const store=new MemoryStateStore();
+const core=new OrganismCore(store,{enableLanguage:false,checkpointMinIntervalMs:0});
+await core.init();
+const p=core.cognitiveResearchBatteryCreateProtocol({id:'core-rb107',hypothesisKey:'core-replay',taskIds:['t'],contextKeys:['a','b'],delaysMs:[1,2,3],requiredMatchedPairs:4,requiredHoldout:4,randomized:true,balanced:true,blinded:true,evaluatorVersion:'core-eval',seed:9,release:'34.81.0',stateSchema:116});
+core.cognitiveResearchBatteryRecordTrial({id:'c1',protocolId:p.id,taskId:'t',phase:'test',condition:'replay-on',contextKey:'a',pairKey:'p1',delayMs:1,baselineScore01:.5,score01:.7,independentVerified:true,holdout:false,evaluatorVersion:'core-eval',baselineEstablishedAt:10,outcomeRecordedAt:11,at:11});
+await core.flush();
+const snap=core.snapshot(); assert.equal(snap.facets.advanced.cognitiveResearchBattery.protocols.length,1);
+const core2=new OrganismCore(store,{enableLanguage:false,checkpointMinIntervalMs:0}); await core2.init();
+const restored=core2.cognitiveResearchBatterySnapshot();
+assert.equal(restored.protocols[0].id,'core-rb107'); assert.equal(restored.trials[0].id,'c1');
+console.log('BIG_PASS_107_CORE_INTEGRATION=PASS',JSON.stringify({protocols:restored.protocols.length,trials:restored.trials.length,schema:core2.snapshot().state.version}));

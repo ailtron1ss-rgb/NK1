@@ -1,0 +1,10 @@
+import { migratePersistedOrganism } from '../src/organism/persistence/StateMigrations.ts';
+const legacy = { schemaVersion: 13, state: { tick: 12, version: 13, needs: { energy: .7 } }, goals: [], traces: [], memories: [], facets: { advanced: { selfGovernance: { governanceScore: .4 } } } };
+const current = migratePersistedOrganism(legacy);
+if (current.schemaVersion !== current.state.version) throw new Error('schema mismatch');
+if (!current.facets.advanced.unifiedMemory || !current.facets.advanced.socialDevelopment) throw new Error('new facets missing');
+if (current.facets.advanced.unifiedMemory.version !== 2) throw new Error('unified memory migration mismatch');
+if (current.facets.advanced.socialDevelopment.version !== 2) throw new Error('social development migration mismatch');
+if (current.facets.evolution.identityTrajectory.version !== 2) throw new Error('identity trajectory migration mismatch');
+if (!current.facets.evolution.identityTrajectory.actionBiases) throw new Error('identity trajectory action bias migration missing');
+console.log('DEVELOPMENTAL_MIGRATION=PASS');

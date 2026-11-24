@@ -1,0 +1,124 @@
+{
+  "title": "WorkPass47 — current implementation status",
+  "date": "2026-10-16",
+  "workpass": 47,
+  "counts": {
+    "DONE": 8,
+    "PARTIAL": 2,
+    "TODO": 4
+  },
+  "items": [
+    {
+      "id": "P47-01",
+      "workstream": "A",
+      "title": "Сохранить четыре исходных архива в библиотеке",
+      "status": "DONE",
+      "evidence": "one/two/three/four.7z сохранены побайтно в /Нейро Курису/Исходники/.",
+      "nextStep": ""
+    },
+    {
+      "id": "P47-02",
+      "workstream": "A",
+      "title": "Единая линия release metadata",
+      "status": "DONE",
+      "evidence": "Root package, SUPER_VERSION, runtime package/lock, release contract and integration manifest aligned to WorkPass47 / 35.68.0 / schema 225.",
+      "nextStep": ""
+    },
+    {
+      "id": "P47-03",
+      "workstream": "B",
+      "title": "Runtime build/typecheck",
+      "status": "DONE",
+      "evidence": "npm run typecheck under runtime/neuro-kurisu: PASS.",
+      "nextStep": ""
+    },
+    {
+      "id": "P47-04",
+      "workstream": "B",
+      "title": "Автономная тема доходит до UI",
+      "status": "DONE",
+      "evidence": "Existing social initiative selects a topic; prompt is generated, message staged, exposed through API, inserted with stable ID and acknowledged after local cache save.",
+      "nextStep": ""
+    },
+    {
+      "id": "P47-05",
+      "workstream": "B",
+      "title": "Идемпотентность автономного сообщения",
+      "status": "DONE",
+      "evidence": "State queue, stage, acknowledgement, restore and legacy migration tests pass; real app restart/ACK E2E still open separately.",
+      "nextStep": ""
+    },
+    {
+      "id": "P47-06",
+      "workstream": "E",
+      "title": "Graded trait salience channel",
+      "status": "DONE",
+      "evidence": "WILL-inspired adapter projects only supported B270 trait shifts into all three language prompt paths; B270/KurisuCanonProfile remain canonical owners.",
+      "nextStep": ""
+    },
+    {
+      "id": "P47-07",
+      "workstream": "E",
+      "title": "Первый детерминированный avatar embodiment mapping",
+      "status": "DONE",
+      "evidence": "Mapped gaze/head tilt and per-utterance motionToken against the existing model manifest; real browser behavior not confirmed.",
+      "nextStep": ""
+    },
+    {
+      "id": "P47-08",
+      "workstream": "G",
+      "title": "66 требований и решения",
+      "status": "DONE",
+      "evidence": "66-question vision ledger distinguishes explicit user answers from proposed defaults.",
+      "nextStep": ""
+    },
+    {
+      "id": "P47-09",
+      "workstream": "G",
+      "title": "Выборочная оценка четырёх source archives",
+      "status": "PARTIAL",
+      "evidence": "21 nested ZIP projects inventoried; WILL trait-salience pattern used in code. Deep per-source integration/licence sign-off remains incomplete.",
+      "nextStep": "Continue one source gap at a time with provenance and licence gates."
+    },
+    {
+      "id": "P47-10",
+      "workstream": "H",
+      "title": "Production app build and browser E2E",
+      "status": "TODO",
+      "evidence": "App dependencies are absent in this environment; build and interactive browser/Live2D have not been run.",
+      "nextStep": "Run installed build plus idle dialogue, Live2D and restart/replay E2E."
+    },
+    {
+      "id": "P47-11",
+      "workstream": "H",
+      "title": "Настоящий audio-to-avatar synchronization",
+      "status": "PARTIAL",
+      "evidence": "Speech/intent trigger drives an available motion and mouth parameter; no real audio envelope/phoneme stream is connected yet.",
+      "nextStep": "Connect supported audio-level/viseme source instead of fabricating lip sync."
+    },
+    {
+      "id": "P47-12",
+      "workstream": "D",
+      "title": "Сквозной реальный external receipt → Reafference → credit",
+      "status": "TODO",
+      "evidence": "Existing keyed ActionGateway and causal state are present; this pass did not validate an actual provider/device result end-to-end.",
+      "nextStep": "Test real external observation with replay/restart and exact causality."
+    },
+    {
+      "id": "P47-13",
+      "workstream": "C",
+      "title": "Независимый retrieval holdout",
+      "status": "TODO",
+      "evidence": "Current recorded retrieval uplift is zero and no candidate is promoted.",
+      "nextStep": "Measure on independent labelled temporal dataset before changes."
+    },
+    {
+      "id": "P47-14",
+      "workstream": "H",
+      "title": "Clean-room rollback, source licence review and soak",
+      "status": "TODO",
+      "evidence": "Release gates remain open; current tests do not establish production readiness.",
+      "nextStep": "Complete install/upgrade/fault-injected rollback, licensing and long soak."
+    }
+  ]
+}

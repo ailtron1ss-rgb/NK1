@@ -1,0 +1,17 @@
+import fs from 'node:fs';
+import assert from 'node:assert/strict';
+const read=p=>fs.readFileSync(p,'utf8');
+const version=JSON.parse(read('VERSION.json'));
+assert.equal(version.application,JSON.parse(read('package.json')).version); assert.ok(version.stateSchema>=100);
+const self=read('src/organism/core/SelfSubsystemRuntime.ts');
+const p84=read('src/organism/developmental/P84AutobiographicalContinuityFabric.ts');
+const core=read('src/organism/core/OrganismCore.ts');
+const coord=read('src/organism/core/PersistenceProjectionCoordinator.ts');
+const migration=read('src/organism/persistence/StateMigrations.ts');
+assert.match(self,/P84AutobiographicalContinuityFabric/); assert.match(self,/p84AutobiographicalContinuity/);
+assert.match(p84,/Autobiographical Continuity Fabric/); assert.match(p84,/predictionIds:string\[\]/); assert.match(p84,/autobiographicalIntegrity01/); assert.match(p84,/materiallyNew/);
+assert.match(core,/autobiographicalContinuitySnapshot\(\)/); assert.match(core,/p84AutobiographicalContinuity\.ingest/);
+assert.match(coord,/p84AutobiographicalContinuity/); assert.match(migration,/p84AutobiographicalContinuity/);
+assert.match(read('src/organism/core/types.ts'),/p84AutobiographicalContinuity/);
+assert.match(read('src/server/server.mjs'),/organism\/autobiographical-continuity/);
+console.log('BIG_PASS_67_AUDIT=PASS self-life-spine=1 reality-link=1 persistence=1 bounded=1');

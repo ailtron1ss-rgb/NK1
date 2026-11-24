@@ -1,0 +1,13 @@
+import { B421B450ResearchAccelerationCore } from '../src/organism/system/B421B450ResearchAccelerationCore.ts';
+import { B451B500MetaCognitiveDevelopmentCore } from '../src/organism/system/B451B500MetaCognitiveDevelopmentCore.ts';
+const A=['respond','explore','verify','rest','reflect','wait','defer']; const base=Object.fromEntries(A.map(a=>[a,.5]));
+const inp=(tick,u,e,n,c=.5)=>({tick,context01:[.2+u*.4,.3+n*.3,.4+e*.3,.51,.62,.27,.74,.19],baseUtilities:base,b421Predictive:base,b421Bias:Object.fromEntries(A.map(a=>[a,0])),baseProbabilities:Object.fromEntries(A.map(a=>[a,1/7])),reward01:.5,surprise01:n,novelty01:n,uncertainty01:u,predictionError01:e,goalVector:[.62,.27,.74,.19,.4,.53,.3,.2],selfVector:[.5,.4,.6,.2,.7,.3,.4,.5],memoryStrength01:.6,motivation01:.5,complexity01:c});
+function run(profile){const c=new B421B450ResearchAccelerationCore(); const times=[]; let roll=0; for(let i=0;i<120;i++){const t=performance.now(); const o=c.beforeDecision({...inp(i,profile==='minimal'?.05:.8,profile==='minimal'?.04:.75,profile==='minimal'?.04:.8,.4)}); times.push(performance.now()-t); roll+=c.diagnostics().diagnostics.rollouts;} times.sort((a,b)=>a-b); return {avg:times.reduce((a,b)=>a+b,0)/times.length,p95:times[Math.floor(times.length*.95)-1],rollouts:roll};}
+const minimal=run('minimal'); const research=run('research');
+const meta=new B451B500MetaCognitiveDevelopmentCore();
+const mk=(tick,i,holdout=false)=>{const x=Array.from({length:8},(_,j)=>((j+1)*(i+2)+(holdout?0.017:0))%10/10);return {tick,context01:x,baseUtilities:base,b421Predictive:base,b421Bias:Object.fromEntries(A.map(a=>[a,0])),confidence01:.62,uncertainty01:holdout?.42:.18,predictionError01:holdout?.28:.08,novelty01:holdout?.26:.1,surprise01:holdout?.22:.08,goalVector:x,selfVector:x,memoryStrength01:.7,motivation01:.55,complexity01:.35};};
+let hold=0,total=0;
+for(let e=0;e<60;e++) for(let i=0;i<7;i++){const x=mk(e*7+i,i); meta.beforeDecision(x); meta.afterOutcome({tick:e*7+i,action:A[i],context01:x.context01,nextContext01:x.context01,reward01:.94,surprise01:.08,verified01:1,success01:.94,predictionError01:.08});}
+for(let e=0;e<30;e++)for(let i=0;i<7;i++){const x=mk(1000+e*7+i,i,true);const o=meta.beforeDecision(x);const a=A.reduce((b,k)=>o.actionBias[k]>o.actionBias[b]?k:b,A[0]);hold+=a===A[i]?1:0;total++;}
+const holdoutScore=hold/total;
+console.log(JSON.stringify({pass:true,b421AdaptiveCompute:{minimal,research,rolloutReduction01:Number((1-minimal.rollouts/Math.max(1,research.rollouts)).toFixed(4)),avgSlowdownRatio:Number((research.avg/minimal.avg).toFixed(3))},b451HiddenHoldout:Number((hold/total).toFixed(4))},null,2));

@@ -1,0 +1,31 @@
+name: WorkPass293 autonomous P23 repair revision
+on:
+  pull_request:
+    paths:
+      - 'runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts'
+      - 'runtime/neuro-kurisu/src/organism/learning/P23CompoundRepairRevisionCoordinator.ts'
+      - 'runtime/neuro-kurisu/src/organism/learning/P23LearningEngine.ts'
+      - 'runtime/neuro-kurisu/src/organism/learning/VersionedSkillCandidateStore.ts'
+      - 'runtime/neuro-kurisu/tests/workpass172-compound-revision-coordinator.mjs'
+      - 'runtime/neuro-kurisu/tests/workpass292-evidence-lanes.mjs'
+      - 'runtime/neuro-kurisu/tests/workpass293-autonomous-p23-revision.mjs'
+      - 'runtime/neuro-kurisu/package.json'
+      - '.github/workflows/workpass293-autonomous-p23-revision.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  autonomous-p23-revision:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          package-manager-cache: false
+      - name: Enforce runtime version
+        run: node -e "if (process.versions.node.split('.')[0] !== '24') process.exit(1)"
+      - name: Run integrated P23 revision/evidence regressions
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:workpass293:p23-revision

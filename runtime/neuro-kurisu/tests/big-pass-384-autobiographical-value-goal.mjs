@@ -1,0 +1,23 @@
+import assert from 'node:assert/strict';
+import { B365UnifiedNeuroCausalCore } from '../src/organism/cognition/B365UnifiedNeuroCausalCore.ts';
+const actions=['respond','explore','verify','rest','reflect','wait','defer'];
+const vector=Array.from({length:64},(_,i)=>Math.tanh(.12*Math.sin(i*.19)+.07*Math.cos(i*.27)));
+const ctxA=[.92,.86,.91,.77,.88,.83,.95,.89], ctxB=[.11,.16,.08,.20,.12,.18,.10,.14];
+const step=(net,tick,ctx)=>net.step({tick,vector,novelty01:.44,uncertainty01:.33,predictionError01:.14,goalPressure01:.36,autonomy01:.76,learningEnabled:false,developmentContext01:ctx,actionContext:Object.fromEntries(actions.map(a=>[a,{worldUtility01:a==='verify'?.55:.48,worldConfidence01:.87,worldUncertainty01:.13,needRelief01:a==='rest'?.62:.28,predictedCost01:a==='explore'?.19:.1}]))}).actionProbabilities;
+function learn(net,count,start,reward,ctx,goalId='goal-A'){for(let i=0;i<count;i++) net.consolidateExperience({tick:start+i,action:'verify',reward01:reward,predictionError01:.08,salience01:.86,verified01:1,independent01:1,evidenceQuality01:.99,continuity01:.95,goalId,context01:ctx});}
+const net=new B365UnifiedNeuroCausalCore();
+const base=net.step({tick:1,vector,novelty01:.44,uncertainty01:.33,predictionError01:.14,goalPressure01:.36,autonomy01:.76,learningEnabled:false,developmentContext01:ctxA,goalAuthorship:{candidateId:'goal-A',vector:[.9,.7,.6,.8,.2,.1,.4,.5],source:'internal',novelty01:.32,confidence01:.84,internalPressure01:.82,homeostaticPressure01:.46,identityContinuity01:.9,autonomy01:.88}}).actionProbabilities.verify;
+learn(net,160,10,.97,ctxA,'goal-A');
+const q=net.queryAutobiographicalDevelopment(ctxA,'verify','goal-A'); assert.ok(q.rows.length>0); assert.ok(q.rows[0].similarity01>.8); assert.ok(q.values.some(v=>v.id==='truth'));
+learn(net,120,250,.08,ctxB,'goal-B');
+const diag=net.autobiographicalValueGoalDiagnostics();
+assert.equal(diag.verifiedEpisodes,280); assert.ok(diag.valueRevisionCount>0); assert.ok(diag.goalCouplings.length>0); assert.ok(diag.goalCouplings.some(g=>g.goalId==='goal-A' && g.support01>0));
+const a=step(net,500,ctxA).verify; const b=step(net,501,ctxB).verify; const separation=Math.abs(a-b); assert.ok(separation>.005,`context/value separation too small ${separation}`);
+const before=net.snapshot();
+const off=new B365UnifiedNeuroCausalCore(); off.restore(before); off.setAutobiographicalValueGoalEnabled(false); const offPolicy=step(off,510,ctxA).verify;
+const on=new B365UnifiedNeuroCausalCore(); on.restore(before); on.setAutobiographicalValueGoalEnabled(true); const onPolicy=step(on,510,ctxA).verify; const causalDelta=Math.abs(onPolicy-offPolicy); assert.ok(causalDelta>.003,`B384 causal influence too small ${causalDelta}`);
+const knockout=new B365UnifiedNeuroCausalCore(); knockout.restore(before); knockout.resetAutobiographicalValueGoal(); const ko=step(knockout,510,ctxA).verify; const historyKnockout=Math.abs(onPolicy-ko); assert.ok(historyKnockout>.003,`autobiographical knockout too small ${historyKnockout}`);
+const restartA=new B365UnifiedNeuroCausalCore(); restartA.restore(before); const restartB=new B365UnifiedNeuroCausalCore(); restartB.restore(before); const r1=step(restartA,520,ctxA).verify; const r2=step(restartB,520,ctxA).verify; assert.ok(Math.abs(r1-r2)<1e-12);
+const unv=new B365UnifiedNeuroCausalCore(); const u0=unv.snapshot(); for(let i=0;i<30;i++) unv.consolidateExperience({tick:700+i,action:'verify',reward01:.99,predictionError01:.01,salience01:.95,verified01:0,independent01:0,evidenceQuality01:.1,continuity01:.95,context01:ctxA}); const u1=unv.snapshot(); assert.equal(u1.autobiographicalValueGoal.verifiedEpisodes,u0.autobiographicalValueGoal.verifiedEpisodes); assert.equal(u1.autobiographicalValueGoal.valueRevisionCount,u0.autobiographicalValueGoal.valueRevisionCount);
+const valuesBefore=on.autobiographicalValueGoalDiagnostics().values.map(v=>v.value01); for(let i=600;i<660;i++) on.consolidateExperience({tick:i,action:'verify',reward01:i%2?.96:.05,predictionError01:.82,salience01:.84,verified01:1,independent01:1,evidenceQuality01:.99,continuity01:.9,goalId:'goal-A',context01:ctxA}); const valuesAfter=on.autobiographicalValueGoalDiagnostics().values.map(v=>v.value01); const revision=valuesBefore.reduce((s,v,i)=>s+Math.abs(v-valuesAfter[i]),0)/8; assert.ok(revision>.0001);
+console.log(JSON.stringify({pass:true,status:'B384_AUTOBIOGRAPHICAL_VALUE_GOAL_CAUSAL_PASS',verifiedEpisodes:diag.verifiedEpisodes,valueRevisionCount:diag.valueRevisionCount,goalValueRevisions:diag.goalValueRevisions,retrievals:diag.retrievals,contextSeparation:separation,causalDelta,historyKnockout,contradictionCount:diag.contradictionCount,contradictionResolved:diag.contradictionResolved,revision},null,2));

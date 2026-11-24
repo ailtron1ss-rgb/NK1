@@ -1,0 +1,47 @@
+{
+  "pass": true,
+  "diagnostics": {
+    "neuronCount": 48,
+    "activeSynapses": 288,
+    "spikeRate01": 0.14583333333333334,
+    "firingRate01": 0.09744117460775323,
+    "sparsity01": 0.8246058857060442,
+    "homeostaticError01": 0.03618774811830922,
+    "plasticity01": 0.2412724719472385,
+    "neuromodulation01": 0.47140000000290583,
+    "prediction01": 0.6372170198800216,
+    "predictionErrorMean01": 0.376102452982061,
+    "synapticUpdates": 24117,
+    "structuralUpdates": 0,
+    "structuralGrew": 0,
+    "structuralPruned": 0,
+    "meanActiveWeight": 0.12058957920914455,
+    "historyLength": 90
+  },
+  "lesion": {
+    "lesionFraction01": 0.3,
+    "baselineActiveSynapses": 288,
+    "lesionedActiveSynapses": 202,
+    "baselineFiringRate01": 0.09027777777777778,
+    "lesionedFiringRate01": 0.10069444444444446,
+    "causalDrop01": 0
+  },
+  "restored": {
+    "neuronCount": 48,
+    "activeSynapses": 288,
+    "spikeRate01": 0.14583333333333334,
+    "firingRate01": 0.09744117460775323,
+    "sparsity01": 0.8246058857060442,
+    "homeostaticError01": 0.03618774811830922,
+    "plasticity01": 0.2412724719472385,
+    "neuromodulation01": 0.47140000000290583,
+    "prediction01": 0.6372170198800216,
+    "predictionErrorMean01": 0.376102452982061,
+    "synapticUpdates": 24117,
+    "structuralUpdates": 0,
+    "structuralGrew": 0,
+    "structuralPruned": 0,
+    "meanActiveWeight": 0.12058957920914455,
+    "historyLength": 90
+  }
+}

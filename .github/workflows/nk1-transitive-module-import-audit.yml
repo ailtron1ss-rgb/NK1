@@ -1,0 +1,50 @@
+name: NK1 Transitive Module Import Audit
+
+on:
+  push:
+    branches: [workpass70-source]
+    paths:
+      - ".github/workflows/nk1-transitive-module-import-audit.yml"
+      - "runtime/neuro-kurisu/scripts/audit-server-imports.mjs"
+      - "runtime/neuro-kurisu/scripts/import-specifier-scanner.mjs"
+      - "runtime/neuro-kurisu/tests/import-specifier-scanner.test.mjs"
+      - "runtime/neuro-kurisu/tests/server-import-graph-audit.test.mjs"
+      - "runtime/neuro-kurisu/package.json"
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - ".github/workflows/nk1-transitive-module-import-audit.yml"
+      - "runtime/neuro-kurisu/scripts/audit-server-imports.mjs"
+      - "runtime/neuro-kurisu/scripts/import-specifier-scanner.mjs"
+      - "runtime/neuro-kurisu/tests/import-specifier-scanner.test.mjs"
+      - "runtime/neuro-kurisu/tests/server-import-graph-audit.test.mjs"
+      - "runtime/neuro-kurisu/package.json"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nk1-transitive-module-import-audit-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  transitive-import-graph:
+    name: Transitive relative import graph
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v7
+      - name: Set up Node.js 24
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - name: Verify Node.js runtime
+        run: node --version
+      - name: Test import scanner
+        run: npm --prefix runtime/neuro-kurisu run test:import-specifier-scanner
+      - name: Test transitive server graph
+        run: npm --prefix runtime/neuro-kurisu run test:server-import-graph-audit
+      - name: Run existing server import audit command
+        run: npm --prefix runtime/neuro-kurisu run audit:server-imports

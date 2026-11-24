@@ -1,0 +1,13 @@
+import fs from 'node:fs';
+const report=JSON.parse(fs.readFileSync('SEMANTIC_COVERAGE_AUDIT.json','utf8'));
+report.pass=179;
+report.generatedAt=new Date().toISOString();
+report.rule='BIG PASS 179: static presence is not behavioural proof; consciousness evidence remains functional/research-only.';
+fs.writeFileSync('SEMANTIC_COVERAGE_AUDIT_179.json',JSON.stringify(report,null,2));
+const rows=report.contracts??[];
+const counts=report.byStatus??{};
+const domains=report.domainBacklog??{};
+fs.writeFileSync('SEMANTIC_VERIFICATION_BACKLOG_179.json',JSON.stringify({pass:179,generatedAt:report.generatedAt,totalFunctions:rows.length,domains,priority:rows.filter(c=>c.status==='UNVERIFIED'&&['memory','self','world','learning','agency'].includes(c.domain)).sort((a,b)=>(b.criticality??0)-(a.criticality??0)).slice(0,700).map(c=>({id:c.id,domain:c.domain,file:c.file,name:c.name,line:c.line,criticality:c.criticality,staticReferences:c.staticReferences,testReferences:c.testReferences})),unsafe:rows.filter(c=>c.status==='UNSAFE_TO_AUTO_RUN').slice(0,250).map(c=>({id:c.id,file:c.file,name:c.name,line:c.line}))},null,2));
+const md=['# BIG PASS 179 — Semantic Coverage Audit','','Functions: **'+rows.length+'**','','| Status | Count |','|---|---:|',...Object.entries(counts).map(([k,v])=>`| ${k} | ${v} |`),'',`Strict VERIFIED rate: **${(report.verifiedRate01*100).toFixed(2)}%**`,'',`Evidence coverage: **${(report.evidenceCoverage01*100).toFixed(2)}%**`,'','> Functional consciousness indicators are research measurements only and are not a claim of phenomenal consciousness.'].join('\n');
+fs.writeFileSync('SEMANTIC_COVERAGE_AUDIT_179_RU.md',md);
+console.log(JSON.stringify({pass:179,totalFunctions:rows.length,counts,verifiedRate01:report.verifiedRate01,evidenceCoverage01:report.evidenceCoverage01},null,2));

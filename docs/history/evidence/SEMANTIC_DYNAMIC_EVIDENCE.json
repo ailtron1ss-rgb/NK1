@@ -1,0 +1,365 @@
+{
+  "src/organism/system/CognitiveResourceEconomy.ts:50:restore": {
+    "status": "VERIFIED",
+    "evidence": [
+      {
+        "kind": "direct",
+        "ok": true,
+        "at": 1791961160596,
+        "source": "BIG_PASS_162_BEHAVIORAL",
+        "details": "restore accepted persisted state and preserved lastTick/cycle state"
+      },
+      {
+        "kind": "integration",
+        "ok": true,
+        "at": 1791961160596,
+        "source": "BIG_PASS_162_RUNTIME_INTEGRATION",
+        "details": "exercised inside unified cognitive economy behavioural flow"
+      },
+      {
+        "kind": "persistence",
+        "ok": true,
+        "at": 1791961160596,
+        "source": "BIG_PASS_162_ROUNDTRIP",
+        "details": "state round-tripped through snapshot/restore where applicable"
+      },
+      {
+        "kind": "regression",
+        "ok": true,
+        "at": 1791961160596,
+        "source": "BIG_PASS_162_REGRESSION",
+        "details": "assertions passed"
+      }
+    ]
+  },
+  "src/organism/system/CognitiveResourceEconomy.ts:70:allocate": {
+    "status": "VERIFIED",
+    "evidence": [
+      {
+        "kind": "direct",
+        "ok": true,
+        "at": 1791961160596,
+        "source": "BIG_PASS_162_BEHAVIORAL",
+        "details": "allocation reacted to scarcity and reduced expensive work envelope"
+      },
+      {
+        "kind": "integration",
+        "ok": true,
+        "at": 1791961160596,
+        "source": "BIG_PASS_162_RUNTIME_INTEGRATION",
+        "details": "exercised inside unified cognitive economy behavioural flow"
+      },
+      {
+        "kind": "persistence",
+        "ok": true,
+        "at": 1791961160596,
+        "source": "BIG_PASS_162_ROUNDTRIP",
+        "details": "state round-tripped through snapshot/restore where applicable"
+      },
+      {
+        "kind": "regression",
+        "ok": true,
+        "at": 1791961160596,
+        "source": "BIG_PASS_162_REGRESSION",
+        "details": "assertions passed"
+      }
+    ]
+  },
+  "src/organism/system/CognitiveResourceEconomy.ts:113:snapshot": {
+    "status": "VERIFIED",
+    "evidence": [
+      {
+        "kind": "direct",
+        "ok": true,
+        "at": 1791961160596,
+        "source": "BIG_PASS_162_BEHAVIORAL",
+        "details": "snapshot state successfully round-tripped"
+      },
+      {
+        "kind": "integration",
+        "ok": true,
+        "at": 1791961160596,
+        "source": "BIG_PASS_162_RUNTIME_INTEGRATION",
+        "details": "exercised inside unified cognitive economy behavioural flow"
+      },
+      {
+        "kind": "persistence",
+        "ok": true,
+        "at": 1791961160596,
+        "source": "BIG_PASS_162_ROUNDTRIP",
+        "details": "state round-tripped through snapshot/restore where applicable"
+      },
+      {
+        "kind": "regression",
+        "ok": true,
+        "at": 1791961160596,
+        "source": "BIG_PASS_162_REGRESSION",
+        "details": "assertions passed"
+      }
+    ]
+  },
+  "src/organism/system/RealityEvidenceLedger.ts:38:constructor": {
+    "status": "VERIFIED",
+    "evidence": [
+      {
+        "kind": "direct",
+        "ok": true,
+        "at": 1791961160596,
+        "source": "BIG_PASS_162_BEHAVIORAL",
+        "details": "constructor instantiated bounded ledger and supported subsequent operations"
+      },
+      {
+        "kind": "integration",
+        "ok": true,
+        "at": 1791961160596,
+        "source": "BIG_PASS_162_RUNTIME_INTEGRATION",
+        "details": "exercised inside unified cognitive economy behavioural flow"
+      },
+      {
+        "kind": "persistence",
+        "ok": true,
+        "at": 1791961160596,
+        "source": "BIG_PASS_162_ROUNDTRIP",
+        "details": "state round-tripped through snapshot/restore where applicable"
+      },
+      {
+        "kind": "regression",
+        "ok": true,
+        "at": 1791961160596,
+        "source": "BIG_PASS_162_REGRESSION",
+        "details": "assertions passed"
+      }
+    ]
+  },
+  "src/organism/system/RealityEvidenceLedger.ts:40:restore": {
+    "status": "VERIFIED",
+    "evidence": [
+      {
+        "kind": "direct",
+        "ok": true,
+        "at": 1791961160596,
+        "source": "BIG_PASS_162_BEHAVIORAL",
+        "details": "restore rebuilt recent evidence state"
+      },
+      {
+        "kind": "integration",
+        "ok": true,
+        "at": 1791961160596,
+        "source": "BIG_PASS_162_RUNTIME_INTEGRATION",
+        "details": "exercised inside unified cognitive economy behavioural flow"
+      },
+      {
+        "kind": "persistence",
+        "ok": true,
+        "at": 1791961160596,
+        "source": "BIG_PASS_162_ROUNDTRIP",
+        "details": "state round-tripped through snapshot/restore where applicable"
+      },
+      {
+        "kind": "regression",
+        "ok": true,
+        "at": 1791961160596,
+        "source": "BIG_PASS_162_REGRESSION",
+        "details": "assertions passed"
+      }
+    ]
+  },
+  "src/organism/system/RealityEvidenceLedger.ts:45:record": {
+    "status": "VERIFIED",
+    "evidence": [
+      {
+        "kind": "direct",
+        "ok": true,
+        "at": 1791961160596,
+        "source": "BIG_PASS_162_BEHAVIORAL",
+        "details": "record stored device/simulator/derived evidence with provenance"
+      },
+      {
+        "kind": "integration",
+        "ok": true,
+        "at": 1791961160596,
+        "source": "BIG_PASS_162_RUNTIME_INTEGRATION",
+        "details": "exercised inside unified cognitive economy behavioural flow"
+      },
+      {
+        "kind": "persistence",
+        "ok": true,
+        "at": 1791961160596,
+        "source": "BIG_PASS_162_ROUNDTRIP",
+        "details": "state round-tripped through snapshot/restore where applicable"
+      },
+      {
+        "kind": "regression",
+        "ok": true,
+        "at": 1791961160596,
+        "source": "BIG_PASS_162_REGRESSION",
+        "details": "assertions passed"
+      }
+    ]
+  },
+  "src/organism/system/RealityEvidenceLedger.ts:51:recent": {
+    "status": "VERIFIED",
+    "evidence": [
+      {
+        "kind": "direct",
+        "ok": true,
+        "at": 1791961160596,
+        "source": "BIG_PASS_162_BEHAVIORAL",
+        "details": "recent returned bounded evidence window"
+      },
+      {
+        "kind": "integration",
+        "ok": true,
+        "at": 1791961160596,
+        "source": "BIG_PASS_162_RUNTIME_INTEGRATION",
+        "details": "exercised inside unified cognitive economy behavioural flow"
+      },
+      {
+        "kind": "persistence",
+        "ok": true,
+        "at": 1791961160596,
+        "source": "BIG_PASS_162_ROUNDTRIP",
+        "details": "state round-tripped through snapshot/restore where applicable"
+      },
+      {
+        "kind": "regression",
+        "ok": true,
+        "at": 1791961160596,
+        "source": "BIG_PASS_162_REGRESSION",
+        "details": "assertions passed"
+      }
+    ]
+  },
+  "src/organism/system/RealityEvidenceLedger.ts:53:snapshot": {
+    "status": "VERIFIED",
+    "evidence": [
+      {
+        "kind": "direct",
+        "ok": true,
+        "at": 1791961160596,
+        "source": "BIG_PASS_162_BEHAVIORAL",
+        "details": "snapshot preserved evidence counts for roundtrip"
+      },
+      {
+        "kind": "integration",
+        "ok": true,
+        "at": 1791961160596,
+        "source": "BIG_PASS_162_RUNTIME_INTEGRATION",
+        "details": "exercised inside unified cognitive economy behavioural flow"
+      },
+      {
+        "kind": "persistence",
+        "ok": true,
+        "at": 1791961160596,
+        "source": "BIG_PASS_162_ROUNDTRIP",
+        "details": "state round-tripped through snapshot/restore where applicable"
+      },
+      {
+        "kind": "regression",
+        "ok": true,
+        "at": 1791961160596,
+        "source": "BIG_PASS_162_REGRESSION",
+        "details": "assertions passed"
+      }
+    ]
+  },
+  "src/organism/system/UnifiedCognitiveCycle.ts:38:restore": {
+    "status": "VERIFIED",
+    "evidence": [
+      {
+        "kind": "direct",
+        "ok": true,
+        "at": 1791961160596,
+        "source": "BIG_PASS_162_BEHAVIORAL",
+        "details": "restore rebuilt cycle counters and last result"
+      },
+      {
+        "kind": "integration",
+        "ok": true,
+        "at": 1791961160596,
+        "source": "BIG_PASS_162_RUNTIME_INTEGRATION",
+        "details": "exercised inside unified cognitive economy behavioural flow"
+      },
+      {
+        "kind": "persistence",
+        "ok": true,
+        "at": 1791961160596,
+        "source": "BIG_PASS_162_ROUNDTRIP",
+        "details": "state round-tripped through snapshot/restore where applicable"
+      },
+      {
+        "kind": "regression",
+        "ok": true,
+        "at": 1791961160596,
+        "source": "BIG_PASS_162_REGRESSION",
+        "details": "assertions passed"
+      }
+    ]
+  },
+  "src/organism/system/UnifiedCognitiveCycle.ts:39:evaluate": {
+    "status": "VERIFIED",
+    "evidence": [
+      {
+        "kind": "direct",
+        "ok": true,
+        "at": 1791961160596,
+        "source": "BIG_PASS_162_BEHAVIORAL",
+        "details": "evaluate identified a complete causal cycle with full required stage coverage"
+      },
+      {
+        "kind": "integration",
+        "ok": true,
+        "at": 1791961160596,
+        "source": "BIG_PASS_162_RUNTIME_INTEGRATION",
+        "details": "exercised inside unified cognitive economy behavioural flow"
+      },
+      {
+        "kind": "persistence",
+        "ok": true,
+        "at": 1791961160596,
+        "source": "BIG_PASS_162_ROUNDTRIP",
+        "details": "state round-tripped through snapshot/restore where applicable"
+      },
+      {
+        "kind": "regression",
+        "ok": true,
+        "at": 1791961160596,
+        "source": "BIG_PASS_162_REGRESSION",
+        "details": "assertions passed"
+      }
+    ]
+  },
+  "src/organism/system/UnifiedCognitiveCycle.ts:49:snapshot": {
+    "status": "VERIFIED",
+    "evidence": [
+      {
+        "kind": "direct",
+        "ok": true,
+        "at": 1791961160596,
+        "source": "BIG_PASS_162_BEHAVIORAL",
+        "details": "snapshot preserved cycle metrics"
+      },
+      {
+        "kind": "integration",
+        "ok": true,
+        "at": 1791961160596,
+        "source": "BIG_PASS_162_RUNTIME_INTEGRATION",
+        "details": "exercised inside unified cognitive economy behavioural flow"
+      },
+      {
+        "kind": "persistence",
+        "ok": true,
+        "at": 1791961160596,
+        "source": "BIG_PASS_162_ROUNDTRIP",
+        "details": "state round-tripped through snapshot/restore where applicable"
+      },
+      {
+        "kind": "regression",
+        "ok": true,
+        "at": 1791961160596,
+        "source": "BIG_PASS_162_REGRESSION",
+        "details": "assertions passed"
+      }
+    ]
+  }
+}

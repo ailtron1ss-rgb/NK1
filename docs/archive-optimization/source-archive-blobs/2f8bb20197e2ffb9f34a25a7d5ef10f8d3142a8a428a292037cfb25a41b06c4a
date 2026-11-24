@@ -1,0 +1,194 @@
+import type { ActionKind } from '../core/types.ts';
+
+const ACTIONS: ActionKind[]=['respond','explore','verify','rest','reflect','wait','defer'];
+const TRAITS=['curiosity','caution','care','truth-seeking','self-reflection','self-preservation','social-attunement','persistence'] as const;
+const clamp01=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
+const clamp11=(x:number)=>Math.max(-1,Math.min(1,Number.isFinite(x)?x:0));
+const dot=(a:number[],b:number[])=>{let s=0;const n=Math.min(a.length,b.length);for(let i=0;i<n;i++)s+=a[i]*b[i];return s;};
+const norm=(v:number[])=>Math.sqrt(Math.max(1e-9,dot(v,v)));
+const cosine=(a:number[],b:number[])=>{const d=norm(a)*norm(b);return d>0?clamp11(dot(a,b)/d):0;};
+const seeded=(seed:number)=>{let x=seed|0;x=Math.imul(x^(x>>>16),0x21f0aaad);x=Math.imul(x^(x>>>15),0x735a2d97);x^=x>>>13;return x>>>0;};
+const rand=(seed:number,s=.2)=>(((seeded(seed)/0xffffffff)*2)-1)*s;
+
+export interface B271AssemblyNode {
+  id:string;
+  activation01:number;
+  stability01:number;
+  novelty01:number;
+  selfRelevance01:number;
+  rewardAffinity01:number;
+  trace01:number;
+  age:number;
+  lastActiveTick:number;
+}
+export interface B271EpisodeTrace {
+  tickStart:number;
+  tickEnd:number;
+  assemblySequence:number[][];
+  action:ActionKind|null;
+  reward01:number;
+  selfLatent:number[];
+  traitSnapshot:Record<string,number>;
+  goalProposal:string;
+}
+export interface B271State {
+  version:1;
+  tick:number;
+  steps:number;
+  learningUpdates:number;
+  replayCount:number;
+  goalProposals:number;
+  acceptedGoals:number;
+  assemblies:B271AssemblyNode[];
+  transitionWeights:number[][];
+  dendriticWeights:number[][];
+  contextWeights:number[][];
+  selfEncoder:number[][];
+  traitValues:Record<string,number>;
+  goalValues:Record<string,number>;
+  sequenceMemory:Array<B271EpisodeTrace>;
+  recentAssembly:number[];
+  predictedNext:number[];
+  predictionError01:number;
+  reconstruction01:number;
+  autobiographicalContinuity01:number;
+  selfPrediction01:number;
+  autonomousGoalPressure01:number;
+  proposedGoal:string;
+  proposedAction:ActionKind;
+}
+export interface B271StepInput {
+  tick:number;
+  assembly:number[];
+  selfLatent:number[];
+  vector:number[];
+  predictionError01:number;
+  novelty01:number;
+  uncertainty01:number;
+  reward01:number;
+  currentAction:ActionKind|null;
+  identityContinuity01:number;
+  autobiographicalContinuity01:number;
+  traits:Record<string,number>;
+  goalPressure01:number;
+}
+export interface B271StepResult {
+  selfLatent:number[];
+  predictedNext:number[];
+  reconstruction01:number;
+  predictionError01:number;
+  autobiographicalContinuity01:number;
+  selfPrediction01:number;
+  autonomousGoalPressure01:number;
+  proposedGoal:string;
+  proposedAction:ActionKind;
+  actionBias01:number;
+  traitValues:Record<string,number>;
+}
+
+const defaultTraitValues=()=>Object.fromEntries(TRAITS.map(t=>[t,.5]));
+const defaultGoalValues=()=>({mastery:.5,curiosity:.5,truth:.5,care:.5,coherence:.5,continuity:.5,autonomy:.5});
+
+export function defaultB271State():B271State{
+  const assemblies=B271AssemblyNodeFactory();
+  const transitionWeights=Array.from({length:16},(_,i)=>Array.from({length:16},(_,j)=>i===j?.22:rand(7000+i*53+j*11,.02)));
+  const dendriticWeights=Array.from({length:16},(_,i)=>Array.from({length:16},(_,j)=>rand(8000+i*41+j*17,.025)));
+  const contextWeights=Array.from({length:16},(_,i)=>Array.from({length:16},(_,j)=>i===j?.16:rand(9000+i*23+j*29,.018)));
+  const selfEncoder=Array.from({length:16},(_,i)=>Array.from({length:16},(_,j)=>rand(10000+i*31+j*7,.025)));
+  return {version:1,tick:0,steps:0,learningUpdates:0,replayCount:0,goalProposals:0,acceptedGoals:0,assemblies,transitionWeights,dendriticWeights,contextWeights,selfEncoder,traitValues:defaultTraitValues(),goalValues:defaultGoalValues(),sequenceMemory:[],recentAssembly:new Array(16).fill(0),predictedNext:new Array(16).fill(0),predictionError01:.3,reconstruction01:0,autobiographicalContinuity01:.7,selfPrediction01:.5,autonomousGoalPressure01:.25,proposedGoal:'maintain-coherence',proposedAction:'wait'};
+}
+
+function B271AssemblyNodeFactory():B271AssemblyNode[]{
+  return Array.from({length:16},(_,i)=>({id:`assembly-${i}`,activation01:.1,stability01:.45,novelty01:.35,selfRelevance01:(i%5===0)?.82:.28,rewardAffinity01:.5,trace01:0,age:0,lastActiveTick:0}));
+}
+
+export class B271NeuralAutobiographicalCore{
+  private state=defaultB271State();
+  snapshot(){return structuredClone(this.state);}
+  restore(raw?:Partial<B271State>|null){
+    const d=defaultB271State();const r:any=raw??{};
+    const matrix=(x:any,rows:number,cols:number,fallback:number[][])=>Array.isArray(x)?Array.from({length:rows},(_,i)=>Array.from({length:cols},(_,j)=>Number.isFinite(Number(x?.[i]?.[j]))?Number(x[i][j]):fallback[i][j])):fallback;
+    this.state={...d,...r,version:1,
+      assemblies:Array.isArray(r.assemblies)?r.assemblies.slice(0,16).map((x:any,i:number)=>({...d.assemblies[i]!,...x,id:String(x?.id??`assembly-${i}`)})):d.assemblies,
+      transitionWeights:matrix(r.transitionWeights,16,16,d.transitionWeights),dendriticWeights:matrix(r.dendriticWeights,16,16,d.dendriticWeights),contextWeights:matrix(r.contextWeights,16,16,d.contextWeights),selfEncoder:matrix(r.selfEncoder,16,16,d.selfEncoder),
+      traitValues:{...d.traitValues,...(r.traitValues??{})},goalValues:{...d.goalValues,...(r.goalValues??{})},
+      sequenceMemory:Array.isArray(r.sequenceMemory)?r.sequenceMemory.slice(-96).map((e:any)=>({tickStart:Number(e?.tickStart??0),tickEnd:Number(e?.tickEnd??0),assemblySequence:Array.isArray(e?.assemblySequence)?e.assemblySequence.slice(-8).map((v:any)=>Array.isArray(v)?v.slice(0,16).map((n:any)=>clamp01(Number(n??0))):new Array(16).fill(0)):[],action:(ACTIONS.includes(e?.action)?e.action:null),reward01:clamp01(Number(e?.reward01??.5)),selfLatent:Array.isArray(e?.selfLatent)?e.selfLatent.slice(0,16).map((n:any)=>clamp11(Number(n??0))):new Array(16).fill(0),traitSnapshot:{...defaultTraitValues(),...(e?.traitSnapshot??{})},goalProposal:String(e?.goalProposal??'maintain-coherence')})):[],
+      recentAssembly:Array.isArray(r.recentAssembly)?r.recentAssembly.slice(0,16).map((n:any)=>clamp01(Number(n??0))):d.recentAssembly,
+      predictedNext:Array.isArray(r.predictedNext)?r.predictedNext.slice(0,16).map((n:any)=>clamp01(Number(n??0))):d.predictedNext,
+    };
+  }
+  private goalAction(goal:string):ActionKind{const m:Record<string,ActionKind>={'seek-novel-evidence':'explore','repair-model':'verify','preserve-continuity':'reflect','develop-mastery':'explore','strengthen-connection':'respond','reduce-uncertainty':'verify','restore-energy':'rest','maintain-coherence':'reflect'};return m[goal]??'reflect';}
+  private chooseGoal(novelty:number,uncertainty:number,reward:number,continuity:number,traits:Record<string,number>,goalPressure:number){
+    const vals={
+      'seek-novel-evidence':.22*novelty+.16*traits.curiosity+.10*(1-continuity),
+      'repair-model':.22*uncertainty+.16*traits['truth-seeking']+.10*(1-reward),
+      'preserve-continuity':.28*continuity+.14*traits['self-reflection'],
+      'develop-mastery':.20*(1-uncertainty)+.18*traits.persistence+.12*goalPressure,
+      'strengthen-connection':.22*traits['social-attunement']+.14*traits.care,
+      'reduce-uncertainty':.18*uncertainty+.16*traits.caution,
+      'restore-energy':.20*(1-reward)+.18*(1-this.state.goalValues.autonomy),
+      'maintain-coherence':.22*this.state.goalValues.coherence+.18*(1-uncertainty)+.12*continuity,
+    } as Record<string,number>;
+    let best='maintain-coherence';let score=-Infinity;for(const [k,v] of Object.entries(vals)){const adjusted=v+(this.state.goalValues[k.replace(/^[^-]+-/, '') as keyof typeof this.state.goalValues]??0)*.12;if(adjusted>score){score=adjusted;best=k;}}
+    this.state.goalProposals++;
+    return {goal:best,action:this.goalAction(best)};
+  }
+  step(input:B271StepInput):B271StepResult{
+    const assembly=Array.from({length:16},(_,i)=>clamp01(Number(input.assembly[i]??0)));
+    const self=Array.from({length:16},(_,i)=>clamp11(Number(input.selfLatent[i]??0)));
+    const context=Array.from({length:16},(_,i)=>clamp11(Number(input.vector[i]??0)));
+    const next=new Array(16).fill(0);
+    for(let j=0;j<16;j++){
+      let z=this.state.recentAssembly[j]*.22;
+      for(let i=0;i<16;i++){z+=this.state.transitionWeights[i][j]*assembly[i];z+=this.state.dendriticWeights[i][j]*context[i]*.7;z+=this.state.contextWeights[i][j]*(self[i]*.5);}
+      next[j]=clamp01(.5+.36*Math.tanh(z));
+    }
+    const predErr=clamp01(1-(cosine(next,assembly)*.5+.5));
+    const selfPred=new Array(16).fill(0);for(let i=0;i<16;i++){let z=0;for(let j=0;j<16;j++)z+=this.state.selfEncoder[i][j]*self[j];selfPred[i]=Math.tanh(z);}
+    const selfPrediction=clamp01(.5+.5*cosine(selfPred,self));
+    const reconstruction=clamp01(.52*(1-predErr)+.28*selfPrediction+.20*input.autobiographicalContinuity01);
+    const continuity=clamp01(.40*input.autobiographicalContinuity01+.20*input.identityContinuity01+.18*reconstruction+.12*selfPrediction+.10*(1-input.predictionError01));
+    const goalPressure=clamp01(input.goalPressure01*.42+predErr*.25+input.uncertainty01*.18+(1-continuity)*.15);
+    const goal=this.chooseGoal(input.novelty01,input.uncertainty01,input.reward01,continuity,input.traits,goalPressure);
+    const activeTraits={...defaultTraitValues(),...this.state.traitValues,...input.traits};
+    this.state.predictedNext=next;this.state.predictionError01=clamp01(this.state.predictionError01*.84+predErr*.16);this.state.reconstruction01=clamp01(this.state.reconstruction01*.92+reconstruction*.08);this.state.autobiographicalContinuity01=clamp01(this.state.autobiographicalContinuity01*.90+continuity*.10);this.state.selfPrediction01=clamp01(this.state.selfPrediction01*.90+selfPrediction*.10);this.state.autonomousGoalPressure01=clamp01(this.state.autonomousGoalPressure01*.88+goalPressure*.12);this.state.proposedGoal=goal.goal;this.state.proposedAction=goal.action;this.state.recentAssembly=assembly;
+    for(let i=0;i<16;i++){const e=this.state.assemblies[i]!;const target=assembly[i];e.activation01=clamp01(e.activation01*.72+target*.28);e.trace01=clamp01(e.trace01*.86+target*.14);e.novelty01=clamp01(e.novelty01*.90+Math.abs(target-e.activation01)*.10);e.selfRelevance01=clamp01(e.selfRelevance01*.96+(Math.abs(self[i])*.04));e.age++;e.lastActiveTick=input.tick;if(target>.62)e.stability01=clamp01(e.stability01*.94+.06*(1-predErr));}
+    this.state.steps++;this.state.tick=input.tick;
+    const actionBias=input.currentAction===goal.action?.08:0;
+    return {selfLatent:self.slice(),predictedNext:next,reconstruction01:this.state.reconstruction01,predictionError01:this.state.predictionError01,autobiographicalContinuity01:this.state.autobiographicalContinuity01,selfPrediction01:this.state.selfPrediction01,autonomousGoalPressure01:this.state.autonomousGoalPressure01,proposedGoal:goal.goal,proposedAction:goal.action,actionBias01:actionBias,traitValues:{...activeTraits}};
+  }
+  learnFromOutcome(input:{tick:number;action:ActionKind|null;reward01:number;predictionError01:number;selfLatent:number[];traits:Record<string,number>;goal:string;acceptedExternalEvidence01?:number}){
+    const reward=clamp01(input.reward01);const surprise=clamp01(input.predictionError01);const factor=(reward-.5)+(0.5-surprise)*.6;const lr=.018+.025*this.state.autonomousGoalPressure01;
+    for(let i=0;i<16;i++){
+      for(let j=0;j<16;j++){
+        const hebb=this.state.recentAssembly[i]*this.state.recentAssembly[j];
+        this.state.transitionWeights[i][j]=Math.max(-.6,Math.min(.6,this.state.transitionWeights[i][j]+lr*factor*(hebb-.05)*.12));
+        const dendritic=this.state.recentAssembly[i]*clamp11(Number(input.selfLatent[j]??0));
+        this.state.dendriticWeights[i][j]=Math.max(-.6,Math.min(.6,this.state.dendriticWeights[i][j]+lr*factor*dendritic*.06));
+        const ctx=this.state.recentAssembly[i]*this.state.predictedNext[j];
+        this.state.contextWeights[i][j]=Math.max(-.6,Math.min(.6,this.state.contextWeights[i][j]+lr*factor*ctx*.05));
+      }
+    }
+    const map:Record<ActionKind,string>={respond:'care',explore:'curiosity',verify:'truth-seeking',rest:'self-preservation',reflect:'self-reflection',wait:'caution',defer:'persistence'};
+    const trait=input.action&&map[input.action];if(trait){this.state.traitValues[trait]=clamp01(this.state.traitValues[trait]+factor*lr*.6);}
+    const goalKey=input.goal.includes('repair')||input.goal.includes('uncertainty')?'truth':input.goal.includes('continuity')?'continuity':input.goal.includes('connection')?'care':input.goal.includes('mastery')?'mastery':input.goal.includes('novel')?'curiosity':'coherence';
+    this.state.goalValues[goalKey as keyof typeof this.state.goalValues]=clamp01(this.state.goalValues[goalKey as keyof typeof this.state.goalValues]+factor*lr*.45);
+    const trace:B271EpisodeTrace={tickStart:Math.max(0,input.tick-1),tickEnd:input.tick,assemblySequence:[this.state.recentAssembly.slice()],action:input.action,reward01:reward,selfLatent:input.selfLatent.slice(0,16),traitSnapshot:{...input.traits},goalProposal:input.goal};
+    const last=this.state.sequenceMemory[this.state.sequenceMemory.length-1];
+    if(last&&last.tickEnd===trace.tickStart&&last.action===trace.action&&last.assemblySequence.length<8){last.tickEnd=trace.tickEnd;last.reward01=reward;last.assemblySequence.push(this.state.recentAssembly.slice());last.goalProposal=input.goal;}else this.state.sequenceMemory=[...this.state.sequenceMemory,trace].slice(-96);
+    if(reward>.62)this.state.acceptedGoals++;this.state.learningUpdates++;
+    if(this.state.sequenceMemory.length>=4&&this.state.learningUpdates%8===0)this.replay(8);
+    return {learningRate:lr,predictionError01:this.state.predictionError01,reconstruction01:this.state.reconstruction01,autobiographicalContinuity01:this.state.autobiographicalContinuity01,goalValues:{...this.state.goalValues},learningUpdates:this.state.learningUpdates};
+  }
+  replay(limit=8){
+    const episodes=this.state.sequenceMemory.slice(-Math.max(1,limit));let applied=0;
+    for(const ep of episodes){for(let t=0;t<ep.assemblySequence.length-1;t++){const a=ep.assemblySequence[t]!,b=ep.assemblySequence[t+1]!;const credit=clamp11((ep.reward01-.5)*.8+(t/(Math.max(1,ep.assemblySequence.length-1)))*.2);for(let i=0;i<16;i++)for(let j=0;j<16;j++)this.state.transitionWeights[i][j]=Math.max(-.6,Math.min(.6,this.state.transitionWeights[i][j]+credit*a[i]*b[j]*.008));applied++;}}
+    this.state.replayCount+=applied;return {episodes:episodes.length,applied};
+  }
+  recallSequence(cue:number[],steps=4){
+    let current=cue.slice(0,16).map(clamp01);const out:number[][]=[current.slice()];for(let s=0;s<Math.max(1,steps);s++){const scores=new Array(16).fill(0);for(let j=0;j<16;j++){for(let i=0;i<16;i++)scores[j]+=current[i]*Math.max(-.2,this.state.transitionWeights[i][j]-.42); }const mean=scores.reduce((a,b)=>a+b,0)/16;const next=scores.map(v=>clamp01(1/(1+Math.exp(-Math.max(-8,Math.min(8,(v-mean)*18))))));current=next;out.push(current.slice());}return out;
+  }
+  actionBias(action:ActionKind){return this.state.proposedAction===action?Math.max(-.06,Math.min(.06,.022+this.state.autonomousGoalPressure01*.04)):0;}
+  snapshotAutobiography(){return {tick:this.state.tick,steps:this.state.steps,learningUpdates:this.state.learningUpdates,replayCount:this.state.replayCount,sequenceDepth:this.state.sequenceMemory.length,reconstruction01:this.state.reconstruction01,autobiographicalContinuity01:this.state.autobiographicalContinuity01,selfPrediction01:this.state.selfPrediction01,autonomousGoalPressure01:this.state.autonomousGoalPressure01,proposedGoal:this.state.proposedGoal,proposedAction:this.state.proposedAction,goalValues:{...this.state.goalValues},traitValues:{...this.state.traitValues}};}
+  diagnostics(){return {...this.snapshotAutobiography(),assemblyDiversity:clamp01(new Set(this.state.assemblies.map(x=>Math.round(x.activation01*20))).size/16),meanStability:this.state.assemblies.reduce((s,x)=>s+x.stability01,0)/16,sequenceMeanLength:this.state.sequenceMemory.length?this.state.sequenceMemory.reduce((s,x)=>s+x.assemblySequence.length,0)/this.state.sequenceMemory.length:0};}
+}

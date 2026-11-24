@@ -1,0 +1,2669 @@
+{
+  "pass": 190,
+  "generatedAt": "2026-10-14T04:18:02.230Z",
+  "sourceFiles": 1881,
+  "functionLikeDeclarations": 6198,
+  "withBody": 6161,
+  "exported": 217,
+  "zeroReference": 332,
+  "oneOrLessReference": 1109,
+  "algorithm": "single global source index + single global test index + declaration-local subtraction (linear test attribution)",
+  "topZero": [
+    {
+      "file": "src/organism/body/EmbodimentRuntime.ts",
+      "name": "applyToState",
+      "line": 89,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/brain_fusion/BrainIntegrationSpine.ts",
+      "name": "getDevelopmentSignal",
+      "line": 17,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/brain_fusion/ClosedLoopRuntimeOrchestrator.ts",
+      "name": "processObservation",
+      "line": 27,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/brain_fusion/CognitiveRuntimeBridge.ts",
+      "name": "getCycleCount",
+      "line": 33,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/brain_fusion/FullCognitiveOrganismLoop.ts",
+      "name": "getRecentCount",
+      "line": 50,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/brain_fusion/MobileCognitiveResourceGuard.ts",
+      "name": "suggestedReduction",
+      "line": 18,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/brain_fusion/UnifiedCognitiveLoop.ts",
+      "name": "getHistorySize",
+      "line": 57,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/cognition/B2512EpistemicSemanticAutobiographicalConsolidator.ts",
+      "name": "semanticActionBias",
+      "line": 93,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/cognition/B269SpikingPlasticNeuralSubstrate.ts",
+      "name": "actionPrediction",
+      "line": 214,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/cognition/B276LatentActionProgramSynthesizer.ts",
+      "name": "stepPrimitive",
+      "line": 231,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/cognition/B280MultiAreaNeuralCircuit.ts",
+      "name": "flattenSpikes",
+      "line": 101,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/cognition/B283CompetingPredictiveHypotheses.ts",
+      "name": "proposeHypothesis",
+      "line": 115,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/cognition/B284NeuralAutobiographicalIdentityCore.ts",
+      "name": "symbolicLedgerFreeSnapshot",
+      "line": 224,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/cognition/B285NeuralLifeConsolidationCore.ts",
+      "name": "clearScarContext",
+      "line": 128,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/cognition/B365UnifiedNeuroCausalCore.ts",
+      "name": "realityActionLearningDiagnostics",
+      "line": 1764,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/cognition/BoundedRecurrentStateSubstrate.ts",
+      "name": "defaultBoundedRecurrentStateSubstrate",
+      "line": 35,
+      "kind": "function",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/cognition/CognitiveBudgetManager.ts",
+      "name": "ledgerSnapshot",
+      "line": 43,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/cognition/CognitiveField.ts",
+      "name": "resolvePressure",
+      "line": 93,
+      "kind": "method",
+      "paramCount": 2,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/cognition/CognitiveNetworkBus.ts",
+      "name": "updateCapacity",
+      "line": 76,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/cognition/ContradictionReservoir.ts",
+      "name": "addEvidence",
+      "line": 25,
+      "kind": "method",
+      "paramCount": 3,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/cognition/NeuralExperienceBranch.ts",
+      "name": "selfMemoryBiasFallback",
+      "line": 287,
+      "kind": "function",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/cognition/NeuralExperienceBranch.ts",
+      "name": "developmentalBiasForLearning",
+      "line": 288,
+      "kind": "function",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/cognition/NeuralExperienceBranch.ts",
+      "name": "setWorldDevelopmentFabricEnabled",
+      "line": 569,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/cognition/NeuralExperienceBranch.ts",
+      "name": "causalPlannerDiagnostics",
+      "line": 1825,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/cognition/NeuralSubstrateBackend.ts",
+      "name": "getMode",
+      "line": 63,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/cognition/NeuralSubstrateBackend.ts",
+      "name": "resetShadow",
+      "line": 91,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/cognition/P2724AutonomousContinualFabric.ts",
+      "name": "shouldReplay",
+      "line": 194,
+      "kind": "method",
+      "paramCount": 3,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/cognition/P2805StabilityPlasticityArbiter.ts",
+      "name": "teacherPull",
+      "line": 159,
+      "kind": "method",
+      "paramCount": 4,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/cognition/P2805StabilityPlasticityArbiter.ts",
+      "name": "slowActionAt",
+      "line": 166,
+      "kind": "method",
+      "paramCount": 2,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/cognition/P2805StabilityPlasticityArbiter.ts",
+      "name": "metricsCompact",
+      "line": 198,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/cognition/P2820SelfKnowledgeCoresetBridge.ts",
+      "name": "distillWeight",
+      "line": 248,
+      "kind": "method",
+      "paramCount": 5,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/cognition/P2862WorldNeuralMemoryAgencyBridge.ts",
+      "name": "boundedActionFeedback",
+      "line": 84,
+      "kind": "function",
+      "paramCount": 2,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/cognition/P34CausalPersonhood.ts",
+      "name": "updateGoal",
+      "line": 182,
+      "kind": "method",
+      "paramCount": 3,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/cognition/P48FunctionalAwarenessCore.ts",
+      "name": "lesionProjection",
+      "line": 185,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/cognition/evolution/SelfGovernanceEngine.ts",
+      "name": "consequencesSnapshot",
+      "line": 87,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/CognitiveSubsystemFacade.ts",
+      "name": "subsystemHealth",
+      "line": 25,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/CognitiveSubsystemFacade.ts",
+      "name": "subsystemManifest",
+      "line": 26,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/CognitiveSubsystemFacade.ts",
+      "name": "executiveSignals",
+      "line": 29,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/CognitiveSubsystemFacade.ts",
+      "name": "projectBudget",
+      "line": 54,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/DecisionActionPipeline.ts",
+      "name": "lesionChangesAction",
+      "line": 92,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "organismSystemsSnapshot",
+      "line": 2139,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "organismSystemManifest",
+      "line": 2140,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "organismSystemExecutionOrder",
+      "line": 2142,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "cognitiveSubsystemFlightSnapshot",
+      "line": 2147,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "cognitiveSubsystemFlightSummary",
+      "line": 2148,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "cognitiveFrameSnapshot",
+      "line": 2158,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "derivedWorldPreviewSnapshot",
+      "line": 2160,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "verifyPersistentContinuity",
+      "line": 2176,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "b2201B2500Diagnostics",
+      "line": 2178,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "setB2201B2500Lesions",
+      "line": 2181,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "b1701B2200TransferEnvelope",
+      "line": 2183,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "b1701B2200ImportTransferEnvelope",
+      "line": 2184,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "setB1701B2200Lesions",
+      "line": 2185,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "b380TemporalLifeDiagnostics",
+      "line": 2218,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "resetB382ContextualDevelopmental",
+      "line": 2222,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "resolveB383ContextualContradictions",
+      "line": 2224,
+      "kind": "method",
+      "paramCount": 2,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "b385B390Diagnostics",
+      "line": 2227,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "b391B400Diagnostics",
+      "line": 2228,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "b621B720Lesion",
+      "line": 2235,
+      "kind": "method",
+      "paramCount": 2,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "setB621B720Lesions",
+      "line": 2236,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "setB721B900Lesions",
+      "line": 2238,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "setB1351B1600Lesions",
+      "line": 2242,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "setB1101B1350Lesions",
+      "line": 2243,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "setB901B1100Lesions",
+      "line": 2244,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "b561B620Lesion",
+      "line": 2245,
+      "kind": "method",
+      "paramCount": 2,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "setB561B620Lesions",
+      "line": 2246,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "b501B560Lesion",
+      "line": 2247,
+      "kind": "method",
+      "paramCount": 2,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "setB501B560Lesions",
+      "line": 2248,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "setB451B500Lesions",
+      "line": 2250,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "setB421B450Lesions",
+      "line": 2252,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "setB401B420Lesions",
+      "line": 2254,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "b391B400Knockout",
+      "line": 2255,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "setB391B400Lesions",
+      "line": 2256,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "b385B390Knockout",
+      "line": 2257,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "setB385B390Enabled",
+      "line": 2258,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "setB385B390Knockouts",
+      "line": 2259,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "setB384AutobiographicalValueGoalEnabled",
+      "line": 2261,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "resetB384AutobiographicalValueGoal",
+      "line": 2262,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "setB365DevelopmentalMemoryEnabled",
+      "line": 2264,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "setB380TemporalLifeEnabled",
+      "line": 2275,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "causalDomainClosureLedgerSnapshot",
+      "line": 2278,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "causalDomainClosureLedgerDiagnostics",
+      "line": 2279,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "causalLifeGraphSnapshot",
+      "line": 2285,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "runtimeClosureSnapshot",
+      "line": 2363,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "setEmotionAppraisal",
+      "line": 2364,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "residualRewardProvider",
+      "line": 2372,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "unifiedLatentWorldDiagnostics",
+      "line": 2375,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "recoveryCausalCalibrationDiagnostics",
+      "line": 2414,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "willIntegrationSnapshot",
+      "line": 2427,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "lettaAuditProvenancePaths",
+      "line": 2520,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "luminaSetBrowserAvailable",
+      "line": 2525,
+      "kind": "method",
+      "paramCount": 2,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "luminaRecordBrowserSession",
+      "line": 2526,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "luminaSetCapabilityEnabled",
+      "line": 2529,
+      "kind": "method",
+      "paramCount": 2,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "hexisAdaptationSnapshot",
+      "line": 2800,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "p53Promote",
+      "line": 7869,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "p55Summary",
+      "line": 7897,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "p56Plan",
+      "line": 7899,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "p57Summary",
+      "line": 7901,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "p58Snapshot",
+      "line": 7902,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "p59Summary",
+      "line": 7903,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "p60Summary",
+      "line": 7904,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "p57RecordExternalOutcome",
+      "line": 7910,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "centralSubjectCertification",
+      "line": 9930,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "deviceEvidenceSnapshot",
+      "line": 9932,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "deviceEvidenceDiagnostics",
+      "line": 9933,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "perceptualEvidenceSnapshot",
+      "line": 9935,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "developmentalIdentitySnapshot",
+      "line": 9951,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "futureSelfDevelopmentalForecasts",
+      "line": 9953,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "developmentalAttractorSummary",
+      "line": 9956,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "experienceContinuumAdaptiveReplayDiagnostics",
+      "line": 9959,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "experienceContinuumCausalReplayCreditDiagnostics",
+      "line": 9960,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "experienceContinuumCausalReplayCreditLedger",
+      "line": 9961,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "experienceContinuumReplayCandidates",
+      "line": 9963,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "experienceContinuumCreateReplayProtocol",
+      "line": 9979,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "experienceContinuumReplayProtocolCheck",
+      "line": 9980,
+      "kind": "method",
+      "paramCount": 2,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "experienceContinuumReplayExperiment",
+      "line": 9981,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "experienceContinuumReplayExperimentSummary",
+      "line": 9982,
+      "kind": "method",
+      "paramCount": 2,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "experienceContinuumRecordLongitudinalReplayTrial",
+      "line": 9983,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "experienceContinuumLongitudinalReplaySummary",
+      "line": 9984,
+      "kind": "method",
+      "paramCount": 2,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "experienceContinuumReplayEvidenceLedger",
+      "line": 9986,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "experienceContinuumMemorySkillEvidence",
+      "line": 9987,
+      "kind": "method",
+      "paramCount": 2,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "cognitiveResearchBatteryAnalyze",
+      "line": 9992,
+      "kind": "method",
+      "paramCount": 2,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "cognitiveResearchBatteryClaimReport",
+      "line": 9993,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "cognitiveResearchBatteryDiagnostics",
+      "line": 9994,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "cognitiveResearchBatteryFinalizeSession",
+      "line": 9997,
+      "kind": "method",
+      "paramCount": 2,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "memoryLifecycleDiagnostics",
+      "line": 9999,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "adaptiveMemoryLastDecisionId",
+      "line": 10001,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "memoryReviseContent",
+      "line": 10004,
+      "kind": "method",
+      "paramCount": 3,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "memoryTemporalDiagnostics",
+      "line": 10006,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "memoryTemporalChain",
+      "line": 10007,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "p42ExperienceSummary",
+      "line": 10037,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "p44Predict",
+      "line": 10040,
+      "kind": "method",
+      "paramCount": 2,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "p44Rollout",
+      "line": 10041,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "p40RecordModelBenchmark",
+      "line": 10042,
+      "kind": "method",
+      "paramCount": 3,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "p37Summary",
+      "line": 10048,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "p37Ingest",
+      "line": 10049,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "p37NextPerception",
+      "line": 10050,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "p38Snapshot",
+      "line": 10051,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "autonomousScientificBrainSnapshot",
+      "line": 10059,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "p35Affordance",
+      "line": 10064,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "contextualWorldSnapshot",
+      "line": 10066,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "b271NeuralAutobiographySnapshot",
+      "line": 10105,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "b273AutonomousGoalStep",
+      "line": 10112,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "b273AutonomousGoalLearn",
+      "line": 10113,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "b274SkillStep",
+      "line": 10116,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "b274SkillTrial",
+      "line": 10117,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "b275PolicyDecide",
+      "line": 10119,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "b275PolicyLearn",
+      "line": 10120,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "b277NeuralOperatorStep",
+      "line": 10128,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "b277NeuralOperatorLearn",
+      "line": 10129,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "b278NeuralPrimitiveStep",
+      "line": 10131,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "b278NeuralPrimitiveLearn",
+      "line": 10132,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "b278NeuralPrimitiveTransfer",
+      "line": 10133,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "b278NeuralPrimitiveAblation",
+      "line": 10135,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "b279NeuralAttractorRecall",
+      "line": 10138,
+      "kind": "method",
+      "paramCount": 3,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "b279NeuralAttractorReplay",
+      "line": 10139,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "b279NeuralAttractorLesion",
+      "line": 10140,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "b280MultiAreaNeuralStep",
+      "line": 10142,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "b280MultiAreaNeuralLearn",
+      "line": 10143,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "b280MultiAreaNeuralLesion",
+      "line": 10144,
+      "kind": "method",
+      "paramCount": 2,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "b280MultiAreaNeuralSnapshot",
+      "line": 10146,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "b281PredictiveInterAreaLesion",
+      "line": 10149,
+      "kind": "method",
+      "paramCount": 3,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "b283CompetingHypothesisReject",
+      "line": 10161,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "b283CompetingHypothesisRollback",
+      "line": 10162,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "b284NeuralIdentitySnapshot",
+      "line": 10164,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "b287RelationshipSnapshot",
+      "line": 10168,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "b288SocialBrainSnapshot",
+      "line": 10172,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "b291UnifiedSelfAgencySnapshot",
+      "line": 10180,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "b291UnifiedSelfAgencyLesion",
+      "line": 10181,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "b291UnifiedSelfAgencyClearLesion",
+      "line": 10182,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "b295AdaptiveCognitiveBudgetSnapshot",
+      "line": 10193,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "p2843NeuralMemorySnapshot",
+      "line": 10197,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "b298ActionOwnershipSnapshot",
+      "line": 10207,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "b299CausalPersonalityClearLesion",
+      "line": 10219,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "b2501DeepNeuralCausalLesion",
+      "line": 10223,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "b2502EINeuralReplayLesion",
+      "line": 10225,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "b2503ActionablePredictiveLesion",
+      "line": 10227,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "b2504UnifiedPredictiveLesion",
+      "line": 10229,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "b2505CompositionalReplayLesion",
+      "line": 10231,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "b2509EmbodiedHomeostasisLesion",
+      "line": 10236,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "b2509EmbodiedHomeostasisClearLesion",
+      "line": 10237,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "b2510DevelopmentalPersonalityLesion",
+      "line": 10239,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "b2510DevelopmentalPersonalityClearLesion",
+      "line": 10240,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "b365UnifiedNeuroCausalLesion",
+      "line": 10247,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "b349NeuralDevelopmentalSnapshot",
+      "line": 10248,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "b349NeuralDevelopmentalBias",
+      "line": 10249,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "b312ExecutiveDecisionHandoffLesion",
+      "line": 10257,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "b312ExecutiveDecisionHandoffClearLesion",
+      "line": 10258,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "b313LongitudinalSnapshot",
+      "line": 10260,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "b313LongitudinalClearLesion",
+      "line": 10262,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "b306AutonomousInitiativeLesion",
+      "line": 10263,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "b306AutonomousInitiativeClearLesion",
+      "line": 10264,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "autonomousPersonhoodClearLesion",
+      "line": 10266,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "mobileStateEconomySnapshot",
+      "line": 10267,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "b302LongHorizonSnapshot",
+      "line": 10270,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "b303HoldoutSnapshot",
+      "line": 10273,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "b304SemanticHoldoutSnapshot",
+      "line": 10276,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "b305CriticalPathSnapshot",
+      "line": 10279,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "b286SelfConflictSnapshot",
+      "line": 10281,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "b286IdentityAblation",
+      "line": 10282,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "b285NeuralLifeSnapshot",
+      "line": 10284,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "b314CausalScarSnapshot",
+      "line": 10289,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "b261WorldModelPredict",
+      "line": 10296,
+      "kind": "method",
+      "paramCount": 2,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "b261WorldModelReplay",
+      "line": 10298,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "b261WorldModelHoldout",
+      "line": 10299,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "b261WorldModelLesion",
+      "line": 10300,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "b261WorldModelPlanSequence",
+      "line": 10301,
+      "kind": "method",
+      "paramCount": 3,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "b261WorldModelBestSequence",
+      "line": 10302,
+      "kind": "method",
+      "paramCount": 2,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "b261WorldModelSequenceBenchmark",
+      "line": 10303,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "r23BoundedRecurrentStep",
+      "line": 10304,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "r23BoundedRecurrentReset",
+      "line": 10305,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "r23BoundedRecurrentDiagnostics",
+      "line": 10306,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "b262WorldModelPredict",
+      "line": 10308,
+      "kind": "method",
+      "paramCount": 3,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "b262WorldModelPlanHierarchical",
+      "line": 10311,
+      "kind": "method",
+      "paramCount": 3,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "b262WorldModelSequenceTrain",
+      "line": 10312,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "b262WorldModelSequencePredict",
+      "line": 10313,
+      "kind": "method",
+      "paramCount": 3,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "b262WorldModelLesion",
+      "line": 10317,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "b263Holdout",
+      "line": 10322,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "b264CausalPolicyHoldout",
+      "line": 10327,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "b264CausalPolicyUnseen",
+      "line": 10328,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "p27RecordHoldout",
+      "line": 10360,
+      "kind": "method",
+      "paramCount": 2,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "p28Snapshot",
+      "line": 10362,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "p28Diagnostics",
+      "line": 10363,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "p34ObserveClaim",
+      "line": 10376,
+      "kind": "method",
+      "paramCount": 3,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "p33AttachDevice",
+      "line": 10402,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "p33MarkTransfer",
+      "line": 10403,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "p30TransferBias",
+      "line": 10411,
+      "kind": "method",
+      "paramCount": 2,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "p36DevelopmentCampaignPlan",
+      "line": 10420,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "p36LearningAgenda",
+      "line": 10421,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "p36LearningInvestmentDecision",
+      "line": 10422,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "p36LearningInvestmentHistory",
+      "line": 10423,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "p36DevelopmentEvidence",
+      "line": 10425,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "causalExperienceRecent",
+      "line": 10430,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "causalExperienceConsolidate",
+      "line": 10431,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "unifiedLearningDiagnostics",
+      "line": 10432,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "cognitiveOrganismContinuitySelfAudit",
+      "line": 10480,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "autonomousCognitiveLifeAblate",
+      "line": 10485,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "operationalLifeChoosePerception",
+      "line": 10498,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "operationalLifeFreezeArchitecture",
+      "line": 10499,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "operationalLifeRecordFault",
+      "line": 10503,
+      "kind": "method",
+      "paramCount": 3,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "operationalLifeCloseWindow",
+      "line": 10504,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "causalDevelopmentSnapshot",
+      "line": 10507,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "behavioralDevelopmentDiagnostics",
+      "line": 10509,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "unifiedLearningBeginTransferProbe",
+      "line": 10510,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "unifiedLearningTransferMatrix",
+      "line": 10512,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "unifiedLearningTransferInferenceGate",
+      "line": 10513,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "unifiedLearningTransferDiagnostics",
+      "line": 10514,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "cognitiveDependencyDiagnostics",
+      "line": 10515,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "unifiedLearningPatterns",
+      "line": 10516,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "socialMindPerson",
+      "line": 10519,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "p26Predict",
+      "line": 10526,
+      "kind": "method",
+      "paramCount": 2,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "p26HoldoutRecord",
+      "line": 10527,
+      "kind": "method",
+      "paramCount": 2,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "p25ClaimStatus",
+      "line": 10562,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "p25StartCampaign",
+      "line": 10563,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "p25UpdateCampaign",
+      "line": 10569,
+      "kind": "method",
+      "paramCount": 3,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "p47Snapshot",
+      "line": 10628,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "p49Summary",
+      "line": 10630,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "markRuntimeRecovery",
+      "line": 10670,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "skillLibrarySnapshot",
+      "line": 10685,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "actionAuditSnapshot",
+      "line": 10909,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "skillEcologySnapshot",
+      "line": 10910,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "compoundSkillVariants",
+      "line": 10912,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "selfAuthorshipSnapshot",
+      "line": 11498,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "sensorimotorSnapshot",
+      "line": 11499,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "authorshipRevision",
+      "line": 11502,
+      "kind": "method",
+      "paramCount": 6,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "neuralExperienceBranchAblationMatrix",
+      "line": 11583,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "b2521LearnedGenerativeOrganismLoopLesion",
+      "line": 11584,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismCore.ts",
+      "name": "b2515UnifiedOrganismLatentLesion",
+      "line": 11585,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismRuntime.ts",
+      "name": "runtimeDecisionSnapshot",
+      "line": 863,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismRuntime.ts",
+      "name": "interruptVoice",
+      "line": 1046,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismRuntime.ts",
+      "name": "embodimentDiagnostics",
+      "line": 1084,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismRuntime.ts",
+      "name": "consolidationGateDiagnostics",
+      "line": 1218,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismRuntime.ts",
+      "name": "causalDomainClosureDiagnostics",
+      "line": 1247,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismRuntime.ts",
+      "name": "causalDomainClosureSnapshot",
+      "line": 1248,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismSystemFabric.ts",
+      "name": "capabilityMatrix",
+      "line": 151,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/core/OrganismSystemFabric.ts",
+      "name": "dependencyOrder",
+      "line": 155,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/developmental/MemorySubstrateCoordinator.ts",
+      "name": "ingestCompatibilityRecord",
+      "line": 94,
+      "kind": "method",
+      "paramCount": 2,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/developmental/P67AutonomousGoalGenesis.ts",
+      "name": "markRejected",
+      "line": 56,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/developmental/P75MemoryContinuumOS.ts",
+      "name": "recordForget",
+      "line": 28,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/developmental/UnifiedMemorySystem.ts",
+      "name": "markDormantReactivation",
+      "line": 124,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/developmental/UnifiedMemorySystem.ts",
+      "name": "markSkillPromotion",
+      "line": 126,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/integration/hexis/HexisAdaptationFabric.ts",
+      "name": "getHmxStage",
+      "line": 353,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/language/LanguageOrgan.ts",
+      "name": "postHocExplanation",
+      "line": 58,
+      "kind": "function",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/learning/AdaptiveDevelopmentEngine.ts",
+      "name": "markBenchmark",
+      "line": 100,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/learning/AdvancedResilienceEngine.ts",
+      "name": "capturePolicyGene",
+      "line": 97,
+      "kind": "method",
+      "paramCount": 4,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/learning/AutonomousCognitiveLifeEngine.ts",
+      "name": "autonomousTick",
+      "line": 203,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/learning/AutonomousCognitiveLifeEngine.ts",
+      "name": "addCommitment",
+      "line": 208,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/learning/AutonomousCognitiveLifeEngine.ts",
+      "name": "commitResearchCoverage",
+      "line": 269,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/learning/CanonicalTemporalCreditAuthority.ts",
+      "name": "setEligibilityLambda",
+      "line": 226,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/learning/CanonicalTemporalCreditAuthority.ts",
+      "name": "setDiscountGamma",
+      "line": 227,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/learning/CausalDevelopmentLoop.ts",
+      "name": "sequenceContexts",
+      "line": 138,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/learning/CausalDevelopmentLoop.ts",
+      "name": "noteRollback",
+      "line": 197,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/learning/DevelopmentalSynthesisEngine.ts",
+      "name": "noteHoldoutGain",
+      "line": 192,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/learning/LongitudinalOrganismEngine.ts",
+      "name": "updateHealth",
+      "line": 109,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/learning/P26TrueLearningEngine.ts",
+      "name": "unfreeze",
+      "line": 106,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/learning/P28PlasticitySubstrate.ts",
+      "name": "prioritizedCreditCandidates",
+      "line": 251,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/learning/P29LearningGovernance.ts",
+      "name": "setResourceBudget",
+      "line": 68,
+      "kind": "method",
+      "paramCount": 2,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/learning/P30ContinualIntelligence.ts",
+      "name": "memoryThermodynamicScore",
+      "line": 306,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/learning/P36AutonomousSelfDevelopment.ts",
+      "name": "focusFromState",
+      "line": 214,
+      "kind": "function",
+      "paramCount": 2,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/learning/ParametricPolicyLearner.ts",
+      "name": "featureNamesList",
+      "line": 163,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/learning/ProceduralSkillLibrary.ts",
+      "name": "compoundSkillPolicy",
+      "line": 485,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/learning/ResearchGradeOrganismEngine.ts",
+      "name": "resolveIntention",
+      "line": 87,
+      "kind": "method",
+      "paramCount": 3,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/memory/ExperienceContinuumFabric.ts",
+      "name": "relevanceBoost",
+      "line": 331,
+      "kind": "method",
+      "paramCount": 2,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/memory/MemoryFabric.ts",
+      "name": "memoryConflictDiagnostics",
+      "line": 345,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/memory/MemoryFabric.ts",
+      "name": "reconcileImplicitMemoryConflicts",
+      "line": 346,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/memory/MemoryFabric.ts",
+      "name": "canonicalSize",
+      "line": 442,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/memory/MemoryFabric.ts",
+      "name": "isMemoryFabricSnapshot",
+      "line": 466,
+      "kind": "function",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/system/ArtificialBrainAtlas.ts",
+      "name": "regionsByPriority",
+      "line": 94,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/system/B294CausalNeuralEventSpine.ts",
+      "name": "channelCredit01",
+      "line": 202,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/system/B561B620MetaCognitiveEvolutionCore.ts",
+      "name": "actionPolicySignal",
+      "line": 289,
+      "kind": "method",
+      "paramCount": 2,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/system/B621B720UnifiedAdaptiveMindCore.ts",
+      "name": "regimeActionSignal",
+      "line": 164,
+      "kind": "method",
+      "paramCount": 2,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/system/DecisionSemanticEvidence.ts",
+      "name": "summarizeOperationSemanticEvidence",
+      "line": 86,
+      "kind": "function",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/system/EmotionAppraisalEngine.ts",
+      "name": "latestFeeling",
+      "line": 133,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/system/EvidenceFirewall.ts",
+      "name": "promotionScore",
+      "line": 90,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/system/ExternalObserverFabric.ts",
+      "name": "latestForAction",
+      "line": 294,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/system/ExternalObserverFabric.ts",
+      "name": "latestAssessmentForAction",
+      "line": 295,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/system/ExternalPostconditionVerifier.ts",
+      "name": "registerAction",
+      "line": 31,
+      "kind": "method",
+      "paramCount": 2,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/system/P82RealityProgressController.ts",
+      "name": "shouldPromote",
+      "line": 22,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/system/PredictionLedger.ts",
+      "name": "resolveOldest",
+      "line": 30,
+      "kind": "method",
+      "paramCount": 3,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/system/ResearchSourceLineage.ts",
+      "name": "summarizeResearchLineage",
+      "line": 145,
+      "kind": "function",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/system/RuntimePerformanceGovernor.ts",
+      "name": "defaultRuntimePerformanceGovernor",
+      "line": 51,
+      "kind": "function",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/system/SelfDirectedLifeOrchestrator.ts",
+      "name": "resumePaused",
+      "line": 26,
+      "kind": "method",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/system/SelfPredictionBenchmark.ts",
+      "name": "improvementVsChance",
+      "line": 17,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/system/WorldModelEnsembleController.ts",
+      "name": "recordExternalOutcome",
+      "line": 117,
+      "kind": "method",
+      "paramCount": 4,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/verification/SemanticCoverageEngine.ts",
+      "name": "makeFunctionContract",
+      "line": 26,
+      "kind": "function",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/verification/SemanticCoverageEngine.ts",
+      "name": "summarizeContracts",
+      "line": 27,
+      "kind": "function",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/world/WorldModel.ts",
+      "name": "currentBelief",
+      "line": 47,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/organism/world/WorldModel.ts",
+      "name": "beliefSignature",
+      "line": 50,
+      "kind": "method",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "src/server/server.mjs",
+      "name": "readFileSyncSafe",
+      "line": 147,
+      "kind": "function",
+      "paramCount": 1,
+      "testReferences": 0
+    },
+    {
+      "file": "tests/p2853_slow_memory_holdout_transfer.mjs",
+      "name": "errSet",
+      "line": 31,
+      "kind": "function",
+      "paramCount": 3,
+      "testReferences": 1
+    },
+    {
+      "file": "research/benchmarks/ConsciousnessBenchmark.ts",
+      "name": "runConsciousnessBenchmark",
+      "line": 16,
+      "kind": "function",
+      "paramCount": 0,
+      "testReferences": 0
+    },
+    {
+      "file": "research/benchmarks/history/LongitudinalOrganismBenchmark.P5.ts",
+      "name": "runSyntheticLongitudinal",
+      "line": 18,
+      "kind": "function",
+      "paramCount": 2,
+      "testReferences": 0
+    }
+  ]
+}

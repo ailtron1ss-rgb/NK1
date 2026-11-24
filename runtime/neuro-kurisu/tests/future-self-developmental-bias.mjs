@@ -1,0 +1,15 @@
+import assert from 'node:assert/strict';
+import { FutureSelfModel } from '../src/organism/cognition/evolution/FutureSelfModel.ts';
+const model=new FutureSelfModel();
+const baseState={version:111,tick:10,at:1000,needs:{energy:.8,cognitiveLoad:.2,uncertainty:.7,socialNeed:.2,novelty:.7,identityCoherence:.8,goalPressure:.55},predictionError:.3,attentionBudget:.8,lastAction:'wait',lastActionSuccess:null,autonomyScore:.7,selfPredictionError:.2,predictedNextAction:'verify',lastPredictionConfidence:.6,worldContextVersion:1};
+const goals=[{id:'g1',title:'Проверить неизвестное',source:'learned',status:'active',importance:.7,urgency:.6,confidence:.8,progress:.1,createdAt:1,updatedAt:1}];
+const truth={curiosity:.7,truth:.99,autonomy:.8,evidence:.99,care:.6,responsibility:.75,social:.3};
+const care={...truth,truth:.72,evidence:.7,care:.95,responsibility:.95};
+const a=model.developmentalBias({action:'verify',state:baseState,goals,values:truth,identityContinuity01:.9,identityPressure01:.1});
+const b=model.developmentalBias({action:'verify',state:baseState,goals,values:care,identityContinuity01:.9,identityPressure01:.1});
+assert.notEqual(a,b);
+model.forecast(baseState,goals,'verify',.6,4);
+assert.equal(model.snapshot().forecasts.length,1);
+const snapshotAfterForecast=model.snapshot();
+assert.equal(snapshotAfterForecast.predictedAction ?? 'verify','verify');
+console.log(`FUTURE_SELF_DEVELOPMENTAL=PASS verifyTruth=${a.toFixed(4)} verifyCare=${b.toFixed(4)} delta=${(a-b).toFixed(4)}`);

@@ -1,0 +1,527 @@
+{
+  "pass": true,
+  "sourceTotal": 3573,
+  "sampledSafeUnverified": 64,
+  "buckets": {
+    "verified": 38,
+    "safeUnverified": 2458,
+    "unsafe": 259,
+    "integration": 818
+  },
+  "policy": "B292 does not promote functions without direct behavioral evidence; it only produces a bounded safe-candidate backlog.",
+  "samples": [
+    {
+      "id": "src/node-shims.d.ts:1:randomUUID",
+      "name": "randomUUID",
+      "file": "src/node-shims.d.ts",
+      "domain": "infrastructure",
+      "paramCount": 0,
+      "criticality": 0.5
+    },
+    {
+      "id": "src/node-shims.d.ts:18:dirname",
+      "name": "dirname",
+      "file": "src/node-shims.d.ts",
+      "domain": "infrastructure",
+      "paramCount": 1,
+      "criticality": 0.5
+    },
+    {
+      "id": "src/node-shims.d.ts:18:join",
+      "name": "join",
+      "file": "src/node-shims.d.ts",
+      "domain": "infrastructure",
+      "paramCount": 1,
+      "criticality": 0.5
+    },
+    {
+      "id": "src/node-shims.d.ts:25:deflateRawSync",
+      "name": "deflateRawSync",
+      "file": "src/node-shims.d.ts",
+      "domain": "infrastructure",
+      "paramCount": 1,
+      "criticality": 0.5
+    },
+    {
+      "id": "src/node-shims.d.ts:25:inflateRawSync",
+      "name": "inflateRawSync",
+      "file": "src/node-shims.d.ts",
+      "domain": "infrastructure",
+      "paramCount": 1,
+      "criticality": 0.5
+    },
+    {
+      "id": "src/organism/body/AndroidEmbodimentBridge.ts:70:invalidateTermuxCapabilityCache",
+      "name": "invalidateTermuxCapabilityCache",
+      "file": "src/organism/body/AndroidEmbodimentBridge.ts",
+      "domain": "perception",
+      "paramCount": 0,
+      "criticality": 0.75
+    },
+    {
+      "id": "src/organism/body/CameraEvidenceProcessor.ts:39:jpegDimensions",
+      "name": "jpegDimensions",
+      "file": "src/organism/body/CameraEvidenceProcessor.ts",
+      "domain": "perception",
+      "paramCount": 1,
+      "criticality": 0.75
+    },
+    {
+      "id": "src/organism/body/CameraEvidenceProcessor.ts:59:entropy01",
+      "name": "entropy01",
+      "file": "src/organism/body/CameraEvidenceProcessor.ts",
+      "domain": "perception",
+      "paramCount": 1,
+      "criticality": 0.75
+    },
+    {
+      "id": "src/organism/body/DeviceEvidenceLedger.ts:12:record",
+      "name": "record",
+      "file": "src/organism/body/DeviceEvidenceLedger.ts",
+      "domain": "infrastructure",
+      "paramCount": 1,
+      "criticality": 0.5
+    },
+    {
+      "id": "src/organism/body/DeviceEvidenceLedger.ts:16:certification",
+      "name": "certification",
+      "file": "src/organism/body/DeviceEvidenceLedger.ts",
+      "domain": "infrastructure",
+      "paramCount": 1,
+      "criticality": 0.5
+    },
+    {
+      "id": "src/organism/body/EmbodimentRuntime.ts:47:userActivity",
+      "name": "userActivity",
+      "file": "src/organism/body/EmbodimentRuntime.ts",
+      "domain": "perception",
+      "paramCount": 1,
+      "criticality": 0.75
+    },
+    {
+      "id": "src/organism/body/EmbodimentRuntime.ts:53:externalEvent",
+      "name": "externalEvent",
+      "file": "src/organism/body/EmbodimentRuntime.ts",
+      "domain": "perception",
+      "paramCount": 3,
+      "criticality": 0.75
+    },
+    {
+      "id": "src/organism/body/EmbodimentRuntime.ts:59:maybeSleep",
+      "name": "maybeSleep",
+      "file": "src/organism/body/EmbodimentRuntime.ts",
+      "domain": "perception",
+      "paramCount": 1,
+      "criticality": 0.75
+    },
+    {
+      "id": "src/organism/body/EmbodimentRuntime.ts:65:sleep",
+      "name": "sleep",
+      "file": "src/organism/body/EmbodimentRuntime.ts",
+      "domain": "perception",
+      "paramCount": 1,
+      "criticality": 0.75
+    },
+    {
+      "id": "src/organism/body/EmbodimentRuntime.ts:73:wake",
+      "name": "wake",
+      "file": "src/organism/body/EmbodimentRuntime.ts",
+      "domain": "perception",
+      "paramCount": 1,
+      "criticality": 0.75
+    },
+    {
+      "id": "src/organism/body/EmbodimentRuntime.ts:83:applyToState",
+      "name": "applyToState",
+      "file": "src/organism/body/EmbodimentRuntime.ts",
+      "domain": "perception",
+      "paramCount": 1,
+      "criticality": 0.75
+    },
+    {
+      "id": "src/organism/body/EmbodimentRuntime.ts:92:resourceSummary",
+      "name": "resourceSummary",
+      "file": "src/organism/body/EmbodimentRuntime.ts",
+      "domain": "perception",
+      "paramCount": 0,
+      "criticality": 0.75
+    },
+    {
+      "id": "src/organism/body/EmbodimentRuntime.ts:97:speak",
+      "name": "speak",
+      "file": "src/organism/body/EmbodimentRuntime.ts",
+      "domain": "perception",
+      "paramCount": 2,
+      "criticality": 0.75
+    },
+    {
+      "id": "src/organism/body/EmbodimentRuntime.ts:107:listen",
+      "name": "listen",
+      "file": "src/organism/body/EmbodimentRuntime.ts",
+      "domain": "perception",
+      "paramCount": 0,
+      "criticality": 0.75
+    },
+    {
+      "id": "src/organism/body/GeminiVisionSemanticBackend.ts:18:bytesToBase64",
+      "name": "bytesToBase64",
+      "file": "src/organism/body/GeminiVisionSemanticBackend.ts",
+      "domain": "perception",
+      "paramCount": 1,
+      "criticality": 0.75
+    },
+    {
+      "id": "src/organism/body/GeminiVisionSemanticBackend.ts:22:extractText",
+      "name": "extractText",
+      "file": "src/organism/body/GeminiVisionSemanticBackend.ts",
+      "domain": "perception",
+      "paramCount": 1,
+      "criticality": 0.75
+    },
+    {
+      "id": "src/organism/body/GeminiVisionSemanticBackend.ts:23:parsePayload",
+      "name": "parsePayload",
+      "file": "src/organism/body/GeminiVisionSemanticBackend.ts",
+      "domain": "perception",
+      "paramCount": 1,
+      "criticality": 0.75
+    },
+    {
+      "id": "src/organism/body/GeminiVisionSemanticBackend.ts:29:normalizeKind",
+      "name": "normalizeKind",
+      "file": "src/organism/body/GeminiVisionSemanticBackend.ts",
+      "domain": "perception",
+      "paramCount": 1,
+      "criticality": 0.75
+    },
+    {
+      "id": "src/organism/body/GeminiVisionSemanticBackend.ts:34:constructor",
+      "name": "constructor",
+      "file": "src/organism/body/GeminiVisionSemanticBackend.ts",
+      "domain": "perception",
+      "paramCount": 1,
+      "criticality": 0.75
+    },
+    {
+      "id": "src/organism/body/MultimodalPerception.ts:26:restore",
+      "name": "restore",
+      "file": "src/organism/body/MultimodalPerception.ts",
+      "domain": "perception",
+      "paramCount": 1,
+      "criticality": 0.75
+    },
+    {
+      "id": "src/organism/body/MultimodalPerception.ts:28:observe",
+      "name": "observe",
+      "file": "src/organism/body/MultimodalPerception.ts",
+      "domain": "perception",
+      "paramCount": 1,
+      "criticality": 0.75
+    },
+    {
+      "id": "src/organism/body/MultimodalPerception.ts:34:fuse",
+      "name": "fuse",
+      "file": "src/organism/body/MultimodalPerception.ts",
+      "domain": "perception",
+      "paramCount": 1,
+      "criticality": 0.75
+    },
+    {
+      "id": "src/organism/body/MultimodalSituationModel.ts:7:hashFeatures",
+      "name": "hashFeatures",
+      "file": "src/organism/body/MultimodalSituationModel.ts",
+      "domain": "infrastructure",
+      "paramCount": 2,
+      "criticality": 0.5
+    },
+    {
+      "id": "src/organism/body/MultimodalSituationModel.ts:10:restore",
+      "name": "restore",
+      "file": "src/organism/body/MultimodalSituationModel.ts",
+      "domain": "infrastructure",
+      "paramCount": 1,
+      "criticality": 0.5
+    },
+    {
+      "id": "src/organism/body/MultimodalSituationModel.ts:12:fuse",
+      "name": "fuse",
+      "file": "src/organism/body/MultimodalSituationModel.ts",
+      "domain": "infrastructure",
+      "paramCount": 1,
+      "criticality": 0.5
+    },
+    {
+      "id": "src/organism/body/P35SemanticWorldBody.ts:93:stableId",
+      "name": "stableId",
+      "file": "src/organism/body/P35SemanticWorldBody.ts",
+      "domain": "world",
+      "paramCount": 2,
+      "criticality": 0.9
+    },
+    {
+      "id": "src/organism/body/P35SemanticWorldBody.ts:101:restore",
+      "name": "restore",
+      "file": "src/organism/body/P35SemanticWorldBody.ts",
+      "domain": "world",
+      "paramCount": 1,
+      "criticality": 0.9
+    },
+    {
+      "id": "src/organism/body/P35SemanticWorldBody.ts:118:ingest",
+      "name": "ingest",
+      "file": "src/organism/body/P35SemanticWorldBody.ts",
+      "domain": "world",
+      "paramCount": 1,
+      "criticality": 0.9
+    },
+    {
+      "id": "src/organism/body/P35SemanticWorldBody.ts:130:ingestText",
+      "name": "ingestText",
+      "file": "src/organism/body/P35SemanticWorldBody.ts",
+      "domain": "world",
+      "paramCount": 2,
+      "criticality": 0.9
+    },
+    {
+      "id": "src/organism/body/P35SemanticWorldBody.ts:143:ingestVision",
+      "name": "ingestVision",
+      "file": "src/organism/body/P35SemanticWorldBody.ts",
+      "domain": "world",
+      "paramCount": 2,
+      "criticality": 0.9
+    },
+    {
+      "id": "src/organism/body/P35SemanticWorldBody.ts:157:ingestAudio",
+      "name": "ingestAudio",
+      "file": "src/organism/body/P35SemanticWorldBody.ts",
+      "domain": "world",
+      "paramCount": 2,
+      "criticality": 0.9
+    },
+    {
+      "id": "src/organism/body/P35SemanticWorldBody.ts:168:ingestWorld",
+      "name": "ingestWorld",
+      "file": "src/organism/body/P35SemanticWorldBody.ts",
+      "domain": "world",
+      "paramCount": 2,
+      "criticality": 0.9
+    },
+    {
+      "id": "src/organism/body/P35SemanticWorldBody.ts:201:upsertEntity",
+      "name": "upsertEntity",
+      "file": "src/organism/body/P35SemanticWorldBody.ts",
+      "domain": "world",
+      "paramCount": 7,
+      "criticality": 0.9
+    },
+    {
+      "id": "src/organism/body/P35SemanticWorldBody.ts:215:upsertRelation",
+      "name": "upsertRelation",
+      "file": "src/organism/body/P35SemanticWorldBody.ts",
+      "domain": "world",
+      "paramCount": 6,
+      "criticality": 0.9
+    },
+    {
+      "id": "src/organism/body/P35SemanticWorldBody.ts:224:entityByLabel",
+      "name": "entityByLabel",
+      "file": "src/organism/body/P35SemanticWorldBody.ts",
+      "domain": "world",
+      "paramCount": 3,
+      "criticality": 0.9
+    },
+    {
+      "id": "src/organism/body/P35SemanticWorldBody.ts:230:reconcile",
+      "name": "reconcile",
+      "file": "src/organism/body/P35SemanticWorldBody.ts",
+      "domain": "world",
+      "paramCount": 1,
+      "criticality": 0.9
+    },
+    {
+      "id": "src/organism/body/P35SemanticWorldBody.ts:255:semanticSummary",
+      "name": "semanticSummary",
+      "file": "src/organism/body/P35SemanticWorldBody.ts",
+      "domain": "world",
+      "paramCount": 0,
+      "criticality": 0.9
+    },
+    {
+      "id": "src/organism/body/P35SemanticWorldBody.ts:266:affordance",
+      "name": "affordance",
+      "file": "src/organism/body/P35SemanticWorldBody.ts",
+      "domain": "world",
+      "paramCount": 1,
+      "criticality": 0.9
+    },
+    {
+      "id": "src/organism/body/P37EmbodiedSensorium.ts:159:text",
+      "name": "text",
+      "file": "src/organism/body/P37EmbodiedSensorium.ts",
+      "domain": "perception",
+      "paramCount": 2,
+      "criticality": 0.75
+    },
+    {
+      "id": "src/organism/body/P37EmbodiedSensorium.ts:167:vision",
+      "name": "vision",
+      "file": "src/organism/body/P37EmbodiedSensorium.ts",
+      "domain": "perception",
+      "paramCount": 2,
+      "criticality": 0.75
+    },
+    {
+      "id": "src/organism/body/P37EmbodiedSensorium.ts:175:audio",
+      "name": "audio",
+      "file": "src/organism/body/P37EmbodiedSensorium.ts",
+      "domain": "perception",
+      "paramCount": 2,
+      "criticality": 0.75
+    },
+    {
+      "id": "src/organism/body/P37EmbodiedSensorium.ts:180:world",
+      "name": "world",
+      "file": "src/organism/body/P37EmbodiedSensorium.ts",
+      "domain": "world",
+      "paramCount": 2,
+      "criticality": 0.9
+    },
+    {
+      "id": "src/organism/body/P37EmbodiedSensorium.ts:226:sealHash",
+      "name": "sealHash",
+      "file": "src/organism/body/P37EmbodiedSensorium.ts",
+      "domain": "perception",
+      "paramCount": 0,
+      "criticality": 0.75
+    },
+    {
+      "id": "src/organism/body/P37EmbodiedSensorium.ts:227:nextPerception",
+      "name": "nextPerception",
+      "file": "src/organism/body/P37EmbodiedSensorium.ts",
+      "domain": "perception",
+      "paramCount": 0,
+      "criticality": 0.75
+    },
+    {
+      "id": "src/organism/body/P37EmbodiedSensorium.ts:228:affordance",
+      "name": "affordance",
+      "file": "src/organism/body/P37EmbodiedSensorium.ts",
+      "domain": "perception",
+      "paramCount": 1,
+      "criticality": 0.75
+    },
+    {
+      "id": "src/organism/body/P37EmbodiedSensorium.ts:229:observeOutcome",
+      "name": "observeOutcome",
+      "file": "src/organism/body/P37EmbodiedSensorium.ts",
+      "domain": "perception",
+      "paramCount": 2,
+      "criticality": 0.75
+    },
+    {
+      "id": "src/organism/body/P37EmbodiedSensorium.ts:230:semanticSummary",
+      "name": "semanticSummary",
+      "file": "src/organism/body/P37EmbodiedSensorium.ts",
+      "domain": "perception",
+      "paramCount": 0,
+      "criticality": 0.75
+    },
+    {
+      "id": "src/organism/body/PerceptionRouter.ts:16:routePerception",
+      "name": "routePerception",
+      "file": "src/organism/body/PerceptionRouter.ts",
+      "domain": "perception",
+      "paramCount": 2,
+      "criticality": 0.75
+    },
+    {
+      "id": "src/organism/body/PerceptionRouter.ts:27:eventToExternalDetail",
+      "name": "eventToExternalDetail",
+      "file": "src/organism/body/PerceptionRouter.ts",
+      "domain": "perception",
+      "paramCount": 1,
+      "criticality": 0.75
+    },
+    {
+      "id": "src/organism/body/PerceptualEvidenceCompiler.ts:42:restore",
+      "name": "restore",
+      "file": "src/organism/body/PerceptualEvidenceCompiler.ts",
+      "domain": "infrastructure",
+      "paramCount": 1,
+      "criticality": 0.5
+    },
+    {
+      "id": "src/organism/body/VoiceEmbodiment.ts:27:detectVoiceBreathMode",
+      "name": "detectVoiceBreathMode",
+      "file": "src/organism/body/VoiceEmbodiment.ts",
+      "domain": "perception",
+      "paramCount": 1,
+      "criticality": 0.75
+    },
+    {
+      "id": "src/organism/body/VoiceEmbodiment.ts:36:buildVoicePlan",
+      "name": "buildVoicePlan",
+      "file": "src/organism/body/VoiceEmbodiment.ts",
+      "domain": "agency",
+      "paramCount": 1,
+      "criticality": 0.8
+    },
+    {
+      "id": "src/organism/cognition/ActivePerceptionNeuralSubstrate.ts:59:restore",
+      "name": "restore",
+      "file": "src/organism/cognition/ActivePerceptionNeuralSubstrate.ts",
+      "domain": "perception",
+      "paramCount": 1,
+      "criticality": 0.75
+    },
+    {
+      "id": "src/organism/cognition/ActivePerceptionNeuralSubstrate.ts:65:hiddenStep",
+      "name": "hiddenStep",
+      "file": "src/organism/cognition/ActivePerceptionNeuralSubstrate.ts",
+      "domain": "perception",
+      "paramCount": 1,
+      "criticality": 0.75
+    },
+    {
+      "id": "src/organism/cognition/ActivePerceptionNeuralSubstrate.ts:75:score",
+      "name": "score",
+      "file": "src/organism/cognition/ActivePerceptionNeuralSubstrate.ts",
+      "domain": "perception",
+      "paramCount": 1,
+      "criticality": 0.75
+    },
+    {
+      "id": "src/organism/cognition/ActivePerceptionNeuralSubstrate.ts:76:learn",
+      "name": "learn",
+      "file": "src/organism/cognition/ActivePerceptionNeuralSubstrate.ts",
+      "domain": "learning",
+      "paramCount": 3,
+      "criticality": 0.9
+    },
+    {
+      "id": "src/organism/cognition/ActivePerceptionNeuralSubstrate.ts:89:rank",
+      "name": "rank",
+      "file": "src/organism/cognition/ActivePerceptionNeuralSubstrate.ts",
+      "domain": "perception",
+      "paramCount": 1,
+      "criticality": 0.75
+    },
+    {
+      "id": "src/organism/cognition/ActivePerceptionNeuralSubstrate.ts:98:observeGain",
+      "name": "observeGain",
+      "file": "src/organism/cognition/ActivePerceptionNeuralSubstrate.ts",
+      "domain": "perception",
+      "paramCount": 2,
+      "criticality": 0.75
+    },
+    {
+      "id": "src/organism/cognition/ActivePerceptionNeuralSubstrate.ts:104:choose",
+      "name": "choose",
+      "file": "src/organism/cognition/ActivePerceptionNeuralSubstrate.ts",
+      "domain": "perception",
+      "paramCount": 1,
+      "criticality": 0.75
+    }
+  ],
+  "generatedAt": "2026-09-13T05:27:16.305Z"
+}

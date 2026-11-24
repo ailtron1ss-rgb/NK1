@@ -1,0 +1,83 @@
+{
+  "baseline": "NOMEGA_PASS14",
+  "canonical_registry": {
+    "cycles": 0,
+    "targets": 39
+  },
+  "changes": [
+    "source-level self-modification spine",
+    "AST numeric proposal generation",
+    "decision hash binding",
+    "runtime-independent source hashing",
+    "transitive accepted-lineage metaproductivity",
+    "bounded substrate guidance smoke"
+  ],
+  "generated_at_epoch": 1790228276.759594,
+  "governance": {
+    "mandatory_learning_evidence": [
+      "after_metrics",
+      "before_metrics",
+      "causal_attribution",
+      "checkpoint_lineage",
+      "fresh_process_restart",
+      "holdout_source",
+      "ood_source",
+      "regression_metrics",
+      "resource_metrics",
+      "restart_metrics",
+      "seed_policy",
+      "training_data_source",
+      "transfer_metrics",
+      "strategy_router_calibration",
+      "strategy_router_promotion_gate",
+      "island_migration_evidence",
+      "long_horizon_evidence",
+      "curriculum_stagnation_evidence",
+      "causal_intervention_effect",
+      "memory_unlearning_evidence",
+      "transfer_selective_signature",
+      "model_time_replay_evidence"
+    ],
+    "mandatory_test_layers": [
+      "unit",
+      "integration",
+      "regression",
+      "behavioral",
+      "ood",
+      "property_metamorphic",
+      "restart",
+      "resource",
+      "multi_seed",
+      "fresh_runtime",
+      "leave_one_pair_out_strategy_router",
+      "pareto_strategy_ablation",
+      "island_diversity_ablation",
+      "long_horizon_no_reset",
+      "stagnation_escape_curriculum"
+    ],
+    "promotion_rule": "accept_only_on_explicit_evidence"
+  },
+  "known_limits": [
+    "full suite remains time-heavy",
+    "strict pure-neural coding uplift is not proven",
+    "proposal generator is intentionally conservative numeric-AST exploration, not yet learned open-ended code synthesis"
+  ],
+  "name": "NOMEGA",
+  "pass": "PASS15",
+  "status": "research_only",
+  "tree_digest": "273a18a52afdea5c32c20b65e706bd32118f525cd3e56865dcdaeee159340999",
+  "tree_digest_scope": "core/nomega + tests + tools/nomega_governance_check.py + docs/nomega/governance; caches/runtime/release-metadata excluded",
+  "verification": {
+    "canonical_registry_failures": 0,
+    "canonical_registry_targets": 39,
+    "compileall": "pass",
+    "critical_targeted_tests": "42 passed",
+    "full_suite": "not_claimed_green",
+    "governance_checker": "pass (88 warning-only legacy findings)",
+    "high_risk_regression_tests": "14 passed",
+    "pytest_collection": 441,
+    "targeted_pass15_tests": 5,
+    "targeted_regression_tests": 40
+  },
+  "version": "1.31.0-dev"
+}

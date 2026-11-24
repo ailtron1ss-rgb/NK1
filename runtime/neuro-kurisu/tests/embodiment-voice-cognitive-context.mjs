@@ -1,0 +1,141 @@
+import assert from 'node:assert/strict';
+import { EmbodimentRuntime } from '../src/organism/body/EmbodimentRuntime.ts';
+import { OrganismRuntime } from '../src/organism/core/OrganismRuntime.ts';
+import { projectVoiceEmotionContext } from '../src/organism/core/OrganismRuntime.ts';
+import { buildVoicePlan } from '../src/organism/body/VoiceEmbodiment.ts';
+import { defaultBodyState } from '../src/organism/body/EmbodiedBody.ts';
+
+const runtime = new EmbodimentRuntime();
+const state = {
+  needs: {
+    energy: 0.44,
+    cognitiveLoad: 0.88,
+    uncertainty: 0.91,
+    socialNeed: 0.84,
+    novelty: 0.72,
+    identityCoherence: 0.43,
+    goalPressure: 0.86,
+  },
+  attentionBudget: 0.42,
+};
+
+runtime.applyToState(state, {
+  continuity01: 0.38,
+  grounding01: 0.32,
+  emotion: { label: 'anxiety', valence01: 0.22, arousal01: 0.91, dominance01: 0.28 },
+});
+const cached = runtime.voiceCognitiveContextSnapshot();
+assert.equal(cached.needs.uncertainty, state.needs.uncertainty);
+assert.equal(cached.needs.socialNeed, state.needs.socialNeed);
+assert.equal(cached.needs.goalPressure, state.needs.goalPressure);
+assert.equal(cached.continuity01, 0.38);
+assert.equal(cached.grounding01, 0.32);
+assert.equal(cached.emotion.label, 'anxiety');
+
+const livePlan = runtime.previewVoicePlan('Давай проверим гипотезу', { action: 'verify', mode: 'learn' });
+assert.ok(livePlan.reason.includes('high-cognitive-load'), 'voice must reflect live cognitive load');
+assert.ok(livePlan.reason.includes('high-uncertainty'), 'voice must reflect live uncertainty');
+assert.ok(livePlan.reason.includes('social-need'), 'voice must reflect live social need');
+assert.ok(livePlan.reason.includes('continuity-uncertainty'), 'voice must reflect low identity continuity');
+assert.ok(livePlan.reason.includes('low-grounding'), 'voice must reflect weak grounding');
+assert.ok(livePlan.reason.includes('affect-anxiety-deescalation'), 'voice must use cached appraisal emotion');
+assert.ok(livePlan.prosody.rate < 1, 'high load and anxiety should slow delivery');
+
+const overridePlan = runtime.previewVoicePlan('Отлично, получилось!', {
+  action: 'respond',
+  needs: { ...state.needs, cognitiveLoad: 0.12, uncertainty: 0.08, socialNeed: 0.22 },
+  emotion: { label: 'joy', valence01: 0.94, arousal01: 0.62 },
+});
+assert.ok(overridePlan.reason.includes('affect-joy'), 'per-utterance affect should override cached state');
+assert.equal(overridePlan.reason.includes('affect-anxiety-deescalation'), false);
+assert.equal(runtime.voiceCognitiveContextSnapshot().emotion.label, 'anxiety',
+  'one-off overrides must not mutate persistent cognitive context');
+
+const defaultPlan = runtime.previewVoicePlan('Краткий ответ');
+assert.equal(defaultPlan.tone, livePlan.tone === 'focused' ? 'focused' : defaultPlan.tone);
+assert.ok(defaultPlan.prosody.rate >= 0.72 && defaultPlan.prosody.rate <= 1.25);
+assert.ok(defaultPlan.prosody.pitch >= 0.72 && defaultPlan.prosody.pitch <= 1.28);
+
+const appraisalEpisode = {
+  id: 'emo:9:9009:9', tick: 9, at: 9009, label: 'curiosity',
+  valence01: .91, arousal01: .78, dominance01: .84,
+};
+const resolveRuntimeEmotion = OrganismRuntime.prototype['voiceEmotionContext'];
+const mappedEmotion = resolveRuntimeEmotion.call({
+  core: {
+    snapshot: () => ({ facets: { cognition: { cognitiveField: {
+      dominantEmotion: 'calm', valence01: .12, arousal01: .18, coherence01: .31,
+    } } } }),
+    emotionAppraisalSnapshot: () => ({
+      history: [appraisalEpisode], lastLabel: 'calm', meanValence01: .5, meanArousal01: .2,
+    }),
+  },
+});
+assert.deepEqual(mappedEmotion, {
+  label: 'curiosity', valence01: .91, arousal01: .78, dominance01: .84,
+}, 'speech must use the latest canonical emotion episode rather than unrelated cognitive-field coherence');
+
+const fallbackEmotion = resolveRuntimeEmotion.call({
+  core: {
+    snapshot: () => ({ facets: { cognition: { cognitiveField: { valence01: .2, arousal01: .3 } } } }),
+    emotionAppraisalSnapshot: () => ({
+      history: [], lastLabel: 'sadness', meanValence01: .24, meanArousal01: .39,
+    }),
+  },
+});
+assert.deepEqual(fallbackEmotion, {
+  label: 'sadness', valence01: .24, arousal01: .39, dominance01: .5,
+}, 'restored aggregate appraisal must remain usable when no episode is available');
+
+runtime.applyToState(state, { emotion: mappedEmotion });
+const appraisalDrivenPlan = runtime.previewVoicePlan('Это интересно, проверим', { action: 'explore' });
+assert.ok(appraisalDrivenPlan.reason.includes('affect-curiosity'),
+  'canonical emotion appraisal must reach the speech prosody planner');
+
+
+const projected = projectVoiceEmotionContext(
+  {facets:{cognition:{cognitiveField:{dominantEmotion:'JOY',valence01:.71,arousal01:.62,dominance01:.12,coherence01:.99}}}},
+  {history:[{label:'joy',valence01:.71,arousal01:.62,dominance01:.83}]},
+);
+assert.deepEqual(projected,{label:'joy',valence01:.71,arousal01:.62,dominance01:.83},
+  'latest appraisal episode must own the voice emotion projection');
+
+const fieldFallback = projectVoiceEmotionContext({
+  facets:{cognition:{cognitiveField:{dominantEmotion:'curiosity',valence01:.9,arousal01:.8,dominance01:.66,coherence01:.99}}},
+});
+assert.equal(fieldFallback.dominance01,.66,'use affect-specific dominance when no episode is available');
+
+const missingDominance = projectVoiceEmotionContext({
+  facets:{cognition:{cognitiveField:{dominantEmotion:'curiosity',valence01:.9,arousal01:.8,coherence01:.99}}},
+});
+assert.equal(missingDominance.dominance01,.5,'never substitute cognitive coherence for missing affective dominance');
+
+const malformed = projectVoiceEmotionContext({
+  facets:{cognition:{cognitiveField:{dominantEmotion:'not-an-emotion',valence01:Infinity,arousal01:'not-finite',dominance01:-4}}},
+});
+assert.deepEqual(malformed,{label:'calm',valence01:.5,arousal01:.22,dominance01:0});
+assert.deepEqual(projectVoiceEmotionContext(null),{label:'calm',valence01:.5,arousal01:.22,dominance01:.5});
+
+const body = defaultBodyState();
+const needs = {energy:.7,cognitiveLoad:.4,uncertainty:.3,socialNeed:.3,novelty:.3,identityCoherence:.8,goalPressure:.3};
+const dominancePlan = dominance01 => buildVoicePlan({
+  text:'Объясни результат',action:'respond',needs,body,
+  emotion:{label:'calm',valence01:.5,arousal01:.4,dominance01},
+});
+const lowControl = dominancePlan(.1);
+const highControl = dominancePlan(.9);
+assert.ok(lowControl.reason.includes('low-appraisal-control'));
+assert.ok(highControl.reason.includes('high-appraisal-control'));
+assert.ok(lowControl.prosody.rate<highControl.prosody.rate);
+assert.ok(lowControl.prosody.pauseMs>highControl.prosody.pauseMs);
+assert.ok(lowControl.prosody.emphasis01<highControl.prosody.emphasis01);
+assert.ok(lowControl.prosody.rate>=.72 && lowControl.prosody.rate<=1.25);
+assert.ok(highControl.prosody.rate>=.72 && highControl.prosody.rate<=1.25);
+console.log('AFFECT_VOICE_DOMINANCE_PROJECTION=PASS');
+
+console.log('EMBODIMENT_VOICE_COGNITIVE_CONTEXT=PASS', JSON.stringify({
+  liveReasons: livePlan.reason,
+  liveRate: livePlan.prosody.rate,
+  overrideReasons: overridePlan.reason,
+  cacheIsolated: true,
+}));

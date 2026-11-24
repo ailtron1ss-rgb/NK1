@@ -1,0 +1,9 @@
+{
+  "release":"35.6.1-B286",
+  "date":"2026-09-12",
+  "verified":true,
+  "standalone":{"steps":300,"learningUpdates":300,"replayUpdates":96,"revisionCount":13,"relationCount":2,"identityConflict01":0.23966978817638757,"valueIntegrity01":1,"selfContinuity01":0.9999993859611863,"futureCoherence01":0.9526587228885598,"traitSpread01":0.01871079121192138,"ablationDrop01":0.1275232073471257,"restart":true},
+  "migration":{"pass":true,"steps":120,"revisions":10,"relations":2},
+  "core":{"steps":24,"learningUpdates":24,"revisionCount":2,"relationCount":1,"identityConflict01":0.08910878296744883,"valueIntegrity01":1,"selfContinuity01":0.9915916031988704,"futureCoherence01":0.5033485005715468,"personalityInfluence01":0.38681441334635636,"restart":true},
+  "scientific_claims":{"consciousness":false,"biological_neuron_realism":false,"open_ended_personality":false}
+}

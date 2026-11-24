@@ -1,0 +1,430 @@
+{
+ "snapshot_utc": "2026-11-23T05:30:49.241301+00:00",
+ "trunk": "89a7047cab3dfb3fd23f45c99622435cb3611a7d",
+ "trunk_short": "89a7047ca",
+ "branch_count_live": 1105,
+ "open_prs": [
+  1095,
+  1099
+ ],
+ "merged": [
+  1104,
+  1106
+ ],
+ "closed": [
+  1084,
+  1085,
+  1093,
+  1094,
+  1096,
+  1097,
+  1098,
+  1101,
+  1102,
+  1105,
+  1112
+ ],
+ "directions": {
+  "docs": "#1106 merged; project map + ledger + census",
+  "runtime_autonomy": "risk-aware recovery integrated in trunk 89a7047ca",
+  "architecture_budget": "#1095/#1099 hold: runtimeOutDegree 46>45",
+  "memory": "aspect/memory-concept-stem-precision-20261123 WIP, no PR",
+  "archive": "all closed PRs; archive tags before deletion"
+ },
+ "rows": [
+  {
+   "pr": 1084,
+   "title": "[NK1][Docs] Add living NeuroCore project map and analysis tracker",
+   "state": "closed",
+   "merged": false,
+   "draft": true,
+   "base": "workpass70-source",
+   "head": "docs/neurocore-project-map-analysis-20261121",
+   "sha": "dc70d485cb1a9d39a1f8375cf8cfa0f937d4bac6",
+   "ahead": 27,
+   "behind": 58,
+   "checks_total": 5,
+   "checks": {
+    "success": 5
+   },
+   "failing": [],
+   "mergeable": false,
+   "mergeable_state": "dirty",
+   "conflicts": [
+    "docs/NEUROCORE_PROJECT_MAP_AND_ANALYSIS_TRACKER_RU_2026-11-21.md"
+   ],
+   "verdict": "CLOSED: stale runtime-diff 41 files +2692/-1152 (22 runtime); not docs-only"
+  },
+  {
+   "pr": 1085,
+   "title": "[NK1][Persistence] Verify HMX apply idempotency across server restart",
+   "state": "closed",
+   "merged": false,
+   "draft": true,
+   "base": "workpass70-source",
+   "head": "test/hexis-hmx-restart-idempotency-20261122",
+   "sha": "4288d530d16e476d0e83ee3df3cbbb48134fa328",
+   "ahead": 2,
+   "behind": 58,
+   "checks_total": 14,
+   "checks": {
+    "success": 14
+   },
+   "failing": [],
+   "mergeable": false,
+   "mergeable_state": "dirty",
+   "conflicts": [
+    "CHANGELOG.md"
+   ],
+   "verdict": "CLOSED: HMX restart superseded by #1104"
+  },
+  {
+   "pr": 1093,
+   "title": "[NK1][ActionGateway] Prevent credential leakage through audit previews",
+   "state": "closed",
+   "merged": false,
+   "draft": true,
+   "base": "workpass70-source",
+   "head": "aspect/action-audit-redaction-20261122",
+   "sha": "fe877ef794c3bc3b2bee2832932aa0aa3376d376",
+   "ahead": 8,
+   "behind": 56,
+   "checks_total": 12,
+   "checks": {
+    "success": 11,
+    "failure": 1
+   },
+   "failing": [
+    "clean-install-build-and-start"
+   ],
+   "mergeable": false,
+   "mergeable_state": "dirty",
+   "conflicts": [
+    "runtime/neuro-kurisu/src/organism/system/ActionAuditRedaction.ts",
+    "runtime/neuro-kurisu/tests/action-gateway-audit-redaction.mjs"
+   ],
+   "verdict": "CLOSED: redaction already in trunk with stronger test"
+  },
+  {
+   "pr": 1094,
+   "title": "[NK1][Autonomy] Cooperative, cancellable autonomous cycle batches",
+   "state": "closed",
+   "merged": false,
+   "draft": true,
+   "base": "workpass70-source",
+   "head": "aspect/autonomous-cycle-cooperative-batching-20261122",
+   "sha": "125089e562e4e19feccb31ac3ee4317d9e3890fd",
+   "ahead": 4,
+   "behind": 56,
+   "checks_total": 24,
+   "checks": {
+    "success": 21,
+    "failure": 3
+   },
+   "failing": [
+    "targeted-and-regression",
+    "metrics",
+    "Import graph and layer boundaries"
+   ],
+   "mergeable": false,
+   "mergeable_state": "dirty",
+   "conflicts": [
+    "runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts",
+    "runtime/neuro-kurisu/tests/organism-autonomy.mjs"
+   ],
+   "verdict": "CLOSED: trunk already has setTimeout; unique signal API not extracted"
+  },
+  {
+   "pr": 1095,
+   "title": "[NK1][Health] Integrate evidence-based cognitive health supervision into runtime",
+   "state": "open",
+   "merged": false,
+   "draft": true,
+   "base": "workpass70-source",
+   "head": "aspect/cognitive-health-runtime-supervision-current-20261122",
+   "sha": "27eb23c3a211acb9c67de105df2afda17a2147d8",
+   "ahead": 6,
+   "behind": 56,
+   "checks_total": 60,
+   "checks": {
+    "success": 54,
+    "failure": 6
+   },
+   "failing": [
+    "local-language-resilience",
+    "metrics",
+    "verified-promotion",
+    "Import graph and layer boundaries",
+    "targeted-and-regression",
+    "action-governance"
+   ],
+   "mergeable": false,
+   "mergeable_state": "dirty",
+   "conflicts": [
+    "CHANGELOG.md",
+    "runtime/neuro-kurisu/package.json"
+   ],
+   "verdict": "HOLD: workflow v4/Node22 + unref type + runtimeOutDegree 46>45"
+  },
+  {
+   "pr": 1096,
+   "title": "[NK1][Cognition] Route resource-escalated domains through wake and interrupt paths",
+   "state": "closed",
+   "merged": false,
+   "draft": true,
+   "base": "workpass70-source",
+   "head": "aspect/cognitive-resource-interrupt-routing-20261122",
+   "sha": "39a68683322644ac5121562c346be9898755288b",
+   "ahead": 4,
+   "behind": 56,
+   "checks_total": 54,
+   "checks": {
+    "success": 54
+   },
+   "failing": [],
+   "mergeable": false,
+   "mergeable_state": "dirty",
+   "conflicts": [
+    ".github/workflows/workpass79-cognitive-regression.yml",
+    "runtime/neuro-kurisu/src/organism/core/CognitiveFrame.ts",
+    "runtime/neuro-kurisu/tests/cognitive-frame-resource-routing-workpass330.mjs"
+   ],
+   "verdict": "CLOSED: dirtyDomains already in trunk"
+  },
+  {
+   "pr": 1097,
+   "title": "[NK1][Personhood] Harden P34 evidence lifecycle and restore provenance",
+   "state": "closed",
+   "merged": false,
+   "draft": true,
+   "base": "workpass70-source",
+   "head": "aspect/p34-evidence-lifecycle-integrity-20261122",
+   "sha": "d6af3c472b18f2bb96c2eaaf55af7cfff76a9a88",
+   "ahead": 12,
+   "behind": 55,
+   "checks_total": 14,
+   "checks": {
+    "success": 14
+   },
+   "failing": [],
+   "mergeable": true,
+   "mergeable_state": "clean",
+   "conflicts": [],
+   "verdict": "CLOSED: P34 superseded by #1104"
+  },
+  {
+   "pr": 1098,
+   "title": "[NK1][Cognition] Bind active information learning to exact action outcomes",
+   "state": "closed",
+   "merged": false,
+   "draft": true,
+   "base": "workpass70-source",
+   "head": "aspect/active-information-outcome-closure-20261122",
+   "sha": "a98c15e7d82f7db62caf3697b14b2283130cca80",
+   "ahead": 3,
+   "behind": 55,
+   "checks_total": 0,
+   "checks": {},
+   "failing": [],
+   "mergeable": false,
+   "mergeable_state": "dirty",
+   "conflicts": [
+    ".github/workflows/nk1-unified-organism-runtime.yml",
+    "runtime/neuro-kurisu/package.json",
+    "runtime/neuro-kurisu/src/organism/cognition/ActiveInformationGainController.ts",
+    "runtime/neuro-kurisu/tests/p2675-active-information-outcome-attribution.mjs"
+   ],
+   "verdict": "CLOSED: active information superseded by #1104"
+  },
+  {
+   "pr": 1099,
+   "title": "[NK1][NMCN] Integrate Neural Evolution as a bounded runtime advisor",
+   "state": "open",
+   "merged": false,
+   "draft": true,
+   "base": "workpass70-source",
+   "head": "aspect/nmcn-runtime-bridge-20261122-r1",
+   "sha": "5671cb247a21ef61114162e169f087b16d09a091",
+   "ahead": 28,
+   "behind": 55,
+   "checks_total": 64,
+   "checks": {
+    "success": 63,
+    "failure": 1
+   },
+   "failing": [
+    "Import graph and layer boundaries"
+   ],
+   "mergeable": false,
+   "mergeable_state": "dirty",
+   "conflicts": [
+    "CHANGELOG.md"
+   ],
+   "verdict": "HOLD: runtimeOutDegree 46>45"
+  },
+  {
+   "pr": 1101,
+   "title": "[NK1][Autonomy] Wire risk-aware recovery into the autonomous runtime",
+   "state": "closed",
+   "merged": false,
+   "draft": true,
+   "base": "workpass70-source",
+   "head": "aspect/risk-aware-recovery-runtime-wiring-20261122",
+   "sha": "af9040164a0a5fb910bfc8937f37d8b8246c46cd",
+   "ahead": 6,
+   "behind": 55,
+   "checks_total": 28,
+   "checks": {
+    "success": 26,
+    "failure": 2
+   },
+   "failing": [
+    "unified-organism",
+    "Typecheck and cadence-weight regression"
+   ],
+   "mergeable": false,
+   "mergeable_state": "dirty",
+   "conflicts": [
+    "CHANGELOG.md"
+   ],
+   "verdict": "CLOSED: risk-aware recovery already integrated in trunk 89a7047ca"
+  },
+  {
+   "pr": 1102,
+   "title": "[NK1][Integration] Route resource escalation through cognitive wake contracts",
+   "state": "closed",
+   "merged": false,
+   "draft": true,
+   "base": "workpass70-source",
+   "head": "integration-nk1-cognitive-routing-20261123",
+   "sha": "34edc0ce83571df8e1033e58c2cc35f244313060",
+   "ahead": 5,
+   "behind": 42,
+   "checks_total": 58,
+   "checks": {
+    "success": 58
+   },
+   "failing": [],
+   "mergeable": false,
+   "mergeable_state": "dirty",
+   "conflicts": [
+    ".github/workflows/workpass79-cognitive-regression.yml",
+    "CHANGELOG.md",
+    "docs/integration/NK1_BRANCH_INTEGRATION_LEDGER_2026-11-23.md",
+    "runtime/neuro-kurisu/src/organism/core/CognitiveFrame.ts",
+    "runtime/neuro-kurisu/tests/cognitive-frame-resource-routing-workpass330.mjs"
+   ],
+   "verdict": "CLOSED: stale integration; behind 24 and 4 conflicts"
+  },
+  {
+   "pr": 1104,
+   "title": "[NK1][Integration] Combine P34, Active Information Gain and HMX restart integrity",
+   "state": "closed",
+   "merged": true,
+   "draft": false,
+   "base": "workpass70-source",
+   "head": "aspect/combined-personhood-info-outcomes-20261123",
+   "sha": "4aa51e5f2800dfe6687e7c415191a570dbfc321d",
+   "ahead": 0,
+   "behind": 19,
+   "checks_total": 15,
+   "checks": {
+    "success": 15
+   },
+   "failing": [],
+   "mergeable": null,
+   "mergeable_state": "unknown",
+   "conflicts": [],
+   "verdict": "MERGED into trunk 4972c2d52; 15/15 checks"
+  },
+  {
+   "pr": 1105,
+   "title": "[NK1][Cognition] Restore bounded active experiments under learned uncertainty",
+   "state": "closed",
+   "merged": false,
+   "draft": true,
+   "base": "aspect/combined-personhood-info-outcomes-20261123",
+   "head": "aspect/active-information-experiment-threshold-20261123",
+   "sha": "2689ee6a5d402cf5aa9e99d16072197d6ceed1c4",
+   "ahead": 1,
+   "behind": 24,
+   "checks_total": 0,
+   "checks": {},
+   "failing": [],
+   "mergeable": null,
+   "mergeable_state": "unknown",
+   "conflicts": [
+    "runtime/neuro-kurisu/src/organism/cognition/ActiveInformationGainController.ts"
+   ],
+   "verdict": "CLOSED: proposed threshold .34; #1104 chose .45"
+  },
+  {
+   "pr": 1106,
+   "title": "[NK1][Docs] Salvage project analysis map and refresh integration ledger",
+   "state": "closed",
+   "merged": true,
+   "draft": false,
+   "base": "workpass70-source",
+   "head": "docs/integration-evidence-map-20261123",
+   "sha": "b089e74757291c8b0faf1a3d95439019629f1eec",
+   "ahead": 0,
+   "behind": 9,
+   "checks_total": 9,
+   "checks": {
+    "success": 9
+   },
+   "failing": [],
+   "mergeable": null,
+   "mergeable_state": "unknown",
+   "conflicts": [],
+   "verdict": "MERGED into trunk 538411128; docs map + ledger + census; 9/9 checks"
+  },
+  {
+   "pr": 1112,
+   "title": "[NK1][Consolidation] Merge risk-aware recovery (#1101) into trunk",
+   "state": "closed",
+   "merged": false,
+   "draft": false,
+   "base": "workpass70-source",
+   "head": "consolidation/runtime-risk-aware-20261123",
+   "sha": "d5bbd4b03940c48359a23a1e86bc4c78a480d9a4",
+   "ahead": 7,
+   "behind": 8,
+   "checks_total": 30,
+   "checks": {
+    "success": 30
+   },
+   "failing": [],
+   "mergeable": false,
+   "mergeable_state": "dirty",
+   "conflicts": [
+    "runtime/neuro-kurisu/tests/cognitive-runtime-planner-execution-gate-workpass603.mjs"
+   ],
+   "verdict": "CLOSED (our consolidation PR): 30/30 CI but superseded by trunk 89a7047ca; merging would revert newer planner test"
+  }
+ ],
+ "unmerged_branches": [
+  {
+   "branch": "aspect/memory-concept-stem-precision-20261123",
+   "head": "2a60f4022",
+   "ahead": 3,
+   "behind": 0,
+   "pr": null,
+   "note": "No PR; do not merge until PR and green CI."
+  },
+  {
+   "branch": "consolidation/runtime-risk-aware-20261123",
+   "head": "d5bbd4b03",
+   "pr": 1112,
+   "note": "Our consolidation branch; PR #1112 closed without merge as superseded; keep for archive."
+  }
+ ],
+ "historical_patch": "docs/consolidation/patches/2026-11-23/historical/1101-planner-gate-test.patch",
+ "notes": [
+  "Snapshot volatile: branches 1091 -> 1104; trunk 0035eca -> 89a7047ca during analysis.",
+  "#1104 and #1106 are merged; #1101 is integrated in trunk 89a7047ca.",
+  "#1112 was opened from trunk 538411128, passed 30/30 CI, but was closed without merge because trunk 89a7047ca already contained a newer planner contract; merging would revert it.",
+  "#1095/#1099 remain blocked by runtimeOutDegree 46>45; do not force-merge.",
+  "No branch deletion and no force-push were performed."
+ ]
+}

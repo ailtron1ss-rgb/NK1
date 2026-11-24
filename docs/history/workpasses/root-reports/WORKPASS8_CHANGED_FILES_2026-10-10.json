@@ -1,0 +1,100 @@
+{
+  "name": "Neuro-Kurisu SUPER WorkPass 8 change manifest",
+  "date": "2026-10-10",
+  "canonicalBaseArchive": "Neuro_Kurisu_SUPER_WILL_LUMINA_HEXIS_LETTA_CONSCIO_INTEGRATED_WORKPASS7_2026-10-09.zip",
+  "canonicalBaseSha256": "f74969fe0f3f0465912a63e9000da6c6f74a53a88b1a7fc7b807b029e43a17ce",
+  "runtime": "35.40.0",
+  "schema": 223,
+  "scope": "Memory retrieval benchmark evidence integrity, provenance gating and deterministic paired bootstrap; no new memory owner.",
+  "counts": {
+    "addedIncludingThisManifest": 2,
+    "addedListedExcludingThisManifest": 1,
+    "modifiedFilesWithContentHashes": 9,
+    "removed": 0
+  },
+  "manifestSelfReference": "This manifest is excluded from addedFiles to avoid self-referential hashing.",
+  "addedFiles": [
+    {
+      "path": "docs/WORKPASS8_MEMORY_BENCHMARK_EVIDENCE_2026-10-10.md",
+      "bytes": 3353,
+      "sha256": "312abf5e757c3abada01dc88774c2828fa57ee6133c02a15b23c317893cb15c3"
+    }
+  ],
+  "modifiedFiles": [
+    {
+      "path": "CHANGELOG.md",
+      "bytes": 16774,
+      "sha256": "ee1fd114a7a2397d412c70952a2b2d43cc7974f5c44c96ca00edeb5bf6d3fad4",
+      "previousSha256": "c492fa053630e77e07152ddf9d58935b027f1adc9f8f6a5b0bcdb35fe8a7138f"
+    },
+    {
+      "path": "SUPER_VERSION.json",
+      "bytes": 1889,
+      "sha256": "1bf581f052267b765006fe6bf99bd50cbdb5178e573f8fa965cfaa1ce34ed9e6",
+      "previousSha256": "e5358d30b0c259a79a7bc4ed6f3aa529f38b32a9c53dc7831638ecdbbd69cafe"
+    },
+    {
+      "path": "package.json",
+      "bytes": 3302,
+      "sha256": "8d9accc42901930797ff59183ae7fcafc3fb995422e894bc26171efca19cc64d",
+      "previousSha256": "49db00ba9d4cb235f12e0231a99d8960d85e7cefdc6c5f49a71505ba610c0dc4"
+    },
+    {
+      "path": "runtime/neuro-kurisu/package.json",
+      "bytes": 226147,
+      "sha256": "a65bc4e9f5a76191c0a544fb4e78375a1a75bb0b04cad70f0b50a1d3e5963ac7",
+      "previousSha256": "b5ca3a48ee1a7a41fdd4d6baec9767ebfc9bb421fb7ad3d7eb0c36b25626e989"
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/memory/MemoryRetrievalBenchmark.ts",
+      "bytes": 16450,
+      "sha256": "5c73faa685cea9b279b43dd50c5605198e9754233c8ac63d84c903b5ed0264ee",
+      "previousSha256": "99b7eaa4cf65ab3267cff17bb7b86708ba26bbd749a7aa599e5cfc397ee345db"
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/server/server.mjs",
+      "bytes": 137413,
+      "sha256": "858a3d8cf04264c402916f7760bb7ae47a55dfad2a71bf3aa5b3144522f4697f",
+      "previousSha256": "7711b338beb0b589d76fd6fc032c828c7acaff3c9be189fd13cb75b161b34829"
+    },
+    {
+      "path": "runtime/neuro-kurisu/tests/big-pass-126-memory-retrieval-benchmark.mjs",
+      "bytes": 5880,
+      "sha256": "6a7e913a4df9b7a4e514330615cf14411319b432edc92b854306b3c215adbcea",
+      "previousSha256": "bf40ddbf36c1e5a336f78e94fe2b6eb9f51ce56fd1f71f886c95074c716210f6"
+    },
+    {
+      "path": "runtime/neuro-kurisu/tests/server-smoke.mjs",
+      "bytes": 13597,
+      "sha256": "bbbe2bf22c9e577054521a9a6348310963991b8d5d5b07ccd84802cd0d632897",
+      "previousSha256": "ac3f7b93bc12a9711fca746e139215fd3eb275880510429d0907359f881e527d"
+    },
+    {
+      "path": "Список дел.md",
+      "bytes": 58342,
+      "sha256": "bfb6665a9e954f7cee6416a04064f2324098ce010dd06407b63b17cf1a3bf42e",
+      "previousSha256": "c50a8f1ed931d937f10a1a6db18468e3434ecd322319bcce7dc608b1e209a91e"
+    }
+  ],
+  "removedFiles": [],
+  "verification": {
+    "command": "npm run audit:workpass8 (runtime/neuro-kurisu)",
+    "result": "PASS",
+    "benchmarkRegression": "PASS; synthetic fixture only",
+    "runtimeTypecheck": "PASS",
+    "serverRelativeImports": {
+      "checked": 10,
+      "missing": 0
+    },
+    "uiApiLinkage": {
+      "clientRoutes": 124,
+      "runtimeAtlasSurfaces": 48,
+      "requiredSeams": 5,
+      "missing": 0
+    },
+    "serverSmoke": "PASS",
+    "realProductionMemoryUpliftClaimed": false,
+    "fullAppBuildOrBrowserE2EClaimed": false
+  },
+  "roadmapScoreHandling": "WorkPass 7 scorecard is kept as historical; this targeted pass does not arbitrarily recalculate overall roadmap percentage."
+}

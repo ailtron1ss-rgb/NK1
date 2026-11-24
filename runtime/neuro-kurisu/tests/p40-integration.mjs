@@ -1,0 +1,18 @@
+import assert from 'node:assert/strict';
+import { OrganismRuntime } from '../src/organism/core/OrganismRuntime.ts';
+import { FileStateStore } from '../src/organism/persistence/FileStateStore.ts';
+import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
+const dir=await mkdtemp(path.join(os.tmpdir(),'neuro-p40-'));
+const stateFile=path.join(dir,'organism.json'); const worldFile=path.join(dir,'world.json');
+const runtime=new OrganismRuntime({stateFile,worldStateFile:worldFile,enableLanguage:false,autoRun:false,stateStore:new FileStateStore(stateFile),worldStateStore:new FileStateStore(worldFile)});
+await runtime.init();
+await runtime.core.observe({text:'door in lab',worldContext:{tick:1,location:'lab',energy:.8,attention:.8,uncertainty:.3,facts:[],objects:[{id:'door',label:'door',location:'lab',value:1,visible:true,collected:false}],events:['door-open']},embodiment:{bodyEnergy01:.8,cognitiveCapacity01:.9,thermalStrain01:.1,sensoryFreshness01:1,awake:true,battery01:.8,cpuLoad01:.2,ramPressure01:.2}});
+const p=runtime.core.p40SemanticSnapshot();
+assert.ok(p.situations.length>=1);
+const model=runtime.core.p40SelectModel('language',false,.6); assert.equal(typeof model,'string');
+await runtime.flush();
+const raw=JSON.parse(await readFile(stateFile,'utf8')); assert.equal(raw.schemaVersion, (await import('../src/organism/persistence/StateMigrations.ts')).ORGANISM_STATE_SCHEMA); assert.ok(raw.facets.embodiment.p40SemanticIntelligence); assert.ok(raw.facets.learning.p40ModelEcology);
+await runtime.stop(); await rm(dir,{recursive:true,force:true});
+console.log('P40_INTEGRATION=PASS');

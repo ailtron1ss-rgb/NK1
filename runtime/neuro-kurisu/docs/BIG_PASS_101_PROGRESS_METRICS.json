@@ -1,0 +1,19 @@
+{
+  "pass": 101,
+  "release": "34.75.0",
+  "stateSchema": 111,
+  "areas": {
+    "skill_ecology": 70,
+    "variant_lineage": 82,
+    "rollback": 76,
+    "meta_skills": 62,
+    "holdout_validation": 78,
+    "causal_integration": 66,
+    "unified_learning_integration": 64,
+    "phone_efficiency": 84,
+    "engineering_readiness": 78
+  },
+  "previous": {
+    "engineering_readiness": 74
+  }
+}

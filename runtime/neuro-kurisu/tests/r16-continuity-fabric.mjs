@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';
+import { ContinuousCognitiveFabric } from '../src/organism/system/ContinuousCognitiveFabric.ts';
+const f=new ContinuousCognitiveFabric();
+const base={signal:{id:'evt-1',timestamp:100,meaning:.8,novelty:.4,emotionalImpact:.2,tags:['r16']},identityEvent:{id:'id-1',significance:.4,emotionalWeight:.2,tags:[]}};
+const a=f.step({...base,tick:1,at:100});
+const dup=f.step({...base,tick:2,at:200});
+const old=f.step({...base,signal:{...base.signal,id:'evt-2',timestamp:90},identityEvent:{...base.identityEvent,id:'id-2'},tick:3,at:200});
+assert.equal(a.processed,1); assert.equal(dup.processed,1); assert.equal(old.processed,1); assert.equal(old.health.rejectedInputs,2);
+const good=f.step({...base,signal:{...base.signal,id:'evt-3',timestamp:210},identityEvent:{...base.identityEvent,id:'id-3'},tick:4,at:210});
+assert.equal(good.processed,2); assert.equal(good.health.rejectedInputs,2);
+console.log(JSON.stringify({pass:true,processed:good.processed,rejected:good.health.rejectedInputs,lastAt:good.lastAt},null,2));

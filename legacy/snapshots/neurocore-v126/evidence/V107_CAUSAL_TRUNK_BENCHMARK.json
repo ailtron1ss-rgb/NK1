@@ -1,0 +1,3218 @@
+{
+  "runs": [
+    {
+      "seed": 0,
+      "parameters": {
+        "total_parameters": 72821.0,
+        "trainable_parameters": 71282.0,
+        "trainable_fraction": 0.9788659864599497,
+        "current_neural_version": 107.0,
+        "abi_version": 8.0,
+        "spine_rank": 8.0,
+        "spine_topk": 3.0,
+        "current_abi_version": 8.0,
+        "compatibility_engine_source_version": 107.0,
+        "upstream_backend_count": 53.0,
+        "temporal_credit_enabled": 0.0,
+        "temporal_credit_mode": 1.0,
+        "erase_control_mode": 0.0,
+        "uncertainty_write_enabled": 0.0,
+        "adaptive_compute_enabled": 0.0,
+        "gradient_subspace_enabled": 0.0,
+        "gradient_arbitration_enabled": 0.0
+      },
+      "loss_before": 2.8757433891296387,
+      "loss_components_before": {
+        "memory_loss": 1.0070927143096924,
+        "predictive_loss": 1.0128060579299927,
+        "world_loss": 1.009132742881775,
+        "spine_loss": 1.021376132965088,
+        "self_loss": 0.9948974847793579,
+        "multiscale_loss": 0.9891784191131592,
+        "confidence_loss": 0.18169638514518738,
+        "temporal_loss": 0.0004148875596001744
+      },
+      "train_step": {
+        "memory_loss": 1.0070927143096924,
+        "predictive_loss": 1.0128060579299927,
+        "world_loss": 1.009132742881775,
+        "spine_loss": 1.021376132965088,
+        "self_loss": 0.9948974847793579,
+        "multiscale_loss": 0.9891784191131592,
+        "confidence_loss": 0.18169638514518738,
+        "temporal_loss": 0.0004148875596001744,
+        "loss": 2.8757433891296387,
+        "gradient_coverage": 0.9846153846153847,
+        "gradient_parameter_count": 64.0,
+        "trainable_parameter_count": 65.0,
+        "plasticity_update_norm": 0.0,
+        "plasticity_error_norm": 0.0,
+        "plasticity_modulator": 0.0,
+        "steps": 1.0,
+        "enabled": 0.0,
+        "lifecycle_steps": 0.0,
+        "lifecycle_rejuvenations": 0.0,
+        "lifecycle_last_unit": -1.0,
+        "lifecycle_reset_event": 0.0,
+        "lifecycle_active_fraction": 0.0,
+        "lifecycle_silence_mean": 1.0,
+        "lifecycle_activity_mean": 0.0,
+        "lifecycle_contribution_mean": 0.0,
+        "lifecycle_min_contribution": 0.0,
+        "lifecycle_replacement_credit": 0.0,
+        "homeostatic_enabled": 0.0,
+        "homeostatic_gain_mean": 1.0,
+        "homeostatic_gain_min": 1.0,
+        "homeostatic_gain_max": 1.0,
+        "swr_event": 0.0,
+        "swr_weights_reset": 0.0,
+        "swr_mean_fraction": 0.0,
+        "swr_min_utility": 0.0,
+        "gpm_basis_updated": 0.0,
+        "gpm_basis_rank": 0.0,
+        "gpm_projection_fraction": 0.0
+      },
+      "gradient_coverage": {
+        "trainable_parameters": 71282,
+        "gradient_parameters": 71274,
+        "gradient_parameter_fraction": 0.9998877697034314,
+        "trainable_tensors": 65,
+        "gradient_tensors": 64,
+        "gradient_tensor_fraction": 0.9846153846153847
+      },
+      "execution": {
+        "module_count": 70,
+        "called_module_count": 60,
+        "called_module_fraction": 0.8571428571428571,
+        "modules": {
+          "trunk": {
+            "calls": 0,
+            "tensor_elements_in": 0,
+            "tensor_elements_out": 0,
+            "nonfinite_outputs": 0
+          },
+          "trunk.encoder": {
+            "calls": 16,
+            "tensor_elements_in": 2368,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.encoder.0": {
+            "calls": 16,
+            "tensor_elements_in": 2368,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.encoder.1": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.encoder.2": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.encoder.3": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine": {
+            "calls": 0,
+            "tensor_elements_in": 0,
+            "tensor_elements_out": 0,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.uncertainty_write_controller": {
+            "calls": 0,
+            "tensor_elements_in": 0,
+            "tensor_elements_out": 0,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.online_plasticity": {
+            "calls": 0,
+            "tensor_elements_in": 0,
+            "tensor_elements_out": 0,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.input_norm": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.input_proj": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.input_proj.0": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.input_proj.1": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.input_proj.2": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.input_proj.3": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.q_proj": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 512,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.k_proj": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 512,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.v_proj": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 512,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.erase_proj": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 512,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.write_proj": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 512,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.router_proj": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 512,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.state_to_hidden": {
+            "calls": 0,
+            "tensor_elements_in": 0,
+            "tensor_elements_out": 0,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.state_to_hidden.0": {
+            "calls": 16,
+            "tensor_elements_in": 4608,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.state_to_hidden.1": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.state_to_hidden.2": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.state_to_hidden.3": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.next_latent_head": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 1280,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.next_latent_head.0": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.next_latent_head.1": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.next_latent_head.2": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 1280,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.memory_context_head": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 1280,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.memory_context_head.0": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.memory_context_head.1": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.memory_context_head.2": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 1280,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.confidence_head": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 64,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.confidence_head.0": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 64,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.confidence_head.1": {
+            "calls": 16,
+            "tensor_elements_in": 64,
+            "tensor_elements_out": 64,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.memory_to_action": {
+            "calls": 0,
+            "tensor_elements_in": 0,
+            "tensor_elements_out": 0,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.memory_to_action.0": {
+            "calls": 0,
+            "tensor_elements_in": 0,
+            "tensor_elements_out": 0,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.memory_to_action.1": {
+            "calls": 0,
+            "tensor_elements_in": 0,
+            "tensor_elements_out": 0,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.memory_to_action.2": {
+            "calls": 0,
+            "tensor_elements_in": 0,
+            "tensor_elements_out": 0,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.memory_to_action.3": {
+            "calls": 0,
+            "tensor_elements_in": 0,
+            "tensor_elements_out": 0,
+            "nonfinite_outputs": 0
+          },
+          "trunk.predictor": {
+            "calls": 16,
+            "tensor_elements_in": 5376,
+            "tensor_elements_out": 1280,
+            "nonfinite_outputs": 0
+          },
+          "trunk.predictor.0": {
+            "calls": 16,
+            "tensor_elements_in": 5376,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.predictor.1": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.predictor.2": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 1280,
+            "nonfinite_outputs": 0
+          },
+          "trunk.world_model": {
+            "calls": 16,
+            "tensor_elements_in": 5888,
+            "tensor_elements_out": 1280,
+            "nonfinite_outputs": 0
+          },
+          "trunk.world_model.0": {
+            "calls": 16,
+            "tensor_elements_in": 5888,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.world_model.1": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.world_model.2": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 1280,
+            "nonfinite_outputs": 0
+          },
+          "trunk.self_model": {
+            "calls": 16,
+            "tensor_elements_in": 5376,
+            "tensor_elements_out": 1280,
+            "nonfinite_outputs": 0
+          },
+          "trunk.self_model.0": {
+            "calls": 16,
+            "tensor_elements_in": 5376,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.self_model.1": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.self_model.2": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 1280,
+            "nonfinite_outputs": 0
+          },
+          "trunk.memory_decoder": {
+            "calls": 16,
+            "tensor_elements_in": 1280,
+            "tensor_elements_out": 1280,
+            "nonfinite_outputs": 0
+          },
+          "trunk.memory_decoder.0": {
+            "calls": 16,
+            "tensor_elements_in": 1280,
+            "tensor_elements_out": 2048,
+            "nonfinite_outputs": 0
+          },
+          "trunk.memory_decoder.1": {
+            "calls": 16,
+            "tensor_elements_in": 2048,
+            "tensor_elements_out": 2048,
+            "nonfinite_outputs": 0
+          },
+          "trunk.memory_decoder.2": {
+            "calls": 16,
+            "tensor_elements_in": 2048,
+            "tensor_elements_out": 1280,
+            "nonfinite_outputs": 0
+          },
+          "trunk.fast_projection": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 1280,
+            "nonfinite_outputs": 0
+          },
+          "trunk.medium_projection": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 1280,
+            "nonfinite_outputs": 0
+          },
+          "trunk.slow_projection": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 1280,
+            "nonfinite_outputs": 0
+          },
+          "trunk.multiscale_fuse": {
+            "calls": 16,
+            "tensor_elements_in": 3840,
+            "tensor_elements_out": 1280,
+            "nonfinite_outputs": 0
+          },
+          "trunk.multiscale_fuse.0": {
+            "calls": 16,
+            "tensor_elements_in": 3840,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.multiscale_fuse.1": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.multiscale_fuse.2": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 1280,
+            "nonfinite_outputs": 0
+          },
+          "trunk.confidence_calibrator": {
+            "calls": 16,
+            "tensor_elements_in": 4160,
+            "tensor_elements_out": 64,
+            "nonfinite_outputs": 0
+          },
+          "trunk.confidence_calibrator.0": {
+            "calls": 16,
+            "tensor_elements_in": 4160,
+            "tensor_elements_out": 2048,
+            "nonfinite_outputs": 0
+          },
+          "trunk.confidence_calibrator.1": {
+            "calls": 16,
+            "tensor_elements_in": 2048,
+            "tensor_elements_out": 2048,
+            "nonfinite_outputs": 0
+          },
+          "trunk.confidence_calibrator.2": {
+            "calls": 16,
+            "tensor_elements_in": 2048,
+            "tensor_elements_out": 64,
+            "nonfinite_outputs": 0
+          },
+          "trunk.confidence_calibrator.3": {
+            "calls": 16,
+            "tensor_elements_in": 64,
+            "tensor_elements_out": 64,
+            "nonfinite_outputs": 0
+          }
+        },
+        "trainable_parameter_count": 71282,
+        "trainable_parameters_by_name": {
+          "trunk.encoder.0.weight": 2368,
+          "trunk.encoder.0.bias": 64,
+          "trunk.encoder.2.weight": 4096,
+          "trunk.encoder.2.bias": 64,
+          "trunk.spine.decay_logit": 8,
+          "trunk.spine.preconditioner_log_gain": 8,
+          "trunk.spine.input_norm.weight": 64,
+          "trunk.spine.input_norm.bias": 64,
+          "trunk.spine.input_proj.0.weight": 4096,
+          "trunk.spine.input_proj.0.bias": 64,
+          "trunk.spine.input_proj.2.weight": 4096,
+          "trunk.spine.input_proj.2.bias": 64,
+          "trunk.spine.q_proj.weight": 512,
+          "trunk.spine.k_proj.weight": 512,
+          "trunk.spine.v_proj.weight": 512,
+          "trunk.spine.erase_proj.weight": 512,
+          "trunk.spine.erase_proj.bias": 8,
+          "trunk.spine.write_proj.weight": 512,
+          "trunk.spine.write_proj.bias": 8,
+          "trunk.spine.router_proj.weight": 512,
+          "trunk.spine.router_proj.bias": 8,
+          "trunk.spine.state_to_hidden.0.weight": 4608,
+          "trunk.spine.state_to_hidden.0.bias": 64,
+          "trunk.spine.state_to_hidden.2.weight": 4096,
+          "trunk.spine.state_to_hidden.2.bias": 64,
+          "trunk.spine.next_latent_head.0.weight": 4096,
+          "trunk.spine.next_latent_head.0.bias": 64,
+          "trunk.spine.next_latent_head.2.weight": 1280,
+          "trunk.spine.next_latent_head.2.bias": 20,
+          "trunk.spine.memory_context_head.0.weight": 4096,
+          "trunk.spine.memory_context_head.0.bias": 64,
+          "trunk.spine.memory_context_head.2.weight": 1280,
+          "trunk.spine.memory_context_head.2.bias": 20,
+          "trunk.spine.confidence_head.0.weight": 64,
+          "trunk.spine.confidence_head.0.bias": 1,
+          "trunk.predictor.0.weight": 5376,
+          "trunk.predictor.0.bias": 64,
+          "trunk.predictor.2.weight": 1280,
+          "trunk.predictor.2.bias": 20,
+          "trunk.world_model.0.weight": 5888,
+          "trunk.world_model.0.bias": 64,
+          "trunk.world_model.2.weight": 1280,
+          "trunk.world_model.2.bias": 20,
+          "trunk.self_model.0.weight": 5376,
+          "trunk.self_model.0.bias": 64,
+          "trunk.self_model.2.weight": 1280,
+          "trunk.self_model.2.bias": 20,
+          "trunk.memory_decoder.0.weight": 640,
+          "trunk.memory_decoder.0.bias": 32,
+          "trunk.memory_decoder.2.weight": 640,
+          "trunk.memory_decoder.2.bias": 20,
+          "trunk.fast_projection.weight": 1280,
+          "trunk.fast_projection.bias": 20,
+          "trunk.medium_projection.weight": 1280,
+          "trunk.medium_projection.bias": 20,
+          "trunk.slow_projection.weight": 1280,
+          "trunk.slow_projection.bias": 20,
+          "trunk.multiscale_fuse.0.weight": 3840,
+          "trunk.multiscale_fuse.0.bias": 64,
+          "trunk.multiscale_fuse.2.weight": 1280,
+          "trunk.multiscale_fuse.2.bias": 20,
+          "trunk.confidence_calibrator.0.weight": 2080,
+          "trunk.confidence_calibrator.0.bias": 32,
+          "trunk.confidence_calibrator.2.weight": 32,
+          "trunk.confidence_calibrator.2.bias": 1
+        }
+      },
+      "execution_after": {
+        "module_count": 70,
+        "called_module_count": 60,
+        "called_module_fraction": 0.8571428571428571,
+        "modules": {
+          "trunk": {
+            "calls": 0,
+            "tensor_elements_in": 0,
+            "tensor_elements_out": 0,
+            "nonfinite_outputs": 0
+          },
+          "trunk.encoder": {
+            "calls": 16,
+            "tensor_elements_in": 2368,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.encoder.0": {
+            "calls": 16,
+            "tensor_elements_in": 2368,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.encoder.1": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.encoder.2": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.encoder.3": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine": {
+            "calls": 0,
+            "tensor_elements_in": 0,
+            "tensor_elements_out": 0,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.uncertainty_write_controller": {
+            "calls": 0,
+            "tensor_elements_in": 0,
+            "tensor_elements_out": 0,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.online_plasticity": {
+            "calls": 0,
+            "tensor_elements_in": 0,
+            "tensor_elements_out": 0,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.input_norm": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.input_proj": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.input_proj.0": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.input_proj.1": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.input_proj.2": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.input_proj.3": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.q_proj": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 512,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.k_proj": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 512,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.v_proj": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 512,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.erase_proj": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 512,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.write_proj": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 512,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.router_proj": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 512,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.state_to_hidden": {
+            "calls": 0,
+            "tensor_elements_in": 0,
+            "tensor_elements_out": 0,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.state_to_hidden.0": {
+            "calls": 16,
+            "tensor_elements_in": 4608,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.state_to_hidden.1": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.state_to_hidden.2": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.state_to_hidden.3": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.next_latent_head": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 1280,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.next_latent_head.0": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.next_latent_head.1": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.next_latent_head.2": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 1280,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.memory_context_head": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 1280,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.memory_context_head.0": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.memory_context_head.1": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.memory_context_head.2": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 1280,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.confidence_head": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 64,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.confidence_head.0": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 64,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.confidence_head.1": {
+            "calls": 16,
+            "tensor_elements_in": 64,
+            "tensor_elements_out": 64,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.memory_to_action": {
+            "calls": 0,
+            "tensor_elements_in": 0,
+            "tensor_elements_out": 0,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.memory_to_action.0": {
+            "calls": 0,
+            "tensor_elements_in": 0,
+            "tensor_elements_out": 0,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.memory_to_action.1": {
+            "calls": 0,
+            "tensor_elements_in": 0,
+            "tensor_elements_out": 0,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.memory_to_action.2": {
+            "calls": 0,
+            "tensor_elements_in": 0,
+            "tensor_elements_out": 0,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.memory_to_action.3": {
+            "calls": 0,
+            "tensor_elements_in": 0,
+            "tensor_elements_out": 0,
+            "nonfinite_outputs": 0
+          },
+          "trunk.predictor": {
+            "calls": 16,
+            "tensor_elements_in": 5376,
+            "tensor_elements_out": 1280,
+            "nonfinite_outputs": 0
+          },
+          "trunk.predictor.0": {
+            "calls": 16,
+            "tensor_elements_in": 5376,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.predictor.1": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.predictor.2": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 1280,
+            "nonfinite_outputs": 0
+          },
+          "trunk.world_model": {
+            "calls": 16,
+            "tensor_elements_in": 5888,
+            "tensor_elements_out": 1280,
+            "nonfinite_outputs": 0
+          },
+          "trunk.world_model.0": {
+            "calls": 16,
+            "tensor_elements_in": 5888,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.world_model.1": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.world_model.2": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 1280,
+            "nonfinite_outputs": 0
+          },
+          "trunk.self_model": {
+            "calls": 16,
+            "tensor_elements_in": 5376,
+            "tensor_elements_out": 1280,
+            "nonfinite_outputs": 0
+          },
+          "trunk.self_model.0": {
+            "calls": 16,
+            "tensor_elements_in": 5376,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.self_model.1": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.self_model.2": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 1280,
+            "nonfinite_outputs": 0
+          },
+          "trunk.memory_decoder": {
+            "calls": 16,
+            "tensor_elements_in": 1280,
+            "tensor_elements_out": 1280,
+            "nonfinite_outputs": 0
+          },
+          "trunk.memory_decoder.0": {
+            "calls": 16,
+            "tensor_elements_in": 1280,
+            "tensor_elements_out": 2048,
+            "nonfinite_outputs": 0
+          },
+          "trunk.memory_decoder.1": {
+            "calls": 16,
+            "tensor_elements_in": 2048,
+            "tensor_elements_out": 2048,
+            "nonfinite_outputs": 0
+          },
+          "trunk.memory_decoder.2": {
+            "calls": 16,
+            "tensor_elements_in": 2048,
+            "tensor_elements_out": 1280,
+            "nonfinite_outputs": 0
+          },
+          "trunk.fast_projection": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 1280,
+            "nonfinite_outputs": 0
+          },
+          "trunk.medium_projection": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 1280,
+            "nonfinite_outputs": 0
+          },
+          "trunk.slow_projection": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 1280,
+            "nonfinite_outputs": 0
+          },
+          "trunk.multiscale_fuse": {
+            "calls": 16,
+            "tensor_elements_in": 3840,
+            "tensor_elements_out": 1280,
+            "nonfinite_outputs": 0
+          },
+          "trunk.multiscale_fuse.0": {
+            "calls": 16,
+            "tensor_elements_in": 3840,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.multiscale_fuse.1": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.multiscale_fuse.2": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 1280,
+            "nonfinite_outputs": 0
+          },
+          "trunk.confidence_calibrator": {
+            "calls": 16,
+            "tensor_elements_in": 4160,
+            "tensor_elements_out": 64,
+            "nonfinite_outputs": 0
+          },
+          "trunk.confidence_calibrator.0": {
+            "calls": 16,
+            "tensor_elements_in": 4160,
+            "tensor_elements_out": 2048,
+            "nonfinite_outputs": 0
+          },
+          "trunk.confidence_calibrator.1": {
+            "calls": 16,
+            "tensor_elements_in": 2048,
+            "tensor_elements_out": 2048,
+            "nonfinite_outputs": 0
+          },
+          "trunk.confidence_calibrator.2": {
+            "calls": 16,
+            "tensor_elements_in": 2048,
+            "tensor_elements_out": 64,
+            "nonfinite_outputs": 0
+          },
+          "trunk.confidence_calibrator.3": {
+            "calls": 16,
+            "tensor_elements_in": 64,
+            "tensor_elements_out": 64,
+            "nonfinite_outputs": 0
+          }
+        },
+        "trainable_parameter_count": 71282,
+        "trainable_parameters_by_name": {
+          "trunk.encoder.0.weight": 2368,
+          "trunk.encoder.0.bias": 64,
+          "trunk.encoder.2.weight": 4096,
+          "trunk.encoder.2.bias": 64,
+          "trunk.spine.decay_logit": 8,
+          "trunk.spine.preconditioner_log_gain": 8,
+          "trunk.spine.input_norm.weight": 64,
+          "trunk.spine.input_norm.bias": 64,
+          "trunk.spine.input_proj.0.weight": 4096,
+          "trunk.spine.input_proj.0.bias": 64,
+          "trunk.spine.input_proj.2.weight": 4096,
+          "trunk.spine.input_proj.2.bias": 64,
+          "trunk.spine.q_proj.weight": 512,
+          "trunk.spine.k_proj.weight": 512,
+          "trunk.spine.v_proj.weight": 512,
+          "trunk.spine.erase_proj.weight": 512,
+          "trunk.spine.erase_proj.bias": 8,
+          "trunk.spine.write_proj.weight": 512,
+          "trunk.spine.write_proj.bias": 8,
+          "trunk.spine.router_proj.weight": 512,
+          "trunk.spine.router_proj.bias": 8,
+          "trunk.spine.state_to_hidden.0.weight": 4608,
+          "trunk.spine.state_to_hidden.0.bias": 64,
+          "trunk.spine.state_to_hidden.2.weight": 4096,
+          "trunk.spine.state_to_hidden.2.bias": 64,
+          "trunk.spine.next_latent_head.0.weight": 4096,
+          "trunk.spine.next_latent_head.0.bias": 64,
+          "trunk.spine.next_latent_head.2.weight": 1280,
+          "trunk.spine.next_latent_head.2.bias": 20,
+          "trunk.spine.memory_context_head.0.weight": 4096,
+          "trunk.spine.memory_context_head.0.bias": 64,
+          "trunk.spine.memory_context_head.2.weight": 1280,
+          "trunk.spine.memory_context_head.2.bias": 20,
+          "trunk.spine.confidence_head.0.weight": 64,
+          "trunk.spine.confidence_head.0.bias": 1,
+          "trunk.predictor.0.weight": 5376,
+          "trunk.predictor.0.bias": 64,
+          "trunk.predictor.2.weight": 1280,
+          "trunk.predictor.2.bias": 20,
+          "trunk.world_model.0.weight": 5888,
+          "trunk.world_model.0.bias": 64,
+          "trunk.world_model.2.weight": 1280,
+          "trunk.world_model.2.bias": 20,
+          "trunk.self_model.0.weight": 5376,
+          "trunk.self_model.0.bias": 64,
+          "trunk.self_model.2.weight": 1280,
+          "trunk.self_model.2.bias": 20,
+          "trunk.memory_decoder.0.weight": 640,
+          "trunk.memory_decoder.0.bias": 32,
+          "trunk.memory_decoder.2.weight": 640,
+          "trunk.memory_decoder.2.bias": 20,
+          "trunk.fast_projection.weight": 1280,
+          "trunk.fast_projection.bias": 20,
+          "trunk.medium_projection.weight": 1280,
+          "trunk.medium_projection.bias": 20,
+          "trunk.slow_projection.weight": 1280,
+          "trunk.slow_projection.bias": 20,
+          "trunk.multiscale_fuse.0.weight": 3840,
+          "trunk.multiscale_fuse.0.bias": 64,
+          "trunk.multiscale_fuse.2.weight": 1280,
+          "trunk.multiscale_fuse.2.bias": 20,
+          "trunk.confidence_calibrator.0.weight": 2080,
+          "trunk.confidence_calibrator.0.bias": 32,
+          "trunk.confidence_calibrator.2.weight": 32,
+          "trunk.confidence_calibrator.2.bias": 1
+        }
+      }
+    },
+    {
+      "seed": 1,
+      "parameters": {
+        "total_parameters": 72821.0,
+        "trainable_parameters": 71282.0,
+        "trainable_fraction": 0.9788659864599497,
+        "current_neural_version": 107.0,
+        "abi_version": 8.0,
+        "spine_rank": 8.0,
+        "spine_topk": 3.0,
+        "current_abi_version": 8.0,
+        "compatibility_engine_source_version": 107.0,
+        "upstream_backend_count": 53.0,
+        "temporal_credit_enabled": 0.0,
+        "temporal_credit_mode": 1.0,
+        "erase_control_mode": 0.0,
+        "uncertainty_write_enabled": 0.0,
+        "adaptive_compute_enabled": 0.0,
+        "gradient_subspace_enabled": 0.0,
+        "gradient_arbitration_enabled": 0.0
+      },
+      "loss_before": 2.8641257286071777,
+      "loss_components_before": {
+        "memory_loss": 1.0098679065704346,
+        "predictive_loss": 1.0404531955718994,
+        "world_loss": 0.9497634768486023,
+        "spine_loss": 1.0173190832138062,
+        "self_loss": 0.9704645872116089,
+        "multiscale_loss": 0.980664849281311,
+        "confidence_loss": 0.18221092224121094,
+        "temporal_loss": 0.000772701227106154
+      },
+      "train_step": {
+        "memory_loss": 1.0098679065704346,
+        "predictive_loss": 1.0404531955718994,
+        "world_loss": 0.9497634768486023,
+        "spine_loss": 1.0173190832138062,
+        "self_loss": 0.9704645872116089,
+        "multiscale_loss": 0.980664849281311,
+        "confidence_loss": 0.18221092224121094,
+        "temporal_loss": 0.000772701227106154,
+        "loss": 2.8641257286071777,
+        "gradient_coverage": 0.9846153846153847,
+        "gradient_parameter_count": 64.0,
+        "trainable_parameter_count": 65.0,
+        "plasticity_update_norm": 0.0,
+        "plasticity_error_norm": 0.0,
+        "plasticity_modulator": 0.0,
+        "steps": 1.0,
+        "enabled": 0.0,
+        "lifecycle_steps": 0.0,
+        "lifecycle_rejuvenations": 0.0,
+        "lifecycle_last_unit": -1.0,
+        "lifecycle_reset_event": 0.0,
+        "lifecycle_active_fraction": 0.0,
+        "lifecycle_silence_mean": 1.0,
+        "lifecycle_activity_mean": 0.0,
+        "lifecycle_contribution_mean": 0.0,
+        "lifecycle_min_contribution": 0.0,
+        "lifecycle_replacement_credit": 0.0,
+        "homeostatic_enabled": 0.0,
+        "homeostatic_gain_mean": 1.0,
+        "homeostatic_gain_min": 1.0,
+        "homeostatic_gain_max": 1.0,
+        "swr_event": 0.0,
+        "swr_weights_reset": 0.0,
+        "swr_mean_fraction": 0.0,
+        "swr_min_utility": 0.0,
+        "gpm_basis_updated": 0.0,
+        "gpm_basis_rank": 0.0,
+        "gpm_projection_fraction": 0.0
+      },
+      "gradient_coverage": {
+        "trainable_parameters": 71282,
+        "gradient_parameters": 71274,
+        "gradient_parameter_fraction": 0.9998877697034314,
+        "trainable_tensors": 65,
+        "gradient_tensors": 64,
+        "gradient_tensor_fraction": 0.9846153846153847
+      },
+      "execution": {
+        "module_count": 70,
+        "called_module_count": 60,
+        "called_module_fraction": 0.8571428571428571,
+        "modules": {
+          "trunk": {
+            "calls": 0,
+            "tensor_elements_in": 0,
+            "tensor_elements_out": 0,
+            "nonfinite_outputs": 0
+          },
+          "trunk.encoder": {
+            "calls": 16,
+            "tensor_elements_in": 2368,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.encoder.0": {
+            "calls": 16,
+            "tensor_elements_in": 2368,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.encoder.1": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.encoder.2": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.encoder.3": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine": {
+            "calls": 0,
+            "tensor_elements_in": 0,
+            "tensor_elements_out": 0,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.uncertainty_write_controller": {
+            "calls": 0,
+            "tensor_elements_in": 0,
+            "tensor_elements_out": 0,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.online_plasticity": {
+            "calls": 0,
+            "tensor_elements_in": 0,
+            "tensor_elements_out": 0,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.input_norm": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.input_proj": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.input_proj.0": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.input_proj.1": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.input_proj.2": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.input_proj.3": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.q_proj": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 512,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.k_proj": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 512,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.v_proj": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 512,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.erase_proj": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 512,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.write_proj": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 512,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.router_proj": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 512,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.state_to_hidden": {
+            "calls": 0,
+            "tensor_elements_in": 0,
+            "tensor_elements_out": 0,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.state_to_hidden.0": {
+            "calls": 16,
+            "tensor_elements_in": 4608,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.state_to_hidden.1": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.state_to_hidden.2": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.state_to_hidden.3": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.next_latent_head": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 1280,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.next_latent_head.0": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.next_latent_head.1": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.next_latent_head.2": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 1280,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.memory_context_head": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 1280,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.memory_context_head.0": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.memory_context_head.1": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.memory_context_head.2": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 1280,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.confidence_head": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 64,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.confidence_head.0": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 64,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.confidence_head.1": {
+            "calls": 16,
+            "tensor_elements_in": 64,
+            "tensor_elements_out": 64,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.memory_to_action": {
+            "calls": 0,
+            "tensor_elements_in": 0,
+            "tensor_elements_out": 0,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.memory_to_action.0": {
+            "calls": 0,
+            "tensor_elements_in": 0,
+            "tensor_elements_out": 0,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.memory_to_action.1": {
+            "calls": 0,
+            "tensor_elements_in": 0,
+            "tensor_elements_out": 0,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.memory_to_action.2": {
+            "calls": 0,
+            "tensor_elements_in": 0,
+            "tensor_elements_out": 0,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.memory_to_action.3": {
+            "calls": 0,
+            "tensor_elements_in": 0,
+            "tensor_elements_out": 0,
+            "nonfinite_outputs": 0
+          },
+          "trunk.predictor": {
+            "calls": 16,
+            "tensor_elements_in": 5376,
+            "tensor_elements_out": 1280,
+            "nonfinite_outputs": 0
+          },
+          "trunk.predictor.0": {
+            "calls": 16,
+            "tensor_elements_in": 5376,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.predictor.1": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.predictor.2": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 1280,
+            "nonfinite_outputs": 0
+          },
+          "trunk.world_model": {
+            "calls": 16,
+            "tensor_elements_in": 5888,
+            "tensor_elements_out": 1280,
+            "nonfinite_outputs": 0
+          },
+          "trunk.world_model.0": {
+            "calls": 16,
+            "tensor_elements_in": 5888,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.world_model.1": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.world_model.2": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 1280,
+            "nonfinite_outputs": 0
+          },
+          "trunk.self_model": {
+            "calls": 16,
+            "tensor_elements_in": 5376,
+            "tensor_elements_out": 1280,
+            "nonfinite_outputs": 0
+          },
+          "trunk.self_model.0": {
+            "calls": 16,
+            "tensor_elements_in": 5376,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.self_model.1": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.self_model.2": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 1280,
+            "nonfinite_outputs": 0
+          },
+          "trunk.memory_decoder": {
+            "calls": 16,
+            "tensor_elements_in": 1280,
+            "tensor_elements_out": 1280,
+            "nonfinite_outputs": 0
+          },
+          "trunk.memory_decoder.0": {
+            "calls": 16,
+            "tensor_elements_in": 1280,
+            "tensor_elements_out": 2048,
+            "nonfinite_outputs": 0
+          },
+          "trunk.memory_decoder.1": {
+            "calls": 16,
+            "tensor_elements_in": 2048,
+            "tensor_elements_out": 2048,
+            "nonfinite_outputs": 0
+          },
+          "trunk.memory_decoder.2": {
+            "calls": 16,
+            "tensor_elements_in": 2048,
+            "tensor_elements_out": 1280,
+            "nonfinite_outputs": 0
+          },
+          "trunk.fast_projection": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 1280,
+            "nonfinite_outputs": 0
+          },
+          "trunk.medium_projection": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 1280,
+            "nonfinite_outputs": 0
+          },
+          "trunk.slow_projection": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 1280,
+            "nonfinite_outputs": 0
+          },
+          "trunk.multiscale_fuse": {
+            "calls": 16,
+            "tensor_elements_in": 3840,
+            "tensor_elements_out": 1280,
+            "nonfinite_outputs": 0
+          },
+          "trunk.multiscale_fuse.0": {
+            "calls": 16,
+            "tensor_elements_in": 3840,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.multiscale_fuse.1": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.multiscale_fuse.2": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 1280,
+            "nonfinite_outputs": 0
+          },
+          "trunk.confidence_calibrator": {
+            "calls": 16,
+            "tensor_elements_in": 4160,
+            "tensor_elements_out": 64,
+            "nonfinite_outputs": 0
+          },
+          "trunk.confidence_calibrator.0": {
+            "calls": 16,
+            "tensor_elements_in": 4160,
+            "tensor_elements_out": 2048,
+            "nonfinite_outputs": 0
+          },
+          "trunk.confidence_calibrator.1": {
+            "calls": 16,
+            "tensor_elements_in": 2048,
+            "tensor_elements_out": 2048,
+            "nonfinite_outputs": 0
+          },
+          "trunk.confidence_calibrator.2": {
+            "calls": 16,
+            "tensor_elements_in": 2048,
+            "tensor_elements_out": 64,
+            "nonfinite_outputs": 0
+          },
+          "trunk.confidence_calibrator.3": {
+            "calls": 16,
+            "tensor_elements_in": 64,
+            "tensor_elements_out": 64,
+            "nonfinite_outputs": 0
+          }
+        },
+        "trainable_parameter_count": 71282,
+        "trainable_parameters_by_name": {
+          "trunk.encoder.0.weight": 2368,
+          "trunk.encoder.0.bias": 64,
+          "trunk.encoder.2.weight": 4096,
+          "trunk.encoder.2.bias": 64,
+          "trunk.spine.decay_logit": 8,
+          "trunk.spine.preconditioner_log_gain": 8,
+          "trunk.spine.input_norm.weight": 64,
+          "trunk.spine.input_norm.bias": 64,
+          "trunk.spine.input_proj.0.weight": 4096,
+          "trunk.spine.input_proj.0.bias": 64,
+          "trunk.spine.input_proj.2.weight": 4096,
+          "trunk.spine.input_proj.2.bias": 64,
+          "trunk.spine.q_proj.weight": 512,
+          "trunk.spine.k_proj.weight": 512,
+          "trunk.spine.v_proj.weight": 512,
+          "trunk.spine.erase_proj.weight": 512,
+          "trunk.spine.erase_proj.bias": 8,
+          "trunk.spine.write_proj.weight": 512,
+          "trunk.spine.write_proj.bias": 8,
+          "trunk.spine.router_proj.weight": 512,
+          "trunk.spine.router_proj.bias": 8,
+          "trunk.spine.state_to_hidden.0.weight": 4608,
+          "trunk.spine.state_to_hidden.0.bias": 64,
+          "trunk.spine.state_to_hidden.2.weight": 4096,
+          "trunk.spine.state_to_hidden.2.bias": 64,
+          "trunk.spine.next_latent_head.0.weight": 4096,
+          "trunk.spine.next_latent_head.0.bias": 64,
+          "trunk.spine.next_latent_head.2.weight": 1280,
+          "trunk.spine.next_latent_head.2.bias": 20,
+          "trunk.spine.memory_context_head.0.weight": 4096,
+          "trunk.spine.memory_context_head.0.bias": 64,
+          "trunk.spine.memory_context_head.2.weight": 1280,
+          "trunk.spine.memory_context_head.2.bias": 20,
+          "trunk.spine.confidence_head.0.weight": 64,
+          "trunk.spine.confidence_head.0.bias": 1,
+          "trunk.predictor.0.weight": 5376,
+          "trunk.predictor.0.bias": 64,
+          "trunk.predictor.2.weight": 1280,
+          "trunk.predictor.2.bias": 20,
+          "trunk.world_model.0.weight": 5888,
+          "trunk.world_model.0.bias": 64,
+          "trunk.world_model.2.weight": 1280,
+          "trunk.world_model.2.bias": 20,
+          "trunk.self_model.0.weight": 5376,
+          "trunk.self_model.0.bias": 64,
+          "trunk.self_model.2.weight": 1280,
+          "trunk.self_model.2.bias": 20,
+          "trunk.memory_decoder.0.weight": 640,
+          "trunk.memory_decoder.0.bias": 32,
+          "trunk.memory_decoder.2.weight": 640,
+          "trunk.memory_decoder.2.bias": 20,
+          "trunk.fast_projection.weight": 1280,
+          "trunk.fast_projection.bias": 20,
+          "trunk.medium_projection.weight": 1280,
+          "trunk.medium_projection.bias": 20,
+          "trunk.slow_projection.weight": 1280,
+          "trunk.slow_projection.bias": 20,
+          "trunk.multiscale_fuse.0.weight": 3840,
+          "trunk.multiscale_fuse.0.bias": 64,
+          "trunk.multiscale_fuse.2.weight": 1280,
+          "trunk.multiscale_fuse.2.bias": 20,
+          "trunk.confidence_calibrator.0.weight": 2080,
+          "trunk.confidence_calibrator.0.bias": 32,
+          "trunk.confidence_calibrator.2.weight": 32,
+          "trunk.confidence_calibrator.2.bias": 1
+        }
+      },
+      "execution_after": {
+        "module_count": 70,
+        "called_module_count": 60,
+        "called_module_fraction": 0.8571428571428571,
+        "modules": {
+          "trunk": {
+            "calls": 0,
+            "tensor_elements_in": 0,
+            "tensor_elements_out": 0,
+            "nonfinite_outputs": 0
+          },
+          "trunk.encoder": {
+            "calls": 16,
+            "tensor_elements_in": 2368,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.encoder.0": {
+            "calls": 16,
+            "tensor_elements_in": 2368,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.encoder.1": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.encoder.2": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.encoder.3": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine": {
+            "calls": 0,
+            "tensor_elements_in": 0,
+            "tensor_elements_out": 0,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.uncertainty_write_controller": {
+            "calls": 0,
+            "tensor_elements_in": 0,
+            "tensor_elements_out": 0,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.online_plasticity": {
+            "calls": 0,
+            "tensor_elements_in": 0,
+            "tensor_elements_out": 0,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.input_norm": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.input_proj": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.input_proj.0": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.input_proj.1": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.input_proj.2": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.input_proj.3": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.q_proj": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 512,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.k_proj": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 512,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.v_proj": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 512,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.erase_proj": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 512,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.write_proj": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 512,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.router_proj": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 512,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.state_to_hidden": {
+            "calls": 0,
+            "tensor_elements_in": 0,
+            "tensor_elements_out": 0,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.state_to_hidden.0": {
+            "calls": 16,
+            "tensor_elements_in": 4608,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.state_to_hidden.1": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.state_to_hidden.2": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.state_to_hidden.3": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.next_latent_head": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 1280,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.next_latent_head.0": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.next_latent_head.1": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.next_latent_head.2": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 1280,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.memory_context_head": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 1280,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.memory_context_head.0": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.memory_context_head.1": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.memory_context_head.2": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 1280,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.confidence_head": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 64,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.confidence_head.0": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 64,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.confidence_head.1": {
+            "calls": 16,
+            "tensor_elements_in": 64,
+            "tensor_elements_out": 64,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.memory_to_action": {
+            "calls": 0,
+            "tensor_elements_in": 0,
+            "tensor_elements_out": 0,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.memory_to_action.0": {
+            "calls": 0,
+            "tensor_elements_in": 0,
+            "tensor_elements_out": 0,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.memory_to_action.1": {
+            "calls": 0,
+            "tensor_elements_in": 0,
+            "tensor_elements_out": 0,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.memory_to_action.2": {
+            "calls": 0,
+            "tensor_elements_in": 0,
+            "tensor_elements_out": 0,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.memory_to_action.3": {
+            "calls": 0,
+            "tensor_elements_in": 0,
+            "tensor_elements_out": 0,
+            "nonfinite_outputs": 0
+          },
+          "trunk.predictor": {
+            "calls": 16,
+            "tensor_elements_in": 5376,
+            "tensor_elements_out": 1280,
+            "nonfinite_outputs": 0
+          },
+          "trunk.predictor.0": {
+            "calls": 16,
+            "tensor_elements_in": 5376,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.predictor.1": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.predictor.2": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 1280,
+            "nonfinite_outputs": 0
+          },
+          "trunk.world_model": {
+            "calls": 16,
+            "tensor_elements_in": 5888,
+            "tensor_elements_out": 1280,
+            "nonfinite_outputs": 0
+          },
+          "trunk.world_model.0": {
+            "calls": 16,
+            "tensor_elements_in": 5888,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.world_model.1": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.world_model.2": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 1280,
+            "nonfinite_outputs": 0
+          },
+          "trunk.self_model": {
+            "calls": 16,
+            "tensor_elements_in": 5376,
+            "tensor_elements_out": 1280,
+            "nonfinite_outputs": 0
+          },
+          "trunk.self_model.0": {
+            "calls": 16,
+            "tensor_elements_in": 5376,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.self_model.1": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.self_model.2": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 1280,
+            "nonfinite_outputs": 0
+          },
+          "trunk.memory_decoder": {
+            "calls": 16,
+            "tensor_elements_in": 1280,
+            "tensor_elements_out": 1280,
+            "nonfinite_outputs": 0
+          },
+          "trunk.memory_decoder.0": {
+            "calls": 16,
+            "tensor_elements_in": 1280,
+            "tensor_elements_out": 2048,
+            "nonfinite_outputs": 0
+          },
+          "trunk.memory_decoder.1": {
+            "calls": 16,
+            "tensor_elements_in": 2048,
+            "tensor_elements_out": 2048,
+            "nonfinite_outputs": 0
+          },
+          "trunk.memory_decoder.2": {
+            "calls": 16,
+            "tensor_elements_in": 2048,
+            "tensor_elements_out": 1280,
+            "nonfinite_outputs": 0
+          },
+          "trunk.fast_projection": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 1280,
+            "nonfinite_outputs": 0
+          },
+          "trunk.medium_projection": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 1280,
+            "nonfinite_outputs": 0
+          },
+          "trunk.slow_projection": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 1280,
+            "nonfinite_outputs": 0
+          },
+          "trunk.multiscale_fuse": {
+            "calls": 16,
+            "tensor_elements_in": 3840,
+            "tensor_elements_out": 1280,
+            "nonfinite_outputs": 0
+          },
+          "trunk.multiscale_fuse.0": {
+            "calls": 16,
+            "tensor_elements_in": 3840,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.multiscale_fuse.1": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.multiscale_fuse.2": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 1280,
+            "nonfinite_outputs": 0
+          },
+          "trunk.confidence_calibrator": {
+            "calls": 16,
+            "tensor_elements_in": 4160,
+            "tensor_elements_out": 64,
+            "nonfinite_outputs": 0
+          },
+          "trunk.confidence_calibrator.0": {
+            "calls": 16,
+            "tensor_elements_in": 4160,
+            "tensor_elements_out": 2048,
+            "nonfinite_outputs": 0
+          },
+          "trunk.confidence_calibrator.1": {
+            "calls": 16,
+            "tensor_elements_in": 2048,
+            "tensor_elements_out": 2048,
+            "nonfinite_outputs": 0
+          },
+          "trunk.confidence_calibrator.2": {
+            "calls": 16,
+            "tensor_elements_in": 2048,
+            "tensor_elements_out": 64,
+            "nonfinite_outputs": 0
+          },
+          "trunk.confidence_calibrator.3": {
+            "calls": 16,
+            "tensor_elements_in": 64,
+            "tensor_elements_out": 64,
+            "nonfinite_outputs": 0
+          }
+        },
+        "trainable_parameter_count": 71282,
+        "trainable_parameters_by_name": {
+          "trunk.encoder.0.weight": 2368,
+          "trunk.encoder.0.bias": 64,
+          "trunk.encoder.2.weight": 4096,
+          "trunk.encoder.2.bias": 64,
+          "trunk.spine.decay_logit": 8,
+          "trunk.spine.preconditioner_log_gain": 8,
+          "trunk.spine.input_norm.weight": 64,
+          "trunk.spine.input_norm.bias": 64,
+          "trunk.spine.input_proj.0.weight": 4096,
+          "trunk.spine.input_proj.0.bias": 64,
+          "trunk.spine.input_proj.2.weight": 4096,
+          "trunk.spine.input_proj.2.bias": 64,
+          "trunk.spine.q_proj.weight": 512,
+          "trunk.spine.k_proj.weight": 512,
+          "trunk.spine.v_proj.weight": 512,
+          "trunk.spine.erase_proj.weight": 512,
+          "trunk.spine.erase_proj.bias": 8,
+          "trunk.spine.write_proj.weight": 512,
+          "trunk.spine.write_proj.bias": 8,
+          "trunk.spine.router_proj.weight": 512,
+          "trunk.spine.router_proj.bias": 8,
+          "trunk.spine.state_to_hidden.0.weight": 4608,
+          "trunk.spine.state_to_hidden.0.bias": 64,
+          "trunk.spine.state_to_hidden.2.weight": 4096,
+          "trunk.spine.state_to_hidden.2.bias": 64,
+          "trunk.spine.next_latent_head.0.weight": 4096,
+          "trunk.spine.next_latent_head.0.bias": 64,
+          "trunk.spine.next_latent_head.2.weight": 1280,
+          "trunk.spine.next_latent_head.2.bias": 20,
+          "trunk.spine.memory_context_head.0.weight": 4096,
+          "trunk.spine.memory_context_head.0.bias": 64,
+          "trunk.spine.memory_context_head.2.weight": 1280,
+          "trunk.spine.memory_context_head.2.bias": 20,
+          "trunk.spine.confidence_head.0.weight": 64,
+          "trunk.spine.confidence_head.0.bias": 1,
+          "trunk.predictor.0.weight": 5376,
+          "trunk.predictor.0.bias": 64,
+          "trunk.predictor.2.weight": 1280,
+          "trunk.predictor.2.bias": 20,
+          "trunk.world_model.0.weight": 5888,
+          "trunk.world_model.0.bias": 64,
+          "trunk.world_model.2.weight": 1280,
+          "trunk.world_model.2.bias": 20,
+          "trunk.self_model.0.weight": 5376,
+          "trunk.self_model.0.bias": 64,
+          "trunk.self_model.2.weight": 1280,
+          "trunk.self_model.2.bias": 20,
+          "trunk.memory_decoder.0.weight": 640,
+          "trunk.memory_decoder.0.bias": 32,
+          "trunk.memory_decoder.2.weight": 640,
+          "trunk.memory_decoder.2.bias": 20,
+          "trunk.fast_projection.weight": 1280,
+          "trunk.fast_projection.bias": 20,
+          "trunk.medium_projection.weight": 1280,
+          "trunk.medium_projection.bias": 20,
+          "trunk.slow_projection.weight": 1280,
+          "trunk.slow_projection.bias": 20,
+          "trunk.multiscale_fuse.0.weight": 3840,
+          "trunk.multiscale_fuse.0.bias": 64,
+          "trunk.multiscale_fuse.2.weight": 1280,
+          "trunk.multiscale_fuse.2.bias": 20,
+          "trunk.confidence_calibrator.0.weight": 2080,
+          "trunk.confidence_calibrator.0.bias": 32,
+          "trunk.confidence_calibrator.2.weight": 32,
+          "trunk.confidence_calibrator.2.bias": 1
+        }
+      }
+    },
+    {
+      "seed": 2,
+      "parameters": {
+        "total_parameters": 72821.0,
+        "trainable_parameters": 71282.0,
+        "trainable_fraction": 0.9788659864599497,
+        "current_neural_version": 107.0,
+        "abi_version": 8.0,
+        "spine_rank": 8.0,
+        "spine_topk": 3.0,
+        "current_abi_version": 8.0,
+        "compatibility_engine_source_version": 107.0,
+        "upstream_backend_count": 53.0,
+        "temporal_credit_enabled": 0.0,
+        "temporal_credit_mode": 1.0,
+        "erase_control_mode": 0.0,
+        "uncertainty_write_enabled": 0.0,
+        "adaptive_compute_enabled": 0.0,
+        "gradient_subspace_enabled": 0.0,
+        "gradient_arbitration_enabled": 0.0
+      },
+      "loss_before": 2.852344274520874,
+      "loss_components_before": {
+        "memory_loss": 0.9724171161651611,
+        "predictive_loss": 1.0070205926895142,
+        "world_loss": 1.0151784420013428,
+        "spine_loss": 1.0152461528778076,
+        "self_loss": 0.9816340804100037,
+        "multiscale_loss": 0.9895448088645935,
+        "confidence_loss": 0.1789732724428177,
+        "temporal_loss": 0.000668993394356221
+      },
+      "train_step": {
+        "memory_loss": 0.9724171161651611,
+        "predictive_loss": 1.0070205926895142,
+        "world_loss": 1.0151784420013428,
+        "spine_loss": 1.0152461528778076,
+        "self_loss": 0.9816340804100037,
+        "multiscale_loss": 0.9895448088645935,
+        "confidence_loss": 0.1789732724428177,
+        "temporal_loss": 0.000668993394356221,
+        "loss": 2.852344274520874,
+        "gradient_coverage": 0.9846153846153847,
+        "gradient_parameter_count": 64.0,
+        "trainable_parameter_count": 65.0,
+        "plasticity_update_norm": 0.0,
+        "plasticity_error_norm": 0.0,
+        "plasticity_modulator": 0.0,
+        "steps": 1.0,
+        "enabled": 0.0,
+        "lifecycle_steps": 0.0,
+        "lifecycle_rejuvenations": 0.0,
+        "lifecycle_last_unit": -1.0,
+        "lifecycle_reset_event": 0.0,
+        "lifecycle_active_fraction": 0.0,
+        "lifecycle_silence_mean": 1.0,
+        "lifecycle_activity_mean": 0.0,
+        "lifecycle_contribution_mean": 0.0,
+        "lifecycle_min_contribution": 0.0,
+        "lifecycle_replacement_credit": 0.0,
+        "homeostatic_enabled": 0.0,
+        "homeostatic_gain_mean": 1.0,
+        "homeostatic_gain_min": 1.0,
+        "homeostatic_gain_max": 1.0,
+        "swr_event": 0.0,
+        "swr_weights_reset": 0.0,
+        "swr_mean_fraction": 0.0,
+        "swr_min_utility": 0.0,
+        "gpm_basis_updated": 0.0,
+        "gpm_basis_rank": 0.0,
+        "gpm_projection_fraction": 0.0
+      },
+      "gradient_coverage": {
+        "trainable_parameters": 71282,
+        "gradient_parameters": 71274,
+        "gradient_parameter_fraction": 0.9998877697034314,
+        "trainable_tensors": 65,
+        "gradient_tensors": 64,
+        "gradient_tensor_fraction": 0.9846153846153847
+      },
+      "execution": {
+        "module_count": 70,
+        "called_module_count": 60,
+        "called_module_fraction": 0.8571428571428571,
+        "modules": {
+          "trunk": {
+            "calls": 0,
+            "tensor_elements_in": 0,
+            "tensor_elements_out": 0,
+            "nonfinite_outputs": 0
+          },
+          "trunk.encoder": {
+            "calls": 16,
+            "tensor_elements_in": 2368,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.encoder.0": {
+            "calls": 16,
+            "tensor_elements_in": 2368,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.encoder.1": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.encoder.2": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.encoder.3": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine": {
+            "calls": 0,
+            "tensor_elements_in": 0,
+            "tensor_elements_out": 0,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.uncertainty_write_controller": {
+            "calls": 0,
+            "tensor_elements_in": 0,
+            "tensor_elements_out": 0,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.online_plasticity": {
+            "calls": 0,
+            "tensor_elements_in": 0,
+            "tensor_elements_out": 0,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.input_norm": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.input_proj": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.input_proj.0": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.input_proj.1": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.input_proj.2": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.input_proj.3": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.q_proj": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 512,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.k_proj": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 512,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.v_proj": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 512,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.erase_proj": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 512,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.write_proj": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 512,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.router_proj": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 512,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.state_to_hidden": {
+            "calls": 0,
+            "tensor_elements_in": 0,
+            "tensor_elements_out": 0,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.state_to_hidden.0": {
+            "calls": 16,
+            "tensor_elements_in": 4608,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.state_to_hidden.1": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.state_to_hidden.2": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.state_to_hidden.3": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.next_latent_head": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 1280,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.next_latent_head.0": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.next_latent_head.1": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.next_latent_head.2": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 1280,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.memory_context_head": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 1280,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.memory_context_head.0": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.memory_context_head.1": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.memory_context_head.2": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 1280,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.confidence_head": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 64,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.confidence_head.0": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 64,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.confidence_head.1": {
+            "calls": 16,
+            "tensor_elements_in": 64,
+            "tensor_elements_out": 64,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.memory_to_action": {
+            "calls": 0,
+            "tensor_elements_in": 0,
+            "tensor_elements_out": 0,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.memory_to_action.0": {
+            "calls": 0,
+            "tensor_elements_in": 0,
+            "tensor_elements_out": 0,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.memory_to_action.1": {
+            "calls": 0,
+            "tensor_elements_in": 0,
+            "tensor_elements_out": 0,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.memory_to_action.2": {
+            "calls": 0,
+            "tensor_elements_in": 0,
+            "tensor_elements_out": 0,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.memory_to_action.3": {
+            "calls": 0,
+            "tensor_elements_in": 0,
+            "tensor_elements_out": 0,
+            "nonfinite_outputs": 0
+          },
+          "trunk.predictor": {
+            "calls": 16,
+            "tensor_elements_in": 5376,
+            "tensor_elements_out": 1280,
+            "nonfinite_outputs": 0
+          },
+          "trunk.predictor.0": {
+            "calls": 16,
+            "tensor_elements_in": 5376,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.predictor.1": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.predictor.2": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 1280,
+            "nonfinite_outputs": 0
+          },
+          "trunk.world_model": {
+            "calls": 16,
+            "tensor_elements_in": 5888,
+            "tensor_elements_out": 1280,
+            "nonfinite_outputs": 0
+          },
+          "trunk.world_model.0": {
+            "calls": 16,
+            "tensor_elements_in": 5888,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.world_model.1": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.world_model.2": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 1280,
+            "nonfinite_outputs": 0
+          },
+          "trunk.self_model": {
+            "calls": 16,
+            "tensor_elements_in": 5376,
+            "tensor_elements_out": 1280,
+            "nonfinite_outputs": 0
+          },
+          "trunk.self_model.0": {
+            "calls": 16,
+            "tensor_elements_in": 5376,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.self_model.1": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.self_model.2": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 1280,
+            "nonfinite_outputs": 0
+          },
+          "trunk.memory_decoder": {
+            "calls": 16,
+            "tensor_elements_in": 1280,
+            "tensor_elements_out": 1280,
+            "nonfinite_outputs": 0
+          },
+          "trunk.memory_decoder.0": {
+            "calls": 16,
+            "tensor_elements_in": 1280,
+            "tensor_elements_out": 2048,
+            "nonfinite_outputs": 0
+          },
+          "trunk.memory_decoder.1": {
+            "calls": 16,
+            "tensor_elements_in": 2048,
+            "tensor_elements_out": 2048,
+            "nonfinite_outputs": 0
+          },
+          "trunk.memory_decoder.2": {
+            "calls": 16,
+            "tensor_elements_in": 2048,
+            "tensor_elements_out": 1280,
+            "nonfinite_outputs": 0
+          },
+          "trunk.fast_projection": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 1280,
+            "nonfinite_outputs": 0
+          },
+          "trunk.medium_projection": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 1280,
+            "nonfinite_outputs": 0
+          },
+          "trunk.slow_projection": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 1280,
+            "nonfinite_outputs": 0
+          },
+          "trunk.multiscale_fuse": {
+            "calls": 16,
+            "tensor_elements_in": 3840,
+            "tensor_elements_out": 1280,
+            "nonfinite_outputs": 0
+          },
+          "trunk.multiscale_fuse.0": {
+            "calls": 16,
+            "tensor_elements_in": 3840,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.multiscale_fuse.1": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.multiscale_fuse.2": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 1280,
+            "nonfinite_outputs": 0
+          },
+          "trunk.confidence_calibrator": {
+            "calls": 16,
+            "tensor_elements_in": 4160,
+            "tensor_elements_out": 64,
+            "nonfinite_outputs": 0
+          },
+          "trunk.confidence_calibrator.0": {
+            "calls": 16,
+            "tensor_elements_in": 4160,
+            "tensor_elements_out": 2048,
+            "nonfinite_outputs": 0
+          },
+          "trunk.confidence_calibrator.1": {
+            "calls": 16,
+            "tensor_elements_in": 2048,
+            "tensor_elements_out": 2048,
+            "nonfinite_outputs": 0
+          },
+          "trunk.confidence_calibrator.2": {
+            "calls": 16,
+            "tensor_elements_in": 2048,
+            "tensor_elements_out": 64,
+            "nonfinite_outputs": 0
+          },
+          "trunk.confidence_calibrator.3": {
+            "calls": 16,
+            "tensor_elements_in": 64,
+            "tensor_elements_out": 64,
+            "nonfinite_outputs": 0
+          }
+        },
+        "trainable_parameter_count": 71282,
+        "trainable_parameters_by_name": {
+          "trunk.encoder.0.weight": 2368,
+          "trunk.encoder.0.bias": 64,
+          "trunk.encoder.2.weight": 4096,
+          "trunk.encoder.2.bias": 64,
+          "trunk.spine.decay_logit": 8,
+          "trunk.spine.preconditioner_log_gain": 8,
+          "trunk.spine.input_norm.weight": 64,
+          "trunk.spine.input_norm.bias": 64,
+          "trunk.spine.input_proj.0.weight": 4096,
+          "trunk.spine.input_proj.0.bias": 64,
+          "trunk.spine.input_proj.2.weight": 4096,
+          "trunk.spine.input_proj.2.bias": 64,
+          "trunk.spine.q_proj.weight": 512,
+          "trunk.spine.k_proj.weight": 512,
+          "trunk.spine.v_proj.weight": 512,
+          "trunk.spine.erase_proj.weight": 512,
+          "trunk.spine.erase_proj.bias": 8,
+          "trunk.spine.write_proj.weight": 512,
+          "trunk.spine.write_proj.bias": 8,
+          "trunk.spine.router_proj.weight": 512,
+          "trunk.spine.router_proj.bias": 8,
+          "trunk.spine.state_to_hidden.0.weight": 4608,
+          "trunk.spine.state_to_hidden.0.bias": 64,
+          "trunk.spine.state_to_hidden.2.weight": 4096,
+          "trunk.spine.state_to_hidden.2.bias": 64,
+          "trunk.spine.next_latent_head.0.weight": 4096,
+          "trunk.spine.next_latent_head.0.bias": 64,
+          "trunk.spine.next_latent_head.2.weight": 1280,
+          "trunk.spine.next_latent_head.2.bias": 20,
+          "trunk.spine.memory_context_head.0.weight": 4096,
+          "trunk.spine.memory_context_head.0.bias": 64,
+          "trunk.spine.memory_context_head.2.weight": 1280,
+          "trunk.spine.memory_context_head.2.bias": 20,
+          "trunk.spine.confidence_head.0.weight": 64,
+          "trunk.spine.confidence_head.0.bias": 1,
+          "trunk.predictor.0.weight": 5376,
+          "trunk.predictor.0.bias": 64,
+          "trunk.predictor.2.weight": 1280,
+          "trunk.predictor.2.bias": 20,
+          "trunk.world_model.0.weight": 5888,
+          "trunk.world_model.0.bias": 64,
+          "trunk.world_model.2.weight": 1280,
+          "trunk.world_model.2.bias": 20,
+          "trunk.self_model.0.weight": 5376,
+          "trunk.self_model.0.bias": 64,
+          "trunk.self_model.2.weight": 1280,
+          "trunk.self_model.2.bias": 20,
+          "trunk.memory_decoder.0.weight": 640,
+          "trunk.memory_decoder.0.bias": 32,
+          "trunk.memory_decoder.2.weight": 640,
+          "trunk.memory_decoder.2.bias": 20,
+          "trunk.fast_projection.weight": 1280,
+          "trunk.fast_projection.bias": 20,
+          "trunk.medium_projection.weight": 1280,
+          "trunk.medium_projection.bias": 20,
+          "trunk.slow_projection.weight": 1280,
+          "trunk.slow_projection.bias": 20,
+          "trunk.multiscale_fuse.0.weight": 3840,
+          "trunk.multiscale_fuse.0.bias": 64,
+          "trunk.multiscale_fuse.2.weight": 1280,
+          "trunk.multiscale_fuse.2.bias": 20,
+          "trunk.confidence_calibrator.0.weight": 2080,
+          "trunk.confidence_calibrator.0.bias": 32,
+          "trunk.confidence_calibrator.2.weight": 32,
+          "trunk.confidence_calibrator.2.bias": 1
+        }
+      },
+      "execution_after": {
+        "module_count": 70,
+        "called_module_count": 60,
+        "called_module_fraction": 0.8571428571428571,
+        "modules": {
+          "trunk": {
+            "calls": 0,
+            "tensor_elements_in": 0,
+            "tensor_elements_out": 0,
+            "nonfinite_outputs": 0
+          },
+          "trunk.encoder": {
+            "calls": 16,
+            "tensor_elements_in": 2368,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.encoder.0": {
+            "calls": 16,
+            "tensor_elements_in": 2368,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.encoder.1": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.encoder.2": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.encoder.3": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine": {
+            "calls": 0,
+            "tensor_elements_in": 0,
+            "tensor_elements_out": 0,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.uncertainty_write_controller": {
+            "calls": 0,
+            "tensor_elements_in": 0,
+            "tensor_elements_out": 0,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.online_plasticity": {
+            "calls": 0,
+            "tensor_elements_in": 0,
+            "tensor_elements_out": 0,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.input_norm": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.input_proj": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.input_proj.0": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.input_proj.1": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.input_proj.2": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.input_proj.3": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.q_proj": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 512,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.k_proj": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 512,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.v_proj": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 512,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.erase_proj": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 512,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.write_proj": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 512,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.router_proj": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 512,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.state_to_hidden": {
+            "calls": 0,
+            "tensor_elements_in": 0,
+            "tensor_elements_out": 0,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.state_to_hidden.0": {
+            "calls": 16,
+            "tensor_elements_in": 4608,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.state_to_hidden.1": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.state_to_hidden.2": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.state_to_hidden.3": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.next_latent_head": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 1280,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.next_latent_head.0": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.next_latent_head.1": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.next_latent_head.2": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 1280,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.memory_context_head": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 1280,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.memory_context_head.0": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.memory_context_head.1": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.memory_context_head.2": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 1280,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.confidence_head": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 64,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.confidence_head.0": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 64,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.confidence_head.1": {
+            "calls": 16,
+            "tensor_elements_in": 64,
+            "tensor_elements_out": 64,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.memory_to_action": {
+            "calls": 0,
+            "tensor_elements_in": 0,
+            "tensor_elements_out": 0,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.memory_to_action.0": {
+            "calls": 0,
+            "tensor_elements_in": 0,
+            "tensor_elements_out": 0,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.memory_to_action.1": {
+            "calls": 0,
+            "tensor_elements_in": 0,
+            "tensor_elements_out": 0,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.memory_to_action.2": {
+            "calls": 0,
+            "tensor_elements_in": 0,
+            "tensor_elements_out": 0,
+            "nonfinite_outputs": 0
+          },
+          "trunk.spine.memory_to_action.3": {
+            "calls": 0,
+            "tensor_elements_in": 0,
+            "tensor_elements_out": 0,
+            "nonfinite_outputs": 0
+          },
+          "trunk.predictor": {
+            "calls": 16,
+            "tensor_elements_in": 5376,
+            "tensor_elements_out": 1280,
+            "nonfinite_outputs": 0
+          },
+          "trunk.predictor.0": {
+            "calls": 16,
+            "tensor_elements_in": 5376,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.predictor.1": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.predictor.2": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 1280,
+            "nonfinite_outputs": 0
+          },
+          "trunk.world_model": {
+            "calls": 16,
+            "tensor_elements_in": 5888,
+            "tensor_elements_out": 1280,
+            "nonfinite_outputs": 0
+          },
+          "trunk.world_model.0": {
+            "calls": 16,
+            "tensor_elements_in": 5888,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.world_model.1": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.world_model.2": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 1280,
+            "nonfinite_outputs": 0
+          },
+          "trunk.self_model": {
+            "calls": 16,
+            "tensor_elements_in": 5376,
+            "tensor_elements_out": 1280,
+            "nonfinite_outputs": 0
+          },
+          "trunk.self_model.0": {
+            "calls": 16,
+            "tensor_elements_in": 5376,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.self_model.1": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.self_model.2": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 1280,
+            "nonfinite_outputs": 0
+          },
+          "trunk.memory_decoder": {
+            "calls": 16,
+            "tensor_elements_in": 1280,
+            "tensor_elements_out": 1280,
+            "nonfinite_outputs": 0
+          },
+          "trunk.memory_decoder.0": {
+            "calls": 16,
+            "tensor_elements_in": 1280,
+            "tensor_elements_out": 2048,
+            "nonfinite_outputs": 0
+          },
+          "trunk.memory_decoder.1": {
+            "calls": 16,
+            "tensor_elements_in": 2048,
+            "tensor_elements_out": 2048,
+            "nonfinite_outputs": 0
+          },
+          "trunk.memory_decoder.2": {
+            "calls": 16,
+            "tensor_elements_in": 2048,
+            "tensor_elements_out": 1280,
+            "nonfinite_outputs": 0
+          },
+          "trunk.fast_projection": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 1280,
+            "nonfinite_outputs": 0
+          },
+          "trunk.medium_projection": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 1280,
+            "nonfinite_outputs": 0
+          },
+          "trunk.slow_projection": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 1280,
+            "nonfinite_outputs": 0
+          },
+          "trunk.multiscale_fuse": {
+            "calls": 16,
+            "tensor_elements_in": 3840,
+            "tensor_elements_out": 1280,
+            "nonfinite_outputs": 0
+          },
+          "trunk.multiscale_fuse.0": {
+            "calls": 16,
+            "tensor_elements_in": 3840,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.multiscale_fuse.1": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 4096,
+            "nonfinite_outputs": 0
+          },
+          "trunk.multiscale_fuse.2": {
+            "calls": 16,
+            "tensor_elements_in": 4096,
+            "tensor_elements_out": 1280,
+            "nonfinite_outputs": 0
+          },
+          "trunk.confidence_calibrator": {
+            "calls": 16,
+            "tensor_elements_in": 4160,
+            "tensor_elements_out": 64,
+            "nonfinite_outputs": 0
+          },
+          "trunk.confidence_calibrator.0": {
+            "calls": 16,
+            "tensor_elements_in": 4160,
+            "tensor_elements_out": 2048,
+            "nonfinite_outputs": 0
+          },
+          "trunk.confidence_calibrator.1": {
+            "calls": 16,
+            "tensor_elements_in": 2048,
+            "tensor_elements_out": 2048,
+            "nonfinite_outputs": 0
+          },
+          "trunk.confidence_calibrator.2": {
+            "calls": 16,
+            "tensor_elements_in": 2048,
+            "tensor_elements_out": 64,
+            "nonfinite_outputs": 0
+          },
+          "trunk.confidence_calibrator.3": {
+            "calls": 16,
+            "tensor_elements_in": 64,
+            "tensor_elements_out": 64,
+            "nonfinite_outputs": 0
+          }
+        },
+        "trainable_parameter_count": 71282,
+        "trainable_parameters_by_name": {
+          "trunk.encoder.0.weight": 2368,
+          "trunk.encoder.0.bias": 64,
+          "trunk.encoder.2.weight": 4096,
+          "trunk.encoder.2.bias": 64,
+          "trunk.spine.decay_logit": 8,
+          "trunk.spine.preconditioner_log_gain": 8,
+          "trunk.spine.input_norm.weight": 64,
+          "trunk.spine.input_norm.bias": 64,
+          "trunk.spine.input_proj.0.weight": 4096,
+          "trunk.spine.input_proj.0.bias": 64,
+          "trunk.spine.input_proj.2.weight": 4096,
+          "trunk.spine.input_proj.2.bias": 64,
+          "trunk.spine.q_proj.weight": 512,
+          "trunk.spine.k_proj.weight": 512,
+          "trunk.spine.v_proj.weight": 512,
+          "trunk.spine.erase_proj.weight": 512,
+          "trunk.spine.erase_proj.bias": 8,
+          "trunk.spine.write_proj.weight": 512,
+          "trunk.spine.write_proj.bias": 8,
+          "trunk.spine.router_proj.weight": 512,
+          "trunk.spine.router_proj.bias": 8,
+          "trunk.spine.state_to_hidden.0.weight": 4608,
+          "trunk.spine.state_to_hidden.0.bias": 64,
+          "trunk.spine.state_to_hidden.2.weight": 4096,
+          "trunk.spine.state_to_hidden.2.bias": 64,
+          "trunk.spine.next_latent_head.0.weight": 4096,
+          "trunk.spine.next_latent_head.0.bias": 64,
+          "trunk.spine.next_latent_head.2.weight": 1280,
+          "trunk.spine.next_latent_head.2.bias": 20,
+          "trunk.spine.memory_context_head.0.weight": 4096,
+          "trunk.spine.memory_context_head.0.bias": 64,
+          "trunk.spine.memory_context_head.2.weight": 1280,
+          "trunk.spine.memory_context_head.2.bias": 20,
+          "trunk.spine.confidence_head.0.weight": 64,
+          "trunk.spine.confidence_head.0.bias": 1,
+          "trunk.predictor.0.weight": 5376,
+          "trunk.predictor.0.bias": 64,
+          "trunk.predictor.2.weight": 1280,
+          "trunk.predictor.2.bias": 20,
+          "trunk.world_model.0.weight": 5888,
+          "trunk.world_model.0.bias": 64,
+          "trunk.world_model.2.weight": 1280,
+          "trunk.world_model.2.bias": 20,
+          "trunk.self_model.0.weight": 5376,
+          "trunk.self_model.0.bias": 64,
+          "trunk.self_model.2.weight": 1280,
+          "trunk.self_model.2.bias": 20,
+          "trunk.memory_decoder.0.weight": 640,
+          "trunk.memory_decoder.0.bias": 32,
+          "trunk.memory_decoder.2.weight": 640,
+          "trunk.memory_decoder.2.bias": 20,
+          "trunk.fast_projection.weight": 1280,
+          "trunk.fast_projection.bias": 20,
+          "trunk.medium_projection.weight": 1280,
+          "trunk.medium_projection.bias": 20,
+          "trunk.slow_projection.weight": 1280,
+          "trunk.slow_projection.bias": 20,
+          "trunk.multiscale_fuse.0.weight": 3840,
+          "trunk.multiscale_fuse.0.bias": 64,
+          "trunk.multiscale_fuse.2.weight": 1280,
+          "trunk.multiscale_fuse.2.bias": 20,
+          "trunk.confidence_calibrator.0.weight": 2080,
+          "trunk.confidence_calibrator.0.bias": 32,
+          "trunk.confidence_calibrator.2.weight": 32,
+          "trunk.confidence_calibrator.2.bias": 1
+        }
+      }
+    }
+  ],
+  "mean_loss": 2.8640711307525635
+}

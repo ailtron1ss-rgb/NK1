@@ -1,0 +1,8 @@
+{
+  "version": 125,
+  "total_parameters": 69137,
+  "trainable_parameters": 69137,
+  "gradient_parameter_fraction": 1.0,
+  "called_module_fraction": 0.8870967741935484,
+  "legacy_imports": {}
+}

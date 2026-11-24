@@ -1,0 +1,54 @@
+{
+  "generatedAt": "2026-08-26T04:39:36.250Z",
+  "conditions": [
+    {
+      "condition": "baseline",
+      "cycles": 42,
+      "projects": 5,
+      "agency": 42,
+      "revisions": 13,
+      "trajectorySamples": 126,
+      "authorship": 0.5208189427524381
+    },
+    {
+      "condition": "no-self-projects",
+      "cycles": 42,
+      "projects": 0,
+      "agency": 42,
+      "revisions": 0,
+      "trajectorySamples": 126,
+      "authorship": 0.15
+    },
+    {
+      "condition": "no-agency",
+      "cycles": 42,
+      "projects": 5,
+      "agency": 0,
+      "revisions": 13,
+      "trajectorySamples": 126,
+      "authorship": 0.5208189427524381
+    },
+    {
+      "condition": "no-value-evolution",
+      "cycles": 42,
+      "projects": 5,
+      "agency": 42,
+      "revisions": 0,
+      "trajectorySamples": 126,
+      "authorship": 0.5208189427524381
+    },
+    {
+      "condition": "no-identity-trajectory",
+      "cycles": 42,
+      "projects": 5,
+      "agency": 42,
+      "revisions": 13,
+      "trajectorySamples": 0,
+      "authorship": 0.5208189427524381
+    }
+  ],
+  "caveats": [
+    "Functional causal evidence, not subjective consciousness.",
+    "Synthetic environment; physical Android longitudinal evidence remains separate."
+  ]
+}

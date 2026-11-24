@@ -1,0 +1,14 @@
+import assert from 'node:assert/strict';
+import { rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+import { OrganismRuntime } from '../src/organism/core/OrganismRuntime.ts';
+const base=path.join(tmpdir(),`nk155-runtime-${process.pid}-${Date.now()}`);
+const runtime=new OrganismRuntime({stateFile:base+'.json',worldStateFile:base+'.world.json',autoRun:false,enableLanguage:false,intervalMs:5000,checkpointMinIntervalMs:0,checkpointMaxDirtyCycles:1});
+await runtime.init();
+await runtime.step('verify the current situation');
+await runtime.step('check the result and continue');
+const d=runtime.core.verifiedAutonomousLifeDiagnostics(), b=runtime.core.verifiedAutonomousLifeBenchmark(), a=runtime.core.verifiedAutonomousLifeSelfAudit();
+assert(d.cycles>=2); assert(d.decisionCount>=1); assert.equal(d.decisionCount,d.outcomeCount); assert.equal(d.unresolvedDecisions,0); assert(a.pass); assert(b.integrity01>=.99); assert(d.perceptionCount>=1);
+const persisted=runtime.core.snapshot(); assert.equal(persisted.facets.learning.verifiedAutonomousLife?.version,1); await runtime.flush(); await runtime.stop(); await rm(base+'.json',{force:true}); await rm(base+'.world.json',{force:true}); await rm(base+'.continuity.jsonl',{force:true}); await rm(base+'.operational.jsonl',{force:true}); await rm(base+'.json.bak',{force:true}); await rm(base+'.world.json.bak',{force:true});
+console.log(`BIG_PASS_155_CORE_VERIFIED_LIFE=PASS cycles=${d.cycles} decisions=${d.decisionCount} outcomes=${d.outcomeCount} perceptions=${d.perceptionCount} overall=${b.overall01.toFixed(3)} audit=${a.pass}`);

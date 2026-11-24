@@ -1,0 +1,12 @@
+{
+  "version": "35.6.1",
+  "pass": "B285",
+  "date": "2026-09-12",
+  "scope": "neural life consolidation, relationship-specific self, future-self prediction",
+  "standalone": {"steps":320,"learningUpdates":320,"replayUpdates":48,"chapters":20,"relationships":3,"compression01":1.0,"futureConsistency01":0.7336817013,"futureIdentityAlignment01":0.8338634365,"identityStability01":0.9115895893,"traitSpread01":0.0302459689,"futureAblationDrop01":0.1007831174,"roundTrip":true},
+  "hidden": {"steps":420,"learningUpdates":420,"replayUpdates":64,"chapters":26,"relationships":2,"compression01":1.0,"futureConsistency01":0.6184418664,"futureIdentityAlignment01":0.73967717199,"identityStability01":0.99667882684,"traitSpread01":0.04319717873,"futureAblationDrop01":0.10394683804,"roundTrip":true},
+  "core": {"steps":48,"learningUpdates":48,"chapters":3,"relationships":2,"futureConsistency01":0.5838502221,"compression01":0.6671875,"identityStability01":0.9806896272,"futureAblationDrop01":0.1004530151,"restart":true},
+  "regressions": {"B279":true,"B280":true,"B281":true,"B282":true,"B283":true,"B284":true,"B285":true},
+  "limitations":["not a biophysical brain","not evidence of consciousness","finite relationship contexts","finite horizons 1/8/32","controlled digital environment","symbolic personality layer remains"],
+  "status":"PASS_WITH_LIMITATIONS"
+}

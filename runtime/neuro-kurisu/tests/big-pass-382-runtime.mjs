@@ -1,0 +1,14 @@
+import assert from 'node:assert/strict';
+import { OrganismCore } from '../src/organism/core/OrganismCore.ts';
+import { MemoryStateStore } from '../src/organism/persistence/MemoryStateStore.ts';
+const store=new MemoryStateStore(); const cfg={enableWorldModel:true,enableLanguage:false,includeAdvancedCycleSnapshot:false,checkpointMinIntervalMs:60000,checkpointMaxDirtyCycles:64};
+const core=new OrganismCore(store,cfg); await core.init();
+assert.ok(core.b382ContextualDevelopmentalDiagnostics());
+core.setB382ContextualDevelopmentalEnabled(true);
+const context=[.91,.87,.89,.93,.90,.86,.88,.92];
+for(let i=1;i<=40;i++) core.consolidateB365Experience({tick:i,action:'explore',reward01:.92,predictionError01:.08,salience01:.76,verified01:1,independent01:1,evidenceQuality01:.98,continuity01:.92,goalId:'runtime-b382',context01:context});
+const before=core.b382ContextualDevelopmentalDiagnostics(); assert.equal(before.verifiedExperiences,40); assert.ok(before.contextCount>=1); assert.ok(before.contextualAdaptations>0);
+const snap=core.snapshot(); const restored=new OrganismCore(new MemoryStateStore({initial:snap}),cfg); await restored.init(); const again=restored.b382ContextualDevelopmentalDiagnostics(); assert.deepEqual(again,before);
+for(let i=41;i<=70;i++) restored.consolidateB365Experience({tick:i,action:'explore',reward01:.12,predictionError01:.86,salience01:.72,verified01:0,independent01:0,evidenceQuality01:.1,continuity01:.7,goalId:'runtime-b382',context01:context});
+assert.equal(restored.b382ContextualDevelopmentalDiagnostics().verifiedExperiences,40);
+console.log(JSON.stringify({pass:true,status:'B382_RUNTIME_PERSISTENCE_PASS',verifiedExperiences:again.verifiedExperiences,contextCount:again.contextCount,adaptations:again.contextualAdaptations,restartEqual:true,unverifiedBlocked:true},null,2));

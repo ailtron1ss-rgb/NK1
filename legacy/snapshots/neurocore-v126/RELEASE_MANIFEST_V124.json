@@ -1,0 +1,43 @@
+{
+  "version": 124,
+  "release": "V124",
+  "package_version": "1.24.0",
+  "engine_version": "v124-memory-truth",
+  "schema_version": 30,
+  "architecture": "standalone_causal_trunk_with_opt_in_unified_sparse_memory_candidate",
+  "quality_gates": {
+    "current_tests": "84/84 PASS",
+    "compileall": "PASS",
+    "verify_current": "PASS",
+    "checkpoint": "108/108 tensors; 0 missing; 0 mismatch; 0 unexpected",
+    "decontamination": "PASS",
+    "executable_stub_suspects": 0,
+    "legacy_current_test_surface_removed": true,
+    "recurrent_owner_count": 1,
+    "gradient_element_coverage": 1.0
+  },
+  "changes": {
+    "integrated": [
+      "data_grounded_predictive_target",
+      "observable_unified_sparse_memory_read"
+    ],
+    "deferred": [
+      "unified_sparse_associative_memory_v124",
+      "collision_aware_sparse_admission_v124"
+    ],
+    "moved_to_history": [
+      "tests/current_v106_legacy -> history/tests_v106_legacy"
+    ],
+    "removed": [
+      "self_referential_self_supervised_target"
+    ]
+  },
+  "evidence": [
+    "evidence/V124_FINAL_INTEGRATION.json",
+    "evidence/V124_MEMORY_END_TO_END.json",
+    "evidence/V124_DECONTAMINATION.json",
+    "evidence/V124_CHECKPOINT.json",
+    "evidence/verify_current_V124.txt"
+  ],
+  "next_frontier": "V125 collision-resistant addressing + sparse state runtime + memory consolidation"
+}

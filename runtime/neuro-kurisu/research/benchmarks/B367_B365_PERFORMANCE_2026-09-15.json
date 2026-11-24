@@ -1,0 +1,17 @@
+{
+  "status": "HOST_BENCHMARK",
+  "date": "2026-09-15",
+  "cycles": 1000,
+  "totalMs": 1012.61,
+  "meanMs": 1.0113,
+  "p50Ms": 0.2572,
+  "p95Ms": 3.9044,
+  "p99Ms": 11.7961,
+  "maxMs": 40.2288,
+  "neuronCount": 96,
+  "forecastUpdates": 1000,
+  "worldModelTransfers": 220,
+  "activeSynapses": 462,
+  "totalSynapses": 1188,
+  "note": "Host runtime benchmark only; these figures are not physical Android evidence."
+}

@@ -1,0 +1,91 @@
+{
+  "version": 126,
+  "release": "V126",
+  "package_version": "1.26.0",
+  "engine_version": "v126-consolidation-runtime",
+  "schema_version": 30,
+  "architecture": "standalone_causal_trunk_with_candidate_sparse_memory_and_opt_in_fast_slow_consolidation",
+  "quality_gates": {
+    "current_tests": "95/95 PASS",
+    "compileall": "PASS",
+    "verify_current": "PASS",
+    "checkpoint": "108/108 tensors; 0 missing; 0 mismatch; 0 unexpected",
+    "decontamination": "PASS",
+    "executable_stub_suspects": 0,
+    "inert_enabled_config_checks": "PASS",
+    "registry_truthfulness": "PASS",
+    "recurrent_owner_count": 1,
+    "gradient_tensor_fraction": 1.0,
+    "gradient_element_fraction": 1.0,
+    "wheel": "neurocore_frontier-1.26.0-py3-none-any.whl",
+    "wheel_sha256": "56d60811dadc6a9edb7872a8003de41fff983aad66ff4871ea6e6c2ee9476df8"
+  },
+  "integrated": [
+    "single_source_of_truth_release_metadata",
+    "functional_sparse_delta_state_write",
+    "opt_in_fast_slow_consolidation_trainer_path",
+    "consolidation_inert_config_guard",
+    "production_qualification_sparse_read_path_deduplication",
+    "runtime_decontamination_and_liveness_checks",
+    "shared_post_optimizer_controller_path_for_current_trainer_modes"
+  ],
+  "candidate_only": [
+    "unified_sparse_associative_memory_v126",
+    "collision_resistant_key_fingerprint_v126",
+    "fast_slow_synaptic_consolidation",
+    "collision_aware_sparse_admission_v126",
+    "input_dependent_channel_decay",
+    "neural_lifecycle_regeneration",
+    "homeostatic_neural_gain"
+  ],
+  "reference_only_candidates": [
+    "delta_mem_compact_online_memory",
+    "delta_mem_online_state",
+    "delta_product_transition",
+    "mamba3_state_tracking_reference",
+    "raven_sparse_memory_routing",
+    "ttt_linear_attention_reduction"
+  ],
+  "not_promoted": [
+    "collision_aware_sparse_admission_v126",
+    "input_dependent_channel_decay"
+  ],
+  "evidence": [
+    "evidence/V126_TESTS.txt",
+    "evidence/verify_current_V126.txt",
+    "evidence/V126_CHECKPOINT.txt",
+    "evidence/V126_DECONTAMINATION.json",
+    "evidence/V126_CONSOLIDATION_RUNTIME.json",
+    "evidence/V126_SPARSE_RUNTIME.json",
+    "evidence/V126_GRADIENT_COVERAGE.json",
+    "evidence/V125_COLLISION_PROBE.json",
+    "evidence/V126_SPARSE_GRADIENT_LIVENESS.json"
+  ],
+  "consolidation_probe": {
+    "seeds": 3,
+    "steps": 10,
+    "mean_events_enabled": 2.0,
+    "mean_events_disabled": 0.0,
+    "max_blend_enabled": 0.08,
+    "final_fast_norm_enabled_mean": 0.0,
+    "promotion": "candidate-only; no matched continual-learning advantage established"
+  },
+  "sparse_runtime": {
+    "batch_ms": {
+      "8": 2.919861349982966,
+      "32": 4.922855299992079,
+      "64": 7.2960232000014,
+      "128": 11.583635049987606
+    },
+    "promotion": "no universal speedup claim; flat state materialization remains a bottleneck"
+  },
+  "anti_decoration": {
+    "executable_stubs": 0,
+    "duplicate_sparse_read_logic": "removed; qualification shares production read_only()",
+    "legacy_v97_consolidation_benchmark": "moved_to_history",
+    "version_truth": "src/neurocore/version.py",
+    "runtime_liveness": "PASS",
+    "sparse_candidate_gradient_liveness": "10/10 trainable sparse-memory tensors observed live across 3 probes"
+  },
+  "next_frontier": "V127 collision-resistant addressing + segmented sparse runtime + continual-learning gate"
+}

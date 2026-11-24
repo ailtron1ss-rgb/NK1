@@ -1,0 +1,13 @@
+{
+  "pass":177,
+  "version":"35.6.1",
+  "androidContract":{"status":"PASS","commandsAttempted":3,"commandsSucceeded":3,"battery01":0.62,"motion01":0.22},
+  "deviceTruth":{"status":"PASS","fallbackVerified":false},
+  "coreEmbodiment":{"status":"PASS","energyBefore":0.82,"energyAfter":0.492,"loadBefore":0.18,"loadAfter":0.551,"interoceptiveCycles":1,"diagnosticsPersisted":true},
+  "longitudinal176":{"status":"PASS","cycles":31,"restartObservedCycles":31,"continuity01":0.932,"replayIdempotent":true},
+  "parameterized":{"attempted":509,"passed":497,"failed":0,"inputSynthesisNeeded":0,"lifecycleNeeded":12},
+  "semantic":{"totalFunctions":2489,"verified":24,"integrationOnly":594,"unsafe":224,"unverified":1647,"verifiedRate01":0.0096,"evidenceCoverage01":0.0693},
+  "liveness":{"functionLikeDeclarations":2561,"withBody":2532,"exported":107,"zeroReference":158},
+  "release":{"architecture":"PASS","integrity":"PASS","forensics":"PASS","hygiene":"PASS","releaseSource":"PASS","lock":"PASS"},
+  "warnings":["physical Android hardware was not available in sandbox","30-cycle legacy smoke exceeded transport limit in one batch and was not counted as PASS","long-horizon heap growth remains open"]
+}

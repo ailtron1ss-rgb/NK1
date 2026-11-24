@@ -1,0 +1,100 @@
+{
+  "project": "Neuro-Kurisu Super",
+  "releaseDate": "2026-10-06",
+  "releaseVersion": "0.1.1-super-optimized",
+  "activeRuntime": {
+    "name": "Neuro-Kurisu",
+    "version": "35.40.0",
+    "schema": 223,
+    "path": "runtime/neuro-kurisu",
+    "ownership": "canonical-writable"
+  },
+  "surfaces": {
+    "uiShell": {
+      "path": "app",
+      "source": "Grok Workspace",
+      "ownership": "delivery-only"
+    },
+    "live2d": {
+      "path": "app/public/live2d",
+      "source": "Neuro-Kurisu 35.40 / Workspace assets",
+      "ownership": "visual-only"
+    },
+    "legacySprite": {
+      "path": "app/src/legacy/avatar",
+      "source": "Kurisu v9 resolver + v56 presentation patterns",
+      "ownership": "visual-compatibility-only"
+    }
+  },
+  "research": [
+    {
+      "name": "NeuroCore V143",
+      "path": "research/neurocore-v143",
+      "mode": "research-only",
+      "promotion": false
+    },
+    {
+      "name": "NOMEGA Pass20",
+      "path": "research/nomega-pass20",
+      "mode": "governed-research",
+      "promotion": false
+    },
+    {
+      "name": "DeepCode v21",
+      "path": "research/deepcode",
+      "mode": "research-only",
+      "promotion": false
+    }
+  ],
+  "legacy": [
+    {
+      "name": "Kurisu v9",
+      "path": "legacy/kurisu-v9",
+      "role": "visual/source reference"
+    },
+    {
+      "name": "Kurisu v56",
+      "path": "legacy/kurisu-v56",
+      "role": "visual/source reference; duplicate ownership audit"
+    },
+    {
+      "name": "Neuro-Kurisu 35.30",
+      "path": "legacy/snapshots/neuro-kurisu-35.30",
+      "role": "historical baseline"
+    },
+    {
+      "name": "NeuroCore V126",
+      "path": "legacy/snapshots/neurocore-v126",
+      "role": "historical baseline"
+    },
+    {
+      "name": "original input archives",
+      "path": "legacy/input-archives",
+      "role": "immutable provenance"
+    }
+  ],
+  "ownershipRules": [
+    "Neuro-Kurisu owns runtime state, cognition loop, memory, goals, world model, embodiment state and persistence.",
+    "The browser never instantiates a second organism brain.",
+    "Live2D and legacy sprite engines are rendering surfaces only.",
+    "Research branches cannot auto-promote code into the canonical runtime.",
+    "Near-duplicate functions require a single owner plus adapters; no parallel writable state.",
+    "Legacy snapshots remain immutable reference material."
+  ],
+  "verification": "contracts/verification-2026-10-06.json",
+  "tooling": {
+    "inventory": "tools/super-inventory.mjs",
+    "assetAudit": "tools/audit-assets.mjs",
+    "quickAudit": "package.json#audit:quick",
+    "docsRoot": "docs/"
+  },
+  "integrationGuarantees": [
+    "Canonical runtime is the only writable organism state owner.",
+    "UI consumes canonical runtime snapshots over HTTP and does not instantiate the legacy organism.",
+    "Live2D and legacy sprites are asset-backed renderers with honest unavailable states; no procedural avatar fallback is shipped.",
+    "Research branches are read-only qualification surfaces exposed through research/research_bridge.py.",
+    "Legacy branches and exact input archives are preserved as immutable provenance, outside active ownership.",
+    "Generated runtime state and dependency directories are excluded from release artifacts."
+  ],
+  "releaseRoot": "Neuro_Kurisu_SUPER_2026-10-06"
+}

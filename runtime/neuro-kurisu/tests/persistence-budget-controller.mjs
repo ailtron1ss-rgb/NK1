@@ -1,0 +1,12 @@
+import assert from 'node:assert/strict';
+import { OrganismCore } from '../src/organism/core/OrganismCore.ts';
+import { MemoryStateStore } from '../src/organism/persistence/MemoryStateStore.ts';
+const core=new OrganismCore(new MemoryStateStore());
+await core.init();
+const normal=core.persistenceBudgetSnapshot();
+assert.equal(normal.tier,'normal');
+await core.observe({text:'budget controller pressure validation ' .repeat(4)});
+const after=core.persistenceBudgetSnapshot();
+assert.ok(['normal','pressure','emergency'].includes(after.tier));
+assert.ok(after.traceLimit<=256 && after.eventLimit<=320);
+console.log(`PERSISTENCE_BUDGET_CONTROLLER=PASS tier=${after.tier} traceLimit=${after.traceLimit} eventLimit=${after.eventLimit} pressure=${after.maintenancePressure01}`);

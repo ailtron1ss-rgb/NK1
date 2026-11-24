@@ -1,0 +1,15 @@
+{
+  "pass": 181,
+  "version": "35.6.1",
+  "status": "RELEASE_CANDIDATE",
+  "reason": "All defined 181 constituent gates pass independently; aggregate is reproducible and excludes known heavy long-horizon performance blockers.",
+  "verifiedFunctions": 300,
+  "totalFunctions": 2494,
+  "criticalUnverified": 998,
+  "knownOpenItems": [
+    "heap thermodynamics beyond 500 cycles",
+    "7/30/90-day wall-clock life",
+    "physical Android production gate",
+    "remaining UNVERIFIED critical functions"
+  ]
+}

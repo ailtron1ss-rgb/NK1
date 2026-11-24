@@ -1,0 +1,12 @@
+import assert from 'node:assert/strict';
+import { OrganismCore } from '../src/organism/core/OrganismCore.ts';
+import { MemoryStateStore } from '../src/organism/persistence/MemoryStateStore.ts';
+const cfg={enableWorldModel:true,enableLanguage:false,includeAdvancedCycleSnapshot:false,checkpointMinIntervalMs:60000,checkpointMaxDirtyCycles:64};
+const core=new OrganismCore(new MemoryStateStore(),cfg); await core.init();
+const contextBefore=core.b382ContextualDevelopmentalDiagnostics();
+for(let i=1;i<=32;i++) core.closeB380TemporalLife({tick:i,at:i,action:'explore',goalId:'auto-b382',reward01:.9,success01:.9,surprise01:.5,predictionError01:.1,physicalVerified01:1,independent01:1,evidenceQuality01:1,recoveryEvent01:0,sleepBoundary01:0,external01:0,energy01:.7,capacity01:.8,thermal01:.2,uncertainty01:.2,novelty01:.5,goalPressure01:.4,identity01:.9,awake:true,recoveryDebt01:0});
+const after=core.b382ContextualDevelopmentalDiagnostics();
+assert.ok(after.verifiedExperiences>contextBefore.verifiedExperiences,'B380 verified tokens did not auto-promote');
+assert.ok(after.contextualAdaptations>0,'B380 auto-promotion produced no contextual development');
+const snap=core.snapshot(); const restored=new OrganismCore(new MemoryStateStore({initial:snap}),cfg); await restored.init(); assert.deepEqual(restored.b382ContextualDevelopmentalDiagnostics(),after);
+console.log(JSON.stringify({pass:true,status:'B380_TO_B382_AUTO_PROMOTION_PASS',verifiedExperiences:after.verifiedExperiences,contextualAdaptations:after.contextualAdaptations,contextProfiles:after.contextCount,restartEqual:true},null,2));

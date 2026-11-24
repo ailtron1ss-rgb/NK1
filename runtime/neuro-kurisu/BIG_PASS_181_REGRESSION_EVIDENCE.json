@@ -1,0 +1,176 @@
+{
+  "pass": 181,
+  "total": 24,
+  "passed": 24,
+  "failed": 0,
+  "tests": [
+    {
+      "test": "tests/big-pass-169-cognitive-integration.mjs",
+      "status": "PASS",
+      "startedAt": 1789064406963,
+      "code": 0,
+      "durationMs": 2617
+    },
+    {
+      "test": "tests/big-pass-169-recovery-certification.mjs",
+      "status": "PASS",
+      "startedAt": 1789064406967,
+      "code": 0,
+      "durationMs": 607
+    },
+    {
+      "test": "tests/big-pass-169-functional-sweep.mjs",
+      "status": "PASS",
+      "startedAt": 1789064406968,
+      "code": 0,
+      "durationMs": 4308
+    },
+    {
+      "test": "tests/big-pass-170-personality-causality.mjs",
+      "status": "PASS",
+      "startedAt": 1789064406972,
+      "code": 0,
+      "durationMs": 7724
+    },
+    {
+      "test": "tests/big-pass-171-memory-value-identity-personality.mjs",
+      "status": "PASS",
+      "startedAt": 1789064407574,
+      "code": 0,
+      "durationMs": 6052
+    },
+    {
+      "test": "tests/big-pass-172-emotion-interoceptive-mind.mjs",
+      "status": "PASS",
+      "startedAt": 1789064409580,
+      "code": 0,
+      "durationMs": 14640
+    },
+    {
+      "test": "tests/big-pass-173-world-model-2.mjs",
+      "status": "PASS",
+      "startedAt": 1789064411276,
+      "code": 0,
+      "durationMs": 3036
+    },
+    {
+      "test": "tests/big-pass-174-function-reality-and-world-tickets.mjs",
+      "status": "PASS",
+      "startedAt": 1789064413626,
+      "code": 0,
+      "durationMs": 2594
+    },
+    {
+      "test": "tests/big-pass-175-autonomous-project-life.mjs",
+      "status": "PASS",
+      "startedAt": 1789064414312,
+      "code": 0,
+      "durationMs": 3194
+    },
+    {
+      "test": "tests/big-pass-175-core-project-closure.mjs",
+      "status": "PASS",
+      "startedAt": 1789064414696,
+      "code": 0,
+      "durationMs": 2410
+    },
+    {
+      "test": "tests/big-pass-175-project-recovery.mjs",
+      "status": "PASS",
+      "startedAt": 1789064416220,
+      "code": 0,
+      "durationMs": 359
+    },
+    {
+      "test": "tests/big-pass-175-project-scheduler.mjs",
+      "status": "PASS",
+      "startedAt": 1789064416579,
+      "code": 0,
+      "durationMs": 391
+    },
+    {
+      "test": "tests/big-pass-176-lifecycle-closure.mjs",
+      "status": "PASS",
+      "startedAt": 1789064416970,
+      "code": 0,
+      "durationMs": 2954
+    },
+    {
+      "test": "tests/big-pass-176-longitudinal-integrity.mjs",
+      "status": "PASS",
+      "startedAt": 1789064417106,
+      "code": 0,
+      "durationMs": 8426
+    },
+    {
+      "test": "tests/big-pass-177-android-sensorimotor.mjs",
+      "status": "PASS",
+      "startedAt": 1789064417506,
+      "code": 0,
+      "durationMs": 796
+    },
+    {
+      "test": "tests/big-pass-177-core-embodiment-causality.mjs",
+      "status": "PASS",
+      "startedAt": 1789064418302,
+      "code": 0,
+      "durationMs": 2802
+    },
+    {
+      "test": "tests/big-pass-177-device-truthfulness.mjs",
+      "status": "PASS",
+      "startedAt": 1789064419924,
+      "code": 0,
+      "durationMs": 2095
+    },
+    {
+      "test": "tests/big-pass-178-compound-adversarial.mjs",
+      "status": "PASS",
+      "startedAt": 1789064421104,
+      "code": 0,
+      "durationMs": 504
+    },
+    {
+      "test": "tests/big-pass-178-core-adversarial.mjs",
+      "status": "PASS",
+      "startedAt": 1789064421608,
+      "code": 0,
+      "durationMs": 4772
+    },
+    {
+      "test": "tests/big-pass-179-consciousness-battery.mjs",
+      "status": "PASS",
+      "startedAt": 1789064422019,
+      "code": 0,
+      "durationMs": 509
+    },
+    {
+      "test": "tests/big-pass-179-core-causal-evidence.mjs",
+      "status": "PASS",
+      "startedAt": 1789064422528,
+      "code": 0,
+      "durationMs": 4206
+    },
+    {
+      "test": "tests/big-pass-180-lifecycle-function-closure.mjs",
+      "status": "PASS",
+      "startedAt": 1789064424220,
+      "code": 0,
+      "durationMs": 1999
+    },
+    {
+      "test": "tests/big-pass-180-reproducibility.mjs",
+      "status": "PASS",
+      "startedAt": 1789064425532,
+      "code": 0,
+      "durationMs": 484
+    },
+    {
+      "test": "tests/big-pass-181-function-reality-closure.mjs",
+      "status": "PASS",
+      "startedAt": 1789064426016,
+      "code": 0,
+      "durationMs": 1326
+    }
+  ]
+}

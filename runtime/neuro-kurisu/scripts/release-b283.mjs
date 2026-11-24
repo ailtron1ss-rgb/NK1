@@ -1,0 +1,33 @@
+import { execFileSync } from 'node:child_process';
+const steps=[
+ ['typecheck',['run','-s','typecheck']],
+ ['b283-workspace',['run','-s','test:b283:workspace']],
+ ['b283-hidden',['run','-s','test:b283:hidden']],
+ ['b283-core',['run','-s','test:b283:core']],
+ ['b283-migration',['run','-s','test:b283:migration']],
+ ['b282-workspace',['run','-s','test:b282:workspace']],
+ ['b282-hidden',['run','-s','test:b282:hidden']],
+ ['b282-core',['run','-s','test:b282:core']],
+ ['b282-migration',['run','-s','test:b282:migration']],
+ ['b281-regression',['run','-s','test:big-pass-281']],
+ ['b280-neural',['run','-s','test:b280:neural']],
+ ['b280-core',['run','-s','test:b280:core']],
+ ['b280-migration',['run','-s','test:b280:migration']],
+ ['b279-neural',['execFile','node','--experimental-strip-types','tests/big-pass-279-neural-attractor.mjs']],
+ ['b279-hidden',['execFile','node','--experimental-strip-types','tests/big-pass-279-hidden-attractor.mjs']],
+ ['b279-migration',['execFile','node','--experimental-strip-types','tests/big-pass-279-migration.mjs']],
+ ['audit-full',['run','-s','audit:full']],
+ ['audit-architecture',['run','-s','audit:architecture']],
+ ['audit-integrity',['run','-s','audit:integrity']],
+ ['audit-forensics',['run','-s','audit:forensics']],
+ ['audit-hygiene',['run','-s','audit:hygiene']],
+ ['audit-syntax',['run','-s','audit:syntax']],
+ ['audit-contract',['run','-s','audit:contract']],
+ ['audit-lock',['run','-s','audit:lock']],
+ ['release-source',['run','-s','verify:release-source']],
+ ['doctor',['run','-s','doctor']],
+ ['manifest',['run','-s','manifest:archive']],
+ ['archive',['run','-s','audit:archive']]
+];
+for(const [name,args] of steps){console.log(`\n=== ${name} ===`);if(args[0]==='execFile')execFileSync(args[1],args.slice(2),{stdio:'inherit'});else execFileSync('npm',['-s',...args],{stdio:'inherit'});}
+console.log('\nB283 RELEASE FUNCTIONAL+STATIC=PASS');

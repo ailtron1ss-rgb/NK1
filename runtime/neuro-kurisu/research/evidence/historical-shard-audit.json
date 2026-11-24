@@ -1,0 +1,560 @@
+{
+  "version": 1,
+  "generatedAt": "2026-09-05T04:34:45.320Z",
+  "testFiles": 152,
+  "testScripts": 164,
+  "orphanTestFiles": [],
+  "missingScriptTargets": [],
+  "phases": [
+    {
+      "phase": 7,
+      "tests": 1,
+      "migration": 1,
+      "integration": 0,
+      "server": 0,
+      "performance": 0,
+      "truth": 0,
+      "other": 0
+    },
+    {
+      "phase": 8,
+      "tests": 2,
+      "migration": 1,
+      "integration": 0,
+      "server": 0,
+      "performance": 0,
+      "truth": 0,
+      "other": 1
+    },
+    {
+      "phase": 9,
+      "tests": 2,
+      "migration": 0,
+      "integration": 0,
+      "server": 0,
+      "performance": 0,
+      "truth": 1,
+      "other": 1
+    },
+    {
+      "phase": 10,
+      "tests": 4,
+      "migration": 1,
+      "integration": 1,
+      "server": 0,
+      "performance": 0,
+      "truth": 1,
+      "other": 1
+    },
+    {
+      "phase": 11,
+      "tests": 3,
+      "migration": 1,
+      "integration": 1,
+      "server": 0,
+      "performance": 0,
+      "truth": 0,
+      "other": 1
+    },
+    {
+      "phase": 14,
+      "tests": 3,
+      "migration": 1,
+      "integration": 0,
+      "server": 0,
+      "performance": 0,
+      "truth": 0,
+      "other": 2
+    },
+    {
+      "phase": 15,
+      "tests": 2,
+      "migration": 1,
+      "integration": 0,
+      "server": 0,
+      "performance": 0,
+      "truth": 0,
+      "other": 1
+    },
+    {
+      "phase": 16,
+      "tests": 2,
+      "migration": 1,
+      "integration": 0,
+      "server": 0,
+      "performance": 0,
+      "truth": 0,
+      "other": 1
+    },
+    {
+      "phase": 17,
+      "tests": 2,
+      "migration": 1,
+      "integration": 0,
+      "server": 0,
+      "performance": 0,
+      "truth": 0,
+      "other": 1
+    },
+    {
+      "phase": 18,
+      "tests": 2,
+      "migration": 1,
+      "integration": 0,
+      "server": 0,
+      "performance": 0,
+      "truth": 0,
+      "other": 1
+    },
+    {
+      "phase": 19,
+      "tests": 2,
+      "migration": 1,
+      "integration": 0,
+      "server": 0,
+      "performance": 0,
+      "truth": 0,
+      "other": 1
+    },
+    {
+      "phase": 20,
+      "tests": 2,
+      "migration": 0,
+      "integration": 0,
+      "server": 0,
+      "performance": 0,
+      "truth": 0,
+      "other": 2
+    },
+    {
+      "phase": 21,
+      "tests": 2,
+      "migration": 1,
+      "integration": 0,
+      "server": 0,
+      "performance": 0,
+      "truth": 0,
+      "other": 1
+    },
+    {
+      "phase": 22,
+      "tests": 2,
+      "migration": 0,
+      "integration": 0,
+      "server": 0,
+      "performance": 0,
+      "truth": 0,
+      "other": 2
+    },
+    {
+      "phase": 23,
+      "tests": 4,
+      "migration": 1,
+      "integration": 1,
+      "server": 1,
+      "performance": 0,
+      "truth": 0,
+      "other": 1
+    },
+    {
+      "phase": 24,
+      "tests": 2,
+      "migration": 1,
+      "integration": 0,
+      "server": 0,
+      "performance": 0,
+      "truth": 0,
+      "other": 1
+    },
+    {
+      "phase": 25,
+      "tests": 3,
+      "migration": 1,
+      "integration": 1,
+      "server": 0,
+      "performance": 0,
+      "truth": 0,
+      "other": 1
+    },
+    {
+      "phase": 26,
+      "tests": 3,
+      "migration": 1,
+      "integration": 0,
+      "server": 0,
+      "performance": 0,
+      "truth": 0,
+      "other": 2
+    },
+    {
+      "phase": 27,
+      "tests": 3,
+      "migration": 1,
+      "integration": 1,
+      "server": 0,
+      "performance": 0,
+      "truth": 0,
+      "other": 1
+    },
+    {
+      "phase": 28,
+      "tests": 5,
+      "migration": 1,
+      "integration": 1,
+      "server": 1,
+      "performance": 1,
+      "truth": 0,
+      "other": 1
+    },
+    {
+      "phase": 29,
+      "tests": 5,
+      "migration": 1,
+      "integration": 2,
+      "server": 0,
+      "performance": 0,
+      "truth": 0,
+      "other": 2
+    },
+    {
+      "phase": 30,
+      "tests": 5,
+      "migration": 1,
+      "integration": 1,
+      "server": 0,
+      "performance": 0,
+      "truth": 0,
+      "other": 3
+    },
+    {
+      "phase": 31,
+      "tests": 6,
+      "migration": 1,
+      "integration": 1,
+      "server": 0,
+      "performance": 1,
+      "truth": 1,
+      "other": 2
+    },
+    {
+      "phase": 32,
+      "tests": 6,
+      "migration": 1,
+      "integration": 1,
+      "server": 1,
+      "performance": 0,
+      "truth": 1,
+      "other": 2
+    },
+    {
+      "phase": 33,
+      "tests": 6,
+      "migration": 1,
+      "integration": 1,
+      "server": 1,
+      "performance": 0,
+      "truth": 1,
+      "other": 2
+    },
+    {
+      "phase": 34,
+      "tests": 4,
+      "migration": 1,
+      "integration": 1,
+      "server": 1,
+      "performance": 0,
+      "truth": 0,
+      "other": 1
+    },
+    {
+      "phase": 35,
+      "tests": 5,
+      "migration": 1,
+      "integration": 1,
+      "server": 1,
+      "performance": 1,
+      "truth": 0,
+      "other": 1
+    },
+    {
+      "phase": 36,
+      "tests": 5,
+      "migration": 1,
+      "integration": 1,
+      "server": 1,
+      "performance": 1,
+      "truth": 0,
+      "other": 1
+    },
+    {
+      "phase": 37,
+      "tests": 4,
+      "migration": 1,
+      "integration": 1,
+      "server": 0,
+      "performance": 1,
+      "truth": 0,
+      "other": 1
+    },
+    {
+      "phase": 38,
+      "tests": 4,
+      "migration": 1,
+      "integration": 1,
+      "server": 1,
+      "performance": 0,
+      "truth": 0,
+      "other": 1
+    },
+    {
+      "phase": 39,
+      "tests": 5,
+      "migration": 1,
+      "integration": 1,
+      "server": 1,
+      "performance": 1,
+      "truth": 0,
+      "other": 1
+    },
+    {
+      "phase": 40,
+      "tests": 6,
+      "migration": 1,
+      "integration": 1,
+      "server": 1,
+      "performance": 1,
+      "truth": 0,
+      "other": 2
+    },
+    {
+      "phase": 41,
+      "tests": 10,
+      "migration": 2,
+      "integration": 1,
+      "server": 2,
+      "performance": 1,
+      "truth": 1,
+      "other": 3
+    },
+    {
+      "phase": 42,
+      "tests": 6,
+      "migration": 1,
+      "integration": 1,
+      "server": 0,
+      "performance": 1,
+      "truth": 1,
+      "other": 2
+    },
+    {
+      "phase": 43,
+      "tests": 1,
+      "migration": 0,
+      "integration": 0,
+      "server": 0,
+      "performance": 0,
+      "truth": 0,
+      "other": 1
+    },
+    {
+      "phase": 44,
+      "tests": 1,
+      "migration": 0,
+      "integration": 0,
+      "server": 0,
+      "performance": 0,
+      "truth": 0,
+      "other": 1
+    },
+    {
+      "phase": 46,
+      "tests": 1,
+      "migration": 0,
+      "integration": 0,
+      "server": 0,
+      "performance": 0,
+      "truth": 0,
+      "other": 1
+    },
+    {
+      "phase": 47,
+      "tests": 1,
+      "migration": 0,
+      "integration": 0,
+      "server": 0,
+      "performance": 0,
+      "truth": 0,
+      "other": 1
+    },
+    {
+      "phase": 48,
+      "tests": 1,
+      "migration": 0,
+      "integration": 0,
+      "server": 0,
+      "performance": 0,
+      "truth": 0,
+      "other": 1
+    },
+    {
+      "phase": 49,
+      "tests": 1,
+      "migration": 0,
+      "integration": 0,
+      "server": 0,
+      "performance": 0,
+      "truth": 0,
+      "other": 1
+    },
+    {
+      "phase": 50,
+      "tests": 1,
+      "migration": 0,
+      "integration": 0,
+      "server": 0,
+      "performance": 0,
+      "truth": 0,
+      "other": 1
+    },
+    {
+      "phase": 51,
+      "tests": 1,
+      "migration": 0,
+      "integration": 0,
+      "server": 0,
+      "performance": 0,
+      "truth": 0,
+      "other": 1
+    },
+    {
+      "phase": 52,
+      "tests": 1,
+      "migration": 0,
+      "integration": 0,
+      "server": 0,
+      "performance": 0,
+      "truth": 0,
+      "other": 1
+    },
+    {
+      "phase": 53,
+      "tests": 1,
+      "migration": 0,
+      "integration": 0,
+      "server": 0,
+      "performance": 0,
+      "truth": 0,
+      "other": 1
+    },
+    {
+      "phase": 54,
+      "tests": 1,
+      "migration": 0,
+      "integration": 0,
+      "server": 0,
+      "performance": 0,
+      "truth": 0,
+      "other": 1
+    },
+    {
+      "phase": 55,
+      "tests": 2,
+      "migration": 0,
+      "integration": 0,
+      "server": 0,
+      "performance": 0,
+      "truth": 1,
+      "other": 1
+    },
+    {
+      "phase": 56,
+      "tests": 2,
+      "migration": 0,
+      "integration": 1,
+      "server": 0,
+      "performance": 0,
+      "truth": 0,
+      "other": 1
+    },
+    {
+      "phase": 57,
+      "tests": 1,
+      "migration": 0,
+      "integration": 0,
+      "server": 0,
+      "performance": 0,
+      "truth": 0,
+      "other": 1
+    },
+    {
+      "phase": 58,
+      "tests": 1,
+      "migration": 0,
+      "integration": 0,
+      "server": 0,
+      "performance": 0,
+      "truth": 0,
+      "other": 1
+    },
+    {
+      "phase": 61,
+      "tests": 1,
+      "migration": 0,
+      "integration": 0,
+      "server": 0,
+      "performance": 0,
+      "truth": 0,
+      "other": 1
+    },
+    {
+      "phase": 64,
+      "tests": 2,
+      "migration": 0,
+      "integration": 1,
+      "server": 0,
+      "performance": 0,
+      "truth": 0,
+      "other": 1
+    },
+    {
+      "phase": 66,
+      "tests": 1,
+      "migration": 0,
+      "integration": 1,
+      "server": 0,
+      "performance": 0,
+      "truth": 0,
+      "other": 0
+    },
+    {
+      "phase": 69,
+      "tests": 1,
+      "migration": 0,
+      "integration": 0,
+      "server": 0,
+      "performance": 0,
+      "truth": 0,
+      "other": 1
+    },
+    {
+      "phase": 74,
+      "tests": 1,
+      "migration": 0,
+      "integration": 1,
+      "server": 0,
+      "performance": 0,
+      "truth": 0,
+      "other": 0
+    },
+    {
+      "phase": 80,
+      "tests": 1,
+      "migration": 0,
+      "integration": 0,
+      "server": 0,
+      "performance": 0,
+      "truth": 0,
+      "other": 1
+    }
+  ]
+}

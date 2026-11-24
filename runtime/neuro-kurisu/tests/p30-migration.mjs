@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';
+import { migratePersistedOrganism, ORGANISM_STATE_SCHEMA } from '../src/organism/persistence/StateMigrations.ts';
+import { RELEASE_CONTRACT } from '../src/organism/system/ReleaseContract.ts';
+const next=migratePersistedOrganism({schemaVersion:32,state:{version:32,tick:3},facets:{learning:{p29:{cycles:4}}}});
+assert.equal(ORGANISM_STATE_SCHEMA,RELEASE_CONTRACT.stateSchema);
+assert.equal(RELEASE_CONTRACT.stateSchema,ORGANISM_STATE_SCHEMA);
+assert.equal(next.schemaVersion,ORGANISM_STATE_SCHEMA);
+assert.equal(next.state.version,ORGANISM_STATE_SCHEMA);
+assert.equal(next.facets.learning.p30.version,2);
+assert.equal(next.facets.learning.p29.cycles,4);
+console.log('P30_MIGRATION=PASS schema=current p30=present');

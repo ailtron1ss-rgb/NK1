@@ -1,0 +1,82 @@
+{
+  "pass": 180,
+  "status": "PASS_WITH_EXPLICIT_PERFORMANCE_WARNING",
+  "typecheck": true,
+  "recentRegression": {
+    "passes": 15,
+    "total": 15
+  },
+  "functionReality": {
+    "total": 2493,
+    "verified": 38,
+    "integrationOnly": 590,
+    "unsafe": 224,
+    "unverified": 1641,
+    "criticalUnverified": 1076,
+    "dormantUnverified": 157,
+    "parameterized": {
+      "attempted": 509,
+      "passed": 497,
+      "failed": 0,
+      "inputSynthesisNeeded": 0,
+      "lifecycleNeeded": 12
+    }
+  },
+  "lifecycleClosure180": {
+    "direct": 12,
+    "persistence": true,
+    "replay": true,
+    "restart": true
+  },
+  "reproducibility180": {
+    "whitespaceNormalization": true,
+    "sameSeedSameSchedule": true,
+    "sameProtocolHash": true,
+    "restoreStable": true
+  },
+  "releaseFreeze": {
+    "sourceFiles": 275,
+    "deterministicManifestDigest": "1f51c4980d78286c835e2f0b0214dc5071455ef9ceaa1c8f9d6655144457b27b",
+    "sourceManifestDigest": "1f51c4980d78286c835e2f0b0214dc5071455ef9ceaa1c8f9d6655144457b27b"
+  },
+  "performance": {
+    "p31_10000_cycles_ms": 234,
+    "operational_500": {
+      "status": "PASS",
+      "ratio": 1.069,
+      "firstMs": 61.13,
+      "lastMs": 65.33,
+      "p95Ms": 92.29,
+      "heapFirstMB": 43.63,
+      "heapLastMB": 180.91
+    },
+    "operational_1000": {
+      "status": "TIMEOUT",
+      "interpretation": "Not counted as pass; long-horizon >240s in sandbox.",
+      "followUp": "memory/checkpoint/retained-state optimization"
+    }
+  },
+  "releaseGates": {
+    "architecture": true,
+    "integrity": true,
+    "forensics": true,
+    "hygiene": true,
+    "releaseSource": true,
+    "lock": true,
+    "brain": true,
+    "projectState": true,
+    "sourceTruth": true,
+    "subjectBoundary": true,
+    "componentConflicts": true
+  },
+  "consciousnessClaim": "Functional research evidence only; no claim of phenomenal consciousness.",
+  "aggregateFreeze": "NOT_FINISHED_IN_SINGLE_BATCH",
+  "aggregateFreezeInterpretation": "Constituent gates passed independently; single sequential orchestrator exceeded sandbox runtime budget at long-horizon stage and is not counted as PASS.",
+  "archiveManifest": {
+    "files": 1801,
+    "missing": 0,
+    "hashMismatches": 0,
+    "extra": 0
+  },
+  "aggregateFreezeStatus": "NOT_FINISHED_IN_SINGLE_BATCH"
+}

@@ -1,0 +1,9 @@
+import fs from 'node:fs'; import path from 'node:path';
+const root=process.cwd(); const files=[];
+function walk(d){for(const e of fs.readdirSync(d,{withFileTypes:true})){if(['node_modules','.git','legacy-original','history'].includes(e.name))continue;const p=path.join(d,e.name);if(e.isDirectory())walk(p);else if(/\.(ts|tsx|mjs)$/.test(e.name))files.push(p)}}
+walk(path.join(root,'src')); const violations=[]; let syntheticDirect=0, claimLeaks=0;
+for(const file of files){const s=fs.readFileSync(file,'utf8'); const rel=path.relative(root,file); if(/class\s+(Mock|Stub|Dummy|Placeholder|Fake)\b/.test(s))violations.push(`${rel}:fake-class`); if(/NoopOperationalJournal/.test(s)&&!rel.endsWith('audit-r22-anti-decoration.mjs')&&!rel.endsWith('audit-r21-anti-decoration.mjs'))violations.push(`${rel}:legacy-noop-journal`); if(/TODO|FIXME|NotImplemented/.test(s)&&/src[\\/]/.test(file))violations.push(`${rel}:implementation-marker`);
+  const lines=s.split(/\r?\n/);
+  for(let i=0;i<lines.length;i++){const line=lines[i]; if(/syntheticReplay|simulation|counterfactual|shadow/i.test(line)){const window=lines.slice(Math.max(0,i-2),Math.min(lines.length,i+5)).join(' '); if(/actionReadout\s*\[[^]]+\][^=]*=|policyWeights\s*[^;]*=|learnFromOutcome\s*\(/.test(window) && /syntheticReplay|simulation/i.test(window)) syntheticDirect++; if(/verified\s*[:=]\s*true|promotionEligible\s*[:=]\s*true/.test(window)&&/simulation|synthetic/i.test(window)) claimLeaks++;}}
+}
+const out={version:2,generatedAt:new Date().toISOString(),sourceFiles:files.length,violations,syntheticDirectPatterns:syntheticDirect,simulationClaimPatterns:claimLeaks,pass:violations.length===0}; fs.writeFileSync('R22_ANTI_DECORATION_AUDIT.json',JSON.stringify(out,null,2)); if(!out.pass){console.error(JSON.stringify(out));process.exit(1)} console.log(JSON.stringify(out));

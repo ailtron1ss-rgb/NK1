@@ -1,0 +1,152 @@
+[
+  {
+    "name": "frozen_no_plasticity",
+    "seed": 0,
+    "switch_step": 40,
+    "adaptation_cosine_phase2": 0.11002321541309357,
+    "retention_cosine_phase1_after_switch": 0.1325569450855255,
+    "final_fast_weight_norm": 0.0,
+    "mean_update_norm": 0.0,
+    "adaptation_time_s": 0.10544059699998343
+  },
+  {
+    "name": "three_factor_fast_synapse",
+    "seed": 0,
+    "switch_step": 40,
+    "adaptation_cosine_phase2": 0.2450414001941681,
+    "retention_cosine_phase1_after_switch": 0.19399967789649963,
+    "final_fast_weight_norm": 0.4042760729789734,
+    "mean_update_norm": 0.011953282331887749,
+    "adaptation_time_s": 0.11772167300000547
+  },
+  {
+    "name": "two_factor_fast_synapse_no_modulator",
+    "seed": 0,
+    "switch_step": 40,
+    "adaptation_cosine_phase2": 0.38703712821006775,
+    "retention_cosine_phase1_after_switch": 0.09761343151330948,
+    "final_fast_weight_norm": 0.6415703296661377,
+    "mean_update_norm": 0.020091052263160235,
+    "adaptation_time_s": 0.11768203099995844
+  },
+  {
+    "name": "frozen_no_plasticity",
+    "seed": 1,
+    "switch_step": 40,
+    "adaptation_cosine_phase2": 0.12541009485721588,
+    "retention_cosine_phase1_after_switch": -0.15479569137096405,
+    "final_fast_weight_norm": 0.0,
+    "mean_update_norm": 0.0,
+    "adaptation_time_s": 0.09789588000001004
+  },
+  {
+    "name": "three_factor_fast_synapse",
+    "seed": 1,
+    "switch_step": 40,
+    "adaptation_cosine_phase2": 0.2185123860836029,
+    "retention_cosine_phase1_after_switch": -0.09975922852754593,
+    "final_fast_weight_norm": 0.39280053973197937,
+    "mean_update_norm": 0.011734999276086455,
+    "adaptation_time_s": 0.11720620100004453
+  },
+  {
+    "name": "two_factor_fast_synapse_no_modulator",
+    "seed": 1,
+    "switch_step": 40,
+    "adaptation_cosine_phase2": 0.35362881422042847,
+    "retention_cosine_phase1_after_switch": -0.11750361323356628,
+    "final_fast_weight_norm": 0.6297568678855896,
+    "mean_update_norm": 0.019230794746545144,
+    "adaptation_time_s": 0.11598571599995466
+  },
+  {
+    "name": "frozen_no_plasticity",
+    "seed": 2,
+    "switch_step": 40,
+    "adaptation_cosine_phase2": -0.08045390993356705,
+    "retention_cosine_phase1_after_switch": -0.17433874309062958,
+    "final_fast_weight_norm": 0.0,
+    "mean_update_norm": 0.0,
+    "adaptation_time_s": 0.09785920000001624
+  },
+  {
+    "name": "three_factor_fast_synapse",
+    "seed": 2,
+    "switch_step": 40,
+    "adaptation_cosine_phase2": 0.07698703557252884,
+    "retention_cosine_phase1_after_switch": 0.07124805450439453,
+    "final_fast_weight_norm": 0.46473607420921326,
+    "mean_update_norm": 0.012947342977719245,
+    "adaptation_time_s": 0.11651399899994885
+  },
+  {
+    "name": "two_factor_fast_synapse_no_modulator",
+    "seed": 2,
+    "switch_step": 40,
+    "adaptation_cosine_phase2": 0.24589475989341736,
+    "retention_cosine_phase1_after_switch": 0.27552416920661926,
+    "final_fast_weight_norm": 0.7350852489471436,
+    "mean_update_norm": 0.020714963314821942,
+    "adaptation_time_s": 0.11771284500002821
+  },
+  {
+    "name": "frozen_no_plasticity",
+    "seed": 3,
+    "switch_step": 40,
+    "adaptation_cosine_phase2": -0.12438806146383286,
+    "retention_cosine_phase1_after_switch": -0.370000422000885,
+    "final_fast_weight_norm": 0.0,
+    "mean_update_norm": 0.0,
+    "adaptation_time_s": 0.09592624099991554
+  },
+  {
+    "name": "three_factor_fast_synapse",
+    "seed": 3,
+    "switch_step": 40,
+    "adaptation_cosine_phase2": -0.022613877430558205,
+    "retention_cosine_phase1_after_switch": -0.27636104822158813,
+    "final_fast_weight_norm": 0.47558462619781494,
+    "mean_update_norm": 0.013417713811077193,
+    "adaptation_time_s": 0.11950965799996993
+  },
+  {
+    "name": "two_factor_fast_synapse_no_modulator",
+    "seed": 3,
+    "switch_step": 40,
+    "adaptation_cosine_phase2": 0.14647984504699707,
+    "retention_cosine_phase1_after_switch": -0.21858811378479004,
+    "final_fast_weight_norm": 0.7894282341003418,
+    "mean_update_norm": 0.022623714763903992,
+    "adaptation_time_s": 0.12116011400007665
+  },
+  {
+    "name": "frozen_no_plasticity",
+    "seed": 4,
+    "switch_step": 40,
+    "adaptation_cosine_phase2": -0.1953820139169693,
+    "retention_cosine_phase1_after_switch": 0.004127319902181625,
+    "final_fast_weight_norm": 0.0,
+    "mean_update_norm": 0.0,
+    "adaptation_time_s": 0.10114531700003226
+  },
+  {
+    "name": "three_factor_fast_synapse",
+    "seed": 4,
+    "switch_step": 40,
+    "adaptation_cosine_phase2": -0.042731743305921555,
+    "retention_cosine_phase1_after_switch": 0.2021600604057312,
+    "final_fast_weight_norm": 0.457427054643631,
+    "mean_update_norm": 0.012617122480696708,
+    "adaptation_time_s": 0.12431387800006632
+  },
+  {
+    "name": "two_factor_fast_synapse_no_modulator",
+    "seed": 4,
+    "switch_step": 40,
+    "adaptation_cosine_phase2": 0.10402021557092667,
+    "retention_cosine_phase1_after_switch": 0.3866831660270691,
+    "final_fast_weight_norm": 0.6919574737548828,
+    "mean_update_norm": 0.020134916121605784,
+    "adaptation_time_s": 0.12450434599998061
+  }
+]

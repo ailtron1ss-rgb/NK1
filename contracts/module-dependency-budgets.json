@@ -1,0 +1,130 @@
+{
+  "schemaVersion": 1,
+  "purpose": "Prevent unreviewed growth of central modules while separating runtime dependency coupling from compile-time type coupling.",
+  "metric": "unique relative-import graph edges; runtime and TypeScript type-only edges are classified separately",
+  "baseline": {
+    "branch": "workpass70-source",
+    "auditedCommit": "575a38867d869061e6f3d9cb45d236be2a7923ed",
+    "workflowRun": "44550614689",
+    "note": "Observed exact-head graph on 2026-11-19: 2,524 source files, 702 canonical files, 5,281 edges (4,518 runtime / 763 type-only); zero missing imports, runtime cycles and boundary violations. Five stale budget ceilings were identified and corrected from the emitted report. DevelopmentalNeuralRuntime's 125-edge snapshot/compatibility aggregation remains a tracked technical-debt hotspot; its constructor groups are extracted but snapshot dependencies are not yet narrowed."
+  },
+  "modules": [
+    {
+      "path": "runtime/neuro-kurisu/src/organism/core/OrganismCore.ts",
+      "maxOutDegree": 550,
+      "maxRuntimeOutDegree": 500,
+      "maxTypeOutDegree": 270,
+      "maxProductionRuntimeInDegree": 12,
+      "maxProductionTypeOnlyInDegree": 10,
+      "reason": "Largest canonical runtime dependency hub (417 total / 379 runtime outgoing edges in schema-v3 graph). Keep a small, explicit budget while future extraction reduces this composition root; do not add production inbound owners."
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/persistence/StateMigrations.ts",
+      "maxOutDegree": 350,
+      "maxRuntimeOutDegree": 250,
+      "maxTypeOutDegree": 160,
+      "maxProductionRuntimeInDegree": 3,
+      "maxProductionTypeOnlyInDegree": 2,
+      "reason": "Migration coordinator delegates eight initial-facet builders through a narrow facade; preserve the measured reduction and split normalization/migration logic further only behind stable contracts."
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/core/types.ts",
+      "maxOutDegree": 210,
+      "maxRuntimeOutDegree": 0,
+      "maxTypeOutDegree": 210,
+      "maxProductionRuntimeInDegree": 2,
+      "maxProductionTypeOnlyInDegree": 260,
+      "reason": "Shared type contract hotspot. ReleaseContract is consumed only in a type query and must stay type-only; runtime imports from this module are forbidden. Incoming type-only fan-in is tracked independently."
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/core/DevelopmentalNeuralRuntime.ts",
+      "maxOutDegree": 130,
+      "maxRuntimeOutDegree": 130,
+      "maxTypeOutDegree": 17,
+      "maxProductionRuntimeInDegree": 1,
+      "maxProductionTypeOnlyInDegree": 1,
+      "reason": "Measured current-source snapshot/compatibility aggregator (125 outgoing edges on the exact audit run). Constructor ownership is already split into four DevelopmentalInstanceGroup modules, but the facade still imports broad domain snapshot/default helpers. Hold the measured fan-out at <=130 while a separate snapshot projection extraction is designed; do not claim this is yet a narrow facade."
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/cognition/index.ts",
+      "maxOutDegree": 86,
+      "maxRuntimeOutDegree": 86,
+      "maxTypeOutDegree": 0,
+      "maxProductionRuntimeInDegree": 0,
+      "maxProductionTypeOnlyInDegree": 0,
+      "reason": "Broad cognition barrel; production modules should import narrow leaf modules rather than re-importing the full barrel."
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/core/CognitiveRuntimeCluster.ts",
+      "maxOutDegree": 85,
+      "maxRuntimeOutDegree": 80,
+      "maxTypeOutDegree": 10,
+      "maxProductionRuntimeInDegree": 2,
+      "maxProductionTypeOnlyInDegree": 2,
+      "reason": "Runtime wiring cluster (70 total / 65 runtime outgoing edges). Avoid adding more direct wiring; new capabilities should use existing subsystem owner contracts."
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/index.ts",
+      "maxOutDegree": 70,
+      "maxRuntimeOutDegree": 70,
+      "maxTypeOutDegree": 0,
+      "maxProductionRuntimeInDegree": 0,
+      "maxProductionTypeOnlyInDegree": 0,
+      "reason": "Public package barrel currently has 67 exports. Preserve it as an outward-facing compatibility surface, but internal production modules must prefer narrow leaf imports; cap growth at 70."
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/cognition/NeuralExperienceBranch.ts",
+      "maxOutDegree": 55,
+      "maxRuntimeOutDegree": 52,
+      "maxTypeOutDegree": 5,
+      "maxProductionRuntimeInDegree": 3,
+      "maxProductionTypeOnlyInDegree": 3,
+      "reason": "Complex cognition integration branch; isolate independent capabilities behind specific contracts."
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts",
+      "maxOutDegree": 55,
+      "maxRuntimeOutDegree": 45,
+      "maxTypeOutDegree": 12,
+      "maxProductionRuntimeInDegree": 5,
+      "maxProductionTypeOnlyInDegree": 3,
+      "reason": "Runtime entry seam; new behavior should be delegated to existing owned runtimes."
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/core/DevelopmentalInstanceGroupLearning.ts",
+      "maxOutDegree": 42,
+      "maxRuntimeOutDegree": 42,
+      "maxTypeOutDegree": 0,
+      "maxProductionRuntimeInDegree": 1,
+      "maxProductionTypeOnlyInDegree": 0,
+      "reason": "Own the first 42 developmental learning and neural-substrate constructors."
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/core/DevelopmentalInstanceGroupCausal.ts",
+      "maxOutDegree": 51,
+      "maxRuntimeOutDegree": 51,
+      "maxTypeOutDegree": 0,
+      "maxProductionRuntimeInDegree": 1,
+      "maxProductionTypeOnlyInDegree": 0,
+      "reason": "Own the B261–B349 causal cognition and organism integration constructors."
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/core/DevelopmentalInstanceGroupPredictive.ts",
+      "maxOutDegree": 27,
+      "maxRuntimeOutDegree": 27,
+      "maxTypeOutDegree": 0,
+      "maxProductionRuntimeInDegree": 1,
+      "maxProductionTypeOnlyInDegree": 0,
+      "reason": "Own B365 and the B2501–B2525 predictive/replay field constructors."
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/core/DevelopmentalInstanceGroupLifeCourse.ts",
+      "maxOutDegree": 15,
+      "maxRuntimeOutDegree": 15,
+      "maxTypeOutDegree": 0,
+      "maxProductionRuntimeInDegree": 1,
+      "maxProductionTypeOnlyInDegree": 0,
+      "reason": "Own B385–B2500 life-course, continuity, and long-horizon development constructors."
+    }
+  ]
+}

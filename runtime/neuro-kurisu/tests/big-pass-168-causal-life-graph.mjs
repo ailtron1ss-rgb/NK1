@@ -1,0 +1,8 @@
+import assert from 'node:assert/strict';
+import { CausalLifeGraph } from '../src/organism/system/CausalLifeGraph.ts';
+import { EmotionAppraisalEngine } from '../src/organism/system/EmotionAppraisalEngine.ts';
+const graph=new CausalLifeGraph();
+graph.recordCycle({tick:1,at:100,experience:{id:'e1',label:'external observation',confidence01:.9,external01:1},emotion:{id:'emo1',label:'curiosity',confidence01:.8,external01:1},memory:{id:'m1',label:'remember exploration',confidence01:.8,external01:1},decision:{id:'d1',label:'explore',confidence01:.8},action:{id:'a1',label:'explore',confidence01:.8},outcome:{id:'o1',label:'success',confidence01:.9,external01:1},learning:{id:'l1',label:'learned exploration',confidence01:.8},selfChange:{id:'s1',label:'changed by experience',confidence01:.7}});
+const s=graph.summary(); assert.equal(s.completeChains,1); assert.ok(s.chainCoverage01===1); assert.ok(s.edges>=7); const explain=graph.explainRef({kind:'decision',refId:'d1'}); assert.equal(explain.found,true); assert.ok(explain.nodes.length>=4); const path=graph.causalPath({kind:'experience',refId:'e1'},{kind:'self-change',refId:'s1'}); assert.equal(path.found,true); assert.ok(path.edges.length>=4);
+const emo=new EmotionAppraisalEngine(); const ep=emo.appraise({tick:1,goalPressure01:.8,novelty01:.9,uncertainty01:.5,predictionError01:.4,success01:.8,external:true}); const feel=emo.inferFeeling(ep,{energy01:.7,cognitiveLoad01:.3,uncertainty01:.4,selfFocus01:.9}); assert.equal(feel.causeEmotionId,ep.id); assert.ok(feel.selfAccessConfidence01>=.46);
+console.log(`BIG_PASS_168_GRAPH=PASS nodes=${s.nodes} edges=${s.edges} chainCoverage=${s.chainCoverage01.toFixed(3)} feeling=${feel.label}:${feel.intensity01.toFixed(3)}`);

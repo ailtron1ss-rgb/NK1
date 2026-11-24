@@ -1,0 +1,126 @@
+import assert from 'node:assert/strict';
+import { MicroDreamEngine } from '../src/organism/developmental/MicroDreamEngine.ts';
+import { IntrinsicExperimentGenerator } from '../src/organism/cognition/IntrinsicExperimentGenerator.ts';
+
+const memories = [
+  {
+    id: 'memory-oscillator',
+    content: 'Quantum oscillator calibration drift affects coherence readings in the sensor network.',
+    confidence01: .88,
+    salience01: .8,
+    semanticLinks: [],
+    entities: ['quantum oscillator'],
+  },
+  {
+    id: 'memory-memory-writes',
+    content: 'Calibration drift across quantum memory writes alters oscillator coherence.',
+    confidence01: .82,
+    salience01: .72,
+    semanticLinks: [],
+    entities: ['quantum memory'],
+  },
+  {
+    id: 'memory-audio',
+    content: 'Calibration drift during audio amplifier harmonic analysis changes output distortion.',
+    confidence01: .75,
+    salience01: .5,
+    semanticLinks: [],
+    entities: ['audio amplifier'],
+  },
+];
+const original = structuredClone(memories);
+const first = new MicroDreamEngine();
+const result = first.dreamAssociations(memories, 'workpass317-seed', {
+  at: 1_000,
+  uncertainty01: .6,
+  memoryEvidence01: .8,
+  novelty01: .75,
+});
+assert.ok(result.generated > 0, 'dream pass should produce candidate cross-memory links');
+assert.ok(result.generated <= 3, 'dream pass must keep candidate generation bounded');
+assert.equal(first.snapshot().associationCandidates, result.generated);
+assert.ok(result.candidates.every(d => d.kind === 'association' && d.validationStatus === 'candidate'),
+  'dreamed links must remain explicitly unvalidated hypotheses');
+assert.ok(result.candidates.every(d => d.sourceMemoryIds?.length === 2 && d.sharedTerms && d.sharedTerms.length >= 2),
+  'each candidate must expose bounded source IDs and the shared-term explanation');
+assert.ok(result.candidates.every(d => d.confidence >= 0 && d.confidence <= 1));
+assert.deepEqual(memories, original, 'dreaming must not mutate the source memory records');
+assert.ok(result.candidates.every(d => !d.simulation.includes('validated:')),
+  'candidate generation must not imply independent verification or promotion');
+
+const repeated = first.dreamAssociations(memories, 'workpass317-next-tick', {
+  at: 2_000,
+  uncertainty01: .6,
+  memoryEvidence01: .8,
+  novelty01: .75,
+});
+assert.equal(repeated.generated, 0, 'identical memory pairs should not be re-emitted during the cooldown');
+assert.ok(repeated.deduplicated > 0, 'repeated candidates should be counted rather than silently duplicated');
+assert.equal(first.diagnostics().deduplicatedAssociations, repeated.deduplicated);
+
+const restored = new MicroDreamEngine();
+restored.restore(first.snapshot());
+const afterRestore = restored.dreamAssociations(memories, 'workpass317-after-restore', {
+  at: 3_000,
+  uncertainty01: .6,
+  memoryEvidence01: .8,
+  novelty01: .75,
+});
+assert.equal(afterRestore.generated, 0, 'association cooldown should survive restart');
+assert.ok(afterRestore.deduplicated > 0);
+
+const independentlyGenerated = new MicroDreamEngine();
+const deterministic = independentlyGenerated.dreamAssociations(memories, 'workpass317-seed', {
+  at: 1_000,
+  uncertainty01: .6,
+  memoryEvidence01: .8,
+  novelty01: .75,
+});
+assert.deepEqual(
+  deterministic.candidates.map(d => ({ id: d.id, sourceMemoryIds: d.sourceMemoryIds, sharedTerms: d.sharedTerms })),
+  result.candidates.map(d => ({ id: d.id, sourceMemoryIds: d.sourceMemoryIds, sharedTerms: d.sharedTerms })),
+  'fixed memory input and seed should yield deterministic association hypotheses',
+);
+
+const trustFiltered = new MicroDreamEngine();
+const untrustedMemories = [
+  ...memories,
+  { id: 'quarantine-record', content: 'Calibration drift oscillator coherence quarantine contaminant.', confidence01: .99, salience01: .99, kind: 'semantic', epistemicStatus: 'quarantined', provenanceClass: 'external', sourceAuthority01: 1 },
+  { id: 'unknown-record', content: 'Calibration drift oscillator coherence unknown input.', confidence01: .99, salience01: .99, kind: 'semantic', epistemicStatus: 'unknown', provenanceClass: 'external', sourceAuthority01: 1 },
+  { id: 'recursive-dream', content: 'Calibration drift oscillator coherence self-generated dream.', confidence01: .99, salience01: .99, kind: 'dream', epistemicStatus: 'fact', provenanceClass: 'agent', sourceAuthority01: 1 },
+  { id: 'expired-record', content: 'Calibration drift oscillator coherence expired information.', confidence01: .99, salience01: .99, kind: 'semantic', epistemicStatus: 'fact', provenanceClass: 'external', sourceAuthority01: 1, validUntilAt: 999 },
+  { id: 'weak-confidence', content: 'Calibration drift oscillator coherence low confidence memory.', confidence01: .1, salience01: .99, kind: 'semantic', epistemicStatus: 'fact', provenanceClass: 'external', sourceAuthority01: 1 },
+  { id: 'untrusted-simulation', content: 'Calibration drift oscillator coherence speculative simulation.', confidence01: .99, salience01: .99, kind: 'semantic', epistemicStatus: 'fact', provenanceClass: 'simulation', sourceAuthority01: 1 },
+  { id: 'low-authority', content: 'Calibration drift oscillator coherence low authority data.', confidence01: .99, salience01: .99, kind: 'semantic', epistemicStatus: 'fact', provenanceClass: 'external', sourceAuthority01: .1 },
+];
+const filtered = trustFiltered.dreamAssociations(untrustedMemories, 'filtered-seed', { at: 5_000, uncertainty01: .6, memoryEvidence01: .8, novelty01: .75 });
+assert.equal(filtered.consideredMemories, memories.length, 'quarantined, unknown, expired, low-confidence, simulated and dream-generated memories must be excluded before association scoring');
+assert.ok(filtered.candidates.every(d => d.sourceMemoryIds.every(id => memories.some(m => m.id === id))), 'no excluded record may become a source for a dreamed association');
+const experimentGenerator = new IntrinsicExperimentGenerator();
+const queuedDreamExperiment = experimentGenerator.fromDreamAssociation(result.candidates[0], []);
+assert.ok(queuedDreamExperiment, 'a sufficiently grounded candidate dream should adapt into a verification experiment');
+assert.equal(queuedDreamExperiment.action, 'verify', 'dream associations must be queued for verification, not execution as facts');
+assert.equal(queuedDreamExperiment.source, 'dream-association');
+assert.equal(queuedDreamExperiment.epistemicStatus, 'hypothesis');
+assert.equal(queuedDreamExperiment.status, 'candidate');
+assert.equal(queuedDreamExperiment.verificationRequired, true);
+assert.ok(queuedDreamExperiment.hypothesis.includes('Unverified association hypothesis only'));
+assert.deepEqual(queuedDreamExperiment.sourceMemoryIds, result.candidates[0].sourceMemoryIds);
+assert.equal(experimentGenerator.fromDreamAssociation({ ...result.candidates[0], validationStatus: 'validated' }, []), null, 'only unvalidated association candidates may enter the verification queue');
+assert.equal(experimentGenerator.fromDreamAssociation({ ...result.candidates[0], confidence: .2 }, []), null, 'low-confidence dream candidates must not become experiment tasks');
+const alreadyLinked = memories.map(m => ({ ...m, semanticLinks: [...m.semanticLinks] }));
+alreadyLinked[0].semanticLinks = ['memory-memory-writes'];
+const linkedKernel = new MicroDreamEngine();
+const linkedResult = linkedKernel.dreamAssociations(alreadyLinked.slice(0, 2), 'linked-pair', { at: 5_000 });
+assert.equal(linkedResult.generated, 0, 'already-linked memory pairs must not be proposed as new associations');
+
+console.log('WORKPASS317_MICRO_DREAM_ASSOCIATIONS=PASS', JSON.stringify({
+  generated: result.generated,
+  deduplicated: repeated.deduplicated,
+  sample: result.candidates[0] ? {
+    ids: result.candidates[0].sourceMemoryIds,
+    sharedTerms: result.candidates[0].sharedTerms,
+    confidence: result.candidates[0].confidence,
+    validationStatus: result.candidates[0].validationStatus,
+  } : null,
+}));

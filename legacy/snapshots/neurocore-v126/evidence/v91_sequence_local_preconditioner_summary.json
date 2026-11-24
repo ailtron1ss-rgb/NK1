@@ -1,0 +1,9 @@
+{
+  "benchmark": "episodic_key_value_recall",
+  "seeds": 5,
+  "steps": 240,
+  "baseline": {"name": "V90_frozen", "mean_seconds": 2.969794580800044, "mean_cosine": 0.4335362672805786, "mean_top1": 0.29166666567325594},
+  "current": {"name": "V91_sequence_local_preconditioner", "mean_seconds": 2.9837778807997895, "mean_cosine": 0.44515785574913025, "mean_top1": 0.3197916656732559},
+  "relative_change_percent": {"seconds_mean": 0.47085074806685334, "cosine_mean": 2.6806496585510153, "top1_mean": 9.642857175700502},
+  "interpretation": "qualified local improvement with near-neutral mean training cost; not universal superiority proof"
+}

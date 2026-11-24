@@ -1,0 +1,40 @@
+name: NK1 memory decision evidence receipt WorkPass74
+
+on:
+  push:
+    branches:
+      - aspect/autonomy-verified-agency-outcome-loop-20261124-r2
+    paths:
+      - ".github/workflows/nk1-memory-decision-receipt-workpass74.yml"
+      - "runtime/neuro-kurisu/src/organism/core/types.ts"
+      - "runtime/neuro-kurisu/src/organism/core/OrganismCore.ts"
+      - "runtime/neuro-kurisu/src/organism/system/MemoryWorldCausalBridge.ts"
+      - "runtime/neuro-kurisu/tests/memory-decision-receipt-workpass74.mjs"
+  pull_request:
+    paths:
+      - "runtime/neuro-kurisu/src/organism/core/types.ts"
+      - "runtime/neuro-kurisu/src/organism/core/OrganismCore.ts"
+      - "runtime/neuro-kurisu/src/organism/system/MemoryWorldCausalBridge.ts"
+      - "runtime/neuro-kurisu/tests/memory-decision-receipt-workpass74.mjs"
+
+permissions:
+  contents: read
+
+jobs:
+  memory-decision-receipt:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          package-manager-cache: false
+      - name: Memory decision evidence receipt regression
+        working-directory: runtime/neuro-kurisu
+        run: |
+          node --experimental-strip-types tests/memory-decision-receipt-workpass74.mjs
+          node --experimental-strip-types tests/big-pass-205-memory-world-causal.mjs
+          node --experimental-strip-types tests/metacognitive-episode-runtime-workpass613.mjs

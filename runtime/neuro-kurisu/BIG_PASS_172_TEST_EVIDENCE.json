@@ -1,0 +1,24 @@
+{
+  "pass": 172,
+  "status": "PASS",
+  "direct": {
+    "positiveValence01": 0.881,
+    "stressLabel": "anxiety",
+    "feelingMismatch01": 0.48795376,
+    "restBias": 0.03016972243336925
+  },
+  "p66": {
+    "highMode": "recover",
+    "highPressure01": 0.59437214,
+    "recoveryDebtAfterRecovery01": 0.04749079817057257
+  },
+  "core": {
+    "stableRegulation01": 0.12715792306635645,
+    "stressRegulation01": 0.30399932933103124,
+    "stableMeanStress01": 0.46216629438421847,
+    "stressMeanStress01": 0.7354595194187912,
+    "stableRecoveryDebt01": 0.04861567673827329,
+    "stressRecoveryDebt01": 0.22347125886653255,
+    "restart": true
+  }
+}

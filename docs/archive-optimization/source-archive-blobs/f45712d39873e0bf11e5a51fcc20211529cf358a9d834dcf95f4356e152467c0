@@ -1,0 +1,27 @@
+{
+  "release": "neuro-kurisu-evolution",
+  "version": "35.40.0",
+  "organismCore": "100.32.0-r26-hierarchical-lowrank-causal",
+  "stateSchema": 223,
+  "phase": "Stage-125/R26-Hierarchical-LowRank-Causal",
+  "canonicalPath": "src/organism",
+  "legacyPath": "legacy-original",
+  "runtimeDependencies": 0,
+  "buildDependencies": 0,
+  "packageLock": "v3-zero-dependency-tree",
+  "researchReleaseSplit": true,
+  "deviceGate": "recommended-before-long-running-Android-use",
+  "stateModel": "domain-facets-memory-embodiment-learning-consciousness-evolution-plus-developmental-cognition",
+  "integrity": "sha256-state-hash-plus-invariant-engine",
+  "replay": "trace-signature-v1",
+  "transactionalPersistence": "batch-commit-with-device-aware-checkpoint-coalescing",
+  "persistenceProfiles": {
+    "serverDefault": "active",
+    "phoneCheckpointMinMs": 60000,
+    "phoneMaxDirtyCycles": 12,
+    "phoneWorldCheckpointMinMs": 300000,
+    "phoneWorldMaxDirtyCycles": 10,
+    "phoneBackupEverySaves": 4
+  },
+  "autonomousRuntime": true
+}

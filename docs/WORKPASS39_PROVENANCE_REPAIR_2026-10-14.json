@@ -1,0 +1,77 @@
+{
+  "date": "2026-10-14",
+  "pass": "WorkPass39",
+  "reason": "Preserve immutable historical bytes after active code files changed in WorkPass39.",
+  "immutableBlobsCreated": 2,
+  "manifestRefsRepointed": 8,
+  "blobs": [
+    {
+      "path": "docs/archive-optimization/source-archive-blobs/f6486167910f13f38a5744c7f88266be31e782c2a88eb3c5325654d4eb85c830",
+      "sha256": "f6486167910f13f38a5744c7f88266be31e782c2a88eb3c5325654d4eb85c830",
+      "sizeBytes": 3621
+    },
+    {
+      "path": "docs/archive-optimization/source-archive-blobs/5b93ab77f2ffd8d7befb5f60032a865835048a36883958a78025e4f80a6dcb87",
+      "sha256": "5b93ab77f2ffd8d7befb5f60032a865835048a36883958a78025e4f80a6dcb87",
+      "sizeBytes": 5217
+    }
+  ],
+  "references": [
+    {
+      "manifest": "docs/archive-optimization/source-archive-manifests/Neuro_Kurisu_35.30.0_R16_PASS_11_SEMANTIC_ISOLATION_2026-09-29.manifest.json",
+      "member": "nk_pass10/src/organism/cognition/CognitiveNetworkBus.ts",
+      "formerCanonicalPath": "runtime/neuro-kurisu/src/organism/cognition/CognitiveNetworkBus.ts",
+      "blobPath": "docs/archive-optimization/source-archive-blobs/f6486167910f13f38a5744c7f88266be31e782c2a88eb3c5325654d4eb85c830",
+      "sha256": "f6486167910f13f38a5744c7f88266be31e782c2a88eb3c5325654d4eb85c830"
+    },
+    {
+      "manifest": "docs/archive-optimization/source-archive-manifests/Neuro_Kurisu_35.30.0_R16_PASS_11_SEMANTIC_ISOLATION_2026-09-29.manifest.json",
+      "member": "nk_pass10/src/organism/system/ExternalEvidenceTrust.ts",
+      "formerCanonicalPath": "runtime/neuro-kurisu/src/organism/system/ExternalEvidenceTrust.ts",
+      "blobPath": "docs/archive-optimization/source-archive-blobs/5b93ab77f2ffd8d7befb5f60032a865835048a36883958a78025e4f80a6dcb87",
+      "sha256": "5b93ab77f2ffd8d7befb5f60032a865835048a36883958a78025e4f80a6dcb87"
+    },
+    {
+      "manifest": "docs/archive-optimization/source-archive-manifests/Neuro_Kurisu_35.40.0_R26_PASS20_RESTORE_SYMMETRY_2026-10-01.manifest.json",
+      "member": "src/organism/system/ExternalEvidenceTrust.ts",
+      "formerCanonicalPath": "runtime/neuro-kurisu/src/organism/system/ExternalEvidenceTrust.ts",
+      "blobPath": "docs/archive-optimization/source-archive-blobs/5b93ab77f2ffd8d7befb5f60032a865835048a36883958a78025e4f80a6dcb87",
+      "sha256": "5b93ab77f2ffd8d7befb5f60032a865835048a36883958a78025e4f80a6dcb87"
+    },
+    {
+      "manifest": "docs/archive-optimization/source-archive-manifests/Neuro_Kurisu_35.40.0_R26_PASS20_RESTORE_SYMMETRY_2026-10-01.manifest.json",
+      "member": "src/organism/cognition/CognitiveNetworkBus.ts",
+      "formerCanonicalPath": "runtime/neuro-kurisu/src/organism/cognition/CognitiveNetworkBus.ts",
+      "blobPath": "docs/archive-optimization/source-archive-blobs/f6486167910f13f38a5744c7f88266be31e782c2a88eb3c5325654d4eb85c830",
+      "sha256": "f6486167910f13f38a5744c7f88266be31e782c2a88eb3c5325654d4eb85c830"
+    },
+    {
+      "manifest": "docs/archive-optimization/historical-snapshot-2026-10-06.manifest.json",
+      "member": "Neuro_Kurisu_SUPER_2026-10-06/legacy/snapshots/neuro-kurisu-35.30/src/organism/cognition/CognitiveNetworkBus.ts",
+      "formerCanonicalPath": "runtime/neuro-kurisu/src/organism/cognition/CognitiveNetworkBus.ts",
+      "blobPath": "docs/archive-optimization/source-archive-blobs/f6486167910f13f38a5744c7f88266be31e782c2a88eb3c5325654d4eb85c830",
+      "sha256": "f6486167910f13f38a5744c7f88266be31e782c2a88eb3c5325654d4eb85c830"
+    },
+    {
+      "manifest": "docs/archive-optimization/historical-snapshot-2026-10-06.manifest.json",
+      "member": "Neuro_Kurisu_SUPER_2026-10-06/legacy/snapshots/neuro-kurisu-35.30/src/organism/system/ExternalEvidenceTrust.ts",
+      "formerCanonicalPath": "runtime/neuro-kurisu/src/organism/system/ExternalEvidenceTrust.ts",
+      "blobPath": "docs/archive-optimization/source-archive-blobs/5b93ab77f2ffd8d7befb5f60032a865835048a36883958a78025e4f80a6dcb87",
+      "sha256": "5b93ab77f2ffd8d7befb5f60032a865835048a36883958a78025e4f80a6dcb87"
+    },
+    {
+      "manifest": "docs/archive-optimization/historical-snapshot-2026-10-06.manifest.json",
+      "member": "Neuro_Kurisu_SUPER_2026-10-06/runtime/neuro-kurisu/src/organism/cognition/CognitiveNetworkBus.ts",
+      "formerCanonicalPath": "runtime/neuro-kurisu/src/organism/cognition/CognitiveNetworkBus.ts",
+      "blobPath": "docs/archive-optimization/source-archive-blobs/f6486167910f13f38a5744c7f88266be31e782c2a88eb3c5325654d4eb85c830",
+      "sha256": "f6486167910f13f38a5744c7f88266be31e782c2a88eb3c5325654d4eb85c830"
+    },
+    {
+      "manifest": "docs/archive-optimization/historical-snapshot-2026-10-06.manifest.json",
+      "member": "Neuro_Kurisu_SUPER_2026-10-06/runtime/neuro-kurisu/src/organism/system/ExternalEvidenceTrust.ts",
+      "formerCanonicalPath": "runtime/neuro-kurisu/src/organism/system/ExternalEvidenceTrust.ts",
+      "blobPath": "docs/archive-optimization/source-archive-blobs/5b93ab77f2ffd8d7befb5f60032a865835048a36883958a78025e4f80a6dcb87",
+      "sha256": "5b93ab77f2ffd8d7befb5f60032a865835048a36883958a78025e4f80a6dcb87"
+    }
+  ]
+}

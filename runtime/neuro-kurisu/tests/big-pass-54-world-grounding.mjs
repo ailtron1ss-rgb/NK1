@@ -1,0 +1,13 @@
+import assert from 'node:assert/strict';
+import { GroundedWorldState } from '../src/organism/world/GroundedWorldState.ts';
+import { P41SemanticPerceptionEngine } from '../src/organism/cognition/P41SemanticPerception.ts';
+import { PerceptualEvidenceCompiler } from '../src/organism/body/PerceptualEvidenceCompiler.ts';
+import { P27NeuralWorldFoundation } from '../src/organism/cognition/P27NeuralWorldFoundation.ts';
+const p=new P41SemanticPerceptionEngine();
+p.ingest({at:1000,vision:{semantic:true,sceneLabel:'lab',confidence01:.9,objects:[{label:'terminal',confidence01:.92}],relations:[{from:'person',relation:'near',to:'terminal',confidence01:.8}],events:[{label:'person-entered',confidence01:.77}]}});
+const e=new PerceptualEvidenceCompiler(); const evidence=e.compile({at:1000,semantic:p.snapshot()});
+const gw=new GroundedWorldState(); const context=gw.integrate({at:1100,base:{tick:1,location:'lab',energy:.8,attention:.7,uncertainty:.2,facts:['lab-open'],objects:[],events:[]},perception:p.snapshot(),evidence});
+assert.ok(context.objects.some(x=>x.label==='terminal')); assert.ok(context.facts.some(x=>x.startsWith('hypothesis-relation:')||x.startsWith('observed-relation:'))); assert.ok(context.facts.some(x=>x.startsWith('hypothesis-evidence:')||x.startsWith('observed-evidence:')));
+const snap=gw.snapshot(); assert.ok(snap.lastHash); const restored=new GroundedWorldState(); restored.restore(snap); assert.deepEqual(restored.snapshot(),snap);
+const wm=new P27NeuralWorldFoundation(); const latent=wm.fuse(wm.encode({vision:{features:[.1,.2,.3],confidence01:.8},world:context})); const prediction=wm.predict(latent,'explore'); assert.ok(Number.isFinite(prediction.reward01));
+console.log(`BIG_PASS_54_WORLD_GROUNDING=PASS entities=${snap.entities.length} relations=${snap.relations.length} facts=${snap.facts.length} confidence=${snap.confidence01.toFixed(3)} modelConfidence=${prediction.confidence01.toFixed(3)}`);

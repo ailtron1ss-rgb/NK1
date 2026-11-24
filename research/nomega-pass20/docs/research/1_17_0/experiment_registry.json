@@ -1,0 +1,36 @@
+{
+  "release": "1.17.0-dev",
+  "status": "research_only",
+  "experiments": [
+    {
+      "id": "typed_grounding_v9",
+      "status": "retain",
+      "artifact": "runtime/typed_grounding_v9_matched_ablation.json",
+      "result": "family routing improved from 0.0333 to 0.5333 in the short matched run; verified end-to-end remained 0"
+    },
+    {
+      "id": "skill_retrieval_v1",
+      "status": "retain_as_hybrid",
+      "artifact": "runtime/neural_skill_retrieval_v1_matched_ablation.json",
+      "result": "verified rate 0.0 -> 0.2222; holdout 0.0694 -> 0.3542; adversarial 0.0833 -> 0.3681; HVM 0.0444 -> 0.3111"
+    },
+    {
+      "id": "semantic_repair_v2",
+      "status": "reject_for_now",
+      "artifact": "runtime/nomega_1_16_repair_v2_only.json",
+      "result": "did not beat V1 local repair in the matched short run"
+    },
+    {
+      "id": "typed_sketch_search_v10",
+      "status": "reject_for_now",
+      "artifact": "runtime/nomega_1_16_search_and_repair_v2.json",
+      "result": "V10 was below V9 on holdout/adversarial/HVM in the matched short run"
+    },
+    {
+      "id": "active_retrieval_v2",
+      "status": "research_only",
+      "artifact": "runtime/nomega_1_17_active_retrieval.json",
+      "result": "quality approximately matched V1 while reducing the survivors requiring full verification"
+    }
+  ]
+}

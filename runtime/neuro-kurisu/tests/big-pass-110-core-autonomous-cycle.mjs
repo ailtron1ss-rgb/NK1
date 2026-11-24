@@ -1,0 +1,15 @@
+import assert from 'node:assert/strict';
+import { OrganismCore } from '../src/organism/core/OrganismCore.ts';
+import { MemoryStateStore } from '../src/organism/persistence/MemoryStateStore.ts';
+const store=new MemoryStateStore();
+const core=new OrganismCore(store,{enableLanguage:false,checkpointMinIntervalMs:0});
+await core.init();
+const h=core.p36Propose(); assert.ok(h);
+const cycle=core.p36BeginDevelopmentCycle({hypothesisId:h.id,origin:'autonomous-gap',requestedAction:'verify',objective:'externally verified development task'}); assert.ok(cycle);
+assert.equal(core.p36DevelopmentTaskRequest()?.requestedAction,'verify');
+assert.ok(core.p36ActiveDevelopmentCycle());
+await core.flush();
+const core2=new OrganismCore(store,{enableLanguage:false,checkpointMinIntervalMs:0}); await core2.init();
+assert.equal(core2.p36ActiveDevelopmentCycle()?.hypothesisId,h.id);
+assert.equal(core2.p36DevelopmentTaskRequest()?.issuedTasks,0);
+console.log('BIG_PASS_110_CORE_AUTONOMOUS_CYCLE=PASS',JSON.stringify({cycleId:core2.p36ActiveDevelopmentCycle()?.id,hypothesisId:h.id,schema:core2.snapshot().state.version}));

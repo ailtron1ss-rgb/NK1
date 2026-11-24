@@ -1,0 +1,43 @@
+{
+  "release": "34.68.0",
+  "pass": 95,
+  "overallEngineeringReadiness": 59,
+  "areas": {
+    "runtimeStability": 96,
+    "persistence": 91,
+    "cognitiveIntegration": 87,
+    "causalTraceability": 89,
+    "unifiedLearning": 78,
+    "memoryConsolidation": 69,
+    "worldModelling": 72,
+    "mobileEfficiency": 86,
+    "identity": 81,
+    "agency": 74,
+    "embodiment": 77,
+    "sensorium": 82,
+    "semanticVision": 58,
+    "socialCognition": 72,
+    "personContinuity": 64,
+    "secondOrderSocialMind": 48,
+    "longHorizonAutonomy": 45,
+    "consciousnessMechanism": 20,
+    "consciousnessResearch": 70
+  },
+  "previousPlan": {
+    "p83Fix": 100,
+    "persistenceFix": 100,
+    "cognitiveFrame": 100,
+    "evcScheduler": 100,
+    "dirtyRouting": 92,
+    "p26p30Fusion": 82,
+    "memoryConsolidation": 55,
+    "realSensorium": 86,
+    "semanticVisionContract": 100,
+    "semanticVisionBackend": 65,
+    "socialMindPersonContinuity": 86,
+    "secondOrderSocialMind": 70,
+    "deviceSkillHierarchy": 0,
+    "longHorizonAndroid": 22
+  },
+  "truthfulnessBoundary": "No claim of human-like consciousness or verified mind-reading is made."
+}

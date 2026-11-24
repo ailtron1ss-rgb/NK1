@@ -1,0 +1,100 @@
+{
+  "release": "35.6.54",
+  "core": "79.7.0-memory-self-consolidation-b2512-b2514",
+  "schema": 172,
+  "status": "research-release",
+  "modules": ["B2512", "B2513", "B2514"],
+  "tests": {
+    "b2512_b2514_direct": {
+      "status": "PASS",
+      "b2512": {
+        "episodes": 192,
+        "learningUpdates": 683,
+        "consolidationCycles": 44,
+        "factCount": 2,
+        "semanticConfidence": 1,
+        "memoryIntegrity01": 0.88,
+        "identityFirewall01": 1,
+        "semanticUtility01": 0.8765,
+        "gatedRate01": 0.1274,
+        "contradictions": 0,
+        "rawRetention": 192,
+        "protectedIdentityDrift01": 0,
+        "lesionEffect01": 0.21
+      },
+      "b2513": {
+        "cycles": 80,
+        "rollouts": 1680,
+        "learningUpdates": 80,
+        "futureCoherence01": 0.999977,
+        "identityContinuity01": 0.999982,
+        "goalConsistency01": 0.999972,
+        "predictionError01": 0.05615,
+        "chosenAction": "verify",
+        "chosenActionUtility01": 0.7667,
+        "lesionEffect01": 0.49999
+      },
+      "b2514": {
+        "status": "PASS",
+        "surpriseEventRank": 0,
+        "meanNeed01": 0.2719,
+        "items": 9
+      }
+    },
+    "b2512_holdout": {
+      "status": "PASS",
+      "gatedError01": 0.06600,
+      "naiveError01": 0.43803,
+      "improvement01": 0.8493255,
+      "gatedVerifyError01": 0.042,
+      "gatedRespondError01": 0.024,
+      "identityFirewall01": 1,
+      "rawRetention": 192,
+      "memoryIntegrity01": 0.88
+    },
+    "b2513_learning_holdout": {
+      "status": "PASS",
+      "cycles": 700,
+      "rollouts": 14700,
+      "learningUpdates": 700,
+      "verifyUtility01": 0.69589,
+      "exploreUtility01": 0.64613,
+      "learnedMargin01": 0.049761,
+      "futureCoherence01": 0.999809,
+      "predictionError01": 0.2108
+    },
+    "runtime": {
+      "status": "PASS",
+      "b2512Episodes": 12,
+      "b2512LearningUpdates": 24,
+      "b2512ConsolidationCycles": 3,
+      "b2512IdentityFirewall01": 1,
+      "b2512ProtectedIdentityDrift01": 0,
+      "b2513Cycles": 12,
+      "b2513Rollouts": 252,
+      "b2513LearningUpdates": 12,
+      "b2514Cycles": 12,
+      "b2514Items": 8
+    },
+    "regression": {
+      "b2511_hidden_rule_reward_gain01": 0.4428940568,
+      "b2511_hidden_rule_correct_before": "600/1200",
+      "b2511_hidden_rule_correct_after": "1180/1200",
+      "b2201_b2500_life_course": "PASS",
+      "b365_causal": "PASS",
+      "b365_homeostasis": "PASS",
+      "b365_learning_transfer": "PASS",
+      "b368_runtime": "PASS"
+    }
+  },
+  "integrity": {
+    "architectureCycles": 0,
+    "canonicalFiles": 433,
+    "activeFiles": 3083,
+    "emptyActiveFiles": 0,
+    "duplicateContent": 0,
+    "duplicateNames": 0,
+    "hygieneErrors": 0,
+    "hygieneWarnings": 0
+  }
+}

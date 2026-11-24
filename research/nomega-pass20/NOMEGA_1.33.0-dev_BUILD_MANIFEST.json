@@ -1,0 +1,88 @@
+{
+  "baseline": "NOMEGA_PASS16",
+  "pass": "PASS17",
+  "version": "1.33.0-dev",
+  "status": "research_only",
+  "canonical_registry": {
+    "cycles": 0,
+    "targets": 41
+  },
+  "changes": [
+    "target-family coalition marginal audit using measured leave-one-out scores",
+    "label-free target-domain skill masking after repeated exclusion improvements",
+    "coalition-aware canonical runtime retrieval",
+    "persistent coalition evidence and backward-compatible SkillBank state loading",
+    "provenance_sources evidence gate for reusable-skill activation",
+    "strict metaproductivity test contract requiring accepted/promoted evidence",
+    "non-silent governance telemetry write failures"
+  ],
+  "known_limits": [
+    "full 461-test repository suite is not claimed green; historical/legacy slow paths remain a release gate",
+    "strict pure-neural coding uplift remains unproven",
+    "coalition evidence is only as valid as the external execution evaluator that measures all/leave-one-out scores",
+    "proposal generation remains conservative AST exploration rather than fully learned open-ended code synthesis"
+  ],
+  "tree_digest": "d23f2afd7544cfd4dce8c137be41b013a100e62c6bc9855c7a8f2b645c9a6ad7",
+  "tree_digest_scope": "core/nomega + tests + tools + docs/nomega/governance + release metadata; caches/runtime artifacts excluded",
+  "generated_at_epoch": 1790230576.1885042,
+  "governance": {
+    "mandatory_learning_evidence": [
+      "after_metrics",
+      "before_metrics",
+      "causal_attribution",
+      "causal_intervention_effect",
+      "checkpoint_lineage",
+      "curriculum_stagnation_evidence",
+      "fresh_process_restart",
+      "holdout_source",
+      "independent_provenance_sources",
+      "island_migration_evidence",
+      "long_horizon_evidence",
+      "memory_unlearning_evidence",
+      "model_time_replay_evidence",
+      "ood_source",
+      "regression_metrics",
+      "resource_metrics",
+      "restart_metrics",
+      "seed_policy",
+      "skill_coalition_marginal_evidence",
+      "strategy_router_calibration",
+      "strategy_router_promotion_gate",
+      "target_domain_skill_mask_evidence",
+      "training_data_source",
+      "transfer_metrics",
+      "transfer_selective_signature"
+    ],
+    "mandatory_test_layers": [
+      "behavioral",
+      "fresh_runtime",
+      "integration",
+      "island_diversity_ablation",
+      "leave_one_pair_out_strategy_router",
+      "long_horizon_no_reset",
+      "multi_seed",
+      "ood",
+      "pareto_strategy_ablation",
+      "property_metamorphic",
+      "regression",
+      "resource",
+      "restart",
+      "skill_coalition_ablation",
+      "stagnation_escape_curriculum",
+      "target_domain_masking",
+      "unit"
+    ],
+    "promotion_rule": "accept_only_on_explicit_evidence"
+  },
+  "verification": {
+    "compileall": "pass",
+    "canonical_registry_failures": 0,
+    "canonical_registry_targets": 41,
+    "targeted_pass17_tests": "27 passed",
+    "broad_regression_tests": "76 passed",
+    "pytest_collection": 461,
+    "collection_errors": 0,
+    "governance_checker": "pass",
+    "full_suite": "not_claimed_green"
+  }
+}

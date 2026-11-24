@@ -1,0 +1,10 @@
+import assert from 'node:assert/strict';
+import { authorizeApiRequest,isLoopbackHost } from '../src/organism/system/ApiSecurityPolicy.ts';
+assert.equal(isLoopbackHost('127.0.0.1'),true); assert.equal(isLoopbackHost('0.0.0.0'),false);
+assert.equal(authorizeApiRequest('127.0.0.1','/api/organism/status').allowed,true);
+assert.equal(authorizeApiRequest('0.0.0.0','/api/organism/status').status,503);
+assert.equal(authorizeApiRequest('0.0.0.0','/api/organism/status',undefined,'secret').status,401);
+assert.equal(authorizeApiRequest('0.0.0.0','/api/organism/status','Bearer wrong','secret').status,403);
+assert.equal(authorizeApiRequest('0.0.0.0','/api/organism/status','Bearer secret','secret').allowed,true);
+assert.equal(authorizeApiRequest('0.0.0.0','/health').allowed,true);
+console.log('API_SECURITY=PASS');

@@ -1,0 +1,116 @@
+{
+  "name": "Neuro-Kurisu SUPER WorkPass 11 change manifest",
+  "date": "2026-10-10",
+  "baseArchive": "Neuro_Kurisu_SUPER_WILL_LUMINA_HEXIS_LETTA_CONSCIO_INTEGRATED_WORKPASS10_2026-10-10.zip",
+  "baseSha256": "3345b5d9d773476f91069848a37cf2355c09a53e844702fbef587df9620fc1df",
+  "canonicalRuntime": "35.40.0",
+  "schema": 223,
+  "scope": "MemoryOS2 retrieval determinism under corpus row permutation, complete retrieval fingerprints, corpus-integrity gates, and a bounded offline labelled-corpus/bootstrap-sensitivity experiment runner. No new memory owner and no auto-promotion.",
+  "counts": {
+    "addedIncludingThisManifest": 6,
+    "addedListedExcludingThisManifest": 5,
+    "modifiedFilesWithContentHashes": 9,
+    "removed": 0
+  },
+  "manifestSelfReference": "This manifest is excluded from addedFiles to avoid self-referential hashing.",
+  "addedFiles": [
+    {
+      "path": "docs/MEMORY_RETRIEVAL_EXPERIMENT_PROTOCOL_2026-10-10.md",
+      "bytes": 5656,
+      "sha256": "49e3f82033e280619f661f82c73b268bab7d3a6231c788ce66913d108406fa2e"
+    },
+    {
+      "path": "docs/WORKPASS11_MEMORY_RETRIEVAL_EXPERIMENT_2026-10-10.md",
+      "bytes": 5475,
+      "sha256": "f4180d4782007f4a3e8e24e153544eeef38582a6bfe6564d87a93fcdb94dfd39"
+    },
+    {
+      "path": "runtime/neuro-kurisu/scripts/run-memory-retrieval-experiment.mjs",
+      "bytes": 6857,
+      "sha256": "a31fb4390641cef2236f86043a2566c8935886ff8acf37ab073f5378ffa0b5bb"
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/memory/MemoryRetrievalExperiment.ts",
+      "bytes": 7352,
+      "sha256": "49b7b9fcdee59d768349db9bc6adadf8d553535ab25d1d42e23a87fca4d0eb01"
+    },
+    {
+      "path": "runtime/neuro-kurisu/tests/memory-retrieval-experiment.mjs",
+      "bytes": 6843,
+      "sha256": "b038b7c9e8b4b0a237737c3cfe87cf0e713770dc8af94bfe314be509ddf5656c"
+    }
+  ],
+  "modifiedFiles": [
+    {
+      "path": "CHANGELOG.md",
+      "bytes": 20288,
+      "sha256": "cff90aee2b8392ba3f81bee34b18ee6691d476aa6a81fe0339be3ebfeaa4a167",
+      "previousSha256": "5bde9dd9ae563c678b820f691bc212d376bd5368523898439cd819d819c23a3b"
+    },
+    {
+      "path": "README.md",
+      "bytes": 4932,
+      "sha256": "d359c453625845e3fc62dafece69ab1518ab65feab772b459eaf218de3904d72",
+      "previousSha256": "88c7e0a8d1393f54171d51b0d01df706fad2b02bfec91271420cbe99388d7c1b"
+    },
+    {
+      "path": "SUPER_VERSION.json",
+      "bytes": 2720,
+      "sha256": "3d93c769ef0a0cc14d9529adcf720a210462004ee368bd07d66e79a212d48255",
+      "previousSha256": "636f9062272c2c54d66fe680b844a06794a0040f42dc201907b6fe690c9ea346"
+    },
+    {
+      "path": "package.json",
+      "bytes": 4002,
+      "sha256": "74344f68583dd08da58f4bbc7fc237751a77c994feba44d5e64815045bf33ff1",
+      "previousSha256": "11f9a4f49a77294692e5914afa5225e41b6a8d06d3b96240878995cfc69ad9bb"
+    },
+    {
+      "path": "runtime/neuro-kurisu/package.json",
+      "bytes": 227258,
+      "sha256": "b27cfcdeb93dcf06476fd429a27dd0193d75d08e025112147cf974b98c7fd3cc",
+      "previousSha256": "ab5d2a10bf5c4724938a5d7df69e686b1bc953741070f0a84e387f3b6399514a"
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/developmental/MemoryOS2.ts",
+      "bytes": 54869,
+      "sha256": "41f9f4892646d03af119e1420ea6cb2a7dfa65626785f53c54ebc703f8322448",
+      "previousSha256": "780d9767a600849bb9009193e09bdab8bac7ba45de11d506db31a1691bd96bc5"
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/memory/MemoryRetrievalBenchmark.ts",
+      "bytes": 19541,
+      "sha256": "b86547e28166973d9cb1c537c2aa9e698255c997812164406cccfa90335b5eb3",
+      "previousSha256": "5c73faa685cea9b279b43dd50c5605198e9754233c8ac63d84c903b5ed0264ee"
+    },
+    {
+      "path": "runtime/neuro-kurisu/tests/big-pass-126-memory-retrieval-benchmark.mjs",
+      "bytes": 9679,
+      "sha256": "e4b492f2adec0fe14e8255196ea5d34291462f57c3beecaa3a899682ee51cc10",
+      "previousSha256": "6a7e913a4df9b7a4e514330615cf14411319b432edc92b854306b3c215adbcea"
+    },
+    {
+      "path": "Список дел.md",
+      "bytes": 69487,
+      "sha256": "5d7fa9b3fc943e63650cd090301100f01ac694b9d1d4b83076cca9cb98dc2c49",
+      "previousSha256": "6d5680c73679d3588c637844656bdd6be3bcbffcef75a1df8fd875c2984d9223"
+    }
+  ],
+  "removedFiles": [],
+  "verification": {
+    "command": "npm run audit:workpass11",
+    "result": "PASS",
+    "memoryBenchmarkRegression": "PASS; synthetic harness only, candidate not promoted",
+    "offlineExperimentAndCliRegression": "PASS; 3 bootstrap seeds and 260-row candidate-order permutation fixture",
+    "runtimeTypecheck": "PASS: tsc",
+    "serverSmoke": "PASS",
+    "serverRelativeImports": "PASS: 10 checked, 0 missing",
+    "uiApiLinkage": "PASS: 124 client routes, 48 Runtime Atlas surfaces, 5 required seams, 0 missing",
+    "assetAudit": "PASS: 0 errors",
+    "realCorpusProductionUpliftClaimed": false,
+    "automaticPromotionClaimed": false,
+    "fullReactViteBuildBrowserE2EClaimed": false,
+    "cleanRoomRestoreRollbackSoakClaimed": false
+  },
+  "baselineFiles": 12623
+}

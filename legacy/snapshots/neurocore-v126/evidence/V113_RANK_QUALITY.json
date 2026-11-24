@@ -1,0 +1,31 @@
+{
+  "version": 113,
+  "benchmark": "rank_quality_correlated_delayed_recall",
+  "rows": [
+    {
+      "rank": 8,
+      "seed": 113,
+      "final_loss": 2.7838103771209717,
+      "mean_last2": 2.789826512336731
+    },
+    {
+      "rank": 12,
+      "seed": 113,
+      "final_loss": 2.770857810974121,
+      "mean_last2": 2.780452609062195
+    },
+    {
+      "rank": 16,
+      "seed": 113,
+      "final_loss": 2.8285439014434814,
+      "mean_last2": 2.838478207588196
+    },
+    {
+      "rank": 24,
+      "seed": 113,
+      "final_loss": 2.8010809421539307,
+      "mean_last2": 2.812378168106079
+    }
+  ],
+  "decision": "diagnostic_only"
+}

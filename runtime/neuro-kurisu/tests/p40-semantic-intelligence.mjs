@@ -1,0 +1,13 @@
+import assert from 'node:assert/strict';
+import { P40SemanticIntelligenceEngine } from '../src/organism/cognition/P40SemanticIntelligence.ts';
+const e=new P40SemanticIntelligenceEngine();
+e.ingest({scene:'lab',agreement01:.82,uncertainty01:.18,claims:[{modality:'vision',subject:'door',predicate:'open',object:'lab',confidence01:.8},{modality:'audio',subject:'door',predicate:'causes',object:'movement',confidence01:.7}]});
+e.ingest({scene:'lab',agreement01:.86,uncertainty01:.14,claims:[{modality:'vision',subject:'door',predicate:'causes',object:'movement',confidence01:.9},{modality:'world',subject:'organism',predicate:'in-scene',object:'lab',confidence01:.9}]});
+const s=e.snapshot();
+assert.ok(s.situations.length===2);
+assert.ok(s.claims.length>=4);
+assert.ok(s.hypotheses.length>=1);
+assert.ok(s.metrics.temporalBinding01>0);
+e.learnActionOutcome('explore',1); assert.ok(e.bias('explore')>0);
+e.learnActionOutcome('explore',0); assert.ok(e.bias('explore')<.1);
+console.log('P40_SEMANTIC_INTELLIGENCE=PASS');

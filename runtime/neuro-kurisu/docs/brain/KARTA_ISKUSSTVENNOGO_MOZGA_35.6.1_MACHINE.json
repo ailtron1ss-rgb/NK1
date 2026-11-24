@@ -1,0 +1,585 @@
+{
+  "project_release": "35.6.1 BIG PASS 206",
+  "analysis_only": true,
+  "source_code_changed": false,
+  "project_ts_counts": {
+    "core": 25,
+    "cognition": 71,
+    "memory": 11,
+    "world": 16,
+    "learning": 39,
+    "developmental": 33,
+    "body": 14,
+    "research": 5,
+    "system": 58,
+    "language": 2
+  },
+  "layers": [
+    {
+      "id": "L0",
+      "name": "L0 — Организм и границы",
+      "role": "Идентичность, persistence, host/device boundary, body/environment boundary",
+      "current": "OrganismCore, PortableSubjectContract, persistence, device evidence",
+      "priority": "Высокая",
+      "comment": "Есть хорошая инженерная граница, но biological embodiment ещё неполный."
+    },
+    {
+      "id": "L1",
+      "name": "L1 — Макроанатомические системы",
+      "role": "Кора, таламус, базальные ганглии, мозжечок, гипоталамус, brainstem, hippocampal formation, limbic systems",
+      "current": "Часть представлена функциональными engines; explicit anatomy отсутствует для многих систем",
+      "priority": "Критическая",
+      "comment": "Нужна anatomical ontology, а не ещё один набор P-модулей."
+    },
+    {
+      "id": "L2",
+      "name": "L2 — Сетевые функциональные системы",
+      "role": "DMN, salience, frontoparietal/control, attention, action mode, memory networks, interoceptive/allostatic network",
+      "current": "Workspace, attention schema, social/world/self systems, allostasis",
+      "priority": "Высокая",
+      "comment": "Сетевые функции уже сильнее, чем анатомическая детализация."
+    },
+    {
+      "id": "L3",
+      "name": "L3 — Микросхемы",
+      "role": "Laminar cortex, hippocampal DG/CA3/CA1, striatal pathways, cerebellar microcircuit, thalamic loops",
+      "current": "Почти отсутствуют как biological microcircuits",
+      "priority": "Критическая",
+      "comment": "Это следующий научный уровень после сетевого мозга."
+    },
+    {
+      "id": "L4",
+      "name": "L4 — Клетки",
+      "role": "Excitatory/inhibitory neuronal classes, glia, vascular/immune cells",
+      "current": "Абстрактные computational units, без cell atlas",
+      "priority": "Критическая",
+      "comment": "Нужен cell ontology и cell-role library."
+    },
+    {
+      "id": "L5",
+      "name": "L5 — Синапсы и молекулы",
+      "role": "Synapses, receptors, ion channels, dendrites, second messengers",
+      "current": "Scalar plasticity/neuromodulation",
+      "priority": "Очень высокая",
+      "comment": "Можно делать biologically-inspired abstraction без буквального molecular simulation."
+    },
+    {
+      "id": "L6",
+      "name": "L6 — Динамика",
+      "role": "Spikes, oscillations, synchrony, phase, recurrent states, neuromodulatory pulses",
+      "current": "Recurrent latent states, replay, timing, resource pressure",
+      "priority": "Высокая",
+      "comment": "Нужно добавить multiscale temporal dynamics."
+    },
+    {
+      "id": "L7",
+      "name": "L7 — Тело",
+      "role": "Interoception, autonomic, endocrine, immune, metabolism, sensorimotor loops",
+      "current": "Predictive allostasis, resource allocator, phone body",
+      "priority": "Высокая",
+      "comment": "Нужен synthetic body state graph."
+    },
+    {
+      "id": "L8",
+      "name": "L8 — Развитие",
+      "role": "Development, critical periods, pruning, myelination, learning trajectory",
+      "current": "Developmental engines, curriculum, lifelong learning",
+      "priority": "Средняя/высокая",
+      "comment": "Сильный computational base, biological constraints отсутствуют."
+    },
+    {
+      "id": "L9",
+      "name": "L9 — Сознание и субъективность",
+      "role": "No consensus single mechanism; multiple theories",
+      "current": "Workspace/metacognition/adversarial evidence",
+      "priority": "Исследовательская",
+      "comment": "Нужны causal batteries, not claims."
+    }
+  ],
+  "project_comparison": [
+    {
+      "system": "Кора / ассоциативное вычисление",
+      "current": "Центральный рекуррентный мозг, recurrent global workspace, attention schema, semantic perception, cognitive kernel",
+      "evaluation": "Сильная computational аналогия",
+      "gap": "Нет реального многомасштабного cortical sheet, columnar microcircuitry, 360-area anatomical map, laminar processing."
+    },
+    {
+      "system": "Гиппокамп / медиальная височная система",
+      "current": "HippocampalMemorySubstrate, AutobiographicalMemory, replay, MemoryOS2, temporal memory",
+      "evaluation": "Сильная computational реализация fast episode → replay → slow schema",
+      "gap": "Нет моделирования DG/CA3/CA1/entorhinal/subiculum как отдельных interacting circuits; нет cellular oscillations / SWR dynamics."
+    },
+    {
+      "system": "Префронтальная сеть",
+      "current": "SelfModelValidationEngine, AgencyDeliberationEngine, goal ecology, executive/developmental engines",
+      "evaluation": "Есть функции executive control, planning, metacognition",
+      "gap": "Не разделены OFC/VM-PFC/dlPFC/ACC/polar cortex, рабочая память не представлена laminar/recurrent microcircuits."
+    },
+    {
+      "system": "Таламус",
+      "current": "Прямого модуля нет",
+      "evaluation": "Часть routing/global broadcast выполняется workspace/event fabric",
+      "gap": "Нет явного thalamic relay/gating/arousal architecture; это один из крупнейших anatomical gaps."
+    },
+    {
+      "system": "Базальные ганглии",
+      "current": "AdaptivePolicyEngine, AgencyDeliberationEngine, outcome/reward learning, neuromodulation",
+      "evaluation": "Функциональная selection/RL аналогия есть",
+      "gap": "Нет явных striatum/direct-indirect/hyperdirect loops, SNc/VTA pathways, habit vs goal-directed anatomical separation."
+    },
+    {
+      "system": "Мозжечок",
+      "current": "Прямого модуля нет",
+      "evaluation": "Есть prediction/error/skill learning в learning stack",
+      "gap": "Нет cerebellar forward models, Purkinje/granule architecture, climbing-fiber teaching signal, timing/coordination subsystem."
+    },
+    {
+      "system": "Гипоталамус / allostasis",
+      "current": "Predictive allostasis, resource allocator, phone thermal/resource policy",
+      "evaluation": "Есть abstract allostatic/resource regulation",
+      "gap": "Нет anatomical endocrine/autonomic controller, HPA-like axes, hypothalamic nuclei, appetite/thermoregulation/reproductive/homeostatic loops."
+    },
+    {
+      "system": "Ствол мозга / arousal",
+      "current": "PhoneRuntimePolicy, runtime clock, neuromodulation",
+      "evaluation": "Есть abstract arousal/load/energy states",
+      "gap": "Нет locus coeruleus, raphe, cholinergic brainstem, PAG, NTS/PBN, reticular formation as explicit circuits."
+    },
+    {
+      "system": "Инсулярно-cingulate interoception",
+      "current": "MultimodalSituationModel, PredictiveAllostasisSubstrate, EmotionAppraisalEngine",
+      "evaluation": "Есть computational interoception/emotion",
+      "gap": "Нет explicit insular subdivisions, ACC/pACC/sgACC topology, visceromotor loops."
+    },
+    {
+      "system": "Амигдала / лимбическая оценка",
+      "current": "SocialWorldModel, EmotionAppraisalEngine, value/relation systems",
+      "evaluation": "Частичная функциональная аналогия",
+      "gap": "Нет explicit amygdala nuclei / threat-safety learning circuitry."
+    },
+    {
+      "system": "Социальный мозг",
+      "current": "SocialWorldModel, SocialDevelopmentSystem, LongTermSocialMind, RelationshipSelf",
+      "evaluation": "Развитая computational ветка",
+      "gap": "Нет explicit social perceptual circuits (STS, TPJ, dmPFC, temporal poles) and their causal routing."
+    },
+    {
+      "system": "Сенсорные системы",
+      "current": "PerceptionRouter, semantic perception, camera/voice, multimodal situation model",
+      "evaluation": "Хороший multimodal abstraction",
+      "gap": "Нет биологически структурированных V1/V2/V4/MT, auditory hierarchy, somatosensory body map, olfactory/vestibular pathways."
+    },
+    {
+      "system": "Двигательная система",
+      "current": "ActionGateway, embodied runtime, policy engines",
+      "evaluation": "Есть action abstraction",
+      "gap": "Нет explicit M1/premotor/SMA/basal-ganglia/cerebellar/spinal controller hierarchy."
+    },
+    {
+      "system": "Глия",
+      "current": "Нет прямых реализаций",
+      "evaluation": "Только косвенные resource/state abstractions",
+      "gap": "Нет astrocyte, oligodendrocyte, microglia dynamics. Это крупный missing layer."
+    },
+    {
+      "system": "Сосудистый / BBB / метаболический слой",
+      "current": "Indirect energy/thermal/resource estimates",
+      "evaluation": "Есть abstract energy budget",
+      "gap": "Нет neurovascular coupling, BBB, glucose/oxygen delivery, lactate, CSF/interstitial dynamics."
+    },
+    {
+      "system": "Сон / offline states",
+      "current": "MicroDreamEngine, replay, temporal memory",
+      "evaluation": "Есть replay/dream-inspired mechanisms",
+      "gap": "Нет полноценного circadian/ultradian sleep architecture, NREM/REM state machine, oscillatory coupling."
+    },
+    {
+      "system": "Молекулярный / синаптический уровень",
+      "current": "NeuromodulatoryPlasticitySubstrate, learning rules",
+      "evaluation": "Есть scalar neuromodulators and plasticity abstractions",
+      "gap": "Нет receptor-level signaling, ion channels, dendritic computation, synapse lifecycle."
+    },
+    {
+      "system": "Развитие",
+      "current": "DevelopmentalBrain, life-course, curriculum, identity evolution",
+      "evaluation": "Очень сильная computational ветка",
+      "gap": "Нет biological developmental constraints, critical periods, synaptic overproduction/pruning, myelination trajectories."
+    },
+    {
+      "system": "Иммунный / защитный слой",
+      "current": "IntegritySentinel, EvidenceFirewall, safety systems",
+      "evaluation": "Функционально аналогично защиты/repair",
+      "gap": "Нет neuroimmune coupling / microglial inflammatory states."
+    },
+    {
+      "system": "Сознание / global integration",
+      "current": "RecurrentGlobalWorkspace, metacognition, consciousness evidence ledger, adversarial harness",
+      "evaluation": "Сильный research substrate",
+      "gap": "Никакого доказанного феноменального сознания; biological substrate is not reproduced."
+    }
+  ],
+  "brain_systems": [
+    {
+      "name": "Кора больших полушарий",
+      "human": "360 cortical areas in HCP-MMP1.0; multimodal borders derived from thickness, myelin, rfMRI and task activation",
+      "target": "Target: 360-area functional ontology + hierarchy + inter-area graph + hemisphere asymmetry",
+      "current": "Current project: central recurrent brain / cognition / workspace",
+      "gap": "Large gap"
+    },
+    {
+      "name": "Гиппокампальная формация",
+      "human": "DG, CA fields, subiculum, entorhinal/parahippocampal interfaces; episodic encoding, retrieval, pattern separation/completion",
+      "target": "Target: explicit subcircuits + replay/SWR-like dynamics + consolidation routing",
+      "current": "Current: HippocampalMemorySubstrate + replay + autobiographical memory",
+      "gap": "Medium gap"
+    },
+    {
+      "name": "Таламус",
+      "human": "Distributed relay/integration; whole-brain influence and adaptive behaviour",
+      "target": "Target: relay-specific channels, thalamocortical gating, state-dependent gain",
+      "current": "Current: implicit routing/broadcast only",
+      "gap": "Large gap"
+    },
+    {
+      "name": "Базальные ганглии",
+      "human": "Action selection, instrumental learning, habits; striatal pathways",
+      "target": "Target: direct/indirect/hyperdirect loops + dopamine learning + habitization",
+      "current": "Current: agency/policy/RL analogues",
+      "gap": "Large gap"
+    },
+    {
+      "name": "Мозжечок",
+      "human": "Predictive motor control, error correction, internal models, timing",
+      "target": "Target: fast predictor/controller separate from global cognition",
+      "current": "Current: no dedicated module",
+      "gap": "Very large gap"
+    },
+    {
+      "name": "Гипоталамус + brainstem",
+      "human": "Homeostasis/allostasis, arousal, autonomic/endocrine coordination",
+      "target": "Target: homeostatic variables, endocrine/autonomic loops, arousal controller",
+      "current": "Current: predictive allostasis/resource/thermal abstractions",
+      "gap": "Large gap"
+    },
+    {
+      "name": "Лимбические системы",
+      "human": "Amygdala, cingulate, hippocampal interfaces, vmPFC/OFC; valuation and affective learning",
+      "target": "Target: threat/safety, affective memory, value arbitration",
+      "current": "Current: emotion, social/value modules",
+      "gap": "Large gap"
+    },
+    {
+      "name": "Сенсорные hierarchies",
+      "human": "Visual, auditory, somatosensory, vestibular, olfactory systems",
+      "target": "Target: modality-specific hierarchical encoders and body maps",
+      "current": "Current: semantic multimodal abstraction",
+      "gap": "Large gap"
+    },
+    {
+      "name": "Motor systems",
+      "human": "M1, premotor, SMA, basal ganglia, cerebellum, spinal/brainstem pathways",
+      "target": "Target: hierarchical motor control",
+      "current": "Current: abstract ActionGateway",
+      "gap": "Very large gap"
+    },
+    {
+      "name": "Glia/immune/vascular",
+      "human": "Astrocytes, oligodendrocytes, microglia, BBB, neurovascular coupling",
+      "target": "Target: support, repair, plasticity, metabolic constraints",
+      "current": "Current: almost entirely absent as explicit mechanisms",
+      "gap": "Very large gap"
+    }
+  ],
+  "roadmap": [
+    {
+      "code": "B-M0",
+      "title": "Freeze + ontology",
+      "content": "Do not code; establish canonical artificial brain ontology and evidence standards.",
+      "criterion": "0 new modules; documentation only"
+    },
+    {
+      "code": "B-M1",
+      "title": "Anatomical graph",
+      "content": "Introduce one brain-wide ontology describing regions, systems, pathways, timescales, owners and evidence.",
+      "criterion": "No duplication of runtime ownership"
+    },
+    {
+      "code": "B-M2",
+      "title": "Thalamocortical gate",
+      "content": "Model state-dependent routing / broadcast / gain with explicit channels.",
+      "criterion": "Replace implicit routing where justified"
+    },
+    {
+      "code": "B-M3",
+      "title": "Basal-ganglia action loop",
+      "content": "Goal-directed vs habit policy, direct/indirect/hyperdirect abstraction, dopamine teaching signal.",
+      "criterion": "Agency becomes anatomically interpretable"
+    },
+    {
+      "code": "B-M4",
+      "title": "Cerebellar predictor",
+      "content": "Separate fast sensorimotor prediction/error correction from deliberative brain.",
+      "criterion": "Lower latency; better skill learning"
+    },
+    {
+      "code": "B-M5",
+      "title": "Brainstem + neuromodulatory nuclei",
+      "content": "Arousal, novelty, uncertainty, attention gain, sleep/wake and global mode control.",
+      "criterion": "Make existing scalar neuromodulators anatomically grounded"
+    },
+    {
+      "code": "B-M6",
+      "title": "Hypothalamus / allostasis / body",
+      "content": "Synthetic endocrine/autonomic state machine; hunger, temperature, energy, pain, stress, immune load.",
+      "criterion": "Unify body state instead of scalar load"
+    },
+    {
+      "code": "B-M7",
+      "title": "Insula/ACC/limbic affect",
+      "content": "Visceromotor and affective appraisal loops tied to body and memory.",
+      "criterion": "Ground emotion in state transitions"
+    },
+    {
+      "code": "B-M8",
+      "title": "Sensory and motor maps",
+      "content": "Build modality-specific hierarchies and body maps; retain high-level semantic backends.",
+      "criterion": "Embodiment becomes causal, not only semantic"
+    },
+    {
+      "code": "B-M9",
+      "title": "Glia + vascular + metabolic",
+      "content": "Introduce low-cost support layer: synaptic support, myelination/latency, pruning, resource supply, repair.",
+      "criterion": "Resource-aware plasticity"
+    },
+    {
+      "code": "B-M10",
+      "title": "Microcircuit tier",
+      "content": "Implement selective microcircuits: cortical column motif, DG/CA3/CA1, striatal loop, cerebellar microcircuit.",
+      "criterion": "Biological plausibility at circuit scale"
+    },
+    {
+      "code": "B-M11",
+      "title": "Oscillations / synchrony",
+      "content": "Theta/gamma/SWR-like events, phase coupling, cortical state modes.",
+      "criterion": "Temporal coordination becomes explicit"
+    },
+    {
+      "code": "B-M12",
+      "title": "Sleep / offline consolidation",
+      "content": "NREM/REM-like states, replay prioritization, consolidation, forgetting, dream simulation.",
+      "criterion": "Learning during downtime"
+    },
+    {
+      "code": "B-M13",
+      "title": "Developmental maturation",
+      "content": "Critical periods, pruning, myelination, skill stages, developmental constraints.",
+      "criterion": "Development becomes endogenous"
+    },
+    {
+      "code": "B-M14",
+      "title": "Brain-wide causal battery",
+      "content": "Lesion/ablation/intervention matrix for every major subsystem and pathway.",
+      "criterion": "No subsystem accepted by presence alone"
+    },
+    {
+      "code": "B-M15",
+      "title": "Longitudinal human-like organism",
+      "content": "Months-scale identity, social, learning, body and environmental adaptation.",
+      "criterion": "Measure continuity and transfer"
+    },
+    {
+      "code": "B-M16",
+      "title": "Physical Android brain",
+      "content": "Map synthetic brain state to actual sensors/actuators and mobile constraints.",
+      "criterion": "Real device evidence only"
+    },
+    {
+      "code": "B-M17",
+      "title": "Consciousness research tier",
+      "content": "Adversarial comparisons across GWT/recurrent/higher-order/predictive/IIT-inspired hypotheses.",
+      "criterion": "No consciousness claim without causal evidence"
+    },
+    {
+      "code": "B-M18",
+      "title": "Final whole-organism integration",
+      "content": "One causal event spine across perception→memory→world→self→agency→action→outcome→learning→development.",
+      "criterion": "Artificial organism rather than module collection"
+    }
+  ],
+  "ai_neuro": [
+    {
+      "topic": "Transformer / sequence models",
+      "evidence": "Strong contextual integration; useful high-level language and multimodal reasoning",
+      "implication": "Keep as language/interface layer, not as entire brain."
+    },
+    {
+      "topic": "Hippocampal-inspired episodic memory",
+      "evidence": "Sequence memory can improve sample/memory efficiency in control",
+      "implication": "Directly relevant to current hippocampal branch."
+    },
+    {
+      "topic": "Predictive processing / world models",
+      "evidence": "Brain-like principle: prediction + error + action",
+      "implication": "Already central to world model; should be tied more tightly to body/active inference."
+    },
+    {
+      "topic": "Neuromodulation",
+      "evidence": "Dopamine, noradrenaline, acetylcholine, serotonin modulate learning/attention/exploration",
+      "implication": "Existing scalar implementation should become anatomically and causally grounded."
+    },
+    {
+      "topic": "Spiking / neuromorphic AI",
+      "evidence": "Potential efficiency and local learning, especially event-driven systems",
+      "implication": "Interesting future phone/hardware path; not necessary for current semantic runtime."
+    },
+    {
+      "topic": "Dendritic computation",
+      "evidence": "Dendrites offer alternative mechanisms for credit assignment, continual learning, energy efficiency",
+      "implication": "Potential source for local plasticity in future microcircuit layer."
+    },
+    {
+      "topic": "NeuroAI",
+      "evidence": "Bidirectional field: neuroscience informs AI, AI accelerates neuroscience; interpretability vs engineering power is a key tension",
+      "implication": "Use AI for scientific mapping and use neuroscience for constrained architecture."
+    },
+    {
+      "topic": "Embodied / active systems",
+      "evidence": "Intelligence emerges in closed perception-action loops rather than pure text generation",
+      "implication": "Critical for final target; existing body/world/action branches should be unified."
+    }
+  ],
+  "sources": [
+    {
+      "id": "S1",
+      "title": "Human Connectome Project / HCP-MMP1.0",
+      "description": "Multimodal cortical parcellation: 180 areas per hemisphere; multimodal borders and individual subject mapping.",
+      "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC5198757/"
+    },
+    {
+      "id": "S2",
+      "title": "NIH BRAIN Initiative — BICAN",
+      "description": "Whole-brain cell atlas goal across molecular, anatomical and functional dimensions; explicit recognition that a complete reference atlas is still a project goal.",
+      "url": "https://www.braininitiative.nih.gov/research/tools-and-technologies-brain-cells-and-circuits/brain-initiative-cell-atlas-network"
+    },
+    {
+      "id": "S3",
+      "title": "Allen Brain Atlas Cell Types",
+      "description": "Human/mouse single-cell feature data and cell-type exploration.",
+      "url": "https://celltypes.brain-map.org/data"
+    },
+    {
+      "id": "S4",
+      "title": "NIH BRAIN Initiative — circuit diagrams",
+      "description": "Maps at multiple scales, from synapses to whole brain.",
+      "url": "https://www.braininitiative.nih.gov/vision/priority-areas"
+    },
+    {
+      "id": "S5",
+      "title": "Zhang et al., Nature Neuroscience 2025",
+      "description": "Human allostatic–interoceptive system, 7T mapping, >96% correspondence with animal tract-tracing connections examined.",
+      "url": "https://www.nature.com/articles/s41593-025-02087-x"
+    },
+    {
+      "id": "S6",
+      "title": "Nguyen & Person, Nature Reviews Neuroscience 2025",
+      "description": "Cerebellar predictive motor control, feedforward computations and error-driven learning.",
+      "url": "https://www.nature.com/articles/s41583-025-00936-z"
+    },
+    {
+      "id": "S7",
+      "title": "Shine et al., Nature Reviews Neuroscience 2023",
+      "description": "Thalamus as brain-wide integrative influence on adaptive behaviour.",
+      "url": "https://www.nature.com/articles/s41583-023-00701-0"
+    },
+    {
+      "id": "S8",
+      "title": "Yin & Knowlton, Nature Reviews Neuroscience",
+      "description": "Basal ganglia in action selection, instrumental behaviour and habits.",
+      "url": "https://www.nature.com/articles/nrn1919"
+    },
+    {
+      "id": "S9",
+      "title": "Gershman & Uchida, Nature Reviews Neuroscience",
+      "description": "Dopamine as reward prediction error plus uncertainty/exploration-related computation.",
+      "url": "https://www.nature.com/articles/s41583-019-0220-7"
+    },
+    {
+      "id": "S10",
+      "title": "Eichenbaum / hippocampal-neocortical memory reviews",
+      "description": "Bidirectional hippocampal–cortical systems and episodic memory.",
+      "url": "https://www.nature.com/articles/35036213"
+    },
+    {
+      "id": "S11",
+      "title": "Joo & Frank, Nature Reviews Neuroscience",
+      "description": "Sharp-wave ripples, replay and memory consolidation/retrieval.",
+      "url": "https://www.nature.com/articles/s41583-018-0077-1"
+    },
+    {
+      "id": "S12",
+      "title": "Giri et al., Nature 2024",
+      "description": "Sleep loss diminishes hippocampal reactivation and replay.",
+      "url": "https://www.nature.com/articles/s41586-024-07538-2"
+    },
+    {
+      "id": "S13",
+      "title": "Basal forebrain cholinergic signalling, Nature Reviews Neuroscience 2023",
+      "description": "ACh networks support cognition with structured cortical innervation.",
+      "url": "https://www.nature.com/articles/s41583-023-00677-x"
+    },
+    {
+      "id": "S14",
+      "title": "Locus coeruleus / noradrenaline review",
+      "description": "Noradrenergic modulation of attention, memory retrieval and network reorganization.",
+      "url": "https://www.nature.com/articles/nrn2573"
+    },
+    {
+      "id": "S15",
+      "title": "Microglia, Nature Neuroscience 2025",
+      "description": "Microglial pruning and circuit sculpting.",
+      "url": "https://www.nature.com/articles/s41593-024-01818-w"
+    },
+    {
+      "id": "S16",
+      "title": "Oligodendroglial interactions, Nature Reviews Neuroscience 2023",
+      "description": "Activity-dependent myelin plasticity and influence on learning/memory.",
+      "url": "https://www.nature.com/articles/s41583-023-00744-3"
+    },
+    {
+      "id": "S17",
+      "title": "Human hippocampal neurogenesis, Nature 2026",
+      "description": "Adult human hippocampal neurogenesis remains a difficult and actively updated question; avoid treating it as settled fact.",
+      "url": "https://www.nature.com/articles/s41586-026-10169-4"
+    },
+    {
+      "id": "S18",
+      "title": "The new NeuroAI, Nature Machine Intelligence 2024",
+      "description": "Modern NeuroAI reconnects neuroscience and AI; current AI has diverged from biological inspiration.",
+      "url": "https://doi.org/10.1038/s42256-024-00826-6"
+    },
+    {
+      "id": "S19",
+      "title": "Emergence of NeuroAI, Nature Reviews Neuroscience 2025",
+      "description": "NeuroAI as a two-way field: AI for neuroscience and neuroscience for AI; interpretability is a central challenge.",
+      "url": "https://www.nature.com/articles/s41583-025-00954-x"
+    },
+    {
+      "id": "S20",
+      "title": "Brain-inspired computing systematic review 2024",
+      "description": "Broad landscape of brain-inspired computing hardware/software.",
+      "url": "https://link.springer.com/article/10.1140/epjb/s10051-024-00703-6"
+    },
+    {
+      "id": "S21",
+      "title": "Dendritic neuro-inspired ML review 2024",
+      "description": "Dendritic mechanisms as potential source for credit assignment, continual learning and energy efficiency.",
+      "url": "https://www.sciencedirect.com/science/article/pii/S0959438824000151"
+    },
+    {
+      "id": "S22",
+      "title": "Human brain computing and brain-inspired intelligence 2024",
+      "description": "Relationship among structure, activity dynamics and intelligence is complex and multi-level.",
+      "url": "https://academic.oup.com/nsr/article/11/5/nwae144/7656427"
+    }
+  ]
+}

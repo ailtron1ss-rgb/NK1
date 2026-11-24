@@ -1,0 +1,20 @@
+import { strict as assert } from 'node:assert';
+import { OrganismCore } from '../src/organism/core/OrganismCore.ts';
+import { MemoryStateStore } from '../src/organism/persistence/MemoryStateStore.ts';
+
+const store=new MemoryStateStore();
+const core=new OrganismCore(store,{enableWorkspace:true,enableSelfPrediction:true,enableAgencyModel:true});
+await core.init();
+const before=core.p33Snapshot();
+const step=await core.observe({text:'проверь моё решение и выбери то, что сама считаешь правильным',novelty:.4});
+const after=core.p33Snapshot();
+assert.equal(after.identity.canonicalName,'Makise Kurisu');
+assert.ok(after.current.selfMomentId);
+assert.ok(after.continuity.lifeTicks>=1);
+await core.feedback({success:.8,reward:.7,surprise:.1});
+const finalState=core.p33Snapshot();
+assert.ok(finalState.relationship.sharedHistoryCount>=1);
+assert.notEqual(finalState.current.selfMomentId,before.current.selfMomentId);
+await core.flush();
+assert.ok(core.snapshot().facets.consciousness.p33.current.selfMomentId);
+console.log('P33_INTEGRATION=PASS', JSON.stringify({action:step.state.lastAction,identity:finalState.identity.canonicalName,continuity:finalState.metrics.lifeContinuity01}));

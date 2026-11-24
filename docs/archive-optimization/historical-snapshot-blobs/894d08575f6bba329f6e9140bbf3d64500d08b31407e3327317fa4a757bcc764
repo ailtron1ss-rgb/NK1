@@ -1,0 +1,41 @@
+# Runbook
+
+## Install
+
+```bash
+npm --prefix app ci
+```
+
+The runtime has no npm dependency install requirement beyond Node's built-in TS stripping path used by this distribution.
+
+## Development
+
+```bash
+npm run dev
+```
+
+Services:
+- Runtime: `127.0.0.1:3310`
+- Research bridge: `127.0.0.1:8765`
+- Vite UI: `127.0.0.1:8080`
+
+## Production-style local start
+
+```bash
+npm --prefix app run build
+npm run start
+```
+
+Gateway: `127.0.0.1:8080`.
+
+## Quick audit
+
+```bash
+npm run audit:quick
+```
+
+This performs syntax/asset/import/ownership/inventory checks without running the long historical benchmark matrix.
+
+## Full release audit
+
+Use the runtime release matrix under `runtime/neuro-kurisu/package.json` and the research matrix in `research/nomega-pass20`. Long-running research benchmarks are not part of the interactive startup path.

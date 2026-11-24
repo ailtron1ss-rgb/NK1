@@ -1,0 +1,26 @@
+import { strict as assert } from 'node:assert';
+import { OrganismCore } from '../src/organism/core/OrganismCore.ts';
+import { MemoryStateStore } from '../src/organism/persistence/MemoryStateStore.ts';
+
+const store=new MemoryStateStore();
+const core=new OrganismCore(store,{enableWorkspace:true,enableSelfPrediction:true,enableAgencyModel:true});
+await core.init();
+const before=core.p34Snapshot();
+const step=await core.observe({text:'выбери сама, что сейчас важнее: ответить или проверить',novelty:.55});
+assert.equal(core.p33Snapshot().identity.canonicalName,'Makise Kurisu');
+assert.ok(step.state.lastAction!=='none');
+const afterObserve=core.p34Snapshot();
+assert.ok(afterObserve.evidence.length>=1);
+await core.feedback({success:.86,reward:.74,surprise:.08,notes:'integration'});
+const after=core.p34Snapshot();
+assert.ok(after.current.lastOutcomeId);
+assert.ok(after.evidence.length>before.evidence.length);
+const goal=core.p34AuthorGoal('проверять собственную непрерывность','self-authored integration goal');
+assert.ok(goal?.id);
+await core.flush();
+const persisted=core.snapshot();
+assert.ok(persisted.facets.consciousness.p34.goals.length>=1);
+const branch=core.p34CreateContinuation('integration host transfer');
+assert.ok(branch.id);
+await core.flush();
+console.log('P34_INTEGRATION=PASS',JSON.stringify({action:step.state.lastAction,evidence:after.evidence.length,claims:after.claims.length,goals:core.p34Snapshot().goals.length,continuityBranches:core.p34Snapshot().continuityBranches.length}));

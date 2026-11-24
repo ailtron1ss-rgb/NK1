@@ -1,0 +1,46 @@
+{
+  "release": "35.6.1",
+  "bigPass": "B297",
+  "date": "2026-09-13",
+  "scores": {
+    "architecture_integrity": 96,
+    "release_engineering": 94,
+    "persistence_migration": 95,
+    "semantic_verification": 10,
+    "evidence_coverage": 19,
+    "neural_substrate": 70,
+    "local_plasticity": 45,
+    "world_model": 70,
+    "action_causality": 64,
+    "causal_policy": 62,
+    "executive_fusion_b297": 67,
+    "self_model": 48,
+    "agency": 50,
+    "motivation": 46,
+    "personality_integration": 61,
+    "autonomous_goal_generation": 44,
+    "memory_interaction": 70,
+    "sleep_replay": 46,
+    "structural_plasticity": 24,
+    "closed_loop_embodiment": 38,
+    "external_real_action": 25,
+    "long_horizon_autonomy": 28,
+    "physical_android_validation": 30,
+    "consciousness_evidence": 2,
+    "overall_strict_organism_maturity": 43
+  },
+  "semanticAudit": {
+    "totalFunctions": 3663,
+    "verified": 38,
+    "integrationOnly": 837,
+    "unsafeToAutoRun": 259,
+    "unverified": 2529,
+    "verifiedRate01": 0.0104,
+    "evidenceCoverage01": 0.0675
+  },
+  "autonomousRuntime": {
+    "p15_5": "PASS",
+    "historical_b266_autoRun_regression": "RESOLVED_IN_CURRENT_B297"
+  },
+  "fullAuditAll": "NOT_INDEPENDENTLY_REPRODUCED_WITHIN_300S"
+}

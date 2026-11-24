@@ -1,0 +1,28 @@
+{
+  "pass": 180,
+  "functions": [
+    "src/organism/core/CognitiveKernelCoordinator.ts:42:snapshot",
+    "src/organism/core/CognitiveSubsystemFacade.ts:23:snapshot",
+    "src/organism/core/CognitiveSubsystemFacade.ts:25:prediction",
+    "src/organism/core/CognitiveSubsystemFacade.ts:31:predictionDebt",
+    "src/organism/core/CognitiveSubsystemFacade.ts:35:canSpend",
+    "src/organism/core/OrganismCore.ts:1217:snapshot",
+    "src/organism/core/index.ts:CognitiveKernelCoordinator:snapshot",
+    "src/organism/core/index.ts:OrganismCore:snapshot",
+    "src/organism/index.ts:CognitiveKernelCoordinator:snapshot",
+    "src/organism/index.ts:MemoryFabric:inspect",
+    "src/organism/index.ts:OrganismCore:snapshot",
+    "src/organism/memory/MemoryFabric.ts:inspect"
+  ],
+  "direct": 12,
+  "lifecycle": 12,
+  "persistence": true,
+  "replay": true,
+  "restart": true,
+  "invariants": {
+    "coreSnapshotStable": true,
+    "facadeReady": true,
+    "kernelSnapshotValid": true,
+    "memoryAuthorityValid": true
+  }
+}

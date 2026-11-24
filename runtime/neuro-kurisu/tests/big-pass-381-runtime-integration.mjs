@@ -1,0 +1,14 @@
+import assert from 'node:assert/strict';
+import { OrganismCore } from '../src/organism/core/OrganismCore.ts';
+import { MemoryStateStore } from '../src/organism/persistence/MemoryStateStore.ts';
+const store=new MemoryStateStore(); const cfg={enableWorldModel:true,enableLanguage:false,includeAdvancedCycleSnapshot:false,checkpointMinIntervalMs:60000,checkpointMaxDirtyCycles:64};
+const core=new OrganismCore(store,cfg); await core.init();
+const before=core.b365DevelopmentalMemoryDiagnostics();
+assert.ok(before && before.verifiedExperiences===0);
+for(let i=1;i<=24;i++) core.consolidateB365Experience({tick:i,action:'explore',reward01:.85,predictionError01:.12,salience01:.7,verified01:1,independent01:1,evidenceQuality01:.98,continuity01:.9,goalId:'runtime-goal'});
+const after=core.b365DevelopmentalMemoryDiagnostics();
+assert.equal(after.verifiedExperiences,24); assert.ok(after.adaptations>0); const snap=core.snapshot(); const store2=new MemoryStateStore({initial:snap});
+const restored=new OrganismCore(store2,cfg); await restored.init(); const again=restored.b365DevelopmentalMemoryDiagnostics(); assert.deepEqual(again,after);
+for(let i=25;i<=48;i++) restored.consolidateB365Experience({tick:i,action:'explore',reward01:.18,predictionError01:.86,salience01:.73,verified01:0,independent01:0,evidenceQuality01:.1,continuity01:.7,goalId:'runtime-goal'});
+assert.equal(restored.b365DevelopmentalMemoryDiagnostics().verifiedExperiences,24);
+console.log(JSON.stringify({pass:true,status:'B381_RUNTIME_PERSISTENCE_PASS',verifiedExperiences:after.verifiedExperiences,adaptations:after.adaptations,restartEqual:true,unverifiedBlocked:true},null,2));

@@ -1,0 +1,87 @@
+import { OrganismRuntime } from '../src/organism/core/OrganismRuntime.ts';
+import { MemoryStateStore } from '../src/organism/persistence/MemoryStateStore.ts';
+import { NoopOperationalJournal } from '../src/organism/persistence/NoopOperationalJournal.ts';
+import { B299CausalPersonalityDevelopmentLoop } from '../src/organism/system/B299CausalPersonalityDevelopmentLoop.ts';
+
+const ACTIONS=['respond','explore','verify','rest','reflect','wait','defer'];
+const assert=(x,m)=>{if(!x)throw new Error(m)};
+const counts=()=>Object.fromEntries(ACTIONS.map(a=>[a,0]));
+const l1=(a,b)=>ACTIONS.reduce((s,k)=>s+Math.abs((a[k]??0)-(b[k]??0)),0);
+const biasVector=(core)=>Object.fromEntries(ACTIONS.map(a=>[a,core.b299CausalPersonalityBias(a)]));
+
+const store=new MemoryStateStore();
+const opts={stateFile:'b299-longitudinal.json',worldStateFile:'b299-longitudinal-world.json',enableLanguage:false,performanceProfile:'mobile',stateStore:store,worldStateStore:store,journal:new NoopOperationalJournal()};
+const r=new OrganismRuntime(opts);
+await r.init();
+
+const beforeBias=biasVector(r.core);
+const beforeSummary=r.core.personalitySummary();
+const beforeB299=r.core.b299CausalPersonalitySnapshot();
+const baseline=counts();
+const allSteps=[];
+
+const stepAndRecord=async(prompt, bucket)=>{
+  const result=await r.step(prompt);
+  const action=result?.cycle?.decision?.selected?.action ?? null;
+  if(action && baseline && bucket && bucket[action]!==undefined) bucket[action]++;
+  allSteps.push(action);
+};
+
+for(let i=0;i<12;i++) await stepAndRecord(i%2===0?'Explore a novel possibility and record what changes.':'Verify an uncertain claim before committing.',baseline);
+const baselineCounts={...baseline};
+const developmentalBeforeBias=biasVector(r.core);
+const developmental=counts();
+for(let i=0;i<20;i++) {
+  const prompt=i%3===0
+    ? 'Investigate uncertainty, verify the consequence, then keep the useful part.'
+    : i%3===1
+      ? 'Reflect on what just worked and choose carefully.'
+      : 'Respond consistently with what previous outcomes taught you.';
+  await stepAndRecord(prompt,developmental);
+}
+const autonomous=counts();
+for(let i=0;i<8;i++) await stepAndRecord(undefined,autonomous);
+
+const after=r.core.b299CausalPersonalityDiagnostics();
+const afterBias=biasVector(r.core);
+const finalSummary=r.core.personalitySummary();
+const biasShift=l1(beforeBias,afterBias);
+const behaviouralShift=l1(baselineCounts,developmental);
+const autonomousActionCount=ACTIONS.reduce((s,a)=>s+autonomous[a],0);
+
+assert(after.cycles===40,'B299 did not survive the full 40-cycle developmental run');
+assert(after.learningUpdates===40,'B299 learning did not stay active across the full run');
+assert(after.verifiedUpdates===40,'B299 did not observe verified outcomes across the run');
+assert(after.autonomousUpdates>=autonomousActionCount,'B299 autonomous accounting is inconsistent');
+assert(after.maxActionBias01>0.005,'B299 developed no usable behavioral influence');
+assert(after.selfAuthoredDevelopment01>0.08,'self-authored development signal stayed too small');
+assert(after.causalIntegrity01>0.45,'causal integrity degraded too far');
+assert((finalSummary?.causalUpdates??0)>(beforeSummary?.causalUpdates??0),'causal personality hypotheses did not receive developmental evidence');
+assert(biasShift>0.01,'personality bias did not materially move from baseline');
+assert(behaviouralShift>0,'developmental action profile did not change at all');
+assert(allSteps.filter(Boolean).length===40,'not every live cycle returned a selected action');
+
+const persisted=r.core.b299CausalPersonalitySnapshot();
+r.stop();
+const restored=new B299CausalPersonalityDevelopmentLoop();
+restored.restore(persisted);
+const restoredDiag=restored.diagnostics();
+const restoredBias=Object.fromEntries(ACTIONS.map(a=>[a,restored.actionBias(a)]));
+assert(restoredDiag.cycles===persisted.cycles,'B299 snapshot restore cycle count changed');
+assert(restoredDiag.learningUpdates===persisted.learningUpdates,'B299 snapshot restore learning count changed');
+assert(l1(restoredBias,afterBias)<1e-10,'B299 snapshot restore changed learned action bias');
+const fullInfluence=ACTIONS.reduce((s,a)=>s+Math.abs(afterBias[a]),0);
+restored.lesion(.9);
+const lesionedInfluence=ACTIONS.reduce((s,a)=>s+Math.abs(restored.actionBias(a)),0);
+assert(lesionedInfluence<fullInfluence*.2+1e-9,'B299 lesion did not suppress developed personality influence');
+
+process.stdout.write(JSON.stringify({
+  pass:true,
+  run:{cycles:after.cycles,learningUpdates:after.learningUpdates,verifiedUpdates:after.verifiedUpdates,autonomousUpdates:after.autonomousUpdates,personalityInfluence01:after.personalityInfluence01,personalityStability01:after.personalityStability01,selfAuthoredDevelopment01:after.selfAuthoredDevelopment01,causalIntegrity01:after.causalIntegrity01,maxActionBias01:after.maxActionBias01,biasShift,behaviouralShift},
+  baselineCounts,developmentalCounts:developmental,autonomousCounts:autonomous,
+  beforeBias,developmentalBeforeBias,afterBias,
+  personality:{beforeCausalUpdates:beforeSummary.causalUpdates,afterCausalUpdates:finalSummary.causalUpdates,strongest:finalSummary.strongest?.slice(0,4)??[]},
+  restore:{cycles:restoredDiag.cycles,learningUpdates:restoredDiag.learningUpdates},
+  lesion:{fullInfluence,lesionedInfluence}
+}));
+process.exit(0);

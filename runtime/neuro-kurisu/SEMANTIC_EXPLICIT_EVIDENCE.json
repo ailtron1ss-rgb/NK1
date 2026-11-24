@@ -1,0 +1,957 @@
+{
+  "src/organism/system/ContinuousCognitiveFabric.ts:explicit:constructor": {
+    "evidence": [
+      {
+        "kind": "integration",
+        "ok": true,
+        "at": 1789813850957,
+        "source": "B504_RUNTIME_INTEGRATION",
+        "details": "executed inside OrganismRuntime closed-loop cycle",
+        "sourceHash": "8244044f5623a17d911179cd1bcaef51de36982e9677774cdce1adfb64375d61",
+        "testHash": "2a5095c641240227d1a5db304d8cb2b7792a718fdcdbf2499ee7dbb6f1400cc9"
+      },
+      {
+        "kind": "persistence",
+        "ok": true,
+        "at": 1789813850957,
+        "source": "B504_RESTART_PERSISTENCE",
+        "details": "state restored after runtime restart",
+        "sourceHash": "8244044f5623a17d911179cd1bcaef51de36982e9677774cdce1adfb64375d61",
+        "testHash": "2a5095c641240227d1a5db304d8cb2b7792a718fdcdbf2499ee7dbb6f1400cc9"
+      },
+      {
+        "kind": "regression",
+        "ok": true,
+        "at": 1789813850957,
+        "source": "B504_RESTART_PERSISTENCE",
+        "details": "second runtime loaded persisted state and assertions passed",
+        "sourceHash": "8244044f5623a17d911179cd1bcaef51de36982e9677774cdce1adfb64375d61",
+        "testHash": "2a5095c641240227d1a5db304d8cb2b7792a718fdcdbf2499ee7dbb6f1400cc9"
+      }
+    ]
+  },
+  "src/organism/system/ContinuousCognitiveFabric.ts:explicit:restore": {
+    "evidence": [
+      {
+        "kind": "direct",
+        "ok": true,
+        "at": 1789813850957,
+        "source": "B504_CONTINUOUS_COGNITIVE_TEST",
+        "details": "executed with postcondition assertions",
+        "sourceHash": "8244044f5623a17d911179cd1bcaef51de36982e9677774cdce1adfb64375d61",
+        "testHash": "2a5095c641240227d1a5db304d8cb2b7792a718fdcdbf2499ee7dbb6f1400cc9"
+      },
+      {
+        "kind": "integration",
+        "ok": true,
+        "at": 1789813850957,
+        "source": "B504_RUNTIME_INTEGRATION",
+        "details": "executed inside OrganismRuntime closed-loop cycle",
+        "sourceHash": "8244044f5623a17d911179cd1bcaef51de36982e9677774cdce1adfb64375d61",
+        "testHash": "2a5095c641240227d1a5db304d8cb2b7792a718fdcdbf2499ee7dbb6f1400cc9"
+      },
+      {
+        "kind": "persistence",
+        "ok": true,
+        "at": 1789813850957,
+        "source": "B504_RESTART_PERSISTENCE",
+        "details": "state restored after runtime restart",
+        "sourceHash": "8244044f5623a17d911179cd1bcaef51de36982e9677774cdce1adfb64375d61",
+        "testHash": "2a5095c641240227d1a5db304d8cb2b7792a718fdcdbf2499ee7dbb6f1400cc9"
+      },
+      {
+        "kind": "regression",
+        "ok": true,
+        "at": 1789813850957,
+        "source": "B504_RESTART_PERSISTENCE",
+        "details": "second runtime loaded persisted state and assertions passed",
+        "sourceHash": "8244044f5623a17d911179cd1bcaef51de36982e9677774cdce1adfb64375d61",
+        "testHash": "2a5095c641240227d1a5db304d8cb2b7792a718fdcdbf2499ee7dbb6f1400cc9"
+      }
+    ]
+  },
+  "src/organism/system/ContinuousCognitiveFabric.ts:explicit:step": {
+    "evidence": [
+      {
+        "kind": "direct",
+        "ok": true,
+        "at": 1789813850957,
+        "source": "B504_CONTINUOUS_COGNITIVE_TEST",
+        "details": "executed with postcondition assertions",
+        "sourceHash": "8244044f5623a17d911179cd1bcaef51de36982e9677774cdce1adfb64375d61",
+        "testHash": "2a5095c641240227d1a5db304d8cb2b7792a718fdcdbf2499ee7dbb6f1400cc9"
+      },
+      {
+        "kind": "integration",
+        "ok": true,
+        "at": 1789813850957,
+        "source": "B504_RUNTIME_INTEGRATION",
+        "details": "executed inside OrganismRuntime closed-loop cycle",
+        "sourceHash": "8244044f5623a17d911179cd1bcaef51de36982e9677774cdce1adfb64375d61",
+        "testHash": "2a5095c641240227d1a5db304d8cb2b7792a718fdcdbf2499ee7dbb6f1400cc9"
+      },
+      {
+        "kind": "persistence",
+        "ok": true,
+        "at": 1789813850957,
+        "source": "B504_RESTART_PERSISTENCE",
+        "details": "state restored after runtime restart",
+        "sourceHash": "8244044f5623a17d911179cd1bcaef51de36982e9677774cdce1adfb64375d61",
+        "testHash": "2a5095c641240227d1a5db304d8cb2b7792a718fdcdbf2499ee7dbb6f1400cc9"
+      },
+      {
+        "kind": "regression",
+        "ok": true,
+        "at": 1789813850957,
+        "source": "B504_RESTART_PERSISTENCE",
+        "details": "second runtime loaded persisted state and assertions passed",
+        "sourceHash": "8244044f5623a17d911179cd1bcaef51de36982e9677774cdce1adfb64375d61",
+        "testHash": "2a5095c641240227d1a5db304d8cb2b7792a718fdcdbf2499ee7dbb6f1400cc9"
+      }
+    ]
+  },
+  "src/organism/system/ContinuousCognitiveFabric.ts:explicit:snapshot": {
+    "evidence": [
+      {
+        "kind": "direct",
+        "ok": true,
+        "at": 1789813850957,
+        "source": "B504_CONTINUOUS_COGNITIVE_TEST",
+        "details": "executed with postcondition assertions",
+        "sourceHash": "8244044f5623a17d911179cd1bcaef51de36982e9677774cdce1adfb64375d61",
+        "testHash": "2a5095c641240227d1a5db304d8cb2b7792a718fdcdbf2499ee7dbb6f1400cc9"
+      },
+      {
+        "kind": "integration",
+        "ok": true,
+        "at": 1789813850957,
+        "source": "B504_RUNTIME_INTEGRATION",
+        "details": "executed inside OrganismRuntime closed-loop cycle",
+        "sourceHash": "8244044f5623a17d911179cd1bcaef51de36982e9677774cdce1adfb64375d61",
+        "testHash": "2a5095c641240227d1a5db304d8cb2b7792a718fdcdbf2499ee7dbb6f1400cc9"
+      },
+      {
+        "kind": "persistence",
+        "ok": true,
+        "at": 1789813850957,
+        "source": "B504_RESTART_PERSISTENCE",
+        "details": "state restored after runtime restart",
+        "sourceHash": "8244044f5623a17d911179cd1bcaef51de36982e9677774cdce1adfb64375d61",
+        "testHash": "2a5095c641240227d1a5db304d8cb2b7792a718fdcdbf2499ee7dbb6f1400cc9"
+      },
+      {
+        "kind": "regression",
+        "ok": true,
+        "at": 1789813850957,
+        "source": "B504_RESTART_PERSISTENCE",
+        "details": "second runtime loaded persisted state and assertions passed",
+        "sourceHash": "8244044f5623a17d911179cd1bcaef51de36982e9677774cdce1adfb64375d61",
+        "testHash": "2a5095c641240227d1a5db304d8cb2b7792a718fdcdbf2499ee7dbb6f1400cc9"
+      }
+    ]
+  },
+  "src/organism/system/ContinuousCognitiveFabric.ts:explicit:diagnostics": {
+    "evidence": [
+      {
+        "kind": "direct",
+        "ok": true,
+        "at": 1789813850957,
+        "source": "B504_CONTINUOUS_COGNITIVE_TEST",
+        "details": "executed with postcondition assertions",
+        "sourceHash": "8244044f5623a17d911179cd1bcaef51de36982e9677774cdce1adfb64375d61",
+        "testHash": "2a5095c641240227d1a5db304d8cb2b7792a718fdcdbf2499ee7dbb6f1400cc9"
+      },
+      {
+        "kind": "integration",
+        "ok": true,
+        "at": 1789813850957,
+        "source": "B504_RUNTIME_INTEGRATION",
+        "details": "executed inside OrganismRuntime closed-loop cycle",
+        "sourceHash": "8244044f5623a17d911179cd1bcaef51de36982e9677774cdce1adfb64375d61",
+        "testHash": "2a5095c641240227d1a5db304d8cb2b7792a718fdcdbf2499ee7dbb6f1400cc9"
+      },
+      {
+        "kind": "persistence",
+        "ok": true,
+        "at": 1789813850957,
+        "source": "B504_RESTART_PERSISTENCE",
+        "details": "state restored after runtime restart",
+        "sourceHash": "8244044f5623a17d911179cd1bcaef51de36982e9677774cdce1adfb64375d61",
+        "testHash": "2a5095c641240227d1a5db304d8cb2b7792a718fdcdbf2499ee7dbb6f1400cc9"
+      },
+      {
+        "kind": "regression",
+        "ok": true,
+        "at": 1789813850957,
+        "source": "B504_RESTART_PERSISTENCE",
+        "details": "second runtime loaded persisted state and assertions passed",
+        "sourceHash": "8244044f5623a17d911179cd1bcaef51de36982e9677774cdce1adfb64375d61",
+        "testHash": "2a5095c641240227d1a5db304d8cb2b7792a718fdcdbf2499ee7dbb6f1400cc9"
+      }
+    ]
+  },
+  "src/organism/cognition/B502ContinuousIdentityLifecycleEngine.ts:explicit:constructor": {
+    "evidence": [
+      {
+        "kind": "integration",
+        "ok": true,
+        "at": 1789813850957,
+        "source": "B504_RUNTIME_INTEGRATION",
+        "details": "executed inside OrganismRuntime closed-loop cycle",
+        "sourceHash": "bed6cdd41c75fe34990c6aca681e4b6dae21a3766722446ae360e62a1a297da3",
+        "testHash": "2a5095c641240227d1a5db304d8cb2b7792a718fdcdbf2499ee7dbb6f1400cc9"
+      },
+      {
+        "kind": "persistence",
+        "ok": true,
+        "at": 1789813850957,
+        "source": "B504_RESTART_PERSISTENCE",
+        "details": "state restored after runtime restart",
+        "sourceHash": "bed6cdd41c75fe34990c6aca681e4b6dae21a3766722446ae360e62a1a297da3",
+        "testHash": "2a5095c641240227d1a5db304d8cb2b7792a718fdcdbf2499ee7dbb6f1400cc9"
+      },
+      {
+        "kind": "regression",
+        "ok": true,
+        "at": 1789813850957,
+        "source": "B504_RESTART_PERSISTENCE",
+        "details": "second runtime loaded persisted state and assertions passed",
+        "sourceHash": "bed6cdd41c75fe34990c6aca681e4b6dae21a3766722446ae360e62a1a297da3",
+        "testHash": "2a5095c641240227d1a5db304d8cb2b7792a718fdcdbf2499ee7dbb6f1400cc9"
+      }
+    ]
+  },
+  "src/organism/cognition/B502ContinuousIdentityLifecycleEngine.ts:explicit:absorb": {
+    "evidence": [
+      {
+        "kind": "direct",
+        "ok": true,
+        "at": 1789813850957,
+        "source": "B504_CONTINUOUS_COGNITIVE_TEST",
+        "details": "executed with postcondition assertions",
+        "sourceHash": "bed6cdd41c75fe34990c6aca681e4b6dae21a3766722446ae360e62a1a297da3",
+        "testHash": "2a5095c641240227d1a5db304d8cb2b7792a718fdcdbf2499ee7dbb6f1400cc9"
+      },
+      {
+        "kind": "integration",
+        "ok": true,
+        "at": 1789813850957,
+        "source": "B504_RUNTIME_INTEGRATION",
+        "details": "executed inside OrganismRuntime closed-loop cycle",
+        "sourceHash": "bed6cdd41c75fe34990c6aca681e4b6dae21a3766722446ae360e62a1a297da3",
+        "testHash": "2a5095c641240227d1a5db304d8cb2b7792a718fdcdbf2499ee7dbb6f1400cc9"
+      },
+      {
+        "kind": "persistence",
+        "ok": true,
+        "at": 1789813850957,
+        "source": "B504_RESTART_PERSISTENCE",
+        "details": "state restored after runtime restart",
+        "sourceHash": "bed6cdd41c75fe34990c6aca681e4b6dae21a3766722446ae360e62a1a297da3",
+        "testHash": "2a5095c641240227d1a5db304d8cb2b7792a718fdcdbf2499ee7dbb6f1400cc9"
+      },
+      {
+        "kind": "regression",
+        "ok": true,
+        "at": 1789813850957,
+        "source": "B504_RESTART_PERSISTENCE",
+        "details": "second runtime loaded persisted state and assertions passed",
+        "sourceHash": "bed6cdd41c75fe34990c6aca681e4b6dae21a3766722446ae360e62a1a297da3",
+        "testHash": "2a5095c641240227d1a5db304d8cb2b7792a718fdcdbf2499ee7dbb6f1400cc9"
+      }
+    ]
+  },
+  "src/organism/cognition/B502ContinuousIdentityLifecycleEngine.ts:explicit:restore": {
+    "evidence": [
+      {
+        "kind": "direct",
+        "ok": true,
+        "at": 1789813850957,
+        "source": "B504_CONTINUOUS_COGNITIVE_TEST",
+        "details": "executed with postcondition assertions",
+        "sourceHash": "bed6cdd41c75fe34990c6aca681e4b6dae21a3766722446ae360e62a1a297da3",
+        "testHash": "2a5095c641240227d1a5db304d8cb2b7792a718fdcdbf2499ee7dbb6f1400cc9"
+      },
+      {
+        "kind": "integration",
+        "ok": true,
+        "at": 1789813850957,
+        "source": "B504_RUNTIME_INTEGRATION",
+        "details": "executed inside OrganismRuntime closed-loop cycle",
+        "sourceHash": "bed6cdd41c75fe34990c6aca681e4b6dae21a3766722446ae360e62a1a297da3",
+        "testHash": "2a5095c641240227d1a5db304d8cb2b7792a718fdcdbf2499ee7dbb6f1400cc9"
+      },
+      {
+        "kind": "persistence",
+        "ok": true,
+        "at": 1789813850957,
+        "source": "B504_RESTART_PERSISTENCE",
+        "details": "state restored after runtime restart",
+        "sourceHash": "bed6cdd41c75fe34990c6aca681e4b6dae21a3766722446ae360e62a1a297da3",
+        "testHash": "2a5095c641240227d1a5db304d8cb2b7792a718fdcdbf2499ee7dbb6f1400cc9"
+      },
+      {
+        "kind": "regression",
+        "ok": true,
+        "at": 1789813850957,
+        "source": "B504_RESTART_PERSISTENCE",
+        "details": "second runtime loaded persisted state and assertions passed",
+        "sourceHash": "bed6cdd41c75fe34990c6aca681e4b6dae21a3766722446ae360e62a1a297da3",
+        "testHash": "2a5095c641240227d1a5db304d8cb2b7792a718fdcdbf2499ee7dbb6f1400cc9"
+      }
+    ]
+  },
+  "src/organism/cognition/B502ContinuousIdentityLifecycleEngine.ts:explicit:snapshot": {
+    "evidence": [
+      {
+        "kind": "direct",
+        "ok": true,
+        "at": 1789813850957,
+        "source": "B504_CONTINUOUS_COGNITIVE_TEST",
+        "details": "executed with postcondition assertions",
+        "sourceHash": "bed6cdd41c75fe34990c6aca681e4b6dae21a3766722446ae360e62a1a297da3",
+        "testHash": "2a5095c641240227d1a5db304d8cb2b7792a718fdcdbf2499ee7dbb6f1400cc9"
+      },
+      {
+        "kind": "integration",
+        "ok": true,
+        "at": 1789813850957,
+        "source": "B504_RUNTIME_INTEGRATION",
+        "details": "executed inside OrganismRuntime closed-loop cycle",
+        "sourceHash": "bed6cdd41c75fe34990c6aca681e4b6dae21a3766722446ae360e62a1a297da3",
+        "testHash": "2a5095c641240227d1a5db304d8cb2b7792a718fdcdbf2499ee7dbb6f1400cc9"
+      },
+      {
+        "kind": "persistence",
+        "ok": true,
+        "at": 1789813850957,
+        "source": "B504_RESTART_PERSISTENCE",
+        "details": "state restored after runtime restart",
+        "sourceHash": "bed6cdd41c75fe34990c6aca681e4b6dae21a3766722446ae360e62a1a297da3",
+        "testHash": "2a5095c641240227d1a5db304d8cb2b7792a718fdcdbf2499ee7dbb6f1400cc9"
+      },
+      {
+        "kind": "regression",
+        "ok": true,
+        "at": 1789813850957,
+        "source": "B504_RESTART_PERSISTENCE",
+        "details": "second runtime loaded persisted state and assertions passed",
+        "sourceHash": "bed6cdd41c75fe34990c6aca681e4b6dae21a3766722446ae360e62a1a297da3",
+        "testHash": "2a5095c641240227d1a5db304d8cb2b7792a718fdcdbf2499ee7dbb6f1400cc9"
+      }
+    ]
+  },
+  "src/organism/cognition/B503ExperienceIntegrationLayer.ts:explicit:constructor": {
+    "evidence": [
+      {
+        "kind": "integration",
+        "ok": true,
+        "at": 1789813850957,
+        "source": "B504_RUNTIME_INTEGRATION",
+        "details": "executed inside OrganismRuntime closed-loop cycle",
+        "sourceHash": "da90d2a0261077fed8f1ee7663c4d8434e2e7242773433f5134124d28720e93c",
+        "testHash": "2a5095c641240227d1a5db304d8cb2b7792a718fdcdbf2499ee7dbb6f1400cc9"
+      },
+      {
+        "kind": "persistence",
+        "ok": true,
+        "at": 1789813850957,
+        "source": "B504_RESTART_PERSISTENCE",
+        "details": "state restored after runtime restart",
+        "sourceHash": "da90d2a0261077fed8f1ee7663c4d8434e2e7242773433f5134124d28720e93c",
+        "testHash": "2a5095c641240227d1a5db304d8cb2b7792a718fdcdbf2499ee7dbb6f1400cc9"
+      },
+      {
+        "kind": "regression",
+        "ok": true,
+        "at": 1789813850957,
+        "source": "B504_RESTART_PERSISTENCE",
+        "details": "second runtime loaded persisted state and assertions passed",
+        "sourceHash": "da90d2a0261077fed8f1ee7663c4d8434e2e7242773433f5134124d28720e93c",
+        "testHash": "2a5095c641240227d1a5db304d8cb2b7792a718fdcdbf2499ee7dbb6f1400cc9"
+      }
+    ]
+  },
+  "src/organism/cognition/B503ExperienceIntegrationLayer.ts:explicit:process": {
+    "evidence": [
+      {
+        "kind": "direct",
+        "ok": true,
+        "at": 1789813850957,
+        "source": "B504_CONTINUOUS_COGNITIVE_TEST",
+        "details": "executed with postcondition assertions",
+        "sourceHash": "da90d2a0261077fed8f1ee7663c4d8434e2e7242773433f5134124d28720e93c",
+        "testHash": "2a5095c641240227d1a5db304d8cb2b7792a718fdcdbf2499ee7dbb6f1400cc9"
+      },
+      {
+        "kind": "integration",
+        "ok": true,
+        "at": 1789813850957,
+        "source": "B504_RUNTIME_INTEGRATION",
+        "details": "executed inside OrganismRuntime closed-loop cycle",
+        "sourceHash": "da90d2a0261077fed8f1ee7663c4d8434e2e7242773433f5134124d28720e93c",
+        "testHash": "2a5095c641240227d1a5db304d8cb2b7792a718fdcdbf2499ee7dbb6f1400cc9"
+      },
+      {
+        "kind": "persistence",
+        "ok": true,
+        "at": 1789813850957,
+        "source": "B504_RESTART_PERSISTENCE",
+        "details": "state restored after runtime restart",
+        "sourceHash": "da90d2a0261077fed8f1ee7663c4d8434e2e7242773433f5134124d28720e93c",
+        "testHash": "2a5095c641240227d1a5db304d8cb2b7792a718fdcdbf2499ee7dbb6f1400cc9"
+      },
+      {
+        "kind": "regression",
+        "ok": true,
+        "at": 1789813850957,
+        "source": "B504_RESTART_PERSISTENCE",
+        "details": "second runtime loaded persisted state and assertions passed",
+        "sourceHash": "da90d2a0261077fed8f1ee7663c4d8434e2e7242773433f5134124d28720e93c",
+        "testHash": "2a5095c641240227d1a5db304d8cb2b7792a718fdcdbf2499ee7dbb6f1400cc9"
+      }
+    ]
+  },
+  "src/organism/cognition/B503ExperienceIntegrationLayer.ts:explicit:stats": {
+    "evidence": [
+      {
+        "kind": "direct",
+        "ok": true,
+        "at": 1789813850957,
+        "source": "B504_CONTINUOUS_COGNITIVE_TEST",
+        "details": "executed with postcondition assertions",
+        "sourceHash": "da90d2a0261077fed8f1ee7663c4d8434e2e7242773433f5134124d28720e93c",
+        "testHash": "2a5095c641240227d1a5db304d8cb2b7792a718fdcdbf2499ee7dbb6f1400cc9"
+      },
+      {
+        "kind": "integration",
+        "ok": true,
+        "at": 1789813850957,
+        "source": "B504_RUNTIME_INTEGRATION",
+        "details": "executed inside OrganismRuntime closed-loop cycle",
+        "sourceHash": "da90d2a0261077fed8f1ee7663c4d8434e2e7242773433f5134124d28720e93c",
+        "testHash": "2a5095c641240227d1a5db304d8cb2b7792a718fdcdbf2499ee7dbb6f1400cc9"
+      },
+      {
+        "kind": "persistence",
+        "ok": true,
+        "at": 1789813850957,
+        "source": "B504_RESTART_PERSISTENCE",
+        "details": "state restored after runtime restart",
+        "sourceHash": "da90d2a0261077fed8f1ee7663c4d8434e2e7242773433f5134124d28720e93c",
+        "testHash": "2a5095c641240227d1a5db304d8cb2b7792a718fdcdbf2499ee7dbb6f1400cc9"
+      },
+      {
+        "kind": "regression",
+        "ok": true,
+        "at": 1789813850957,
+        "source": "B504_RESTART_PERSISTENCE",
+        "details": "second runtime loaded persisted state and assertions passed",
+        "sourceHash": "da90d2a0261077fed8f1ee7663c4d8434e2e7242773433f5134124d28720e93c",
+        "testHash": "2a5095c641240227d1a5db304d8cb2b7792a718fdcdbf2499ee7dbb6f1400cc9"
+      }
+    ]
+  },
+  "src/organism/memory/AdaptiveExperienceConsolidator.ts:explicit:constructor": {
+    "evidence": [
+      {
+        "kind": "integration",
+        "ok": true,
+        "at": 1789813850957,
+        "source": "B504_RUNTIME_INTEGRATION",
+        "details": "executed inside OrganismRuntime closed-loop cycle",
+        "sourceHash": "5b48eb8a79ed1ab11f9b1b5bae4eacf1eb675d22db04373419ed65446c045257",
+        "testHash": "2a5095c641240227d1a5db304d8cb2b7792a718fdcdbf2499ee7dbb6f1400cc9"
+      },
+      {
+        "kind": "persistence",
+        "ok": true,
+        "at": 1789813850957,
+        "source": "B504_RESTART_PERSISTENCE",
+        "details": "state restored after runtime restart",
+        "sourceHash": "5b48eb8a79ed1ab11f9b1b5bae4eacf1eb675d22db04373419ed65446c045257",
+        "testHash": "2a5095c641240227d1a5db304d8cb2b7792a718fdcdbf2499ee7dbb6f1400cc9"
+      },
+      {
+        "kind": "regression",
+        "ok": true,
+        "at": 1789813850957,
+        "source": "B504_RESTART_PERSISTENCE",
+        "details": "second runtime loaded persisted state and assertions passed",
+        "sourceHash": "5b48eb8a79ed1ab11f9b1b5bae4eacf1eb675d22db04373419ed65446c045257",
+        "testHash": "2a5095c641240227d1a5db304d8cb2b7792a718fdcdbf2499ee7dbb6f1400cc9"
+      }
+    ]
+  },
+  "src/organism/memory/AdaptiveExperienceConsolidator.ts:explicit:ingest": {
+    "evidence": [
+      {
+        "kind": "direct",
+        "ok": true,
+        "at": 1789813850957,
+        "source": "B504_CONTINUOUS_COGNITIVE_TEST",
+        "details": "executed with postcondition assertions",
+        "sourceHash": "5b48eb8a79ed1ab11f9b1b5bae4eacf1eb675d22db04373419ed65446c045257",
+        "testHash": "2a5095c641240227d1a5db304d8cb2b7792a718fdcdbf2499ee7dbb6f1400cc9"
+      },
+      {
+        "kind": "integration",
+        "ok": true,
+        "at": 1789813850957,
+        "source": "B504_RUNTIME_INTEGRATION",
+        "details": "executed inside OrganismRuntime closed-loop cycle",
+        "sourceHash": "5b48eb8a79ed1ab11f9b1b5bae4eacf1eb675d22db04373419ed65446c045257",
+        "testHash": "2a5095c641240227d1a5db304d8cb2b7792a718fdcdbf2499ee7dbb6f1400cc9"
+      },
+      {
+        "kind": "persistence",
+        "ok": true,
+        "at": 1789813850957,
+        "source": "B504_RESTART_PERSISTENCE",
+        "details": "state restored after runtime restart",
+        "sourceHash": "5b48eb8a79ed1ab11f9b1b5bae4eacf1eb675d22db04373419ed65446c045257",
+        "testHash": "2a5095c641240227d1a5db304d8cb2b7792a718fdcdbf2499ee7dbb6f1400cc9"
+      },
+      {
+        "kind": "regression",
+        "ok": true,
+        "at": 1789813850957,
+        "source": "B504_RESTART_PERSISTENCE",
+        "details": "second runtime loaded persisted state and assertions passed",
+        "sourceHash": "5b48eb8a79ed1ab11f9b1b5bae4eacf1eb675d22db04373419ed65446c045257",
+        "testHash": "2a5095c641240227d1a5db304d8cb2b7792a718fdcdbf2499ee7dbb6f1400cc9"
+      }
+    ]
+  },
+  "src/organism/memory/AdaptiveExperienceConsolidator.ts:explicit:consolidate": {
+    "evidence": [
+      {
+        "kind": "direct",
+        "ok": true,
+        "at": 1789813850957,
+        "source": "B504_CONTINUOUS_COGNITIVE_TEST",
+        "details": "executed with postcondition assertions",
+        "sourceHash": "5b48eb8a79ed1ab11f9b1b5bae4eacf1eb675d22db04373419ed65446c045257",
+        "testHash": "2a5095c641240227d1a5db304d8cb2b7792a718fdcdbf2499ee7dbb6f1400cc9"
+      },
+      {
+        "kind": "integration",
+        "ok": true,
+        "at": 1789813850957,
+        "source": "B504_RUNTIME_INTEGRATION",
+        "details": "executed inside OrganismRuntime closed-loop cycle",
+        "sourceHash": "5b48eb8a79ed1ab11f9b1b5bae4eacf1eb675d22db04373419ed65446c045257",
+        "testHash": "2a5095c641240227d1a5db304d8cb2b7792a718fdcdbf2499ee7dbb6f1400cc9"
+      },
+      {
+        "kind": "persistence",
+        "ok": true,
+        "at": 1789813850957,
+        "source": "B504_RESTART_PERSISTENCE",
+        "details": "state restored after runtime restart",
+        "sourceHash": "5b48eb8a79ed1ab11f9b1b5bae4eacf1eb675d22db04373419ed65446c045257",
+        "testHash": "2a5095c641240227d1a5db304d8cb2b7792a718fdcdbf2499ee7dbb6f1400cc9"
+      },
+      {
+        "kind": "regression",
+        "ok": true,
+        "at": 1789813850957,
+        "source": "B504_RESTART_PERSISTENCE",
+        "details": "second runtime loaded persisted state and assertions passed",
+        "sourceHash": "5b48eb8a79ed1ab11f9b1b5bae4eacf1eb675d22db04373419ed65446c045257",
+        "testHash": "2a5095c641240227d1a5db304d8cb2b7792a718fdcdbf2499ee7dbb6f1400cc9"
+      }
+    ]
+  },
+  "src/organism/memory/AdaptiveExperienceConsolidator.ts:explicit:size": {
+    "evidence": [
+      {
+        "kind": "direct",
+        "ok": true,
+        "at": 1789813850957,
+        "source": "B504_CONTINUOUS_COGNITIVE_TEST",
+        "details": "executed with postcondition assertions",
+        "sourceHash": "5b48eb8a79ed1ab11f9b1b5bae4eacf1eb675d22db04373419ed65446c045257",
+        "testHash": "2a5095c641240227d1a5db304d8cb2b7792a718fdcdbf2499ee7dbb6f1400cc9"
+      },
+      {
+        "kind": "integration",
+        "ok": true,
+        "at": 1789813850957,
+        "source": "B504_RUNTIME_INTEGRATION",
+        "details": "executed inside OrganismRuntime closed-loop cycle",
+        "sourceHash": "5b48eb8a79ed1ab11f9b1b5bae4eacf1eb675d22db04373419ed65446c045257",
+        "testHash": "2a5095c641240227d1a5db304d8cb2b7792a718fdcdbf2499ee7dbb6f1400cc9"
+      },
+      {
+        "kind": "persistence",
+        "ok": true,
+        "at": 1789813850957,
+        "source": "B504_RESTART_PERSISTENCE",
+        "details": "state restored after runtime restart",
+        "sourceHash": "5b48eb8a79ed1ab11f9b1b5bae4eacf1eb675d22db04373419ed65446c045257",
+        "testHash": "2a5095c641240227d1a5db304d8cb2b7792a718fdcdbf2499ee7dbb6f1400cc9"
+      },
+      {
+        "kind": "regression",
+        "ok": true,
+        "at": 1789813850957,
+        "source": "B504_RESTART_PERSISTENCE",
+        "details": "second runtime loaded persisted state and assertions passed",
+        "sourceHash": "5b48eb8a79ed1ab11f9b1b5bae4eacf1eb675d22db04373419ed65446c045257",
+        "testHash": "2a5095c641240227d1a5db304d8cb2b7792a718fdcdbf2499ee7dbb6f1400cc9"
+      }
+    ]
+  },
+  "src/organism/memory/AdaptiveExperienceConsolidator.ts:explicit:snapshot": {
+    "evidence": [
+      {
+        "kind": "direct",
+        "ok": true,
+        "at": 1789813850957,
+        "source": "B504_CONTINUOUS_COGNITIVE_TEST",
+        "details": "executed with postcondition assertions",
+        "sourceHash": "5b48eb8a79ed1ab11f9b1b5bae4eacf1eb675d22db04373419ed65446c045257",
+        "testHash": "2a5095c641240227d1a5db304d8cb2b7792a718fdcdbf2499ee7dbb6f1400cc9"
+      },
+      {
+        "kind": "integration",
+        "ok": true,
+        "at": 1789813850957,
+        "source": "B504_RUNTIME_INTEGRATION",
+        "details": "executed inside OrganismRuntime closed-loop cycle",
+        "sourceHash": "5b48eb8a79ed1ab11f9b1b5bae4eacf1eb675d22db04373419ed65446c045257",
+        "testHash": "2a5095c641240227d1a5db304d8cb2b7792a718fdcdbf2499ee7dbb6f1400cc9"
+      },
+      {
+        "kind": "persistence",
+        "ok": true,
+        "at": 1789813850957,
+        "source": "B504_RESTART_PERSISTENCE",
+        "details": "state restored after runtime restart",
+        "sourceHash": "5b48eb8a79ed1ab11f9b1b5bae4eacf1eb675d22db04373419ed65446c045257",
+        "testHash": "2a5095c641240227d1a5db304d8cb2b7792a718fdcdbf2499ee7dbb6f1400cc9"
+      },
+      {
+        "kind": "regression",
+        "ok": true,
+        "at": 1789813850957,
+        "source": "B504_RESTART_PERSISTENCE",
+        "details": "second runtime loaded persisted state and assertions passed",
+        "sourceHash": "5b48eb8a79ed1ab11f9b1b5bae4eacf1eb675d22db04373419ed65446c045257",
+        "testHash": "2a5095c641240227d1a5db304d8cb2b7792a718fdcdbf2499ee7dbb6f1400cc9"
+      }
+    ]
+  },
+  "src/organism/memory/AdaptiveExperienceConsolidator.ts:explicit:restore": {
+    "evidence": [
+      {
+        "kind": "direct",
+        "ok": true,
+        "at": 1789813850957,
+        "source": "B504_CONTINUOUS_COGNITIVE_TEST",
+        "details": "executed with postcondition assertions",
+        "sourceHash": "5b48eb8a79ed1ab11f9b1b5bae4eacf1eb675d22db04373419ed65446c045257",
+        "testHash": "2a5095c641240227d1a5db304d8cb2b7792a718fdcdbf2499ee7dbb6f1400cc9"
+      },
+      {
+        "kind": "integration",
+        "ok": true,
+        "at": 1789813850957,
+        "source": "B504_RUNTIME_INTEGRATION",
+        "details": "executed inside OrganismRuntime closed-loop cycle",
+        "sourceHash": "5b48eb8a79ed1ab11f9b1b5bae4eacf1eb675d22db04373419ed65446c045257",
+        "testHash": "2a5095c641240227d1a5db304d8cb2b7792a718fdcdbf2499ee7dbb6f1400cc9"
+      },
+      {
+        "kind": "persistence",
+        "ok": true,
+        "at": 1789813850957,
+        "source": "B504_RESTART_PERSISTENCE",
+        "details": "state restored after runtime restart",
+        "sourceHash": "5b48eb8a79ed1ab11f9b1b5bae4eacf1eb675d22db04373419ed65446c045257",
+        "testHash": "2a5095c641240227d1a5db304d8cb2b7792a718fdcdbf2499ee7dbb6f1400cc9"
+      },
+      {
+        "kind": "regression",
+        "ok": true,
+        "at": 1789813850957,
+        "source": "B504_RESTART_PERSISTENCE",
+        "details": "second runtime loaded persisted state and assertions passed",
+        "sourceHash": "5b48eb8a79ed1ab11f9b1b5bae4eacf1eb675d22db04373419ed65446c045257",
+        "testHash": "2a5095c641240227d1a5db304d8cb2b7792a718fdcdbf2499ee7dbb6f1400cc9"
+      }
+    ]
+  },
+  "src/organism/cognition/b504/DreamConsolidationLayer.ts:explicit:consolidate": {
+    "evidence": [
+      {
+        "kind": "direct",
+        "ok": true,
+        "at": 1789813850957,
+        "source": "B504_CONTINUOUS_COGNITIVE_TEST",
+        "details": "executed with postcondition assertions",
+        "sourceHash": "1eb17fe52b09e970c28843aa86f1e40f83d222c01efe2cc16956f75341ce4ce2",
+        "testHash": "2a5095c641240227d1a5db304d8cb2b7792a718fdcdbf2499ee7dbb6f1400cc9"
+      },
+      {
+        "kind": "integration",
+        "ok": true,
+        "at": 1789813850957,
+        "source": "B504_RUNTIME_INTEGRATION",
+        "details": "executed inside OrganismRuntime closed-loop cycle",
+        "sourceHash": "1eb17fe52b09e970c28843aa86f1e40f83d222c01efe2cc16956f75341ce4ce2",
+        "testHash": "2a5095c641240227d1a5db304d8cb2b7792a718fdcdbf2499ee7dbb6f1400cc9"
+      },
+      {
+        "kind": "persistence",
+        "ok": true,
+        "at": 1789813850957,
+        "source": "B504_RESTART_PERSISTENCE",
+        "details": "state restored after runtime restart",
+        "sourceHash": "1eb17fe52b09e970c28843aa86f1e40f83d222c01efe2cc16956f75341ce4ce2",
+        "testHash": "2a5095c641240227d1a5db304d8cb2b7792a718fdcdbf2499ee7dbb6f1400cc9"
+      },
+      {
+        "kind": "regression",
+        "ok": true,
+        "at": 1789813850957,
+        "source": "B504_RESTART_PERSISTENCE",
+        "details": "second runtime loaded persisted state and assertions passed",
+        "sourceHash": "1eb17fe52b09e970c28843aa86f1e40f83d222c01efe2cc16956f75341ce4ce2",
+        "testHash": "2a5095c641240227d1a5db304d8cb2b7792a718fdcdbf2499ee7dbb6f1400cc9"
+      }
+    ]
+  },
+  "src/organism/cognition/b504/PersonalityConflictEngine.ts:explicit:analyze": {
+    "evidence": [
+      {
+        "kind": "direct",
+        "ok": true,
+        "at": 1789813850957,
+        "source": "B504_CONTINUOUS_COGNITIVE_TEST",
+        "details": "executed with postcondition assertions",
+        "sourceHash": "aaa835e4d782b16858bd734c469113d342e6709267018ff6605ff52abe6a6901",
+        "testHash": "2a5095c641240227d1a5db304d8cb2b7792a718fdcdbf2499ee7dbb6f1400cc9"
+      },
+      {
+        "kind": "integration",
+        "ok": true,
+        "at": 1789813850957,
+        "source": "B504_RUNTIME_INTEGRATION",
+        "details": "executed inside OrganismRuntime closed-loop cycle",
+        "sourceHash": "aaa835e4d782b16858bd734c469113d342e6709267018ff6605ff52abe6a6901",
+        "testHash": "2a5095c641240227d1a5db304d8cb2b7792a718fdcdbf2499ee7dbb6f1400cc9"
+      },
+      {
+        "kind": "persistence",
+        "ok": true,
+        "at": 1789813850957,
+        "source": "B504_RESTART_PERSISTENCE",
+        "details": "state restored after runtime restart",
+        "sourceHash": "aaa835e4d782b16858bd734c469113d342e6709267018ff6605ff52abe6a6901",
+        "testHash": "2a5095c641240227d1a5db304d8cb2b7792a718fdcdbf2499ee7dbb6f1400cc9"
+      },
+      {
+        "kind": "regression",
+        "ok": true,
+        "at": 1789813850957,
+        "source": "B504_RESTART_PERSISTENCE",
+        "details": "second runtime loaded persisted state and assertions passed",
+        "sourceHash": "aaa835e4d782b16858bd734c469113d342e6709267018ff6605ff52abe6a6901",
+        "testHash": "2a5095c641240227d1a5db304d8cb2b7792a718fdcdbf2499ee7dbb6f1400cc9"
+      }
+    ]
+  },
+  "src/organism/cognition/b504/UnifiedCognitiveSpine.ts:explicit:integrate": {
+    "evidence": [
+      {
+        "kind": "direct",
+        "ok": true,
+        "at": 1789813850957,
+        "source": "B504_CONTINUOUS_COGNITIVE_TEST",
+        "details": "executed with postcondition assertions",
+        "sourceHash": "54c3f51159b34beb2db2b3acf9eaadf766a72a3fdf3ad7c0f689cae06356e7c9",
+        "testHash": "2a5095c641240227d1a5db304d8cb2b7792a718fdcdbf2499ee7dbb6f1400cc9"
+      },
+      {
+        "kind": "integration",
+        "ok": true,
+        "at": 1789813850957,
+        "source": "B504_RUNTIME_INTEGRATION",
+        "details": "executed inside OrganismRuntime closed-loop cycle",
+        "sourceHash": "54c3f51159b34beb2db2b3acf9eaadf766a72a3fdf3ad7c0f689cae06356e7c9",
+        "testHash": "2a5095c641240227d1a5db304d8cb2b7792a718fdcdbf2499ee7dbb6f1400cc9"
+      },
+      {
+        "kind": "persistence",
+        "ok": true,
+        "at": 1789813850957,
+        "source": "B504_RESTART_PERSISTENCE",
+        "details": "state restored after runtime restart",
+        "sourceHash": "54c3f51159b34beb2db2b3acf9eaadf766a72a3fdf3ad7c0f689cae06356e7c9",
+        "testHash": "2a5095c641240227d1a5db304d8cb2b7792a718fdcdbf2499ee7dbb6f1400cc9"
+      },
+      {
+        "kind": "regression",
+        "ok": true,
+        "at": 1789813850957,
+        "source": "B504_RESTART_PERSISTENCE",
+        "details": "second runtime loaded persisted state and assertions passed",
+        "sourceHash": "54c3f51159b34beb2db2b3acf9eaadf766a72a3fdf3ad7c0f689cae06356e7c9",
+        "testHash": "2a5095c641240227d1a5db304d8cb2b7792a718fdcdbf2499ee7dbb6f1400cc9"
+      }
+    ]
+  },
+  "src/organism/core/OrganismCore.ts:explicit:setContinuousCognitiveFabric": {
+    "evidence": [
+      {
+        "kind": "integration",
+        "ok": true,
+        "at": 1789813850957,
+        "source": "B504_RUNTIME_INTEGRATION",
+        "details": "core setter observed through runtime integration",
+        "sourceHash": "e19b38d0faac073f4a457a2f159ea1bfb0b3b79ac32c091c02d31b9fe1863c12",
+        "testHash": "2a5095c641240227d1a5db304d8cb2b7792a718fdcdbf2499ee7dbb6f1400cc9"
+      },
+      {
+        "kind": "persistence",
+        "ok": true,
+        "at": 1789813850957,
+        "source": "B504_RESTART_PERSISTENCE",
+        "details": "core state persisted and reloaded through OrganismRuntime",
+        "sourceHash": "e19b38d0faac073f4a457a2f159ea1bfb0b3b79ac32c091c02d31b9fe1863c12",
+        "testHash": "2a5095c641240227d1a5db304d8cb2b7792a718fdcdbf2499ee7dbb6f1400cc9"
+      },
+      {
+        "kind": "regression",
+        "ok": true,
+        "at": 1789813850957,
+        "source": "B504_RESTART_PERSISTENCE",
+        "details": "restart regression passed through persisted system state",
+        "sourceHash": "e19b38d0faac073f4a457a2f159ea1bfb0b3b79ac32c091c02d31b9fe1863c12",
+        "testHash": "2a5095c641240227d1a5db304d8cb2b7792a718fdcdbf2499ee7dbb6f1400cc9"
+      }
+    ]
+  },
+  "src/organism/core/OrganismCore.ts:explicit:continuousCognitiveFabricSnapshot": {
+    "evidence": [
+      {
+        "kind": "direct",
+        "ok": true,
+        "at": 1789813850957,
+        "source": "B504_CONTINUOUS_COGNITIVE_TEST",
+        "details": "executed with postcondition assertions",
+        "sourceHash": "e19b38d0faac073f4a457a2f159ea1bfb0b3b79ac32c091c02d31b9fe1863c12",
+        "testHash": "2a5095c641240227d1a5db304d8cb2b7792a718fdcdbf2499ee7dbb6f1400cc9"
+      },
+      {
+        "kind": "integration",
+        "ok": true,
+        "at": 1789813850957,
+        "source": "B504_RUNTIME_INTEGRATION",
+        "details": "core setter observed through runtime integration",
+        "sourceHash": "e19b38d0faac073f4a457a2f159ea1bfb0b3b79ac32c091c02d31b9fe1863c12",
+        "testHash": "2a5095c641240227d1a5db304d8cb2b7792a718fdcdbf2499ee7dbb6f1400cc9"
+      },
+      {
+        "kind": "persistence",
+        "ok": true,
+        "at": 1789813850957,
+        "source": "B504_RESTART_PERSISTENCE",
+        "details": "core state persisted and reloaded through OrganismRuntime",
+        "sourceHash": "e19b38d0faac073f4a457a2f159ea1bfb0b3b79ac32c091c02d31b9fe1863c12",
+        "testHash": "2a5095c641240227d1a5db304d8cb2b7792a718fdcdbf2499ee7dbb6f1400cc9"
+      },
+      {
+        "kind": "regression",
+        "ok": true,
+        "at": 1789813850957,
+        "source": "B504_RESTART_PERSISTENCE",
+        "details": "restart regression passed through persisted system state",
+        "sourceHash": "e19b38d0faac073f4a457a2f159ea1bfb0b3b79ac32c091c02d31b9fe1863c12",
+        "testHash": "2a5095c641240227d1a5db304d8cb2b7792a718fdcdbf2499ee7dbb6f1400cc9"
+      }
+    ]
+  },
+  "src/organism/core/OrganismRuntime.ts:explicit:step": {
+    "evidence": [
+      {
+        "kind": "direct",
+        "ok": true,
+        "at": 1789813850957,
+        "source": "B504_CONTINUOUS_COGNITIVE_TEST",
+        "details": "executed with postcondition assertions",
+        "sourceHash": "d2a1d738249120d986bf39fbc09ba7c800982b258b5f895290a2b9e2d7bc7a61",
+        "testHash": "2a5095c641240227d1a5db304d8cb2b7792a718fdcdbf2499ee7dbb6f1400cc9"
+      },
+      {
+        "kind": "integration",
+        "ok": true,
+        "at": 1789813850957,
+        "source": "B504_RUNTIME_INTEGRATION",
+        "details": "runtime step executed closed-loop fabric and persisted state",
+        "sourceHash": "d2a1d738249120d986bf39fbc09ba7c800982b258b5f895290a2b9e2d7bc7a61",
+        "testHash": "2a5095c641240227d1a5db304d8cb2b7792a718fdcdbf2499ee7dbb6f1400cc9"
+      },
+      {
+        "kind": "persistence",
+        "ok": true,
+        "at": 1789813850957,
+        "source": "B504_RESTART_PERSISTENCE",
+        "details": "runtime state survived restart",
+        "sourceHash": "d2a1d738249120d986bf39fbc09ba7c800982b258b5f895290a2b9e2d7bc7a61",
+        "testHash": "2a5095c641240227d1a5db304d8cb2b7792a718fdcdbf2499ee7dbb6f1400cc9"
+      },
+      {
+        "kind": "regression",
+        "ok": true,
+        "at": 1789813850957,
+        "source": "B504_RESTART_PERSISTENCE",
+        "details": "restart regression passed",
+        "sourceHash": "d2a1d738249120d986bf39fbc09ba7c800982b258b5f895290a2b9e2d7bc7a61",
+        "testHash": "2a5095c641240227d1a5db304d8cb2b7792a718fdcdbf2499ee7dbb6f1400cc9"
+      }
+    ]
+  },
+  "src/organism/core/OrganismRuntime.ts:explicit:continuousCognitiveDiagnostics": {
+    "evidence": [
+      {
+        "kind": "direct",
+        "ok": true,
+        "at": 1789813850957,
+        "source": "B504_CONTINUOUS_COGNITIVE_TEST",
+        "details": "executed with postcondition assertions",
+        "sourceHash": "d2a1d738249120d986bf39fbc09ba7c800982b258b5f895290a2b9e2d7bc7a61",
+        "testHash": "2a5095c641240227d1a5db304d8cb2b7792a718fdcdbf2499ee7dbb6f1400cc9"
+      },
+      {
+        "kind": "integration",
+        "ok": true,
+        "at": 1789813850957,
+        "source": "B504_RUNTIME_INTEGRATION",
+        "details": "runtime step executed closed-loop fabric and persisted state",
+        "sourceHash": "d2a1d738249120d986bf39fbc09ba7c800982b258b5f895290a2b9e2d7bc7a61",
+        "testHash": "2a5095c641240227d1a5db304d8cb2b7792a718fdcdbf2499ee7dbb6f1400cc9"
+      },
+      {
+        "kind": "persistence",
+        "ok": true,
+        "at": 1789813850957,
+        "source": "B504_RESTART_PERSISTENCE",
+        "details": "runtime state survived restart",
+        "sourceHash": "d2a1d738249120d986bf39fbc09ba7c800982b258b5f895290a2b9e2d7bc7a61",
+        "testHash": "2a5095c641240227d1a5db304d8cb2b7792a718fdcdbf2499ee7dbb6f1400cc9"
+      },
+      {
+        "kind": "regression",
+        "ok": true,
+        "at": 1789813850957,
+        "source": "B504_RESTART_PERSISTENCE",
+        "details": "restart regression passed",
+        "sourceHash": "d2a1d738249120d986bf39fbc09ba7c800982b258b5f895290a2b9e2d7bc7a61",
+        "testHash": "2a5095c641240227d1a5db304d8cb2b7792a718fdcdbf2499ee7dbb6f1400cc9"
+      }
+    ]
+  }
+}

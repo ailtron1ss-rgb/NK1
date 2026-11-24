@@ -1,0 +1,12 @@
+import assert from 'node:assert/strict';
+const { PolicyAuthorityLedger } = await import('../src/organism/learning/PolicyAuthorityLedger.ts');
+const l = new PolicyAuthorityLedger();
+l.beginCycle(1);
+l.add({source:'canonical-policy',action:'explore',bias01:.08,authority01:.8,causal01:.8,stage:'candidate'});
+l.add({source:'causal-policy-b264',action:'explore',bias01:.03,authority01:.7,causal01:.8,stage:'causal'});
+const out=l.finalize();
+assert.equal(out.explore,.11);
+assert.equal(l.diagnostics().duplicateSourcePairs,0);
+l.add({source:'canonical-policy',action:'explore',bias01:.02,authority01:.8,causal01:.8,stage:'late'});
+assert.equal(l.diagnostics().duplicateSourcePairs,1);
+console.log('POLICY_AUTHORITY_LEDGER=PASS');

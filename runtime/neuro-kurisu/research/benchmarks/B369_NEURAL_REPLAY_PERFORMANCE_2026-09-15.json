@@ -1,0 +1,20 @@
+{
+  "release": "B369",
+  "basis": "B368 host mobile-profile benchmark plus B369 bounded replay runtime check",
+  "physicalAndroid": false,
+  "b368Baseline": {
+    "samplesMs": [413.072,524.788,535.791,566.193,594.52,607.811,617.54,628.181],
+    "p50Ms": 594.52,
+    "p95Ms": 628.181,
+    "heapMaxMiB": 111.65,
+    "cycles": 8
+  },
+  "b369BoundedReplay": {
+    "isolatedReplayExperiences": 32,
+    "isolatedReplayUpdates": 2529,
+    "replaySynapseBudget": 256,
+    "runtimeReplayExperiences": 6,
+    "runtimeReplayUpdatesAfterConsolidation": 1263,
+    "note": "bounded deterministic synapse subset; not physical Android evidence"
+  }
+}

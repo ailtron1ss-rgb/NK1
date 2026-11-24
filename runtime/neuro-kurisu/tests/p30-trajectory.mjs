@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';
+import { P30ContinualIntelligenceEngine, defaultP30Continual } from '../src/organism/learning/P30ContinualIntelligence.ts';
+const p=new P30ContinualIntelligenceEngine();p.restore(defaultP30Continual());
+const st={needs:{energy:.7,cognitiveLoad:.3,uncertainty:.6,novelty:.7,goalPressure:.5,socialNeed:.2,identityCoherence:.85},predictionError:.4,attentionBudget:.8,lastAction:'wait',lastActionSuccess:.6,autonomyScore:.5,selfPredictionError:.2,predictedNextAction:'wait',lastPredictionConfidence:.6,worldContextVersion:1,version:33,at:Date.now(),tick:1};
+for(let i=0;i<120;i++)p.observeTrajectory(st,i%2?'explore':'verify',st,.7);
+const r=p.predictTrajectory(st,['explore','verify','rest','reflect','wait','defer']);
+assert.equal(r.length,6);
+const evaled=p.evaluateTrajectory(st,['explore','verify','rest'],[r[0].states.at(-1),r[1].states.at(-1),r[2].states.at(-1)]);
+assert.equal(evaled.horizon,3);
+assert.ok(p.snapshot().trajectory.maxHorizon>=6);
+console.log(`P30_TRAJECTORY=PASS horizon=${evaled.horizon} multiStepError=${p.snapshot().trajectory.multiStepError01.toFixed(3)}`);

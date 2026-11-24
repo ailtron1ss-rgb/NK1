@@ -1,0 +1,115 @@
+{
+  "base": "34.66.0",
+  "current": "34.67.0",
+  "changedCount": 12,
+  "addedCount": 9,
+  "changed": [
+    {
+      "path": "ARCHITECTURE_MANIFEST.json",
+      "sha256": "31dd0b407a76b741b5ab532fe7dadcb104247a134880843d1ec839ddf9e8c40d",
+      "bytes": 908
+    },
+    {
+      "path": "README_RU.md",
+      "sha256": "8e1a34c4701276eb5187dbf8c07c3a4305e4861251459673364a10e2a8a148c0",
+      "bytes": 12416
+    },
+    {
+      "path": "RELEASE_ARCHIVE_MANIFEST.json",
+      "sha256": "c470c5dfca00360d1598705d9edf1ad9ba0bb8f01e25c127362b67dcd6d4271d",
+      "bytes": 228539
+    },
+    {
+      "path": "RELEASE_MANIFEST.json",
+      "sha256": "3ed52e3dd04d39dc19a190dcf687a6cc2c66a62273de242d0fc12ef5f8f95c1a",
+      "bytes": 1049
+    },
+    {
+      "path": "VERSION.json",
+      "sha256": "ff69456b7035769da5cd3d6e7454b43ba4aad117e27c02a426b7df8225bfff00",
+      "bytes": 269
+    },
+    {
+      "path": "package-lock.json",
+      "sha256": "1d30fa23fc8b3dddf41b500edd9e2dc94193663f01f807beccbd053a8187ee34",
+      "bytes": 312
+    },
+    {
+      "path": "package.json",
+      "sha256": "91bc79c8267325a28cac8f6d26d5ab1e13ff720223412bb8094392f2ed93f096",
+      "bytes": 52395
+    },
+    {
+      "path": "src/organism/core/OrganismCore.ts",
+      "sha256": "2e5e3c40263d460db5d7be3da79b269f34e9b6fdb61740e480ba6e99d512cb91",
+      "bytes": 347890
+    },
+    {
+      "path": "src/organism/core/types.ts",
+      "sha256": "d83ce6487e449dbfcd968d9b387d6b1106640a8fc367023ebb6dddf4cf9b56db",
+      "bytes": 18578
+    },
+    {
+      "path": "src/organism/system/ReleaseContract.ts",
+      "sha256": "9ed87f029cfc1bbc4e61dfee86240909c8c4298bc1a23b38eb64d268794aecaa",
+      "bytes": 405
+    },
+    {
+      "path": "src/server/server.mjs",
+      "sha256": "fdbf362cdc70f04ce0e87f716308c6d1dabf566e90a1ffd109a50ef68925ec1b",
+      "bytes": 70490
+    },
+    {
+      "path": "tests/server-smoke.mjs",
+      "sha256": "238f1de7b1f85761fc7abb48bab95fc124a53f8e57cf01a07984e389463f1852",
+      "bytes": 6553
+    }
+  ],
+  "added": [
+    {
+      "path": "RELEASE_NOTES_34.67.0_RU.md",
+      "sha256": "391636c0507ec88dd867f6e715d246669e9bc6b91e5175575d74280902ded1e0",
+      "bytes": 624
+    },
+    {
+      "path": "docs/BIG_PASS_94_ADD_NOT_ADD_MATRIX_RU.md",
+      "sha256": "d664a3696d5f349feb27352335b9bc6c0c6a42f423e139ef384d8bd86596ebbe",
+      "bytes": 729
+    },
+    {
+      "path": "docs/BIG_PASS_94_CHANGED_FILES_SHA256.json",
+      "sha256": "c27e62d70ecc01bc34e60bb0db34cba8af0b82d48086802feb6cccc989ffa362",
+      "bytes": 3045
+    },
+    {
+      "path": "docs/BIG_PASS_94_FINAL_REPORT_RU.md",
+      "sha256": "a9555c807127c9cd3de7e22ee24efeb2e937177466252365e73653a549f097b0",
+      "bytes": 2583
+    },
+    {
+      "path": "docs/BIG_PASS_94_PROGRESS_METRICS.json",
+      "sha256": "e5fccf225ce49433f3e8b6da73d83280ce4d0c1a3ad1572320083303a2a56ed3",
+      "bytes": 1594
+    },
+    {
+      "path": "docs/BIG_PASS_94_PROGRESS_RU.md",
+      "sha256": "07ed7e879ee33f29d83d032596e9519945686a80031ded14d87619f05f84d924",
+      "bytes": 1636
+    },
+    {
+      "path": "src/organism/cognition/SocialMindKernel.ts",
+      "sha256": "a3af10f9032a4aaf344744c03c2be5b0e88dba2dd51e7ba547e48644bed84bf4",
+      "bytes": 12168
+    },
+    {
+      "path": "tests/big-pass-94-server-smoke.mjs",
+      "sha256": "07f37f94a659da46d10d895048f3de33842b8a229daaab1b18cf764ab0b10559",
+      "bytes": 1060
+    },
+    {
+      "path": "tests/big-pass-94-social-mind.mjs",
+      "sha256": "67c84beae97a22c68517e1bca9740b2af5b9e8e3f41e9cc707f015e13e548d41",
+      "bytes": 3266
+    }
+  ]
+}

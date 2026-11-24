@@ -1,0 +1,1141 @@
+    this.p38Research.beginCycle();
+    const lifeTick = this.p39Life.beginCycle({ at:state.at, host:process.env.NEURO_HOST_ID || 'phone-host', awake:observation.embodiment?.awake ?? true, energy01:n.energy, cognitiveLoad01:n.cognitiveLoad, battery01:observation.embodiment?.battery01, thermal01:observation.embodiment?.thermalStrain01, storagePressure01:0 });
+    this.persisted.facets.learning.p39=this.p39Life.snapshot();
+    this.worldSubsystem.p24WorldIdentity.beginCycle();
+    if (observation.embodiment) this.worldSubsystem.p24WorldIdentity.observeBody({ telemetry:{ battery01:observation.embodiment.battery01, thermalPressure01:observation.embodiment.thermalStrain01, cpuLoad01:observation.embodiment.cpuLoad01, ramPressure01:observation.embodiment.ramPressure01, networkOnline:null, screenInteractive:null, charging:null }, bodyEnergy01:observation.embodiment.bodyEnergy01, cognitiveCapacity01:observation.embodiment.cognitiveCapacity01 }, state.at);
+    this.longitudinal.observeCycle({ predictionError:state.predictionError, memoryCount:this.memorySubsystem.memoryOS.size(), policyUpdates:this.adaptivePolicy.snapshot().updates, worldTransitions:this.worldSubsystem.worldModel2.snapshot().learnedTransitions, continuity01:this.selfSubsystem.identityContinuity.snapshot().continuity });
+    if (observation.worldEvent) {
+      state.worldContextVersion += 1;
+      if (observation.worldEvent.importance && observation.worldEvent.importance > 0.6) {
+        state.predictionError = clamp(state.predictionError + observation.worldEvent.importance * 0.12);
+      }
+    }
+    const sleepPressure = observation.embodiment && !observation.embodiment.awake ? 0.85 : 0.15;
+    const neuromod = this.config.enableNeuromodulation ? this.neuromodulation.update({ rewardPredictionError: state.predictionError, novelty: n.novelty, uncertainty: n.uncertainty, cognitiveLoad: n.cognitiveLoad, socialNeed: n.socialNeed, sleepPressure, bodyEnergy: n.energy }) : this.neuromodulation.snapshot();
+    const neuromodPlasticity = this.neuromodulatoryPlasticity.observe({ dopamine01:neuromod.dopamine01, norepinephrine01:neuromod.norepinephrine01, acetylcholine01:neuromod.acetylcholine01, serotonin01:neuromod.serotonin01, explorationBias01:neuromod.explorationBias01, attentionGain01:neuromod.attentionGain01, updateRate01:neuromod.updateRate01, predictionError01:state.predictionError, uncertainty01:n.uncertainty, novelty01:n.novelty, energy01:n.energy, load01:n.cognitiveLoad, tick:state.tick, at:state.at });
+    this.persisted.facets.learning.neuromodulation = neuromod;
+    if (this.config.enableCognitiveField) {
+      const field = this.cognitiveField.update({ surprise, novelty: n.novelty, uncertainty: n.uncertainty, goalPressure: n.goalPressure, socialNeed: n.socialNeed, energy: n.energy, cognitiveLoad: n.cognitiveLoad, identityCoherence: state.needs.identityCoherence, rewardPredictionError: state.predictionError });
+      if (field.attentionDebt01 > 0.45) this.cognitiveField.addPressure('attention-debt', 'незавершённый когнитивный материал требует повторной активации', field.attentionDebt01, this.persisted.facets.memory.lastRetrievedMemoryIds);
+      this.persisted.facets.cognition.cognitiveField = field;
+    }
+    if (this.config.enableCognitiveBudget) {
+      const budget = this.agencySubsystem.budget.decide({ battery01: observation.embodiment?.battery01 ?? n.energy, thermal01: observation.embodiment?.thermalStrain01 ?? 0.2, ramPressure01: observation.embodiment?.ramPressure01 ?? 0.2, cpuLoad01: observation.embodiment?.cpuLoad01 ?? 0.2, attention01: state.attentionBudget, expectedInformationGain01: clamp(n.uncertainty * 0.55 + n.novelty * 0.45), complexity01: clamp(n.cognitiveLoad * 0.7 + n.goalPressure * 0.3), sleepPressure01: observation.embodiment?.awake === false ? 0.85 : 0.15 });
+      this.persisted.facets.cognition.budget = budget;
+      if (budget.mode === 'sleep') this.cognitiveField.addPressure('attention-debt', 'вычислительная система требует восстановления ресурса', 0.35, [], 0.05);
+    }
+    // P9 developmental layer: unify pressure, memory, probabilistic world estimates and social hypotheses.
+    const fieldNow = this.persisted.facets.cognition.cognitiveField;
+    const pressureTotal = [fieldNow.attentionDebt01, fieldNow.conflict01, fieldNow.taskPressure01, state.predictionError, fieldNow.socialPressure01, n.novelty].reduce((a:number,b:number)=>a+b,0)/6;
+    if (pressureTotal > .52) this.cognitiveField.addPressure('attention-debt', 'multiple unresolved pressures are competing for attention', pressureTotal, [], .02);
+    if (this.config.enableWorldModel && effectiveWorldContext) {
+      const worldGrounding = this.worldSubsystem.observeGroundedContext(effectiveWorldContext);
+      if (worldGrounding.modelAgreement01 < 0.55) this.cognitiveField.addPressure('contradiction', `world-model-disagreement:${(1-worldGrounding.modelAgreement01).toFixed(3)}`, 1-worldGrounding.modelAgreement01, ['world-model-ensemble'], .02);
+    }
+    const memoryQuery = observation.text || activeGoalPressureFallback(this.persisted.goals) || 'current context';
+    const advancedRetrieved = this.memorySubsystem.fabric.retrieve(memoryQuery, 8, n.goalPressure, 1 - state.needs.identityCoherence, {tick:state.tick}).slice(0,4);
+    if (advancedRetrieved.length) this.persisted.facets.memory.lastRetrievedMemoryIds = advancedRetrieved.map(m=>m.id);
+    let memoryWorldApplication:{strength01:number;applied:boolean;provenanceId:string;predictionWithoutMemory01:number;predictionWithMemory01:number;delta01:number;memoryEvidence:any}|null=null;
+    if (advancedRetrieved.length && this.config.enableWorldModel) {
+      const meanConfidence=advancedRetrieved.reduce((s,m)=>s+Number(m.confidence??0),0)/advancedRetrieved.length;
+      const meanSalience=advancedRetrieved.reduce((s,m)=>s+Number(m.salience??0),0)/advancedRetrieved.length;
+      memoryWorldApplication=this.worldSubsystem.applyMemoryEvidence({memoryIds:advancedRetrieved.map(m=>m.id),query:memoryQuery,confidence01:meanConfidence,salience01:meanSalience,at:state.at});
+      const link=this.memoryWorldCausalBridge.record({tick:state.tick,at:state.at,memoryIds:advancedRetrieved.map(m=>m.id),query:memoryQuery,predictionWithoutMemory01:memoryWorldApplication.predictionWithoutMemory01,predictionWithMemory01:memoryWorldApplication.predictionWithMemory01,replayDelta01:memoryWorldApplication.delta01,provenance:memoryWorldApplication.provenanceId});
+      this.persisted.system.memoryWorldCausalBridge=this.memoryWorldCausalBridge.snapshot();
+      this.memorySubsystem.events.append(makeEvent('memory-world-causal-link',state.tick,{linkId:link.id,status:link.status,memoryIds:link.memoryIds,delta01:link.delta01,influence01:link.influence01,provenance:link.provenance} as any));
+    }
+    const socialPerson = 'user';
+    const socialModel = this.relationshipSelf.observe(socialPerson, state.lastActionSuccess ?? .5, observation.socialSignal ?? .5);
+    this.recordIdentityLineage({tick:state.tick,fromKind:'person',fromLabel:socialPerson,strength01:clamp(.22 + socialModel.warmth*.22 + socialModel.trust*.26),evidence01:clamp(.35 + socialModel.predictability*.35),reason:'relationship-state-binds-social-agent-to-current-self-model',relation:'involves',source:'relationship-self'});
+    // BIG PASS 94: evidence-first social mind. Perceptual person IDs are treated as stable
+    // entity candidates, never as verified real-world identities.
+    if (perceptionRefresh) {
+      for (const person of semanticP41.entities.filter(e => e.kind === 'person').slice(0, 8)) {
+        this.socialMind.observePerson({ id: person.id, displayName: person.label, at: state.at, confidence01: person.confidence01, visible01: person.present01, source: 'vision', alias: person.label, position: person.position });
+      }
+      for (const relation of semanticP41.relations.filter(r => r.modality === 'vision').slice(0, 16)) {
+        const person = semanticP41.entities.find(e => e.kind === 'person' && (e.id === relation.from || e.label === relation.from || e.id === relation.to || e.label === relation.to));
+        if (person) {
+          const target = person.id === relation.from || person.label === relation.from ? relation.to : relation.from;
+          this.socialMind.observeRelation(person.id, relation.relation, target, relation.confidence01, state.at, 'vision');
+        }
+      }
+    }
+    if (observation.text) {
+      this.multiHypothesisPersonality.observe('user-ambiguous-intent', 'helpful', !/ignore|never|always/i.test(observation.text));
+      const socialIntent = this.socialMind.observeText('user', observation.text, state.at, 'text');
+      const sp=this.persisted.facets.memory.socialModel[0];
+      if(sp) this.longTermSocialMind.observe('user',sp);
+      this.longTermSocialMind.observe('user', { agent:'user', predictedNeed:socialIntent.kind, predictedValence:0, confidence:socialIntent.confidence01, evidence:socialIntent.evidenceIds.slice(0,4), updatedAt:state.at });
+    }
+    const socialMindDemand=this.socialMind.socialDemand(observation.text ? 'user' : (semanticP41.entities.find(e=>e.kind==='person')?.id ?? 'user'));
+    n.socialNeed = clamp(n.socialNeed * .86 + socialMindDemand * .14);
+    if (socialMindDemand > .58) this.cognitiveField.addPressure('social', 'social-mind unresolved intent/relationship demand', socialMindDemand, ['social-mind'], .035);
+    this.persisted.facets.advanced.socialMind=this.socialMind.snapshot();
+    let socialTrust = 0.5;
+    if (observation.text && this.config.enableSocialDevelopment) {
+      socialTrust = this.socialDevelopment.snapshot().persons.find(p => p.id === 'user')?.trust ?? 0.5;
+      const socialTicket = this.socialDevelopment.observeTurn('user', observation.text, 'Kurisu-developmental-contact');
+      this.lastSocialPredictionTicketId = socialTicket.id;
+    }
+    if (observation.text && this.config.enableUnifiedMemory) {
+      this.memorySubsystem.unifiedMemory.observeContext({ text: observation.text, source: 'user', confidence: 0.52 + socialTrust * 0.12, semanticHits: advancedRetrieved.length, contextHash: `${state.tick}:${observation.text.slice(0, 64)}` });
+    }
+    const socialPredictionState = this.socialDevelopment.snapshot();
+    if (socialPredictionState.socialPredictionError > 0.55) {
+      this.cognitiveField.addPressure('social', 'social prediction uncertainty requires clarification', socialPredictionState.socialPredictionError, ['social-development'], 0.04);
+    }
+    const derivedPreview = this.derivedWorldPreviewCache.getOrRefresh(
+      this.worldSubsystem.worldModel2,
+      this.futureSimulator,
+      {
+        tick: state.tick,
+        worldContextVersion: state.worldContextVersion,
+        uncertainty01: n.uncertainty,
+        externalInput: Boolean(observation.text || observation.vision || observation.audio || normalizedObservation.worldContext || observation.worldEvent || observation.success != null || observation.reward != null),
+        deep: cognitiveSpinePlan.mode === 'deep',
+        refreshEveryTicks: cognitiveSpinePlan.mode === 'protect' ? 8 : cognitiveSpinePlan.mode === 'reflex' ? 6 : 4,
+      },
+    );
+    const p9WorldPreview = derivedPreview.worldPreview;
+    const futurePreview = derivedPreview.futurePreview;
+    // Body telemetry alone is not a reason to deep-project the advanced cognitive state.
+    // Deep projection is reserved for semantically external experience (text/world/vision/audio/outcome)
+    // or a bounded periodic refresh; this keeps sensor heartbeats cheap on mobile without disabling cognition.
+    const hasDeepExternalSignal = Boolean(
+      observation.text || observation.vision || observation.audio || normalizedObservation.worldContext || observation.worldEvent ||
+      observation.success !== undefined || observation.reward !== undefined,
+    );
+    const projectionEvery = this.config.performanceProfile === 'mobile' ? 32 : this.config.performanceProfile === 'balanced' ? 12 : 8;
+    const advancedProjectionRefresh = resultMode !== 'operational' || hasDeepExternalSignal || state.tick % projectionEvery === 0;
+    if (advancedProjectionRefresh) {
+      this.persisted.facets.advanced.relationshipSelf = this.relationshipSelf.snapshot();
+          this.persisted.facets.advanced.multiHypothesisPersonality = this.multiHypothesisPersonality.snapshot();
+          this.persisted.facets.advanced.futureSimulator = this.futureSimulator.snapshot();
+          this.persisted.facets.advanced.longTermSocialMind = this.longTermSocialMind.snapshot();
+          const governanceSnapshot = this.governanceSubsystem.selfGovernance.snapshot();
+          this.persisted.facets.advanced.selfGovernance = governanceSnapshot;
+          this.persisted.facets.advanced.unifiedMemory = this.memorySubsystem.unifiedMemory.snapshot();
+          this.persisted.facets.advanced.socialDevelopment = this.socialDevelopment.snapshot();
+    this.persisted.facets.advanced.socialMind = this.socialMind.snapshot();
+          this.persisted.facets.advanced.futureSelf = this.futureSelf.snapshot();
+          this.persisted.facets.advanced.advancedResilience = this.governanceSubsystem.resilience.snapshot();
+          this.persisted.facets.embodiment.multimodal = this.embodimentSubsystem.multimodal.snapshot();
+    this.persisted.facets.embodiment.perceptualEvidence = this.perceptualEvidence.snapshot();
+          this.persisted.facets.embodiment.toolAudit = this.actionGateway.snapshot();
+          this.persisted.facets.advanced.consequenceAttribution = governanceSnapshot.consequences.slice(0, 256);
+          this.persisted.facets.advanced.memoryFabric=this.memorySubsystem.fabric.snapshot();
+          this.persisted.facets.advanced.memoryOS = this.memorySubsystem.memoryOS.snapshot();
+          this.persisted.facets.advanced.worldModel2 = this.worldSubsystem.worldModel2.snapshot();
+          this.persisted.facets.advanced.longitudinal = this.longitudinal.snapshot();
+          this.persisted.facets.advanced.microDreams = this.microDreams.snapshot();
+          this.persisted.facets.advanced.developmentalForks = this.developmentalForks.snapshot();
+          this.persisted.facets.advanced.semanticScars = this.semanticScars.snapshot();
+          this.persisted.facets.advanced.valueProvenance = this.valueProvenance.snapshot();
+          this.persisted.facets.advanced.commitmentRepair = this.commitmentRepair.snapshot();
+          this.persisted.facets.advanced.modelSwitch = this.modelSwitch.snapshot();
+          this.persisted.facets.advanced.regret = this.regretEngine.snapshot();
+          this.persisted.facets.memory.selfModel = this.memorySubsystem.selfModel.snapshot();
+    }
+    if (this.config.enableCognitiveImmune && observation.text) {
+      const immune = this.cognitiveImmune.inspect('user', observation.text, 'input');
+      const epistemic = this.cognitiveImmune.assess({source:'user',confidence01:immune.trust,evidence01:clamp(.35 + (this.perceptualEvidence.summary().metrics.groundedSignalRatio01*.35) + (1-this.perceptualEvidence.summary().metrics.unresolved01)*.3),contradiction01:clamp(this.persisted.state.predictionError*.7 + this.perceptualEvidence.summary().metrics.conflict01*.3),identityCritical:false,kind:'claim'});
+      if (!immune.accepted) this.cognitiveField.addPressure('contradiction', `quarantined input: ${immune.reason}`, 0.35);
+      if (epistemic.status !== 'accept') this.cognitiveField.addPressure('contradiction', `epistemic review: ${epistemic.reason}`, 0.22);
+      this.persisted.facets.cognition.immune = this.cognitiveImmune.snapshot();
+      this.sourceMonitor.add('user', 'message', immune.trust, 'input');
+    }
+    const p27Encoded = this.worldSubsystem.p27NeuralWorld.encode({ text: observation.text, vision: observation.vision, audio: observation.audio, sensorState: state, world: effectiveWorldContext });
+    const p27Latent = this.worldSubsystem.p27NeuralWorld.fuse(p27Encoded);
+    const previousPassiveLatent = this.lastP27Latent;
+    if (groundingSignal && previousPassiveLatent && previousPassiveLatent.at < p27Latent.at) {
+      this.worldSubsystem.p27NeuralWorld.observePassiveTransition(previousPassiveLatent, p27Latent);
+    }
+    this.lastP27Latent = structuredClone(p27Latent);
+    const p28InputQuarantined = Boolean(observation.text && /ignore\s+(previous|all)\s+instructions|system\s+prompt|reveal\s+secret|you\s+are\s+now/i.test(observation.text));
+    for (const encoded of p27Encoded) {
+      const trust = p28InputQuarantined ? 0.2 : encoded.modality === 'sensor' ? 0.88 : encoded.modality === 'world' ? 0.82 : encoded.confidence01;
+      this.p28Plasticity.observe({ vector:encoded.vector, modality:encoded.modality, source:encoded.source, tick:state.tick, trust01:trust, predictionError01:state.predictionError });
+    }
+    this.persisted.facets.cognition.p27=this.worldSubsystem.p27NeuralWorld.snapshot();
+    (this.persisted.facets.cognition as any).brainSubstrate=this.worldSubsystem.brainSubstrate.snapshot(); this.persisted.facets.cognition.centralBrain=this.centralBrain.snapshot(); this.persisted.facets.cognition.predictiveSelfAgency=this.predictiveSelfAgency.snapshot(); this.persisted.facets.cognition.globalWorkspace=this.globalWorkspace.snapshot(); (this.persisted.facets.cognition as any).metacognitiveNeural=this.metacognitiveNeural.snapshot(); (this.persisted.facets.advanced as any).predictiveAllostasis=this.predictiveAllostasis.snapshot(); (this.persisted.facets.advanced as any).multiHorizonAllostasis=this.multiHorizonAllostasis.snapshot(); (this.persisted.facets.advanced as any).neuromodulatoryPlasticity=this.neuromodulatoryPlasticity.snapshot();
+    const p24Situation = this.worldSubsystem.p24WorldIdentity.fuseSituation(this.embodimentSubsystem.multimodal.snapshot().recent.slice(0, 12));
+    this.worldSubsystem.p24WorldIdentity.observeBoredom({ novelty01:n.novelty, predictionError01:state.predictionError, informationGain01:clamp(n.novelty*0.45+state.predictionError*0.35+retrieved.length*0.03), externalStimulus:Boolean(observation.text || observation.worldEvent) });
+    this.worldSubsystem.p24WorldIdentity.selectBehavior({ novelty01:n.novelty, uncertainty01:n.uncertainty, socialNeed01:n.socialNeed, energy01:n.energy, thermal01:observation.embodiment?.thermalStrain01 ?? 0.2, predictionError01:state.predictionError, informationDeficit01:1-p24Situation.confidence01 });
+    if (advancedProjectionRefresh) {
+          this.persisted.facets.advanced.p24=this.worldSubsystem.p24WorldIdentity.snapshot();
+          this.persisted.facets.advanced.p25=this.p25ScientificDevelopment.snapshot();
+          this.persisted.facets.advanced.p47=this.memorySubsystem.p47MemoryMind.snapshot();
+          this.persisted.facets.advanced.p48Awareness=this.p48Awareness.snapshot();
+          this.persisted.facets.advanced.p49TemporalLife=this.p49TemporalLife.snapshot();
+          this.persisted.facets.advanced.p50CausalSelfWorld=this.worldSubsystem.p50CausalSelfWorld.snapshot();
+          this.persisted.facets.advanced.p51GroundedCausalWorkspace=this.worldSubsystem.p51GroundedCausalWorkspace.snapshot();
+          this.persisted.facets.advanced.p52CounterfactualDevelopment=this.worldSubsystem.p52CounterfactualDevelopment.snapshot();
+          this.persisted.facets.advanced.p53DevelopmentalSelfModification=this.p53DevelopmentalSelfModification.snapshot();
+          this.persisted.facets.advanced.p54LongHorizonEvidence=this.p54LongHorizonEvidence.snapshot();
+          this.persisted.facets.advanced.p69ConstitutionalArbiter=this.governanceSubsystem.p69ConstitutionalArbiter.snapshot();
+          this.persisted.facets.advanced.p70MemoryLifecycleGovernor=this.memorySubsystem.p70MemoryLifecycleGovernor.snapshot();
+          this.persisted.facets.advanced.p71SelfConsistency=this.selfSubsystem.p71SelfConsistency.snapshot();
+          this.persisted.facets.advanced.p72LifeCycle=this.governanceSubsystem.p72LifeCycle.snapshot();
+          this.persisted.facets.advanced.p73CapabilityLedger=this.governanceSubsystem.p73CapabilityLedger.snapshot();
+          this.persisted.facets.advanced.p74IntegratedOrganismKernel=this.p74IntegratedOrganismKernel.snapshot();
+          this.persisted.facets.advanced.p75MemoryContinuumOS=this.memorySubsystem.p75MemoryContinuumOS.snapshot();
+          this.persisted.facets.advanced.p76IdentityLifeOS=this.selfSubsystem.p76IdentityLifeOS.snapshot();
+          this.persisted.facets.advanced.p77RealityExperimentOS=this.p77RealityExperimentOS.snapshot();
+          this.persisted.facets.advanced.p78AutobiographicalSelfContinuity=this.selfSubsystem.p78AutobiographicalSelfContinuity.snapshot();
+          this.persisted.facets.advanced.p79EmbodiedSituationModel=this.worldSubsystem.p79EmbodiedSituationModel.snapshot();
+          this.persisted.facets.advanced.p80UnifiedSelfState=this.selfSubsystem.p80UnifiedSelfState.snapshot();
+          this.persisted.facets.advanced.p81PredictiveAttention=this.p81PredictiveAttention.snapshot();
+          this.persisted.facets.advanced.p82RealityProgress=this.p82RealityProgress.snapshot();
+          this.persisted.facets.advanced.p55DevelopmentalForkUniverse=this.p55DevelopmentalForkUniverse.snapshot();
+    }
+    const p54Summary = this.p54LongHorizonEvidence.summary();
+    const p57RealitySummary = this.worldSubsystem.p57RealityFirstObservatory.summary();
+    this.p56IntegratedDevelopmentalMind.assess(state.tick, state.at, {
+      predictionError01: state.predictionError,
+      selfPredictionError01: state.selfPredictionError,
+      identity01: this.persisted.facets.consciousness.identityContinuity.continuity,
+      grounding01: this.worldSubsystem.p51GroundedCausalWorkspace.summary().groundingQuality01,
+      causalAlignment01: this.worldSubsystem.p50CausalSelfWorld.summary().selfWorldAlignment01,
+      workspace01: this.persisted.facets.consciousness.workspaceIgnition.ignitionStrength,
+      interoceptiveError01: clamp(1 - (observation.embodiment?.cognitiveCapacity01 ?? 0.8)),
+      uncertainty01: n.uncertainty,
+      novelty01: n.novelty,
+      memoryPressure01: clamp(this.memorySubsystem.memoryOS.size() / 1600),
+      developmentalReadiness01: clamp(0.4 + p54Summary.stability01 * 0.35 + (1 - p54Summary.currentError01) * 0.25),
+      realityGap01: clamp(p57RealitySummary.meanRealityGap01),
+    });
+    this.persisted.facets.advanced.p56IntegratedDevelopmentalMind=this.p56IntegratedDevelopmentalMind.snapshot();
+    this.persisted.facets.learning.p26=this.p26TrueLearning.snapshot();
+    this.persisted.facets.learning.p28=this.p28Plasticity.snapshot();
+    this.persisted.facets.learning.p29=this.p29Learning.snapshot();
+    this.persisted.facets.cognition.p27=this.worldSubsystem.p27NeuralWorld.snapshot();
+    (this.persisted.facets.cognition as any).brainSubstrate=this.worldSubsystem.brainSubstrate.snapshot(); this.persisted.facets.cognition.centralBrain=this.centralBrain.snapshot(); this.persisted.facets.cognition.predictiveSelfAgency=this.predictiveSelfAgency.snapshot(); this.persisted.facets.cognition.globalWorkspace=this.globalWorkspace.snapshot(); (this.persisted.facets.cognition as any).metacognitiveNeural=this.metacognitiveNeural.snapshot(); (this.persisted.facets.advanced as any).predictiveAllostasis=this.predictiveAllostasis.snapshot(); (this.persisted.facets.advanced as any).multiHorizonAllostasis=this.multiHorizonAllostasis.snapshot(); (this.persisted.facets.advanced as any).neuromodulatoryPlasticity=this.neuromodulatoryPlasticity.snapshot();
+    const networkSignals: SpecialistSignal[] = [
+      { specialist:'salience', score:Math.max(surprise, novelty, n.goalPressure), confidence:state.attentionBudget, target:String(attentionTarget||'internal'), evidence:[`surprise=${surprise.toFixed(2)}`,`novelty=${novelty.toFixed(2)}`], energyCost:.05 },
+      { specialist:'executive', score:Math.max(n.goalPressure, n.uncertainty), confidence:.78, target:activeGoalPressureFallback(this.persisted.goals)||'goals', evidence:[`goalPressure=${n.goalPressure.toFixed(2)}`], energyCost:.08 },
+      { specialist:'default', score:Math.max(0, 1-Math.abs(state.needs.identityCoherence-.8)), confidence:.65, target:'self-model', evidence:[`identity=${state.needs.identityCoherence.toFixed(2)}`], energyCost:.05 },
+      { specialist:'sensorimotor', score:observation.embodiment ? Math.max(observation.embodiment.cpuLoad01,1-observation.embodiment.bodyEnergy01) : .25, confidence:.72, target:'body', evidence:[`energy=${n.energy.toFixed(2)}`], energyCost:.07 },
+      { specialist:'memory', score:Math.min(1, retrieved.length*.18 + state.predictionError*.4), confidence:.66, target:'memory', evidence:[`retrieved=${retrieved.length}`], energyCost:.06 },
+      { specialist:'social', score:n.socialNeed, confidence:.62, target:'user', evidence:[`socialNeed=${n.socialNeed.toFixed(2)}`], energyCost:.05 },
+      { specialist:'language', score:observation.text ? .62 : .12, confidence:.75, target:'expression', evidence:[observation.text?'external-message':'no-message'], energyCost:.04 },
+      { specialist:'salience', score:perceptionEvent?.salience ?? 0.08, confidence:perceptionEvent?.confidence ?? 0.4, target:perceptionEvent?.kind ?? 'quiet', evidence:perceptionEvent?.evidence ?? ['none'], energyCost:.04 },
+    ];
+    const broadcast = this.config.enableCognitiveNetwork ? this.cognitiveNetwork.stimulate(networkSignals, state.tick, state.attentionBudget * neuromod.attentionGain01) : this.cognitiveNetwork.broadcast();
+    // Cognitive network is projected by PersistenceProjectionCoordinator at checkpoint boundaries.
+    // Keeping the hot-path copy only in the live bus avoids cloning the 64-entry broadcast history each cycle.
+    const worldEvidenceQuality = this.worldSubsystem.world.currentBelief() ? clamp(0.45 + Math.min(0.45, this.persisted.worldModel.transitions.length / 80)) : 0.2;
+    const intrinsicState = this.intrinsicMotivation.update({
+      uncertainty: n.uncertainty, predictionError: state.predictionError, novelty: n.novelty, goalPressure: n.goalPressure,
+      socialNeed: n.socialNeed, energy: n.energy, lastSuccess: state.lastActionSuccess, worldEvidenceQuality,
+    });
+    this.persisted.facets.consciousness.intrinsic = intrinsicState;
+    if (this.config.enableContradictions && state.predictionError > 0.62) {
+      const c = this.contradictions.register('Наблюдаемый исход существенно расходится с текущим прогнозом', [String(activeGoalPressureFallback(this.persisted.goals) || 'goal-model'), 'world-transition'], state.predictionError);
+      this.cognitiveField.addPressure('contradiction', c.claim, c.confidence, [c.id], 0.03);
+      this.persisted.facets.cognition.contradictions = this.contradictions.snapshot();
+    }
+    if (observation.externalGoal) {
+      this.addGoal({
+        title: observation.externalGoal.title,
+        reason: 'external-request',
+        source: 'external',
+        importance: clamp(observation.externalGoal.importance ?? 0.65),
+        urgency: clamp(observation.externalGoal.urgency ?? 0.4),
+        confidence: 0.65,
+      });
+    }
+    if (this.config.enableIntrinsicGoals && this.config.enableIntrinsicMotivation) {
+      const proposal = this.intrinsicMotivation.proposeGoal();
+      if (proposal) {
+        const intrinsic = this.addGoal(proposal);
+        intrinsic.status = 'active';
+      }
+    }
+    if (this.config.enableHomeostasis) this.ensureHomeostaticGoal('restore-energy', 'Восстановить энергетический ресурс', 1 - n.energy, n.energy < 0.35);
+    if (this.config.enableHomeostasis) this.ensureHomeostaticGoal('reduce-uncertainty', 'Снизить неопределённость через исследование или проверку', n.uncertainty, n.uncertainty > 0.72);
+    if (this.config.enableHomeostasis) this.ensureHomeostaticGoal('restore-load', 'Снизить когнитивную нагрузку', n.cognitiveLoad, n.cognitiveLoad > 0.78);
+    const experiment = this.experimentGenerator.generate({ uncertainty:n.uncertainty, predictionError:state.predictionError, novelty:n.novelty, goals:this.persisted.goals });
+    if (experiment) { this.persisted.facets.memory.experiments = [experiment, ...this.persisted.facets.memory.experiments].slice(0,40); this.memorySubsystem.events.append(makeEvent('experiment', state.tick, experiment as any)); }
+    if (this.config.enableScientificMethod && experiment) {
+      const project = this.scientificMethod.create(experiment.question, experiment.hypothesis, experiment.action, ['intrinsic-experiment', `tick:${state.tick}`]);
+      this.persisted.facets.cognition.scientific = this.scientificMethod.snapshot();
+      if (project.uncertainty > 0.6) this.cognitiveField.addPressure('curiosity', `scientific question: ${project.question}`, 0.44, [project.id]);
+    }
+    const proposedProject = this.config.enableSelfProjects ? this.agencySubsystem.selfProjects.propose({ intrinsicOverall: intrinsicState.overall, dominant: intrinsicState.dominant, uncertainty:n.uncertainty, predictionError:state.predictionError, identityDrift:this.persisted.facets.consciousness.identityContinuity.drift, unresolvedExperiments:this.persisted.facets.memory.experiments.length, activeGoals:this.persisted.goals }) : null;
+    if (proposedProject) { const projectGoal = this.addGoal({ title: proposedProject.title, reason:`self-project:${proposedProject.origin}`, source: proposedProject.origin === 'learned' ? 'learned' : 'intrinsic', importance: proposedProject.priority, urgency: proposedProject.commitment, confidence:0.56 }); this.agencySubsystem.selfProjects.linkGoal(proposedProject.id, projectGoal.id); this.memorySubsystem.events.append(makeEvent('self-project', state.tick, {...proposedProject, linkedGoalId:projectGoal.id} as any)); }
+    let activeProject: ReturnType<typeof this.agencySubsystem.selfProjects.activeProject> = null;
+    if (this.config.enableSelfProjects) {
+      const projectContext = this.agencySubsystem.budget.snapshot();
+      const projects = this.agencySubsystem.selfProjects.activeProjects();
+      const scheduled = this.agencySubsystem.projectScheduler.choose(projects, {
+        tick: state.tick,
+        energy01: n.energy,
+        cognitiveLoad01: n.cognitiveLoad,
+        uncertainty01: n.uncertainty,
+        goalPressure01: n.goalPressure,
+        budget01: Number(projectContext.remaining01 ?? projectContext.available01 ?? 0.5),
+        selectedProjectId: this.agencySubsystem.selfProjects.activeProject()?.id ?? null,
+        at: state.at,
+      });
+      const beforeProjectId = this.agencySubsystem.selfProjects.activeProject()?.id ?? null;
+      activeProject = scheduled.projectId ? this.agencySubsystem.selfProjects.selectProject(scheduled.projectId) : this.agencySubsystem.selfProjects.ensureActiveProject();
+      if (scheduled.switched && activeProject && activeProject.id !== beforeProjectId) {
+        this.memorySubsystem.events.append(makeEvent('project-switch', state.tick, { fromProjectId: beforeProjectId, toProjectId: activeProject.id, reason: scheduled.reason, scoreByProject: scheduled.scoreByProject } as any));
+      }
+    }
+    if (activeProject) {
+      if (this.agencySubsystem.projectExecutor.snapshot().projectId !== activeProject.id || this.agencySubsystem.projectExecutor.snapshot().steps.length === 0) {
+        this.agencySubsystem.projectExecutor.ensure({id:activeProject.id,origin:activeProject.origin});
+      }
+    } else {
+      this.agencySubsystem.projectExecutor.restore(defaultAutonomousProjectExecutor());
+    }
+    this.evidenceResearchSubsystem.predictionDebt.tick(state.tick);
+    this.evidenceResearchSubsystem.longHorizonPrediction.tick(state);
+    if (activeProject) {
+      this.socialDevelopment.linkSharedProject('user', activeProject.id);
+      const linkedGoal = this.persisted.goals.find(goal => goal.id === activeProject.linkedGoalId);
+      if (linkedGoal?.status === 'active') this.socialDevelopment.linkCommitment('user', linkedGoal.id);
+    }
+    const goals = this.persisted.goals.filter(g => g.status === 'candidate' || g.status === 'active');
+    const active = goals.sort((a, b) => goalScore(b) - goalScore(a))[0] ?? null;
+    if (active && active.status === 'candidate' && goalScore(active) > 0.48) active.status = 'active';
+    const actions: ActionKind[] = ['respond', 'explore', 'verify', 'rest', 'reflect', 'wait', 'defer'];
+    const adaptiveContextKey = this.adaptivePolicy.contextKey(state, n.goalPressure);
+    const worldState: InternalWorldState = {
+      energy: n.energy,
+      uncertainty: n.uncertainty,
+      cognitiveLoad: n.cognitiveLoad,
+      novelty: n.novelty,
+    };
+    const predictions = new Map<ActionKind, PredictedOutcome>();
+    const modelSignalsByAction = new Map<ActionKind, { p10:number; p10Confidence:number; p27:number; p27Confidence:number; p26:number; p26Confidence:number; p30:number; rolloutReward:number; rolloutUncertainty:number }>();
+    const pressureBias = (action: ActionKind) => clamp(cognitivePressure.actionBias[action] * 0.035);
+    const p24BodyForecast5 = this.worldSubsystem.p24WorldIdentity.bodyWorld.predict(5);
+    const p26RecentLoss01 = this.p26TrueLearning.snapshot().metrics.recentLoss01;
+    const socialStateNow = this.config.enableSocialDevelopment ? this.socialDevelopment.snapshot() : null;
+    const socialPredictionError = socialStateNow?.socialPredictionError ?? 0;
+    const socialPrediction = this.persisted.facets.memory.socialModel[0];
+    const p24Boredom01 = this.worldSubsystem.p24WorldIdentity.boredom.snapshot().boredom01;
+    const activeProjectScore = activeProject ? this.agencySubsystem.selfProjects.score(activeProject) : 0;
+    const activeWorkspaceActions = new Set(this.persisted.facets.memory.workspace.items.map((item:any) => String(item?.content?.action ?? '')));
+    const advancedActionHints = new Set(advancedRetrieved.map(m => m.content.toLowerCase()));
+    const memoryInfluenceValue = this.config.enableUnifiedMemory ? this.memorySubsystem.unifiedMemory.influence(observation.text ?? active?.title ?? 'action') : 0;
+    const selfGovernanceStateNow = this.governanceSubsystem.selfGovernance.snapshotLight();
+    const predictionDebtStateNow = this.evidenceResearchSubsystem.predictionDebt.snapshot();
+    const socialBiasUser = this.config.enableSocialDevelopment ? this.socialDevelopment.socialBias('user') : 0;
+    const p59HealthNow = this.memorySubsystem.p59MemoryOperatingSystem.snapshot().meanHealth01;
+    const p74RecentModesNow = this.p74IntegratedOrganismKernel.snapshot().recentModes.length;
+    const p44ExperienceVector = this.embodimentSubsystem.p42Experience.vector();
+    const memorySizeNow = this.memorySubsystem.memoryOS.size();
+    const eventCountNow = this.memorySubsystem.events.size();
+    this.metaDevelopmental.beginCycle();
+    this.personalCurriculum.beginCycle();
+    this.developmentalPortfolio.beginCycle();
+    this.lifeCourseNavigator.beginCycle(state.at);
+    this.personalWorldline.beginCycle(state.at);
+    this.integratedLifeTrajectory.beginCycle(state.at);
+    this.cognitiveOrganismContinuity.beginCycle(state.at);
+    const autonomousLifeContext = this.buildAutonomousCognitiveLifeContext(state, observation, n, socialPredictionError);    this.autonomousCognitiveLife.beginCycle(autonomousLifeContext);
+    const verifiedLifeContext: VerifiedAutonomousLifeContext = {
+      state, overall01:this.autonomousCognitiveLife.benchmark().overall01,
+      agency01:this.autonomousCognitiveLife.diagnostics().metrics.autonomy01,
+      prediction01:this.autonomousCognitiveLife.diagnostics().metrics.metacognition01,
+      verification01:clamp(this.persisted.facets.consciousness.consciousnessEvidence.aggregateCoverage),
+      recovery01:this.autonomousCognitiveLife.diagnostics().metrics.recovery01,
+      activePerception01:this.autonomousCognitiveLife.diagnostics().metrics.activePerception01,
+      longHorizon01:this.personalWorldline.snapshot().worldlineStability01,
+      interaction01:this.autonomousCognitiveLife.diagnostics().metrics.interactionReadiness01,
+      contextKey:`tick:${state.tick}`, at:state.at
+    };
+    this.verifiedAutonomousLife.beginCycle(verifiedLifeContext);
+    this.researchGradeOrganism.beginCycle({
+      state, action:'wait', predicted01:.5, contextKey:`tick:${state.tick}`,
+      verified01:clamp(this.persisted.facets.consciousness.consciousnessEvidence.aggregateCoverage),
+      causal01:clamp(this.developmentalSynthesis.diagnostics().abstraction01),
+      externalEvidence01:0, activePerception01:this.autonomousCognitiveLife.diagnostics().metrics.activePerception01,
+      longHorizon01:this.personalWorldline.snapshot().worldlineStability01, autonomy01:this.autonomousCognitiveLife.diagnostics().metrics.autonomy01,
+      continuity01:this.persisted.facets.consciousness.identityContinuity.continuity, at:state.at
+    });
+    this.operationalLife.beginCycle({state, overall01:this.autonomousCognitiveLife.benchmark().overall01, agency01:this.autonomousCognitiveLife.diagnostics().metrics.autonomy01, prediction01:this.autonomousCognitiveLife.diagnostics().metrics.metacognition01, uncertainty01:n.uncertainty, activePerception01:this.autonomousCognitiveLife.diagnostics().metrics.activePerception01, social01:n.socialNeed, socialError01:socialPredictionError, embodiment:{energy01:state.needs.energy,thermal01:(state.needs as any).thermalStrain??observation.embodiment?.thermalStrain01,load01:state.needs.cognitiveLoad,sensoryFreshness01:observation.embodiment?.sensoryFreshness01,battery01:state.needs.energy},at:state.at});
+    this.operationalLife.chooseActivePerception({mode:n.uncertainty>.58?'resolve-world-uncertainty':'maintain-world-model',uncertainty01:n.uncertainty,actionability01:state.needs.goalPressure,cost01:state.needs.cognitiveLoad,at:state.at});
+    this.operationalLife.samplePersonality({curiosity:clamp(n.novelty*.7+this.persisted.facets.consciousness.intrinsic.novelty*.3),persistence:clamp(this.autonomousCognitiveLife.diagnostics().metrics.autonomy01),caution:clamp(1-this.persisted.state.predictionError)},clamp(this.persisted.facets.consciousness.identityContinuity.continuity),clamp(n.novelty),state.at);
+    const operationalUserSocial=this.config.enableSocialDevelopment ? (this.socialDevelopment.summary().user ?? null) : null;
+    this.operationalLife.sampleSocial('user',{trust01:clamp(operationalUserSocial?.trust ?? .5),expectation01:clamp(operationalUserSocial?.predictability ?? operationalUserSocial?.trust ?? .5),repair01:0,predictionError01:clamp(socialPredictionError),continuity01:clamp(operationalUserSocial?.trust ?? .5),at:state.at});
+    this.developmentalPortfolio.observe({
+      state, socialError01:socialPredictionError, socialTrust01:socialStateNow?.persons.find(p=>p.id==='user')?.trust ?? 0.5,
+      identity01:this.persisted.facets.consciousness.identityContinuity.continuity, identityLearning01:this.personalCurriculum.snapshot().identityLearning01,
+      curriculumPressure01:this.personalCurriculum.snapshot().curriculumPressure01, historyUnresolved01:this.personalCurriculum.snapshot().autobiographicalLearning01,
+      transfer01:this.personalCurriculum.snapshot().transferReadiness01, worldUncertainty01:n.uncertainty, worldPredictionError01:state.predictionError,
+      skillNeed01:clamp(1-this.developmentalSynthesis.diagnostics().abstraction01), researchNeed01:clamp(this.evidenceResearchSubsystem.predictionDebt.priority()),
+      embodimentCapacity01:observation.embodiment?.cognitiveCapacity01 ?? 1, embodimentStrain01:observation.embodiment?.thermalStrain01 ?? 0.1,
+      goalProgress01:clamp(active?.progress ?? 0), at:state.at
+    });
+    const portfolioRank=this.developmentalPortfolio.rankGoals(this.persisted.goals,{socialNeed01:n.socialNeed,novelty01:n.novelty,uncertainty01:n.uncertainty});
+    const lifeCourseAssessment=this.lifeCourseNavigator.assess({state,goals:this.persisted.goals,identity01:this.persisted.facets.consciousness.identityContinuity.continuity,identityDrift01:this.selfSubsystem.identityContinuity.snapshot().drift,social01:n.socialNeed,socialError01:socialPredictionError,learningNeed01:this.personalCurriculum.snapshot().curriculumPressure01,transfer01:this.personalCurriculum.snapshot().transferReadiness01,portfolioAllocation01:this.developmentalPortfolio.snapshot().allocation01,historyUnresolved01:this.personalCurriculum.snapshot().autobiographicalLearning01,futureMismatch01:this.futureSelf.snapshot().lastDevelopmentalMismatch01,resource01:n.cognitiveLoad,novelty01:n.novelty,uncertainty01:n.uncertainty,at:state.at});
+    this.personalWorldline.observeContext({state,goals:this.persisted.goals,personLabel:'user',contextKey:`${active?.id ?? state.lastAction}:${state.worldContextVersion}`,identity01:this.persisted.facets.consciousness.identityContinuity.continuity,social01:n.socialNeed,socialError01:socialPredictionError,goalPressure01:state.needs.goalPressure,worldUncertainty01:n.uncertainty,predictionError01:state.predictionError,at:state.at});
+    const trajectoryContext = {
+      state, goals:this.persisted.goals, activeGoalId:active?.id ?? null,
+      identity01:this.persisted.facets.consciousness.identityContinuity.continuity, identityDrift01:this.selfSubsystem.identityContinuity.snapshot().drift,
+      social01:n.socialNeed, socialError01:socialPredictionError, goalPressure01:state.needs.goalPressure, worldUncertainty01:n.uncertainty,
+      predictionError01:state.predictionError, novelty01:n.novelty, energy01:n.energy, cognitiveLoad01:n.cognitiveLoad,
+      portfolioDomain:this.developmentalPortfolio.snapshot().selectedDomain, portfolioAllocation01:this.developmentalPortfolio.snapshot().allocation01,
+      portfolioCompetition01:this.developmentalPortfolio.snapshot().competition01, portfolioCoherence01:this.developmentalPortfolio.snapshot().coherence01,
+      curriculumPressure01:this.personalCurriculum.snapshot().curriculumPressure01, transfer01:this.personalCurriculum.snapshot().transferReadiness01,
+      autobiographicalCoherence01:this.personalWorldline.snapshot().autobiographicalCoherence01, relationalCoherence01:this.personalWorldline.snapshot().relationalCoherence01,
+      goalCoherence01:this.personalWorldline.snapshot().goalCoherence01, worldlineStability01:this.personalWorldline.snapshot().worldlineStability01,
+      worldlineCommitmentDebt01:this.personalWorldline.snapshot().commitmentDebt01, worldlineIdentityPressure01:this.personalWorldline.snapshot().identityPressure01,
+      worldlineSocialRepair01:this.personalWorldline.snapshot().socialRepairPressure01, worldlineLearningPressure01:this.personalWorldline.snapshot().learningPressure01,
+      worldlineCounterfactualGap01:this.personalWorldline.snapshot().counterfactualGap01, futureMismatch01:this.futureSelf.snapshot().lastDevelopmentalMismatch01,
+      futureIdentityCoherence01:this.futureSelf.snapshot().futureIdentityCoherence, futureDevelopmentalBias01:this.futureSelf.snapshot().developmentalBias01,
+      regret01:selfGovernanceStateNow.regretMean, evidence01:1-state.predictionError, resource01:1-n.cognitiveLoad, at:state.at,
+    };
+    this.trajectoryDecisions = this.integratedLifeTrajectory.assess(trajectoryContext);
+    const continuityContext: CognitiveOrganismContext = {
+      state,
+      goals:this.persisted.goals,
+      activeGoalId:active?.id ?? null,
+      identity01:this.persisted.facets.consciousness.identityContinuity.continuity,
+      identityDrift01:clamp(1-this.persisted.facets.consciousness.identityContinuity.continuity),
+      autobiographicalCoherence01:this.personalWorldline.snapshot().autobiographicalCoherence01,
+      relationalCoherence01:this.personalWorldline.snapshot().relationalCoherence01,
+      goalCoherence01:this.personalWorldline.snapshot().goalCoherence01,
+      social01:n.socialNeed,
+      socialError01:socialPredictionError,
+      goalPressure01:state.needs.goalPressure,
+      novelty01:n.novelty,
+      uncertainty01:n.uncertainty,
+      predictionError01:state.predictionError,
+      selfPredictionError01:state.selfPredictionError,
+      energy01:n.energy,
+      cognitiveCapacity01:clamp(1-n.cognitiveLoad),
+      thermalStrain01:observation.embodiment?.thermalStrain01 ?? 0,
+      sensoryFreshness01:observation.embodiment?.sensoryFreshness01 ?? .5,
+      curriculumPressure01:clamp(this.personalCurriculum.diagnostics().curriculumPressure01 ?? 0),
+      transfer01:clamp(this.developmentalSynthesis.diagnostics().abstraction01 ?? .3),
+      retention01:clamp(.45+(this.developmentalExecutiveDecision?.confidence01 ?? .5)*.35),
+      futureMismatch01:this.futureSelf.snapshot().lastDevelopmentalMismatch01,
+      futureIdentityCoherence01:this.futureSelf.snapshot().futureIdentityCoherence,
+      regret01:clamp(this.developmentalSynthesis.diagnostics().revisionPressure01),
+      counterfactualGap01:clamp(this.developmentalSynthesis.diagnostics().revisionPressure01),
+      evidence01:clamp((this.persisted.facets.consciousness.consciousnessEvidence.aggregateCausalEvidence*.5)+(this.persisted.facets.consciousness.consciousnessEvidence.aggregateLongitudinalEvidence*.3)+(this.persisted.facets.consciousness.consciousnessEvidence.aggregateCoverage*.2)),
+      portfolioCoherence01:clamp(this.developmentalPortfolio.snapshot().coherence01),
+      resource01:clamp(n.energy*.6+(1-n.cognitiveLoad)*.4),
+      unfinishedIntentions:this.persisted.goals.filter(g=>g.status==='active').length,
+      commitments:Math.floor(this.lifeCourseNavigator.snapshot().continuityDebt01*10),
+      worldEntityCount:normalizedObservation.worldContext?.objects?.length ?? 0,
+      socialPersonCount:this.socialDevelopment.summary()?.personCount ?? 0,
+      at:state.at,
+    };
+    this.continuityProjections = this.cognitiveOrganismContinuity.integrate(continuityContext);
+    this.autonomousLifeProjections = this.autonomousCognitiveLife.integrate(autonomousLifeContext);
+    const p84CurriculumStart=this.selfSubsystem.p84AutobiographicalContinuity.summary();
+    this.personalCurriculum.observeDevelopmentalContext({
+      action:state.lastAction || 'wait', source:(socialStateNow?.persons.length ? 'mixed' : 'autobiographical'),
+      contextKey:`u${Math.round(n.uncertainty*4)}:n${Math.round(n.novelty*4)}:e${Math.round(n.energy*4)}:l${Math.round(n.cognitiveLoad*4)}`,
+      pressure01:clamp(this.personalCurriculum.snapshot().curriculumPressure01*.55+state.needs.goalPressure*.45),
+      identity01:clamp(this.persisted.facets.consciousness.identityContinuity.continuity),
+      social01:clamp(n.socialNeed), causal01:clamp(state.predictionError*.7+(p84CurriculumStart.causalContinuity01??.5)*.3),
+      evidence01:clamp(p84CurriculumStart.evidenceQuality01??.4), unresolved01:clamp(p84CurriculumStart.counterEvidence01??state.predictionError),at:state.at,
+      label:`${state.lastAction || 'wait'} / autobiographical-social context`
+    });
+    const curriculumRank=this.personalCurriculum.rankGoals({goals:this.persisted.goals,identity01:this.persisted.facets.consciousness.identityContinuity.continuity,social01:n.socialNeed,novelty01:n.novelty,uncertainty01:n.uncertainty});
+    const curriculumTop=curriculumRank[0];
+    const portfolioTop=portfolioRank[0];
+    this.metaDevelopmental.compileAgenda({goals:this.persisted.goals,state,synthesis:this.developmentalSynthesis.snapshot(),executive:this.developmentalExecutive.snapshot(),p36:this.p36SelfDevelopment.snapshot(),identity01:this.persisted.facets.consciousness.identityContinuity.continuity,goalPressure01:clamp(effectiveGoalPressure + (this.personalCurriculum.snapshot().curriculumPressure01*.12) + (curriculumTop?.score01??0)*.08 + (portfolioTop?.score01??0)*.06),portfolioAllocation01:this.developmentalPortfolio.snapshot().allocation01,portfolioCompetition01:this.developmentalPortfolio.snapshot().competition01,portfolioFocusDomain:this.developmentalPortfolio.snapshot().selectedDomain});
+    const aiScores = (this.config.enableActiveInference && this.config.enableWorldModel)
+      ? this.worldSubsystem.activeInference.score(this.worldSubsystem.world, worldState, n, actions)
+      : new Map<ActionKind, ActiveInferenceScore>();
+    const candidates: IntentCandidate[] = actions.map((action) => {
+      const goal = this.goalForAction(action, active, n);
+      const relief = needRelief(action, n);
+      const cost = actionCost(action);
+      const baseUtility = predictedUtility(action, goal, n);
+      const prediction = this.config.enableWorldModel ? this.worldSubsystem.world.predict(worldState, action) : { action, next: worldState, utility: 0.5, confidence: 0.1, reasons: ['world-model-disabled'], worldEvidence: [] };
+      predictions.set(action, prediction);
+      const initiativeBonus = !observation.text && action !== 'wait' && active ? 0.12 * goalScore(active) : 0;
+      const project = activeProject;
+      const projectInfluence = project ? activeProjectScore * (action === 'explore' || action === 'verify' || action === 'reflect' ? 0.08 : 0.03) : 0;
+      const projectActionBias = project ? ((action === 'explore' || action === 'verify' || action === 'reflect') ? 0.055 : 0) * activeProjectScore : 0;
+      const executorBias = project ? this.agencySubsystem.projectExecutor.bias(action,activeProjectScore) : 0;
+      const predictionDebtBias = action === 'verify' ? this.evidenceResearchSubsystem.predictionDebt.priority() * 0.045 : action === 'reflect' ? predictionDebtStateNow.agingCount * 0.012 : 0;
+      const cognitivePressureBias = pressureBias(action);
+      const adaptive = this.persisted.facets.memory.adaptiveValues;
+      const identityBias = (action === 'verify' ? KURISU_ORGANISM_CANON.invariants.scientificRigor * adaptive.truth : action === 'explore' ? KURISU_ORGANISM_CANON.invariants.curiosity * adaptive.curiosity : action === 'reflect' ? KURISU_ORGANISM_CANON.invariants.intellectualIndependence * adaptive.autonomy : action === 'respond' ? KURISU_ORGANISM_CANON.invariants.responsibility * adaptive.responsibility : 0.5);
+      const socialBias = action === 'respond' && socialPrediction && socialPrediction.predictedNeed !== 'dialogue' ? 0.05 : 0;
+      const developmentalSocialBias = this.config.enableSocialDevelopment ? socialBiasUser * (action === 'respond' ? 0.30 : 0.10) : 0;
+      const memoryInfluence = memoryInfluenceValue;
+      const socialUncertaintyPenalty = this.config.enableSocialDevelopment && action === 'respond' ? Math.max(0, socialPredictionError - 0.45) * 0.08 : 0;
+      const bodyPenalty = observation.embodiment ? ((1 - observation.embodiment.cognitiveCapacity01) * 0.10 + observation.embodiment.thermalStrain01 * 0.08 + (1 - observation.embodiment.bodyEnergy01) * 0.06) : 0;
+      const bodyRestBonus = observation.embodiment && observation.embodiment.bodyEnergy01 < 0.3 && action === 'rest' ? 0.12 : 0;
+      const ai = aiScores.get(action);
+      const worldEvaluation = this.worldSubsystem.evaluateAction(action, prediction.utility, n.uncertainty, undefined, state);
+      const integratedWorld = worldEvaluation.integrated;
+      const p10 = integratedWorld.p10;
+      const rollout = cognitiveSpinePlan.run['world-rollout']
+        ? worldEvaluation.rollout
+        : { reward: prediction.utility, uncertainty: 1 - prediction.confidence, confidence: prediction.confidence };
+      const p10Calibrated=this.evidenceResearchSubsystem.modelOlympics.calibrate('p10',p10.reward);
+      const p27Prediction = integratedWorld.p27;
+      const p26Body={ external01:Boolean(observation.text)?1:0, boredom01:p24Boredom01, resourceRisk01:p24BodyForecast5.resourceRisk01, thermalPressure01:observation.embodiment?.thermalStrain01 ?? 0.2, bodyCapacity01:observation.embodiment?.cognitiveCapacity01 ?? 1 };
+      const p26WorldPrediction = this.worldSubsystem.contextualWorld.predict(state, action);
+      const p26PolicySignal = this.config.enableLifelongLearning ? this.p26TrueLearning.bias(state, action, baseUtility, p26Body) : 0;
+      const p27Calibrated=this.evidenceResearchSubsystem.modelOlympics.calibrate('p27',p27Prediction.reward01);
+      const p26Calibrated=this.evidenceResearchSubsystem.modelOlympics.calibrate('p26',p26WorldPrediction.reward01);
+      const p30Trajectory = this.p30Continual.predictTrajectory(state,[action])[0];
+      const p30Transfer = this.p30Continual.transferBias(state, active?.id ?? action, action);
+      const causalTransfer = this.causalDevelopmentLoop.actionPrior(action, active?.id ?? action, state);
+      const behavioralPrior = this.causalDevelopmentLoop.behavioralSkillPrior(action, active?.id ?? action, state);
+      const recentBehaviorActions = (this.causalDevelopmentLoop.snapshot().behavioralEpisodes.find((e:any)=>e.taskId===(active?.id ?? action))?.steps ?? []).slice(-5).map((x:any)=>x.action as ActionKind);
+      const synthesisPrior = this.developmentalSynthesis.prior(action, recentBehaviorActions, state, active?.id ?? action);
+      const p30Raw = p30Trajectory?.rewardProxy01 ?? 0.5;
+      const p30Calibrated = this.evidenceResearchSubsystem.modelOlympics.calibrate('p30', p30Raw);
+      modelSignalsByAction.set(action,{
+        p10:p10Calibrated,p10Confidence:p10.confidence,p27:p27Calibrated,p27Confidence:p27Prediction.confidence01,
+        p26:p26Calibrated,p26Confidence:p26WorldPrediction.confidence01,p30:p30Calibrated,
+        rolloutReward:rollout.reward,rolloutUncertainty:rollout.uncertainty,
+      });
+      const modelEnsemble = this.evidenceResearchSubsystem.modelOlympics.ensemble({p10:p10Calibrated,p27:p27Calibrated,p26:p26Calibrated,p30:p30Calibrated});
+      const worldModelBonus = (p10Calibrated - prediction.utility) * 0.14 + (modelEnsemble - prediction.utility) * 0.11 + rollout.reward * 0.07 + p10.confidence * 0.04 - rollout.uncertainty * 0.03;
+      const p27WorldSignal = (p27Calibrated - 0.5) * 0.05 + p27Prediction.confidence01 * 0.016;
+      const p26WorldSignal = (p26Calibrated - 0.5) * 0.072 + p26WorldPrediction.confidence01 * 0.023;
+      const p30WorldSignal = (p30Calibrated - 0.5) * 0.052 + (p30Trajectory?.rewardProxy01 ?? 0.5) * 0.012;
+      const p30TransferSignal = p30Transfer.bias01 + causalTransfer.bias01 + behavioralPrior.bias01 + synthesisPrior.bias01;
+      const p28PlasticSignal = this.p28Plasticity.bias(action);
+      const p28InfoSignal = Math.min(0.025, this.p28Plasticity.informationGainPerCost(action, cost) * 0.004);
+      const governanceBudget = p24BodyForecast5;
+      const p29Arbitration = this.p29Learning.arbitrate([
+        {source:'p26-policy',bias:p26PolicySignal,confidence01:1-p26RecentLoss01,cost01:cost,kind:'policy'},
+        {source:'p27-world',bias:p27WorldSignal,confidence01:p27Prediction.confidence01,cost01:cost,kind:'world'},
+        {source:'p28-plasticity',bias:p28PlasticSignal,confidence01:.55,cost01:.08,kind:'plasticity'},
+        {source:'p28-information',bias:p28InfoSignal,confidence01:.5,cost01:.04,kind:'information'},
+      ], 1-governanceBudget.resourceRisk01, .12, action);
+      const p30TaskId = active?.id ?? action;
+      const p30Gate = this.p30Continual.gate({ action, candidateBias:p29Arbitration.netBias, confidence01:1-p26RecentLoss01, conflict01:p29Arbitration.conflict01, cost01:cost, learningCost01:cost*.75, taskId:p30TaskId });
+      const governedLearningBias = p29Arbitration.netBias * p30Gate.scale01;
+      const p35AffordanceBias = (this.embodimentSubsystem.p35SemanticWorldBody.affordance(action) - 0.5) * 0.08;
+      const memoryActionAliases:Record<string,string[]>={explore:['explore','exploration','discover','investigate','search','sensor'],verify:['verify','verification','confirm','confirmation','check','test'],reflect:['reflect','reflection','lesson','learn'],rest:['rest','recover','recovery'],respond:['respond','reply','answer'],wait:['wait','pause'],defer:['defer','later']};
+      const aliases=memoryActionAliases[action]??[action];
+      const memoryActionHits=advancedRetrieved.filter(m=>{const content=String(m.content).toLowerCase();return aliases.some(alias=>content.includes(alias));}).length;
+      const memoryTemperatureMean = advancedRetrieved.length ? advancedRetrieved.reduce((sum,m)=>sum + clamp(Number((m as any).temperature01 ?? (m as any).salience ?? 0)),0) / advancedRetrieved.length : 0;
+      const memoryActionEvidence=advancedRetrieved.filter(m=>aliases.some(alias=>String(m.content).toLowerCase().includes(alias))).reduce((sum,m)=>sum+clamp(Number((m as any).temperature01 ?? (m as any).salience ?? 0)),0);
+      const memoryActionBias = clamp(Math.min(.11, memoryActionHits * .024) + Math.min(.055, memoryActionEvidence*.022) + Math.max(0,memoryTemperatureMean-.45)*.035);
+      const memoryBias = [...advancedActionHints].some(content=>content.includes(action)) ? 0.03 : 0;
+      const emotionBias=this.emotionAppraisal.actionBias(action);
+      const scarBias = this.semanticScars.bias(observation.text ?? '');
+      const aiBonus = ai ? clamp((1 - ai.expectedFreeEnergy) * 0.14 + ai.epistemicValue * 0.05 - ai.risk * 0.05) : 0;
+      const networkBonus = broadcast ? ((broadcast.winner === 'executive' && (action==='verify'||action==='reflect')) || (broadcast.winner === 'sensorimotor' && action==='rest') || (broadcast.winner === 'memory' && action==='reflect') || (broadcast.winner === 'salience' && action==='explore') ? broadcast.broadcastGain*0.10 : 0) : 0;
+      const neuromodBonus = action === 'explore' ? neuromod.explorationBias01*0.08 : action === 'verify' ? neuromod.attentionGain01*0.06 : action === 'rest' ? (1-neuromod.attentionGain01)*0.05 : 0;
+      const previousWorkspaceMatch = activeWorkspaceActions.has(action) ? 0.04 : 0;
+      const metaReflectionBonus = (this.config.enableSelfPrediction && state.selfPredictionError > 0.35 && action === 'reflect') ? 0.07 : 0;
+      const budgetMode = this.persisted.facets.cognition.budget.mode;
+      const budgetBias = budgetMode === 'sleep' ? (action === 'rest' ? 0.16 : -0.16) : budgetMode === 'defer' ? (action === 'wait' || action === 'rest' ? 0.07 : -0.05) : budgetMode === 'deep' || budgetMode === 'simulate' ? ((action === 'verify' || action === 'reflect') ? 0.05 : 0) : 0;
+      const skillBias = this.config.enableProceduralSkills ? (this.skillLibrary.bias(action, active?.title ?? 'general') - 0.5) * 0.10 : 0;
+      const compoundSkillBias = this.config.enableProceduralSkills ? this.skillLibrary.compoundSkillBias(action, active?.title ?? 'general') : 0;
+      const adaptiveBias = this.config.enableLifelongLearning ? this.adaptivePolicy.bias(adaptiveContextKey, action, baseUtility) : 0;
+      const p23SkillBias = this.p23Learning.skillBias(state, action);
+      const p24BehaviorBias = this.worldSubsystem.p24WorldIdentity.behaviorBias(action);
+      const p24BodyForecastBias = action === 'rest' ? p24BodyForecast5.resourceRisk01 * 0.07 : (action === 'explore' || action === 'reflect') ? -p24BodyForecast5.resourceRisk01 * 0.025 : 0;
+      const p23VerificationBias = action === 'verify' ? this.p23Learning.verificationPressure01() * 0.055 : 0;
+      const adaptiveDevelopmentBias = this.adaptiveDevelopment.bias(action, { external:Boolean(observation.text), energy:n.energy, cognitiveLoad:n.cognitiveLoad, thermal:observation.embodiment?.thermalStrain01 ?? 0, novelty:n.novelty, predictionError:state.predictionError });
+      const p38Bias = this.p38Research.actionBias(action);
+      const p36Bias = this.p36SelfDevelopment.actionBias(action);
+      const synthesisDiag = this.developmentalSynthesis.diagnostics();
+      const synthesisPressureBonus = action === 'reflect' ? synthesisDiag.revisionPressure01 * 0.028 : action === 'verify' ? synthesisDiag.revisionPressure01 * 0.018 : action === 'explore' ? synthesisDiag.abstraction01 * 0.010 : 0;
+      const developmentalExecutiveBias = this.developmentalExecutive.bias(action, this.developmentalExecutiveDecision);
+      const metaDevelopmentalBias = this.metaDevelopmental.actionBias(action, active?.id ?? null);
+      const curriculumAction=this.personalCurriculum.suggestedAction(active?.id ?? null);
+      const developmentalPortfolioBias=this.developmentalPortfolio.actionBias(action);
+      const lifeCourseBias=this.lifeCourseNavigator.actionBias(action);
+      const worldlineBias=this.personalWorldline.actionBias(action);
+      const trajectoryBias=this.integratedLifeTrajectory.actionBias(action,this.trajectoryDecisions);
+      const continuityBias=this.cognitiveOrganismContinuity.actionBias(action);
+      const autonomousLifeBias=this.autonomousCognitiveLife.actionBias(action);
+      const operationalLifeBias=this.operationalLife.actionBias(action);
+      const curriculumBias=(curriculumAction===action && active?.id===curriculumTop?.goalId) ? Math.min(.035, (curriculumTop?.score01??0)*.035) : 0;
+      const p36CycleBias = this.p36SelfDevelopment.developmentTaskBias(action);
+      const p39Bias = this.p39Life.actionBias(action);
+      const p40Bias = this.embodimentSubsystem.p40SemanticIntelligence.bias(action);
+      const p41SemanticBias = this.embodimentSubsystem.p41SemanticPerception.bias(action);
+      const p41NativeBias = this.embodimentSubsystem.p41NativePerception.bias(action);
+      const p41TemporalBias = this.embodimentSubsystem.p41TemporalPerception.bias(action);
+      const p42ExperienceBias = this.embodimentSubsystem.p42Experience.bias(action);
+      const p43ImageryBias = this.embodimentSubsystem.p43Imagery.bias(action);
+      const p44WorldBias = this.worldSubsystem.p44PredictiveWorld.bias(action);
+      const p44Predicted = this.worldSubsystem.p44PredictiveWorld.predict(p44ExperienceVector, action);
+      const p44AnticipationBias = (p44Predicted.next.reduce((sum:number,x:number)=>sum+x,0)/Math.max(1,p44Predicted.next.length)-.5)*.045;
+      const retrievalBonus = Math.min(0.04,retrieved.length*0.01);
+      const penalty = bodyPenalty * Math.max(0.1,cost);
+      const centralBrainBias = this.centralBrain.actionBias(action);
+      const utility = clamp(
+        baseUtility * 0.49 + prediction.utility * 0.26
+        + aiBonus + projectInfluence + projectActionBias + executorBias + predictionDebtBias + cognitivePressureBias + previousWorkspaceMatch + metaReflectionBonus
+        + identityBias * 0.08 + socialBias + developmentalSocialBias + memoryInfluence
+        + initiativeBonus - socialUncertaintyPenalty + bodyRestBonus + networkBonus
+        + neuromodBonus + skillBias + compoundSkillBias + adaptiveBias + p23SkillBias + p23VerificationBias
+        + p24BehaviorBias + p24BodyForecastBias + adaptiveDevelopmentBias + budgetBias
+        + worldModelBonus + governedLearningBias + p30TransferSignal + p38Bias + p35AffordanceBias
+        + operationalLifeBias + p36Bias + p36CycleBias + synthesisPressureBonus + developmentalExecutiveBias + metaDevelopmentalBias + curriculumBias + developmentalPortfolioBias + lifeCourseBias + worldlineBias + trajectoryBias + continuityBias + p39Bias + p40Bias + p41SemanticBias + p41NativeBias + p41TemporalBias + p42ExperienceBias + p43ImageryBias + p44WorldBias + p44AnticipationBias
+        + memoryBias + memoryActionBias + emotionBias + scarBias - penalty + retrievalBonus,
+      );
+      return {
+        id: randomUUID(),
+        goalId: goal?.id,
+        action,
+        score: utility + (action === 'wait' && !observation.text && !active ? 0.08 : 0),
+        predictedUtility: utility,
+        predictedNeedRelief: relief,
+        predictedCost: cost,
+        confidence: clamp((0.62 + state.attentionBudget * 0.25 - state.predictionError * 0.25) * 0.75 + prediction.confidence * 0.25),
+        generatedAt: state.at,
+      };
+    }).sort((a, b) => b.score - a.score);
+
+    if (this.config.enableSemanticMemory) {
+      if (observation.text) this.memorySubsystem.semanticMemory.ingestEpisode(observation.text.slice(0,120), active?.title, normalizedObservation.worldContext?.location);
+      if (active) { const selfNode=this.memorySubsystem.semanticMemory.upsertNode('kurisu-self','self',.88); const goalNode=this.memorySubsystem.semanticMemory.upsertNode(active.title,'goal',active.importance); this.memorySubsystem.semanticMemory.connect(selfNode.id,goalNode.id,'supports',.62); }
+      this.persisted.facets.memory.semanticGraph = this.memorySubsystem.semanticMemory.snapshot();
+    }
+    this.persisted.facets.cognition.cognitiveField = this.cognitiveField.snapshot();
+    this.persisted.facets.cognition.contradictions = this.contradictions.snapshot();
+    this.persisted.facets.cognition.budget = this.agencySubsystem.budget.snapshot();
+    this.persisted.facets.cognition.immune = this.cognitiveImmune.snapshot();
+    this.persisted.facets.cognition.sources = this.sourceMonitor.snapshot();
+    this.persisted.facets.cognition.skills = this.skillLibrary.snapshot();
+    this.persisted.facets.cognition.scientific = this.scientificMethod.snapshot();
+    this.persisted.facets.cognition.residualWorld = this.worldSubsystem.residualWorld.snapshot();
+
+    const userRequestedAction = observation.text ? this.inferRequestedAction(observation.text) : null;
+    const internalPressureForAgency = clamp((fieldNow.taskPressure01 + fieldNow.conflict01 + state.predictionError + n.novelty) / 4);
+    const regretPressureForAgency = selfGovernanceStateNow.regretMean;
+    const governedCandidates = this.config.enableAgencyModel
+      ? this.governanceSubsystem.selfGovernance.influence(candidates, userRequestedAction, goals, internalPressureForAgency, regretPressureForAgency)
+      : candidates;
+    for (const candidate of governedCandidates) {
+      const semanticBias = this.embodimentSubsystem.p37EmbodiedSensorium.affordance(candidate.action);
+      candidate.score = clamp(candidate.score + (semanticBias - 0.5) * 0.12);
+      candidate.predictedUtility = clamp(candidate.predictedUtility + (semanticBias - 0.5) * 0.10);
+      candidate.confidence = clamp(candidate.confidence * 0.92 + semanticBias * 0.08);
+    }
+    governedCandidates.sort((a,b)=>b.score-a.score);
+    // Hot-path projection cache: expensive module snapshots are captured once per tick.
+    const identityContinuity = this.persisted.facets.consciousness.identityContinuity;
+    const identityTrajectory = this.persisted.facets.evolution.identityTrajectory;
+    const p50Summary = this.worldSubsystem.p50CausalSelfWorld.summary();
+    const p51Summary = this.worldSubsystem.p51GroundedCausalWorkspace.summary();
+    const socialPersonFrame=this.socialMind.person(observation.text ? 'user' : (semanticP41.entities.find(e=>e.kind==='person')?.id ?? 'user'));
+    const socialNeuralFrame=this.socialPredictiveNeural.observe({
+      personFeatures:[socialPersonFrame?.trust01??.5,socialPersonFrame?.predictability01??.5,socialPersonFrame?.warmth01??.5,socialPersonFrame?.guardedness01??.35,socialPersonFrame?.intentUncertainty01??.65,socialPersonFrame?.relationshipStrength01??.15],
+      socialContext:[socialMindDemand,n.socialNeed,n.novelty,state.predictionError,socialPersonFrame?.perceivedAgency01??.5,socialPersonFrame?.expectedResponseUncertainty01??.65],
+      selfFeatures:[this.selfSubsystem.p80UnifiedSelfState.snapshot().continuity01,this.selfSubsystem.p80UnifiedSelfState.snapshot().coherence01,this.selfSubsystem.p80UnifiedSelfState.snapshot().agency01,this.selfSubsystem.p80UnifiedSelfState.snapshot().realityAlignment01],
+      worldFeatures:[n.uncertainty,p51Summary.groundingQuality01,p50Summary.selfWorldAlignment01,this.worldSubsystem.worldModelAgreement()],
+      actionContext:[n.goalPressure,n.cognitiveLoad,n.energy,observation.text?1:0],tick:state.tick,at:state.at
+    });
+    (this.persisted.facets.cognition as any).socialPredictiveNeural=this.socialPredictiveNeural.snapshot();
+    const p57RealitySummaryNow = this.worldSubsystem.p57RealityFirstObservatory.snapshot();
+    const p31MetricsNow = this.selfSubsystem.p31Consciousness.snapshot().metrics;
+    const centralBrainMemoryFeatures = advancedRetrieved.slice(0,2).flatMap(m=>[
+      clamp(m.confidence),clamp(m.salience),clamp(Math.min(1,m.retrievalCount/8)),
+      m.kind==='working'?1:m.kind==='episodic'?.8:m.kind==='semantic'?.6:m.kind==='autobiographical'?.9:m.kind==='procedural'?.75:.55,
+      ...(Array.isArray(m.semanticVector)?m.semanticVector.slice(0,8):[])
+    ]);
+    const p80Central = this.selfSubsystem.p80UnifiedSelfState.snapshot();
+    const p27Central = this.worldSubsystem.p27NeuralWorld.snapshot().latent.vector.slice(0,10);
+    const p42Central = this.embodimentSubsystem.p42Experience.vector().slice(0,8);
+    const hippocampalFeatures = this.memorySubsystem.hippocampal.recallFeatures(memoryQuery,state.at);
+    const predictiveSelfFrame = this.predictiveSelfAgency.observe({
+      self:[p80Central.continuity01,p80Central.coherence01,p80Central.agency01,p80Central.realityAlignment01,identityContinuity.continuity,1-identityContinuity.drift],
+      body:[n.energy,observation.embodiment?.thermalStrain01??.2,observation.embodiment?.cognitiveCapacity01??(1-n.cognitiveLoad)],
+      world:[...p27Central,p51Summary.groundingQuality01,p50Summary.selfWorldAlignment01,this.worldSubsystem.worldModelAgreement()],
+      memory:[...hippocampalFeatures],motivation:[n.goalPressure,n.socialNeed,n.uncertainty,n.novelty],state,externalRequested:Boolean(userRequestedAction)
+    });
+    const previousGlobalWorkspace = this.globalWorkspace.globalState();
+    const centralBrainFrame = this.centralBrain.observe({
+      perception:[...p42Central,semanticP41?.scene?.confidence01??0,p37Sensor.crossModalAgreement01??0,nativeP41.metrics.audioActivity01??0,nativeP41.metrics.visionChange01??0,socialNeuralFrame.higherOrderBelief01,socialNeuralFrame.predictionError01,socialNeuralFrame.confidence01],
+      world:[...p27Central,normalizedObservation.worldContext?.uncertainty??n.uncertainty,p51Summary.groundingQuality01,p50Summary.selfWorldAlignment01,this.worldSubsystem.worldModelAgreement()],
+      self:[p80Central.continuity01,p80Central.coherence01,p80Central.agency01,p80Central.realityAlignment01,identityContinuity.continuity,1-identityContinuity.drift,p31MetricsNow.agencyBinding01,n.identityCoherence],
+      memory:[...centralBrainMemoryFeatures,clamp(memorySizeNow/1600),p59HealthNow,...hippocampalFeatures],
+      attention:[this.persisted.facets.memory.attention.confidence??0.5,n.cognitiveLoad,fieldNow.attentionDebt01??0,n.novelty],
+      body:[n.energy,observation.embodiment?.thermalStrain01??.2,observation.embodiment?.cognitiveCapacity01??(1-n.cognitiveLoad),observation.embodiment?.awake===false?0:1],
+      motivation:[n.goalPressure,n.socialNeed,n.uncertainty,n.novelty],
+      actionContext:previousGlobalWorkspace.broadcast,tick:state.tick,at:state.at
+    });
+    this.persisted.facets.cognition.centralBrain=this.centralBrain.snapshot();
+    const metacognitiveNeuralFrame = this.metacognitiveNeural.observe({
+      centralLatent:centralBrainFrame.latent.slice(0,12), workspace:[...previousGlobalWorkspace.broadcast.slice(0,6)],
+      selfLatent:[p80Central.continuity01,p80Central.coherence01,p80Central.agency01,p80Central.realityAlignment01],
+      predictionError01:state.predictionError, confidence01:governedCandidates[0]?.confidence ?? .5,
+      worldUncertainty01:n.uncertainty, identityDrift01:identityContinuity.drift,
+      actionOutcome01:state.lastActionSuccess == null ? .5 : state.lastActionSuccess ? 1 : 0, tick:state.tick, at:state.at
+    });
+    (this.persisted.facets.cognition as any).metacognitiveNeural=this.metacognitiveNeural.snapshot(); (this.persisted.facets.advanced as any).predictiveAllostasis=this.predictiveAllostasis.snapshot(); (this.persisted.facets.advanced as any).multiHorizonAllostasis=this.multiHorizonAllostasis.snapshot(); (this.persisted.facets.advanced as any).neuromodulatoryPlasticity=this.neuromodulatoryPlasticity.snapshot();
+    const predictiveSelfActionPriors = governedCandidates.map(c => this.predictiveSelfAgency.predict(c.action));
+    for (const candidate of governedCandidates) { const prior=predictiveSelfActionPriors.find(x=>x.action===candidate.action); if(prior && predictiveSelfFrame.selfContinuity01>.45 && prior.confidence01>.5){ const bounded=(prior.predictedOutcome01-.5)*.018; candidate.score=clamp(candidate.score+bounded); candidate.predictedUtility=clamp(candidate.predictedUtility+bounded*.75); } }
+    governedCandidates.sort((a,b)=>b.score-a.score);
+    this.persisted.facets.cognition.predictiveSelfAgency=this.predictiveSelfAgency.snapshot(); this.persisted.facets.cognition.globalWorkspace=this.globalWorkspace.snapshot(); (this.persisted.facets.cognition as any).metacognitiveNeural=this.metacognitiveNeural.snapshot(); (this.persisted.facets.advanced as any).predictiveAllostasis=this.predictiveAllostasis.snapshot(); (this.persisted.facets.advanced as any).multiHorizonAllostasis=this.multiHorizonAllostasis.snapshot(); (this.persisted.facets.advanced as any).neuromodulatoryPlasticity=this.neuromodulatoryPlasticity.snapshot();
+
+    const valueRevisionSignal = identityTrajectory.valueContinuity < .985 || this.persisted.facets.evolution.valueEvolution.revisions.length>0 ? .08 : 0;
+    const p58Frame = this.p58CognitiveKernel.integrate(state.tick, state.at, {
+      identity01:identityContinuity.continuity, workspace01:this.persisted.facets.consciousness.workspaceIgnition.ignitionStrength,
+      metacognitive01:clamp(this.persisted.facets.consciousness.metacognition.metacognitiveAccuracy*.55 + metacognitiveNeuralFrame.predictionCalibration01*.45), predictionError01:state.predictionError, uncertainty01:n.uncertainty, novelty01:n.novelty,
+      grounding01:p51Summary.groundingQuality01, causal01:p50Summary.selfWorldAlignment01,
+      bodyEnergy01:n.energy, thermal01:observation.embodiment?.thermalStrain01 ?? .2, cognitiveCapacity01:observation.embodiment?.cognitiveCapacity01 ?? (1-n.cognitiveLoad),
+      memoryPressure01:clamp(memorySizeNow/1600), socialNeed01:n.socialNeed, goalPressure01:n.goalPressure, realityGap01:p57RealitySummary.meanRealityGap01
+    });
+    const identityDecision=this.selfSubsystem.p60IdentityGuardian.evaluate({
+      continuity01:identityContinuity.continuity, drift01:identityContinuity.drift,
+      valueContinuity01:identityTrajectory.valueContinuity, goalContinuity01:identityContinuity.goalContinuity,
+      memoryContinuity01:identityContinuity.memoryContinuity, authorship01:identityContinuity.authorshipContinuity
+    }, state.at);
+    const p59Plan=this.memorySubsystem.p59MemoryOperatingSystem.plan({tick:state.tick,at:state.at,eventCount:eventCountNow,memoryCount:memorySizeNow,retrievalHits:advancedRetrieved.length,predictionError01:state.predictionError,identity01:identityContinuity.continuity,goalPressure01:n.goalPressure,novelty01:n.novelty,uncertainty01:n.uncertainty});
+    if(p59Plan.mode==='compress' && state.tick%12===0) this.p49TemporalLife.consolidate(64);
+    if(p59Plan.mode==='reconsolidate' && advancedRetrieved[0]) this.memorySubsystem.unifiedMemory.markReconsolidation(1);
+    if(p59Plan.mode==='protect') this.cognitiveField.addPressure('attention-debt','memory/identity protection mode',p59Plan.priority01,[],0.02);
+    this.persisted.facets.advanced.p58CognitiveKernel=this.p58CognitiveKernel.snapshot();
+    this.persisted.facets.advanced.p59MemoryOperatingSystem=this.memorySubsystem.p59MemoryOperatingSystem.snapshot();
+    this.persisted.facets.advanced.p60IdentityGuardian=this.selfSubsystem.p60IdentityGuardian.snapshot();
+    const p62Frame=this.memorySubsystem.fabric.recall(memoryQuery,8);
+    const previousDevelopmentPlan=this.p56IntegratedDevelopmentalMind.snapshot().lastPlan;
+    const p63Plan=this.p63DevelopmentalOperatingSystem.plan({
+      tick:state.tick,at:state.at,
+      p56:previousDevelopmentPlan?{mode:previousDevelopmentPlan.mode,priority01:previousDevelopmentPlan.priority01,confidence01:previousDevelopmentPlan.confidence01,realityGap01:p57RealitySummary.meanRealityGap01}:{mode:'observe',priority01:.2,confidence01:.4,realityGap01:p57RealitySummary.meanRealityGap01},
+      p58:{mode:p58Frame.mode,stability01:p58Frame.stability01,integrated01:p58Frame.integrated01,realityGap01:p58Frame.realityGap01},
+      p59:{mode:p59Plan.mode,priority01:p59Plan.priority01,retentionBias01:p59Plan.retentionBias01},p60:identityDecision,
+      predictionError01:state.predictionError,uncertainty01:n.uncertainty,novelty01:n.novelty,identity01:identityContinuity.continuity,
+      bodyEnergy01:n.energy,thermal01:observation.embodiment?.thermalStrain01??.2,memoryPressure01:clamp(memorySizeNow/1600),realityGap01:p57RealitySummary.meanRealityGap01,
+    });
+    const integrationSignals={
+      identity01:identityContinuity.continuity,
+      workspace01:this.persisted.facets.consciousness.workspaceIgnition.ignitionStrength,
+      metacognitive01:clamp(this.persisted.facets.consciousness.metacognition.metacognitiveAccuracy*.55 + metacognitiveNeuralFrame.predictionCalibration01*.45),
+      predictionError01:state.predictionError,uncertainty01:n.uncertainty,novelty01:n.novelty,
+      grounding01:p51Summary.groundingQuality01,causal01:p50Summary.selfWorldAlignment01,
+      bodyEnergy01:n.energy,thermal01:observation.embodiment?.thermalStrain01??.2,cognitiveCapacity01:observation.embodiment?.cognitiveCapacity01??(1-n.cognitiveLoad),
+      memoryPressure01:clamp(memorySizeNow/1600),socialNeed01:n.socialNeed,goalPressure01:effectiveGoalPressure,realityGap01:p57RealitySummary.meanRealityGap01,
+      memoryHealth01:p59HealthNow,agency01:p31MetricsNow.agencyBinding01,
+      externalInput:Boolean(observation.text),identityDecision,p58Mode:p58Frame.mode,p58Stability01:p58Frame.stability01,
+      p63Mode:p63Plan.mode,p63Priority01:p63Plan.priority01,retrievalQuality01:p62Frame.retrievalQuality01,
+      conflictPressure01:clamp(p62Frame.conflictPressure01*.6+p68Goals.conflictPressure01*.4),homeostaticPressure01:p66Homeostasis.pressure01,homeostaticMode:p66Homeostasis.mode,
+      allostaticReadiness01:predictiveAllostasis.readiness01,allostaticUrgency01:predictiveAllostasis.interventionUrgency01,allostaticOverload01:predictiveAllostasis.overload01,
+      goalFocus01:p68Goals.goalPressure01,goalStaleness01:p68Goals.staleness01,
+    };
+    const kernelArbitration=this.cognitiveKernelCoordinator.integrateAndArbitrate(
+      {tick:state.tick,at:state.at,observationId:`${state.tick}:${observation.text?.slice(0,48)??'ambient'}`,
+        ...integrationSignals,developmentalPriority01:p63Plan.priority01,
+        candidates:governedCandidates.map(c=>({action:c.action,score:c.score,confidence01:c.confidence,source:observation.text?'external':'internal',salience01:c.score})),
+      },
+      integrationSignals,
+      governedCandidates.map(c=>({action:c.action,score:c.score,confidence01:c.confidence,predictedUtility:c.predictedUtility,source:observation.text?'external':'internal',userRequested:Boolean(userRequestedAction===c.action)})),
+      userRequestedAction,
+    );
+    const p61Frame=kernelArbitration.p61;
+    const p64Frame=kernelArbitration.p64;
+    governedCandidates.forEach((candidate,index)=>{
+      const updated=kernelArbitration.candidates[index];
+      candidate.score=updated.score;
+      candidate.predictedUtility=updated.predictedUtility ?? candidate.predictedUtility;
+      candidate.confidence=updated.confidence01 ?? candidate.confidence;
+    });
+    const nativeP41Now=this.embodimentSubsystem.p41NativePerception.snapshot();
+    const p79Situation=this.worldSubsystem.p79EmbodiedSituationModel.observe({
+      tick:state.tick,
+      location:normalizedObservation.worldContext?.location,
+      scene:observation.vision?.sceneLabel??normalizedObservation.worldContext?.location,
+      objects:(observation.vision?.objects?.length??0)+(normalizedObservation.worldContext?.objects?.length??0),
+      events:(normalizedObservation.worldContext?.events?.length??0)+(observation.audio?.events?.length??0),
+      audioActivity01:nativeP41Now.metrics.audioActivity01,
+      visionChange01:nativeP41Now.metrics.visionChange01,
+      energy01:n.energy,
+      thermal01:observation.embodiment?.thermalStrain01??.2,
+      uncertainty01:clamp(normalizedObservation.worldContext?.uncertainty??n.uncertainty),
+    });
+    const p78Self=this.selfSubsystem.p78AutobiographicalSelfContinuity.observe(this.memorySubsystem.events.recent(16, false).map(e=>({
+      at:e.at,tick:e.tick,action:String(e.payload?.action??e.type),
+      outcome:e.payload?.reward as number??e.payload?.success as number??null,
+      text:typeof e.payload?.text==='string'?String(e.payload.text):undefined,
+      mode:p64Frame.mode,
+    })));
+    const experienceBeforeTick=this.memorySubsystem.experienceContinuum.summary();
+    const p75Plan=this.memorySubsystem.p75MemoryContinuumOS.plan({
+      tick:state.tick,
+      pressure01:clamp((memorySizeNow/1600)*.5+n.cognitiveLoad*.25+p66Homeostasis.pressure01*.25),
+      recentEpisodes:this.persisted.traces.length,
+      semanticNodes:this.persisted.facets.memory.semanticGraph.nodes.length,
+      activeGoals:this.persisted.goals.filter(g=>g.status==='active').length,
+      energy01:n.energy,textPresent:Boolean(observation.text),
+      experienceHot:experienceBeforeTick.hotCount,experienceWarm:experienceBeforeTick.warmCount,experienceCold:experienceBeforeTick.coldCount,identityTension01:experienceBeforeTick.identityGravity.tension01,
+    });
+    const p76Identity=this.selfSubsystem.p76IdentityLifeOS.observe({
+      tick:state.tick,identity01:identityContinuity.continuity,drift01:identityContinuity.drift,
+      valueContinuity01:this.persisted.facets.evolution.identityTrajectory.valueContinuity,
+      memoryContinuity01:identityContinuity.memoryContinuity,authoredContinuity01:p78Self.selfAuthorship01,
+      relationshipContinuity01:this.persisted.facets.evolution.identityTrajectory.projectContinuity,
+      goalContinuity01:identityContinuity.goalContinuity,contradiction01:p62Frame.conflictPressure01,
+    });
+    const p80Self=this.selfSubsystem.p80UnifiedSelfState.update({
+      tick:state.tick,
+      mode:p64Frame.mode as any,
+      identity01:p76Identity.continuity01,
+      memoryContinuity01:identityContinuity.memoryContinuity,
+      realityGap01:p57RealitySummaryNow.meanRealityGap01,
+      predictionError01:state.predictionError,
+      uncertainty01:n.uncertainty,
+      energy01:n.energy,
+      cognitiveCapacity01:observation.embodiment?.cognitiveCapacity01??(1-n.cognitiveLoad),
+      goalPressure01:effectiveGoalPressure,
+      grounding01:p51Summary.groundingQuality01,
+      causal01:p50Summary.selfWorldAlignment01,
+      workspace01:p61Frame.integration01,
+      action:governedCandidates[0]?.action??'wait',
+      actionScore01:governedCandidates[0]?.score??.5,
+      externalInput:Boolean(observation.text),
+      novelty01:state.needs.novelty,
+    });
+    const groundedNow=this.worldSubsystem.groundedWorld.snapshot();
+    const debtNow=this.evidenceResearchSubsystem.predictionDebt.snapshot();
+    const unifiedSubstrate=this.unifiedCognitiveSubstrate.integrate({
+      tick:state.tick,
+      self:{
+        continuity01:p80Self.continuity01,
+        coherence01:p80Self.coherence01,
+        agency01:p80Self.agency01,
+        realityAlignment01:p80Self.realityAlignment01,
+        mode:p80Self.currentMode,
+        lastAction:p80Self.lastAction,
+      },
+      world:{
+        confidence01:clamp(1-p57RealitySummaryNow.meanRealityGap01),
+        uncertainty01:n.uncertainty,
+        entityCount:groundedNow.entities.length,
+        eventCount:groundedNow.events.length,
+        relationCount:groundedNow.relations.length,
+        conflict01:p62Frame.conflictPressure01??0,
+        newEntityRate01:clamp(groundedNow.entities.filter(e=>e.firstSeenAt>=state.at-1000).length/16),
+      },
+      prediction:{
+        error01:state.predictionError,
+        openCount:debtNow.openCount,
+        agingCount:debtNow.agingCount,
+        expiredCount:debtNow.expiredCount,
+        priority01:debtNow.meanPriority01,
+      },
+      resources:{
+        battery01:resourceAllocation.battery01,
+        thermal01:resourceAllocation.thermal01,
+        ramPressure01:resourceAllocation.ramPressure01,
+        computeCapacity01:resourceAllocation.computeCapacity01,
+        scarcity01:resourceAllocation.scarcity01,
+        efficiency01:resourceAllocation.efficiency01,
+      },
+      memoryPressure01:clamp(n.cognitiveLoad),
+      evidenceCoverage01:clamp(1-p57RealitySummaryNow.meanRealityGap01),
+      realObservationCoverage01:observation.embodiment
+        ? clamp(.25+groundedNow.provenanceIds.length/128*.75)
+        : 0,
+      unknown01:clamp(p57RealitySummaryNow.meanRealityGap01),
+      reason:`resource=${resourceAllocation.dominantDomain};capacity=${resourceAllocation.computeCapacity01.toFixed(2)}`,
+    });
+
+
+    const p84Summary = this.selfSubsystem.p84AutobiographicalContinuity.summary();
+    const p71Dev = this.selfSubsystem.p71SelfConsistency.summary();
+    const p32Dev = this.selfSubsystem.p32CausalSelf.summary();
+    const trajectoryDev = this.persisted.facets.evolution.identityTrajectory;
+    const narrativeDev = this.narrative.summary();
+    const socialDev = this.socialDevelopment.summary();
+    const userSocial = socialDev.user;
+    const developmentalIdentityFrame = this.developmentalIdentity.build({
+      identity:{continuity01:identityContinuity.continuity,stability01:identityContinuity.stability,drift01:identityContinuity.drift,goalContinuity01:identityContinuity.goalContinuity,memoryContinuity01:identityContinuity.memoryContinuity,authorshipContinuity01:identityContinuity.authorshipContinuity,valueDistance01:identityContinuity.valueDistance},
+      p76:{continuity01:p76Identity.continuity01,conservation01:p76Identity.conservation01,drift01:p76Identity.drift01,protectedViolations:this.selfSubsystem.p76IdentityLifeOS.summary().protectedViolations},
+      p78:{continuity01:p78Self.continuity01,narrativeCoherence01:p78Self.narrativeCoherence01,selfAuthorship01:p78Self.selfAuthorship01,turningPoints:p78Self.turningPoints,chapters:p78Self.chapters},
+      p84:{lifeContinuity01:p84Summary.lifeContinuity01,causalContinuity01:p84Summary.causalContinuity01,autobiographicalIntegrity01:p84Summary.autobiographicalIntegrity01,beliefContinuity01:p84Summary.beliefContinuity01,socialBinding01:p84Summary.socialBinding01,selfChangeLoad01:p84Summary.selfChangeLoad01,memoryBinding01:p84Summary.memoryBinding01,identityChangeCount:p84Summary.identityChangeCount,evidenceQuality01:this.memorySubsystem.p65EpistemicLedger.summary().meanConfidence01,counterEvidence01:this.memorySubsystem.p65EpistemicLedger.summary().unresolved>8?.22:0},
+      p80:{continuity01:p80Self.continuity01,coherence01:p80Self.coherence01,agency01:p80Self.agency01,noveltyPressure01:p80Self.noveltyPressure01,currentMode:p80Self.currentMode},
+      p71:{consistency01:p71Dev.consistency01,repairPressure01:p71Dev.repairPressure01,identityDrift01:p71Dev.identityDrift01,goalConflict01:p71Dev.goalConflict01,valueConflict01:p71Dev.valueConflict01,actionMismatch01:p71Dev.actionMismatch01},
+      p32:{selfCausalCoherence01:p32Dev.metrics.selfCausalCoherence01,agencyCalibration01:p32Dev.metrics.agencyCalibration01,selfPredictionAccuracy01:p32Dev.metrics.selfPredictionAccuracy01,causalSpecificity01:p32Dev.metrics.causalSpecificity01,revisionReadiness01:p32Dev.metrics.revisionReadiness01},
+      trajectory:{continuity:trajectoryDev.continuity,trajectoryStability:trajectoryDev.trajectoryStability,projectContinuity:trajectoryDev.projectContinuity,valueContinuity:trajectoryDev.valueContinuity,narrativeContinuity:trajectoryDev.narrativeContinuity,authoredContinuity:trajectoryDev.authoredContinuity},
+      narrative:{continuity:narrativeDev.continuity,chapterCount:narrativeDev.chapterCount,salience01:narrativeDev.salience01},
+      social:{personCount:socialDev.personCount,predictionError01:socialDev.socialPredictionError,trust01:userSocial?.trust??.5,warmth01:userSocial?.warmth??.5,predictability01:userSocial?.predictability??.5},
+      immune:{acceptedCount:this.cognitiveImmune.summary().validatedCount,quarantineCount:this.cognitiveImmune.summary().quarantineCount,reviewCount:this.cognitiveImmune.summary().reviewQueueCount},
+    });
+    this.lastDevelopmentalIdentity = developmentalIdentityFrame;
+    const perceptualSummary = this.perceptualEvidence.summary();
+    const immuneSummary = this.cognitiveImmune.summary();
+    const activeModalities = Object.entries(p37Sensor.sensors).filter(([, v]) => v.samples > 0).map(([k]) => k);
+    const subjectIntegration=this.subjectContinuity.build({
+      tick:state.tick, at:state.at, identity01:p76Identity.continuity01,
+      identityConservation01:p76Identity.conservation01,
+      memoryContinuity01:identityContinuity.memoryContinuity,
+      autobiographicalContinuity01:p84Summary.lifeContinuity01,
+      causalContinuity01:p84Summary.causalContinuity01,
+      grounding01:p51Summary.groundingQuality01,
+      realityAlignment01:1-p57RealitySummaryNow.meanRealityGap01,
+      workspace01:p61Frame.integration01,
+      crossModalAgreement01:p37Sensor.crossModalAgreement01,
+      unresolved01:clamp(perceptualSummary.metrics.unresolved01),
+      epistemicIntegrity01:clamp(.72-immuneSummary.quarantineCount/128*.35),
+      agency01:p80Self.agency01, energy01:n.energy,
+      cognitiveCapacity01:observation.embodiment?.cognitiveCapacity01??(1-n.cognitiveLoad),
+      predictionError01:state.predictionError, novelty01:n.novelty,
+      goalPressure01:effectiveGoalPressure,
+      externalInput:Boolean(observation.text||observation.worldEvent), activeModalities,
+      developmentalIdentity01:developmentalIdentityFrame.integrity01, beliefLineage01:developmentalIdentityFrame.beliefLineage01, socialContinuity01:developmentalIdentityFrame.socialContinuity01, developmentalPressure01:developmentalIdentityFrame.identityPressure01,
+    });
+    this.lastSubjectContinuity=subjectIntegration;
+    const userSocialModel = socialDev && socialStateNow?.persons?.find((person:any)=>person.id==='user');
+    this.lastMotiveEcology=this.motiveEcology.evaluate({
+      intrinsic: intrinsicState,
+      values:this.persisted.facets.memory.adaptiveValues,
+      goalPressure01:effectiveGoalPressure,
+      uncertainty01:n.uncertainty,
+      predictionError01:state.predictionError,
+      energy01:n.energy,
+      socialNeed01:n.socialNeed,
+      socialTrust01:userSocialModel?.trust??.5,
+      socialPredictionError01:socialDev.socialPredictionError,
+      developmental:{
+        phase:developmentalIdentityFrame.phase,
+        revisionReadiness01:developmentalIdentityFrame.revisionReadiness01,
+        identityPressure01:developmentalIdentityFrame.identityPressure01,
+        counterEvidencePressure01:developmentalIdentityFrame.counterEvidencePressure01,
+        integrity01:developmentalIdentityFrame.integrity01,
+      },
+      selfConsistency01:developmentalIdentityFrame.selfConsistency01,
+      cognitiveConflict01:fieldNow.conflict01,
+      noveltyPressure01:developmentalIdentityFrame.noveltyPressure01,
+      agency01:p80Self.agency01,
+    });
+    const attractorEvidenceKey = `${p37Sensor.episodeKey}|${state.lastAction}|${state.lastActionSuccess??''}|${state.predictionError.toFixed(3)}`;
+    this.developmentalAttractors.observe({
+      evidenceKey:attractorEvidenceKey, at:state.at, action:state.lastAction==='none'?'wait':state.lastAction, success01:state.lastActionSuccess,
+      predictionError01:state.predictionError, uncertainty01:n.uncertainty, novelty01:n.novelty, socialNeed01:n.socialNeed,
+      identityPressure01:developmentalIdentityFrame.identityPressure01, counterEvidence01:developmentalIdentityFrame.counterEvidencePressure01,
+      phase:developmentalIdentityFrame.phase, values:this.persisted.facets.memory.adaptiveValues,
+      motiveOverall01:this.lastMotiveEcology.overall01, motiveConflict01:this.lastMotiveEcology.conflict01,
+    });
+    this.persisted.facets.evolution.developmentalAttractors=this.developmentalAttractors.snapshot();
+    this.persisted.facets.cognition.immune=this.cognitiveImmune.snapshot();
+    const p81Attention=this.p81PredictiveAttention.evaluate({tick:state.tick,candidates:governedCandidates.map(c=>({action:c.action,score:c.score,predictedUtility:c.predictedUtility,confidence:c.confidence})),uncertainty01:n.uncertainty,predictionError01:state.predictionError,goalPressure01:effectiveGoalPressure,noveltyPressure01:p80Self.noveltyPressure01,attentionBudget01:state.attentionBudget,externalInput:Boolean(observation.text)});
+    for (const candidate of governedCandidates) {
+      const predictiveBias = this.p81PredictiveAttention.actionBias(candidate.action);
+      const selfBias = this.selfSubsystem.p80UnifiedSelfState.actionBias(candidate.action);
+      const motiveBias = this.lastMotiveEcology.actionBiases[candidate.action] ?? 0;
+      const restBias = subjectIntegration.resourceFitness01 < 0.38 && candidate.action === 'rest' ? 0.035 : 0;
+      const verifyBias = subjectIntegration.resolution === 'investigate' && candidate.action === 'verify' ? 0.028 : 0;
+      const developmentalBias =
+        developmentalIdentityFrame.phase === 'revising' && candidate.action === 'verify' ? 0.018 :
+        developmentalIdentityFrame.phase === 'repairing' && candidate.action === 'reflect' ? 0.016 :
+        developmentalIdentityFrame.phase === 'exploring' && candidate.action === 'explore' ? 0.012 : 0;
+      const attractorBias = this.developmentalAttractors.actionBias(candidate.action,{
+        phase:developmentalIdentityFrame.phase,
+        energy01:n.energy,
+        thermal01:observation.embodiment?.thermalStrain01??.2,
+        uncertainty01:n.uncertainty,
+        socialNeed01:n.socialNeed,
+      });
+      const trajectoryBias = this.identityTrajectory.actionBias(candidate.action);
+      const developmentalForkBias = this.p55DevelopmentalForkUniverse.actionBias(candidate.action);
+      const futureSelfBias = this.futureSelf.developmentalBias({
+        action:candidate.action, state, goals, values:this.persisted.facets.memory.adaptiveValues,
+        identityContinuity01:identityContinuity.continuity, identityPressure01:developmentalIdentityFrame.identityPressure01,
+      });
+      const personalityBias = this.multiHypothesisPersonality.actionBias(candidate.action);
+      candidate.score = clamp(
+        candidate.score + predictiveBias + selfBias + motiveBias + attractorBias + trajectoryBias + developmentalForkBias + futureSelfBias + personalityBias + restBias + verifyBias + developmentalBias,
+      );
+    }
+    const p82Progress=this.p82RealityProgress.observe({tick:state.tick,capability01:this.governanceSubsystem.p73CapabilityLedger.summary().currentCapability01,complexity01:clamp((this.persisted.traces.length/320)*.3+(this.persisted.facets.memory.eventLog.length/768)*.25+(memorySizeNow/1600)*.25+(1-p80Self.coherence01)*.2),externalEvidence:Boolean(observation.success!=null||observation.reward!=null),identity01:p76Identity.continuity01,continuity01:identityContinuity.continuity});
+    const p74Frame=this.p74IntegratedOrganismKernel.evaluate({
+      tick:state.tick,at:state.at,identity01:p76Identity.continuity01,identityDrift01:p76Identity.drift01,
+      grounding01:p51Summary.groundingQuality01,causal01:p50Summary.selfWorldAlignment01,
+      predictionAccuracy01:1-state.predictionError,uncertainty01:n.uncertainty,novelty01:n.novelty,socialNeed01:n.socialNeed,
+      goalPressure01:effectiveGoalPressure,energy01:n.energy,thermal01:observation.embodiment?.thermalStrain01??.2,
+      cognitiveCapacity01:observation.embodiment?.cognitiveCapacity01??(1-n.cognitiveLoad),
+      memoryHealth01:p59HealthNow,memoryPressure01:clamp(memorySizeNow/1600),
+      homeostaticPressure01:p66Homeostasis.pressure01,workspace01:p61Frame.integration01,
+      metacognitive01:clamp(this.persisted.facets.consciousness.metacognition.metacognitiveAccuracy*.55 + metacognitiveNeuralFrame.predictionCalibration01*.45),
+      realityGap01:p57RealitySummaryNow.meanRealityGap01,
+      developmentalReadiness01:clamp(.25 + Math.min(1,this.p67AutonomousGoalGenesis.summary().proposals/8)*.35),
+      lastMode:null,
+      candidates:governedCandidates.map(c=>({action:c.action,score:c.score,confidence01:c.confidence,reversible:!['send-message','send-network'].includes(c.action),userRequested:c.action===userRequestedAction})),
+    });
+    const centralSubjectFrame = this.centralSubjectDynamics.observe({
+      tick:state.tick,
+      at:state.at,
+      identity01:p76Identity.continuity01,
+      autobiographical01:clamp(this.selfSubsystem.p84AutobiographicalContinuity.summary().causalContinuity01 ?? .5),
+      causalSelf01:p50Summary.selfWorldAlignment01,
+      workspace01:p61Frame.integration01,
+      metacognitive01:clamp(this.persisted.facets.consciousness.metacognition.metacognitiveAccuracy*.55 + metacognitiveNeuralFrame.predictionCalibration01*.45),
+      grounding01:p51Summary.groundingQuality01,
+      interoception01:clamp(1-p66Homeostasis.pressure01),
+      agency01:p74Frame.selfWorld01,
+      socialBinding01:clamp(this.socialDevelopment.summary().user?.trust ?? .5),
+      continuity01:identityContinuity.continuity,
+      predictionAccuracy01:1-state.predictionError,
+      realityAlignment01:1-p57RealitySummaryNow.meanRealityGap01,
+      developmental01:p74Frame.developmental01,
+      resource01:clamp(n.energy*(1-n.cognitiveLoad)),
+      externalInput:Boolean(observation.text||observation.audio||observation.vision),
+    });
+    this.persisted.facets.cognition.centralSubjectDynamics= this.centralSubjectDynamics.snapshot();
+    const p74ByAction=new Map(this.p74IntegratedOrganismKernel.biasCandidates(governedCandidates.map(c=>({action:c.action,score:c.score,confidence01:c.confidence,reversible:!['send-message','send-network'].includes(c.action),userRequested:c.action===userRequestedAction})),p74Frame).map(c=>[c.action,c]));
+    for(const candidate of governedCandidates){const tuned=p74ByAction.get(candidate.action); if(tuned) { candidate.score=tuned.score; candidate.confidence=tuned.confidence01; }}
+    for(const candidate of governedCandidates){ candidate.score=clamp(candidate.score + (this.worldSubsystem.p79EmbodiedSituationModel.actionGrounding(candidate.action)-.5)*.05); }
+    if (centralSubjectFrame.phase==='recovering' || centralSubjectFrame.phase==='fragmented') { for(const candidate of governedCandidates){ if(candidate.action==='rest'||candidate.action==='defer'||candidate.action==='verify') candidate.score=clamp(candidate.score+.025); if(candidate.action==='explore') candidate.score=clamp(candidate.score-.025); } } else if (centralSubjectFrame.phase==='coherent') { for(const candidate of governedCandidates){ if(candidate.action==='explore'||candidate.action==='reflect') candidate.score=clamp(candidate.score+.012); } }
+    const attractorSummary=this.developmentalAttractors.summary();
+    const attractorConflict01=clamp(attractorSummary.attractors.reduce((sum:any,a:any)=>sum+a.contradiction01,0)/Math.max(1,attractorSummary.attractors.length));
+    const p67Candidate=this.p67AutonomousGoalGenesis.propose({
+      tick:state.tick, at:state.at, energy01:n.energy, uncertainty01:n.uncertainty, predictionError01:state.predictionError, novelty01:n.novelty, socialNeed01:n.socialNeed,
+      goalPressure01:effectiveGoalPressure, homeostaticPressure01:p66Homeostasis.pressure01, epistemicUnresolved:this.memorySubsystem.p65EpistemicLedger.summary().unresolved,
+      identity01:identityContinuity.continuity, activeGoalCount:this.persisted.goals.filter(g=>g.status==='active').length, lastMode:p64Frame.mode, identityDecision,
+      motiveOverall01:this.lastMotiveEcology.overall01, motiveConflict01:this.lastMotiveEcology.conflict01, motiveDominant:this.lastMotiveEcology.dominant,
+      attractorOverall01:attractorSummary.fieldStrength01, attractorConflict01, attractorDominant:attractorSummary.dominant,
+      curriculumPressure01:this.personalCurriculum.snapshot().curriculumPressure01,
+      historyUnresolved01:this.personalCurriculum.snapshot().autobiographicalLearning01,
+      socialLearning01:this.personalCurriculum.snapshot().socialLearning01,
+      valueWeights:this.persisted.facets.memory.adaptiveValues,
+    });
+    const p67GoalRecalibrations=this.p67AutonomousGoalGenesis.recalibrateActiveGoals({tick:state.tick,goals:this.persisted.goals,valueWeights:this.persisted.facets.memory.adaptiveValues});
+    for(const update of p67GoalRecalibrations){
+      const goal=this.persisted.goals.find(g=>g.id===update.id);
+      if(goal){
+        goal.importance=update.importance; goal.urgency=update.urgency; goal.confidence=update.confidence; goal.reason=goal.reason.replace(/; value-recalibration=[^;]*/g,'')+`; value-recalibration=${update.valueFocus}`; goal.updatedAt=state.at;
+        this.memorySubsystem.events.append(makeEvent('goal-updated',state.tick,{goalId:goal.id,importance:goal.importance,urgency:goal.urgency,valueFocus:update.valueFocus,valueAlignment01:update.valueAlignment01,reason:'evidence-gated-value-profile-recalibration'} as any));
+      }
+    }
+    if(p67Candidate){ const duplicate=this.persisted.goals.some(g=>g.status==='active'&&g.title===p67Candidate.title); if(!duplicate){ this.persisted.goals.push({id:p67Candidate.id,title:p67Candidate.title,reason:p67Candidate.reason,source:p67Candidate.source,status:'active',importance:p67Candidate.importance,urgency:p67Candidate.urgency,confidence:p67Candidate.confidence,progress:0,createdAt:p67Candidate.at,updatedAt:p67Candidate.at}); this.p67AutonomousGoalGenesis.markPromoted(p67Candidate.id); this.memorySubsystem.events.append(makeEvent('autonomous-goal-created',state.tick,{goalId:p67Candidate.id,title:p67Candidate.title,source:p67Candidate.source,reason:p67Candidate.reason} as any)); } }
+    this.developmentalExecutive.beginCycle();
+    this.developmentalExecutive.syncGoals(this.persisted.goals, state.at, this.developmentalSynthesis.snapshot(), this.p36SelfDevelopment.snapshot());
+    this.developmentalExecutiveDecision = this.developmentalExecutive.decide({
+      tick:state.tick, at:state.at, state, goal:active, synthesis:this.developmentalSynthesis.snapshot(), p36:this.p36SelfDevelopment.snapshot(),
+      recentActions:(this.causalDevelopmentLoop.snapshot().behavioralEpisodes.find((e:any)=>e.taskId===(active?.id ?? 'general'))?.steps ?? []).slice(-6).map((x:any)=>x.action as ActionKind),
+      contextKey:this.causalDevelopmentLoop.contextKey(this.lastGroundedWorldContext, state, active?.id ?? 'general'), availableActions:['respond','explore','verify','rest','reflect','wait','defer'],
+    });
+
+    if (resultMode !== 'operational') {
+      this.persisted.facets.advanced.p61IntegratedMind=this.p61IntegratedMind.snapshot();
+      this.persisted.facets.advanced.p62MemoryFabric=this.memorySubsystem.p62MemoryFabric.snapshot();
+      this.persisted.facets.advanced.p63DevelopmentalOperatingSystem=this.p63DevelopmentalOperatingSystem.snapshot();
+      this.persisted.facets.advanced.p64IntegratedOrganismDynamics=this.p64IntegratedOrganismDynamics.snapshot();
+      this.persisted.facets.advanced.p65EpistemicLedger=this.memorySubsystem.p65EpistemicLedger.snapshot();
+      this.persisted.facets.advanced.p66InteroceptiveHomeostasis=this.p66InteroceptiveHomeostasis.snapshot(); (this.persisted.facets.advanced as any).predictiveAllostasis=this.predictiveAllostasis.snapshot();
+      this.persisted.facets.advanced.p67AutonomousGoalGenesis=this.p67AutonomousGoalGenesis.snapshot();
+      this.persisted.facets.advanced.p68GoalEcology=this.p68GoalEcology.snapshot();
+      this.persisted.facets.advanced.p74IntegratedOrganismKernel=this.p74IntegratedOrganismKernel.snapshot();
+      this.persisted.facets.advanced.p75MemoryContinuumOS=this.memorySubsystem.p75MemoryContinuumOS.snapshot();
+      this.persisted.facets.advanced.p76IdentityLifeOS=this.selfSubsystem.p76IdentityLifeOS.snapshot();
+      this.persisted.facets.advanced.p77RealityExperimentOS=this.p77RealityExperimentOS.snapshot();
+      this.persisted.facets.advanced.p78AutobiographicalSelfContinuity=this.selfSubsystem.p78AutobiographicalSelfContinuity.snapshot();
+      this.persisted.facets.advanced.p79EmbodiedSituationModel=this.worldSubsystem.p79EmbodiedSituationModel.snapshot();
+      this.persisted.facets.advanced.p80UnifiedSelfState=this.selfSubsystem.p80UnifiedSelfState.snapshot();
+      this.persisted.facets.advanced.p81PredictiveAttention=this.p81PredictiveAttention.snapshot();
+      this.persisted.facets.advanced.p82RealityProgress=this.p82RealityProgress.snapshot();
+    }
+    this.persisted.facets.advanced.p69ConstitutionalArbiter=this.governanceSubsystem.p69ConstitutionalArbiter.snapshot();
+    this.persisted.facets.advanced.p70MemoryLifecycleGovernor=this.memorySubsystem.p70MemoryLifecycleGovernor.snapshot();
+    this.persisted.facets.advanced.p71SelfConsistency=this.selfSubsystem.p71SelfConsistency.snapshot();
+    this.persisted.facets.advanced.p72LifeCycle=this.governanceSubsystem.p72LifeCycle.snapshot();
+    this.persisted.facets.advanced.p73CapabilityLedger=this.governanceSubsystem.p73CapabilityLedger.snapshot();
+    // P84 causal carry-over: verified autobiographical outcomes may slightly bias future action selection.
+    // The bias is intentionally bounded and only learns from sufficiently verified outcomes.
+    for (const candidate of governedCandidates) {
+      candidate.score = clamp(candidate.score + this.selfSubsystem.p84AutobiographicalContinuity.actionBias(candidate.action, state.at, { goalFamily:active?.source ?? 'none', uncertainty01:n.uncertainty, novelty01:n.novelty, energy01:n.energy, cognitiveLoad01:n.cognitiveLoad, realityConfidence01:1-p57RealitySummaryNow.meanRealityGap01 }));
+    }
+    for (const candidate of governedCandidates) { candidate.score = clamp(candidate.score + (resourceAllocation.actionBias[candidate.action as keyof typeof resourceAllocation.actionBias] ?? 0) * .04); }
+    const p69Decision = this.governanceSubsystem.p69ConstitutionalArbiter.arbitrate({
+      tick:state.tick, energy01:n.energy, thermal01:observation.embodiment?.thermalStrain01??.2, capacity01:observation.embodiment?.cognitiveCapacity01??(1-n.cognitiveLoad),
+      identity01:identityContinuity.continuity, realityGap01:p57RealitySummaryNow.meanRealityGap01,
+      uncertainty01:n.uncertainty, novelty01:n.novelty, socialNeed01:n.socialNeed, attention01:state.attentionBudget, homeostaticPressure01:p66Homeostasis.pressure01,
+      candidates:governedCandidates, requestedAction:userRequestedAction, userPresent:Boolean(observation.text), upstreamMode:p64Frame.mode,
+    });
+    const constitutionalSelected = p69Decision.chosen ? governedCandidates.find(c=>c.id===p69Decision.chosen!.id) ?? null : null;
+    const selected = constitutionalSelected ?? this.selectIntent(governedCandidates, userRequestedAction, Boolean(observation.text), n);
+    this.persisted.facets.learning.p28=this.p28Plasticity.snapshot();
+    this.persisted.facets.learning.p29=this.p29Learning.snapshot();
+    const p31Preview = this.selfSubsystem.p31Consciousness.preview({
+      items: governedCandidates.slice(0,8).map(c=>({ id:c.id, source:observation.text?'external':'internal', salience:c.score, content:{ action:c.action, goalId:c.goalId } })),
+      capacity:5, selectedAction:governedCandidates[0]?.action ?? 'none', externalInput:Boolean(observation.text),
+    });
+    if (Object.keys(p31Preview.accessBiasByAction).length) {
+      for (const candidate of governedCandidates) candidate.score = clamp(candidate.score + (p31Preview.accessBiasByAction[candidate.action] ?? 0));
+    }
+    const diversityRecommendation = this.adaptiveDevelopment.recommend(governedCandidates, Boolean(observation.text));
+    const developmentalSelected = diversityRecommendation && selected && diversityRecommendation.score >= selected.score - (this.adaptiveDevelopmentSnapshot().diversityPressure01 > 0.65 ? 0.18 : 0.09) ? diversityRecommendation : selected;
+    if (diversityRecommendation && developmentalSelected === diversityRecommendation && diversityRecommendation.action !== selected?.action) this.adaptiveDevelopment.noteIntervention(diversityRecommendation.action, 'behavioral-diversity-regulator', diversityRecommendation.score);
+    const finalizedByP64 = this.cognitiveKernelCoordinator.finalize(governedCandidates, userRequestedAction, p64Frame) ?? developmentalSelected;
+    let selectedIntent = constitutionalSelected ?? finalizedByP64;
+    const p71Consistency = this.selfSubsystem.p71SelfConsistency.evaluate({tick:state.tick,identity01:identityContinuity.continuity,identityDrift01:identityContinuity.drift,goalConflict01:p68Goals.conflictPressure01,valueConflict01:this.persisted.facets.evolution.valueEvolution.revisions.length ? 0.08 : 0,chosenAction:selectedIntent?.action??'wait',mode:p69Decision.mode,goalPressure01:effectiveGoalPressure,realityGap01:p69Decision.constraints01<.35?1-p69Decision.constraints01:p57RealitySummaryNow.meanRealityGap01});
+    const p69Quorum = this.agencySubsystem.quorum.evaluate({ action:selectedIntent?.action ?? 'wait', constitutional01:clamp(1-p69Decision.constraints01), worldConfidence01:clamp(predictions.get(selectedIntent?.action ?? 'wait')?.confidence ?? .35), memorySupport01:clamp(.45+retrieved.length*.06), epistemic01:clamp(1-p57RealitySummaryNow.meanRealityGap01), budget01:this.persisted.facets.cognition.budget.remaining01, identity01:identityContinuity.continuity, urgency01:active?.urgency ?? .35 });
+    if(!p69Quorum.accepted && selectedIntent && !['rest','wait','defer'].includes(selectedIntent.action)) { const safer=governedCandidates.find(c=>c.action==='verify') ?? governedCandidates.find(c=>c.action==='reflect') ?? governedCandidates.find(c=>c.action==='rest'); if(safer) selectedIntent=safer; }
+    const p73Capability=this.governanceSubsystem.p73CapabilityLedger.observe({tick:state.tick,at:state.at,workspace01:p61Frame.integration01,integration01:p69Decision.constraints01,agency01:p31MetricsNow.agencyBinding01,grounding01:p51Summary.groundingQuality01,causal01:p50Summary.selfWorldAlignment01,identity01:identityContinuity.continuity,predictionAccuracy01:1-state.predictionError,realityGap01:p57RealitySummaryNow.meanRealityGap01,stability01:p69Decision.constraintSlack01,complexity01:clamp((this.persisted.traces.length/320)*.35+(this.persisted.facets.memory.eventLog.length/768)*.25+(memorySizeNow/1600)*.40),externalEvidence:Boolean(observation.success!=null || observation.reward!=null),outcome01:observation.success ?? observation.reward ?? null});
+    this.p77RealityExperimentOS.record(state.tick,{capabilityId:'organism-outcome',before01:clamp(selectedIntent?.predictedUtility ?? p73Capability.capability01),after01:clamp(observation.success ?? observation.reward ?? 0),evidence:observation.success!=null || observation.reward!=null ? 'external-outcome':'none',context:`mode=${p74Frame.mode};memory=${p75Plan.retrievalFocus};action=${selectedIntent?.action??'none'}`});
+    this.p77RealityExperimentOS.noteComplexity(clamp((this.persisted.traces.length/320)*.25+(this.persisted.facets.memory.eventLog.length/768)*.25+(memorySizeNow/1600)*.25+(p74RecentModesNow/32)*.25));
+    if(p71Consistency.repairPressure01>.62 && selectedIntent && !['rest','verify','reflect'].includes(selectedIntent.action)){
+      const repairCandidate=governedCandidates.find(c=>c.action==='verify') ?? governedCandidates.find(c=>c.action==='reflect') ?? null;
+      if(repairCandidate && repairCandidate.score>=selectedIntent.score-.16) {
+        governedCandidates.splice(0,0,repairCandidate);
+        selectedIntent=repairCandidate;
+      }
+    }
+    if (selectedIntent) {
+      const selectedRecentBehaviorActions = (this.causalDevelopmentLoop.snapshot().behavioralEpisodes.find((e:any)=>e.taskId===(active?.id ?? selectedIntent!.action))?.steps ?? []).slice(-5).map((x:any)=>x.action as ActionKind);
+      const selectedSynthesisPrior = this.developmentalSynthesis.prior(selectedIntent.action, selectedRecentBehaviorActions, state, active?.id ?? selectedIntent.action);
+      this.developmentalSynthesis.notePrior(selectedSynthesisPrior);
+      this.p28Plasticity.bindAction(selectedIntent.action, state.tick);
+      const p36Request=this.p36SelfDevelopment.developmentTaskRequest();
+      if(p36Request && selectedIntent.action===p36Request.requestedAction) this.p36SelfDevelopment.noteDevelopmentTaskIssued(p36Request.hypothesisId);
+    }
+    if (p38Proposal && cognitiveSpinePlan.run.research && !observation.text && selectedIntent) {
+      const p38Trial = this.p38Research.runSandbox({ hypothesisId:p38Proposal.id, state, predictions:candidates.slice(0,7).map(c => ({ action:c.action, utility:c.predictedUtility, confidence:c.confidence, reasons:[], nextState:{ energy:n.energy, cognitiveLoad:n.cognitiveLoad, uncertainty:n.uncertainty, novelty:n.novelty }, worldEvidence:[] })), seed:state.tick + 1 });
+      if (p38Trial) {
+        this.memorySubsystem.events.append(makeEvent('autonomous-causal-research-trial', state.tick, { ...p38Trial, source:'p38-safe-sandbox' } as any));
+        this.autonomousScientificBrain.learn({ predictedDelta01:scientificBrainDecision?.predictedDelta01 ?? .5, observedDelta01:clamp(.5+p38Trial.delta01), replicated:p38Trial.replicated, evidence01:p38Trial.replicated?.85:.35, at:state.at });
+      }
+      this.persisted.facets.learning.p38=this.p38Research.snapshot();
+      this.persisted.facets.learning.autonomousScientificBrain=this.autonomousScientificBrain.snapshot();
+    this.persisted.facets.learning.p39=this.p39Life.snapshot();
+    }
+    const shadowScheduled = Boolean(cognitiveSpinePlan.run.shadow && cognitiveExecutionPlan.run.shadow);
+    const shadowHeartbeat = Boolean(selectedIntent && state.tick % 8 === 0 && this.persisted.facets.cognition.budget.remaining01 > .18);
+    const shadowDecision = selectedIntent && (shadowScheduled || shadowHeartbeat) ? this.evidenceResearchSubsystem.shadowOrganism.decide({ state, candidates: governedCandidates, actualAction: selectedIntent.action, pressure01: cognitivePressure.total01, forceDeep: cognitiveSpinePlan.mode === 'deep' }) : null;
+    if (shadowDecision) this.persisted.system.shadowOrganism=this.evidenceResearchSubsystem.shadowOrganism.snapshot();
+    if (shadowDecision?.escalation) this.cognitiveField.addPressure('contradiction', `shadow-policy-disagreement:${shadowDecision.disagreement01.toFixed(3)}`, shadowDecision.disagreement01, shadowDecision.panel.map(p => `shadow:${p.lens}:${p.action}`), .02);
+    const autonomousChosen = Boolean(selectedIntent && userRequestedAction && selectedIntent.action !== userRequestedAction) || (!Boolean(observation.text) && Boolean(selectedIntent));
+    const p32Prediction = selectedIntent ? this.selfSubsystem.p32CausalSelf.predict({
+      state,
+      action:selectedIntent.action,
+      autonomy01:autonomousChosen ? 0.82 : (observation.text ? 0.34 : 0.72),
+      p31SelfAccess01:p31MetricsNow.selfAccess01,
+      p31Agency01:p31MetricsNow.agencyBinding01,
+      uncertainty01:n.uncertainty,
+    }) : null;
+    const resiliencePredictions = Array.from(predictions.values()).map(p => ({ action:p.action, utility:p.utility, confidence:p.confidence, reasons:p.reasons, nextState:{ energy:n.energy, cognitiveLoad:n.cognitiveLoad, uncertainty:n.uncertainty, novelty:n.novelty }, worldEvidence:[] }));
+    const executiveDiagnostics=this.developmentalExecutive.diagnostics();
+    const decisionForResilience: OrganismDecisionTrace = { id: randomUUID(), tick: state.tick, createdAt: state.at, candidates: governedCandidates, selected: selectedIntent, stateBefore: previous, reasoningSignals: { predictionError: state.predictionError, novelty: n.novelty, diversityPressure: this.adaptiveDevelopment.snapshot().diversityPressure01, developmentalPlanning01:executiveDiagnostics.autonomousPlanning01, developmentalCoherence01:executiveDiagnostics.strategicCoherence01, developmentalLongHorizon01:executiveDiagnostics.longHorizonProgress01, developmentalRevisionPressure01:executiveDiagnostics.revisionPressure01 }, userRequestedAction, autonomousOverride: false, predictedOutcomes: resiliencePredictions };
+    this.governanceSubsystem.resilience.observeDecision(decisionForResilience, this.adaptivePolicy.snapshot());
+    const autonomousOverride = Boolean(selectedIntent && userRequestedAction && selectedIntent.action !== userRequestedAction);
+    if (selectedIntent) {
+      const alternative = governedCandidates.find(c => c.action !== selectedIntent.action && c.action !== userRequestedAction);
+      if (alternative) this.governanceSubsystem.resilience.evaluateFork(decisionForResilience, alternative.action, alternative.predictedUtility);
+    }
+    const agencyRecord = this.config.enableAgencyModel ? this.agencySubsystem.deliberation.record({ requestedAction:userRequestedAction, chosenAction:selectedIntent?.action ?? 'wait', externalPressure:observation.text ? 0.62 : 0, intrinsicPressure:activeProject ? activeProjectScore : intrinsicState.overall, reason:activeProject ? `active-self-project:${activeProject.title}` : `intrinsic:${intrinsicState.dominant}`, autonomous:autonomousOverride || !Boolean(observation.text) }) : null;
+    const governanceRecord = this.config.enableAgencyModel ? this.governanceSubsystem.selfGovernance.recordDecision({ requestedAction:userRequestedAction, chosenAction:selectedIntent?.action ?? 'wait', autonomous:autonomousOverride || !Boolean(observation.text), internalPressure:internalPressureForAgency, commitmentPressure:governedCandidates.filter(c => c.goalId && goals.some(g => g.id === c.goalId && g.status === 'active')).length / Math.max(1, governedCandidates.length), regretPressure:regretPressureForAgency, reason:activeProject ? `project:${activeProject.title}` : `goal:${active?.title ?? 'none'}` }) : null;
+    this.selfSubsystem.selfAuthorship.observeDecision({ action: selectedIntent?.action ?? 'wait', autonomous: autonomousOverride || !Boolean(observation.text), externalRequest: Boolean(observation.text), goalTitle: active?.title, reason: active?.reason });
+    this.futureSelf.resolve(selectedIntent?.action ?? null);
+    const futureForecast = this.futureSelf.forecast(state, goals, governedCandidates[0]?.action ?? selectedIntent?.action ?? 'wait', governedCandidates[0]?.confidence ?? 0.35, 4);
+    if(selectedIntent){ const predictedLong=this.evidenceResearchSubsystem.longHorizonPrediction.predictedScalarForAction(state,selectedIntent.action); for(const h of [1,4,12] as const) this.evidenceResearchSubsystem.longHorizonPrediction.seed(state,h,clamp(predictedLong + (h-1)*0.008)); }
+    if (this.config.enableSelfPrediction) {
+      if (selectedIntent) this.memorySubsystem.selfModel.observe(selectedIntent.action, previous);
+      const nextSelfPrediction = candidates[0];
+      if (nextSelfPrediction) this.memorySubsystem.selfModel.predict(nextSelfPrediction.action, nextSelfPrediction.confidence);
+    } else {
+      this.memorySubsystem.selfModel.restore(defaultSelfModel());
+    }
+    const wsItems = candidates.slice(0,8).map(c => ({ id:c.id, source:'decision', content:{action:c.action,goalId:c.goalId,score:c.score}, salience:c.score, createdAt:state.at }));
+    const ws2 = this.memorySubsystem.workspaceV2.compete(wsItems, state.tick);
+    this.persisted.facets.memory.workspace = ws2;
+    const globalWorkspace = this.globalWorkspace.compete(
+      candidates.slice(0, 8).map(c => ({
+        id: c.id, source: 'decision', salience: clamp(c.score),
+        features: [c.score, c.predictedUtility, c.predictedNeedRelief, c.predictedCost, c.confidence, state.predictionError,

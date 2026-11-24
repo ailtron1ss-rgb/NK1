@@ -1,0 +1,78 @@
+NEURO-KURISU 34.5.0 — BIG PASS 37 FINAL VERIFICATION
+UTC=2026-09-05T12:06:39Z
+
+
+> neuro-kurisu-organism-evolution@34.5.0 typecheck
+> node scripts/typecheck-runtime.mjs
+
+TYPECHECK=PASS mode=tsc
+
+> neuro-kurisu-organism-evolution@34.5.0 test:big-pass-37
+> node --experimental-strip-types tests/big-pass-37-spine.mjs
+
+(node:5401) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+BIG_PASS_37_SPINE=PASS
+
+> neuro-kurisu-organism-evolution@34.5.0 test:big-pass-37-runtime
+> node --experimental-strip-types tests/big-pass-37-runtime-integration.mjs
+
+(node:5424) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+BIG_PASS_37_RUNTIME_INTEGRATION=PASS {"tick":80,"selfPredictionSamples":79,"modelOlympicsRounds":80,"evidenceRecords":4}
+
+> neuro-kurisu-organism-evolution@34.5.0 test:p67:project-evidence
+> node --experimental-strip-types tests/p67-project-evidence.mjs
+
+P67_PROJECT_EVIDENCE=PASS
+(node:5447) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+> neuro-kurisu-organism-evolution@34.5.0 test:p46:prediction-ledger
+> node --experimental-strip-types tests/p46-prediction-ledger.mjs
+
+P46 prediction ledger PASS
+(node:5470) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+> neuro-kurisu-organism-evolution@34.5.0 test:p64:p65
+> node --experimental-strip-types tests/p64-p65-integration.mjs
+
+(node:5493) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+P64_P65_INTEGRATION=PASS
+
+> neuro-kurisu-organism-evolution@34.5.0 test:p80:p82-runtime-e2e
+> node --experimental-strip-types tests/p80-p82-runtime-e2e.mjs
+
+(node:5540) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+P80_P82_RUNTIME_E2E=PASS {"tick":160,"p80":160,"p81":160,"p82":160}
+
+> neuro-kurisu-organism-evolution@34.5.0 test:restart
+> node --experimental-strip-types tests/restart-persistence.mjs
+
+(node:5563) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+CLEAN_RESTART_PERSISTENCE=PASS
+
+> neuro-kurisu-organism-evolution@34.5.0 operational
+> node --experimental-strip-types tests/operational-hardening.mjs
+
+(node:5610) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+OPERATIONAL_HARDENING=PASS
+(node:5621) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+SEPARATE FINAL GATES (executed successfully in dedicated runs before packaging)
+LONG_HORIZON_OPERATIONAL_250=PASS warmedMedianRatio=1.671 firstMedianMs=129.14 lastMedianMs=215.85 p95ApproxMs=228.57 heapGrowth=0.530
+AUDIT_FULL=PASS
+FORENSICS=PASS activeFiles=519 empty=0 duplicateContent=0 duplicateNames=0 pathMarkers=0 staleMarkers=0
+LOCKFILE=PASS zero-dependency-tree
+RELEASE_CONTRACT=PASS
+ARCHITECTURE=PASS sourceFiles=420 canonicalFiles=180 missing=0 cycles=0 legacyLeakage=0
+SOURCE_HYGIENE=PASS files=519 errors=0 warnings=0
+RELEASE_SOURCE=PASS application=34.5.0 core=70.0.0-master-prompt-progress-engine schema=83
+BIG_PASS_PROGRESS=100 checks=30/30
+NOTE: the combined final verification shell exceeded the 120s command window after OPERATIONAL_HARDENING=PASS; the remaining gates above were already executed separately and passed. Legacy test:autonomy remains a known long-running timeout risk documented in BIG_PASS_37_AUDIT_REPORT_RU.md.

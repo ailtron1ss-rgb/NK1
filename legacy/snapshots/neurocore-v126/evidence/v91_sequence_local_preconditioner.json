@@ -1,0 +1,129 @@
+{
+  "protocol": {
+    "task": "episodic_key_value_recall",
+    "seeds": 5,
+    "optimizer_steps": 240,
+    "batch_size": 32,
+    "optimizer": "AdamW",
+    "learning_rate": 0.003,
+    "weight_decay": 0.0001,
+    "gradient_clip": 1.0,
+    "baseline": "frozen V90",
+    "device": "cpu"
+  },
+  "paired_runs": [
+    {
+      "seed": 0,
+      "v90": {
+        "seconds": 2.9682637120004074,
+        "cosine": 0.4428598880767822,
+        "top1": 0.3229166567325592
+      },
+      "v91": {
+        "seconds": 2.8590606979996664,
+        "cosine": 0.44422653317451477,
+        "top1": 0.3125
+      },
+      "delta": {
+        "seconds_percent": -3.6790199455406736,
+        "cosine_percent": 0.30859536718657044,
+        "top1_percent": -3.2258034744817476
+      }
+    },
+    {
+      "seed": 1,
+      "v90": {
+        "seconds": 2.916991097999926,
+        "cosine": 0.4980705678462982,
+        "top1": 0.3802083432674408
+      },
+      "v91": {
+        "seconds": 2.8916066359997785,
+        "cosine": 0.5423002243041992,
+        "top1": 0.4791666567325592
+      },
+      "delta": {
+        "seconds_percent": -0.8702276128834452,
+        "cosine_percent": 8.880198773670568,
+        "top1_percent": 26.027391354615936
+      }
+    },
+    {
+      "seed": 2,
+      "v90": {
+        "seconds": 2.975103599999784,
+        "cosine": 0.4508059024810791,
+        "top1": 0.3541666567325592
+      },
+      "v91": {
+        "seconds": 2.944955306999873,
+        "cosine": 0.4552426338195801,
+        "top1": 0.3489583432674408
+      },
+      "delta": {
+        "seconds_percent": -1.0133527114791319,
+        "cosine_percent": 0.9841777390408479,
+        "top1_percent": -1.4705826666939315
+      }
+    },
+    {
+      "seed": 3,
+      "v90": {
+        "seconds": 3.0180063819998395,
+        "cosine": 0.3956269323825836,
+        "top1": 0.171875
+      },
+      "v91": {
+        "seconds": 2.942958374999762,
+        "cosine": 0.40108630061149597,
+        "top1": 0.2239583283662796
+      },
+      "delta": {
+        "seconds_percent": -2.486674893985752,
+        "cosine_percent": 1.3799283572618393,
+        "top1_percent": 30.30302741310813
+      }
+    },
+    {
+      "seed": 4,
+      "v90": {
+        "seconds": 2.9706081120002636,
+        "cosine": 0.3803180456161499,
+        "top1": 0.2291666716337204
+      },
+      "v91": {
+        "seconds": 3.2803083879998667,
+        "cosine": 0.3829335868358612,
+        "top1": 0.234375
+      },
+      "delta": {
+        "seconds_percent": 10.42548408686146,
+        "cosine_percent": 0.6877247214167603,
+        "top1_percent": 2.2727250560256484
+      }
+    }
+  ],
+  "summary": {
+    "benchmark": "episodic_key_value_recall",
+    "seeds": 5,
+    "steps": 240,
+    "baseline": {
+      "name": "V90_frozen",
+      "mean_seconds": 2.969794580800044,
+      "mean_cosine": 0.4335362672805786,
+      "mean_top1": 0.29166666567325594
+    },
+    "current": {
+      "name": "V91_sequence_local_preconditioner",
+      "mean_seconds": 2.9837778807997895,
+      "mean_cosine": 0.44515785574913025,
+      "mean_top1": 0.3197916656732559
+    },
+    "relative_change_percent": {
+      "seconds_mean": 0.47085074806685334,
+      "cosine_mean": 2.6806496585510153,
+      "top1_mean": 9.642857175700502
+    },
+    "interpretation": "qualified local improvement with near-neutral mean training cost; not universal superiority proof"
+  }
+}

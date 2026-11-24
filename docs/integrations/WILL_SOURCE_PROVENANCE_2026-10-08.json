@@ -1,0 +1,24 @@
+{
+  "integrationDate": "2026-10-08",
+  "sourceArchive": {
+    "name": "will-main.zip",
+    "sha256": "9d0c30277f0981b67104b1e2a07d9c7f025fee60ae57bd470cca898cf0d457a4",
+    "files": 606,
+    "sourcePathInRelease": "legacy/input-archives/raw-source-archives/will-main.zip",
+    "expandedSourcePathMaterializedOnDemand": "legacy/input-archives/will-main-2026-10-08/",
+    "materializeCommand": "python3 tools/materialize_legacy_archive.py will",
+    "sha256VerificationRequired": true
+  },
+  "baseArchive": {
+    "name": "Neuro_Kurisu_SUPER_FINAL_2026-10-06_UPDATED.zip",
+    "sha256": "dbb2558cca9e04ed6f2208bd26563c168375689ce38408f76f492aac9a80ce70",
+    "selectedBecause": "latest full archive bytes available in Library for materialization",
+    "canonicalRuntime": "Neuro-Kurisu 35.40.0 / schema 223"
+  },
+  "analysisDocuments": [
+    "WILL_INTEGRATION_AUDIT_2026-10-08.md",
+    "WILL_vs_Neuro_Kurisu_SUPER_Comparative_Audit_2026-10-08.md"
+  ],
+  "integrationPolicy": "selected adapter contracts only; no second organism/memory/identity/policy owner",
+  "licenseHandling": "not used as an engineering integration decision for this personal experimental build"
+}

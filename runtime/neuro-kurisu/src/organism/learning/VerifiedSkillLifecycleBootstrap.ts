@@ -1,0 +1,73 @@
+import { createPublicKey } from 'node:crypto';
+import { AtomicFileSkillStorePersistence } from './AtomicFileSkillStorePersistence.ts';
+import { createAuthenticatedSkillPromotionApprovalVerifier, createAuthenticatedSkillRollbackApprovalVerifier, parseTrustedSkillPromotionApprovalKeys } from './AuthenticatedSkillPromotionApproval.ts';
+import { AtomicFileTrustedSkillShadowRunRegistry } from './TrustedSkillShadowRunRegistry.ts';
+import { VersionedSkillCandidateStore } from './VersionedSkillCandidateStore.ts';
+import { createContextBoundSkillShadowEvidenceVerifier } from './VerifiedSkillShadowEvidence.ts';
+
+function loadTrustedVerifierKeys(raw: string | undefined): ReadonlyMap<string, string> {
+  if (raw === undefined || raw.trim() === '') return new Map();
+  let parsed: unknown;
+  try { parsed = JSON.parse(raw); } catch { throw new Error('NEURO_SKILL_SHADOW_VERIFIER_KEYS_JSON must be valid JSON'); }
+  if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    throw new Error('NEURO_SKILL_SHADOW_VERIFIER_KEYS_JSON must be an object keyed by verifier ID');
+  }
+  const keys = new Map<string, string>();
+  for (const [id, value] of Object.entries(parsed as Record<string, unknown>)) {
+    if (!id.trim() || typeof value !== 'string' || !value.includes('BEGIN PUBLIC KEY')) {
+      throw new Error('trusted shadow verifier keys must map non-empty IDs to PEM public keys');
+    }
+    // The verifier uses crypto.verify(null, ...), which is the Ed25519/Ed448
+    // signature mode. Reject incompatible or malformed keys at startup instead
+    // of silently accepting a configuration that can never verify evidence.
+    let keyType: string | undefined;
+    try { keyType = createPublicKey(value).asymmetricKeyType; }
+    catch { throw new Error('trusted shadow verifier keys must be valid Ed25519 public keys'); }
+    if (keyType !== 'ed25519') {
+      throw new Error('trusted shadow verifier keys must be valid Ed25519 public keys');
+    }
+    keys.set(id, value);
+  }
+  return keys;
+}
+
+export interface VerifiedSkillLifecycleBootstrap {
+  store: VersionedSkillCandidateStore;
+  registry: AtomicFileTrustedSkillShadowRunRegistry;
+  trustedVerifierCount: number;
+  trustedApprovalCount: number;
+}
+
+/**
+ * Production bootstrap for durable candidate state and independent run provenance.
+ * Evidence verification is default-deny when no trusted verifier keys are configured.
+ * Promotion authorization is default-deny unless a configured Ed25519 approval
+ * public key validates the candidate/evidence-bound detached signature. Caller-provided
+ * audit fields are never authorization.
+ */
+export function createVerifiedSkillLifecycleBootstrap(
+  candidateStorePath: string,
+  trustedRunRegistryPath: string,
+  rawVerifierKeys = process.env.NEURO_SKILL_SHADOW_VERIFIER_KEYS_JSON,
+  rawApprovalKeys = process.env.NEURO_SKILL_PROMOTION_APPROVAL_KEYS_JSON,
+): VerifiedSkillLifecycleBootstrap {
+  if (!candidateStorePath.trim() || !trustedRunRegistryPath.trim()) {
+    throw new Error('verified skill lifecycle persistence paths are required');
+  }
+  const trustedVerifierKeys = loadTrustedVerifierKeys(rawVerifierKeys);
+  const trustedApprovalKeys = parseTrustedSkillPromotionApprovalKeys(rawApprovalKeys);
+  const verifyPromotionApproval = createAuthenticatedSkillPromotionApprovalVerifier(trustedApprovalKeys);
+  const verifyRollbackApproval = createAuthenticatedSkillRollbackApprovalVerifier(trustedApprovalKeys);
+  const registry = new AtomicFileTrustedSkillShadowRunRegistry(trustedRunRegistryPath);
+  const verifyShadowEvidence = createContextBoundSkillShadowEvidenceVerifier(
+    trustedVerifierKeys,
+    (observation, candidate) => registry.resolve(observation, candidate),
+  );
+  const store = new VersionedSkillCandidateStore(
+    new AtomicFileSkillStorePersistence(candidateStorePath),
+    verifyPromotionApproval,
+    verifyShadowEvidence,
+    verifyRollbackApproval,
+  );
+  return { store, registry, trustedVerifierCount: trustedVerifierKeys.size, trustedApprovalCount: trustedApprovalKeys.size };
+}

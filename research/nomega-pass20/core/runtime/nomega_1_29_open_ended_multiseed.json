@@ -1,0 +1,418 @@
+{
+  "runs": [
+    {
+      "families": [
+        {
+          "adaptation_recovery_lag": 3,
+          "candidate_counts": [
+            14,
+            14,
+            14,
+            14,
+            14
+          ],
+          "evolved_mean": 0.4,
+          "evolved_scores": [
+            1.0,
+            0.8,
+            0.0,
+            0.2,
+            0.0
+          ],
+          "final_gain": 0.0,
+          "future_final_gain": 1.0,
+          "future_hidden_gains": [
+            -1.0,
+            -0.4,
+            0.6,
+            0.8,
+            1.0
+          ],
+          "future_hidden_mean": 0.6,
+          "future_hidden_scores": [
+            0.0,
+            0.4,
+            0.6,
+            1.0,
+            1.0
+          ],
+          "mean_candidate_rank": 1.0,
+          "mean_future_hidden_gain": 0.2,
+          "mean_phase_gain": 0.0,
+          "phase_gains": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "selection_audit": [
+            {
+              "best_operator": null,
+              "candidate_fingerprint": "5ccacc6e143d431a59cf",
+              "future_hidden_hvm": 0.0,
+              "future_holdout_opened_after_selection": true,
+              "holdout_hvm": 1.0,
+              "phase": 0,
+              "selection_source": "train_only",
+              "train_hvm": 1.0,
+              "train_tiny": 1.0
+            },
+            {
+              "best_operator": null,
+              "candidate_fingerprint": "5ccacc6e143d431a59cf",
+              "future_hidden_hvm": 0.4,
+              "future_holdout_opened_after_selection": true,
+              "holdout_hvm": 0.8,
+              "phase": 1,
+              "selection_source": "train_only",
+              "train_hvm": 0.8,
+              "train_tiny": 0.8
+            },
+            {
+              "best_operator": null,
+              "candidate_fingerprint": "5ccacc6e143d431a59cf",
+              "future_hidden_hvm": 0.6,
+              "future_holdout_opened_after_selection": true,
+              "holdout_hvm": 0.0,
+              "phase": 2,
+              "selection_source": "train_only",
+              "train_hvm": 0.5,
+              "train_tiny": 0.5
+            },
+            {
+              "best_operator": null,
+              "candidate_fingerprint": "5ccacc6e143d431a59cf",
+              "future_hidden_hvm": 1.0,
+              "future_holdout_opened_after_selection": true,
+              "holdout_hvm": 0.2,
+              "phase": 3,
+              "selection_source": "train_only",
+              "train_hvm": 0.5,
+              "train_tiny": 0.5
+            },
+            {
+              "best_operator": null,
+              "candidate_fingerprint": "5ccacc6e143d431a59cf",
+              "future_hidden_hvm": 1.0,
+              "future_holdout_opened_after_selection": true,
+              "holdout_hvm": 0.0,
+              "phase": 4,
+              "selection_source": "train_only",
+              "train_hvm": 0.2,
+              "train_tiny": 0.2
+            }
+          ],
+          "source_family": "sum3",
+          "static_mean": 0.4,
+          "static_scores": [
+            1.0,
+            0.8,
+            0.0,
+            0.2,
+            0.0
+          ],
+          "target_family": "xor3"
+        },
+        {
+          "adaptation_recovery_lag": 3,
+          "candidate_counts": [
+            14,
+            14,
+            14,
+            14,
+            14
+          ],
+          "evolved_mean": 0.4,
+          "evolved_scores": [
+            1.0,
+            0.8,
+            0.0,
+            0.2,
+            0.0
+          ],
+          "final_gain": -0.2,
+          "future_final_gain": -0.2,
+          "future_hidden_gains": [
+            -1.0,
+            -0.4,
+            0.6,
+            0.8,
+            -0.2
+          ],
+          "future_hidden_mean": 0.4,
+          "future_hidden_scores": [
+            0.0,
+            0.4,
+            0.6,
+            1.0,
+            0.0
+          ],
+          "mean_candidate_rank": 1.0,
+          "mean_future_hidden_gain": -0.04,
+          "mean_phase_gain": -0.04,
+          "phase_gains": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            -0.2
+          ],
+          "selection_audit": [
+            {
+              "best_operator": null,
+              "candidate_fingerprint": "b08fb78cc2954fa8aa5c",
+              "future_hidden_hvm": 0.0,
+              "future_holdout_opened_after_selection": true,
+              "holdout_hvm": 1.0,
+              "phase": 0,
+              "selection_source": "train_only",
+              "train_hvm": 1.0,
+              "train_tiny": 1.0
+            },
+            {
+              "best_operator": null,
+              "candidate_fingerprint": "b08fb78cc2954fa8aa5c",
+              "future_hidden_hvm": 0.4,
+              "future_holdout_opened_after_selection": true,
+              "holdout_hvm": 0.8,
+              "phase": 1,
+              "selection_source": "train_only",
+              "train_hvm": 0.8,
+              "train_tiny": 0.8
+            },
+            {
+              "best_operator": null,
+              "candidate_fingerprint": "b08fb78cc2954fa8aa5c",
+              "future_hidden_hvm": 0.6,
+              "future_holdout_opened_after_selection": true,
+              "holdout_hvm": 0.0,
+              "phase": 2,
+              "selection_source": "train_only",
+              "train_hvm": 0.5,
+              "train_tiny": 0.5
+            },
+            {
+              "best_operator": null,
+              "candidate_fingerprint": "b08fb78cc2954fa8aa5c",
+              "future_hidden_hvm": 1.0,
+              "future_holdout_opened_after_selection": true,
+              "holdout_hvm": 0.2,
+              "phase": 3,
+              "selection_source": "train_only",
+              "train_hvm": 0.3,
+              "train_tiny": 0.3
+            },
+            {
+              "best_operator": {
+                "max_depth": 3,
+                "mutation_rate": 0.6291146281704215,
+                "primitives": [
+                  "swap_adjacent",
+                  "drop_instruction",
+                  "insert_load"
+                ]
+              },
+              "candidate_fingerprint": "d097093f6442ef588823",
+              "future_hidden_hvm": 0.0,
+              "future_holdout_opened_after_selection": true,
+              "holdout_hvm": 0.0,
+              "phase": 4,
+              "selection_source": "train_only",
+              "train_hvm": 0.0,
+              "train_tiny": 0.0
+            }
+          ],
+          "source_family": "mul2",
+          "static_mean": 0.44000000000000006,
+          "static_scores": [
+            1.0,
+            0.8,
+            0.0,
+            0.2,
+            0.2
+          ],
+          "target_family": "sub_offset"
+        }
+      ],
+      "seed": 2901,
+      "structural": [
+        {
+          "plan": {
+            "max_grow": 8,
+            "max_prune": 0,
+            "mode": "grow",
+            "plasticity_gap": 0.3,
+            "reason": "plasticity_or_uncertainty_pressure",
+            "target_fraction": 0.7,
+            "uncertainty": 0.8
+          },
+          "result": {
+            "accepted": false,
+            "active_after": 36,
+            "active_before": 36,
+            "energy_delta": 0.0,
+            "gain": 0.0,
+            "reason": "external_gate_reject",
+            "restart_ok": true,
+            "rollback": true,
+            "utility_after": 0.0,
+            "utility_before": 0.0
+          }
+        },
+        {
+          "plan": {
+            "max_grow": 0,
+            "max_prune": 8,
+            "mode": "prune",
+            "plasticity_gap": -0.05,
+            "reason": "low_utility_or_excess_capacity",
+            "target_fraction": 0.92,
+            "uncertainty": 0.2
+          },
+          "result": {
+            "accepted": false,
+            "active_after": 36,
+            "active_before": 36,
+            "energy_delta": 0.0,
+            "gain": 0.0,
+            "reason": "external_gate_reject",
+            "restart_ok": true,
+            "rollback": true,
+            "utility_after": 0.0,
+            "utility_before": 0.0
+          }
+        },
+        {
+          "plan": {
+            "max_grow": 8,
+            "max_prune": 0,
+            "mode": "grow",
+            "plasticity_gap": 0.35,
+            "reason": "plasticity_or_uncertainty_pressure",
+            "target_fraction": 0.68,
+            "uncertainty": 0.9
+          },
+          "result": {
+            "accepted": false,
+            "active_after": 36,
+            "active_before": 36,
+            "energy_delta": 0.0,
+            "gain": 0.0,
+            "reason": "external_gate_reject",
+            "restart_ok": true,
+            "rollback": true,
+            "utility_after": 0.0,
+            "utility_before": 0.0
+          }
+        }
+      ],
+      "version": "1.29.0-dev"
+    }
+  ],
+  "seeds": [
+    2901
+  ],
+  "selection_protocol": "train_only_selection_then_holdout_future_hidden_and_cross_family_transfer",
+  "summary": {
+    "capability_transfer": {
+      "mean_future_hidden_gain": 0.625,
+      "mean_holdout_gain": 0.75,
+      "mean_train_gain": 0.5625,
+      "positive_future_fraction": 1.0,
+      "positive_holdout_fraction": 1.0
+    },
+    "evolved_mean": 0.4,
+    "future_hidden_positive_fraction": 0.5,
+    "mean_final_gain": -0.1,
+    "mean_future_hidden_gain": 0.08,
+    "mean_phase_gain": -0.02,
+    "promotion": "research-only",
+    "reason": "open_ended_evolution_requires_positive_multi_seed_holdout_future_gain_and_transfer_generalization",
+    "static_mean": 0.42000000000000004,
+    "structural_commits": 0,
+    "structural_rollbacks": 3
+  },
+  "transfer": {
+    "pairs": [
+      [
+        "sum3",
+        "xor3"
+      ],
+      [
+        "xor3",
+        "sum3"
+      ],
+      [
+        "mul2",
+        "sum3"
+      ]
+    ],
+    "rows": [
+      {
+        "candidates_tested": 8,
+        "future_hidden_gain": 0.625,
+        "future_hidden_score": 1.0,
+        "holdout_gain": 0.75,
+        "learned_operator_ranking": [
+          "replace_opcode"
+        ],
+        "seed": 8901,
+        "source_family": "sum3",
+        "source_train_score": 1.0,
+        "target_broken_train_score": 0.4375,
+        "target_family": "xor3",
+        "target_holdout_score": 1.0,
+        "train_gain": 0.5625,
+        "transferred_train_score": 1.0
+      },
+      {
+        "candidates_tested": 8,
+        "future_hidden_gain": 0.625,
+        "future_hidden_score": 1.0,
+        "holdout_gain": 0.75,
+        "learned_operator_ranking": [
+          "replace_opcode"
+        ],
+        "seed": 8901,
+        "source_family": "xor3",
+        "source_train_score": 1.0,
+        "target_broken_train_score": 0.4375,
+        "target_family": "sum3",
+        "target_holdout_score": 1.0,
+        "train_gain": 0.5625,
+        "transferred_train_score": 1.0
+      },
+      {
+        "candidates_tested": 8,
+        "future_hidden_gain": 0.625,
+        "future_hidden_score": 1.0,
+        "holdout_gain": 0.75,
+        "learned_operator_ranking": [
+          "replace_opcode"
+        ],
+        "seed": 8901,
+        "source_family": "mul2",
+        "source_train_score": 1.0,
+        "target_broken_train_score": 0.4375,
+        "target_family": "sum3",
+        "target_holdout_score": 1.0,
+        "train_gain": 0.5625,
+        "transferred_train_score": 1.0
+      }
+    ],
+    "seeds": [
+      8901
+    ],
+    "selection_protocol": "source_train_operator_learning_then_target_train_selection_then_hidden_holdout_then_future_holdout",
+    "summary": {
+      "mean_future_hidden_gain": 0.625,
+      "mean_holdout_gain": 0.75,
+      "mean_train_gain": 0.5625,
+      "positive_future_fraction": 1.0,
+      "positive_holdout_fraction": 1.0
+    },
+    "version": "capability-transfer-evaluator-v2"
+  },
+  "version": "1.29.0-dev"
+}

@@ -1,0 +1,10 @@
+import assert from 'node:assert/strict';
+import { migratePersistedOrganism, ORGANISM_STATE_SCHEMA } from '../src/organism/persistence/StateMigrations.ts';
+import { RELEASE_CONTRACT } from '../src/organism/system/ReleaseContract.ts';
+const migrated=migratePersistedOrganism({schemaVersion:33,state:{version:33},facets:{consciousness:{consciousnessEvidence:{version:1,indicators:[{domain:'agency',functionalEvidence:.7,causalEvidence:0,longitudinalEvidence:.59,provenance:'old',updatedAt:1}]}}}});
+assert.equal(RELEASE_CONTRACT.stateSchema,ORGANISM_STATE_SCHEMA);
+assert.equal(migrated.schemaVersion,ORGANISM_STATE_SCHEMA);
+assert.equal(migrated.facets.consciousness.p31.version,3);
+assert.equal(migrated.facets.consciousness.consciousnessEvidence.version,4);
+assert.ok('aggregateLongitudinalEvidence' in migrated.facets.consciousness.consciousnessEvidence);
+console.log('P31_MIGRATION=PASS schema=current p31=present evidence=v4');

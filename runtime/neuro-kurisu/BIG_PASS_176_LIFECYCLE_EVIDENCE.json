@@ -1,0 +1,177 @@
+{
+  "src/organism/core/OrganismCore.ts:1358:snapshot": {
+    "evidence": [
+      {
+        "kind": "direct",
+        "ok": true,
+        "at": 1789053451185,
+        "source": "BIG_PASS_176_LIFECYCLE_TEST",
+        "details": "lifecycle invocation passed for src/organism/core/OrganismCore.ts:snapshot"
+      },
+      {
+        "kind": "regression",
+        "ok": true,
+        "at": 1789053451185,
+        "source": "BIG_PASS_176_LIFECYCLE_TEST",
+        "details": "fresh initialized runtime contract executed without invariant violation"
+      },
+      {
+        "kind": "persistence",
+        "ok": true,
+        "at": 1789053451185,
+        "source": "BIG_PASS_176_LIFECYCLE_TEST",
+        "details": "validated through initialized persistent OrganismCore lifecycle"
+      }
+    ]
+  },
+  "src/organism/core/CognitiveKernelCoordinator.ts:54:snapshot": {
+    "evidence": [
+      {
+        "kind": "direct",
+        "ok": true,
+        "at": 1789053451185,
+        "source": "BIG_PASS_176_LIFECYCLE_TEST",
+        "details": "lifecycle invocation passed for src/organism/core/CognitiveKernelCoordinator.ts:snapshot"
+      },
+      {
+        "kind": "regression",
+        "ok": true,
+        "at": 1789053451185,
+        "source": "BIG_PASS_176_LIFECYCLE_TEST",
+        "details": "fresh initialized runtime contract executed without invariant violation"
+      },
+      {
+        "kind": "persistence",
+        "ok": true,
+        "at": 1789053451185,
+        "source": "BIG_PASS_176_LIFECYCLE_TEST",
+        "details": "validated through initialized persistent OrganismCore lifecycle"
+      }
+    ]
+  },
+  "src/organism/core/CognitiveSubsystemFacade.ts:27:snapshot": {
+    "evidence": [
+      {
+        "kind": "direct",
+        "ok": true,
+        "at": 1789053451186,
+        "source": "BIG_PASS_176_LIFECYCLE_TEST",
+        "details": "lifecycle invocation passed for src/organism/core/CognitiveSubsystemFacade.ts:snapshot"
+      },
+      {
+        "kind": "regression",
+        "ok": true,
+        "at": 1789053451186,
+        "source": "BIG_PASS_176_LIFECYCLE_TEST",
+        "details": "fresh initialized runtime contract executed without invariant violation"
+      },
+      {
+        "kind": "persistence",
+        "ok": true,
+        "at": 1789053451186,
+        "source": "BIG_PASS_176_LIFECYCLE_TEST",
+        "details": "validated through initialized persistent OrganismCore lifecycle"
+      }
+    ]
+  },
+  "src/organism/core/CognitiveSubsystemFacade.ts:29:prediction": {
+    "evidence": [
+      {
+        "kind": "direct",
+        "ok": true,
+        "at": 1789053451186,
+        "source": "BIG_PASS_176_LIFECYCLE_TEST",
+        "details": "lifecycle invocation passed for src/organism/core/CognitiveSubsystemFacade.ts:prediction"
+      },
+      {
+        "kind": "regression",
+        "ok": true,
+        "at": 1789053451186,
+        "source": "BIG_PASS_176_LIFECYCLE_TEST",
+        "details": "fresh initialized runtime contract executed without invariant violation"
+      },
+      {
+        "kind": "persistence",
+        "ok": true,
+        "at": 1789053451186,
+        "source": "BIG_PASS_176_LIFECYCLE_TEST",
+        "details": "validated through initialized persistent OrganismCore lifecycle"
+      }
+    ]
+  },
+  "src/organism/core/CognitiveSubsystemFacade.ts:36:predictionDebt": {
+    "evidence": [
+      {
+        "kind": "direct",
+        "ok": true,
+        "at": 1789053451186,
+        "source": "BIG_PASS_176_LIFECYCLE_TEST",
+        "details": "lifecycle invocation passed for src/organism/core/CognitiveSubsystemFacade.ts:predictionDebt"
+      },
+      {
+        "kind": "regression",
+        "ok": true,
+        "at": 1789053451186,
+        "source": "BIG_PASS_176_LIFECYCLE_TEST",
+        "details": "fresh initialized runtime contract executed without invariant violation"
+      },
+      {
+        "kind": "persistence",
+        "ok": true,
+        "at": 1789053451186,
+        "source": "BIG_PASS_176_LIFECYCLE_TEST",
+        "details": "validated through initialized persistent OrganismCore lifecycle"
+      }
+    ]
+  },
+  "src/organism/core/CognitiveSubsystemFacade.ts:46:canSpend": {
+    "evidence": [
+      {
+        "kind": "direct",
+        "ok": true,
+        "at": 1789053451186,
+        "source": "BIG_PASS_176_LIFECYCLE_TEST",
+        "details": "lifecycle invocation passed for src/organism/core/CognitiveSubsystemFacade.ts:canSpend"
+      },
+      {
+        "kind": "regression",
+        "ok": true,
+        "at": 1789053451186,
+        "source": "BIG_PASS_176_LIFECYCLE_TEST",
+        "details": "fresh initialized runtime contract executed without invariant violation"
+      },
+      {
+        "kind": "persistence",
+        "ok": true,
+        "at": 1789053451186,
+        "source": "BIG_PASS_176_LIFECYCLE_TEST",
+        "details": "validated through initialized persistent OrganismCore lifecycle"
+      }
+    ]
+  },
+  "src/organism/memory/MemoryFabric.ts:172:inspect": {
+    "evidence": [
+      {
+        "kind": "direct",
+        "ok": true,
+        "at": 1789053451186,
+        "source": "BIG_PASS_176_LIFECYCLE_TEST",
+        "details": "lifecycle invocation passed for src/organism/memory/MemoryFabric.ts:inspect"
+      },
+      {
+        "kind": "regression",
+        "ok": true,
+        "at": 1789053451186,
+        "source": "BIG_PASS_176_LIFECYCLE_TEST",
+        "details": "fresh initialized runtime contract executed without invariant violation"
+      },
+      {
+        "kind": "persistence",
+        "ok": true,
+        "at": 1789053451186,
+        "source": "BIG_PASS_176_LIFECYCLE_TEST",
+        "details": "validated through initialized persistent OrganismCore lifecycle"
+      }
+    ]
+  }
+}

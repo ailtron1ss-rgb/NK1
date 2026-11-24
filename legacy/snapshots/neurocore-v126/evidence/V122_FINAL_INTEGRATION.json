@@ -1,0 +1,39 @@
+{
+  "version": 122,
+  "engine_version": "v122-memory",
+  "current_frontier": 122,
+  "date": "2026-09-30",
+  "verification": {
+    "current_tests": "64/64 PASS",
+    "compileall": "PASS",
+    "verify_current": "PASS",
+    "checkpoint_roundtrip": {
+      "schema_version": 30,
+      "neural_version": 122,
+      "loaded_tensors": 108,
+      "missing": 0,
+      "shape_mismatch": 0,
+      "unexpected": 0
+    }
+  },
+  "architecture": {
+    "canonical_recurrent_owner_count": 1,
+    "default_parameters": 69137,
+    "default_trainable_parameters": 69137,
+    "candidate_parameters": 72249,
+    "candidate_parameter_delta": 3112,
+    "default_state_size": 64,
+    "candidate_state_size": 10305,
+    "candidate_sparse_state_size": 10241,
+    "candidate_slots": 1024,
+    "candidate_value_dim": 8,
+    "upstream_backend_catalog_count": 53,
+    "registry_mechanism_count": 38
+  },
+  "promotion": {
+    "unified_sparse_associative_memory": "candidate-not-promoted",
+    "collision_aware_sparse_admission": "tested-not-promoted",
+    "reason": "direct memory retention is materially improved at long horizons, but end-to-end matched learning is only approximately parity and CPU cost remains high for the integrated large-state candidate."
+  },
+  "next": "V123 collision-resistant addressing + block-sparse runtime state + matched end-to-end qualification"
+}

@@ -1,0 +1,53 @@
+Neuro-Kurisu 34.17.0 — BIG PASS 47 FINAL VERIFICATION
+Date: 2026-09-06
+
+CURRENT SOURCE TREE
+- application: 34.17.0
+- state schema: 90
+- active source files: 599
+- canonical source files: 194
+
+NEW BIG PASS 47 GATES
+- BIG_PASS_PROGRESS=100 checks=99/99
+- TYPECHECK=PASS
+- BIG_PASS_47_EXTERNAL_SKILL=PASS
+- BIG_PASS_47_INTEGRATION=PASS
+- SUBSYSTEM_REGISTRY=PASS
+
+RELEASE / SECURITY / ARCHITECTURE
+- SOURCE_TRUTH=PASS
+- RELEASE_CONTRACT=PASS
+- RELEASE_SOURCE=PASS
+- LOCKFILE=PASS
+- SYNTAX=PASS
+- FORENSICS=PASS
+- SOURCE_HYGIENE=PASS
+- CLEAN_ARCHITECTURE=PASS cycles=0 legacyLeakage=0
+- API_ROUTES=PASS duplicates=0 routes=92
+- SUBJECT_BOUNDARY=PASS
+- AUDIT_INTEGRITY=PASS files=613
+- SERVER_SMOKE=PASS
+- API_SECURITY=PASS
+- OPERATIONAL_HARDENING=PASS
+- CLEAN_RESTART_PERSISTENCE=PASS
+
+LONG-HORIZON CURRENT TREE
+- 250: PASS, warmedMedianRatio=1.413, firstMedianMs=17.78, lastMedianMs=25.12, p95Approx=29.66, heapGrowth=2.282
+- 500: PASS, ratio=4.028, firstMs=7.99, lastMs=32.19, p95=35.62, heapFirst=24.95MB, heapLast=98.10MB
+- 1000: PASS, ratio=1.928, firstWarmMs=18.25, lastMs=35.20, p95=40.29, heapFirst=48.31MB, heapLast=89.66MB, memory=224
+
+EXTERNAL NETWORK NOTE
+- Live external HTTP fetch could not be verified from this sandbox because outbound network access is unavailable.
+- Security behavior and bounded request semantics are tested locally.
+
+COMPOSITE AUDIT NOTE
+- The full composite `audit:release` exceeded the single command wall-clock window after multiple early/mid gates had already passed.
+- Individual server smoke, typecheck, architecture, source truth, integrity, security and the dedicated BIG PASS 47 tests pass.
+- This is intentionally not reported as a global composite PASS.
+
+INITIAL AUDIT CROSSWALK
+- Strict 20-point first-audit weighted implementation remains ~70% (full=1, partial=0.5, unproven=0).
+- The previous higher 80%+ figure was explicitly rejected as too generous and is not used as the baseline.
+
+ARCHITECTURAL STATUS
+- SubsystemRegistry is a real boundary/health facade, but full physical extraction of Self/World/Memory/Agency/Embodiment/Research/Governance from OrganismCore remains partial.

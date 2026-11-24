@@ -1,0 +1,74 @@
+{
+  "generatedAt": "2026-10-18T19:32:08.321Z",
+  "totalSourceFiles": 2043,
+  "totalSourceBytes": 42171440,
+  "buckets": {
+    "app": {
+      "files": 85,
+      "bytes": 466977,
+      "byExtension": {
+        ".tsx": 21,
+        ".ts": 61,
+        ".md": 1,
+        ".json": 1,
+        ".css": 1
+      }
+    },
+    "runtime": {
+      "files": 586,
+      "bytes": 6982512,
+      "byExtension": {
+        ".ts": 584,
+        ".mjs": 2
+      }
+    },
+    "research": {
+      "files": 800,
+      "bytes": 3987040,
+      "byExtension": {
+        ".py": 621,
+        ".md": 142,
+        ".whl": 1,
+        ".json": 32,
+        ".toml": 2,
+        ".jsonl": 1,
+        ".txt": 1
+      }
+    },
+    "tools": {
+      "files": 34,
+      "bytes": 167905,
+      "byExtension": {
+        ".mjs": 27,
+        ".py": 7
+      }
+    },
+    "contracts": {
+      "files": 26,
+      "bytes": 455497,
+      "byExtension": {
+        ".json": 24,
+        ".md": 1,
+        ".sha256": 1
+      }
+    },
+    "docs": {
+      "files": 512,
+      "bytes": 30111509,
+      "byExtension": {
+        ".md": 229,
+        ".json": 168,
+        ".csv": 7,
+        "[no-ext]": 108
+      }
+    }
+  },
+  "owners": {
+    "canonicalRuntime": "runtime/neuro-kurisu",
+    "uiShell": "app",
+    "live2d": "app/public/live2d",
+    "legacyVisual": "app/src/legacy/avatar",
+    "researchBridge": "research/research_bridge.py",
+    "legacyProvenance": "legacy"
+  }
+}

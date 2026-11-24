@@ -1,0 +1,17 @@
+{
+  "package_modules": 314,
+  "versioned_modules": 160,
+  "import_edges": 717,
+  "cycle_count": 0,
+  "cycles": [],
+  "bare_except_pass_count": 0,
+  "config_field_count": 132,
+  "config_unused_field_estimate": 58,
+  "status": "attention_required",
+  "lazy_import_edges": 75,
+  "filename_versioned_modules": 214,
+  "registry_versioned_modules": 160,
+  "filename_legacy_gap_modules": 0,
+  "unclassified_filename_versioned_modules": 0,
+  "config_dynamic_unknown_count": 3
+}

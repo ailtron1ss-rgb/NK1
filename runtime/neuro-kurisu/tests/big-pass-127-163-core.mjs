@@ -1,0 +1,31 @@
+import assert from 'node:assert/strict';
+import { mkdtemp, readFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { FileStateStore } from '../src/organism/persistence/FileStateStore.ts';
+import { OrganismCore } from '../src/organism/core/OrganismCore.ts';
+const dir=await mkdtemp(join(tmpdir(),'nk127-163-'));
+const path=join(dir,'state.json');
+const core=new OrganismCore(new FileStateStore(path),{enableLanguage:false,performanceProfile:'mobile'});
+await core.init();
+for(let i=0;i<10;i++){
+  await core.observe({worldContext:{tick:i+1,location:'continuity-lab',energy:.72,attention:.8,uncertainty:.48,facts:['trajectory'],objects:[{id:'person',label:'user',location:'lab',value:.5,visible:true,collected:false}],events:['neutral']},novelty:.55,socialSignal:.6});
+  await core.feedback({success:.74,reward:.66,surprise:.11});
+}
+const s=core.cognitiveOrganismContinuitySnapshot();
+assert.ok(s.cycles>0);
+assert.ok(s.projections.length>0);
+assert.ok(s.futurePaths.length>0);
+assert.ok(s.outcomes.length>0);
+assert.ok(s.integratedCoherence01>0);
+await core.flush();
+const raw=JSON.parse(await readFile(path,'utf8'));
+assert.ok(raw.facets.learning.cognitiveOrganismContinuity);
+const restored=new OrganismCore(new FileStateStore(path),{enableLanguage:false,performanceProfile:'mobile'});
+await restored.init();
+const r=restored.cognitiveOrganismContinuitySnapshot();
+assert.equal(r.cycles,s.cycles);
+assert.equal(r.outcomes.length,s.outcomes.length);
+assert.ok(restored.cognitiveOrganismContinuityBenchmark().overall01>0);
+console.log(`BIG_PASS_127_163_CORE=PASS cycles=${s.cycles} projections=${s.projections.length} future=${s.futurePaths.length} persisted=true`);
+await restored.flush();

@@ -1,0 +1,39 @@
+Neuro-Kurisu B308 archive manifest
+Date: 2026-09-13
+
+Primary code:
+- src/organism/learning/AdaptivePolicyEngine.ts
+- src/organism/persistence/StateMigrations.ts
+
+B308 tests:
+- tests/big-pass-308-temporal-policy-closure.mjs
+- tests/big-pass-308-migration.mjs
+
+B308 docs:
+- docs/external/claude_2026-09-13/DEEP_AUDIT_B308_TEMPORAL_POLICY_CREDIT_2026-09-13_RU.md
+- docs/external/claude_2026-09-13/B308_EVIDENCE_REPORT_RU.md
+- docs/external/claude_2026-09-13/B308_FINAL_AUDIT_STATUS_RU.md
+- docs/external/claude_2026-09-13/B308_PROGRESS_V12_RU.md
+- docs/external/claude_2026-09-13/B308_NEXT_STEP_PLAN_RU.md
+- docs/external/claude_2026-09-13/B308_RELEASE_NOTES_RU.md
+- docs/external/claude_2026-09-13/B308_DOCUMENTS_MANIFEST_RU.txt
+- docs/external/claude_2026-09-13/B308_ARCHIVE_MANIFEST_RU.txt
+
+Mandatory prior audit chain retained:
+- B298/B299/B300/B301/B302/B303/B304/B305/B306/B307 audit documents
+- AUDIT_RECHECK_MATRIX_RU.md
+- four Claude PDFs in docs/external/claude_2026-09-13/
+
+Final isolated evidence:
+- B298 closed loop PASS
+- B305 critical path PASS
+- B306 autonomous causal PASS
+- B307 verified policy PASS
+- B308 temporal policy PASS
+- B308 migration PASS
+- architecture/integrity/forensics/hygiene/contract/syntax/UI/server PASS
+- parameterized probes: 894/928, failures 0
+- semantic coverage: 38 VERIFIED / 3754 functions; evidence coverage 0.0669
+
+Known release limitation:
+- cumulative all-heavy-tests chain may exceed the host process time/resource budget; individual release gates are reproducibly PASS.

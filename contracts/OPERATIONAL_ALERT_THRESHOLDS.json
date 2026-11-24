@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "description": "Default operator alert thresholds for the local Neuro-Kurisu SUPER runtime.",
+  "signals": {
+    "http5xxRate01": {"warning": 0.02, "critical": 0.05},
+    "rateLimitRejectsPerMinute": {"warning": 20, "critical": 60},
+    "providerFailureRate01": {"warning": 0.15, "critical": 0.35},
+    "persistenceLagMs": {"warning": 120000, "critical": 300000},
+    "memoryPressure01": {"warning": 0.78, "critical": 0.9},
+    "cpuLoad01": {"warning": 0.85, "critical": 0.95},
+    "diskFree01": {"warning": 0.2, "critical": 0.1}
+  },
+  "actions": {
+    "warning": ["emit structured alert", "increase diagnostics sampling"],
+    "critical": ["enter degraded/safe mode", "block new high-risk actions", "preserve checkpoint", "emit operator alert"]
+  }
+}

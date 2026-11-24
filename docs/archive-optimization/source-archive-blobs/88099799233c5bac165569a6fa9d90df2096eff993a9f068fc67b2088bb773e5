@@ -1,0 +1,131 @@
+export type CausalAccountabilityNodeKind =
+  | 'goal' | 'decision' | 'prediction' | 'action' | 'observation'
+  | 'verification' | 'outcome' | 'prediction-error' | 'learning';
+
+export interface CausalAccountabilityNode {
+  id: string;
+  kind: CausalAccountabilityNodeKind;
+  at: number;
+  tick: number;
+  summary: string;
+  confidence01?: number;
+  evidenceRef?: string;
+  data?: Record<string, unknown>;
+}
+
+export interface CausalAccountabilityEdge {
+  from: string;
+  to: string;
+  relation: 'caused' | 'predicted' | 'observed' | 'verified-by' | 'contradicted' | 'learned-from';
+  confidence01: number;
+}
+
+export interface CausalAccountabilityState {
+  version: 1;
+  nodes: CausalAccountabilityNode[];
+  edges: CausalAccountabilityEdge[];
+  activeChains: string[];
+  lastAt: number;
+  updatedAt: number;
+}
+
+const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
+
+export class CausalAccountabilityGraph {
+  private nodes:CausalAccountabilityNode[]=[];
+  private edges:CausalAccountabilityEdge[]=[];
+  private activeChains:string[]=[];
+  private updatedAt=0;
+  private readonly maxNodes:number;
+  private readonly maxEdges:number;
+  private readonly maxChains:number;
+
+  constructor(maxNodes=192,maxEdges=384,maxChains=32){
+    this.maxNodes=Math.max(64,maxNodes);
+    this.maxEdges=Math.max(128,maxEdges);
+    this.maxChains=Math.max(8,maxChains);
+  }
+
+  private addNode(node:CausalAccountabilityNode){
+    const normalized={...node,summary:String(node.summary??'').slice(0,240),confidence01:node.confidence01==null?undefined:clamp(node.confidence01)};
+    this.nodes.push(normalized);
+    if(this.nodes.length>this.maxNodes)this.nodes.splice(0,this.nodes.length-this.maxNodes);
+    this.activeChains=[...new Set([normalized.id,...this.activeChains])].slice(0,this.maxChains);
+    this.updatedAt=Math.max(this.updatedAt,normalized.at);
+    return normalized;
+  }
+
+  private addEdge(edge:CausalAccountabilityEdge){
+    if(edge.from===edge.to)return;
+    this.edges.push({...edge,confidence01:clamp(edge.confidence01)});
+    if(this.edges.length>this.maxEdges)this.edges.splice(0,this.edges.length-this.maxEdges);
+  }
+
+  add(kind:CausalAccountabilityNodeKind,tick:number,summary:string,data?:Record<string,unknown>,confidence01?:number,evidenceRef?:string){
+    const node=this.addNode({id:`${kind}-${tick}-${Date.now()}-${Math.random().toString(16).slice(2)}`,kind,tick,at:Date.now(),summary,data,confidence01,evidenceRef});
+    return node.id;
+  }
+
+  link(from:string,to:string,relation:CausalAccountabilityEdge['relation'],confidence01=1){this.addEdge({from,to,relation,confidence01});}
+
+  recordActionChain(input:{tick:number;tool:string;ok:boolean;verified:boolean;observationId?:string;confidence01:number;expectedPostcondition?:string;observedPostcondition?:string;externalObservation?:boolean;executionId?:string;predictionId?:string;decisionId?:string;goalId?:string;data?:Record<string,unknown>}){
+    const action=this.add('action',input.tick,`tool:${input.tool}`,{tool:input.tool,ok:input.ok,...(input.data??{})});
+    if(input.goalId)this.link(input.goalId,action,'caused',.7);
+    if(input.decisionId)this.link(input.decisionId,action,'caused',.85);
+    if(input.predictionId)this.link(input.predictionId,action,'predicted',.9);
+    const outcome=this.add('outcome',input.tick,`tool:${input.tool}:${input.ok?'ok':'failed'}`,{tool:input.tool,executionId:input.executionId,expectedPostcondition:input.expectedPostcondition,observedPostcondition:input.observedPostcondition,externalObservation:Boolean(input.externalObservation),observationId:input.observationId},input.confidence01,input.observationId);
+    this.link(action,outcome,'caused',input.ok?.8:.35);
+    if(input.verified){
+      const verification=this.add('verification',input.tick,`verified:${input.tool}`,{basis:input.externalObservation?'external-postcondition':'tool-contract',observationId:input.observationId},input.confidence01,input.observationId);
+      this.link(outcome,verification,'verified-by',input.confidence01);
+      if(input.observationId){
+        const observation=this.add('observation',input.tick,`observation:${input.observationId}`,{tool:input.tool,observedPostcondition:input.observedPostcondition},input.confidence01,input.observationId);
+        this.link(verification,observation,'observed',input.confidence01);
+      }
+    } else {
+      const error=this.add('prediction-error',input.tick,`outcome-unverified:${input.tool}`,{tool:input.tool,expectedPostcondition:input.expectedPostcondition,observedPostcondition:input.observedPostcondition},Math.max(0,1-input.confidence01));
+      this.link(outcome,error,'contradicted',Math.max(.1,1-input.confidence01));
+    }
+    return {actionId:action,outcomeId:outcome};
+  }
+
+  resolveExternalVerification(input:{tick:number;tool:string;observationId:string;verified:boolean;confidence01:number;expectedPostcondition?:string;observedPostcondition?:string;executionId?:string;reason?:string}){
+    const candidates=this.nodes.filter(n=>n.kind==='outcome' && n.data && n.data.tool===input.tool);
+    const action=this.nodes.slice().reverse().find(n=>n.kind==='action' && n.data && n.data.tool===input.tool && (!input.executionId || n.data.executionId===input.executionId));
+    const outcome=(action ? candidates.slice().reverse().find(n=>n.at>=action.at) : candidates.slice().reverse()[0]);
+    if(!outcome) return {verificationId:this.add('verification',input.tick,`external-verification-missing-outcome:${input.tool}`,{observationId:input.observationId,reason:input.reason},0),learningId:undefined} as const;
+    const verification=this.add('verification',input.tick,`${input.verified?'verified':'contradicted'}:${input.tool}`,{basis:'external-postcondition',observationId:input.observationId,executionId:input.executionId,expectedPostcondition:input.expectedPostcondition,observedPostcondition:input.observedPostcondition,reason:input.reason},input.confidence01,input.observationId);
+    this.link(outcome.id,verification,input.verified?'verified-by':'contradicted',input.confidence01);
+    const observation=this.add('observation',input.tick,`external-observation:${input.observationId}`,{tool:input.tool,executionId:input.executionId,observedPostcondition:input.observedPostcondition},input.confidence01,input.observationId);
+    this.link(verification,observation,'observed',input.confidence01);
+    const learning=this.add('learning',input.tick,input.verified?`external-observation-confirmed:${input.tool}`:`external-observation-contradicted:${input.tool}`,{tool:input.tool,observationId:input.observationId,expectedPostcondition:input.expectedPostcondition,observedPostcondition:input.observedPostcondition},input.confidence01);
+    return {verificationId:verification,learningId:learning};
+  }
+
+  recordLearning(tick:number,summary:string,sourceNodeId?:string,confidence01=.5){
+    const id=this.add('learning',tick,summary,undefined,confidence01);
+    if(sourceNodeId)this.link(sourceNodeId,id,'learned-from',confidence01);
+    return id;
+  }
+
+  compact(){
+    const live=new Set(this.activeChains);
+    const keepNodes=this.nodes.filter(n=>live.has(n.id)||n.kind==='verification'||n.kind==='prediction-error').slice(-this.maxNodes);
+    const ids=new Set(keepNodes.map(n=>n.id));
+    this.nodes=keepNodes;
+    this.edges=this.edges.filter(e=>ids.has(e.from)&&ids.has(e.to)).slice(-this.maxEdges);
+  }
+
+  snapshot():CausalAccountabilityState{
+    return {version:1,nodes:this.nodes.map(n=>structuredClone(n)),edges:this.edges.map(e=>structuredClone(e)),activeChains:[...this.activeChains],lastAt:this.nodes.at(-1)?.at??0,updatedAt:this.updatedAt};
+  }
+
+  restore(snapshot?:Partial<CausalAccountabilityState>){
+    this.nodes=Array.isArray(snapshot?.nodes)?snapshot!.nodes!.slice(-this.maxNodes).map(n=>structuredClone(n)):[];
+    this.updatedAt=Number.isFinite(snapshot?.updatedAt)?Number(snapshot!.updatedAt):(this.nodes.at(-1)?.at??0);
+    this.edges=Array.isArray(snapshot?.edges)?snapshot!.edges!.slice(-this.maxEdges).map(e=>structuredClone(e)):[];
+    this.activeChains=Array.isArray(snapshot?.activeChains)?snapshot!.activeChains!.slice(0,this.maxChains):[];
+  }
+
+  summary(){return {version:1,nodes:this.nodes.length,edges:this.edges.length,activeChains:this.activeChains.length,lastAt:this.nodes.at(-1)?.at??0,updatedAt:this.updatedAt,verificationNodes:this.nodes.filter(n=>n.kind==='verification').length,predictionErrors:this.nodes.filter(n=>n.kind==='prediction-error').length};}
+}

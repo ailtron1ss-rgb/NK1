@@ -1,0 +1,127 @@
+{
+  "title": "Neuro-Kurisu SUPER — reconciled weighted implementation roadmap scorecard — WorkPass35",
+  "date": "2026-10-13",
+  "workpass": 35,
+  "baseArchive": "Neuro_Kurisu_WORKPASS35_2026-10-13.zip",
+  "runtime": "35.58.0",
+  "schema": 224,
+  "method": "WorkPass35 corrects WILL agency ordering: its capped ±0.04 candidate-score contribution is applied before the canonical P69 arbitration, with baseline/delta diagnostics; P69 remains the only final arbiter. It also removes exact duplicate source representations only when full-archive/file equality is verified and preserves originals with deterministic hash-verified on-demand restoration. Dedicated bridge tests and runtime typecheck pass; weighted release score stays unchanged because live-model, independent holdout, browser Live2D E2E and release durability are still open.",
+  "overallPercent": 72.9,
+  "previousOfficialScorePercent": 72.9,
+  "deltaPercentagePoints": 0,
+  "remainingWeightedRoadmapPoints": 27.1,
+  "workstreams": [
+    {
+      "id": "A",
+      "name": "Canonical source lineage and single-owner architecture",
+      "weight": 15,
+      "completionPercent": 100,
+      "weightedPoints": 15,
+      "previousPercent": 100,
+      "rationale": "MemoryOS2 remains the sole writable owner. WorkPass31 centralizes all current production mutation classes behind MemoryFabric and persists a bounded receipt ledger through ordinary state migration; legacy direct-write adapter methods remain only for historical consumers."
+    },
+    {
+      "id": "B",
+      "name": "Runtime integration, API/UI routes and smoke/linkage coverage",
+      "weight": 15,
+      "completionPercent": 96,
+      "weightedPoints": 14.4,
+      "previousPercent": 95,
+      "rationale": "Current production Hexis, external-research and compatibility restore paths route through the common lifecycle mutation API; focused runtime and normal migration regressions pass. Browser/Live2D production E2E remains open."
+    },
+    {
+      "id": "C",
+      "name": "Memory 2.0, retrieval/admission and benchmark evidence",
+      "weight": 15,
+      "completionPercent": 70,
+      "weightedPoints": 10.5,
+      "previousPercent": 69,
+      "rationale": "WorkPass32 adds bounded fuzzy candidate discovery and hybrid RRF over BM25, query coverage, character similarity, entities and graph/temporal relationships; it removes false semantic weight from a hash-only vector. Controlled typo/inflection regressions pass, but the offline synthetic evaluation remains not-promoted and independent labelled temporal holdout is still open."
+    },
+    {
+      "id": "D",
+      "name": "Agency, action schema, execution, outcome and reafference",
+      "weight": 20,
+      "completionPercent": 68,
+      "weightedPoints": 13.6,
+      "previousPercent": 65,
+      "rationale": "WorkPass20 adds exact action execution/step receipt correlation and a persisted bounded idempotency ledger; duplicate/stale receipts cannot advance later project steps. Entire action→independent external receipt→reafference chain remains partial."
+    },
+    {
+      "id": "E",
+      "name": "Portable subject continuity and social/known-entity dossier",
+      "weight": 10,
+      "completionPercent": 75,
+      "weightedPoints": 7.5,
+      "previousPercent": 75,
+      "rationale": "Read-only dossier and fidelity contracts are present; browser-backed corrections and behavioral equivalence remain open."
+    },
+    {
+      "id": "F",
+      "name": "External transport, SDK, idempotency and replay",
+      "weight": 10,
+      "completionPercent": 40,
+      "weightedPoints": 4,
+      "previousPercent": 40,
+      "rationale": "Conscio/Hexis/WILL local idempotency, queue backpressure and ACK/replay contracts improved; remote provider receipt/reconnect proof remains open."
+    },
+    {
+      "id": "G",
+      "name": "Research promotion and controlled experiments",
+      "weight": 5,
+      "completionPercent": 66,
+      "weightedPoints": 3.3,
+      "previousPercent": 63,
+      "rationale": "WorkPass25 supplies a deterministic private-first temperature-scaling fitter with a group-disjoint validation fold, version/dataset-bound artifact contract, NLL/Brier/ECE eligibility thresholds and provenance propagation into evidence/restore. This is an implemented pipeline only: the real pinned pretrained model and independent final holdout have not been run."
+    },
+    {
+      "id": "H",
+      "name": "Release durability: build, E2E, rollback, soak, SBOM/provenance",
+      "weight": 10,
+      "completionPercent": 46,
+      "weightedPoints": 4.6,
+      "previousPercent": 45,
+      "rationale": "Release metadata and operational readiness reporting improved; dependency-complete app install/build, browser E2E, clean-room restore/rollback, soak and final SBOM/provenance remain open."
+    }
+  ],
+  "normalizedTaskInventory": {
+    "count": 85,
+    "counts": {
+      "DONE": 64,
+      "PARTIAL": 11,
+      "TODO": 10
+    },
+    "strictDonePercent": 75.3,
+    "partialPercent": 12.9,
+    "todoPercent": 11.8,
+    "halfCreditEquivalentPercent": 81.76,
+    "note": "Normalized unique deliverables, not append-only historical tasklist line counts. PARTIAL is not treated as DONE. This inventory score does not establish release readiness."
+  },
+  "openReleaseGates": [
+    "Real autonomous research on at least two allowed external HTTPS hosts with distinct evidence and persisted source receipt",
+    "Real pretrained NLI inference on a fixed labelled, domain-relevant adversarial holdout; threshold review must remain separate from evaluation; multilingual/domain compatibility is unproven",
+    "Complete agency loop from competition to independent postcondition, persistence and reafference with cross-consumer no-double-credit",
+    "Entity correction/expiry/conflict across browser-backed multi-session flows",
+    "Portable subject continuity and behavioral fidelity",
+    "Capability evidence graph for critical user journeys",
+    "External provider delivery receipts, reconnect and replay guarantees",
+    "Clean-room backup/restore, schema migration and rollback drill",
+    "Research candidate integrations from NeuroCore/NOMEGA/DeepCode only where they measurably beat canonical baselines",
+    "Authorization/abuse/rate-limit review for diagnostic and benchmark APIs",
+    "Independent labelled temporal MemoryOS2 holdout run against the implemented Okapi BM25 baseline; corrected synthetic fixture is at parity; no real-corpus uplift is established",
+    "Dependency-complete app install and root/app semantic typecheck",
+    "React/Vite production build",
+    "Desktop/mobile browser E2E, including actual Live2D interaction",
+    "Multi-hour soak with memory and resource-growth limits",
+    "Final SBOM, license inventory and immutable release provenance sign-off",
+    "Release-candidate sign-off"
+  ],
+  "environmentNote": "Dedicated WILL bridge: 15/15 scenarios pass; runtime TypeScript typecheck passes. SHA-256-verified materialization matched 606 WILL files and 4,022 Neuro-Kurisu 35.30 snapshot files exactly. App production/browser Live2D E2E, real local model inference, independent labelled temporal holdout, recovery/rollback, soak and final sign-off remain open.",
+  "releaseStatus": "implementation-workpass; WILL agency ordering and safe archive dedup implemented; release gates remain open",
+  "limitations": [
+    "Live Ollama/llama.cpp inference and independently labelled temporal retrieval holdout have not been run.",
+    "Production Vite/browser Live2D E2E has not been completed.",
+    "Full action-to-independent-postcondition-to-reafference and cross-consumer no-double-credit evidence remain partial.",
+    "Clean-room restore/rollback, soak and final release sign-off remain open."
+  ]
+}

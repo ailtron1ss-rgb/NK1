@@ -1,0 +1,159 @@
+{
+  "name": "Neuro-Kurisu SUPER WorkPass 14 changed-file manifest",
+  "date": "2026-10-10",
+  "canonicalBaseArchive": "Neuro_Kurisu_SUPER_WILL_LUMINA_HEXIS_LETTA_CONSCIO_INTEGRATED_WORKPASS13_2026-10-10.zip",
+  "canonicalBaseSha256": "3f2b0b0cdd279b3fea79367f59667d2edda7d2384fa0ceac4f780624c0e02d3b",
+  "runtime": "Neuro-Kurisu 35.40.0",
+  "schema": 223,
+  "lineage": "WorkPass 14 builds on the exact WorkPass 13 tree; it hardens UI test isolation, browser smoke baseline regression detection, and active-pass status metadata. No broad runtime overlay.",
+  "counts": {
+    "addedIncludingManifest": 6,
+    "addedListedExcludingManifest": 5,
+    "modified": 13,
+    "removed": 0
+  },
+  "manifestSelfReferenceExclusion": "This manifest is excluded from addedFiles and from its own hash list to avoid self-referential hashing.",
+  "addedFiles": [
+    {
+      "path": "docs/PROJECT_CURRENT_STATUS_2026-10-10_WORKPASS14.json",
+      "bytes": 14878,
+      "sha256": "795842eac89c06f54077442b64cdc01dc28764cffc407c29711d13516a672c38"
+    },
+    {
+      "path": "docs/PROJECT_CURRENT_STATUS_2026-10-10_WORKPASS14.md",
+      "bytes": 6048,
+      "sha256": "88ea715691ea83f317ceaed2ce17b41726a0a2d53a0d7a18820ac77214a066ec"
+    },
+    {
+      "path": "docs/PROJECT_PROGRESS_SCORECARD_2026-10-10_WORKPASS14.json",
+      "bytes": 6743,
+      "sha256": "fecb37e7caa82c251da9886b34627b656cdaa499d360cdb0345e704d59c0b865"
+    },
+    {
+      "path": "docs/WORKPASS14_AUDIT_2026-10-10.log",
+      "bytes": 76417,
+      "sha256": "fb4ff56db313b3bb58227bb0da846adedd052d4cd0e0ea9877c14123df4d19e4"
+    },
+    {
+      "path": "docs/WORKPASS14_UI_REGRESSION_HARDENING_2026-10-10.md",
+      "bytes": 2579,
+      "sha256": "750dadf88ccbabd2e61561afba26fb40213759bddca1c536b6eb82de19c1b90b"
+    }
+  ],
+  "modifiedFiles": [
+    {
+      "path": "CHANGELOG.md",
+      "bytes": 23892,
+      "sha256": "25c58bae23154a4b2e3076a6b81ccccd6dc39dc58387d31aef1879e5a5461aa0",
+      "previousBytes": 23073,
+      "previousSha256": "4b4bb504811a1c90da9674d844c1ea150e74982ce57906c437225ddbada90aa5"
+    },
+    {
+      "path": "README.md",
+      "bytes": 7456,
+      "sha256": "0b0083caa16efb238fe9b10748084137e291388c741cad29b9bbc60aaade3f1e",
+      "previousBytes": 6537,
+      "previousSha256": "2a2aed167556c95a80eb50bbdb54be04b2c8b60c493d514e349e4e422be6718d"
+    },
+    {
+      "path": "SUPER_VERSION.json",
+      "bytes": 4408,
+      "sha256": "81c566fed79d2f0955cb7c3978b8a2d3f201b80e7cf532a6a35a6c22f4a84c1f",
+      "previousBytes": 3721,
+      "previousSha256": "8decb03222ce0074b6502a3faf9ae0ca5a8f1ceaad9e0970a2438e4ed8e9f447"
+    },
+    {
+      "path": "app/package.json",
+      "bytes": 3632,
+      "sha256": "a0cfaf9fcf60d790e3e53bee939662b8f3674d2a91bb69ab092dfc13e2b4039d",
+      "previousBytes": 3573,
+      "previousSha256": "423b41240f492626de3239a6439c65ac497942c15ff87002f5ecd9a3da9ce55a"
+    },
+    {
+      "path": "app/scripts/browser-smoke-verdict.mjs",
+      "bytes": 6051,
+      "sha256": "b274e9cb061bf16fb68bc0b483181daae29832e76cca71383242a329d1c706f3",
+      "previousBytes": 4663,
+      "previousSha256": "5699614f7fa62515e25ba9cca6397db2770cf6feb9b973f3c19f2915874c53de"
+    },
+    {
+      "path": "app/scripts/browser-smoke-verdict.test.mjs",
+      "bytes": 17748,
+      "sha256": "c18adf000cbbfe23f34cd7b3689f62f0fe3a38d440b89d73e31049074cdb4fe9",
+      "previousBytes": 15643,
+      "previousSha256": "48b3924b41d606f94a9b8faae47ff350b84978fdd5ab3f6ca01640ed4c7087d7"
+    },
+    {
+      "path": "app/scripts/browser-smoke.mjs",
+      "bytes": 6131,
+      "sha256": "d35641e2529e23ea17a8f6497da76fed2829ca6eaf173ba6fa9e5698cc76e4bf",
+      "previousBytes": 6042,
+      "previousSha256": "2e1cc3136f33bd74b73b4b3dba812e74ac299c24893b9a7c406e9bbeaf46571f"
+    },
+    {
+      "path": "app/scripts/grok-pwa-plugin.test.mjs",
+      "bytes": 22325,
+      "sha256": "641708dbbeb72707519004c439932dcbcd77b28db8b3c26f465f77700ee8802d",
+      "previousBytes": 21850,
+      "previousSha256": "816c6b867c7230d739f69598202c0903e4332632293d548bde74c8d875ed8e5c"
+    },
+    {
+      "path": "docs/RUNBOOK.md",
+      "bytes": 2156,
+      "sha256": "41655c7e513bff853991848df01d9a7deae4bce7a4f9c1ae547cdbf58abc607b",
+      "previousBytes": 1396,
+      "previousSha256": "30fba0a6f64fc1efcac754af055866a82c5a1e95ff1740d336f8a0977344c0ac"
+    },
+    {
+      "path": "package.json",
+      "bytes": 5128,
+      "sha256": "1d768a2b80e00488cd8714f8f6fe78daf2566d3fc2b7b97b71f7836d5552a1c2",
+      "previousBytes": 4489,
+      "previousSha256": "be365d4e7f5a9df67bb4982a4595a315d8c452dc4d7cfacd0530f633e11f65f4"
+    },
+    {
+      "path": "tools/verify-release-metadata.mjs",
+      "bytes": 8813,
+      "sha256": "d7fa832b70f0c05c25c9a923bbf53a4b1b84532d627c346d93b3903ed361770e",
+      "previousBytes": 7660,
+      "previousSha256": "ecc89ea8b713b4c4c2415f47e59bbbc5e05c54096a900697e58047bc4dc76314"
+    },
+    {
+      "path": "tools/verify-release-metadata.test.mjs",
+      "bytes": 7713,
+      "sha256": "a1cf8ffac473eeb7d9b0a471cb785bc7c32df150ab7465ed9454d3205e16481c",
+      "previousBytes": 6652,
+      "previousSha256": "5282fbb1b7d0ecb0bc6fa3b7023aad6b339a15f168d1239e0d89c9a2105ec13b"
+    },
+    {
+      "path": "Список дел.md",
+      "bytes": 77260,
+      "sha256": "cb8797b12e3c6a5615df223549c2a34b51c7e23bc73d537fe7dddf5e6394d502",
+      "previousBytes": 75076,
+      "previousSha256": "b0e41eeedc1c0ad093e2be42935becb062e1eba7b9e878203320a1cc072b71e8"
+    }
+  ],
+  "removedFiles": [],
+  "verification": {
+    "command": "npm run audit:workpass14",
+    "result": "PASS",
+    "releaseMetadataContract": "PASS 32/32 checks",
+    "releaseMetadataRegressionTests": "PASS 6/6",
+    "appScriptTests": "PASS 203/203",
+    "browserSmokeVerdictTests": "PASS 46/46",
+    "memoryRetrievalBenchmarkRegression": "PASS; synthetic fixture correctly not-promoted",
+    "memoryRetrievalExperimentRegression": "PASS; synthetic fixture only",
+    "runtimeTypecheck": "PASS mode=tsc",
+    "serverImportAudit": "PASS; 10 imports, zero missing",
+    "uiApiLinkage": "PASS; 124 client routes, 48 Runtime Atlas surfaces, 5 required seams, zero missing",
+    "assetAudit": "PASS",
+    "appFullTest": "BLOCKED after 203/203 app script tests: missing @tanstack/react-start and jose modules in TypeScript unit stage",
+    "appTypecheck": "BLOCKED: missing @types/node and vite/client",
+    "reactViteBuild": "BLOCKED: vite executable is not installed",
+    "npmRegistry": "No successful clean install claimed; previous registry attempt failed with DNS EAI_AGAIN",
+    "serverSmoke": "Not repeated in this pass aggregate; no fresh PASS claim",
+    "browserE2E": "NOT_RUN; Playwright dependencies/browser not installed",
+    "realCorpusMemoryUpliftClaimed": false,
+    "releaseReadyClaimed": false
+  }
+}

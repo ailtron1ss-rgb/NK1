@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';
+import { rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+import { OrganismRuntime } from '../src/organism/core/OrganismRuntime.ts';
+const base=path.join(tmpdir(),`nk155-restart-${process.pid}-${Date.now()}`);
+const make=()=>new OrganismRuntime({stateFile:base+'.json',worldStateFile:base+'.world.json',autoRun:false,enableLanguage:false,intervalMs:5000,checkpointMinIntervalMs:0,checkpointMaxDirtyCycles:1});
+const r1=make(); await r1.init(); await r1.step('perform a verified action'); await r1.flush(); const before=r1.core.verifiedAutonomousLifeSnapshot(); assert(before.cycles>=1); assert(before.decisions.length>=1); r1.stop();
+const r2=make(); await r2.init(); const after=r2.core.verifiedAutonomousLifeSnapshot(); assert.equal(after.cycles,before.cycles); assert.equal(after.decisions.length,before.decisions.length); assert.equal(after.lastDigest,before.lastDigest); assert(r2.core.verifiedAutonomousLifeSelfAudit().pass); await r2.flush(); r2.stop();
+for (const suffix of ['.json','.world.json','.continuity.jsonl','.operational.jsonl','.json.bak','.world.json.bak','.world.json.tmp']) await rm(base+suffix,{force:true});
+console.log(`BIG_PASS_155_RESTART=PASS cycles=${after.cycles} decisions=${after.decisions.length} digestRestored=${after.lastDigest===before.lastDigest}`);

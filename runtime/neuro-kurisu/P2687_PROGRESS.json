@@ -1,0 +1,91 @@
+{
+  "release": "P2687",
+  "application": "35.6.87",
+  "date": "2026-09-19",
+  "focus": "Adaptive replay, multi-timescale memory, causal continuity and hot-path efficiency",
+  "codeWorkPercent": 85,
+  "changedFilesFromP2686": 20,
+  "sourceFilesChanged": 8,
+  "testFilesChangedOrAdded": 6,
+  "researchFilesChangedOrAdded": 3,
+  "roughAddedLines": 676,
+  "roughRemovedLines": 52,
+  "roughNetLines": 624,
+  "implemented": [
+    "AdaptiveReplayGovernor",
+    "fast/medium/slow replay lanes",
+    "forgetting-curve decay pressure",
+    "surprise/novelty/transfer/identity/goal/stability scoring",
+    "cooldown and interference guards",
+    "cluster redundancy control",
+    "contextual bounded weight adaptation",
+    "identity/stability weight floors",
+    "migration 194->195 compatibility",
+    "replay event tick preservation",
+    "shared-state internal snapshot hot path",
+    "controlled replay policy ablation",
+    "snapshot microbenchmark",
+    "research archive update"
+  ],
+  "tests": {
+    "typecheck": "PASS",
+    "adaptiveReplay": "PASS",
+    "continuumIntegration": "PASS",
+    "runtimeRestart": "PASS",
+    "migration": "PASS",
+    "policyAblation": "PASS",
+    "snapshotBenchmark": "PASS"
+  },
+  "ablation": {
+    "balanced": {
+      "qualityProxy01": 0.7954578334,
+      "interference01": 0.3351177388,
+      "selected": 342,
+      "unique": 6
+    },
+    "surpriseHeavy": {
+      "qualityProxy01": 0.7971259857,
+      "interference01": 0.3028576998,
+      "selected": 342,
+      "unique": 6
+    },
+    "forgettingHeavy": {
+      "qualityProxy01": 0.78094522897,
+      "interference01": 0.32356920078,
+      "selected": 342,
+      "unique": 7
+    },
+    "adaptive": {
+      "qualityProxy01": 0.79512648845,
+      "interference01": 0.32852475634,
+      "selected": 342,
+      "unique": 8,
+      "feedbackUpdates": 241
+    }
+  },
+  "snapshotBenchmark": {
+    "nodes": 320,
+    "iterations": 40,
+    "cloneMsPerCall": 2.7619875,
+    "sharedStateMsPerCall": 0.00692495,
+    "estimatedCloneCostReductionPercent": 99.7493
+  },
+  "knownLimits": [
+    "8-cycle autonomous runtime restart smoke confirms scheduler persistence but produced zero actual replay events in that short run",
+    "mobile RSS remains high and still needs dedicated memory-pressure work",
+    "adaptive policy does not yet beat surprise-heavy in the current synthetic proxy holdout",
+    "semantic behavioural coverage remains much lower than static runtime reachability"
+  ],
+  "overallProgressEstimate": 33,
+  "ratings": {
+    "runtimeArchitecture": 87,
+    "cognitiveIntegration": 77,
+    "memoryArchitecture": 82,
+    "identityPersonalitySubstrate": 70,
+    "functionRealityVerification": 36,
+    "continuousCognition": 78,
+    "mobileReadiness": 57,
+    "maintainability": 47,
+    "provenEndToEndFunctionality": 33
+  }
+}

@@ -1,0 +1,197 @@
+{
+  "pass": 171,
+  "startedAt": "2026-09-09T17:45:28.684Z",
+  "steps": [
+    {
+      "name": "typecheck",
+      "ok": true,
+      "status": 0,
+      "error": null,
+      "log": ".audit-big-pass-171-typecheck.log"
+    },
+    {
+      "name": "171-memory-value-identity-personality",
+      "ok": true,
+      "status": 0,
+      "error": null,
+      "log": ".audit-big-pass-171-171-memory-value-identity-personality.log"
+    },
+    {
+      "name": "parameterized-function-probe",
+      "ok": true,
+      "status": 0,
+      "error": null,
+      "log": ".audit-big-pass-171-parameterized-function-probe.log"
+    },
+    {
+      "name": "semantic-audit",
+      "ok": true,
+      "status": 0,
+      "error": null,
+      "log": ".audit-big-pass-171-semantic-audit.log"
+    },
+    {
+      "name": "function-liveness",
+      "ok": true,
+      "status": 0,
+      "error": null,
+      "log": ".audit-big-pass-171-function-liveness.log"
+    },
+    {
+      "name": "function-reality-ledger",
+      "ok": true,
+      "status": 0,
+      "error": null,
+      "log": ".audit-big-pass-171-function-reality-ledger.log"
+    },
+    {
+      "name": "core-zero-arg",
+      "ok": true,
+      "status": 0,
+      "error": null,
+      "log": ".audit-big-pass-171-core-zero-arg.log"
+    },
+    {
+      "name": "smoke",
+      "ok": true,
+      "status": 0,
+      "error": null,
+      "log": ".audit-big-pass-171-smoke.log"
+    },
+    {
+      "name": "restart",
+      "ok": true,
+      "status": 0,
+      "error": null,
+      "log": ".audit-big-pass-171-restart.log"
+    },
+    {
+      "name": "memory",
+      "ok": true,
+      "status": 0,
+      "error": null,
+      "log": ".audit-big-pass-171-memory.log"
+    },
+    {
+      "name": "concurrency",
+      "ok": true,
+      "status": 0,
+      "error": null,
+      "log": ".audit-big-pass-171-concurrency.log"
+    },
+    {
+      "name": "P24-world",
+      "ok": true,
+      "status": 0,
+      "error": null,
+      "log": ".audit-big-pass-171-P24-world.log"
+    },
+    {
+      "name": "P26-learning",
+      "ok": true,
+      "status": 0,
+      "error": null,
+      "log": ".audit-big-pass-171-P26-learning.log"
+    },
+    {
+      "name": "P28-plasticity",
+      "ok": true,
+      "status": 0,
+      "error": null,
+      "log": ".audit-big-pass-171-P28-plasticity.log"
+    },
+    {
+      "name": "P29-governance",
+      "ok": true,
+      "status": 0,
+      "error": null,
+      "log": ".audit-big-pass-171-P29-governance.log"
+    },
+    {
+      "name": "P30-continual",
+      "ok": true,
+      "status": 0,
+      "error": null,
+      "log": ".audit-big-pass-171-P30-continual.log"
+    },
+    {
+      "name": "P31-consciousness",
+      "ok": true,
+      "status": 0,
+      "error": null,
+      "log": ".audit-big-pass-171-P31-consciousness.log"
+    },
+    {
+      "name": "P31-lesion",
+      "ok": true,
+      "status": 0,
+      "error": null,
+      "log": ".audit-big-pass-171-P31-lesion.log"
+    },
+    {
+      "name": "P32-causal-self",
+      "ok": true,
+      "status": 0,
+      "error": null,
+      "log": ".audit-big-pass-171-P32-causal-self.log"
+    },
+    {
+      "name": "P33-personhood",
+      "ok": true,
+      "status": 0,
+      "error": null,
+      "log": ".audit-big-pass-171-P33-personhood.log"
+    },
+    {
+      "name": "P34-personhood",
+      "ok": true,
+      "status": 0,
+      "error": null,
+      "log": ".audit-big-pass-171-P34-personhood.log"
+    },
+    {
+      "name": "architecture",
+      "ok": true,
+      "status": 0,
+      "error": null,
+      "log": ".audit-big-pass-171-architecture.log"
+    },
+    {
+      "name": "integrity",
+      "ok": true,
+      "status": 0,
+      "error": null,
+      "log": ".audit-big-pass-171-integrity.log"
+    },
+    {
+      "name": "forensics",
+      "ok": true,
+      "status": 0,
+      "error": null,
+      "log": ".audit-big-pass-171-forensics.log"
+    },
+    {
+      "name": "hygiene",
+      "ok": true,
+      "status": 0,
+      "error": null,
+      "log": ".audit-big-pass-171-hygiene.log"
+    },
+    {
+      "name": "release-source",
+      "ok": true,
+      "status": 0,
+      "error": null,
+      "log": ".audit-big-pass-171-release-source.log"
+    },
+    {
+      "name": "lock",
+      "ok": true,
+      "status": 0,
+      "error": null,
+      "log": ".audit-big-pass-171-lock.log"
+    }
+  ],
+  "passed": 27,
+  "failed": null
+}

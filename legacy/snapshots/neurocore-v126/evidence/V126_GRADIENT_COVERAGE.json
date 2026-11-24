@@ -1,0 +1,9 @@
+{
+  "loss": 2.717768907546997,
+  "trainable_tensors": 61,
+  "finite_nonzero_grad_tensors": 61,
+  "tensor_fraction": 1.0,
+  "trainable_elements": 69137,
+  "finite_nonzero_grad_elements": 69137,
+  "element_fraction": 1.0
+}

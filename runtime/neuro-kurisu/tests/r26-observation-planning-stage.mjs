@@ -1,0 +1,24 @@
+import assert from 'node:assert/strict';
+import { OrganismCore } from '../src/organism/core/OrganismCore.ts';
+import { MemoryStateStore } from '../src/organism/persistence/MemoryStateStore.ts';
+import { migratePersistedOrganism } from '../src/organism/persistence/StateMigrations.ts';
+
+const store=new MemoryStateStore();
+const core=new OrganismCore(store,{performanceProfile:'mobile',cycleResultMode:'operational'});
+await core.init();
+await core.observe({text:'planning-stage smoke',worldContext:{location:'termux-host',objects:[{label:'phone'}],events:[]},novelty:.55},'operational');
+const status=core.operationalStatusSnapshot();
+const plan=core.cognitiveExecutionPlanSnapshot();
+const projection=core.persistenceProjectionSnapshot();
+assert.equal(status.tick,1);
+assert.equal(plan.tick,1);
+assert.ok(Object.values(plan.run).some(Boolean));
+assert.ok(projection.revisionTokens);
+await core.flush();
+const persisted=await store.load();
+assert.ok(persisted?.system?.neuralSubstrateBackend?.canonical);
+assert.ok(persisted?.system?.neuralSubstrateBackend?.mlstmShadow);
+const migrated=migratePersistedOrganism(persisted);
+assert.deepEqual(migrated.system.neuralSubstrateBackend,persisted.system.neuralSubstrateBackend);
+console.log(JSON.stringify({pass:true,tick:status.tick,executionMode:plan.mode,revisionTokenKeys:Object.keys(projection.revisionTokens.tokens??{}).length,migrationPreservedNeuralBackend:Boolean(migrated.system.neuralSubstrateBackend)}));
+process.exit(0);

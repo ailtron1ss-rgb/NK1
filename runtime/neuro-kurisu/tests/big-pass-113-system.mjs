@@ -1,0 +1,15 @@
+import assert from 'node:assert/strict';
+import { OrganismRuntime } from '../src/organism/core/OrganismRuntime.ts';
+import { FileStateStore } from '../src/organism/persistence/FileStateStore.ts';
+import { rm, readFile } from 'node:fs/promises';
+import { ORGANISM_STATE_SCHEMA } from '../src/organism/persistence/StateMigrations.ts';
+const dir='/tmp/neuro-kurisu-big-pass-113'; await rm(dir,{recursive:true,force:true});
+const stateFile=`${dir}/organism.json`; const worldStateFile=`${dir}/world.json`;
+const store=new FileStateStore(stateFile); const runtime=new OrganismRuntime({stateFile,worldStateFile,stateStore:store,enableLanguage:false}); await runtime.init();
+let last;
+for(let i=0;i<16;i++) last=await runtime.step(i%5===0?'check state':'');
+const alloc=runtime.core.resourceAllocationSnapshot(); const substrate=runtime.core.unifiedCognitiveSubstrateSnapshot();
+assert.equal(last?.cycle.state.tick,16); assert.equal(substrate.cycles,16); assert.ok(alloc.cycles>=16); assert.ok(substrate.coupling.selfWorld01>=0); await runtime.core.flush();
+const saved=JSON.parse(await readFile(stateFile,'utf8')); assert.equal(saved.system.schemaVersion,ORGANISM_STATE_SCHEMA); assert.ok(saved.system.resourceAllocation); assert.ok(saved.system.unifiedCognitiveSubstrate);
+const rawWorld=JSON.parse(await readFile(worldStateFile,'utf8')); assert.ok(Array.isArray(rawWorld.transitions));
+console.log('BIG_PASS_113_SYSTEM=PASS',JSON.stringify({tick:last.cycle.state.tick,allocatorCycles:alloc.cycles,capacity:Number(alloc.computeCapacity01.toFixed(3)),substrateCycles:substrate.cycles,selfWorld:Number(substrate.coupling.selfWorld01.toFixed(3)),savedBytes:(await readFile(stateFile)).byteLength,worldTransitions:rawWorld.transitions.length}));

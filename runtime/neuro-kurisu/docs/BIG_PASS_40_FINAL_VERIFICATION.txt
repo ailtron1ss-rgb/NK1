@@ -1,0 +1,36 @@
+NEURO-KURISU 34.9.0 — BIG PASS 40 FINAL VERIFICATION
+Date: 2026-09-05
+
+PASS:
+TYPECHECK
+BIG_PASS_40_SPINE
+BIG_PASS_39 suite
+P64_P65_INTEGRATION
+P67_PROJECT_EVIDENCE
+P74_P77_INTEGRATION
+CLEAN_RESTART_PERSISTENCE
+MEMORY_DEDUP
+OPERATIONAL_HARDENING
+P80_P82_RUNTIME_E2E (30s window)
+CLEAN_ARCHITECTURE
+FORENSICS
+SOURCE_HYGIENE
+SOURCE_TRUTH
+RELEASE_SOURCE
+ARCHIVE_MANIFEST
+
+OPEN / TIME-LIMITED:
+LONG_HORIZON_OPERATIONAL_250 — timeout in 20s verification window
+
+New integration:
+projectCompleted=1
+projectNext=repeat
+independentEvidence=2
+horizonVersion=2
+ensemble=0.6714
+winner=strong
+
+First-audit weighted implementation: 74%
+Overall engineering readiness estimate: 72%
+Previous-plan follow-through: 97%
+BIG_PASS_40 machine checklist: 100%

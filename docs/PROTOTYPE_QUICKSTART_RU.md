@@ -1,0 +1,92 @@
+# Быстрый запуск рабочего прототипа NeuroCore / NK1
+
+Этот документ описывает один воспроизводимый локальный запуск текущей исходной ветки. Он не означает, что опубликованный Release ZIP уже синхронизирован с исходниками.
+
+## Требования
+
+- Node.js **24.x** — закреплён в корневом `.nvmrc`.
+- npm **10.8.0 или новее**.
+- Python **3.11.x** — закреплён в `.python-version`.
+- Git и доступ к npm registry для первой установки зависимостей.
+- Свободные локальные TCP-порты **8080, 8081, 3310, 8765**.
+
+Скрипты проверяют закреплённые версии до установки/запуска. Не следует обходить проверку другой версией Node/Python: она нужна, чтобы одинаковый исходный код запускался в ожидаемой среде.
+
+## Первый запуск и обычный запуск
+
+Из корня репозитория:
+
+```bash
+npm run quickstart
+```
+
+Команда выполняет следующие операции в указанном порядке:
+
+1. Проверяет версии Node/npm/Python по `.nvmrc` и `.python-version`.
+2. Проверяет наличие `node_modules` в обоих workspace; если отсутствует хотя бы один, запускает существующий `npm run install:all` с lockfile-based `npm ci`.
+3. Собирает production UI через `npm run build`. Локальная сборка без `DATABASE_URL` пропускает PostgreSQL deploy migration; локальный PGLite bootstrap остаётся владельцем локальной схемы.
+4. Запускает `npm run doctor`.
+5. Поднимает organism runtime, research bridge, UI preview и gateway поочерёдно, ожидая успешный health-check каждого компонента.
+
+При последующих запусках уже существующие `node_modules` сохраняются: зависимости не переустанавливаются автоматически, но UI пересобирается для актуальности исходников.
+
+## Development mode
+
+Для разработки без production-сборки:
+
+```bash
+npm run dev
+```
+
+Development supervisor использует тот же проверяемый runtime entrypoint, что и production supervisor. Он проверяет закреплённые версии инструментов, наличие зависимостей, свободные порты и затем последовательно запускает organism runtime, research bridge и Vite dev server. Перед выводом сообщения о готовности он ждёт `ready: true` от организма и успешные HTTP-ответы от остальных компонентов. Vite напрямую проксирует `/api/organism` и `/api/research`, поэтому отдельный gateway в development-режиме не нужен.
+
+После сообщения `NeuroCore development prototype is ready`:
+
+- UI: `http://127.0.0.1:8080/`
+- Runtime health: `http://127.0.0.1:3310/health`
+- Research status: `http://127.0.0.1:8765/api/research/status`
+
+Остановить все процессы: **Ctrl+C** в том же терминале. При неожиданном завершении одного сервиса supervisor останавливает остальные.
+
+## Адреса
+
+После появления сообщения `NeuroCore prototype is ready`:
+
+| Компонент | Адрес |
+|---|---|
+| Основной интерфейс через gateway | http://127.0.0.1:8080/ |
+| Runtime health | http://127.0.0.1:3310/health |
+| Research status | http://127.0.0.1:8765/api/research/status |
+
+Остановить все процессы: **Ctrl+C** в том же терминале. Gateway не запускается, пока runtime, research bridge и UI не ответили успешно.
+
+## Запуск уже собранной версии
+
+Если зависимости установлены и production bundle уже существует:
+
+```bash
+npm run start:prebuilt
+```
+
+Эта команда ничего не устанавливает и не пересобирает. Она завершится с понятной ошибкой, если требуемых workspace-зависимостей или Nitro build artifact `app/.vercel/output/nitro.json` нет. TanStack Start рендерит приложение через Nitro-сервер, поэтому готовность проверяется по manifest сборки, а не по статическому `index.html`.
+
+## Диагностика
+
+```bash
+npm run doctor
+npm run test:startup
+npm run install:all
+npm run build
+```
+
+- **Node.js version mismatch** — переключитесь на Node 24.x.
+- **Python version mismatch** — переключитесь на Python 3.11.x и убедитесь, что команда `python3` указывает именно на него.
+- **Port already in use** — остановите существующий процесс на указанном порту; запуск не будет подключаться к чужому процессу.
+- **UI bundle missing** — выполните `npm run build` или используйте `npm run quickstart`.
+- **npm registry/DNS failure** — восстановите сетевой доступ к registry и повторите `npm run install:all`.
+
+Файл состояния runtime: `.super-state/organism/`. Не удаляйте его для обычного обновления: там находится постоянное состояние прототипа.
+
+## Границы готовности
+
+Успешный quickstart доказывает только запуск и доступность локальных сервисов. Он не подменяет проверку реальной модели Курису, наличия лицензированного VRM/GLB, подключения локальной LLM, работы микрофона/голоса на Android, длительного soak-теста и опубликованного Release ZIP. Research bridge может запустить HTTP-обвязку без тяжёлых исследовательских зависимостей; отдельные torch/deep-learning probes требуют собственных установленных пакетов.

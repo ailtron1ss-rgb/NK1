@@ -1,0 +1,41 @@
+# Changelog — 2026-10-06
+
+## SUPER internal optimization / integration hardening
+
+- Restored the complete original Grok Workspace `.grok` reference/skills tree in `app/.grok`.
+- Reworked canonical UI normalization to remove synthetic zero-filled inner-world and empty embedding projections.
+- Wired UI identity traits directly to canonical `neuralGerminalOrganismB270.traitValues`.
+- Replaced the Live2D error-state portrait label with an explicit unavailable state; no procedural avatar fallback remains.
+- Renamed legacy outfit logic as visual-profile compatibility and restricted it to the 32 real sprite assets.
+- Removed an unreachable duplicate `sum3` symbolic expert branch.
+- Added repeatable inventory/asset-audit tooling and refreshed integration/version contracts.
+- Release excludes generated runtime state, caches, bytecode and dependency trees.
+
+# Changelog — 2026-10-05
+
+## SUPER merge
+
+- Established Neuro-Kurisu 35.40.0 as the single canonical writable organism runtime.
+- Converted the Grok Workspace browser organism into archived reference code; the UI now consumes canonical runtime state over HTTP.
+- Added canonical `/api/organism/ui-snapshot` integration and backend-driven chat state.
+- Added Live2D messaging/embodiment synchronization and local vendor-first loader with CDN fallback.
+- Integrated 32 Kurisu v9 sprite frames plus the v9 sprite resolver/outfit catalog and v56 crossfade presentation pattern.
+- Reworked Labs to show canonical semantic-world metrics rather than maintain a second browser brain.
+- Added P33 identity trait display to the HUD.
+- Added a research bridge for NeuroCore V143, NOMEGA Pass20 and DeepCode v21.
+- Added ownership and integration manifests plus branch comparison evidence.
+- Fixed P38 replication-consistency semantics in Neuro-Kurisu.
+- Fixed DeepCode RSSM reshape, Option-Critic batch shape, and BYOL burn-in/action sequence alignment.
+- Fixed DeepCode gradient audit timing so gradients are measured before optimizer clearing.
+- Added `app/.grok/app-env.json` to restore the Workspace's documented auth-off template contract without introducing secrets.
+- Preserved uploaded source archives under `legacy/input-archives/` for provenance.
+
+## Validation
+
+- Neuro-Kurisu runtime typecheck: PASS.
+- Neuro-Kurisu smoke/server/P34/P25/P26/P38 and core-ownership audits: PASS.
+- NOMEGA selected Pass20/consolidation/evidence tests: 16 PASS.
+- NeuroCore V143 tests: 8 PASS.
+- DeepCode 300-step CPU smoke: PASS.
+- Independent Workspace utility test subset: 189/197 PASS; the remaining failures depend on hidden `.grok/skills/og` reference fixtures that were not present in the source archive.
+- Full UI typecheck/build remains environment-blocked by unavailable `app/node_modules` in this execution environment.

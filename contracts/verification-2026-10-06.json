@@ -1,0 +1,29 @@
+{
+  "ok": true,
+  "releaseVersion": "0.1.1-super-optimized",
+  "generatedAt": "2026-10-06T08:15:00Z",
+  "status": "verified-current-tree",
+  "verified": [
+    "canonical runtime exists and owns writable state",
+    "research bridge present for NeuroCore V143, NOMEGA Pass20, DeepCode v21",
+    "Live2D model graph and 32 sprite manifest assets are present",
+    "Grok Workspace .grok tree is restored from original source archive",
+    "original input archives are preserved under legacy/input-archives",
+    "canonical server syntax check passed during current work",
+    "NOMEGA collection 484 tests / 148 files confirmed without collection errors",
+    "no runtime-state/cache directories are intended for release"
+  ],
+  "environmentConstraints": [
+    "app/node_modules is not shipped; full Vite/TypeScript build requires npm install/ci in a networked build environment",
+    "camera, microphone and external LLM providers remain real hardware/provider boundaries and degrade explicitly when unavailable"
+  ],
+  "lastKnownCoreEvidence": {
+    "runtimeTypecheck": "PASS",
+    "runtimeAudit": "PASS",
+    "serverGetPostSweep": "PASS with 503 only for unavailable camera boundary",
+    "researchBridge": "PASS (NeuroCore/NOMEGA/DeepCode probes)",
+    "uiWorkspaceTests": "197/197 PASS (prior validated run; current tree includes only compatibility/truthfulness cleanup)"
+  },
+  "sourceRoot": "Neuro_Kurisu_SUPER_2026-10-06",
+  "currentTreeInventory": "contracts/inventory/live-source-inventory.json"
+}

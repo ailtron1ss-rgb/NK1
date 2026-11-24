@@ -1,0 +1,25 @@
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+import { OrganismRuntime } from '../src/organism/core/OrganismRuntime.ts';
+import { MemoryStateStore } from '../src/organism/persistence/MemoryStateStore.ts';
+import { BoundedOperationalJournal } from '../src/organism/persistence/BoundedOperationalJournal.ts';
+
+const dir = await mkdtemp(path.join(tmpdir(), 'nk-dev-int-'));
+try {
+  const store = new MemoryStateStore();
+  const worldStore = new MemoryStateStore();
+  const runtime = new OrganismRuntime({ stateFile: path.join(dir, 'organism.json'), stateStore: store, worldStateFile: path.join(dir, 'world.json'), worldStateStore: worldStore, journal: new BoundedOperationalJournal(), enableLanguage: false });
+  await runtime.init();
+  await runtime.step('Почему ты решила проверить эту гипотезу?');
+  await runtime.step('Спасибо, это было полезно.');
+  const snap = runtime.core.snapshot();
+  if (snap.facets.advanced.unifiedMemory.encodeCount < 1) throw new Error('unified-memory did not encode user context');
+  if (snap.facets.advanced.unifiedMemory.beliefs.length < 1) throw new Error('belief layer missing');
+  if (snap.facets.advanced.socialDevelopment.persons.length < 1) throw new Error('social person missing');
+  if (snap.facets.advanced.socialDevelopment.predictions.length < 1) throw new Error('social prediction missing');
+  await runtime.stop();
+  console.log(`DEVELOPMENTAL_INTEGRATION=PASS memory=${snap.facets.advanced.unifiedMemory.beliefs.length} socialPredictions=${snap.facets.advanced.socialDevelopment.predictions.length}`);
+} finally {
+  await rm(dir, { recursive: true, force: true });
+}

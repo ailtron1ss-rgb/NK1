@@ -1,0 +1,58 @@
+{
+  "version": "34.83.0",
+  "stateSchema": 118,
+  "bigPass": 109,
+  "focus": "evidence-gated autonomous development; sandbox preview isolation; external developmental evidence",
+  "metrics01to100": {
+    "autonomousDevelopmentArchitecture": 94,
+    "developmentEvidenceGate": 98,
+    "sandboxIsolation": 100,
+    "externalOutcomeIntegration": 92,
+    "delayedEvidenceRequirements": 94,
+    "contextDiversity": 94,
+    "uncertaintyQuantification": 94,
+    "promotionIdempotence": 100,
+    "coreIntegration": 99,
+    "persistence": 100,
+    "regressionCoverage": 100,
+    "epistemicProvenance": 100,
+    "mobileEfficiency": 94,
+    "engineeringReadiness": 96,
+    "realEmpiricalDevelopmentEvidence": 5,
+    "consciousnessMechanism": 20,
+    "consciousnessEvidence": 0
+  },
+  "planCompletion": {
+    "previousPassRecommendations": 100,
+    "pass109Scope": 100,
+    "selfAudit": 100,
+    "documentationAndReleaseIntegrity": 100
+  },
+  "scientificBoundary": "Synthetic tests validate mechanics only. Real developmental claims require externally observed outcomes; consciousness remains unproven.",
+  "verification": {
+    "typecheck": "PASS",
+    "developmentEvidence": "PASS",
+    "developmentMigration": "PASS",
+    "developmentCorePersistence": "PASS",
+    "developmentEvidenceAudit": "PASS",
+    "pass108Regression": "PASS",
+    "pass108Migration": "PASS",
+    "pass108Core": "PASS",
+    "architecture": "PASS",
+    "releaseContract": "PASS",
+    "integrity": "PASS",
+    "hygiene": "PASS",
+    "forensics": "PASS",
+    "coreOwnership": "PASS",
+    "releaseSource": "PASS",
+    "doctor": "PASS",
+    "mobileHorizon1000": "PASS ratio=0.856 p95=17.67ms",
+    "operationalHorizon500": "PASS ratio=1.120 p95=45.35ms",
+    "operationalHorizon1000": "PASS ratio=1.441 steadyWarm=31.35ms p95=54.07ms",
+    "archiveManifest": "PASS:1423"
+  },
+  "knownNonPass": {
+    "aggregateLongRun": "NOT_RUN_TO_COMPLETION_AS_SINGLE_CHAIN",
+    "reason": "Composite command exceeded wall-clock budget; each required long-run test passes independently."
+  }
+}

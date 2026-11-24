@@ -1,0 +1,1386 @@
+{
+  "pass": 180,
+  "createdAt": "2026-09-10T17:34:37.205Z",
+  "node": "v22.16.0",
+  "platform": "linux",
+  "arch": "x64",
+  "sourceFiles": 275,
+  "sourceManifestDigest": "1f51c4980d78286c835e2f0b0214dc5071455ef9ceaa1c8f9d6655144457b27b",
+  "files": [
+    {
+      "path": "package-lock.json",
+      "bytes": 1039,
+      "sha256": "f10d62e3dd76698a76a57487619a0808f639a67daaeb18c435185e87b8afa7a5"
+    },
+    {
+      "path": "package.json",
+      "bytes": 83066,
+      "sha256": "a714ab37a47289d76895263e354ca9910f7f3a737cecd1adc6d3888a530346dc"
+    },
+    {
+      "path": "scripts/audit-function-reality-180.mjs",
+      "bytes": 3606,
+      "sha256": "345f273df3b665611502288ac6d6e220317ef5fe22928447bd60b6499b3b6d9d"
+    },
+    {
+      "path": "scripts/build-release-freeze-180.mjs",
+      "bytes": 1842,
+      "sha256": "870fcea57fcef633c9cde63e066dfe450d04adf052fd8652e0e7310492ea0fee"
+    },
+    {
+      "path": "src/organism/body/AndroidEmbodimentBridge.ts",
+      "bytes": 10444,
+      "sha256": "1f531d2ff10f526f876a4ac481a125e5cd467a6d5f94a8ccfd0cb7f60e4f2cfb"
+    },
+    {
+      "path": "src/organism/body/CameraEvidenceProcessor.ts",
+      "bytes": 4075,
+      "sha256": "8b32d02f621e25723326808cc89e62214567b45fb8b0b94b8132e330838b26e6"
+    },
+    {
+      "path": "src/organism/body/EmbodiedBody.ts",
+      "bytes": 4885,
+      "sha256": "8e0e9e26c3341dd85f3e03c737acd2aaa4aaa6e0fb1c5cff6dc7205fe26f3bf4"
+    },
+    {
+      "path": "src/organism/body/EmbodimentRuntime.ts",
+      "bytes": 7935,
+      "sha256": "30b0c812caf5cda6cd2fff9a8139dfca72ce2448d63a7ea4d710ca6550f55362"
+    },
+    {
+      "path": "src/organism/body/GeminiVisionSemanticBackend.ts",
+      "bytes": 4987,
+      "sha256": "dd3c1886fc39097bf060fdb4651b79bd9d4ec307d99ddd2a288522bff618bd63"
+    },
+    {
+      "path": "src/organism/body/MultimodalPerception.ts",
+      "bytes": 3094,
+      "sha256": "7321754c832d86ca7c50bf9a9980267d2675075b68d47693667db3127eee2fac"
+    },
+    {
+      "path": "src/organism/body/MultimodalSituationModel.ts",
+      "bytes": 2995,
+      "sha256": "107137caf3aa9b6629af4f11c4df7e4c3dce36f06d233fd1bb1accab75290197"
+    },
+    {
+      "path": "src/organism/body/P35SemanticWorldBody.ts",
+      "bytes": 14739,
+      "sha256": "ac35352d765494205f6b3aef70dd27db3bf4baf822d044a981be21e075353cc5"
+    },
+    {
+      "path": "src/organism/body/P37EmbodiedSensorium.ts",
+      "bytes": 18743,
+      "sha256": "83585d0a15d56df7ba421c960563966b713fb2178deed737053ecb13bc009943"
+    },
+    {
+      "path": "src/organism/body/PerceptionRouter.ts",
+      "bytes": 1528,
+      "sha256": "769f2f7cac8ae075cffe83659a35db8fc6bf5d27ae6fab8d112591cd25df1af3"
+    },
+    {
+      "path": "src/organism/body/PerceptualEvidenceCompiler.ts",
+      "bytes": 6785,
+      "sha256": "6722da9b2b6c19b97f574462601735da18466c5ca11ad1a18e0a833b7330dee9"
+    },
+    {
+      "path": "src/organism/body/VisionSemanticBackend.ts",
+      "bytes": 837,
+      "sha256": "456bd2db7db64c2745a616687688ea75e68b03a87809412c10d4b9fd4cd0c3c0"
+    },
+    {
+      "path": "src/organism/body/VoiceEmbodiment.ts",
+      "bytes": 4933,
+      "sha256": "82aa83ef2d0e3d8a2019a7f41e696459c7783fa7a9262a9d02611d1e1a017ee0"
+    },
+    {
+      "path": "src/organism/cognition/AttentionSchema.ts",
+      "bytes": 582,
+      "sha256": "8bf9b2e637e5bde0f1bd59ccfeea24b1e1700d78bc3b7316902c773704bd584d"
+    },
+    {
+      "path": "src/organism/cognition/BoredomExplorer.ts",
+      "bytes": 1425,
+      "sha256": "9faef84d127c9c2d4d270f33c1de90fd15f72f669007bd5e4476b7269fa1f68e"
+    },
+    {
+      "path": "src/organism/cognition/CognitiveBudgetManager.ts",
+      "bytes": 5348,
+      "sha256": "8ece3a3ce3b12f3c590a840a2ca5b1b0aaff7cddd84e6e0a1550ee22cfe1d317"
+    },
+    {
+      "path": "src/organism/cognition/CognitiveField.ts",
+      "bytes": 4777,
+      "sha256": "2fec4d35eb614e99f4dd93c71ffa90e3780756227f2f7d5271a10d99f184f6f8"
+    },
+    {
+      "path": "src/organism/cognition/CognitiveImmuneSystem.ts",
+      "bytes": 5013,
+      "sha256": "87b1372af2321dc46782f1d770797a4a51a0a45a81b762bdf3e3d8e1ec140607"
+    },
+    {
+      "path": "src/organism/cognition/CognitiveNetworkBus.ts",
+      "bytes": 3621,
+      "sha256": "f6486167910f13f38a5744c7f88266be31e782c2a88eb3c5325654d4eb85c830"
+    },
+    {
+      "path": "src/organism/cognition/CognitivePressureField.ts",
+      "bytes": 6080,
+      "sha256": "b83fed88d5ad9ee17c53d4c287f3694253295cc011e1849bd2de2129cb340949"
+    },
+    {
+      "path": "src/organism/cognition/ConsciousnessEvidenceLedger.ts",
+      "bytes": 4685,
+      "sha256": "99afa257b3e350d1f038a371da61692a2c24ffbc293ea0649dd7744f7e2218d2"
+    },
+    {
+      "path": "src/organism/cognition/ContradictionReservoir.ts",
+      "bytes": 2340,
+      "sha256": "039617e4785b81eb80eabab18d90368a5abc44d2e53e6bd7453a1e8dcc385175"
+    },
+    {
+      "path": "src/organism/cognition/IdentityContinuity.ts",
+      "bytes": 3886,
+      "sha256": "b6eabc53745e0bc9c875182e89c890546f484b335dbe0725c206fb37fed85934"
+    },
+    {
+      "path": "src/organism/cognition/IntrinsicExperimentGenerator.ts",
+      "bytes": 1315,
+      "sha256": "dace2e792e7afdbaba570f0f446de6744223b042e997eba740b2cc7f8911aa1b"
+    },
+    {
+      "path": "src/organism/cognition/IntrinsicMotivationEngine.ts",
+      "bytes": 4088,
+      "sha256": "8abfbcec765eb98ad4928bacbe7548b8c1aa9487375c10fbd2a92089fc982253"
+    },
+    {
+      "path": "src/organism/cognition/MetaCognitiveMonitor.ts",
+      "bytes": 1830,
+      "sha256": "746de03dcb3d7249c4634f1be104a3d1519e2dae8f634fe35aed5fe54833f9a8"
+    },
+    {
+      "path": "src/organism/cognition/NeuromodulationSystem.ts",
+      "bytes": 2188,
+      "sha256": "efe5b80cd698fc08fa31606fa4ddc1222d5a20e4e09a7af18ab404ce567da8a2"
+    },
+    {
+      "path": "src/organism/cognition/OfflineConsolidation.ts",
+      "bytes": 3422,
+      "sha256": "e5875ea3b4a86e3d580e60c420aed7337038eb04b755ca0c2037cdf9c7f2a510"
+    },
+    {
+      "path": "src/organism/cognition/P27NeuralWorldFoundation.ts",
+      "bytes": 14202,
+      "sha256": "0426e1c93ef424bd9290f1c1d26489f4886ada1f87416ce0437b379082ca2cb3"
+    },
+    {
+      "path": "src/organism/cognition/P31FunctionalConsciousness.ts",
+      "bytes": 15791,
+      "sha256": "f381ee21b39ff29cf98571388334e25c315e8008ccc324af14a0b30a3a14d28b"
+    },
+    {
+      "path": "src/organism/cognition/P32CausalSelfModel.ts",
+      "bytes": 11419,
+      "sha256": "e356d907e0248acaa6c595429dba46b8eff6b6fd0569114025b2d16a554391f0"
+    },
+    {
+      "path": "src/organism/cognition/P33PersonhoodCore.ts",
+      "bytes": 12792,
+      "sha256": "dc6ae47320011e53e9989d619a14bfacfee102fcb42b22331ce25424b3c30e78"
+    },
+    {
+      "path": "src/organism/cognition/P34CausalPersonhood.ts",
+      "bytes": 17382,
+      "sha256": "79a100629888d1a97dec4bb37e7529f570c8c80a7589405f8cb0cad9e5535f13"
+    },
+    {
+      "path": "src/organism/cognition/P40SemanticIntelligence.ts",
+      "bytes": 8393,
+      "sha256": "8895dff0ef6dd5cce179a00369283dcf4704b028f5aec9c7f43f600af20a5248"
+    },
+    {
+      "path": "src/organism/cognition/P41NativePerception.ts",
+      "bytes": 11264,
+      "sha256": "a639a92a37434874a4a0bb8c60159779c5850ccb22d4d921339db1e928a3f99d"
+    },
+    {
+      "path": "src/organism/cognition/P41SemanticPerception.ts",
+      "bytes": 18253,
+      "sha256": "da109f426ec7e1db56f727f25b53d2f9e918ee701fd34b739cbf9b81548a1b1a"
+    },
+    {
+      "path": "src/organism/cognition/P41TemporalPerceptionModel.ts",
+      "bytes": 5576,
+      "sha256": "531254da83e2439706ff1739659418b75835e3a8a7a20e260c63928e40a414a6"
+    },
+    {
+      "path": "src/organism/cognition/P42UnifiedEmbodiedExperience.ts",
+      "bytes": 5543,
+      "sha256": "d5081c9dac0b01d3ddcf94494b37740cc8da011189c2803e3aaa6e146f29c710"
+    },
+    {
+      "path": "src/organism/cognition/P43EmbodiedImageryWorkspace.ts",
+      "bytes": 4110,
+      "sha256": "5749d2c85a4f5206fa1873714ac2735a0f80caceaef6394d8a5087f13c508dbd"
+    },
+    {
+      "path": "src/organism/cognition/P48FunctionalAwarenessCore.ts",
+      "bytes": 8415,
+      "sha256": "16a160eac3d62c5127184a7e1325e3f5242d9480f50fff916c47e81e433a1d70"
+    },
+    {
+      "path": "src/organism/cognition/P58CognitiveKernel.ts",
+      "bytes": 5097,
+      "sha256": "ebe43875e9a5bdc85677ccb3b0fa41af4aa17c3a07c4d8099dac32eabf6ff3f6"
+    },
+    {
+      "path": "src/organism/cognition/P61IntegratedMindKernel.ts",
+      "bytes": 7469,
+      "sha256": "0703fb192bb34dfc2763e8694981f29edb8697dabf7b5da6fa773ab6d41469f1"
+    },
+    {
+      "path": "src/organism/cognition/P64IntegratedOrganismDynamics.ts",
+      "bytes": 13025,
+      "sha256": "25df2148f74ee58ea25d085f00617b2a6eb5bc95ecbb6527f2cced8317d70a11"
+    },
+    {
+      "path": "src/organism/cognition/P66InteroceptiveHomeostasis.ts",
+      "bytes": 5265,
+      "sha256": "c67fb339b6fbf39e7382b05e811d27976ff6044c3a21a7aaad1c8b7918f72407"
+    },
+    {
+      "path": "src/organism/cognition/P69ConstitutionalArbiter.ts",
+      "bytes": 5947,
+      "sha256": "94da49f9151e8696d8a1b0afc6283bad18d0c0765ea83bb2174f895be17422d9"
+    },
+    {
+      "path": "src/organism/cognition/P71SelfConsistencyModel.ts",
+      "bytes": 3000,
+      "sha256": "b96027fae4731c752dae07258ac00b53dc4fc1ecefcc7fb0262e35a0e9c96f95"
+    },
+    {
+      "path": "src/organism/cognition/P74IntegratedOrganismKernel.ts",
+      "bytes": 5514,
+      "sha256": "5f4fbe460f17f509128f67a82e97ec9b245a27771ce9a42d055ca485c8956b30"
+    },
+    {
+      "path": "src/organism/cognition/P80UnifiedSelfState.ts",
+      "bytes": 3912,
+      "sha256": "f008e5158fd579e48d58fa038d735313d53639333c3d33525fc22776e97454f8"
+    },
+    {
+      "path": "src/organism/cognition/P81PredictiveAttention.ts",
+      "bytes": 2902,
+      "sha256": "9dc2644b3fc6383dd16c83df99b36552312ae603dc7b4781bf0cf9cd5e85a572"
+    },
+    {
+      "path": "src/organism/cognition/PerceptionEngine.ts",
+      "bytes": 8636,
+      "sha256": "17a67a7108ae6f281f3892a1e91c350bac0c764bd2c483c25837ae74c3d59b6a"
+    },
+    {
+      "path": "src/organism/cognition/PerceptualContinuityModel.ts",
+      "bytes": 2440,
+      "sha256": "64d621f30cb7245cb86e609f76c644766349cb33ad4039124810bb2697ea4472"
+    },
+    {
+      "path": "src/organism/cognition/PerceptualEpistemicGraph.ts",
+      "bytes": 2378,
+      "sha256": "64292323c106b9163952cca02465f25f9ca5419425acaaaff1e68293704c5583"
+    },
+    {
+      "path": "src/organism/cognition/RecurrentWorkspaceV2.ts",
+      "bytes": 2978,
+      "sha256": "7b4a116aff72e59ad9f6ae12ee7aa04214bc82730867a6c3fd20c59f224b5a27"
+    },
+    {
+      "path": "src/organism/cognition/SelfAuthorship.ts",
+      "bytes": 4057,
+      "sha256": "237d5af4234188ece999648a949cc5c4968a81b1a652d538ebb448e070792da9"
+    },
+    {
+      "path": "src/organism/cognition/SelfModelV2.ts",
+      "bytes": 1786,
+      "sha256": "897e99cd5ddd4b27f336a836f0955abee9a7aae5b667bb45bf366ec0167ec1d3"
+    },
+    {
+      "path": "src/organism/cognition/SensorimotorLoop.ts",
+      "bytes": 2336,
+      "sha256": "fa3f27fc58f0df85139a1bbe78f3dc2141823a68916c6aeeb9d3d862f2f228ca"
+    },
+    {
+      "path": "src/organism/cognition/SocialMindKernel.ts",
+      "bytes": 18561,
+      "sha256": "380ccd698de0690c625cd35b03f913fd35b23bb5ba12a569f940151369744689"
+    },
+    {
+      "path": "src/organism/cognition/SocialWorldModel.ts",
+      "bytes": 1508,
+      "sha256": "2e44b3a2281af3ee1aa52fdc62e6cc7e9d8402fffd6a4f3e71e9f7537c54ea15"
+    },
+    {
+      "path": "src/organism/cognition/SubjectContinuityFabric.ts",
+      "bytes": 5723,
+      "sha256": "037c9fd2ab88df290e4ef8d89b681d6658a10d7a230ebb24e201e120ee8f15f4"
+    },
+    {
+      "path": "src/organism/cognition/ValuePlasticity.ts",
+      "bytes": 1699,
+      "sha256": "6050464d529ba8677df21a3a5cc2f1dc40e31f3585598b835136c3668f1c3f4f"
+    },
+    {
+      "path": "src/organism/cognition/WorkspaceIgnitionMetrics.ts",
+      "bytes": 1229,
+      "sha256": "2be2c007cfb3cc87c7ea54657e5846f6109541a61629a85e79e74b0857eaa1f6"
+    },
+    {
+      "path": "src/organism/cognition/evolution/AgencyDeliberationEngine.ts",
+      "bytes": 2369,
+      "sha256": "78d425b3d2d43f16e15fd3c85dfb25f8d1b8d2b6baa7f4909bdfc407b9f8975a"
+    },
+    {
+      "path": "src/organism/cognition/evolution/AutobiographicalNarrative.ts",
+      "bytes": 2694,
+      "sha256": "dbeac2897ac02faa447852bcccb07579c9b34c1d60efb04729a70109069000d9"
+    },
+    {
+      "path": "src/organism/cognition/evolution/DevelopmentalAttractorField.ts",
+      "bytes": 7685,
+      "sha256": "984c2031d4f5f73cfd1e02b3c8ce10508cbbe0127c6c48e87ab3891cdf97dd9c"
+    },
+    {
+      "path": "src/organism/cognition/evolution/DevelopmentalIdentityFabric.ts",
+      "bytes": 6612,
+      "sha256": "72ceb548cc7c8e4c49f0f26d2aba13e0a54b9c94589621a47e8e81eb4bae7e83"
+    },
+    {
+      "path": "src/organism/cognition/evolution/FutureSelfModel.ts",
+      "bytes": 7282,
+      "sha256": "ba71b70e53a1d4645e3d110a732f92700b3785d5ad76b9d4a2b6789a421b67bf"
+    },
+    {
+      "path": "src/organism/cognition/evolution/IdentityTrajectoryEngine.ts",
+      "bytes": 10527,
+      "sha256": "f7ff3e15189d86a2a6a1223a985b9f9d6799872ccc8188db622eaff9d7d631c2"
+    },
+    {
+      "path": "src/organism/cognition/evolution/MotiveEcologyFabric.ts",
+      "bytes": 5321,
+      "sha256": "240d0526558971ac96e1d1bcd2807580aee46eb7dd07130b8752872ae6ba41e4"
+    },
+    {
+      "path": "src/organism/cognition/evolution/SelfGovernanceEngine.ts",
+      "bytes": 8799,
+      "sha256": "96b4bf954844d77303ba506500f70edc83789a52853950c168611c38077157d6"
+    },
+    {
+      "path": "src/organism/cognition/evolution/SelfProjectEngine.ts",
+      "bytes": 16315,
+      "sha256": "d9c7c3fbe66b162806623c98f1e3b94232e05031fddd2e06e45997e9319c656e"
+    },
+    {
+      "path": "src/organism/cognition/evolution/ValueEvolutionEngine.ts",
+      "bytes": 6704,
+      "sha256": "4205761b8a6038958e15853a5c78e8991303af832bfbcbc38f472ec606f7c481"
+    },
+    {
+      "path": "src/organism/cognition/evolution/index.ts",
+      "bytes": 326,
+      "sha256": "aaea35ed1df7e720408957fa04a9a0e0a75666888124c8fe0bbabe6f1101e8cc"
+    },
+    {
+      "path": "src/organism/cognition/index.ts",
+      "bytes": 49,
+      "sha256": "3011c1e3faf1790d0a7789845d26c0f054f8bea50b5fd3f5264f02bb961fc853"
+    },
+    {
+      "path": "src/organism/core/AgencySubsystemRuntime.ts",
+      "bytes": 3130,
+      "sha256": "b85ce81c2f5256aedcc1f48411a0864a0be2550fca11a16b89b3c1d97c203bcd"
+    },
+    {
+      "path": "src/organism/core/CognitiveDependencyGraph.ts",
+      "bytes": 2480,
+      "sha256": "9ddaeb77d1c2af6810d0105dcf38fd5a011a34df8e042dbfee87bdc90836992d"
+    },
+    {
+      "path": "src/organism/core/CognitiveExecutionPlanner.ts",
+      "bytes": 12050,
+      "sha256": "6c6472fb710d3d71a680d5b8dd4b6d8aa4367efffeedf7bb7af86330cc5e1acd"
+    },
+    {
+      "path": "src/organism/core/CognitiveFrame.ts",
+      "bytes": 6593,
+      "sha256": "8590ab65293f043083adb150f725a580acb44c3e53da1e1645b1980176d53847"
+    },
+    {
+      "path": "src/organism/core/CognitiveKernelCoordinator.ts",
+      "bytes": 2423,
+      "sha256": "bce5044735a65bd6b6580c487b17eb2642c1e8a84f09d1fe2bcb7efad243ca9e"
+    },
+    {
+      "path": "src/organism/core/CognitiveSubsystemFacade.ts",
+      "bytes": 3477,
+      "sha256": "61beb5b400d51f22cdc54b82314526ea151c9da286a59a21ab786ef85f6d2c04"
+    },
+    {
+      "path": "src/organism/core/CognitiveSubsystemPorts.ts",
+      "bytes": 5207,
+      "sha256": "1d8ad4cf16feb76b2770f3c92ad8479ec69a1b0bc0623902cd5aa02dbbc22aac"
+    },
+    {
+      "path": "src/organism/core/CognitiveSubsystemRegistry.ts",
+      "bytes": 5154,
+      "sha256": "2e738f8677b60367ba39715444f4ea95eb4058d2dc50156329c990fc9ad258df"
+    },
+    {
+      "path": "src/organism/core/EmbodimentSubsystemRuntime.ts",
+      "bytes": 4243,
+      "sha256": "36e70036cd258e9553d594677b73cb78cef65dfad0364aaed6b9ddb2d177a59a"
+    },
+    {
+      "path": "src/organism/core/EvidenceResearchSubsystemRuntime.ts",
+      "bytes": 5700,
+      "sha256": "bcbb5a889ba4d3de526d80780181c243414348b30c677aadaf6e986e7402486e"
+    },
+    {
+      "path": "src/organism/core/GovernanceSubsystemRuntime.ts",
+      "bytes": 2362,
+      "sha256": "97b98cd12c0690de791b34427cefaa1812dbfbd29a5f834c56bf5a73f6a00aed"
+    },
+    {
+      "path": "src/organism/core/MemorySubsystemRuntime.ts",
+      "bytes": 5020,
+      "sha256": "f796d173bcd8311f8016af7dbb704afb20185b902130003d04b0d6e68e6a184d"
+    },
+    {
+      "path": "src/organism/core/OrganismCore.ts",
+      "bytes": 477624,
+      "sha256": "337f41080e205e7af32dbccc3021214d1a5b40962438d1f1a3cdeb10fc2eedce"
+    },
+    {
+      "path": "src/organism/core/OrganismRuntime.ts",
+      "bytes": 43727,
+      "sha256": "7c4ef0cbf1fa1baa02afc72359bbafaa9a84c291a2b8b99a5ecbb16e654449c2"
+    },
+    {
+      "path": "src/organism/core/OrganismSystemContract.ts",
+      "bytes": 4776,
+      "sha256": "8b86d2cc40be2bcbbe3c234f04038e2dca564908959f9391edb2bccbd8f9513b"
+    },
+    {
+      "path": "src/organism/core/OrganismSystemFabric.ts",
+      "bytes": 7714,
+      "sha256": "5c9ce4a3b2a8c425a69e7a4932b633b21c42b6431ee6dff1e7195ef7f7c7941a"
+    },
+    {
+      "path": "src/organism/core/PersistenceProjectionCoordinator.ts",
+      "bytes": 29761,
+      "sha256": "64eacc855a415a94800abca9863ee8144353c6495501b7ceb99ebfd26a1e8ee4"
+    },
+    {
+      "path": "src/organism/core/SelfSubsystemRuntime.ts",
+      "bytes": 5362,
+      "sha256": "9ea6e04e331a1a81c8d0462101cf40d34c77902e7a20d81ddb99f252bf8af50a"
+    },
+    {
+      "path": "src/organism/core/SubsystemFlightRecorder.ts",
+      "bytes": 1768,
+      "sha256": "750a6d8b1cc78d31b1857a1ad8f8ee3851bb82566d4164b97aa1fc86463301c1"
+    },
+    {
+      "path": "src/organism/core/TemporalResolutionGovernor.ts",
+      "bytes": 3518,
+      "sha256": "4251896c439436bb0ac1eaa967443f22d40ee050ba0c22b99828df4a1777abd0"
+    },
+    {
+      "path": "src/organism/core/UnifiedCognitiveSubstrate.ts",
+      "bytes": 5520,
+      "sha256": "be1b71283d8fd876fbc1fcb4d09afa0649a9a7ea38051e369f2cbb6887fd0648"
+    },
+    {
+      "path": "src/organism/core/WorldContextNormalizer.ts",
+      "bytes": 1858,
+      "sha256": "c22bed2525489343c287c5759bf6d00e15d404bbd94dc07afef77a820d414641"
+    },
+    {
+      "path": "src/organism/core/WorldSubsystemRuntime.ts",
+      "bytes": 13872,
+      "sha256": "73094d271690d3061349bac2c3063de30373f12afbd2e6ff6abdde7ebd100af1"
+    },
+    {
+      "path": "src/organism/core/index.ts",
+      "bytes": 615,
+      "sha256": "9923649d12c0f8b26eede2c833fe9e466a626e6d8ee47e66c9ba221c80e1ff82"
+    },
+    {
+      "path": "src/organism/core/types.ts",
+      "bytes": 20418,
+      "sha256": "71d71a7249826913f0dffcc2887f18f247ca6d284935cd31ee4095ef7deb1ac1"
+    },
+    {
+      "path": "src/organism/developmental/CommitmentRepair.ts",
+      "bytes": 958,
+      "sha256": "b0b728bb772fddd5ff9d9e532d153fd3a00154a8eaeb07a7bd6374f74916a8ee"
+    },
+    {
+      "path": "src/organism/developmental/DevelopmentalForks.ts",
+      "bytes": 812,
+      "sha256": "40f9ff3b55bc0c89f54ce416fe525d8c4be1b1342893054bf0264004cb139261"
+    },
+    {
+      "path": "src/organism/developmental/DormantMemoryController.ts",
+      "bytes": 272,
+      "sha256": "e58816f5ad1e3a08951ddf739aa855cbdd4770bb489c0abbc6c29993dec041b2"
+    },
+    {
+      "path": "src/organism/developmental/FutureSimulator.ts",
+      "bytes": 1043,
+      "sha256": "14edfdbab38c40af3be2c05d723c436e2894430d212a860175511fa5570d1be7"
+    },
+    {
+      "path": "src/organism/developmental/LongTermSocialMind.ts",
+      "bytes": 1386,
+      "sha256": "2daaf283629b1f0409e6f9840a71e0d0c6724e1aea04807afba4029d5cd39afa"
+    },
+    {
+      "path": "src/organism/developmental/MemoryOS2.ts",
+      "bytes": 16847,
+      "sha256": "bf1b3d6cdf8505e84fc48960f4524c017e8893cdac2464a4acf2b4844b66b03f"
+    },
+    {
+      "path": "src/organism/developmental/MemorySubstrateCoordinator.ts",
+      "bytes": 4927,
+      "sha256": "a4a2f3939b8513c0ffc29a708e4992821bbaa6df172a244801d430337d017be9"
+    },
+    {
+      "path": "src/organism/developmental/MicroDreamEngine.ts",
+      "bytes": 843,
+      "sha256": "81f60510f46fbe41d1bb3ef2b1720b5b34b64afb39fdcafba99040364d1e8ea6"
+    },
+    {
+      "path": "src/organism/developmental/ModelSwitchContinuity.ts",
+      "bytes": 997,
+      "sha256": "c54ad0cd5851fe9b4d9f2fde817481e354f059b267622c023f4e0c317302b3dd"
+    },
+    {
+      "path": "src/organism/developmental/MultiHypothesisPersonality.ts",
+      "bytes": 7274,
+      "sha256": "dccb4ec09871b38b299d409ab850da7d3591c59cd4480275fce357fd97f852b4"
+    },
+    {
+      "path": "src/organism/developmental/P24WorldIdentityEngine.ts",
+      "bytes": 5595,
+      "sha256": "e237ce32a674cef8f315d72b12cf13fc1fe75a2b323b989dd17bce1c1b447732"
+    },
+    {
+      "path": "src/organism/developmental/P47TemporalMemoryMind.ts",
+      "bytes": 7655,
+      "sha256": "8bc20a11801710696ce1eccfab3feeb37822927388f85847272866e03be7a408"
+    },
+    {
+      "path": "src/organism/developmental/P49TemporalLifeEngine.ts",
+      "bytes": 9200,
+      "sha256": "1d980b1404f4ecaef326711f61350d5d9ab6c13f4a1ecd9dababf2b38dcb5dbb"
+    },
+    {
+      "path": "src/organism/developmental/P53DevelopmentalSelfModificationLab.ts",
+      "bytes": 9040,
+      "sha256": "b80e0a7552a3d1e6cc4ae5a03f446af26bc4194c13cbd6e560aa5e4b3d92f156"
+    },
+    {
+      "path": "src/organism/developmental/P54LongHorizonEvidence.ts",
+      "bytes": 2728,
+      "sha256": "b5124487fa353609e648e90a7ba5588e7cc5d5c94893cde06cdb7f4b732c60da"
+    },
+    {
+      "path": "src/organism/developmental/P55DevelopmentalForkUniverse.ts",
+      "bytes": 11596,
+      "sha256": "6ff14269f787ff0bf87cbe119c06a27b5d72fd0a1448619597c61ed2347b638d"
+    },
+    {
+      "path": "src/organism/developmental/P56IntegratedDevelopmentalMind.ts",
+      "bytes": 4665,
+      "sha256": "98188039097311171ae76e139316e06599f6d5fd1e6790332757d15c37148a06"
+    },
+    {
+      "path": "src/organism/developmental/P59MemoryOperatingSystem.ts",
+      "bytes": 3718,
+      "sha256": "a380570ed1a04054805e7c52af82eccb50b43498a353398409b3876e0039db8e"
+    },
+    {
+      "path": "src/organism/developmental/P63DevelopmentalOperatingSystem.ts",
+      "bytes": 6408,
+      "sha256": "ffbfae2598f25fd51f4cfe8bf420aa402e5ddafbb9e9a84b39f1d55b6d137873"
+    },
+    {
+      "path": "src/organism/developmental/P67AutonomousGoalGenesis.ts",
+      "bytes": 8348,
+      "sha256": "988928af7a99fbeb03363191ef3e9967cf38189e15cf39ef9854bbc9f48889bc"
+    },
+    {
+      "path": "src/organism/developmental/P68GoalEcology.ts",
+      "bytes": 7015,
+      "sha256": "d685b44c990f3793ec63e0205b090cedfd3028083be4a67529cd94b555dd7d86"
+    },
+    {
+      "path": "src/organism/developmental/P70MemoryLifecycleGovernor.ts",
+      "bytes": 2607,
+      "sha256": "ee09a9c5451c15abb8778f2ddc6eb51ef65011c133794246516f55b67103f755"
+    },
+    {
+      "path": "src/organism/developmental/P75MemoryContinuumOS.ts",
+      "bytes": 2754,
+      "sha256": "e93e536344c95e13818a407f5b87b29678be9f551c4711ed879f6045458cf753"
+    },
+    {
+      "path": "src/organism/developmental/P78AutobiographicalSelfContinuity.ts",
+      "bytes": 2956,
+      "sha256": "0f5f5277a092115327889535a2b74a4d9912134feba4d1f0049bec825a92545d"
+    },
+    {
+      "path": "src/organism/developmental/P84AutobiographicalContinuityFabric.ts",
+      "bytes": 22890,
+      "sha256": "e5e613e9fda34425860d0cedf25426b31066d1ebfc6de1e395a5f1e95d578e1f"
+    },
+    {
+      "path": "src/organism/developmental/RegretEngine.ts",
+      "bytes": 1333,
+      "sha256": "7ae8122f4c0859d43ad3cd6c25648883b4ce1c2fd442bf768b368ce94c969e2a"
+    },
+    {
+      "path": "src/organism/developmental/RelationshipSelf.ts",
+      "bytes": 1255,
+      "sha256": "3f6fec06e4f09d42c51e0afc64a960e91cb8a7cb97e407b43d100df275796d07"
+    },
+    {
+      "path": "src/organism/developmental/SemanticScarEngine.ts",
+      "bytes": 1116,
+      "sha256": "069b19c8e05f9ae85bb6d1682164fa29063fe9acc8115f5a765a7403a28e6000"
+    },
+    {
+      "path": "src/organism/developmental/SocialDevelopmentSystem.ts",
+      "bytes": 8414,
+      "sha256": "7d14b63ae74c20a743d921d3146f999f042a01efe394553848e94ebf308829a6"
+    },
+    {
+      "path": "src/organism/developmental/TemporalMemoryCompressor.ts",
+      "bytes": 2524,
+      "sha256": "3c4c61f3f9e0b712f0f076220281a46988623ad9f10aa50c73df7c171594ede8"
+    },
+    {
+      "path": "src/organism/developmental/UnifiedMemorySystem.ts",
+      "bytes": 5723,
+      "sha256": "facd45c5c7b326c61c34d61fb2fb50ff6aea9fce9f817e25235958e26264c04a"
+    },
+    {
+      "path": "src/organism/developmental/ValueProvenance.ts",
+      "bytes": 2857,
+      "sha256": "1c11a57758b804ef9f1af93b16eea9f26ad0733f8fddd07779131d2628de5ca0"
+    },
+    {
+      "path": "src/organism/developmental/WorldModel2.ts",
+      "bytes": 16170,
+      "sha256": "e4df2ecc9ed6813d6b138d1b50031bfd7ae7f5ca2bf7f815221f1fe1020efa83"
+    },
+    {
+      "path": "src/organism/index.ts",
+      "bytes": 1809,
+      "sha256": "ac479b391b3e21d6f57e5bbbcd69706d124ebe6627aeb2d019ad25aea2ae5819"
+    },
+    {
+      "path": "src/organism/language/KurisuCanonProfile.ts",
+      "bytes": 2063,
+      "sha256": "bfbb059453056ad048cd51e71ff3c44084539186c219c4b52ffb45d413372b56"
+    },
+    {
+      "path": "src/organism/language/LanguageOrgan.ts",
+      "bytes": 5837,
+      "sha256": "b59c46cad346c8bbb12030412e12f96db47bd185349f854db9e069bc3982019b"
+    },
+    {
+      "path": "src/organism/learning/AdaptiveDevelopmentEngine.ts",
+      "bytes": 6194,
+      "sha256": "2dcc4b2b07c02cbd6dfc535d5b24f6684f2c7f2d9e9a1fbcacddd6fd7a1a5f2b"
+    },
+    {
+      "path": "src/organism/learning/AdaptivePolicyEngine.ts",
+      "bytes": 4553,
+      "sha256": "f26983ba041d95aef84fc4ce783a7a0d3b8dac2f65968f69c843f98275eeefd9"
+    },
+    {
+      "path": "src/organism/learning/AdvancedResilienceEngine.ts",
+      "bytes": 14096,
+      "sha256": "d8b6054c2466b58e9ab01a9ed5a9d52189384af462a04e79b440aea76ddd2528"
+    },
+    {
+      "path": "src/organism/learning/AutonomousCognitiveLifeEngine.ts",
+      "bytes": 27549,
+      "sha256": "d063fc3763c711fc75917178e0d092363f6143b87018d3ce8a6b727195774ce5"
+    },
+    {
+      "path": "src/organism/learning/BehavioralGenome.ts",
+      "bytes": 2589,
+      "sha256": "eea81f2ca040430d0fd006a6f9991651db56bd0ae56cfe1cb44ff1c6e9ce753b"
+    },
+    {
+      "path": "src/organism/learning/CausalDevelopmentLoop.ts",
+      "bytes": 18610,
+      "sha256": "dd7ece4b1d7dad78ac362c3b381d8dd5899df03124448a95c4a15db705d88a4f"
+    },
+    {
+      "path": "src/organism/learning/CausalExperienceStream.ts",
+      "bytes": 11996,
+      "sha256": "e816a5601a086dfafdc604d1bb6137f49b513d53a629628a99a114f378beddf9"
+    },
+    {
+      "path": "src/organism/learning/CognitiveOrganismContinuityEngine.ts",
+      "bytes": 26795,
+      "sha256": "c7ab31c6344433ed98c5e526add67a6fffd3b62cb173566339c5b16195409610"
+    },
+    {
+      "path": "src/organism/learning/CognitiveResearchBattery.ts",
+      "bytes": 23580,
+      "sha256": "bdd2f0d547be0ee0db25fc49e9febee5ed9363928b20d8b162fd1dae224bb0cf"
+    },
+    {
+      "path": "src/organism/learning/DevelopmentalExecutiveEngine.ts",
+      "bytes": 17792,
+      "sha256": "76fc6df599a45bd1f8bac44a9c488a7746a82e50bf23ed9881f46a3875d31e0a"
+    },
+    {
+      "path": "src/organism/learning/DevelopmentalPortfolioEngine.ts",
+      "bytes": 11240,
+      "sha256": "4fd164c2517a6421278e59196c6bd3be49e7a6d85bd9ea5b0446a99260bd5601"
+    },
+    {
+      "path": "src/organism/learning/DevelopmentalSynthesisEngine.ts",
+      "bytes": 13227,
+      "sha256": "81abfdd931ef4746a2a4f25baab8bf40260f74d85014b9a2d6ff804ad0bc36ae"
+    },
+    {
+      "path": "src/organism/learning/IntegratedLifeTrajectoryEngine.ts",
+      "bytes": 17586,
+      "sha256": "b6ded27cdbbb3a0ce1c85c730f918fd6995eb50b00a60aef1025bec644b5118a"
+    },
+    {
+      "path": "src/organism/learning/LifeCourseNavigator.ts",
+      "bytes": 8655,
+      "sha256": "db841240d5713156661069b522855c384ad313ba8879403adec904d330b1d0ba"
+    },
+    {
+      "path": "src/organism/learning/LifelongDevelopmentSystem.ts",
+      "bytes": 7945,
+      "sha256": "ad9e0566dfcf57883a0dccc006566f539e2da88a808fd2730c36ab64eb6f9055"
+    },
+    {
+      "path": "src/organism/learning/LongitudinalOrganismEngine.ts",
+      "bytes": 8034,
+      "sha256": "082b824f2ef1ff62da3c6383612540909a937d062b0f202eb205993d78cbfea5"
+    },
+    {
+      "path": "src/organism/learning/MetaDevelopmentalStrategyEngine.ts",
+      "bytes": 15536,
+      "sha256": "0c46699c38347ebcac39d64ca500551ca81ec585f90cba149549ddba00f15171"
+    },
+    {
+      "path": "src/organism/learning/OperationalLifeEngine.ts",
+      "bytes": 25408,
+      "sha256": "a984365b960d0e29ee9867aa92011a606887e43fbfb962cb0658afac3a6b028d"
+    },
+    {
+      "path": "src/organism/learning/P23LearningEngine.ts",
+      "bytes": 20633,
+      "sha256": "1bc0e1615860b022ad721175e121ace6102d0921a4e5fb5a3a7bbd595836e81a"
+    },
+    {
+      "path": "src/organism/learning/P25ScientificDevelopmentEngine.ts",
+      "bytes": 11069,
+      "sha256": "a33ee837ededb2df389aa6eb3104b32a8b4ebcd8411811aacad18ae553066a34"
+    },
+    {
+      "path": "src/organism/learning/P26TrueLearningEngine.ts",
+      "bytes": 6762,
+      "sha256": "41e1469dd76d9aef04e2ef9fef594eb06c935d5cbc013180b57e7e3c7d585eb5"
+    },
+    {
+      "path": "src/organism/learning/P28PlasticitySubstrate.ts",
+      "bytes": 12044,
+      "sha256": "3b04716cd8cff99018954c5424a750be0cbea6bd93666a953380aeeb7bd1601a"
+    },
+    {
+      "path": "src/organism/learning/P29LearningGovernance.ts",
+      "bytes": 8498,
+      "sha256": "6ff94b87cb9a83fc059f9e3538c85537a0b0527acd05b0910c619d082a60a027"
+    },
+    {
+      "path": "src/organism/learning/P30ContinualIntelligence.ts",
+      "bytes": 19429,
+      "sha256": "6942b601098d57dd3dc07350344236989a621d20941e750caac6b00ed977d738"
+    },
+    {
+      "path": "src/organism/learning/P36AutonomousSelfDevelopment.ts",
+      "bytes": 31165,
+      "sha256": "4e0b35c0a6449f3e519e3c0175ef50612d721cdd2d186ffeedb9b43d45943c9b"
+    },
+    {
+      "path": "src/organism/learning/P38AutonomousCausalResearch.ts",
+      "bytes": 12612,
+      "sha256": "7a494877425808bb2d78284a6415e2da34af47a1226797409f03a1b8c8eb4ab1"
+    },
+    {
+      "path": "src/organism/learning/P39ContinuousArtificialLife.ts",
+      "bytes": 8519,
+      "sha256": "fa98bbc652cd83afcf2c54ef633dd1a999dff2f200a51b4fdd46527ca7aca0da"
+    },
+    {
+      "path": "src/organism/learning/P40ModelEcology.ts",
+      "bytes": 5934,
+      "sha256": "3cf2c5235692b4effd14f912b55416168fe1a0ff405d0b80f65f25e0161bec22"
+    },
+    {
+      "path": "src/organism/learning/ParametricPolicyLearner.ts",
+      "bytes": 8922,
+      "sha256": "7ded54c5e43c1618cb05c8832696e9c933f0ec79cd28599d5ea9450266c8c244"
+    },
+    {
+      "path": "src/organism/learning/PersonalCurriculumEngine.ts",
+      "bytes": 12060,
+      "sha256": "f93ccf1cb06dd465bcb65d480eeadbc6d0e999e10fde303710bceb3597e52219"
+    },
+    {
+      "path": "src/organism/learning/PersonalWorldlineEngine.ts",
+      "bytes": 9948,
+      "sha256": "e781ea1002efa537105715923c64d91b5db6bf066c2cd3beaa16dea1292a0b17"
+    },
+    {
+      "path": "src/organism/learning/ProceduralSkillLibrary.ts",
+      "bytes": 38916,
+      "sha256": "d359d81d6544d9f4fccdf731ee02e6ff8da25832ca284bb7b97275e70d034f87"
+    },
+    {
+      "path": "src/organism/learning/ResearchGradeOrganismEngine.ts",
+      "bytes": 13604,
+      "sha256": "9aa5f80d989a82774eafb2f543b9db886dfa006b7affea074a7869f990d8179b"
+    },
+    {
+      "path": "src/organism/learning/ScientificMethodEngine.ts",
+      "bytes": 2740,
+      "sha256": "5a55391fcefb083c088280162b0b711f86c7ff0bca87ca9d0897c760302794fb"
+    },
+    {
+      "path": "src/organism/learning/TemporalContinuityEngine.ts",
+      "bytes": 5943,
+      "sha256": "b0475efbecfd69cc27eb0cec84db9f5733f726b3cc29f8850fc1229f79540a62"
+    },
+    {
+      "path": "src/organism/learning/UnifiedLearningSubstrate.ts",
+      "bytes": 16279,
+      "sha256": "679cba6eef638a05a0576a44475cc717cea4b817f748f9dc7c88ef4c63ce286a"
+    },
+    {
+      "path": "src/organism/learning/VerifiedAutonomousLifeEngine.ts",
+      "bytes": 12527,
+      "sha256": "f4e14823c28c2aa8781fb401740c8c7d76f49702f5680aa7d458732317ae3716"
+    },
+    {
+      "path": "src/organism/memory/AutobiographicalMemory.ts",
+      "bytes": 2070,
+      "sha256": "66a2bebcd278e404a4aa676f5c757fa2998485fb431758c08f4ec18bc5cad047"
+    },
+    {
+      "path": "src/organism/memory/EventSourcing.ts",
+      "bytes": 2096,
+      "sha256": "e162e62a90700a84824527cd55e2a341f755a898d414a2b972913050c5ec7854"
+    },
+    {
+      "path": "src/organism/memory/ExperienceContinuumFabric.ts",
+      "bytes": 39306,
+      "sha256": "799cb504ef21de01882f80f6f29031be706312b86e60f9e1af04f6cb3fdf7b01"
+    },
+    {
+      "path": "src/organism/memory/MemoryFabric.ts",
+      "bytes": 8303,
+      "sha256": "6580cd35b1d5afe62581e56677e81e86c895114c9a28be40aead508420b48d83"
+    },
+    {
+      "path": "src/organism/memory/MultiTimescaleMemory.ts",
+      "bytes": 3665,
+      "sha256": "0cc918b76deea2a81b7295a598fad20ab1f93f0f0fd93e2cbabf1ca16b43a065"
+    },
+    {
+      "path": "src/organism/memory/P62MemoryFabric.ts",
+      "bytes": 5311,
+      "sha256": "e32adb70fda645970f97c1a5f2c0e96ddef44f2c01c79fb33c7d230d3f902c89"
+    },
+    {
+      "path": "src/organism/memory/P65EpistemicLedger.ts",
+      "bytes": 6351,
+      "sha256": "630f36e7d9efee5a5448c6f306f8119576a7dd005dd0ca9bb4bdde43b96237b1"
+    },
+    {
+      "path": "src/organism/memory/SemanticMemoryGraph.ts",
+      "bytes": 2995,
+      "sha256": "ec9ee960c3eaa0cb7d93a47077291f540c7bea80b148ab077a3a806202b41471"
+    },
+    {
+      "path": "src/organism/memory/SourceMonitor.ts",
+      "bytes": 1172,
+      "sha256": "57503c43fd5ac90266cb65817f3791b38a834fa948dafc4c546f48e10a7a73ce"
+    },
+    {
+      "path": "src/organism/persistence/AdvancedProjectionScheduler.ts",
+      "bytes": 2058,
+      "sha256": "d87023e4ad0b49c3524e2d2eb7289b3c13b9c7fde5c33506fc2cc73181a4f705"
+    },
+    {
+      "path": "src/organism/persistence/FileStateStore.ts",
+      "bytes": 4453,
+      "sha256": "8605e5c17670b0f68bcdfd532bef81cf568dab00d600c512d504ba1d76aab7e4"
+    },
+    {
+      "path": "src/organism/persistence/MemoryStateStore.ts",
+      "bytes": 412,
+      "sha256": "9fd0a61e29d81ac0dc2b0a5d312c9a2d811ba001300c3244eb353d7264371088"
+    },
+    {
+      "path": "src/organism/persistence/BoundedOperationalJournal.ts",
+      "bytes": 152,
+      "sha256": "9ac6b6882568bb5f983576fe5d89e7adea7abc0ce039c68958e00cbde3f56841"
+    },
+    {
+      "path": "src/organism/persistence/OperationalJournal.ts",
+      "bytes": 1228,
+      "sha256": "06fd5b9a1e42fbd76009113d938ba5662ed671eddd87dea665dc65edd9d05720"
+    },
+    {
+      "path": "src/organism/persistence/PersistenceBranchBudget.ts",
+      "bytes": 2663,
+      "sha256": "52664d0b540a5ad6c34f886de942a5da7ebee971e4ac5a7daa9eda6981a42d99"
+    },
+    {
+      "path": "src/organism/persistence/PersistenceBudgetController.ts",
+      "bytes": 1912,
+      "sha256": "d927c8a5afa8346a67bd8cfcb0ab6674210f955a56b0f8a0d09fe67fb9c1246c"
+    },
+    {
+      "path": "src/organism/persistence/PersistenceProjectionGovernor.ts",
+      "bytes": 2019,
+      "sha256": "c27db8a3abc89bd6d90e352ac28d182c210713d8c8a413bea9b5665c26122c99"
+    },
+    {
+      "path": "src/organism/persistence/PortableSubjectContract.ts",
+      "bytes": 6382,
+      "sha256": "2f4d66d482fd73ec7f76b50b075721845c7a81fc5accd9d7eeba1887d7cf64e0"
+    },
+    {
+      "path": "src/organism/persistence/ProcessLock.ts",
+      "bytes": 1873,
+      "sha256": "ab0b07aeb223e2dd4a8ad3f209d7392c48b05b98570d0feca8353f62cfca6b99"
+    },
+    {
+      "path": "src/organism/persistence/RevisionGraph.ts",
+      "bytes": 2536,
+      "sha256": "e7c07df633cf9ebc2f231d33ddc43dd5600f37c4a3c27696355332929e6601f9"
+    },
+    {
+      "path": "src/organism/persistence/RevisionTokenRegistry.ts",
+      "bytes": 4904,
+      "sha256": "1c9a842820cd51a2f92ce18e5cbdb818f73376b4e708721f65c2492dd01379c2"
+    },
+    {
+      "path": "src/organism/persistence/StateMigrations.ts",
+      "bytes": 96611,
+      "sha256": "561ac0107062071b8e21f564ee02e184c0362dfdb257a51fe7e3a5e1da00379a"
+    },
+    {
+      "path": "src/organism/research/CausalExperimentEngine.ts",
+      "bytes": 1722,
+      "sha256": "2d493aedb7b2c771d483f6be3dd110e45489b20c022a4a6c7278800aaf956298"
+    },
+    {
+      "path": "src/organism/research/ConsciousnessAdversarialHarness.ts",
+      "bytes": 3357,
+      "sha256": "baa4069fb10e9ca18ef88c902e386f6d6b8dbd03a1f8372a13217da24f73a136"
+    },
+    {
+      "path": "src/organism/research/PerturbationalProbe.ts",
+      "bytes": 1048,
+      "sha256": "d1343dab0766945d862e85f67a6348f6edb4389be879d3603739b864f88e2230"
+    },
+    {
+      "path": "src/organism/research/ScientificQuestionBank.ts",
+      "bytes": 2499,
+      "sha256": "55649a84946db7f7f3d6e785f77798cc9659af9ccf88b93246e3352e6542c047"
+    },
+    {
+      "path": "src/organism/system/ActionGateway.ts",
+      "bytes": 5099,
+      "sha256": "785c6b66c9832eefa0fdaa2e4f6fd0e0cf49a7be884bdbc210f849ab34689c4f"
+    },
+    {
+      "path": "src/organism/system/ActivePerceptionExecutor.ts",
+      "bytes": 3074,
+      "sha256": "364c5704bfb2d1cb3fe0f04f43a95ce20d3eac9f85f806e8e7a89a8875ca4478"
+    },
+    {
+      "path": "src/organism/system/ApiSecurityPolicy.ts",
+      "bytes": 1277,
+      "sha256": "8e8ca02955a92f782aafed80dcaa8364d86a4516b4b397e9e41334dc1ccbe488"
+    },
+    {
+      "path": "src/organism/system/AutonomousProjectExecutor.ts",
+      "bytes": 15584,
+      "sha256": "5b2cc194826510965336e7579ea6fb57c3928368314df528dc31cef19f4f56ae"
+    },
+    {
+      "path": "src/organism/system/BehavioralInfluenceLedger.ts",
+      "bytes": 3120,
+      "sha256": "df41c8198dedb43e4b2c3df6a170cc6a62d8fbf50600f9bfb2fa73f8146011b7"
+    },
+    {
+      "path": "src/organism/system/CapabilityRegistry.ts",
+      "bytes": 5365,
+      "sha256": "d054ddee367d3c1fa5006bfc4744ab9342bcf2bc3a83f4e8f11dc8e2bf5e6b02"
+    },
+    {
+      "path": "src/organism/system/CausalAccountabilityGraph.ts",
+      "bytes": 8184,
+      "sha256": "3665218dd324eaed1f6be1c40c45d34ab1de62cc18fc3f2ccf420ffe6180a590"
+    },
+    {
+      "path": "src/organism/system/CausalLifeGraph.ts",
+      "bytes": 12723,
+      "sha256": "4fc5219979289693eeeb6214c43f5ae3ee55a0c10847493990842ac224b19c09"
+    },
+    {
+      "path": "src/organism/system/CognitiveEventFabric.ts",
+      "bytes": 6532,
+      "sha256": "15a79a5fe845f5d949a7a6a36e9d9b9ade3dafe6a2ffb1ffa576f3a5d2185ad0"
+    },
+    {
+      "path": "src/organism/system/CognitiveQuorum.ts",
+      "bytes": 2613,
+      "sha256": "11f6a82d0d17c6ba164a830dbc81dbe36d8199a726046760ad607c967454e8e8"
+    },
+    {
+      "path": "src/organism/system/CognitiveResourceEconomy.ts",
+      "bytes": 5197,
+      "sha256": "14452c3678b98b597420e826ad6f837633300939559d46d45c5758a707992bd3"
+    },
+    {
+      "path": "src/organism/system/CognitiveSpineScheduler.ts",
+      "bytes": 4387,
+      "sha256": "5ff62f36df886e473baf988e1103ae8bd5cf98d6f817eeffae210d9b2bf26fd2"
+    },
+    {
+      "path": "src/organism/system/ContinuityLedger.ts",
+      "bytes": 1946,
+      "sha256": "7000505d87fa3650e2cbf27ea2197025d6cafaae98893079c76f38b5cd038c1f"
+    },
+    {
+      "path": "src/organism/system/DerivedWorldPreviewCache.ts",
+      "bytes": 3421,
+      "sha256": "b01eb7ae94198047907c9c7e1ac0f01bb35ab95e2e8f0e7a475ccfebbb9b23d6"
+    },
+    {
+      "path": "src/organism/system/EmotionAppraisalEngine.ts",
+      "bytes": 12664,
+      "sha256": "58aa418e272b5dcc4ca838197b56244451835db11295872f0ca1749aed332203"
+    },
+    {
+      "path": "src/organism/system/EvidenceFirewall.ts",
+      "bytes": 6840,
+      "sha256": "5f01cd5e3eb1bb5556d6c831086d8d60b4174ac00f1f5cbffff022fca0d3fab6"
+    },
+    {
+      "path": "src/organism/system/ExternalEvidenceTrust.ts",
+      "bytes": 5217,
+      "sha256": "5b93ab77f2ffd8d7befb5f60032a865835048a36883958a78025e4f80a6dcb87"
+    },
+    {
+      "path": "src/organism/system/ExternalObserverFabric.ts",
+      "bytes": 20892,
+      "sha256": "3e9f97b63ab285e80711fbe23ee79ebf51dbe8db4c227c346a9e737fee406baf"
+    },
+    {
+      "path": "src/organism/system/ExternalProjectResearchTool.ts",
+      "bytes": 6828,
+      "sha256": "cd684e0afd104c607a799803f9282db5f0ca12fae6ff31bcd9e38e565e4e4a68"
+    },
+    {
+      "path": "src/organism/system/FailureRecoveryCertification.ts",
+      "bytes": 2024,
+      "sha256": "120649e23dc3a019b5005de3625253667f0fbe955010919df2d7cc1e1af8c5a7"
+    },
+    {
+      "path": "src/organism/system/IdentityCausalityGraph.ts",
+      "bytes": 7169,
+      "sha256": "e75bb44076c29996229a150381e3d2f71cd074eaeccff30d123c289bb37dec8a"
+    },
+    {
+      "path": "src/organism/system/IntegritySentinel.ts",
+      "bytes": 2260,
+      "sha256": "5b83301c5aa12b621b7d8768c9001f4851e2a07e9fa4284a8e1a7c6b535cc423"
+    },
+    {
+      "path": "src/organism/system/InvariantEngine.ts",
+      "bytes": 2957,
+      "sha256": "2c06839004b580ff9bc99dcac00051ca7bbe766cc942fb441e86895f218c1c2a"
+    },
+    {
+      "path": "src/organism/system/LongHorizonPredictionBenchmark.ts",
+      "bytes": 3110,
+      "sha256": "6e29933d79c49063fcadd6a3c11a66e194f1be3603d3979d7e1dd805aacc9d90"
+    },
+    {
+      "path": "src/organism/system/MemoryCausalEconomy.ts",
+      "bytes": 11241,
+      "sha256": "9adaa11fcdf11940429e54a042c7103822ea3ee130f704d335df627f9cf4ad84"
+    },
+    {
+      "path": "src/organism/system/MemoryRetentionEconomy.ts",
+      "bytes": 5484,
+      "sha256": "61675d5fb37333a722aaa95c88b932ad07164dd54c16dcd0c9891b62f6cdc632"
+    },
+    {
+      "path": "src/organism/system/ModelOlympics.ts",
+      "bytes": 2792,
+      "sha256": "634b3b406e880cc64f7323e859237ff83d37d56abbf10e383219a1b43be6aa13"
+    },
+    {
+      "path": "src/organism/system/ModelSwitchBenchmark.ts",
+      "bytes": 2750,
+      "sha256": "e8cc064a66e60ef28d5335e4c642b6f22798e16db56a7a6f99a37ef694ec8a0a"
+    },
+    {
+      "path": "src/organism/system/MultiProjectScheduler.ts",
+      "bytes": 3200,
+      "sha256": "886856f7b365a19741ffbea9cfbd9098d8f2e92277084b96c0ce25332176bf0b"
+    },
+    {
+      "path": "src/organism/system/OrganismResourceAllocator.ts",
+      "bytes": 4656,
+      "sha256": "3cb00ed11f95615fb14b7a2ec175a750e4a3507f7c72c1d0ecb55a3590e9bbed"
+    },
+    {
+      "path": "src/organism/system/OutcomeCognitionFabric.ts",
+      "bytes": 6384,
+      "sha256": "cc68bc8e73e54a2064f3d0f3175078478a32c571f9616bc453be4d444408ae21"
+    },
+    {
+      "path": "src/organism/system/OutcomeVerificationService.ts",
+      "bytes": 2040,
+      "sha256": "8478765a19be91c0a7d0b66d76178bb19f8ff68665a6e84db8349b2971862ba3"
+    },
+    {
+      "path": "src/organism/system/P57RealityFirstObservatory.ts",
+      "bytes": 3946,
+      "sha256": "da07fec6956826d7a9cf6ff941497e32dcfc54046c59386528632ac3536686d8"
+    },
+    {
+      "path": "src/organism/system/P60IdentityGuardian.ts",
+      "bytes": 2769,
+      "sha256": "cf11ac80b976d07e335db82e75327f32864e9c5e095607ff2d477bc0c3eedcc2"
+    },
+    {
+      "path": "src/organism/system/P72LifeCycleOrchestrator.ts",
+      "bytes": 2376,
+      "sha256": "e4a21fc70744e8714b1d36d33d3af69cd3cde859c2154a5edc547d64e1fa5052"
+    },
+    {
+      "path": "src/organism/system/P73CapabilityEvolutionLedger.ts",
+      "bytes": 4447,
+      "sha256": "ff9f27a13ed823c0ec521cdb56ce21725590505d4b28423b19916aee61c95e61"
+    },
+    {
+      "path": "src/organism/system/P76IdentityLifeOS.ts",
+      "bytes": 3179,
+      "sha256": "5f9eb0180a322f3b2e0b07b4dc0262b365be50f21e686233176bf92fe07f1bbf"
+    },
+    {
+      "path": "src/organism/system/P77RealityExperimentOS.ts",
+      "bytes": 1903,
+      "sha256": "471b809762de2b3d292934cd83f1c8c2268710c931f97eab3ab0f17fa3bc564a"
+    },
+    {
+      "path": "src/organism/system/P82RealityProgressController.ts",
+      "bytes": 2265,
+      "sha256": "49f4badf68e1f6b87dfc19e1c1f6d6cc3c52a557ab529858f04c2fa1a3e4bb9b"
+    },
+    {
+      "path": "src/organism/system/PhoneRuntimePolicy.ts",
+      "bytes": 5380,
+      "sha256": "b77d1ee73792583e216d2839e06bee857cacd3892723ecfe1a7f4d803db47573"
+    },
+    {
+      "path": "src/organism/system/PredictionDebt.ts",
+      "bytes": 2915,
+      "sha256": "ff9178334509d3b85ff20e48664fd4773cf54f83e3626d8187656c2eee16f9e2"
+    },
+    {
+      "path": "src/organism/system/PredictionLedger.ts",
+      "bytes": 4380,
+      "sha256": "2f07d301ce2b4dabafc1ded0335578f0e762203b288b61ad45f85ad3e4e87352"
+    },
+    {
+      "path": "src/organism/system/ProjectResearchSession.ts",
+      "bytes": 2851,
+      "sha256": "4effbe340283ff9b09dd9018302c06033977857e4e62d8e63a33d275b3a65be5"
+    },
+    {
+      "path": "src/organism/system/RealityEvidenceLedger.ts",
+      "bytes": 3974,
+      "sha256": "1f6e5952bf0e4c7722bc6a1f841f7d4af89c6c14212dff04ef20cb2a9be7a7a2"
+    },
+    {
+      "path": "src/organism/system/ReleaseContract.ts",
+      "bytes": 421,
+      "sha256": "e69adb1f87844043edc3059db469ef6483113978e10b1d277f8447bb2f377891"
+    },
+    {
+      "path": "src/organism/system/ReplayEngine.ts",
+      "bytes": 948,
+      "sha256": "b88d2a5381105414bb3cb608899d5a703034c9a03f454f516d76f8ffc8c48765"
+    },
+    {
+      "path": "src/organism/system/RuntimeClockScheduler.ts",
+      "bytes": 3867,
+      "sha256": "d0aee6218e188a316caab1bc4c02b05ead9c98d30c9cc38e466a7884464943ae"
+    },
+    {
+      "path": "src/organism/system/RuntimeEvidenceBus.ts",
+      "bytes": 4478,
+      "sha256": "7d951f0abaf30f6cab9c3f55a6e82e9f8c783674d3ebf7968da38b2118626ab0"
+    },
+    {
+      "path": "src/organism/system/SelfModelValidationEngine.ts",
+      "bytes": 1975,
+      "sha256": "3f25a3640ccb8259a79245dc6b6054410900356b8f7143e1efae6ee37cca7087"
+    },
+    {
+      "path": "src/organism/system/SelfPredictionBenchmark.ts",
+      "bytes": 3117,
+      "sha256": "626f87822d8b7e9bad6ee9b09c664bd343366f96dd461c24807c8ab0d74d06b7"
+    },
+    {
+      "path": "src/organism/system/ShadowOrganism.ts",
+      "bytes": 6726,
+      "sha256": "19f44d37bd1732bccb34c72306831e193ea658239dd4ade3ee0ccb8c34474887"
+    },
+    {
+      "path": "src/organism/system/SkillAcquisitionBenchmark.ts",
+      "bytes": 2334,
+      "sha256": "2be3c81319e9664b0035fca8c97d76a73fcbdab946d51e09942501f02a7e3423"
+    },
+    {
+      "path": "src/organism/system/UnifiedCognitiveCycle.ts",
+      "bytes": 3329,
+      "sha256": "3ff612e0728fd0139263555ab3ebe59235cb9196588a5e07e2da83cfd968ad77"
+    },
+    {
+      "path": "src/organism/system/WorldCausalCalibration.ts",
+      "bytes": 4244,
+      "sha256": "3cce3e25c412197770ec89c6237d764da31335c4cd1f5f38f14e8b1cf6726d6e"
+    },
+    {
+      "path": "src/organism/system/WorldModelEnsembleController.ts",
+      "bytes": 8142,
+      "sha256": "c327399f935302a7376776cbe916d97797b1822ebcd0f40d1617aa9a9fe33f51"
+    },
+    {
+      "path": "src/organism/verification/SemanticCoverageEngine.ts",
+      "bytes": 2453,
+      "sha256": "39f1c5427cf18f83be2ba24203df3139f95b629064b2b50d9dd6ed3cbe6978d3"
+    },
+    {
+      "path": "src/organism/world/ActiveInferenceEngine.ts",
+      "bytes": 3147,
+      "sha256": "6917b50c73f145bd7460baa1ca3bf231d55ea480249beae058e92ecfd04b77c4"
+    },
+    {
+      "path": "src/organism/world/ContextualWorldModel.ts",
+      "bytes": 4316,
+      "sha256": "6c08dac7d47d47a0cb4022a7669f76429f86e069e699b737d07c3509d4d94148"
+    },
+    {
+      "path": "src/organism/world/CounterfactualEngine.ts",
+      "bytes": 1415,
+      "sha256": "81127e3be87ce7b9f2ebaef060f56700bd10ebc90ae3074e9225b4a4ebfa369a"
+    },
+    {
+      "path": "src/organism/world/GroundedWorldState.ts",
+      "bytes": 9302,
+      "sha256": "aecdee6e8b785dc09a65e7cef5325d8ce950a600679647970bb619dd8e4f4e0b"
+    },
+    {
+      "path": "src/organism/world/LearnedResidualWorldModel.ts",
+      "bytes": 1469,
+      "sha256": "f0e9e014b5191669d5d516db1f07681297eab428dc097abab58a5c0ad186f5be"
+    },
+    {
+      "path": "src/organism/world/P44EmbodiedPredictiveSelfWorld.ts",
+      "bytes": 4041,
+      "sha256": "e2621ece0559bbf938a362cb28cc92b918c834d27f0ba8deaf0b4f56aceb0b5a"
+    },
+    {
+      "path": "src/organism/world/P50CausalSelfWorldEngine.ts",
+      "bytes": 5647,
+      "sha256": "ab6234376c42445d9ae5d156e0f327437c6477cad43b52d8c4089b3ee9342a44"
+    },
+    {
+      "path": "src/organism/world/P51GroundedCausalWorkspace.ts",
+      "bytes": 8545,
+      "sha256": "02d72bc0cbbb21eb03cda17c79545ef9c1425fa82bdccc797a972374e3a3d441"
+    },
+    {
+      "path": "src/organism/world/P52CounterfactualDevelopmentMind.ts",
+      "bytes": 7748,
+      "sha256": "b33e1d4218b6301e755e2587762b572c346f7220bd52c34052ed4eef830964b6"
+    },
+    {
+      "path": "src/organism/world/P79EmbodiedSituationModel.ts",
+      "bytes": 2248,
+      "sha256": "c8274bb58dd967d92c66bee5a7d5eb1a0521d44be38e1738db145f3413a015e2"
+    },
+    {
+      "path": "src/organism/world/P83PersistentRealityModel.ts",
+      "bytes": 12230,
+      "sha256": "f37e9fb39f92f3730b470428a89ffa295b9781deffca3bec2be29204aebd6871"
+    },
+    {
+      "path": "src/organism/world/PhoneBodyWorldModel.ts",
+      "bytes": 3214,
+      "sha256": "9ef53f1bb89e11713df29fad3bcb538defa098afcac97cef33684d1f7108d46c"
+    },
+    {
+      "path": "src/organism/world/PlanEngine.ts",
+      "bytes": 4764,
+      "sha256": "d59399e520fe4316b44686607877d13fa4e0e0f2000c1dc04d08c5b76009f250"
+    },
+    {
+      "path": "src/organism/world/WorldEnvironment.ts",
+      "bytes": 7130,
+      "sha256": "3b2b1b9676ba31ff70d92b79803e2370bf2a7a08682ffddd5e3027e6d34e1441"
+    },
+    {
+      "path": "src/organism/world/WorldModel.ts",
+      "bytes": 6331,
+      "sha256": "738ae056e52d5e62e08aa7c0d0396ccc9da27bed3de80fb245a11cbf6e753ed4"
+    },
+    {
+      "path": "src/organism/world/WorldModel2Contract.ts",
+      "bytes": 1347,
+      "sha256": "f826bb9cd38eae9dd994817d3ea74bc2aab719222eb396c5c0d045d7f81e740e"
+    },
+    {
+      "path": "tests/big-pass-180-lifecycle-function-closure.mjs",
+      "bytes": 3579,
+      "sha256": "4da4ae4d8ea828246ca9dadf73144039c02b998afb7f20fe7fbb2033307e4e83"
+    },
+    {
+      "path": "tests/big-pass-180-reproducibility.mjs",
+      "bytes": 1494,
+      "sha256": "de8772fc54c7330a8e5c9eeb7fbb2529d2871e1d8859e8c2e4e90402ae06cad0"
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "release":"35.6.1-B293",
+  "component":"B293SelfWorldPredictiveMicrocircuit",
+  "ownerClass":"non-executive predictive substrate",
+  "neuronCount":24,
+  "inputDim":12,
+  "historyBound":128,
+  "learning":"reward + prediction-error gated Hebbian/STDP-like update",
+  "causalTests":{"cycles":1002,"learningUpdates":1000,"spikes":1612,"synapticUpdates":545567,"predictionError01":0.2451040300,"causalConfidence01":0.6418414419,"lesionCausalDelta":0.3294928},
+  "verifiedMethods":["restore","snapshot","step","learnFromOutcome","actionBias","metrics","diagnostics","lesion","clearLesion"],
+  "promotionPolicy":"These methods are directly covered by B293 tests, but global semantic VERIFIED count is not auto-promoted by this document.",
+  "mobilePolicy":{"neuralCadenceTicks":4,"checkpointCadenceTicks":64},
+  "balancedPolicy":{"neuralCadenceTicks":8,"checkpointCadenceTicks":16},
+  "qualityPolicy":{"neuralCadenceTicks":2,"checkpointCadenceTicks":8}
+}

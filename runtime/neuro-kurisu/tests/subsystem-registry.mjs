@@ -1,0 +1,15 @@
+import assert from 'node:assert/strict';
+import { OrganismCore } from '../src/organism/core/OrganismCore.ts';
+import { MemoryStateStore } from '../src/organism/persistence/MemoryStateStore.ts';
+const core=new OrganismCore(new MemoryStateStore(),{cycleResultMode:'operational'});
+await core.init();
+const manifest=core.cognitiveSubsystemManifest();
+const health=core.cognitiveSubsystemHealth();
+assert.equal(manifest.length,7);
+assert.equal(health.length,7);
+assert.ok(manifest.every(x=>Array.isArray(x.api)&&x.api.length>0));
+assert.ok(manifest.find(x=>x.name==='agency')?.ownership==='physical');
+assert.ok(manifest.find(x=>x.name==='research')?.ownership==='physical');
+assert.ok(health.every(x=>x.available));
+assert.ok(health.every(x=>['physical','mixed','adapter'].includes(x.ownership)));
+console.log('SUBSYSTEM_REGISTRY=PASS');

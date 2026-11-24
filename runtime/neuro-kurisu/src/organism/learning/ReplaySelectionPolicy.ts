@@ -1,0 +1,115 @@
+/** Bounded, deterministic multi-timescale replay selection for continual learning.
+ * Adapted conceptually from continual-RL replay research; no upstream source copied.
+ * Selection quality is a proxy and must not be confused with measured task improvement.
+ */
+export interface ReplayCandidate {
+  id: string;
+  tick: number;
+  contextKey: string;
+  action: string;
+  surprise?: number;
+  /** Episodic salience, e.g. verified failure or high-impact surprise. */
+  salience?: number;
+  /** Novelty in [0,1]; absent preserves the legacy surprise-only ranking. */
+  novelty?: number;
+  /** Number of prior replay selections, used to avoid repeatedly sampling one episode. */
+  replayCount?: number;
+  /** Normalized affect intensity captured when the episode was encoded. */
+  emotionalIntensity?: number;
+  /** Working-memory activation strength at encoding. */
+  activationStrength?: number;
+  /** Normalized priority of the goal that produced this episode. */
+  goalPriority?: number;
+}
+
+export interface ReplaySelectionOptions {
+  /** Maximum number of samples returned (hard resource ceiling). */
+  maxBatchSize?: number;
+  /** Number of newest samples guaranteed a place before historical selection. */
+  recentQuota?: number;
+  /** Optional half-life for historical surprise priority, measured in logical ticks. */
+  ageHalfLifeTicks?: number;
+}
+
+const finite = (value: number | undefined, fallback = 0): number => Number.isFinite(value) ? Number(value) : fallback;
+const chronological = <T extends ReplayCandidate>(a: T, b: T): number =>
+  finite(a.tick) - finite(b.tick) || a.id.localeCompare(b.id);
+const bySurprise = <T extends ReplayCandidate>(a: T, b: T): number =>
+  finite(b.surprise) - finite(a.surprise) || chronological(a, b);
+
+function effectivePriority<T extends ReplayCandidate>(item: T, newestTick: number, halfLifeTicks: number): number {
+  const surprise = Math.max(0, finite(item.surprise));
+  const hasEpisodicSignals = item.salience !== undefined || item.novelty !== undefined || item.replayCount !== undefined || item.emotionalIntensity !== undefined || item.activationStrength !== undefined || item.goalPriority !== undefined;
+  const novelty = Math.max(0, Math.min(1, finite(item.novelty, 1)));
+  const salience = Math.max(0, Math.min(1, finite(item.salience)));
+  const replayCount = Math.max(0, finite(item.replayCount));
+  const affect = Math.max(0, Math.min(1, finite(item.emotionalIntensity)));
+  const activation = Math.max(0, Math.min(1, finite(item.activationStrength)));
+  const goalPriority = Math.max(0, Math.min(1, finite(item.goalPriority)));
+  // Preserve the previous exact ordering when callers do not provide the new
+  // cross-source signals; otherwise blend surprise, episodic salience and novelty,
+  // with a diminishing return for repeatedly replayed episodes.
+  const basePriority = hasEpisodicSignals
+    ? surprise * (0.5 + 0.5 * novelty) + (salience + 0.25 * affect + 0.15 * activation + 0.15 * goalPriority) / Math.sqrt(1 + replayCount)
+    : surprise;
+  if (!Number.isFinite(halfLifeTicks)) return basePriority;
+  const age = Math.max(0, newestTick - finite(item.tick));
+  return basePriority * Math.pow(0.5, age / halfLifeTicks);
+}
+
+/**
+ * Keeps a guaranteed recent window, then represents historical context/action strata,
+ * and fills remaining capacity by surprise, optionally discounted by age.
+ * The default infinite half-life preserves the prior surprise-only behavior.
+ */
+export function selectReplayBatch<T extends ReplayCandidate>(
+  input: readonly T[],
+  options: ReplaySelectionOptions = {},
+): T[] {
+  const requestedCapacity = options.maxBatchSize === undefined ? 64 : Math.floor(finite(options.maxBatchSize));
+  const maxBatchSize = Math.max(1, Math.min(512, requestedCapacity));
+  const recentQuota = Math.max(0, Math.min(maxBatchSize, Math.floor(finite(options.recentQuota ?? Math.floor(maxBatchSize / 2)))));
+  const requestedHalfLife = options.ageHalfLifeTicks;
+  const ageHalfLifeTicks = requestedHalfLife === undefined || requestedHalfLife === Number.POSITIVE_INFINITY
+    ? Number.POSITIVE_INFINITY
+    : Number.isFinite(requestedHalfLife) && requestedHalfLife > 0
+      ? Math.max(1, requestedHalfLife)
+      : Number.POSITIVE_INFINITY;
+  const ordered = [...input].sort(chronological);
+  const unique = new Map<string, T>();
+  for (const item of ordered) if (item.id && !unique.has(item.id)) unique.set(item.id, item);
+  const candidates = [...unique.values()];
+  if (candidates.length <= maxBatchSize) return candidates;
+  if (recentQuota >= maxBatchSize) return candidates.slice(-maxBatchSize);
+
+  const recent = recentQuota === 0 ? [] : candidates.slice(-recentQuota);
+  const historical = recentQuota === 0 ? candidates : candidates.slice(0, -recentQuota);
+  const newestTick = candidates.reduce((latest, item) => Math.max(latest, finite(item.tick)), 0);
+  const priorityOrder = (a: T, b: T): number =>
+    effectivePriority(b, newestTick, ageHalfLifeTicks) - effectivePriority(a, newestTick, ageHalfLifeTicks)
+      || chronological(a, b);
+
+  // JSON tuple encoding prevents delimiter collisions between context and action keys.
+  const strata = new Map<string, T[]>();
+  for (const item of historical) {
+    const key = JSON.stringify([item.contextKey, item.action]);
+    const group = strata.get(key) ?? [];
+    group.push(item);
+    strata.set(key, group);
+  }
+
+  const selected = new Map<string, T>();
+  for (const item of recent) selected.set(item.id, item);
+  const representatives = [...strata.values()].map(group => [...group].sort(priorityOrder)[0]).sort(priorityOrder);
+  for (const item of representatives) {
+    if (selected.size >= maxBatchSize) break;
+    selected.set(item.id, item);
+  }
+  if (selected.size < maxBatchSize) {
+    for (const item of [...historical].sort(priorityOrder)) {
+      if (selected.size >= maxBatchSize) break;
+      selected.set(item.id, item);
+    }
+  }
+  return [...selected.values()].sort(chronological);
+}

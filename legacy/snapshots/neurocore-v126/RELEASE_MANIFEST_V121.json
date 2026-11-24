@@ -1,0 +1,1565 @@
+{
+  "release": "V121",
+  "engine_version": "v121-foundations",
+  "package_version": "1.21.0",
+  "schema_version": 20,
+  "scope": {
+    "changed_files": 15,
+    "added_files": 8,
+    "removed_files": 0,
+    "text_added_lines": 168,
+    "text_deleted_lines": 76,
+    "changed_current_files": [
+      "src/neurocore/current/__init__.py",
+      "src/neurocore/current/adaptive_compute.py",
+      "src/neurocore/current/causal_trunk.py",
+      "src/neurocore/current/contracts.py",
+      "src/neurocore/current/core.py",
+      "src/neurocore/current/neural_spine.py",
+      "src/neurocore/current/online_plasticity.py",
+      "src/neurocore/current/registry.py",
+      "src/neurocore/frontier.py"
+    ]
+  },
+  "quality_gates": {
+    "current_tests": "63 passed",
+    "compileall": true,
+    "verify_current": true,
+    "checkpoint_roundtrip": "108/108",
+    "legacy_imports": 0,
+    "duplicate_state_keys": 0,
+    "recurrent_owner_count": 1,
+    "gradient_element_coverage": 1.0
+  },
+  "architecture": {
+    "abi_version": 20,
+    "engine_source_version": 121,
+    "current_neural_version": 121,
+    "architecture": "standalone_causal_trunk",
+    "historical_engine_instantiated": false,
+    "upstream_backends": {
+      "fla.delta_net": {
+        "key": "fla.delta_net",
+        "family": "linear_recurrence",
+        "purpose": "Delta-rule fast-weight baseline",
+        "source_url": "https://github.com/fla-org/flash-linear-attention",
+        "license_name": "MIT",
+        "import_target": "fla.layers:DeltaNet",
+        "package_name": "flash-linear-attention",
+        "status": "candidate",
+        "current_safe": false,
+        "notes": "",
+        "availability": {
+          "available": false,
+          "module": "fla.layers",
+          "top_level": "fla"
+        }
+      },
+      "fla.gdn": {
+        "key": "fla.gdn",
+        "family": "linear_recurrence",
+        "purpose": "Gated DeltaNet recurrence",
+        "source_url": "https://github.com/fla-org/flash-linear-attention",
+        "license_name": "MIT",
+        "import_target": "fla.layers:GatedDeltaNet",
+        "package_name": "flash-linear-attention",
+        "status": "candidate",
+        "current_safe": false,
+        "notes": "",
+        "availability": {
+          "available": false,
+          "module": "fla.layers",
+          "top_level": "fla"
+        }
+      },
+      "fla.gdn2": {
+        "key": "fla.gdn2",
+        "family": "linear_recurrence",
+        "purpose": "Gated DeltaNet-2 with decoupled erase/write",
+        "source_url": "https://github.com/fla-org/flash-linear-attention",
+        "license_name": "MIT",
+        "import_target": "fla.layers:GatedDeltaNet2",
+        "package_name": "flash-linear-attention",
+        "status": "candidate",
+        "current_safe": false,
+        "notes": "Current FLA implementation; official NVIDIA reference is tracked separately.",
+        "availability": {
+          "available": false,
+          "module": "fla.layers",
+          "top_level": "fla"
+        }
+      },
+      "fla.gated_delta_product": {
+        "key": "fla.gated_delta_product",
+        "family": "linear_recurrence",
+        "purpose": "Higher-order gated delta-product recurrence",
+        "source_url": "https://github.com/fla-org/flash-linear-attention",
+        "license_name": "MIT",
+        "import_target": "fla.layers:GatedDeltaProduct",
+        "package_name": "flash-linear-attention",
+        "status": "candidate",
+        "current_safe": false,
+        "notes": "",
+        "availability": {
+          "available": false,
+          "module": "fla.layers",
+          "top_level": "fla"
+        }
+      },
+      "fla.kda": {
+        "key": "fla.kda",
+        "family": "linear_recurrence",
+        "purpose": "Kimi Delta Attention / channel-wise decay",
+        "source_url": "https://github.com/fla-org/flash-linear-attention",
+        "license_name": "MIT",
+        "import_target": "fla.layers:KimiDeltaAttention",
+        "package_name": "flash-linear-attention",
+        "status": "candidate",
+        "current_safe": false,
+        "notes": "",
+        "availability": {
+          "available": false,
+          "module": "fla.layers",
+          "top_level": "fla"
+        }
+      },
+      "fla.pgdn": {
+        "key": "fla.pgdn",
+        "family": "linear_recurrence",
+        "purpose": "Curvature-aware preconditioned Gated DeltaNet",
+        "source_url": "https://github.com/fla-org/flash-linear-attention",
+        "license_name": "MIT",
+        "import_target": "fla.layers:PrecondGatedDeltaNet",
+        "package_name": "flash-linear-attention",
+        "status": "candidate",
+        "current_safe": false,
+        "notes": "",
+        "availability": {
+          "available": false,
+          "module": "fla.layers",
+          "top_level": "fla"
+        }
+      },
+      "fla.pkda": {
+        "key": "fla.pkda",
+        "family": "linear_recurrence",
+        "purpose": "Curvature-aware preconditioned KDA",
+        "source_url": "https://github.com/fla-org/flash-linear-attention",
+        "license_name": "MIT",
+        "import_target": "fla.layers:PrecondKDA",
+        "package_name": "flash-linear-attention",
+        "status": "candidate",
+        "current_safe": false,
+        "notes": "",
+        "availability": {
+          "available": false,
+          "module": "fla.layers",
+          "top_level": "fla"
+        }
+      },
+      "fla.raven": {
+        "key": "fla.raven",
+        "family": "linear_recurrence",
+        "purpose": "Sparse routed recurrent memory",
+        "source_url": "https://github.com/fla-org/flash-linear-attention",
+        "license_name": "MIT",
+        "import_target": "fla.layers:Raven",
+        "package_name": "flash-linear-attention",
+        "status": "candidate",
+        "current_safe": false,
+        "notes": "",
+        "availability": {
+          "available": false,
+          "module": "fla.layers",
+          "top_level": "fla"
+        }
+      },
+      "fla.momentum_deltanet": {
+        "key": "fla.momentum_deltanet",
+        "family": "linear_recurrence",
+        "purpose": "Momentum-enhanced delta recurrence",
+        "source_url": "https://github.com/fla-org/flash-linear-attention",
+        "license_name": "MIT",
+        "import_target": "fla.layers:MomentumDeltaNet",
+        "package_name": "flash-linear-attention",
+        "status": "candidate",
+        "current_safe": false,
+        "notes": "",
+        "availability": {
+          "available": false,
+          "module": "fla.layers",
+          "top_level": "fla"
+        }
+      },
+      "fla.gla": {
+        "key": "fla.gla",
+        "family": "linear_recurrence",
+        "purpose": "Gated linear attention recurrence",
+        "source_url": "https://github.com/fla-org/flash-linear-attention",
+        "license_name": "MIT",
+        "import_target": "fla.layers:GatedLinearAttention",
+        "package_name": "flash-linear-attention",
+        "status": "candidate",
+        "current_safe": false,
+        "notes": "",
+        "availability": {
+          "available": false,
+          "module": "fla.layers",
+          "top_level": "fla"
+        }
+      },
+      "fla.gsa": {
+        "key": "fla.gsa",
+        "family": "memory",
+        "purpose": "Gated slot-based associative state",
+        "source_url": "https://github.com/fla-org/flash-linear-attention",
+        "license_name": "MIT",
+        "import_target": "fla.layers:GatedSlotAttention",
+        "package_name": "flash-linear-attention",
+        "status": "candidate",
+        "current_safe": false,
+        "notes": "",
+        "availability": {
+          "available": false,
+          "module": "fla.layers",
+          "top_level": "fla"
+        }
+      },
+      "fla.hgrn": {
+        "key": "fla.hgrn",
+        "family": "hierarchical_sequence",
+        "purpose": "Hierarchical gated recurrent sequence mixing",
+        "source_url": "https://github.com/fla-org/flash-linear-attention",
+        "license_name": "MIT",
+        "import_target": "fla.layers:HGRNAttention",
+        "package_name": "flash-linear-attention",
+        "status": "candidate",
+        "current_safe": false,
+        "notes": "",
+        "availability": {
+          "available": false,
+          "module": "fla.layers",
+          "top_level": "fla"
+        }
+      },
+      "fla.hgrn2": {
+        "key": "fla.hgrn2",
+        "family": "hierarchical_sequence",
+        "purpose": "Second-generation hierarchical recurrent sequence mixing",
+        "source_url": "https://github.com/fla-org/flash-linear-attention",
+        "license_name": "MIT",
+        "import_target": "fla.layers:HGRN2Attention",
+        "package_name": "flash-linear-attention",
+        "status": "candidate",
+        "current_safe": false,
+        "notes": "",
+        "availability": {
+          "available": false,
+          "module": "fla.layers",
+          "top_level": "fla"
+        }
+      },
+      "fla.linear": {
+        "key": "fla.linear",
+        "family": "attention",
+        "purpose": "Linear attention baseline",
+        "source_url": "https://github.com/fla-org/flash-linear-attention",
+        "license_name": "MIT",
+        "import_target": "fla.layers:LinearAttention",
+        "package_name": "flash-linear-attention",
+        "status": "candidate",
+        "current_safe": false,
+        "notes": "",
+        "availability": {
+          "available": false,
+          "module": "fla.layers",
+          "top_level": "fla"
+        }
+      },
+      "fla.based": {
+        "key": "fla.based",
+        "family": "attention",
+        "purpose": "Based linear attention",
+        "source_url": "https://github.com/fla-org/flash-linear-attention",
+        "license_name": "MIT",
+        "import_target": "fla.layers:BasedLinearAttention",
+        "package_name": "flash-linear-attention",
+        "status": "candidate",
+        "current_safe": false,
+        "notes": "",
+        "availability": {
+          "available": false,
+          "module": "fla.layers",
+          "top_level": "fla"
+        }
+      },
+      "fla.rebased": {
+        "key": "fla.rebased",
+        "family": "attention",
+        "purpose": "ReBased linear attention",
+        "source_url": "https://github.com/fla-org/flash-linear-attention",
+        "license_name": "MIT",
+        "import_target": "fla.layers:ReBasedLinearAttention",
+        "package_name": "flash-linear-attention",
+        "status": "candidate",
+        "current_safe": false,
+        "notes": "",
+        "availability": {
+          "available": false,
+          "module": "fla.layers",
+          "top_level": "fla"
+        }
+      },
+      "fla.forgetting": {
+        "key": "fla.forgetting",
+        "family": "attention",
+        "purpose": "Forgetting-gated attention",
+        "source_url": "https://github.com/fla-org/flash-linear-attention",
+        "license_name": "MIT",
+        "import_target": "fla.layers:ForgettingAttention",
+        "package_name": "flash-linear-attention",
+        "status": "candidate",
+        "current_safe": false,
+        "notes": "",
+        "availability": {
+          "available": false,
+          "module": "fla.layers",
+          "top_level": "fla"
+        }
+      },
+      "fla.multiscale_retention": {
+        "key": "fla.multiscale_retention",
+        "family": "memory",
+        "purpose": "Multi-scale retention state",
+        "source_url": "https://github.com/fla-org/flash-linear-attention",
+        "license_name": "MIT",
+        "import_target": "fla.layers:MultiScaleRetention",
+        "package_name": "flash-linear-attention",
+        "status": "candidate",
+        "current_safe": false,
+        "notes": "",
+        "availability": {
+          "available": false,
+          "module": "fla.layers",
+          "top_level": "fla"
+        }
+      },
+      "fla.mamba": {
+        "key": "fla.mamba",
+        "family": "state_space",
+        "purpose": "Mamba selective state space",
+        "source_url": "https://github.com/fla-org/flash-linear-attention",
+        "license_name": "MIT",
+        "import_target": "fla.layers:Mamba",
+        "package_name": "flash-linear-attention",
+        "status": "candidate",
+        "current_safe": false,
+        "notes": "",
+        "availability": {
+          "available": false,
+          "module": "fla.layers",
+          "top_level": "fla"
+        }
+      },
+      "fla.mamba2": {
+        "key": "fla.mamba2",
+        "family": "state_space",
+        "purpose": "Mamba-2 structured state-space sequence model",
+        "source_url": "https://github.com/fla-org/flash-linear-attention",
+        "license_name": "MIT",
+        "import_target": "fla.layers:Mamba2",
+        "package_name": "flash-linear-attention",
+        "status": "candidate",
+        "current_safe": false,
+        "notes": "",
+        "availability": {
+          "available": false,
+          "module": "fla.layers",
+          "top_level": "fla"
+        }
+      },
+      "fla.mamba3": {
+        "key": "fla.mamba3",
+        "family": "state_space",
+        "purpose": "Mamba-3 state-space sequence model",
+        "source_url": "https://github.com/fla-org/flash-linear-attention",
+        "license_name": "MIT",
+        "import_target": "fla.layers:Mamba3",
+        "package_name": "flash-linear-attention",
+        "status": "candidate",
+        "current_safe": false,
+        "notes": "Evaluate separately from mobile CPU path; optimized kernels may be accelerator-specific.",
+        "availability": {
+          "available": false,
+          "module": "fla.layers",
+          "top_level": "fla"
+        }
+      },
+      "fla.log_linear_mamba2": {
+        "key": "fla.log_linear_mamba2",
+        "family": "state_space",
+        "purpose": "Log-linear Mamba-2 sequence model",
+        "source_url": "https://github.com/fla-org/flash-linear-attention",
+        "license_name": "MIT",
+        "import_target": "fla.layers:LogLinearMamba2",
+        "package_name": "flash-linear-attention",
+        "status": "candidate",
+        "current_safe": false,
+        "notes": "",
+        "availability": {
+          "available": false,
+          "module": "fla.layers",
+          "top_level": "fla"
+        }
+      },
+      "fla.mesa": {
+        "key": "fla.mesa",
+        "family": "state_space",
+        "purpose": "Mesa-style learned state-space sequence model",
+        "source_url": "https://github.com/fla-org/flash-linear-attention",
+        "license_name": "MIT",
+        "import_target": "fla.layers:MesaNet",
+        "package_name": "flash-linear-attention",
+        "status": "candidate",
+        "current_safe": false,
+        "notes": "",
+        "availability": {
+          "available": false,
+          "module": "fla.layers",
+          "top_level": "fla"
+        }
+      },
+      "fla.mom": {
+        "key": "fla.mom",
+        "family": "memory",
+        "purpose": "Mixture-of-Memories routed memory",
+        "source_url": "https://github.com/fla-org/flash-linear-attention",
+        "license_name": "MIT",
+        "import_target": "fla.layers:MomAttention",
+        "package_name": "flash-linear-attention",
+        "status": "candidate",
+        "current_safe": false,
+        "notes": "May only become internal sub-banks under the canonical memory owner; never a second owner.",
+        "availability": {
+          "available": false,
+          "module": "fla.layers",
+          "top_level": "fla"
+        }
+      },
+      "fla.deltaformer": {
+        "key": "fla.deltaformer",
+        "family": "linear_recurrence",
+        "purpose": "DeltaFormer associative-memory formulation",
+        "source_url": "https://github.com/fla-org/flash-linear-attention",
+        "license_name": "MIT",
+        "import_target": "fla.layers:DeltaFormerAttention",
+        "package_name": "flash-linear-attention",
+        "status": "candidate",
+        "current_safe": false,
+        "notes": "",
+        "availability": {
+          "available": false,
+          "module": "fla.layers",
+          "top_level": "fla"
+        }
+      },
+      "fla.wall": {
+        "key": "fla.wall",
+        "family": "attention",
+        "purpose": "Diagonal-gate length-generalizing attention",
+        "source_url": "https://github.com/fla-org/flash-linear-attention",
+        "license_name": "MIT",
+        "import_target": "fla.layers:WallAttention",
+        "package_name": "flash-linear-attention",
+        "status": "candidate",
+        "current_safe": false,
+        "notes": "",
+        "availability": {
+          "available": false,
+          "module": "fla.layers",
+          "top_level": "fla"
+        }
+      },
+      "fla.parallax": {
+        "key": "fla.parallax",
+        "family": "attention",
+        "purpose": "Parameterized local linear attention",
+        "source_url": "https://github.com/fla-org/flash-linear-attention",
+        "license_name": "MIT",
+        "import_target": "fla.layers:Parallax",
+        "package_name": "flash-linear-attention",
+        "status": "candidate",
+        "current_safe": false,
+        "notes": "",
+        "availability": {
+          "available": false,
+          "module": "fla.layers",
+          "top_level": "fla"
+        }
+      },
+      "fla.cat": {
+        "key": "fla.cat",
+        "family": "meta_sequence",
+        "purpose": "Compress-and-Attend meta-sequence mixer",
+        "source_url": "https://github.com/fla-org/flash-linear-attention",
+        "license_name": "MIT",
+        "import_target": null,
+        "package_name": "flash-linear-attention",
+        "status": "candidate",
+        "current_safe": false,
+        "notes": "CAT is tracked as an upstream paper/model; no public fla.layers class is assumed by the adapter.",
+        "availability": {
+          "available": false,
+          "reason": "source upload/vendor required",
+          "module": null,
+          "top_level": null
+        }
+      },
+      "fla.moba": {
+        "key": "fla.moba",
+        "family": "attention",
+        "purpose": "Mixture-of-Block Attention",
+        "source_url": "https://github.com/fla-org/flash-linear-attention",
+        "license_name": "MIT",
+        "import_target": "fla.layers:MoBA",
+        "package_name": "flash-linear-attention",
+        "status": "candidate",
+        "current_safe": false,
+        "notes": "",
+        "availability": {
+          "available": false,
+          "module": "fla.layers",
+          "top_level": "fla"
+        }
+      },
+      "fla.nsa": {
+        "key": "fla.nsa",
+        "family": "attention",
+        "purpose": "Native sparse attention",
+        "source_url": "https://github.com/fla-org/flash-linear-attention",
+        "license_name": "MIT",
+        "import_target": "fla.layers:NativeSparseAttention",
+        "package_name": "flash-linear-attention",
+        "status": "candidate",
+        "current_safe": false,
+        "notes": "",
+        "availability": {
+          "available": false,
+          "module": "fla.layers",
+          "top_level": "fla"
+        }
+      },
+      "fla.path": {
+        "key": "fla.path",
+        "family": "attention",
+        "purpose": "Path-based attention",
+        "source_url": "https://github.com/fla-org/flash-linear-attention",
+        "license_name": "MIT",
+        "import_target": "fla.layers:PaTHAttention",
+        "package_name": "flash-linear-attention",
+        "status": "candidate",
+        "current_safe": false,
+        "notes": "",
+        "availability": {
+          "available": false,
+          "module": "fla.layers",
+          "top_level": "fla"
+        }
+      },
+      "fla.rodimus": {
+        "key": "fla.rodimus",
+        "family": "attention",
+        "purpose": "Rodimus sequence attention",
+        "source_url": "https://github.com/fla-org/flash-linear-attention",
+        "license_name": "MIT",
+        "import_target": "fla.layers:RodimusAttention",
+        "package_name": "flash-linear-attention",
+        "status": "candidate",
+        "current_safe": false,
+        "notes": "",
+        "availability": {
+          "available": false,
+          "module": "fla.layers",
+          "top_level": "fla"
+        }
+      },
+      "fla.rwkv6": {
+        "key": "fla.rwkv6",
+        "family": "state_space",
+        "purpose": "RWKV-6 recurrent attention",
+        "source_url": "https://github.com/fla-org/flash-linear-attention",
+        "license_name": "MIT",
+        "import_target": "fla.layers:RWKV6Attention",
+        "package_name": "flash-linear-attention",
+        "status": "candidate",
+        "current_safe": false,
+        "notes": "",
+        "availability": {
+          "available": false,
+          "module": "fla.layers",
+          "top_level": "fla"
+        }
+      },
+      "fla.rwkv7": {
+        "key": "fla.rwkv7",
+        "family": "state_space",
+        "purpose": "RWKV-7 recurrent attention",
+        "source_url": "https://github.com/fla-org/flash-linear-attention",
+        "license_name": "MIT",
+        "import_target": "fla.layers:RWKV7Attention",
+        "package_name": "flash-linear-attention",
+        "status": "candidate",
+        "current_safe": false,
+        "notes": "",
+        "availability": {
+          "available": false,
+          "module": "fla.layers",
+          "top_level": "fla"
+        }
+      },
+      "fla.lightnet": {
+        "key": "fla.lightnet",
+        "family": "attention",
+        "purpose": "LightNet efficient attention",
+        "source_url": "https://github.com/fla-org/flash-linear-attention",
+        "license_name": "MIT",
+        "import_target": "fla.layers:LightNetAttention",
+        "package_name": "flash-linear-attention",
+        "status": "candidate",
+        "current_safe": false,
+        "notes": "",
+        "availability": {
+          "available": false,
+          "module": "fla.layers",
+          "top_level": "fla"
+        }
+      },
+      "fla.comba": {
+        "key": "fla.comba",
+        "family": "linear_recurrence",
+        "purpose": "Comba recurrent operator",
+        "source_url": "https://github.com/fla-org/flash-linear-attention",
+        "license_name": "MIT",
+        "import_target": "fla.layers:Comba",
+        "package_name": "flash-linear-attention",
+        "status": "candidate",
+        "current_safe": false,
+        "notes": "",
+        "availability": {
+          "available": false,
+          "module": "fla.layers",
+          "top_level": "fla"
+        }
+      },
+      "fla.abc": {
+        "key": "fla.abc",
+        "family": "memory",
+        "purpose": "ABC associative memory attention",
+        "source_url": "https://github.com/fla-org/flash-linear-attention",
+        "license_name": "MIT",
+        "import_target": "fla.layers:ABCAttention",
+        "package_name": "flash-linear-attention",
+        "status": "candidate",
+        "current_safe": false,
+        "notes": "",
+        "availability": {
+          "available": false,
+          "module": "fla.layers",
+          "top_level": "fla"
+        }
+      },
+      "fla.bit": {
+        "key": "fla.bit",
+        "family": "attention",
+        "purpose": "Bit attention candidate",
+        "source_url": "https://github.com/fla-org/flash-linear-attention",
+        "license_name": "MIT",
+        "import_target": "fla.layers:BitAttention",
+        "package_name": "flash-linear-attention",
+        "status": "candidate",
+        "current_safe": false,
+        "notes": "",
+        "availability": {
+          "available": false,
+          "module": "fla.layers",
+          "top_level": "fla"
+        }
+      },
+      "fla.attention": {
+        "key": "fla.attention",
+        "family": "attention",
+        "purpose": "Standard attention baseline",
+        "source_url": "https://github.com/fla-org/flash-linear-attention",
+        "license_name": "MIT",
+        "import_target": "fla.layers:Attention",
+        "package_name": "flash-linear-attention",
+        "status": "candidate",
+        "current_safe": false,
+        "notes": "",
+        "availability": {
+          "available": false,
+          "module": "fla.layers",
+          "top_level": "fla"
+        }
+      },
+      "fla.mla": {
+        "key": "fla.mla",
+        "family": "attention",
+        "purpose": "Multihead latent attention",
+        "source_url": "https://github.com/fla-org/flash-linear-attention",
+        "license_name": "MIT",
+        "import_target": "fla.layers:MultiheadLatentAttention",
+        "package_name": "flash-linear-attention",
+        "status": "candidate",
+        "current_safe": false,
+        "notes": "",
+        "availability": {
+          "available": false,
+          "module": "fla.layers",
+          "top_level": "fla"
+        }
+      },
+      "fla.sliding_window_shared_key": {
+        "key": "fla.sliding_window_shared_key",
+        "family": "attention",
+        "purpose": "Sliding-window shared-key attention",
+        "source_url": "https://github.com/fla-org/flash-linear-attention",
+        "license_name": "MIT",
+        "import_target": "fla.layers:SlidingWindowSharedKeyAttention",
+        "package_name": "flash-linear-attention",
+        "status": "candidate",
+        "current_safe": false,
+        "notes": "",
+        "availability": {
+          "available": false,
+          "module": "fla.layers",
+          "top_level": "fla"
+        }
+      },
+      "fla.yoco_cross": {
+        "key": "fla.yoco_cross",
+        "family": "attention",
+        "purpose": "YOCO cross-attention component",
+        "source_url": "https://github.com/fla-org/flash-linear-attention",
+        "license_name": "MIT",
+        "import_target": "fla.layers:YOCOCrossAttention",
+        "package_name": "flash-linear-attention",
+        "status": "candidate",
+        "current_safe": false,
+        "notes": "",
+        "availability": {
+          "available": false,
+          "module": "fla.layers",
+          "top_level": "fla"
+        }
+      },
+      "fla.yoco_retention": {
+        "key": "fla.yoco_retention",
+        "family": "linear_recurrence",
+        "purpose": "YOCO gated retention",
+        "source_url": "https://github.com/fla-org/flash-linear-attention",
+        "license_name": "MIT",
+        "import_target": "fla.layers:YOCOGatedRetention",
+        "package_name": "flash-linear-attention",
+        "status": "candidate",
+        "current_safe": false,
+        "notes": "",
+        "availability": {
+          "available": false,
+          "module": "fla.layers",
+          "top_level": "fla"
+        }
+      },
+      "fla.yoco_shared_kv": {
+        "key": "fla.yoco_shared_kv",
+        "family": "attention",
+        "purpose": "YOCO shared-KV builder",
+        "source_url": "https://github.com/fla-org/flash-linear-attention",
+        "license_name": "MIT",
+        "import_target": "fla.layers:YOCOSharedKVBuilder",
+        "package_name": "flash-linear-attention",
+        "status": "candidate",
+        "current_safe": false,
+        "notes": "",
+        "availability": {
+          "available": false,
+          "module": "fla.layers",
+          "top_level": "fla"
+        }
+      },
+      "fla.flashqla": {
+        "key": "fla.flashqla",
+        "family": "linear_recurrence",
+        "purpose": "FlashQLA backend for Gated DeltaNet",
+        "source_url": "https://github.com/fla-org/flash-linear-attention",
+        "license_name": "MIT",
+        "import_target": null,
+        "package_name": "flash-linear-attention",
+        "status": "candidate",
+        "current_safe": false,
+        "notes": "Tracked from current FLA news; not assumed to be a public layer class.",
+        "availability": {
+          "available": false,
+          "reason": "source upload/vendor required",
+          "module": null,
+          "top_level": null
+        }
+      },
+      "fla.gluon": {
+        "key": "fla.gluon",
+        "family": "attention",
+        "purpose": "AttnRes/Gluon residual sequence mechanism",
+        "source_url": "https://github.com/fla-org/flash-linear-attention",
+        "license_name": "MIT",
+        "import_target": null,
+        "package_name": "flash-linear-attention",
+        "status": "candidate",
+        "current_safe": false,
+        "notes": "Catalog only; not assumed to be a stable fla.layers export.",
+        "availability": {
+          "available": false,
+          "reason": "source upload/vendor required",
+          "module": null,
+          "top_level": null
+        }
+      },
+      "mamba3_ssm": {
+        "key": "mamba3_ssm",
+        "family": "state_space",
+        "purpose": "Readable pure-PyTorch Mamba-3",
+        "source_url": "https://github.com/Aiyoniganmaaiya/mamba3-ssm",
+        "license_name": "MIT",
+        "import_target": "mamba3_ssm:Mamba3",
+        "package_name": "mamba3-ssm",
+        "status": "candidate",
+        "current_safe": false,
+        "notes": "Portable research reference; verify source locally before promotion.",
+        "availability": {
+          "available": false,
+          "module": "mamba3_ssm",
+          "top_level": "mamba3_ssm"
+        }
+      },
+      "mamba_official": {
+        "key": "mamba_official",
+        "family": "state_space",
+        "purpose": "Official state-spaces Mamba-3",
+        "source_url": "https://github.com/state-spaces/mamba",
+        "license_name": "Apache-2.0",
+        "import_target": "mamba_ssm:Mamba3",
+        "package_name": "mamba-ssm",
+        "status": "research_only",
+        "current_safe": false,
+        "notes": "Full optimized path is accelerator-oriented; upstream currently has open Mamba-3 step/incremental issues worth qualifying before use.",
+        "availability": {
+          "available": false,
+          "module": "mamba_ssm",
+          "top_level": "mamba_ssm"
+        }
+      },
+      "delta_product": {
+        "key": "delta_product",
+        "family": "linear_recurrence",
+        "purpose": "DeltaProduct state transition",
+        "source_url": "https://github.com/automl/DeltaProduct",
+        "license_name": "MIT",
+        "import_target": null,
+        "package_name": "delta-product",
+        "status": "candidate",
+        "current_safe": false,
+        "notes": "",
+        "availability": {
+          "available": false,
+          "reason": "source upload/vendor required",
+          "module": null,
+          "top_level": null
+        }
+      },
+      "hnet": {
+        "key": "hnet",
+        "family": "hierarchical_sequence",
+        "purpose": "Dynamic hierarchical token/chunk processing",
+        "source_url": "https://github.com/goombalab/hnet",
+        "license_name": "MIT",
+        "import_target": null,
+        "package_name": "hnet",
+        "status": "candidate",
+        "current_safe": false,
+        "notes": "Candidate for adaptive temporal abstraction, not a memory owner.",
+        "availability": {
+          "available": false,
+          "reason": "source upload/vendor required",
+          "module": null,
+          "top_level": null
+        }
+      },
+      "atlas_torch": {
+        "key": "atlas_torch",
+        "family": "memory",
+        "purpose": "ATLAS-style learned long-term memory",
+        "source_url": "https://github.com/danielquintas8/atlas-torch",
+        "license_name": "MIT",
+        "import_target": null,
+        "package_name": "atlas-torch",
+        "status": "research_only",
+        "current_safe": false,
+        "notes": "Needs isolated test-time learning qualification and memory ownership review.",
+        "availability": {
+          "available": false,
+          "reason": "source upload/vendor required",
+          "module": null,
+          "top_level": null
+        }
+      },
+      "titans_pytorch": {
+        "key": "titans_pytorch",
+        "family": "memory",
+        "purpose": "Titans-style neural long-term memory",
+        "source_url": "https://github.com/lucidrains/titans-pytorch",
+        "license_name": "MIT",
+        "import_target": null,
+        "package_name": "titans-pytorch",
+        "status": "research_only",
+        "current_safe": false,
+        "notes": "Unofficial implementation; isolate and qualify before reuse.",
+        "availability": {
+          "available": false,
+          "reason": "source upload/vendor required",
+          "module": null,
+          "top_level": null
+        }
+      },
+      "nvidia_gdn2": {
+        "key": "nvidia_gdn2",
+        "family": "linear_recurrence",
+        "purpose": "Official NVIDIA GDN-2 reference",
+        "source_url": "https://github.com/NVlabs/GatedDeltaNet-2",
+        "license_name": "NVIDIA Source Code License-NC",
+        "import_target": null,
+        "package_name": null,
+        "status": "research_only",
+        "current_safe": false,
+        "notes": "Reference only. Keep outside production/current tree and preserve upstream license terms.",
+        "availability": {
+          "available": false,
+          "reason": "source upload/vendor required",
+          "module": null,
+          "top_level": null
+        }
+      }
+    },
+    "parameter_report": {
+      "total_parameters": 69137.0,
+      "trainable_parameters": 69137.0,
+      "trainable_fraction": 1.0,
+      "current_neural_version": 121.0,
+      "abi_version": 18.0,
+      "spine_rank": 8.0,
+      "spine_topk": 3.0,
+      "current_abi_version": 20.0,
+      "compatibility_engine_source_version": 121.0,
+      "upstream_backend_count": 53.0,
+      "temporal_credit_enabled": 0.0,
+      "temporal_credit_mode": 1.0,
+      "erase_control_mode": 0.0,
+      "uncertainty_write_enabled": 0.0,
+      "delta_integrator_mode": 0.0,
+      "adaptive_compute_enabled": 0.0,
+      "gradient_subspace_enabled": 0.0,
+      "gradient_arbitration_enabled": 0.0
+    },
+    "mechanisms": {
+      "adaptive_hybrid_temporal_credit": {
+        "owner": "recurrent_substrate",
+        "purpose": "parameter-free age-scheduled blend of HiPPO history and cascading eligibility, early emphasis on polynomial history and later emphasis on long-tail cascade",
+        "status": "candidate",
+        "parameter_budget": 0,
+        "evidence_refs": [
+          "V120_TEMPORAL_MULTI_SEED",
+          "HIPPO_S4_REFERENCE",
+          "CET_2026"
+        ]
+      },
+      "product_key_sparse_delta_memory": {
+        "owner": "research_candidate",
+        "purpose": "product-key sparse runtime memory with bounded similarity-gated delta-style writes",
+        "status": "candidate",
+        "parameter_budget": 0,
+        "evidence_refs": [
+          "SDM_ARXIV_2607_07386",
+          "SDM_OFFICIAL_GITHUB",
+          "V120_SPARSE_DELTA_PROBE"
+        ]
+      },
+      "mamba3_heavy_tail_activation": {
+        "owner": "research_candidate",
+        "purpose": "dependency-free implementation of the Mamba-3 heavy-tail activation as an optional parameter-free state-activation candidate",
+        "status": "candidate",
+        "parameter_budget": 0,
+        "evidence_refs": [
+          "MAMBA3_ARXIV_2603_15569",
+          "MAMBA3_OFFICIAL_SOURCE",
+          "V120_HEAVY_TAIL_SMOKE"
+        ]
+      },
+      "synergy_consensus_feedback": {
+        "owner": "current_trunk",
+        "purpose": "parameter-free agreement-weighted consensus feedback from existing predictive/world/self/memory/multiscale branches into the next recurrent input; disabled by default pending qualification",
+        "status": "candidate",
+        "parameter_budget": 0,
+        "evidence_refs": [
+          "TTTLA_ICML2026",
+          "V110_SYNERGY_AUDIT",
+          "V109_DELAYED_RECALL_BENCHMARK"
+        ]
+      },
+      "efla_exact_delta_integrator": {
+        "owner": "recurrent_substrate",
+        "purpose": "exact continuous-time scalar integration of the rank-1 delta write step; research-only and disabled by default",
+        "status": "candidate",
+        "parameter_budget": 0,
+        "evidence_refs": [
+          "EFLA_2026",
+          "V108_EFLA_BENCHMARK"
+        ]
+      },
+      "delta_product_transition": {
+        "owner": "research_candidate",
+        "purpose": "candidate state-transition family using products of generalized Householder transforms for improved state tracking without a second recurrent memory owner",
+        "status": "candidate",
+        "parameter_budget": 0,
+        "evidence_refs": [
+          "DELTA_PRODUCT_NIPS2025"
+        ]
+      },
+      "delta_mem_online_state": {
+        "owner": "research_candidate",
+        "purpose": "compact online associative state with delta-rule writes for continual interaction memory",
+        "status": "candidate",
+        "parameter_budget": 0,
+        "evidence_refs": [
+          "DELTA_MEM_2026"
+        ]
+      },
+      "ttt_linear_attention_reduction": {
+        "owner": "research_candidate",
+        "purpose": "treat KV-binding test-time training as a learned linear-attention family, motivating trunk simplification before adding a second optimizer-like subsystem",
+        "status": "candidate",
+        "parameter_budget": 0,
+        "evidence_refs": [
+          "TTTLA_ICML2026"
+        ]
+      },
+      "raven_sparse_memory_routing": {
+        "owner": "research_candidate",
+        "purpose": "high-recall sparse memory routing with selective slot updates; evaluated as an architectural reference for the current top-k state router",
+        "status": "candidate",
+        "parameter_budget": 0,
+        "evidence_refs": [
+          "RAVEN_2026"
+        ]
+      },
+      "delta_mem_compact_online_memory": {
+        "owner": "research_candidate",
+        "purpose": "compact online associative memory/write-strategy family for continual interaction memory",
+        "status": "candidate",
+        "parameter_budget": 0,
+        "evidence_refs": [
+          "DELTA_MEM_2026"
+        ]
+      },
+      "mamba3_state_tracking_reference": {
+        "owner": "research_candidate",
+        "purpose": "reference family for richer recurrence, complex-valued state tracking and MIMO updates; not copied into default trunk",
+        "status": "candidate",
+        "parameter_budget": 0,
+        "evidence_refs": [
+          "MAMBA3_ICLR2026"
+        ]
+      },
+      "continued_causal_state": {
+        "owner": "current_trunk",
+        "purpose": "chunked long-sequence execution with recurrent-state carry and optional truncated BPTT boundaries",
+        "status": "integrated",
+        "parameter_budget": 0,
+        "evidence_refs": [
+          "V113_STATE_FIDELITY",
+          "V113_LONG_HORIZON"
+        ]
+      },
+      "runtime_state_fidelity": {
+        "owner": "current_trunk",
+        "purpose": "explicit serialization of batch-shaped multiscale runtime state so resume preserves causal continuity",
+        "status": "integrated",
+        "parameter_budget": 0,
+        "evidence_refs": [
+          "V113_RUNTIME_ROUNDTRIP"
+        ]
+      },
+      "standalone_causal_trunk": {
+        "owner": "current_trunk",
+        "purpose": "single current execution/learning graph with one causal associative state owner and compact predictive projections",
+        "status": "integrated",
+        "parameter_budget": 69137,
+        "evidence_refs": [
+          "V106_TRUNK_EXTRACTION",
+          "V112_GRADIENT_COVERAGE",
+          "V111_LEAN_OBJECTIVE",
+          "V113_STRUCTURAL_PRUNING"
+        ]
+      },
+      "unified_associative_substrate": {
+        "owner": "recurrent_substrate",
+        "purpose": "sparse recurrent associative substrate with independent erase/write gates, online preconditioning, and sequence-local adaptation statistics",
+        "status": "integrated",
+        "parameter_budget": 40200,
+        "evidence_refs": [
+          "GDN2_2026",
+          "RAVEN_2026",
+          "PGDN_2026",
+          "V90_ISOLATED_RECALL",
+          "V91_SEQUENCE_LOCAL_PRECONDITIONER"
+        ]
+      },
+      "compositional_predictive_memory": {
+        "owner": "legacy_v70_memory",
+        "purpose": "historical compositional memory route preserved for evidence/migration only",
+        "status": "legacy",
+        "parameter_budget": null,
+        "evidence_refs": [
+          "V70_GATE"
+        ]
+      },
+      "adaptive_replay_utility": {
+        "owner": "legacy_v88_replay_controller",
+        "purpose": "historical replay selection controller preserved outside current execution",
+        "status": "legacy",
+        "parameter_budget": null,
+        "evidence_refs": [
+          "V87_GATE"
+        ]
+      },
+      "neural_lifecycle_regeneration": {
+        "owner": "neuronal_lifecycle_controller",
+        "purpose": "utility- and activity-aware partial rejuvenation of mature low-contribution hidden units to preserve plasticity",
+        "status": "candidate",
+        "parameter_budget": 0,
+        "evidence_refs": [
+          "Dohare_Nature_2024",
+          "Farias_ICLR_2025",
+          "McCutcheon_CCBP_ICLR_2026",
+          "V94_SHORT_QUALIFICATION"
+        ]
+      },
+      "homeostatic_neural_gain": {
+        "owner": "recurrent_substrate",
+        "purpose": "slow non-gradient activity regulation via bounded per-unit gain",
+        "status": "candidate",
+        "parameter_budget": 64,
+        "evidence_refs": [
+          "Hakim_SciRep_2025",
+          "V94_SHORT_QUALIFICATION"
+        ]
+      },
+      "adaptive_neural_compute": {
+        "owner": "recurrent_substrate",
+        "purpose": "difficulty-gated shallow/deep refinement to allocate compute to hard sequence steps",
+        "status": "candidate",
+        "parameter_budget": 0,
+        "evidence_refs": [
+          "TSA_2026",
+          "RouterTuning_EMNLP_2025",
+          "V95_ADAPTIVE_COMPUTE_QUALIFICATION"
+        ]
+      },
+      "three_factor_fast_synapse": {
+        "owner": "recurrent_substrate",
+        "purpose": "causal online fast-synapse adaptation via eligibility trace, broadcast prediction error, and modulatory gate",
+        "status": "candidate",
+        "parameter_budget": 0,
+        "evidence_refs": [
+          "BrainTrace_NatureComms_2026",
+          "AGMP_2026",
+          "EPROP_2020",
+          "V95_ONLINE_PLASTICITY"
+        ]
+      },
+      "adaptive_linearity": {
+        "owner": "recurrent_substrate",
+        "purpose": "per-neuron nonlinear/linear interpolation driven by local gradient-flow history",
+        "status": "candidate",
+        "parameter_budget": 64,
+        "evidence_refs": [
+          "AdaLin_PMLR_2026",
+          "V97_ADALIN_CANDIDATE"
+        ]
+      },
+      "selective_weight_regeneration": {
+        "owner": "plasticity_controller",
+        "purpose": "periodic reset of lowest-utility weights using |w*g| utility with optimizer-state reset",
+        "status": "candidate",
+        "parameter_budget": 0,
+        "evidence_refs": [
+          "SelectiveWeightReinit_PMLR_2026",
+          "V97_SWR_CANDIDATE"
+        ]
+      },
+      "fast_slow_synaptic_consolidation": {
+        "owner": "recurrent_substrate",
+        "purpose": "transfer stable online fast-synapse state into the matched slow readout synapse before clearing fast state",
+        "status": "candidate",
+        "parameter_budget": 0,
+        "evidence_refs": [
+          "V97_FAST_SLOW_CONSOLIDATION"
+        ]
+      },
+      "input_dependent_channel_decay": {
+        "owner": "recurrent_substrate",
+        "purpose": "candidate input-dependent per-channel retention that turns fixed decay into token-conditioned forgetting without adding a second recurrent owner",
+        "status": "candidate",
+        "parameter_budget": 520,
+        "evidence_refs": [
+          "GDN2_2026",
+          "MAMBA3_ICLR2026",
+          "V121_TOKEN_DECAY_ABLATION"
+        ]
+      },
+      "multiscale_temporal_decay": {
+        "owner": "recurrent_substrate",
+        "purpose": "multiple short/medium/long retention timescales within one recurrent state via a fixed decay prior plus bounded learned residual",
+        "status": "candidate",
+        "parameter_budget": 0,
+        "evidence_refs": [
+          "AGMP_2026",
+          "HGRN2_2024",
+          "V96_LONG_DELAY_QUALIFICATION"
+        ]
+      },
+      "replay_gradient_alignment": {
+        "owner": "replay_controller",
+        "purpose": "latent-output gradient-alignment signal for selecting replay examples that support the live correction direction",
+        "status": "candidate",
+        "parameter_budget": 0,
+        "evidence_refs": [
+          "Abbes_LLA2026",
+          "V98_REPLAY_ALIGNMENT_QUALIFICATION"
+        ]
+      },
+      "selective_temporal_credit": {
+        "owner": "recurrent_substrate",
+        "purpose": "parameter-free per-sample surprise-gated eligibility, reducing trajectory-wide credit broadcasting under mixed events",
+        "status": "candidate",
+        "parameter_budget": 0,
+        "evidence_refs": [
+          "SelectiveEligibilityTraces_RLVR_2026",
+          "V113_SELECTIVE_CREDIT"
+        ]
+      },
+      "temporal_credit_assignment": {
+        "owner": "recurrent_substrate",
+        "purpose": "parameter-free online temporal credit through immediate, single/dual/adaptive/cascaded traces and optional event-specific fast synapses",
+        "status": "candidate",
+        "parameter_budget": 0,
+        "evidence_refs": [
+          "EPROP_2020",
+          "BrainTrace_NatureComms_2026",
+          "TemporalCreditIsFree_2026",
+          "CET_ICLR2026",
+          "V106_TEMPORAL_CREDIT"
+        ]
+      },
+      "qed_erase_control": {
+        "owner": "recurrent_substrate",
+        "purpose": "query-derived erasure orthogonal to key direction to reduce stale associative interference",
+        "status": "candidate",
+        "parameter_budget": 0,
+        "evidence_refs": [
+          "QED_2026",
+          "V106_ERASE_SWEEP"
+        ]
+      },
+      "uncertainty_aware_write": {
+        "owner": "recurrent_substrate",
+        "purpose": "parameter-free channel-wise write reliability using residual-variance tracking; opt-in KDN/OSDN-inspired candidate",
+        "status": "candidate",
+        "parameter_budget": 0,
+        "evidence_refs": [
+          "KDN_2026",
+          "OSDN_2026",
+          "V106_UNCERTAINTY_SWEEP"
+        ]
+      },
+      "independent_erase_address": {
+        "owner": "recurrent_substrate",
+        "purpose": "query-addressed erase independent of key-addressed write, without a second memory owner",
+        "status": "candidate",
+        "parameter_budget": 0,
+        "evidence_refs": [
+          "EDA_2026",
+          "V106_ERASE_SWEEP"
+        ]
+      },
+      "gradient_update_alignment_probe": {
+        "owner": "training_controller",
+        "purpose": "diagnose and optionally project the actual post-AdamW probe update against objective-gradient conflicts; candidate-only because optimizer state is not rewritten",
+        "status": "candidate",
+        "parameter_budget": 0,
+        "evidence_refs": [
+          "GUA_2026",
+          "V113_GRADIENT_ARBITRATION"
+        ]
+      },
+      "gradient_conflict_arbitration": {
+        "owner": "learning_controller",
+        "purpose": "PCGrad-style conflict resolution among existing objective gradients on a bounded shared-parameter probe",
+        "status": "candidate",
+        "parameter_budget": 0,
+        "evidence_refs": [
+          "PCGrad_2020",
+          "SAGO_ACL2026",
+          "V99_PCGRAD_QUALIFICATION"
+        ]
+      },
+      "gradient_subspace_protection": {
+        "owner": "plasticity_controller",
+        "purpose": "low-rank GPM-inspired gradient projection that protects previously used representation subspaces from destructive updates",
+        "status": "candidate",
+        "parameter_budget": 0,
+        "evidence_refs": [
+          "GPM_ICLR2021",
+          "SGP_AAAI2023",
+          "TRGP_ICLR2022",
+          "V98_GPM_SWEEP",
+          "V98_FULL_CURRENT_QUALIFICATION"
+        ]
+      },
+      "sparse_utility_cache": {
+        "owner": "legacy_v88_replay_controller",
+        "purpose": "historical replay utility cache preserved outside current execution",
+        "status": "legacy",
+        "parameter_budget": null,
+        "evidence_refs": [
+          "V88_GATE"
+        ]
+      }
+    },
+    "configuration": {
+      "trunk": {
+        "raw_observation_dim": 9,
+        "goal_dim": 8,
+        "latent_dim": 20,
+        "hidden_dim": 64,
+        "feature_dim": 64,
+        "context_dim": 20,
+        "spine_rank": 8,
+        "spine_topk": 3,
+        "learning_rate": 0.0003,
+        "gradient_clip": 1.0,
+        "predictive_weight": 1.0,
+        "memory_weight": 0.45,
+        "world_weight": 0.55,
+        "spine_weight": 0.45,
+        "self_weight": 0.18,
+        "multiscale_weight": 0.2,
+        "confidence_weight": 0.1,
+        "temporal_weight": 0.0,
+        "multiscale_fast_decay": 0.7,
+        "multiscale_medium_decay": 0.9,
+        "multiscale_slow_decay": 0.985,
+        "router_temperature": 0.85,
+        "preconditioner_decay": 0.95,
+        "preconditioner_floor": 0.5,
+        "preconditioner_ceiling": 2.0,
+        "online_plasticity": {
+          "enabled": false,
+          "eligibility_decay": 0.92,
+          "fast_weight_decay": 0.995,
+          "learning_rate": 0.03,
+          "error_threshold": 0.02,
+          "modulation_temperature": 0.05,
+          "error_baseline_decay": 0.95,
+          "eligibility_clip": 4.0,
+          "fast_weight_clip": 0.5,
+          "reset_on_sequence_start": true,
+          "modulatory_gate_enabled": true
+        },
+        "temporal_credit": {
+          "enabled": false,
+          "mode": "single",
+          "short_decay": 0.7,
+          "long_decay": 0.975,
+          "long_mix": 0.65,
+          "adaptive_switch_steps": 8.0,
+          "adaptive_temperature": 2.0,
+          "adaptive_activity_threshold": 0.05,
+          "selective_temperature": 0.5,
+          "selective_floor": 0.1,
+          "signal_decay": 0.0,
+          "normalize_trace": true,
+          "trace_norm_floor": 0.25,
+          "credit_clip": 4.0,
+          "cascade_decays": [
+            0.7,
+            0.82,
+            0.9,
+            0.96,
+            0.985,
+            0.995
+          ],
+          "cascade_temperature": 1.5,
+          "cascade_stage": -1,
+          "event_bank_capacity": 8,
+          "event_similarity_threshold": 0.55,
+          "event_key_decay": 0.9,
+          "event_weight_decay": 0.995,
+          "event_credit_error_floor": 0.0,
+          "hippo": {
+            "enabled": false,
+            "order": 8,
+            "dt": 0.1,
+            "normalize": true,
+            "clip": 4.0,
+            "reconstruction_scale": 1.0
+          },
+          "hybrid_hippo_mix": 0.5,
+          "hybrid_hippo_min": 0.15,
+          "hybrid_switch_steps": 8.0,
+          "hybrid_temperature": 4.0
+        },
+        "adaptive_compute": {
+          "enabled": false,
+          "shallow_threshold": 0.22,
+          "delta_weight": 0.7,
+          "entropy_weight": 0.3,
+          "minimum_deep_fraction": 0.05,
+          "maximum_deep_fraction": 0.95,
+          "force_first_deep": true,
+          "diagnostics": false
+        },
+        "erase_control": {
+          "mode": "key",
+          "orthogonal_strength": 0.5,
+          "address_strength": 1.0
+        },
+        "uncertainty_write": {
+          "enabled": false,
+          "variance_decay": 0.98,
+          "floor": 0.001,
+          "gain_min": 0.25,
+          "gain_max": 1.5,
+          "normalization": true
+        },
+        "adaptive_linearity": {
+          "enabled": false,
+          "init_linearity": 0.05,
+          "gradient_ema_decay": 0.95,
+          "gradient_sensitivity": 2.0,
+          "min_gate": 0.01,
+          "max_gate": 0.99,
+          "activity_ema_decay": 0.99
+        },
+        "fast_slow_consolidation": {
+          "enabled": false,
+          "blend": 0.05,
+          "minimum_fast_norm": 0.05,
+          "maximum_error_norm": 0.2,
+          "maximum_update_norm": 0.05,
+          "minimum_updates": 8,
+          "reset_fast_state": true,
+          "require_stability": true,
+          "protection_strength": 0.0
+        },
+        "delta_integrator": {
+          "mode": "euler",
+          "mix": 1.0,
+          "beta_floor": 0.0001,
+          "beta_ceiling": 1.0
+        },
+        "synergy_feedback_strength": 0.0,
+        "synergy_peer_blend": 0.5,
+        "synergy_temperature": 4.0,
+        "synergy_disagreement_gate": false,
+        "synergy_gate_temperature": 4.0,
+        "surprise_write_strength": 0.0,
+        "surprise_write_ema_decay": 0.97,
+        "product_key_memory": {
+          "enabled": false,
+          "subkey_size": 16,
+          "slots_per_subkey": 16,
+          "topk_per_subkey": 2,
+          "value_dim": 20,
+          "write_rate": 0.25,
+          "decay": 0.995,
+          "similarity_temperature": 0.2,
+          "learned_initial_state": false
+        },
+        "product_key_memory_blend": 0.0,
+        "state_activation_mode": "silu_tanh",
+        "token_decay_enabled": false,
+        "token_decay_strength": 1.0,
+        "token_decay_floor": 0.8,
+        "token_decay_ceiling": 0.9999
+      },
+      "training_controllers": {
+        "neuronal_lifecycle": {
+          "enabled": false,
+          "replacement_rate": 0.0005,
+          "maturity_steps": 32,
+          "utility_decay": 0.99,
+          "silence_decay": 0.99,
+          "silence_threshold": 0.02,
+          "reset_strength": 0.2,
+          "minimum_live_units": 8,
+          "cooldown_steps": 8,
+          "homeostatic_enabled": false,
+          "homeostatic_target_activity": 0.05,
+          "homeostatic_eta": 0.002,
+          "homeostatic_gain_floor": 0.6,
+          "homeostatic_gain_ceiling": 1.8
+        },
+        "selective_weight_regeneration": {
+          "enabled": false,
+          "interval": 64,
+          "fraction": 0.001,
+          "min_updates_before_first": 64,
+          "utility": "weight_times_gradient",
+          "reinit": "resample",
+          "include_patterns": []
+        },
+        "gradient_subspace": {
+          "enabled": false,
+          "basis_rank": 8,
+          "energy_threshold": 0.9,
+          "projection_strength": 1.0,
+          "update_interval": 8,
+          "max_samples": 256,
+          "min_samples": 16
+        },
+        "gradient_arbitration": {
+          "enabled": false,
+          "method": "pcgrad",
+          "probe_parameter_patterns": [
+            "trunk.spine.state_to_hidden.2.weight",
+            "trunk.spine.state_to_hidden.2.bias",
+            "trunk.spine.q_proj.weight",
+            "trunk.spine.k_proj.weight",
+            "trunk.predictor.0.weight"
+          ],
+          "min_conflict_cosine": -1e-06,
+          "projection_strength": 1.0,
+          "normalize_objectives": true,
+          "anchor_objective": "memory_loss",
+          "anchor_weight": 0.55,
+          "post_update_alignment": false,
+          "post_update_alignment_strength": 1.0,
+          "post_update_alignment_passes": 8
+        }
+      }
+    }
+  },
+  "candidate_policy": "No candidate promoted without matched baseline, ablation, multi-seed, stress/interference and resource evidence.",
+  "notes": [
+    "V121 is a foundations/correctness pass. Default parameter count remains unchanged.",
+    "V120 files remain available as historical release; V120 checkpoint source_version remains loadable."
+  ]
+}

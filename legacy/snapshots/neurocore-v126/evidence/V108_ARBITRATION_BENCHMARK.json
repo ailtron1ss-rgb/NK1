@@ -1,0 +1,85 @@
+{
+  "version": 108,
+  "steps": 20,
+  "results": [
+    {
+      "seed": 108,
+      "enabled": false,
+      "initial": 2.835263252258301,
+      "final": 2.830045461654663,
+      "best": 2.8137528896331787,
+      "mean_last5": 2.84071741104126,
+      "mean_conflict": 0.0,
+      "mean_projection_delta": 0.0
+    },
+    {
+      "seed": 109,
+      "enabled": false,
+      "initial": 2.8463706970214844,
+      "final": 2.9390134811401367,
+      "best": 2.7621705532073975,
+      "mean_last5": 2.8623983383178713,
+      "mean_conflict": 0.0,
+      "mean_projection_delta": 0.0
+    },
+    {
+      "seed": 110,
+      "enabled": false,
+      "initial": 2.848822593688965,
+      "final": 2.8188676834106445,
+      "best": 2.8188676834106445,
+      "mean_last5": 2.8480313301086424,
+      "mean_conflict": 0.0,
+      "mean_projection_delta": 0.0
+    },
+    {
+      "seed": 108,
+      "enabled": true,
+      "initial": 2.835263252258301,
+      "final": 2.8301339149475098,
+      "best": 2.813734292984009,
+      "mean_last5": 2.8406248092651367,
+      "mean_conflict": 0.2794642857142857,
+      "mean_projection_delta": 0.14883688269464132
+    },
+    {
+      "seed": 109,
+      "enabled": true,
+      "initial": 2.8463706970214844,
+      "final": 2.938488483428955,
+      "best": 2.762249231338501,
+      "mean_last5": 2.8622825145721436,
+      "mean_conflict": 0.2544642857142857,
+      "mean_projection_delta": 0.150749139089759
+    },
+    {
+      "seed": 110,
+      "enabled": true,
+      "initial": 2.848822593688965,
+      "final": 2.818974018096924,
+      "best": 2.818974018096924,
+      "mean_last5": 2.8479787349700927,
+      "mean_conflict": 0.29732142857142857,
+      "mean_projection_delta": 0.17752938561056336
+    }
+  ],
+  "summary": {
+    "False": {
+      "initial": 2.8434855143229165,
+      "final": 2.862642208735148,
+      "best": 2.7982637087504068,
+      "mean_last5": 2.850382359822591,
+      "mean_conflict": 0.0,
+      "mean_projection_delta": 0.0
+    },
+    "True": {
+      "initial": 2.8434855143229165,
+      "final": 2.862532138824463,
+      "best": 2.798319180806478,
+      "mean_last5": 2.8502953529357913,
+      "mean_conflict": 0.27708333333333335,
+      "mean_projection_delta": 0.15903846913165456
+    }
+  },
+  "decision": "candidate_only; benchmark is preliminary and task-specific"
+}

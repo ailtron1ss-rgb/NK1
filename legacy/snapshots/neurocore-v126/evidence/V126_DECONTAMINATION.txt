@@ -1,0 +1,30 @@
+{
+  "executable_stub_suspects": [],
+  "inert_enabled_config_checks": "PASS",
+  "registry_truthfulness": {
+    "invalid_integrated_reference_count": 0.0,
+    "metadata_only_candidate_count": 6.0,
+    "metadata_only_candidates": [
+      "delta_mem_compact_online_memory",
+      "delta_mem_online_state",
+      "delta_product_transition",
+      "mamba3_state_tracking_reference",
+      "raven_sparse_memory_routing",
+      "ttt_linear_attention_reduction"
+    ]
+  },
+  "runtime_liveness": {
+    "adaptive_linearity_mean_effect": 0.0003251684829592705,
+    "adaptive_plus_heavy_tail_mean_effect": 0.005337305832654238,
+    "automatic_fast_slow_consolidation_events": 2.0,
+    "collision_cross_leak_reduction": 0.050966620445251465,
+    "collision_target_cosine_gain": 0.02040022611618042,
+    "default_workspace_exported": 0.0,
+    "diagnostic_workspace_exported": 1.0,
+    "heavy_tail_mean_effect": 0.005619428586214781,
+    "state_dict_key_set_stable": 1.0,
+    "synergy_mean_effect": 0.05136968195438385
+  },
+  "status": "PASS",
+  "version": 126
+}

@@ -1,0 +1,232 @@
+[
+  {
+    "title": "Nature Communications 2026 — BrainTrace",
+    "url": "https://www.nature.com/articles/s41467-026-68453-w",
+    "relevance": "linear-memory online learning and eligibility traces"
+  },
+  {
+    "title": "Nature 2025 — adversarial GNWT/IIT testing",
+    "url": "https://www.nature.com/articles/s41586-025-08888-1",
+    "relevance": "workspace is not sufficient evidence of consciousness"
+  },
+  {
+    "title": "GitHub — BrainTrace",
+    "url": "https://github.com/chaobrain/braintrace",
+    "relevance": "open implementation reference"
+  },
+  {
+    "title": "GitHub — TESS",
+    "url": "https://github.com/mapolinario94/TESS",
+    "relevance": "temporally/spatially local SNN learning reference"
+  },
+  {
+    "title": "GitHub — SAFA-SNN",
+    "url": "https://github.com/ZhangHuiJing2020/SAFA-SNN",
+    "relevance": "sparsity-aware/adaptive SNN reference"
+  },
+  {
+    "title": "ICLR 2026 — Learning From the Past with Cascading Eligibility Traces",
+    "url": "https://proceedings.iclr.cc/paper_files/paper/2026/hash/e647dad9086b5a4cc136e1d1926cc172-Abstract-Conference.html",
+    "relevance": "multi-timescale/cascading eligibility traces for long delayed credit"
+  },
+  {
+    "title": "2026 — Astrocyte-gated multi-timescale plasticity",
+    "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC12886396/",
+    "relevance": "slow plasticity gate combined with eligibility traces for online continual learning"
+  },
+  {
+    "title": "Neurocomputing 2026 — Self-normalizing STDP",
+    "url": "https://www.sciencedirect.com/science/article/pii/S0925231226008167",
+    "relevance": "local event-driven weight normalization and stability"
+  },
+  {
+    "title": "Nature Communications 2026 — Active inference and artificial reasoning",
+    "url": "https://www.nature.com/articles/s41467-026-77209-5",
+    "relevance": "expected information gain for action selection and world-model structure learning"
+  },
+  {
+    "title": "Frontiers in Neuroscience 2026 — Astrocyte-gated multi-timescale plasticity",
+    "url": "https://www.frontiersin.org/journals/neuroscience/articles/10.3389/fnins.2025.1768235/full",
+    "relevance": "multi-timescale eligibility + slow plasticity gate + continual learning ablation"
+  },
+  {
+    "title": "Neural Networks 2025/2026 — Context selectivity with dynamic availability",
+    "url": "https://www.sciencedirect.com/science/article/pii/S0893608025006082",
+    "relevance": "bio-plausible metaplasticity: context selectivity + neuron-wide availability/consolidation for lifelong learning"
+  },
+  {
+    "title": "ICML 2025 — Continual Reinforcement Learning by Planning with Online World Models",
+    "url": "https://proceedings.mlr.press/v267/liu25p.html",
+    "relevance": "online shallow world model + planning for continual RL and reduced forgetting"
+  },
+  {
+    "title": "PMLR 2026 — Enhancing Plasticity for First Session Adaptation Continual Learning",
+    "url": "https://proceedings.mlr.press/v330/marouf26a.html",
+    "relevance": "controlled plasticity restoration with teacher-student stabilization"
+  },
+  {
+    "title": "CVPR Findings 2026 — Wake the Sleeping Weights",
+    "url": "https://openaccess.thecvf.com/content/CVPR2026F/html/Ji_Wake_the_Sleeping_Weights_Sparsely-Activated_Continual_Test-Time_Adaptation_for_Medical_CVPRF_2026_paper.html",
+    "relevance": "sparsely activating inactive parameters for continual adaptation"
+  },
+  {
+    "title": "Frontiers in Neuroscience 2026 — Three factor delay learning rules for SNNs",
+    "url": "https://pubmed.ncbi.nlm.nih.gov/42246032/",
+    "relevance": "online joint learning of synaptic weights and temporal delays"
+  },
+  {
+    "title": "GitHub — LXDG",
+    "url": "https://github.com/m-j-tilley/LXDG",
+    "relevance": "learned context-dependent gating for continual learning"
+  },
+  {
+    "title": "PMLR 2026 — Replay can provably increase forgetting",
+    "url": "https://proceedings.mlr.press/v330/mahdaviyeh26a.html",
+    "relevance": "selective replay warning: replay quality and task-subspace relation matter"
+  },
+  {
+    "title": "PMLR 2026 — WOMBET",
+    "url": "https://proceedings.mlr.press/v331/kim26a.html",
+    "relevance": "uncertainty-penalized world-model planning and experience transfer"
+  },
+  {
+    "title": "PMLR 2026 — Adapting World Models with Latent-State Dynamics Residuals",
+    "url": "https://proceedings.mlr.press/v331/lanier26a.html",
+    "relevance": "latent residual dynamics as a route to richer world-model adaptation"
+  },
+  {
+    "title": "GitHub — TACT / Wake the Sleeping Weights implementation",
+    "url": "https://github.com/M4cheal/TACT",
+    "relevance": "sparsely activated continual test-time adaptation reference"
+  },
+  {
+    "title": "ICLR 2026 — Principled Fast and Meta Knowledge Learners for Continual Reinforcement Learning",
+    "url": "https://proceedings.iclr.cc/paper_files/paper/2026/hash/2230ffcd5da10015ce0c6ce588fc2936-Abstract-Conference.html",
+    "relevance": "dual fast/meta learners and adaptive meta warm-up for continual RL"
+  },
+  {
+    "title": "ACL 2026 — OASIS: Online Sample Selection for Continual Instruction Tuning",
+    "url": "https://aclanthology.org/2026.acl-long.158/",
+    "relevance": "adaptive online sample selection and redundancy-aware selection"
+  },
+  {
+    "title": "Pattern Recognition — Learning to Replay: A meta-reinforcement learning approach to experience replay in continual learning",
+    "url": "https://www.sciencedirect.com/science/article/pii/S0031320326017097",
+    "relevance": "joint replay content/timing control; online meta-RL replay policy"
+  },
+  {
+    "title": "GitHub — FAME",
+    "url": "https://github.com/datake/FAME",
+    "relevance": "fast-adaptive meta-learning reference discovered during source scan"
+  },
+  {
+    "title": "GitHub — OCS",
+    "url": "https://github.com/NeurAI-Lab/OCS",
+    "relevance": "online coreset selection reference"
+  },
+  {
+    "title": "PMLR 2026 — What Type of Inference is Active Inference?",
+    "url": "https://proceedings.mlr.press/v337/nuijten26a.html",
+    "relevance": "planning-as-inference and information-aware action selection"
+  },
+  {
+    "title": "PMLR 2026 — Provable Effects of Data Replay in Continual Learning",
+    "url": "https://proceedings.mlr.press/v300/ding26b.html",
+    "relevance": "feature-learning perspective on replay efficacy"
+  },
+  {
+    "title": "ScienceDirect 2026 — Safe Planning and Policy Optimization via World Model Learning",
+    "url": "https://journals.sagepub.com/doi/10.3233/FAIA251029",
+    "relevance": "adaptive switch between model-based planner and policy when model reliability is limited"
+  },
+  {
+    "title": "Google Research — Introducing Nested Learning",
+    "url": "https://research.google/blog/introducing-nested-learning-a-new-ml-paradigm-for-continual-learning/",
+    "relevance": "continuum memory with modules updated at different frequencies"
+  },
+  {
+    "title": "Neural Networks 2026 — A continual learning framework with long-term and multiple short-term memory networks",
+    "url": "https://www.sciencedirect.com/science/article/pii/S0893608026002364",
+    "relevance": "multiple short-term memory components plus long-term memory for stability/plasticity"
+  },
+  {
+    "title": "ScienceDirect — Eligibility traces as a synaptic substrate for learning",
+    "url": "https://www.sciencedirect.com/science/article/abs/pii/S0959438825000091",
+    "relevance": "multi-timescale eligibility traces as delayed-reward learning substrate"
+  },
+  {
+    "title": "Neural Networks 2026 — Multi-Agent Continual RL with Multi-Timescale Replay and Dynamic Task Classification",
+    "url": "https://www.sciencedirect.com/science/article/pii/S0893608026002145",
+    "relevance": "multi-timescale replay and dynamic task classification under non-stationarity"
+  },
+  {
+    "title": "GitHub — Sequential Continuum Multi-Timescale Memory (CMS) continual-learning reproduction",
+    "url": "https://github.com/tomasosarte/sequential-cms-continual-learning",
+    "relevance": "reproducible CMS implementation with scheduled fast/medium/slow update periods and forgetting analysis"
+  },
+  {
+    "title": "2026 — Continual Knowledge Updating in LLM Systems: Learning Through Multi-Timescale Memory Dynamics",
+    "url": "https://arxiv.org/abs/2605.05097",
+    "relevance": "fast/slow coupled memory variables and selective consolidation concept"
+  },
+  {
+    "title": "ACL 2026 — FOREVER: Forgetting Curve-Inspired Memory Replay for Language Model Continual Learning",
+    "url": "https://aclanthology.org/2026.acl-long.1144/",
+    "relevance": "model-centric replay time based on magnitude of optimizer/model updates rather than raw training steps"
+  },
+  {
+    "title": "ACL Findings 2026 — RecMem: Recurrence-based Memory Consolidation for Efficient and Effective Long-Running LLM Agents",
+    "url": "https://aclanthology.org/2026.findings-acl.1619/",
+    "relevance": "defer expensive consolidation until semantically similar interactions recur; lightweight subconscious memory before semantic consolidation"
+  },
+  {
+    "title": "Nature Communications 2026 — Hippocampo-neocortical interaction as compressive retrieval-augmented generation",
+    "url": "https://doi.org/10.1038/s41467-026-74357-6",
+    "relevance": "fast episodic hippocampal storage plus slow neocortical consolidation via replay; architectural inspiration for episodic→semantic bridge"
+  },
+  {
+    "title": "GitHub — CAS-Bridge-Diffusion",
+    "url": "https://github.com/mchertkov/CAS-Bridge-Diffusion",
+    "relevance": "resource-constrained temporal memory via Compress–Add–Smooth; source scan used for lightweight compression ideas"
+  },
+  {
+    "title": "ICLR 2026 — Forget Forgetting: Continual Learning in a World of Abundant Memory",
+    "url": "https://proceedings.iclr.cc/paper_files/paper/2026/hash/17fc58b1ba92abbb72c5f457e140d851-Abstract-Conference.html",
+    "relevance": "weight-space consolidation: selective reset + weight averaging to restore plasticity and stability"
+  },
+  {
+    "title": "L2RL 2026 — Reinitializing weights vs units for maintaining plasticity",
+    "url": "https://proceedings.mlr.press/v330/hernandez-garcia26a.html",
+    "relevance": "selective weight reinitialization for loss-of-plasticity recovery"
+  },
+  {
+    "title": "2026 — Rethinking Transfer in Continual Learning: A Replay-Based Realisation (TSR)",
+    "url": "https://arxiv.org/abs/2607.15587",
+    "relevance": "transfer-selective replay using task compatibility to improve forward transfer and stability"
+  },
+  {
+    "title": "2026 — Beyond Retention / Orthogonal Subspace Wake-up",
+    "url": "https://arxiv.org/abs/2601.18255",
+    "relevance": "negative-transfer risk of replay and orthogonal protection of established parameter structure"
+  },
+  {
+    "title": "Neural Computing & Applications 2026 — Coresets are more than replay",
+    "url": "https://link.springer.com/article/10.1007/s00521-026-12273-y",
+    "relevance": "data-centric coreset selection for stability/plasticity and compute reduction"
+  },
+  {
+    "title": "2026 — Self-Distillation Enables Continual Learning",
+    "url": "https://doi.org/10.48550/arXiv.2601.19897",
+    "relevance": "self-distillation as a stable continual-learning channel"
+  },
+  {
+    "title": "2026 — Continual Policy Distillation from Distributed RL Teachers",
+    "url": "https://arxiv.org/abs/2601.22475",
+    "relevance": "teacher-student policy distillation for continual RL"
+  },
+  {
+    "title": "ICLR 2026 — FIRE: Frobenius-Isometry Reinitialization",
+    "url": "https://proceedings.iclr.cc/paper_files/paper/2026/hash/8a47999fdfecfd0ab2730487d87b0b47-Abstract-Conference.html",
+    "relevance": "stability/plasticity-aware selective reinitialization; next candidate for P2805 reset criterion"
+  }
+]

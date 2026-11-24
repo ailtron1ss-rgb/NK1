@@ -1,0 +1,11 @@
+{
+  "release":"B370",
+  "date":"2026-09-15",
+  "canonicalNeuralCore":"B365",
+  "parallelNeuralBrainCreated":false,
+  "causal":{"directGroundingPolicyL1":0.796231,"fullRuntimeGroundingL1":0.411215,"transitionUpdates":40,"transitionPredictionError01":0.569,"activePerceptionDemand01":0.578018},
+  "device":{"status":"UNAVAILABLE","hostPromotedToPhysical":false},
+  "performance":{"cycles":120,"p50Ms":4.373,"p95Ms":22.058,"p99Ms":37.690,"maxMs":42.335},
+  "regression":{"B365":"PASS","B366":"PASS","B367":"PASS","B368":"PASS","B369":"PASS"},
+  "consciousness":{"functional":"UNKNOWN","phenomenal":"UNKNOWN"}
+}

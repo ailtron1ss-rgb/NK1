@@ -1,0 +1,27 @@
+{
+  "release": "34.70.0",
+  "pass": 97,
+  "overallEngineeringReadiness01": 0.63,
+  "areas": {
+    "runtimeStability01": 0.96,
+    "persistence01": 0.92,
+    "cognitiveIntegration01": 0.90,
+    "causalTraceability01": 0.91,
+    "unifiedLearning01": 0.84,
+    "memoryConsolidation01": 0.60,
+    "worldModel01": 0.72,
+    "mobileEfficiency01": 0.86,
+    "identity01": 0.84,
+    "agency01": 0.74,
+    "embodiment01": 0.77,
+    "sensorium01": 0.86,
+    "semanticVision01": 0.58,
+    "socialMind01": 0.75,
+    "developmentalSelf01": 0.75,
+    "proceduralSkills01": 0.62,
+    "deviceAgency01": 0.46,
+    "longHorizonAutonomy01": 0.45,
+    "consciousnessMechanism01": 0.20,
+    "consciousnessResearch01": 0.70
+  }
+}

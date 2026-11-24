@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "generatedAt": "2026-10-08T13:12:30.808Z",
+  "source": "/mnt/data/nk_work_final/super-config.json",
+  "environment": {
+    "NEURO_RUNTIME_MODE": "active",
+    "STATE_DIR": ".super-state/organism",
+    "NEURO_INTERVAL_MS": 30000,
+    "NEURO_RATE_LIMIT": 240,
+    "NEURO_MAX_BODY_BYTES": 256000,
+    "NEURO_REQUEST_TIMEOUT_MS": 45000,
+    "DATABASE_URL": null,
+    "NEURO_API_TOKEN": null
+  },
+  "notes": [
+    "Secrets are represented only by [redacted] and are never written from raw token values.",
+    "Use the corresponding environment variables in deployment."
+  ]
+}

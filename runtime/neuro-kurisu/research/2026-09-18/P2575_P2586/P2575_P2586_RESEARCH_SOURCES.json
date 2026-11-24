@@ -1,0 +1,38 @@
+[
+  {
+    "title": "World Models for Embodied Intelligence: From Plausible to Controllable to Actionable",
+    "year": 2026,
+    "url": "https://arxiv.org/abs/2609.16697",
+    "usedFor": ["actionability gate", "closed-loop evaluation", "causal intervention framing"]
+  },
+  {
+    "title": "World-In-World: World Models in a Closed-Loop World",
+    "year": 2026,
+    "url": "https://proceedings.iclr.cc/paper_files/paper/2026/hash/5b4263be85820683d78675cc18d2efc7-Abstract-Conference.html",
+    "usedFor": ["closed-loop benchmark", "coarse-to-fine inference budget", "action-conditioned evaluation"]
+  },
+  {
+    "title": "The World Model Remembers, the Actor Forgets: Dream Rehearsal for Continual Model-Based RL",
+    "year": 2026,
+    "url": "https://arxiv.org/abs/2607.19749",
+    "usedFor": ["dream rehearsal", "actor retention", "graded self-imitation hypothesis"]
+  },
+  {
+    "title": "FOREVER: Forgetting Curve-Inspired Memory Replay for Language Model Continual Learning",
+    "year": 2026,
+    "url": "https://aclanthology.org/2026.acl-long.1144/",
+    "usedFor": ["model-time replay scheduling", "forgetting debt"]
+  },
+  {
+    "title": "Conflict-Aware Memory for Embodied Agents: Enhancing Vector Data Quality via Detection Rules",
+    "year": 2026,
+    "url": "https://aclanthology.org/2026.acl-long.1306/",
+    "usedFor": ["conflict-aware rules", "negative transfer detection"]
+  },
+  {
+    "title": "When Continual Learning Moves to Memory: A Study of Experience Reuse in LLM Agents",
+    "year": 2026,
+    "url": "https://arxiv.org/abs/2604.27003",
+    "usedFor": ["memory-level stability/plasticity", "retrieval conflict framing"]
+  }
+]

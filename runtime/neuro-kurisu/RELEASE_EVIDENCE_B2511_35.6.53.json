@@ -1,0 +1,48 @@
+{
+  "version": "35.6.53",
+  "organismCore": "79.6.0-active-epistemic-experiment-b2511",
+  "schema": 172,
+  "release": "B2511",
+  "tests": {
+    "typecheck": "PASS",
+    "b2511Direct": {
+      "status": "PASS",
+      "baselineReward": 774.0,
+      "activeReward": 1116.8,
+      "relativeGain01": 0.4428940568475557,
+      "baselineCorrect": 600,
+      "activeCorrect": 1180,
+      "verifiedActions": 20,
+      "learningUpdates": 1200,
+      "causalEffect01": 0.14159751273382808,
+      "sampleEfficiency01": 0.381360517128865
+    },
+    "activePerceptionHoldout": {
+      "status": "PASS",
+      "samples": 300,
+      "validated": true,
+      "modelMae01": 0.08708608602042708,
+      "baselineMae01": 0.31999999999999995,
+      "advantage01": 0.23291391397957287
+    },
+    "b2511Runtime": "PASS",
+    "b2511Mobile": {
+      "status": "PASS",
+      "p50Ms": 0.00685,
+      "p95Ms": 0.014692,
+      "maxMs": 10.92757
+    },
+    "b2509B2510Regression": "PASS",
+    "b2501Regression": "PASS",
+    "b2201B2500Regression": "PASS",
+    "b365Regression": "PASS",
+    "architecture": "PASS",
+    "forensics": "PASS",
+    "hygiene": "PASS",
+    "integrity": "PASS",
+    "releaseContract": "PASS",
+    "releaseSource": "PASS",
+    "fullAudit": "PASS"
+  },
+  "scopeNote": "Synthetic holdout improvements validate this computational mechanism only; they do not establish consciousness or biological equivalence."
+}

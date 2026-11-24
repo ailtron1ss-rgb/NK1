@@ -1,0 +1,481 @@
+{
+  "generated_at": "2026-10-15",
+  "main_archive": {
+    "archive": "Neuro_Kurisu_WORKPASS42_2026-10-14.zip",
+    "file_entries": 9089,
+    "expanded_bytes": 267616491
+  },
+  "outer_source_archive_count": 22,
+  "outer_source_inventory_entries": 116725,
+  "outer_source_expanded_bytes": 1759681263,
+  "main_and_embedded_scan": {
+    "scanned_entries": 11726,
+    "text_read_files": 11440,
+    "code_lines_read": 862268,
+    "text_sha256_count": 8988,
+    "duplicate_sha_groups": 2359,
+    "duplicate_members_in_groups": 4811
+  },
+  "upstream_content_scan": {
+    "archive_entries_non_directory": 106738,
+    "readable_text_files": 96137,
+    "text_lines": 24890475,
+    "code_files": 82605,
+    "code_lines": 21522653,
+    "tests_read": 35254,
+    "docs_read": 8449,
+    "configs_read": 4757,
+    "scan_summary_files": 22,
+    "read_errors": 0
+  },
+  "sources": {
+    "Agent0-main.zip": {
+      "entries": 1286,
+      "readable_files": 1161,
+      "lines_read": 208068,
+      "code_files": 931,
+      "code_lines": 183957,
+      "tests_read": 158,
+      "docs_read": 120,
+      "configs_read": 110,
+      "vendor_entries_metadata_only": 61,
+      "large_text_metadata_only": 1,
+      "read_errors": 0,
+      "duplicate_hash_groups": 27,
+      "inventory": {
+        "archive": "Agent0-main.zip",
+        "group": "one",
+        "entries": 1594,
+        "expanded_bytes": 35337913
+      }
+    },
+    "AutoGPT-master.zip": {
+      "entries": 8407,
+      "readable_files": 6818,
+      "lines_read": 1518232,
+      "code_files": 6059,
+      "code_lines": 1296019,
+      "tests_read": 1917,
+      "docs_read": 541,
+      "configs_read": 230,
+      "vendor_entries_metadata_only": 227,
+      "large_text_metadata_only": 0,
+      "read_errors": 0,
+      "duplicate_hash_groups": 18,
+      "inventory": {
+        "archive": "AutoGPT-master.zip",
+        "group": "one",
+        "entries": 10417,
+        "expanded_bytes": 237060062
+      }
+    },
+    "agent-framework-main.zip": {
+      "entries": 5529,
+      "readable_files": 2755,
+      "lines_read": 796748,
+      "code_files": 1471,
+      "code_lines": 649688,
+      "tests_read": 525,
+      "docs_read": 722,
+      "configs_read": 456,
+      "vendor_entries_metadata_only": 0,
+      "large_text_metadata_only": 0,
+      "read_errors": 0,
+      "duplicate_hash_groups": 71,
+      "inventory": {
+        "archive": "agent-framework-main.zip",
+        "group": "one",
+        "entries": 6853,
+        "expanded_bytes": 60251548
+      }
+    },
+    "autogen-main.zip": {
+      "entries": 1837,
+      "readable_files": 1072,
+      "lines_read": 191355,
+      "code_files": 717,
+      "code_lines": 144887,
+      "tests_read": 163,
+      "docs_read": 198,
+      "configs_read": 126,
+      "vendor_entries_metadata_only": 0,
+      "large_text_metadata_only": 0,
+      "read_errors": 0,
+      "duplicate_hash_groups": 32,
+      "inventory": {
+        "archive": "autogen-main.zip",
+        "group": "one",
+        "entries": 2320,
+        "expanded_bytes": 48344797
+      }
+    },
+    "chroma-main.zip": {
+      "entries": 2187,
+      "readable_files": 2029,
+      "lines_read": 584152,
+      "code_files": 1504,
+      "code_lines": 484462,
+      "tests_read": 315,
+      "docs_read": 232,
+      "configs_read": 289,
+      "vendor_entries_metadata_only": 6,
+      "large_text_metadata_only": 0,
+      "read_errors": 0,
+      "duplicate_hash_groups": 35,
+      "inventory": {
+        "archive": "chroma-main.zip",
+        "group": "one",
+        "entries": 2675,
+        "expanded_bytes": 47967980
+      }
+    },
+    "dspy-main.zip": {
+      "entries": 735,
+      "readable_files": 668,
+      "lines_read": 155857,
+      "code_files": 430,
+      "code_lines": 124242,
+      "tests_read": 182,
+      "docs_read": 183,
+      "configs_read": 40,
+      "vendor_entries_metadata_only": 0,
+      "large_text_metadata_only": 0,
+      "read_errors": 0,
+      "duplicate_hash_groups": 1,
+      "inventory": {
+        "archive": "dspy-main.zip",
+        "group": "two",
+        "entries": 905,
+        "expanded_bytes": 26301699
+      }
+    },
+    "faiss-main.zip": {
+      "entries": 1128,
+      "readable_files": 951,
+      "lines_read": 266136,
+      "code_files": 895,
+      "code_lines": 256854,
+      "tests_read": 180,
+      "docs_read": 34,
+      "configs_read": 21,
+      "vendor_entries_metadata_only": 0,
+      "large_text_metadata_only": 0,
+      "read_errors": 0,
+      "duplicate_hash_groups": 2,
+      "inventory": {
+        "archive": "faiss-main.zip",
+        "group": "two",
+        "entries": 1204,
+        "expanded_bytes": 10750766
+      }
+    },
+    "hermes-agent-main.zip": {
+      "entries": 18563,
+      "readable_files": 16243,
+      "lines_read": 4162103,
+      "code_files": 13488,
+      "code_lines": 3398118,
+      "tests_read": 8076,
+      "docs_read": 1776,
+      "configs_read": 1071,
+      "vendor_entries_metadata_only": 21,
+      "large_text_metadata_only": 0,
+      "read_errors": 0,
+      "duplicate_hash_groups": 6,
+      "inventory": {
+        "archive": "hermes-agent-main.zip",
+        "group": "two",
+        "entries": 19797,
+        "expanded_bytes": 214419354
+      }
+    },
+    "hyperon-experimental-main.zip": {
+      "entries": 296,
+      "readable_files": 217,
+      "lines_read": 46119,
+      "code_files": 167,
+      "code_lines": 42138,
+      "tests_read": 52,
+      "docs_read": 28,
+      "configs_read": 19,
+      "vendor_entries_metadata_only": 0,
+      "large_text_metadata_only": 0,
+      "read_errors": 0,
+      "duplicate_hash_groups": 2,
+      "inventory": {
+        "archive": "hyperon-experimental-main.zip",
+        "group": "two",
+        "entries": 367,
+        "expanded_bytes": 2349224
+      }
+    },
+    "langroid-main.zip": {
+      "entries": 794,
+      "readable_files": 706,
+      "lines_read": 521221,
+      "code_files": 495,
+      "code_lines": 121343,
+      "tests_read": 176,
+      "docs_read": 181,
+      "configs_read": 29,
+      "vendor_entries_metadata_only": 0,
+      "large_text_metadata_only": 1,
+      "read_errors": 0,
+      "duplicate_hash_groups": 11,
+      "inventory": {
+        "archive": "langroid-main.zip",
+        "group": "two",
+        "entries": 890,
+        "expanded_bytes": 106082458
+      }
+    },
+    "letta-main (1).zip": {
+      "entries": 12,
+      "readable_files": 9,
+      "lines_read": 652,
+      "code_files": 0,
+      "code_lines": 0,
+      "tests_read": 0,
+      "docs_read": 7,
+      "configs_read": 2,
+      "vendor_entries_metadata_only": 0,
+      "large_text_metadata_only": 0,
+      "read_errors": 0,
+      "duplicate_hash_groups": 0,
+      "inventory": {
+        "archive": "letta-main (1).zip",
+        "group": "three",
+        "entries": 16,
+        "expanded_bytes": 60623
+      }
+    },
+    "llama.cpp-master.zip": {
+      "entries": 3786,
+      "readable_files": 2351,
+      "lines_read": 950371,
+      "code_files": 1984,
+      "code_lines": 886186,
+      "tests_read": 237,
+      "docs_read": 231,
+      "configs_read": 118,
+      "vendor_entries_metadata_only": 28,
+      "large_text_metadata_only": 0,
+      "read_errors": 0,
+      "duplicate_hash_groups": 5,
+      "inventory": {
+        "archive": "llama.cpp-master.zip",
+        "group": "three",
+        "entries": 4168,
+        "expanded_bytes": 177717281
+      }
+    },
+    "mem0-main.zip": {
+      "entries": 1838,
+      "readable_files": 1702,
+      "lines_read": 375222,
+      "code_files": 1059,
+      "code_lines": 239803,
+      "tests_read": 328,
+      "docs_read": 426,
+      "configs_read": 148,
+      "vendor_entries_metadata_only": 5,
+      "large_text_metadata_only": 0,
+      "read_errors": 0,
+      "duplicate_hash_groups": 54,
+      "inventory": {
+        "archive": "mem0-main.zip",
+        "group": "three",
+        "entries": 2214,
+        "expanded_bytes": 36013835
+      }
+    },
+    "openai-agents-python-main.zip": {
+      "entries": 1696,
+      "readable_files": 1675,
+      "lines_read": 607069,
+      "code_files": 1044,
+      "code_lines": 491546,
+      "tests_read": 513,
+      "docs_read": 536,
+      "configs_read": 91,
+      "vendor_entries_metadata_only": 0,
+      "large_text_metadata_only": 0,
+      "read_errors": 0,
+      "duplicate_hash_groups": 4,
+      "inventory": {
+        "archive": "openai-agents-python-main.zip",
+        "group": "three",
+        "entries": 1967,
+        "expanded_bytes": 27199175
+      }
+    },
+    "openclaw-main.zip": {
+      "entries": 55520,
+      "readable_files": 54833,
+      "lines_read": 13810308,
+      "code_files": 50211,
+      "code_lines": 12655215,
+      "tests_read": 21670,
+      "docs_read": 2580,
+      "configs_read": 1899,
+      "vendor_entries_metadata_only": 0,
+      "large_text_metadata_only": 0,
+      "read_errors": 0,
+      "duplicate_hash_groups": 115,
+      "inventory": {
+        "archive": "openclaw-main.zip",
+        "group": "three",
+        "entries": 57634,
+        "expanded_bytes": 664354663
+      }
+    },
+    "Hexis-main.zip": {
+      "entries": 1469,
+      "readable_files": 1449,
+      "lines_read": 440589,
+      "code_files": 1176,
+      "code_lines": 374889,
+      "tests_read": 410,
+      "docs_read": 222,
+      "configs_read": 43,
+      "vendor_entries_metadata_only": 0,
+      "large_text_metadata_only": 0,
+      "read_errors": 0,
+      "duplicate_hash_groups": 7,
+      "inventory": {
+        "archive": "Hexis-main.zip",
+        "group": "four",
+        "entries": 1718,
+        "expanded_bytes": 19151502
+      }
+    },
+    "PocketFlow-main.zip": {
+      "entries": 537,
+      "readable_files": 464,
+      "lines_read": 35873,
+      "code_files": 282,
+      "code_lines": 22429,
+      "tests_read": 16,
+      "docs_read": 179,
+      "configs_read": 2,
+      "vendor_entries_metadata_only": 0,
+      "large_text_metadata_only": 0,
+      "read_errors": 0,
+      "duplicate_hash_groups": 21,
+      "inventory": {
+        "archive": "PocketFlow-main.zip",
+        "group": "four",
+        "entries": 678,
+        "expanded_bytes": 16533555
+      }
+    },
+    "letta-main.zip": {
+      "entries": 12,
+      "readable_files": 9,
+      "lines_read": 652,
+      "code_files": 0,
+      "code_lines": 0,
+      "tests_read": 0,
+      "docs_read": 7,
+      "configs_read": 2,
+      "vendor_entries_metadata_only": 0,
+      "large_text_metadata_only": 0,
+      "read_errors": 0,
+      "duplicate_hash_groups": 0,
+      "inventory": {
+        "archive": "letta-main.zip",
+        "group": "four",
+        "entries": 16,
+        "expanded_bytes": 60623
+      }
+    },
+    "lumina-main.zip": {
+      "entries": 109,
+      "readable_files": 103,
+      "lines_read": 15251,
+      "code_files": 81,
+      "code_lines": 14219,
+      "tests_read": 11,
+      "docs_read": 12,
+      "configs_read": 10,
+      "vendor_entries_metadata_only": 0,
+      "large_text_metadata_only": 0,
+      "read_errors": 0,
+      "duplicate_hash_groups": 2,
+      "inventory": {
+        "archive": "lumina-main.zip",
+        "group": "four",
+        "entries": 131,
+        "expanded_bytes": 3903620
+      }
+    },
+    "owl-main.zip": {
+      "entries": 153,
+      "readable_files": 120,
+      "lines_read": 27860,
+      "code_files": 67,
+      "code_lines": 17166,
+      "tests_read": 0,
+      "docs_read": 37,
+      "configs_read": 16,
+      "vendor_entries_metadata_only": 0,
+      "large_text_metadata_only": 0,
+      "read_errors": 0,
+      "duplicate_hash_groups": 1,
+      "inventory": {
+        "archive": "owl-main.zip",
+        "group": "four",
+        "entries": 193,
+        "expanded_bytes": 5507781
+      }
+    },
+    "superpowers-main.zip": {
+      "entries": 238,
+      "readable_files": 225,
+      "lines_read": 47767,
+      "code_files": 74,
+      "code_lines": 13343,
+      "tests_read": 69,
+      "docs_read": 129,
+      "configs_read": 21,
+      "vendor_entries_metadata_only": 0,
+      "large_text_metadata_only": 0,
+      "read_errors": 0,
+      "duplicate_hash_groups": 0,
+      "inventory": {
+        "archive": "superpowers-main.zip",
+        "group": "four",
+        "entries": 307,
+        "expanded_bytes": 2068598
+      }
+    },
+    "will-main.zip": {
+      "entries": 606,
+      "readable_files": 577,
+      "lines_read": 128870,
+      "code_files": 470,
+      "code_lines": 106149,
+      "tests_read": 256,
+      "docs_read": 68,
+      "configs_read": 14,
+      "vendor_entries_metadata_only": 17,
+      "large_text_metadata_only": 0,
+      "read_errors": 0,
+      "duplicate_hash_groups": 0,
+      "inventory": {
+        "archive": "will-main.zip",
+        "group": "four",
+        "entries": 661,
+        "expanded_bytes": 18244206
+      }
+    }
+  },
+  "artifacts": [
+    "Plants.md",
+    "Plants_INTEGRATION_MATRIX.csv",
+    "Plants_MASTER_FILE_INDEX.csv",
+    "Plants_Audit_Package/UPSTREAM_SOURCE_FILE_AUDIT.csv",
+    "Plants_Audit_Package/UPSTREAM_CODE_CATALOG.csv",
+    "Plants_Audit_Package/UPSTREAM_EXACT_TEXT_DUPLICATES.csv"
+  ]
+}

@@ -1,0 +1,83 @@
+{
+  "version": "1.9.9",
+  "decisions": [
+    {
+      "ts": 1789823559.3746812,
+      "current_family": "sum3",
+      "families": [
+        "clamp_sum",
+        "compose_sum_xor",
+        "mul2",
+        "program_sum",
+        "sum3",
+        "xor3"
+      ],
+      "items": [
+        {
+          "key": "2306f5067df65534c14b06b0",
+          "family": "sum3",
+          "timescale": "fast",
+          "score": 0.854997429308195,
+          "transfer": 0.0,
+          "recency": 0.9999848782835,
+          "confidence": 0.9,
+          "reward": 0.95,
+          "anchor": true,
+          "negative_transfer_risk": 0.0,
+          "reason": "anchor"
+        },
+        {
+          "key": "dabc4d7327e01af621a20880",
+          "family": "mul2",
+          "timescale": "fast",
+          "score": 0.672398808253015,
+          "transfer": 0.0,
+          "recency": 0.9999929897236179,
+          "confidence": 0.9,
+          "reward": 0.94,
+          "anchor": false,
+          "negative_transfer_risk": 0.0,
+          "reason": "transfer_aware"
+        },
+        {
+          "key": "9c1fddcb2bd8cf9a5eb7a677",
+          "family": "program_sum",
+          "timescale": "fast",
+          "score": 0.6619977597675644,
+          "transfer": 0.0,
+          "recency": 0.9999868221621424,
+          "confidence": 0.9,
+          "reward": 0.9,
+          "anchor": false,
+          "negative_transfer_risk": 0.0,
+          "reason": "transfer_aware"
+        },
+        {
+          "key": "6979e807cbe9c1d9291514cd",
+          "family": "compose_sum_xor",
+          "timescale": "fast",
+          "score": 0.6567979029307964,
+          "transfer": 0.0,
+          "recency": 0.9999876642988027,
+          "confidence": 0.9,
+          "reward": 0.88,
+          "anchor": false,
+          "negative_transfer_risk": 0.0,
+          "reason": "transfer_aware"
+        }
+      ]
+    }
+  ],
+  "events": [
+    {
+      "kind": "replay_decision",
+      "count": 4,
+      "anchors": 1,
+      "negative_guarded": 0
+    }
+  ],
+  "config": {
+    "fast_half_life_s": 900.0,
+    "medium_half_life_s": 21600.0
+  }
+}

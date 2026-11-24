@@ -1,0 +1,10 @@
+{
+  "pass":"B260_RECURRENT_CAUSAL_MEMORY",
+  "verified":true,
+  "typecheck":"PASS",
+  "standalone":{"encodingCount":18,"outcomeCount":18,"replayRuns":1,"replayedEpisodes":12,"delayedCredit01":0.04695935037231447,"parameterUpdateNonZero":true},
+  "core":{"encodingCount":18,"outcomeCount":18,"replayRuns":1,"replayedEpisodes":12,"linkedMemoryCount":4,"delayedCredit01":0.04514434584960938,"canonicalLearningUpdates":30,"restartRoundTrip":true},
+  "regression":{"b259":"PASS","b242_b249":"PASS","p26":"PASS"},
+  "audit":{"architecture":"PASS","integrity":"PASS","hygiene":"PASS","full":"PASS","contract":"PASS","lockfile":"PASS","releaseSource":"PASS","archiveManifest":"PASS"},
+  "environmentGate":{"fileStateStoreFsSync":"EIO in current container filesystem; not treated as PASS"}
+}

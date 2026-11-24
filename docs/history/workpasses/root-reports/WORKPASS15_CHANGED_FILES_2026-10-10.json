@@ -1,0 +1,131 @@
+{
+  "name": "Neuro-Kurisu SUPER WorkPass 15 change manifest",
+  "date": "2026-10-10",
+  "baseArchive": "Neuro_Kurisu_SUPER_WILL_LUMINA_HEXIS_LETTA_CONSCIO_INTEGRATED_WORKPASS14_2026-10-10.zip",
+  "baseSha256": "d80479c7d80e9e98848ead4bf04eba327e3b50cfffa3aa53a8bce4417445a6cd",
+  "currentPass": 15,
+  "runtime": "Neuro-Kurisu 35.40.0",
+  "schema": 223,
+  "method": "Exact SHA-256 comparison of the current source tree against WorkPass 14. This manifest excludes itself to avoid self-referential hashing.",
+  "summary": {
+    "added": 8,
+    "modified": 10,
+    "removed": 0,
+    "unchanged": 12635,
+    "currentFilesIncludingManifest": 12654
+  },
+  "addedFiles": [
+    {
+      "path": "docs/PROJECT_CURRENT_STATUS_2026-10-10_WORKPASS15.json",
+      "bytes": 16347,
+      "sha256": "dd5ce60210237b5a6709532befdebf8f05a70fd25b9d3ab94c9816cc7930717b"
+    },
+    {
+      "path": "docs/PROJECT_CURRENT_STATUS_2026-10-10_WORKPASS15.md",
+      "bytes": 6302,
+      "sha256": "c4e9518c8a4e1e08d88e6dca137dee6e74b1646edade890c440fed06142a42c4"
+    },
+    {
+      "path": "docs/PROJECT_PROGRESS_SCORECARD_2026-10-10_WORKPASS15.json",
+      "bytes": 6565,
+      "sha256": "2e221655c4a687f14706d71d521ecf66622f0458a1286790e6d25809e236a234"
+    },
+    {
+      "path": "docs/WORKPASS15_CLOSED_LOOP_EVIDENCE_HARDENING_2026-10-10.md",
+      "bytes": 4417,
+      "sha256": "c566bca108119dbb509e73819541542da5f65177990dfef14bbc87f8999c3f0d"
+    },
+    {
+      "path": "runtime/neuro-kurisu/scripts/server-smoke-poll.mjs",
+      "bytes": 2078,
+      "sha256": "5a71ba1fc1c2bd68526a512a6cee7b970d539154280a829e0d377ffc05133eb9"
+    },
+    {
+      "path": "runtime/neuro-kurisu/tests/big-pass-128-runtime-evidence-bus-reliability.mjs",
+      "bytes": 6393,
+      "sha256": "a6fb008ccb43d6715c3df4ce5336ab1ad46a6cdc9f63bb6f7c28c1a59ce1b8da"
+    },
+    {
+      "path": "runtime/neuro-kurisu/tests/big-pass-129-outcome-verification-hardening.mjs",
+      "bytes": 3726,
+      "sha256": "10e18984e4d3e917e1ccaa16852e49494788229dd025307ec6082697fb5b3d81"
+    },
+    {
+      "path": "runtime/neuro-kurisu/tests/server-smoke-poll.mjs",
+      "bytes": 1999,
+      "sha256": "5544cb7c1c6ef11181c9c890410d9ead59df0fc9b74635b87f8f50e807aa742e"
+    }
+  ],
+  "modifiedFiles": [
+    {
+      "path": "CHANGELOG.md",
+      "bytes": 25585,
+      "sha256": "b547a430907ef4c85f4285080447b39e9225ffa2d1290487cec6cc9c24fa33b2",
+      "previousSha256": "25c58bae23154a4b2e3076a6b81ccccd6dc39dc58387d31aef1879e5a5461aa0"
+    },
+    {
+      "path": "README.md",
+      "bytes": 8274,
+      "sha256": "539c35ddad35198eb60f5b48d125ac9b34ae2eadcd8f00ee0aac8592e8dfcc8d",
+      "previousSha256": "0b0083caa16efb238fe9b10748084137e291388c741cad29b9bbc60aaade3f1e"
+    },
+    {
+      "path": "SUPER_VERSION.json",
+      "bytes": 5551,
+      "sha256": "46de175c8bd3210898e9f0d8e10236d4f06e29d2ab5a393a32770b769867d1f9",
+      "previousSha256": "81c566fed79d2f0955cb7c3978b8a2d3f201b80e7cf532a6a35a6c22f4a84c1f"
+    },
+    {
+      "path": "docs/RUNBOOK.md",
+      "bytes": 3084,
+      "sha256": "0795f7bd0e2de1481763a61e33a294c431acb859e319751635850f46c46e36d0",
+      "previousSha256": "41655c7e513bff853991848df01d9a7deae4bce7a4f9c1ae547cdbf58abc607b"
+    },
+    {
+      "path": "package.json",
+      "bytes": 6395,
+      "sha256": "585361c5002ccd22dc2a2573e5edf3913258d5057b39333c77e5330a4a0dba4f",
+      "previousSha256": "1d768a2b80e00488cd8714f8f6fe78daf2566d3fc2b7b97b71f7836d5552a1c2"
+    },
+    {
+      "path": "runtime/neuro-kurisu/package.json",
+      "bytes": 228512,
+      "sha256": "cf4891413d44a27fe0ff5ec15a97c8da46559e2923545f4ff9a82b82a02f91b7",
+      "previousSha256": "4040566f4256a75769eb5708836d1f19663bcb0ed4b11baf05f0264a5568ee7a"
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/system/OutcomeVerificationService.ts",
+      "bytes": 5438,
+      "sha256": "e234eac7abc216be8c517fd3c2df4b93c988269d4b6a1ad5a4c8b580e13a0710",
+      "previousSha256": "8478765a19be91c0a7d0b66d76178bb19f8ff68665a6e84db8349b2971862ba3"
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/system/RuntimeEvidenceBus.ts",
+      "bytes": 13547,
+      "sha256": "f61848720d010c3e4122445cae35dd6ecf5f5e904bc38fd73f9057618e82df5a",
+      "previousSha256": "7d951f0abaf30f6cab9c3f55a6e82e9f8c783674d3ebf7968da38b2118626ab0"
+    },
+    {
+      "path": "runtime/neuro-kurisu/tests/server-smoke.mjs",
+      "bytes": 21266,
+      "sha256": "5e4656abadcccd014b4d478b6f8820ecacaefc5fcb7abbdff20c0a6362932b9a",
+      "previousSha256": "e9220ea456e8a6297504e8b9a50e9f6ecc89ff8b126031fd898587793518f9ee"
+    },
+    {
+      "path": "Список дел.md",
+      "bytes": 81419,
+      "sha256": "ad9505d85be3d7a656445cee1eea30a1f7fe6ebd390c4e2ffa9e7bc1ebd1330b",
+      "previousSha256": "cb8797b12e3c6a5615df223549c2a34b51c7e23bc73d537fe7dddf5e6394d502"
+    }
+  ],
+  "removedFiles": [],
+  "manifestSelfReferenceExcluded": "WORKPASS15_CHANGED_FILES_2026-10-10.json",
+  "releaseClaims": {
+    "runtimeTypecheck": "PASS",
+    "rootAggregateAudit": "PASS",
+    "httpServerSmoke": "PASS",
+    "appProductionBuild": "NOT_VERIFIED_DEPENDENCY_BLOCKED",
+    "browserE2E": "NOT_RUN",
+    "memoryProductionUplift": "NOT_CLAIMED"
+  }
+}

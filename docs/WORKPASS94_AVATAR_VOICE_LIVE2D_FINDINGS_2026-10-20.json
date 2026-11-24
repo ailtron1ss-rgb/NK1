@@ -1,0 +1,178 @@
+{
+  "schemaVersion": 1,
+  "report": "WORKPASS94_AVATAR_VOICE_LIVE2D_AUDIT_2026-10-20",
+  "date": "2026-10-20",
+  "repository": "ailtron1ss-rgb/NK1",
+  "auditedBranch": "workpass79-cognitive-rebuild",
+  "auditedHead": "e09ec25ff5184af2d1051737b247dcbd490d1e79",
+  "reportBranch": "workpass94-avatar-voice-live2d-audit",
+  "scope": [
+    "UI mount and AvatarStage",
+    "browser SpeechSynthesis lifecycle",
+    "grapheme/viseme timeline",
+    "versioned postMessage contract",
+    "Live2D iframe viewer and local model assets",
+    "Legacy sprite fallback",
+    "runtime Android/Termux TTS/STT API and gateway boundary",
+    "related tests and workflow triggers"
+  ],
+  "overallStatus": "PARTIAL_RELEASE_GATE_OPEN",
+  "tree": {
+    "entryCount": 10224,
+    "truncated": false
+  },
+  "ciEvidence": {
+    "runId": 39384864459,
+    "url": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/39384864459",
+    "headSha": "e09ec25ff5184af2d1051737b247dcbd490d1e79",
+    "conclusion": "success",
+    "scopeLimit": "WorkPass79 cognitive/runtime workflow; does not run app UI/Live2D/voice E2E"
+  },
+  "findings": [
+    {
+      "id": "F-01",
+      "priority": "P1",
+      "status": "SOURCE_LEVEL_DEFECT_INDICATOR",
+      "title": "Live2D expression may be reapplied on every embodiment intent",
+      "evidence": [
+        "app/public/live2d/viewer.html: message handler calls applyEmbodiment for every accepted intent",
+        "app/public/live2d/viewer.html: applyEmbodiment calls applyExpression when expression is present",
+        "app/src/components/AvatarStage.tsx: mouth pose updates around every 40 ms while speaking"
+      ],
+      "impact": "Repeated expression transitions may be reset during lip-sync updates; visual impact is not measured in a real browser.",
+      "recommendation": "Cache the applied expression and only call model.expression on an actual expression transition; add a regression proving mouth-only updates do not restart it."
+    },
+    {
+      "id": "F-02",
+      "priority": "P1",
+      "status": "ARCHITECTURE_GAP",
+      "title": "Browser TTS and Android/Termux runtime voice are separate control paths",
+      "evidence": [
+        "AvatarStage uses window.speechSynthesis and SpeechSynthesisUtterance directly",
+        "app/src/neuro-kurisu/api.ts exports voiceSpeak, voiceListen, voiceTurn, voiceStatus and voiceInterrupt",
+        "runtime/neuro-kurisu/src/server/server.mjs exposes /api/organism/voice/* routes with approval handling",
+        "runtime/neuro-kurisu/src/organism/body/AndroidEmbodimentBridge.ts implements Termux TTS/STT"
+      ],
+      "impact": "The browser voice toggle does not represent Android/Termux capability or runtime voice status; a visible microphone/listen path is not present in AvatarStage.",
+      "recommendation": "Document separate providers explicitly or route UI through one canonical voice controller with shared event identity, status and interruption semantics."
+    },
+    {
+      "id": "F-03",
+      "priority": "P2",
+      "status": "SOURCE_LEVEL_DEFECT",
+      "title": "Legacy sprite fallback does not guard localStorage errors",
+      "evidence": [
+        "app/src/legacy/avatar/LegacySpriteDeck.tsx reads localStorage in the state initializer without try/catch",
+        "app/src/legacy/avatar/LegacySpriteDeck.tsx writes localStorage in an effect without try/catch",
+        "AvatarStage.tsx already catches storage failures"
+      ],
+      "impact": "A SecurityError from blocked storage may prevent the fallback component from mounting or updating.",
+      "recommendation": "Use safe read/write helpers and test a throwing localStorage implementation."
+    },
+    {
+      "id": "F-04",
+      "priority": "P2",
+      "status": "FUNCTIONAL_LIMITATION",
+      "title": "Legacy speaking indicator is not lip synchronization",
+      "evidence": [
+        "app/src/legacy/avatar/LegacySpriteDeck.tsx draws a pulsing ellipse while speaking"
+      ],
+      "impact": "Fallback provides a speaking cue, not articulated mouth poses.",
+      "recommendation": "Label as degraded visual fallback; do not claim full lip-sync."
+    },
+    {
+      "id": "F-05",
+      "priority": "P2",
+      "status": "DOCUMENTED_LIMITATION",
+      "title": "Viseme timeline is grapheme-timed approximation, not acoustic phoneme synchronization",
+      "evidence": [
+        "app/src/components/avatar/embodimentTimeline.ts documents lack of PCM/phoneme boundaries in Web Speech API",
+        "AvatarStage anchors timeline to browser speech boundary/elapsedTime events",
+        "viewer applies mouth-open and mouth-form parameters"
+      ],
+      "impact": "Mouth timing and articulation can drift from actual audio; no measured RU/EN offset or jitter is recorded.",
+      "recommendation": "Measure offset/jitter; integrate acoustic/phoneme timing if the chosen provider exposes it."
+    },
+    {
+      "id": "F-06",
+      "priority": "P1",
+      "status": "VALIDATION_GAP",
+      "title": "Current branch CI does not validate the UI/Live2D/voice path",
+      "evidence": [
+        "WorkPass79 cognitive workflow passes exact HEAD but targets cognitive/runtime regressions",
+        "WorkPass71 validation includes app tests, typecheck, development build, embodiment timeline and speech gateway/concurrency tests",
+        "WorkPass71 workflow push trigger targets workpass70-source and workflow_dispatch; no pull_request trigger is configured"
+      ],
+      "impact": "A green WorkPass79 run cannot be used as evidence that app/avatar/voice tests passed on the audited HEAD.",
+      "recommendation": "Run or wire app and speech tests to push/pull_request on the active branch; add a separate real-browser E2E job."
+    },
+    {
+      "id": "F-07",
+      "priority": "P1",
+      "status": "UNRESOLVED_RELEASE_GATE",
+      "title": "Actual browser rendering and physical device audio remain unverified",
+      "evidence": [
+        "Repository README release gates",
+        "WorkPass76 audit unresolved-work register",
+        "No real browser/Live2D/TTS run evidence was returned for the audited HEAD"
+      ],
+      "impact": "Cannot claim production-ready avatar, synchronized audio, Android/Termux microphone path, device performance or long-run stability.",
+      "recommendation": "Run browser E2E, target-device TTS/STT, interruption/remount/visibility tests and soak with saved logs."
+    }
+  ],
+  "checks": [
+    {
+      "area": "UI mount",
+      "status": "SOURCE_CONFIRMED",
+      "evidence": "app/src/routes/index.tsx mounts AvatarStage"
+    },
+    {
+      "area": "Live2D assets",
+      "status": "ASSET_AND_MANIFEST_PRESENT",
+      "evidence": "local vendor bundles, model JSONs, texture files, motion/expression refs and SHA-256 manifest exist"
+    },
+    {
+      "area": "Protocol validation",
+      "status": "SOURCE_AND_TEST_PRESENT",
+      "evidence": "versioned EmbodimentIntent schema, origin/source checks, state sequence and cancellation checks"
+    },
+    {
+      "area": "Browser TTS",
+      "status": "SOURCE_CONFIRMED_NOT_DEVICE_VERIFIED",
+      "evidence": "opt-in SpeechSynthesis lifecycle and grapheme timeline exist"
+    },
+    {
+      "area": "Android/Termux TTS",
+      "status": "SOURCE_AND_GATEWAY_TESTS_PRESENT_NOT_HARDWARE_VERIFIED",
+      "evidence": "Termux bridge and keyed interruption gateway tests exist"
+    },
+    {
+      "area": "Microphone/STT UI",
+      "status": "NOT_CONFIRMED_IN_AVATAR_UI",
+      "evidence": "server endpoint exists; AvatarStage itself has no listen control"
+    },
+    {
+      "area": "CI exact HEAD",
+      "status": "COGNITIVE_RUNTIME_WORKFLOW_PASS",
+      "evidence": "run 39384864459; does not cover UI/Live2D E2E"
+    },
+    {
+      "area": "Production browser E2E",
+      "status": "UNKNOWN",
+      "evidence": "not demonstrated by the reviewed current-HEAD CI run"
+    }
+  ],
+  "nextActions": [
+    "Prevent duplicate expression application and add a behavioral regression.",
+    "Define a canonical browser-vs-Termux voice provider/controller boundary.",
+    "Run app script tests, typecheck, development build, asset checks and speech gateway tests on the audit HEAD.",
+    "Add Playwright E2E for real model loading, expression transitions, mouth movement, interruption, iframe remount and visibility changes.",
+    "Test Android/Termux TTS and STT on actual hardware and preserve truthful playback-unverified status.",
+    "Harden Legacy localStorage and missing-asset fallback behavior."
+  ],
+  "limitations": [
+    "This is source-level inspection plus GitHub metadata review, not a local execution of repository tests.",
+    "The current-head green CI run only validates the WorkPass79 workflow's declared scope.",
+    "No subjective consciousness, general intelligence, production readiness or device performance is inferred."
+  ]
+}

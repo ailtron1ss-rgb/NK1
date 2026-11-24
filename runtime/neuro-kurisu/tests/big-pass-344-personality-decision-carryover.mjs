@@ -1,0 +1,52 @@
+import assert from 'node:assert/strict';
+import { OrganismCore } from '../src/organism/core/OrganismCore.ts';
+import { MemoryStateStore } from '../src/organism/persistence/MemoryStateStore.ts';
+
+const cfg={performanceProfile:'mobile',cycleResultMode:'operational',enableTemporalResolutionGovernor:false,operationalPulseEvery:1,checkpointMaxDirtyCycles:256,checkpointMinIntervalMs:600000};
+const actions=['respond','explore','verify','rest','reflect','wait','defer'];
+const core0=new OrganismCore(new MemoryStateStore(),cfg); await core0.init();
+const seed=core0.snapshot();
+const b299=seed.system.causalPersonalityDevelopmentB299;
+// Controlled developmental state: mature, repeatedly evidenced trait + action preference.
+const verify=b299.actionPhenotypes.find(x=>x.action==='verify');
+if(!verify) throw new Error('verify phenotype missing');
+verify.preference11=.82;
+verify.consolidatedPreference11=.68;
+verify.consolidationEvidence01=.92;
+verify.evidence01=.95;
+verify.causalConfidence01=.91;
+verify.stability01=.88;
+b299.traitFast11['truth-seeking']=.78;
+b299.traitSlow11['truth-seeking']=.64;
+b299.traitEvidence01['truth-seeking']=.92;
+b299.personalityStability01=.86;
+b299.learningUpdates=96;
+b299.verifiedUpdates=84;
+b299.independentUpdates=72;
+const b297=seed.system.executiveNeuralFusionB297;
+b297.sourceCredit.personality=.82;
+b297.sourceReliability.personality=.84;
+b297.sourceCreditUpdates=96;
+
+const trained=new OrganismCore(new MemoryStateStore({initial:seed}),cfg); await trained.init();
+const lesioned=new OrganismCore(new MemoryStateStore({initial:seed}),cfg); await lesioned.init();
+lesioned.b299CausalPersonalityLesion(1);
+
+const tr=await trained.observeOperational();
+const lr=await lesioned.observeOperational();
+const tm=Object.fromEntries((tr.decision?.candidates??[]).map(x=>[x.action,Number(x.score)]));
+const lm=Object.fromEntries((lr.decision?.candidates??[]).map(x=>[x.action,Number(x.score)]));
+const l1=actions.reduce((s,a)=>s+Math.abs((tm[a]??0)-(lm[a]??0)),0);
+const verifyDelta=(tm.verify??0)-(lm.verify??0);
+const trainedDiag=trained.b297ExecutiveNeuralFusionDiagnostics();
+const lesionBias=lesioned.b299CausalPersonalityBias('verify');
+const trainedBias=trained.b299CausalPersonalityBias('verify');
+assert.ok(trainedBias>0.02,'mature personality did not emit a real verify bias');
+assert.equal(lesionBias,0,'personality lesion did not remove B299 bias');
+assert.ok(l1>0.0005,'late arbitration erased all measurable personality carryover');
+assert.ok(verifyDelta>0,'personality carryover did not improve the trained action candidate');
+assert.ok(trainedDiag.sourceCredit.personality>.7,'personality source authority unexpectedly lost before decision');
+const restored=new OrganismCore(new MemoryStateStore({initial:trained.snapshot()}),cfg); await restored.init();
+const restoredBias=restored.b299CausalPersonalityBias('verify');
+assert.ok(Math.abs(restoredBias-trainedBias)<1e-9,'personality carryover state did not persist');
+console.log(JSON.stringify({pass:true,decision:{verifyTrained:tm.verify,verifyLesioned:lm.verify,verifyDelta,l1,trainedBias,lesionBias},authority:{personalityCredit:trainedDiag.sourceCredit.personality,personalityReliability:trainedDiag.sourceReliability.personality,updates:trainedDiag.sourceCreditUpdates},restart:{restoredBias}},null,2));

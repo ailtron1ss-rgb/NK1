@@ -1,0 +1,13 @@
+B307_DOCUMENTS_MANIFEST_RU.txt
+B307 docs live in docs/external/claude_2026-09-13/ beside Claude PDFs.
+- DEEP_AUDIT_B307_VERIFIED_POLICY_CLOSURE_2026-09-13_RU.md
+- B307_EVIDENCE_REPORT_RU.md
+- B307_FINAL_AUDIT_STATUS_RU.md
+- B307_PROGRESS_V11_RU.md
+- B307_NEXT_STEP_PLAN_RU.md
+- B307_RELEASE_NOTES_RU.md
+- B307_ARCHITECTURE_DECISIONS_RU.md
+- RELEASE_VERIFICATION_B307_2026-09-13_RU.md
+- B307_DOCUMENTS_MANIFEST_RU.txt
+
+Final static gates: typecheck PASS; B307 PASS; B306 PASS; B305 PASS; B298 PASS; liveness 176; parameterized 894/928 failures 0; semantic 38/3751; architecture PASS; integrity PASS; forensics PASS; hygiene PASS; contract PASS; syntax PASS; UI PASS; server PASS.

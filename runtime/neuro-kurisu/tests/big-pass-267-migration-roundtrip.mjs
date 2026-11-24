@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';
+import { migratePersistedOrganism, ORGANISM_STATE_SCHEMA } from '../src/organism/persistence/StateMigrations.ts';
+import { defaultB267AdaptiveRegimeController } from '../src/organism/cognition/B267AdaptiveRegimeController.ts';
+const base=defaultB267AdaptiveRegimeController();
+const raw={schemaVersion:ORGANISM_STATE_SCHEMA,system:{adaptiveRegimeControllerB267:{...base,observationsCount:50,shiftCount:4,mode:'verify',regimeShift01:.78,verificationCount:9}}};
+const m=migratePersistedOrganism(raw);
+assert.equal(m.system.adaptiveRegimeControllerB267.observationsCount,50);
+assert.equal(m.system.adaptiveRegimeControllerB267.shiftCount,4);
+assert.equal(m.system.adaptiveRegimeControllerB267.mode,'verify');
+assert.equal(m.system.adaptiveRegimeControllerB267.verificationCount,9);
+console.log(JSON.stringify({pass:true,schema:ORGANISM_STATE_SCHEMA,restored:m.system.adaptiveRegimeControllerB267},null,2));

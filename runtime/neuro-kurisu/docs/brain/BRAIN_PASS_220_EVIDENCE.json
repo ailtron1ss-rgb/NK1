@@ -1,0 +1,31 @@
+{
+  "pass": "BIG_PASS_220_HYPOTHALAMIC_HOMEOSTASIS",
+  "verified": true,
+  "causal": {
+    "healthy": {
+      "computeCap01": 0.861386784,
+      "plasticityCap01": 0.862591104,
+      "restorativePriority01": 0.14245747456
+    },
+    "stressed": {
+      "computeCap01": 0.24831724992,
+      "plasticityCap01": 0.25529745152,
+      "restorativePriority01": 0.8729968368128,
+      "allostaticLoad01": 0.798197984
+    },
+    "anticipatory": {
+      "predictedDemand01": 0.4127422592
+    }
+  },
+  "integration": {
+    "normalComputeCap01": 0.8656812,
+    "overloadComputeCap01": 0.256379936,
+    "normalBrainstem01": 0.88,
+    "overloadBrainstem01": 0.18
+  },
+  "persistence": {
+    "ticks": 3,
+    "coordinatorTicks": 2
+  },
+  "regression": "B208-B220 PASS"
+}

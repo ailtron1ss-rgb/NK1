@@ -1,0 +1,15 @@
+B302 DOCUMENT MANIFEST — 13.09.2026
+
+DEEP_AUDIT_B302_LONG_HORIZON_DEVELOPMENT_2026-09-13_RU.md
+B302_EVIDENCE_REPORT_RU.md
+B302_RELEASE_NOTES_RU.md
+B302_PROGRESS_V6_RU.md
+B302_NEXT_STEP_PLAN_RU.md
+B302_FINAL_AUDIT_STATUS_RU.md
+B302_ARCHITECTURE_DECISIONS_RU.md
+
+Plus:
+- all previous B298/B300/B301 audit documents
+- existing Claude PDF documents
+- external neural architecture research documents
+- audit recheck matrix

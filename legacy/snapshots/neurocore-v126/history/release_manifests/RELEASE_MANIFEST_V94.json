@@ -1,0 +1,17 @@
+{
+  "release": "V94",
+  "date": "2026-09-25",
+  "current_api": "src/neurocore/current",
+  "status": "candidate_not_promoted",
+  "current_recurrent_owner_count": 1,
+  "upstream_catalog_count": 53,
+  "tests_current": "21/21 PASS",
+  "compileall": "PASS",
+  "verifier": "PASS",
+  "candidate_mechanisms": [
+    "neural_lifecycle_regeneration",
+    "homeostatic_neural_gain"
+  ],
+  "promotion": false,
+  "notes": "Lifecycle/homeostatic mechanisms are implemented and tested but remain opt-in candidate features because qualification evidence is insufficient."
+}

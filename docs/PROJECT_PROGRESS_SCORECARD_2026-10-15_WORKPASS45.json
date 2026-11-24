@@ -1,0 +1,234 @@
+{
+  "title": "Neuro-Kurisu SUPER — reconciled weighted implementation roadmap scorecard — WorkPass45",
+  "date": "2026-10-15",
+  "workpass": 45,
+  "baseArchive": "Neuro_Kurisu_WORKPASS44_2026-10-15.zip",
+  "runtime": "35.66.0",
+  "schema": 225,
+  "method": "WorkPass45 adds provider reconciliation and a single canonical keyed physical-camera execution path, plus durable local Termux capture receipts and live server route coverage. Official weighted release readiness is intentionally unchanged because no physical Android device or external provider receipt API was exercised; interactive browser Live2D E2E, clean-room rollback, independent retrieval holdout, license sign-off and soak remain open.",
+  "overallPercent": 78.0,
+  "previousOfficialScorePercent": 78.0,
+  "deltaPercentagePoints": 0.0,
+  "remainingWeightedRoadmapPoints": 22.0,
+  "workstreams": [
+    {
+      "id": "A",
+      "name": "Canonical source lineage and single-owner architecture",
+      "weight": 15,
+      "completionPercent": 100,
+      "weightedPoints": 15.0,
+      "previousPercent": 100,
+      "rationale": "Single writable organism state/memory authorities preserved. WorkPass39 adds a read-only cognitive ownership map and typed flow validation without parallel runtime state."
+    },
+    {
+      "id": "B",
+      "name": "Runtime integration, API/UI routes and smoke/linkage coverage",
+      "weight": 15,
+      "completionPercent": 98,
+      "weightedPoints": 14.7,
+      "previousPercent": 96,
+      "rationale": "Runtime API and Runtime Atlas now surface the brain map and live composed-system health; routes and focused UI linkage are wired. Dependency-installed React/Vite and interactive browser Live2D E2E remain open."
+    },
+    {
+      "id": "C",
+      "name": "Memory 2.0, retrieval/admission and benchmark evidence",
+      "weight": 15,
+      "completionPercent": 72,
+      "weightedPoints": 10.8,
+      "previousPercent": 70,
+      "rationale": "Memory admission now respects net utility, harm/redundancy and provenance even without budget pressure. Independent labelled temporal holdout remains open and retrieval uplift is still zero."
+    },
+    {
+      "id": "D",
+      "name": "Agency, action schema, execution, outcome and reafference",
+      "weight": 20,
+      "completionPercent": 82,
+      "weightedPoints": 16.4,
+      "previousPercent": 80,
+      "rationale": "Cycle-local lineage checks now gate completion in runtime and core feedback; durable ActionGateway receipts remain. Real provider/device receipts and reconnect/replay remain open."
+    },
+    {
+      "id": "E",
+      "name": "Portable subject continuity and social/known-entity dossier",
+      "weight": 10,
+      "completionPercent": 76,
+      "weightedPoints": 7.6,
+      "previousPercent": 75,
+      "rationale": "Unified cycle verification is tied to actual same-tick causal edges; this improves continuity evidence but is not a claim of subjective consciousness."
+    },
+    {
+      "id": "F",
+      "name": "External transport, SDK, idempotency and replay",
+      "weight": 10,
+      "completionPercent": 42,
+      "weightedPoints": 4.2,
+      "previousPercent": 42,
+      "rationale": "Stable IDs for new evidence and legacy ID continuity are improved; external transport delivery receipts/reconnect and multi-provider reconciliation remain open."
+    },
+    {
+      "id": "G",
+      "name": "Research promotion and controlled experiments",
+      "weight": 5,
+      "completionPercent": 70,
+      "weightedPoints": 3.5,
+      "previousPercent": 66,
+      "rationale": "WorkPass40 reviews the existing source archives and upstream contracts, adds SBOM/provenance inventory, and adapts the documented OpenAI-compatible llama.cpp endpoint into the existing P40 model ecology. External source clones and target-hardware inference remain pending where network or target hardware is unavailable."
+    },
+    {
+      "id": "H",
+      "name": "Release durability: build, E2E, rollback, soak, SBOM/provenance",
+      "weight": 10,
+      "completionPercent": 58,
+      "weightedPoints": 5.8,
+      "previousPercent": 46,
+      "rationale": "WorkPass40 adds an atomic lock-guarded exact-set restore with checksum staging, symlink rejection, rollback staging and nine state-backup tests; SBOM/provenance covers 464 locked npm components and ten embedded source archives. Full fault-injected clean-room rollback, installed Vite build, browser E2E, manual license sign-off and soak remain open."
+    }
+  ],
+  "normalizedTaskInventory": {
+    "count": 120,
+    "counts": {
+      "DONE": 94,
+      "PARTIAL": 14,
+      "TODO": 12
+    }
+  },
+  "openReleaseGates": [
+    "Physical Android/Termux camera crash/reconnect receipt semantics",
+    "Per-provider authoritative receipts/idempotency and delayed evidence-to-reafference E2E",
+    "Dependency-installed Vite production build and interactive desktop/mobile browser Live2D/Legacy E2E",
+    "Target-host local model inference and resource measurements",
+    "Independent labelled temporal memory retrieval holdout; current uplift 0 and candidate not promoted",
+    "Clean-room install/upgrade/backup/restore/fault-injected rollback",
+    "Manual nested source/model license sign-off",
+    "Long-duration soak and resource growth thresholds"
+  ],
+  "environmentNote": "WorkPass45 focused checks were run independently and passed as recorded in docs/WORKPASS45_AUDIT_RESULTS_2026-10-15.json. Historical compact source archive check passed 8,512/8,512; historical snapshot check passed 10,427/10,427 entries and 18,935 content references; path restoration 4/4. Memory holdout benchmark passes mechanically but recallDelta=0 and candidate remains not-promoted. A long sequential reconciliation gate command timed out during its final typecheck after component tests; no full-aggregate PASS is claimed. App dependencies are absent, so production Vite build and interactive browser/Live2D E2E were not run. Physical camera and real external-provider receipt/reconnect tests are not run.",
+  "releaseStatus": "implementation-workpass; WorkPass45 read-only provider reconciliation and canonical keyed camera path implemented; release gates remain open",
+  "limitations": [
+    "A physical Termux/Android operation receipt is not available from the platform in this environment. If a camera side effect may have happened before the local receipt commit, the result stays unknown and is never auto-retried.",
+    "Generic provider reconciliation is proven with synthetic adapters only; each provider/device must forward and honour the idempotency token and expose authoritative receipt lookup.",
+    "Production Vite build and interactive browser/Live2D E2E were not run because app dependencies are absent.",
+    "The complete sequential audit:workpass45 command is not claimed as PASS; the long reconciliation test chain hit the tool execution window at the final typecheck. Typecheck and gates pass separately.",
+    "Memory retrieval holdout reports zero uplift; candidate is not promoted.",
+    "Clean-room rollback/soak and manual review of nested source licenses remain open."
+  ],
+  "workpassImplementationProgressPercent": 85,
+  "implementationDeltasWorkPass36": [
+    {
+      "area": "Shared primitives",
+      "status": "DONE",
+      "evidence": "NumericPrimitives, StableSerialization, shared action cost policy; targeted runtime and adapter tests pass."
+    },
+    {
+      "area": "Memory durability/compatibility",
+      "status": "DONE",
+      "evidence": "64-entry bounded revision history, byte accounting, restore normalization, legacy source-lineage round trip."
+    },
+    {
+      "area": "Source archive immutability",
+      "status": "DONE",
+      "evidence": "8,512/8,512 source member SHA256 checks; 10,427 historical snapshot entries and 3,873 legacy dedup entries resolved."
+    },
+    {
+      "area": "Release deployment E2E",
+      "status": "OPEN",
+      "evidence": "Dependency-installed app build, browser and interactive Live2D E2E not completed in this environment."
+    },
+    {
+      "area": "Independent capability evidence",
+      "status": "OPEN",
+      "evidence": "Real local model/provider inference, independent temporal holdout, external postcondition/reafference, rollback and soak remain open."
+    },
+    "Shared Unicode tokenizer preserving Lumina/Conscio separators as options",
+    "Immutable SHA-256 content-addressed preimages for source-archive and historical snapshots",
+    "Revision-history memory-budget accounting and legacy memory lineage round-trip",
+    "Shared stable serialization retaining persisted legacy fingerprint bytes",
+    "ReleaseContract aligned to runtime package/integration manifest; schema-223 migration regression added"
+  ],
+  "passImplementationProgressPercent": 85,
+  "passImplementationProgress": "85/100 — WorkPass45 canonical provider reconciliation and keyed camera receipt path implemented; device/provider/browser proof remains open.",
+  "workpassImplementationProgress": "85/100 — WorkPass45 canonical provider reconciliation and keyed camera receipt path implemented; device/provider/browser proof remains open.",
+  "lastVerification": "WorkPass45 component gates individually passed: provider reconciliation 5/5, camera receipt store 5/5 synthetic, canonical camera gateway 7/7, receipt/CEF 9/9, idempotency 13/13, durable ledger 4/4, release metadata 34/34, runtime typecheck, smoke/restart, server smoke, source history and provenance. Long sequential gate chain timed out at final typecheck and is not claimed as aggregate pass; Vite build/browser E2E and real device/provider not run.",
+  "remainingPercent": 22.8,
+  "workpass43Evidence": {
+    "runtime": "35.64.0",
+    "schema": 225,
+    "receiptCausalTests": "8/8 PASS",
+    "idempotencyTests": "13/13 PASS",
+    "ledgerArchiveTests": "4/4 PASS",
+    "reafferenceIntegration": "1/1 PASS",
+    "sourceArchivesVerified": "8512/8512",
+    "historicalSnapshotEntriesVerified": "10427/10427",
+    "historicalSnapshotSourcesChecked": 18935,
+    "legacyDedupEntries": 3873,
+    "historicalDuplicatePaths": 56,
+    "immutableHistoricalSourceBlobsAdded": 3,
+    "memoryRecallDelta": 0,
+    "memoryCandidatePromotion": "not-promoted",
+    "aggregateAudit": "TIMEOUT (not pass)",
+    "appBuild": "NOT RUN: app dependencies absent"
+  },
+  "workpass44Evidence": {
+    "runtime": "35.65.0",
+    "schema": 225,
+    "receiptCausalTests": "9/9 PASS",
+    "externalEvidenceReplay": "PASS",
+    "actionCrashReconciliation": "PASS",
+    "memoryTombstoneSafety": "PASS",
+    "memoryRecallDelta": 0,
+    "memoryCandidatePromotion": "not-promoted",
+    "providerSideIdempotency": "not yet evidenced with real provider/device",
+    "appBuild": "not run: dependencies absent",
+    "browserE2E": "not run",
+    "overallOfficialScorePercent": 78.0,
+    "passImplementationProgressPercent": 90,
+    "sourceArchiveMembersVerified": "8512/8512",
+    "historicalSnapshotEntriesVerified": "10427/10427",
+    "historicalSnapshotContentSourcesChecked": 18935,
+    "immutableHistoricalSourceBlobsAdded": 3,
+    "sourceManifestReferencesPinned": 12,
+    "metadataContract": "34/34 + contract tests 6/6 PASS",
+    "appScriptTests": "218/218 PASS",
+    "browserSmokeContract": "51/51 PASS",
+    "uiApiLinkage": "125 routes / 49 surfaces / zero missing required seams",
+    "assets": "PASS; zero errors",
+    "provenance": "PASS; 464 locked npm components / 8 source archives",
+    "officialScorePercent": 78.0
+  },
+  "workpass45Evidence": {
+    "source": "Neuro_Kurisu_WORKPASS44_2026-10-15.zip",
+    "genericReconciliation": "5/5 PASS: found receipt recovery; unknown fail-closed; concurrent lookup coalescing; authoritative no-effect; no execute fallback",
+    "cameraReceiptStore": "5/5 synthetic scenarios PASS; hardwareExecuted=false; retained image SHA-256 checked",
+    "canonicalCameraGateway": "7 assertions PASS; physicalDeviceTouched=false",
+    "actionGatewayIdempotency": "13/13 PASS",
+    "durableActionLedger": "4/4 PASS",
+    "runtimeTypecheck": "PASS standalone",
+    "smoke": "CLEAN_ORGANISM_SMOKE=PASS",
+    "liveHttpServer": "SERVER_SMOKE=PASS including Idempotency-Key guard on physical capture",
+    "officialScorePolicy": "do not raise official weighted score before real device/provider and release gates",
+    "runtime": "35.66.0",
+    "schema": 225,
+    "receiptCausalTests": "9/9 PASS",
+    "externalEvidenceReplay": "PASS",
+    "actionCrashReconciliation": "PASS",
+    "restartPersistence": "CLEAN_RESTART_PERSISTENCE=PASS",
+    "releaseMetadata": "34/34 PASS; contract test 6/6 PASS",
+    "appScriptTests": "218/218 PASS",
+    "browserSmokeContract": "51/51 PASS (contract, not interactive browser)",
+    "serverImports": "11 checked; missing 0",
+    "uiApiLinkage": "125 routes / 49 runtime surfaces / zero missing required seams",
+    "assets": "PASS; zero errors",
+    "sourceArchiveMembers": "8512/8512 PASS",
+    "historicalSnapshot": "10427/10427 entries and 18935 content-source references PASS",
+    "historicalPathRestore": "4/4 PASS",
+    "SBOMProvenance": "PASS; 464 npm components, 8 source archives, 4 with license evidence",
+    "memoryRetrieval": "PASS but recallDelta=0, candidate not-promoted",
+    "aggregateAudit": "Not claimed PASS: long sequential chain timed out during final TypeScript typecheck after component checks",
+    "physicalCamera": "NOT RUN; synthetic tests confirm hardwareExecuted=false/physicalDeviceTouched=false",
+    "realProviderReceipts": "OPEN",
+    "appBuild": "NOT RUN, app dependencies absent",
+    "browserE2E": "NOT RUN",
+    "officialScorePercent": 78.0,
+    "passImplementationProgressPercent": 85
+  }
+}

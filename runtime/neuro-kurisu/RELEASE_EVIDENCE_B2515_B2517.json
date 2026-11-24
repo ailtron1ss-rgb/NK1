@@ -1,0 +1,29 @@
+{
+  "release": "35.6.58",
+  "core": "80.0.0-unified-organism-latent-causal-self-b2515-b2517",
+  "schema": 172,
+  "tests": {
+    "direct": "B2515_B2517_UNIFIED_ORGANISM_STACK_PASS",
+    "runtime": "B2515_B2517_RUNTIME_PASS",
+    "holdout": "B2515_B2517_HOLDOUT_PASS",
+    "b2501_runtime_regression": "PASS",
+    "life_course_regression": "PASS"
+  },
+  "holdout": {
+    "reward": 376.25,
+    "baselineReward": 210.0,
+    "rewardGainPct": 79.1666666667,
+    "correct": 375,
+    "baselineCorrect": 200,
+    "accuracy": 0.9375
+  },
+  "audits": {
+    "typecheck": "PASS",
+    "architecture": "PASS",
+    "forensics": "PASS",
+    "hygiene": "PASS",
+    "integrity": "PASS",
+    "releaseContract": "PASS",
+    "releaseSource": "PASS"
+  }
+}

@@ -1,0 +1,18 @@
+import assert from 'node:assert/strict';
+import { OrganismRuntime } from '../src/organism/core/OrganismRuntime.ts';
+import { MemoryStateStore } from '../src/organism/persistence/MemoryStateStore.ts';
+const runtime=new OrganismRuntime({stateFile:'/tmp/nk-b2512-2514-runtime.json',stateStore:new MemoryStateStore(),enableLanguage:false,autoRun:false,intervalMs:30000,cycleResultMode:'full',performanceProfile:'balanced'});
+await runtime.init();
+for(let t=0;t<12;t++) await runtime.autonomousStep({novelty:t%4/3,uncertainty:.35+.05*(t%5),reward:t%2?.78:.36,embodiment:{bodyEnergy01:.75,cognitiveCapacity01:.82,thermalStrain01:.15,sensoryFreshness01:.86,awake:true,battery01:.78,cpuLoad01:.21,ramPressure01:.18}});
+const d12=runtime.core.b2512EpistemicSemanticDiagnostics();
+const d13=runtime.core.b2513FutureSelfDiagnostics();
+const d14=runtime.core.b2514MemoryNeedDiagnostics();
+assert.ok(d12.episodes>=10);
+assert.ok(d12.learningUpdates>=10);
+assert.ok(d13.cycles>=10);
+assert.ok(d13.rollouts>0);
+assert.ok(d13.learningUpdates>=10);
+assert.ok(d14.cycles>=10);
+assert.ok(d14.itemCount>=1);
+runtime.stop();
+console.log(JSON.stringify({pass:true,status:'B2512_B2514_RUNTIME_PASS',b2512:d12,b2513:d13,b2514:d14},null,2));

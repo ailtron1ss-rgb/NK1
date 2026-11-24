@@ -1,0 +1,39 @@
+{
+  "release": "34.73.0",
+  "pass": 99,
+  "overallEngineeringReadiness01": 0.69,
+  "areas": {
+    "runtimeStability": 0.96,
+    "persistence": 0.92,
+    "cognitiveIntegration": 0.92,
+    "causalTraceability": 0.92,
+    "unifiedLearning": 0.86,
+    "memoryConsolidation": 0.60,
+    "worldModel": 0.72,
+    "sensorium": 0.86,
+    "socialMind": 0.75,
+    "developmentalSelf": 0.75,
+    "proceduralSkills": 0.90,
+    "deviceAgency": 0.66,
+    "longHorizonAutonomy": 0.52,
+    "consciousnessMechanism": 0.20,
+    "consciousnessResearch": 0.70
+  },
+  "completedThisPass": [
+    "compound-skill identity collision removal",
+    "compiled execution policy",
+    "input/output contracts",
+    "fallback execution",
+    "verified adaptation",
+    "skill migration v5",
+    "core integration",
+    "mobile-safe bounded execution"
+  ],
+  "notCompleted": [
+    "full learned general policy",
+    "rich offline semantic vision",
+    "multi-day Android certification",
+    "human-level general intelligence",
+    "evidence of phenomenal consciousness"
+  ]
+}

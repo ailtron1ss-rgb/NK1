@@ -1,0 +1,73 @@
+{
+  "release": "34.64.0",
+  "files": {
+    "src/organism/learning/UnifiedLearningSubstrate.ts": {
+      "sha256": "7ac5e65aa40885634cb4453586a118f7d1dfb42f4567717b83f318c091b7b255",
+      "bytes": 7083
+    },
+    "src/organism/core/CognitiveDependencyGraph.ts": {
+      "sha256": "692f0d56fc5649cd7f7b598d853044a312711f5a426be976d03983a5e5ccc25a",
+      "bytes": 1991
+    },
+    "src/organism/core/CognitiveFrame.ts": {
+      "sha256": "949b67a02a51640bb709734d9961579af4afbc2077a92382ad8f8521f77d063b",
+      "bytes": 5646
+    },
+    "src/organism/core/types.ts": {
+      "sha256": "eae0bbafbd2d925c7b9c97c1b8364628de92ff62d07f227fd12a8e2b4ef56dbc",
+      "bytes": 18420
+    },
+    "src/organism/core/OrganismCore.ts": {
+      "sha256": "bcf9e4bc05744224020224a2f650fc3c9a29b25b2b9300a4c0182c449449f121",
+      "bytes": 341342
+    },
+    "src/organism/learning/CausalExperienceStream.ts": {
+      "sha256": "7a5fb309590d03df04d7cd274b1b8eb42cfc5574e31f37f82d314695ba22b3a2",
+      "bytes": 6577
+    },
+    "src/organism/persistence/StateMigrations.ts": {
+      "sha256": "72d19f900f33510f46d4e43db11ff9e44e51e336e5937c6908058726617420cf",
+      "bytes": 80307
+    },
+    "src/organism/system/ReleaseContract.ts": {
+      "sha256": "b8f8504b5027a3f54a58e23a8268385156f069c95429e6b6ad3313228223b6d4",
+      "bytes": 413
+    },
+    "package.json": {
+      "sha256": "cc5804d9e7f0eebbd8123e04b06715098dc6f60f31e49df952a4b17bb79d53af",
+      "bytes": 50260
+    },
+    "package-lock.json": {
+      "sha256": "4921002ff9ae5e26760a4e88a32502259acfde7980793560a80747be9c806f68",
+      "bytes": 312
+    },
+    "VERSION.json": {
+      "sha256": "4e7c137183ed82eeb306d7b4af19f83312c27e78d6d3b61ada5e46f3e3bb93ed",
+      "bytes": 265
+    },
+    "RELEASE_MANIFEST.json": {
+      "sha256": "4f87ceac1b9fd14fe74d4060ab0973bab29c0b9003efb1564e598bbab2edb88d",
+      "bytes": 1045
+    },
+    "ARCHITECTURE_MANIFEST.json": {
+      "sha256": "1ca4f4f92636b306a3a742b7e0fa03df48f05aa3f32a1f14e414ba458ac454f1",
+      "bytes": 908
+    },
+    "tests/big-pass-91-unified-learning.mjs": {
+      "sha256": "e434375db75e06f01e8562c24a02a8c867666902f4adbf2571913a09c56d5042",
+      "bytes": 2591
+    },
+    "docs/BIG_PASS_91_FINAL_REPORT_RU.md": {
+      "sha256": "ff7b932414777096bfc0d31fd8e778964d223cee56d7136ccd9dce82070b5426",
+      "bytes": 3042
+    },
+    "docs/BIG_PASS_91_PROGRESS_AND_DECISIONS_RU.md": {
+      "sha256": "b555e23090384c0162bdb715af2f3544a9575249a2b3c6b47b968d0a7ab2f634",
+      "bytes": 1114
+    },
+    "docs/BIG_PASS_91_PROGRESS_METRICS.json": {
+      "sha256": "4105da064202040251a4cda9a3cf8d06257982ce1e80dc50aa8ebb63d50517e0",
+      "bytes": 1200
+    }
+  }
+}

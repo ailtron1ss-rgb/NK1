@@ -1,0 +1,12 @@
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+const server=readFileSync(new URL('../src/server/server.mjs',import.meta.url),'utf8');
+const runtime=readFileSync(new URL('../src/organism/core/OrganismRuntime.ts',import.meta.url),'utf8');
+assert.match(server,/\/api\/organism\/personal-curriculum/);
+assert.match(server,/\/api\/runtime\/evidence/);
+assert.match(server,/\/api\/organism\/subsystems/);
+assert.match(server,/\/api\/organism\/projects\/active/);
+assert.match(server,/\/api\/organism\/projects\/tool/);
+assert.match(server,/\/api\/organism\/projects\/step/);
+assert.match(runtime,/executeNextProjectStep/);
+console.log('BIG_PASS_122_SERVER_SURFACE=PASS');

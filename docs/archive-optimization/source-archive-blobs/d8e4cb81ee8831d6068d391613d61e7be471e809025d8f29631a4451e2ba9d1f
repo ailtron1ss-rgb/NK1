@@ -1,0 +1,10 @@
+{
+  "application": "35.40.0",
+  "organismCore": "100.32.0-r26-hierarchical-lowrank-causal",
+  "stateSchema": 223,
+  "phase": "Stage-125/R26-Hierarchical-LowRank-Causal",
+  "status": "research-release",
+  "version": "35.40.0",
+  "release": "R26",
+  "schemaVersion": 223
+}

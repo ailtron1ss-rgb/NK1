@@ -1,0 +1,22 @@
+B301 DOCUMENTS MANIFEST — 2026-09-13
+
+Core B301:
+- src/organism/system/B301MobileStateEconomy.ts
+
+Tests:
+- tests/big-pass-301-mobile-state-economy.mjs
+- tests/big-pass-301-unseen-context-transfer.mjs
+- tests/big-pass-301-migration.mjs
+
+Claude-folder documents:
+- DEEP_AUDIT_B301_MOBILE_STATE_ECONOMY_2026-09-13_RU.md
+- B301_EVIDENCE_REPORT_RU.md
+- B301_RELEASE_NOTES_RU.md
+- B301_PROGRESS_V5_RU.md
+- B301_FINAL_AUDIT_STATUS_RU.md
+- B301_NEXT_STEP_PLAN_RU.md
+- B301_ARCHITECTURE_DECISIONS_RU.md
+- B301_DOCUMENTS_MANIFEST_RU.txt
+
+The existing Claude PDFs remain in this same directory.
+Canonical audit duplicates remain under docs/audits with INTERNAL_AUDIT_POINTERS_RU.md.

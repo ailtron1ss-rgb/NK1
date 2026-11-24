@@ -1,0 +1,1898 @@
+{
+  "schemaVersion": 1,
+  "originalArchivePath": "legacy/input-archives/Kurisu_v9_Sprites_Live.zip",
+  "originalArchiveSha256": "1592b64b5dbe47abfc3379ac8f08d73331adce790cc1fe8f7ff286236dd19750",
+  "originalArchiveBytes": 9893957,
+  "reconstruction": "Logical ZIP reconstruction: each member path and byte content is preserved; ZIP container byte-for-byte identity is not promised. Original WorkPass34 remains the immutable full snapshot.",
+  "entries": [
+    {
+      "path": "kurisu_v9/kurisu_webapp/.env.example",
+      "sizeBytes": 419,
+      "sha256": "7ff6bf660298555f35b8e3df3552e5ef96ad7fa433951002dcaebb19de314914",
+      "dateTime": [
+        2026,
+        8,
+        13,
+        7,
+        46,
+        18
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v9/.env.example"
+    },
+    {
+      "path": "kurisu_v9/kurisu_webapp/.gitignore",
+      "sizeBytes": 73,
+      "sha256": "db691f14fcf678985362a42c6aedb581e42cd6bb99962ce1b44aea460fb2a4df",
+      "dateTime": [
+        2026,
+        8,
+        13,
+        7,
+        46,
+        18
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v9/.gitignore"
+    },
+    {
+      "path": "kurisu_v9/kurisu_webapp/ANDROID_OPTIMIZATION_RU.md",
+      "sizeBytes": 1527,
+      "sha256": "3a985093e7d0a9dd9b113830b4962bad4783dafdc4850bf0334f2c32f0495729",
+      "dateTime": [
+        2026,
+        8,
+        13,
+        7,
+        46,
+        18
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v9/ANDROID_OPTIMIZATION_RU.md"
+    },
+    {
+      "path": "kurisu_v9/kurisu_webapp/ANDROID_TERMUX_FIX_RU.md",
+      "sizeBytes": 2459,
+      "sha256": "c35477c8c0e7152b4a1c5796f6f6562ea599a3cfe0cfb1f6e1a7ea721ea58561",
+      "dateTime": [
+        2026,
+        8,
+        13,
+        7,
+        46,
+        18
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v9/ANDROID_TERMUX_FIX_RU.md"
+    },
+    {
+      "path": "kurisu_v9/kurisu_webapp/COGNITIVE_ARCHITECTURE_RU.md",
+      "sizeBytes": 6183,
+      "sha256": "2c84a4fd6ec02e339c4a01e60427f9bb2fc83b72f41887ab77759ae6f5db3fb6",
+      "dateTime": [
+        2026,
+        8,
+        13,
+        7,
+        46,
+        18
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v9/COGNITIVE_ARCHITECTURE_RU.md"
+    },
+    {
+      "path": "kurisu_v9/kurisu_webapp/IMPROVEMENTS_RU.md",
+      "sizeBytes": 4828,
+      "sha256": "40b9054fc09324e4eb51ec5b73e71f4295e812065bd66aca2537b9eef4e75554",
+      "dateTime": [
+        2026,
+        8,
+        13,
+        7,
+        46,
+        20
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v9/IMPROVEMENTS_RU.md"
+    },
+    {
+      "path": "kurisu_v9/kurisu_webapp/LEVEL1_CORE_RU.md",
+      "sizeBytes": 690,
+      "sha256": "b6985567387a821a7f24e26147a323ebaa046dda13de317950e6239511e46a8c",
+      "dateTime": [
+        2026,
+        8,
+        13,
+        7,
+        46,
+        20
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v9/LEVEL1_CORE_RU.md"
+    },
+    {
+      "path": "kurisu_v9/kurisu_webapp/LEVEL2_BRAIN_RU.md",
+      "sizeBytes": 687,
+      "sha256": "4f6bb0f57da4c4015499f427104fd4611de973e77c633a2e59f048b1241f70f2",
+      "dateTime": [
+        2026,
+        8,
+        13,
+        7,
+        46,
+        20
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v9/LEVEL2_BRAIN_RU.md"
+    },
+    {
+      "path": "kurisu_v9/kurisu_webapp/PHONE_INSTRUCTIONS_RU.md",
+      "sizeBytes": 4395,
+      "sha256": "99f4110407f860e5d3cd2be46dd7238463d4cd4ea3f8a0dd47aaf17664a03e56",
+      "dateTime": [
+        2026,
+        8,
+        13,
+        7,
+        46,
+        20
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v9/PHONE_INSTRUCTIONS_RU.md"
+    },
+    {
+      "path": "kurisu_v9/kurisu_webapp/START_HERE_RU.md",
+      "sizeBytes": 684,
+      "sha256": "1c3f288d0bffa3ca075e337e51208b397f01b8bf8ef0b691eb91f18d4839420b",
+      "dateTime": [
+        2026,
+        8,
+        13,
+        7,
+        47,
+        54
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v9/START_HERE_RU.md"
+    },
+    {
+      "path": "kurisu_v9/kurisu_webapp/index.html",
+      "sizeBytes": 311,
+      "sha256": "b5a1b4bb457eded1c68ffa133748651b475b26f62f55a4e4b8b9495e18e045d7",
+      "dateTime": [
+        2026,
+        8,
+        13,
+        7,
+        47,
+        44
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/index.html"
+    },
+    {
+      "path": "kurisu_v9/kurisu_webapp/package.json",
+      "sizeBytes": 1041,
+      "sha256": "efed4fbbfdcc2eca05efa9da52586e6859ab0a23880183fd1c2ce8f8a43c93e9",
+      "dateTime": [
+        2026,
+        8,
+        13,
+        7,
+        47,
+        44
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v9/package.json"
+    },
+    {
+      "path": "kurisu_v9/kurisu_webapp/public/sprites/manifest.json",
+      "sizeBytes": 5968,
+      "sha256": "6200032562c06d5090fb23cc0fe3db5d3e528aae953f8c4ca9681642279b4465",
+      "dateTime": [
+        2026,
+        8,
+        13,
+        7,
+        46,
+        44
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "app/public/sprites/manifest.json"
+    },
+    {
+      "path": "kurisu_v9/kurisu_webapp/public/sprites/sheet_anime_office/arms_crossed.png",
+      "sizeBytes": 268317,
+      "sha256": "294423dc35528a2a8c12c178f3561e6a73f941b8fbccb9960f073e9aefe03eb2",
+      "dateTime": [
+        2026,
+        8,
+        13,
+        7,
+        46,
+        30
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "app/public/sprites/sheet_anime_office/arms_crossed.png"
+    },
+    {
+      "path": "kurisu_v9/kurisu_webapp/public/sprites/sheet_anime_office/embarrassed.png",
+      "sizeBytes": 243433,
+      "sha256": "4d53b7b7db14fc8c692c8c5c55103493a703cb03cc78f6a593bfae0a2511cff4",
+      "dateTime": [
+        2026,
+        8,
+        13,
+        7,
+        46,
+        30
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "app/public/sprites/sheet_anime_office/embarrassed.png"
+    },
+    {
+      "path": "kurisu_v9/kurisu_webapp/public/sprites/sheet_anime_office/neutral_front.png",
+      "sizeBytes": 270572,
+      "sha256": "38f63a9604ced449bc7cfcea034e5134c97a63686bcda4f12cea2516733fff90",
+      "dateTime": [
+        2026,
+        8,
+        13,
+        7,
+        46,
+        32
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "app/public/sprites/sheet_anime_office/neutral_front.png"
+    },
+    {
+      "path": "kurisu_v9/kurisu_webapp/public/sprites/sheet_anime_office/phone_look.png",
+      "sizeBytes": 240023,
+      "sha256": "7e2ef3aac09eb2084e26fcd0b25bf54cdcf62caeab169978346d93b178a0a92a",
+      "dateTime": [
+        2026,
+        8,
+        13,
+        7,
+        46,
+        32
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "app/public/sprites/sheet_anime_office/phone_look.png"
+    },
+    {
+      "path": "kurisu_v9/kurisu_webapp/public/sprites/sheet_anime_office/shocked.png",
+      "sizeBytes": 283338,
+      "sha256": "1acc199e0f3ed4be3f489de6b42b63bdb15bab211b17db3d0fc900d43dd42354",
+      "dateTime": [
+        2026,
+        8,
+        13,
+        7,
+        46,
+        30
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "app/public/sprites/sheet_anime_office/shocked.png"
+    },
+    {
+      "path": "kurisu_v9/kurisu_webapp/public/sprites/sheet_anime_office/thinking_chin.png",
+      "sizeBytes": 265310,
+      "sha256": "b57b0a4eec8fcfdc7b1341015da3f7723c42dcebe7920ee32d753d4fa9186401",
+      "dateTime": [
+        2026,
+        8,
+        13,
+        7,
+        46,
+        30
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "app/public/sprites/sheet_anime_office/thinking_chin.png"
+    },
+    {
+      "path": "kurisu_v9/kurisu_webapp/public/sprites/sheet_anime_office/tired_rest.png",
+      "sizeBytes": 258340,
+      "sha256": "f63c8bd1196d6581fc4052e9fd3f6cfabcd31bc74b3a3e5f18411a4f538fa552",
+      "dateTime": [
+        2026,
+        8,
+        13,
+        7,
+        46,
+        30
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "app/public/sprites/sheet_anime_office/tired_rest.png"
+    },
+    {
+      "path": "kurisu_v9/kurisu_webapp/public/sprites/sheet_anime_office/whiteboard.png",
+      "sizeBytes": 250029,
+      "sha256": "0ab68cb350a1592018beacebde8e68352d0481d65147184e77faca5b40d38630",
+      "dateTime": [
+        2026,
+        8,
+        13,
+        7,
+        46,
+        32
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "app/public/sprites/sheet_anime_office/whiteboard.png"
+    },
+    {
+      "path": "kurisu_v9/kurisu_webapp/public/sprites/sheet_cinematic/arms_close.png",
+      "sizeBytes": 334415,
+      "sha256": "093b63af9f284292637f0786b1af71eaae736f1e3090162aa5ef1e4589fc95d7",
+      "dateTime": [
+        2026,
+        8,
+        13,
+        7,
+        46,
+        40
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "app/public/sprites/sheet_cinematic/arms_close.png"
+    },
+    {
+      "path": "kurisu_v9/kurisu_webapp/public/sprites/sheet_cinematic/drpepper_dusk.png",
+      "sizeBytes": 351973,
+      "sha256": "f5cc5c7808d193aca94d4fde1f29658d17f66d75af611417ea0043c75e88490c",
+      "dateTime": [
+        2026,
+        8,
+        13,
+        7,
+        46,
+        40
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "app/public/sprites/sheet_cinematic/drpepper_dusk.png"
+    },
+    {
+      "path": "kurisu_v9/kurisu_webapp/public/sprites/sheet_cinematic/passionate_reach.png",
+      "sizeBytes": 294885,
+      "sha256": "4c4e73a05fe1d675fe08d274dcc040fd9dfa967eae57da4d16fc54ee1ac93ae3",
+      "dateTime": [
+        2026,
+        8,
+        13,
+        7,
+        46,
+        40
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "app/public/sprites/sheet_cinematic/passionate_reach.png"
+    },
+    {
+      "path": "kurisu_v9/kurisu_webapp/public/sprites/sheet_cinematic/sofa_phone.png",
+      "sizeBytes": 331390,
+      "sha256": "99f07c012859c3c3a616e1102315ebcef7339b1719979af47e250afb6a8d6ed5",
+      "dateTime": [
+        2026,
+        8,
+        13,
+        7,
+        46,
+        40
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "app/public/sprites/sheet_cinematic/sofa_phone.png"
+    },
+    {
+      "path": "kurisu_v9/kurisu_webapp/public/sprites/sheet_cinematic/soft_smile.png",
+      "sizeBytes": 351512,
+      "sha256": "fd69aece378eef8d6ae531063005baf6f115d1cb388fdcc0cb5aff082b6ede9b",
+      "dateTime": [
+        2026,
+        8,
+        13,
+        7,
+        46,
+        42
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "app/public/sprites/sheet_cinematic/soft_smile.png"
+    },
+    {
+      "path": "kurisu_v9/kurisu_webapp/public/sprites/sheet_cinematic/steeple_focus.png",
+      "sizeBytes": 314978,
+      "sha256": "28401c729e01a9a278c05f6d875ecfe70cce07e31a630bb282d8b0e0f997d124",
+      "dateTime": [
+        2026,
+        8,
+        13,
+        7,
+        46,
+        40
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "app/public/sprites/sheet_cinematic/steeple_focus.png"
+    },
+    {
+      "path": "kurisu_v9/kurisu_webapp/public/sprites/sheet_cinematic/wet_glance.png",
+      "sizeBytes": 308955,
+      "sha256": "3c596d211f6e3867287010261f3da611eed09aa80e261e6de478a018cbc90e2f",
+      "dateTime": [
+        2026,
+        8,
+        13,
+        7,
+        46,
+        42
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "app/public/sprites/sheet_cinematic/wet_glance.png"
+    },
+    {
+      "path": "kurisu_v9/kurisu_webapp/public/sprites/sheet_cinematic/whiteboard_write.png",
+      "sizeBytes": 291087,
+      "sha256": "2387ba994144a85a3ec6353a2a2c4dd02c156d7a22e1d3565c9eac4ce6f49ee6",
+      "dateTime": [
+        2026,
+        8,
+        13,
+        7,
+        46,
+        40
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "app/public/sprites/sheet_cinematic/whiteboard_write.png"
+    },
+    {
+      "path": "kurisu_v9/kurisu_webapp/public/sprites/sheet_lab/lab_chin.png",
+      "sizeBytes": 284454,
+      "sha256": "d763036ea11695831db663c80a6faa31e4dc154fa458121d171d66495ef2c367",
+      "dateTime": [
+        2026,
+        8,
+        13,
+        7,
+        46,
+        32
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "app/public/sprites/sheet_lab/lab_chin.png"
+    },
+    {
+      "path": "kurisu_v9/kurisu_webapp/public/sprites/sheet_lab/lab_crossed.png",
+      "sizeBytes": 279766,
+      "sha256": "fc0008f3c8675a16f3875d689e233e7926b5d52145651edf34c9f7fe44ca8f04",
+      "dateTime": [
+        2026,
+        8,
+        13,
+        7,
+        46,
+        34
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "app/public/sprites/sheet_lab/lab_crossed.png"
+    },
+    {
+      "path": "kurisu_v9/kurisu_webapp/public/sprites/sheet_lab/lab_drpepper.png",
+      "sizeBytes": 260459,
+      "sha256": "5da460f19be5d0f214a583c817a2515599e1d0eba093d5f0ff22e1361519cb47",
+      "dateTime": [
+        2026,
+        8,
+        13,
+        7,
+        46,
+        34
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "app/public/sprites/sheet_lab/lab_drpepper.png"
+    },
+    {
+      "path": "kurisu_v9/kurisu_webapp/public/sprites/sheet_lab/lab_explain.png",
+      "sizeBytes": 265603,
+      "sha256": "6d5191b8d8897f71884142bb258d32eb24efce7f4e1eeaf3bf6e90e30652d8dc",
+      "dateTime": [
+        2026,
+        8,
+        13,
+        7,
+        46,
+        34
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "app/public/sprites/sheet_lab/lab_explain.png"
+    },
+    {
+      "path": "kurisu_v9/kurisu_webapp/public/sprites/sheet_lab/lab_profile.png",
+      "sizeBytes": 265269,
+      "sha256": "d21f90409d4ec3c8895f27b2d49cfaa97db5d33544b3706df2737bff7c03375d",
+      "dateTime": [
+        2026,
+        8,
+        13,
+        7,
+        46,
+        34
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "app/public/sprites/sheet_lab/lab_profile.png"
+    },
+    {
+      "path": "kurisu_v9/kurisu_webapp/public/sprites/sheet_lab/lab_shocked.png",
+      "sizeBytes": 271482,
+      "sha256": "11821646df1d070fb56a43f3642be95a5e5c43895a076f1b07b9f7c79826eb68",
+      "dateTime": [
+        2026,
+        8,
+        13,
+        7,
+        46,
+        34
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "app/public/sprites/sheet_lab/lab_shocked.png"
+    },
+    {
+      "path": "kurisu_v9/kurisu_webapp/public/sprites/sheet_lab/lab_steeple.png",
+      "sizeBytes": 295082,
+      "sha256": "3478182e4d9bd81f385c7ed578bc83ad814928c0bd7277d4f5becf649717bae7",
+      "dateTime": [
+        2026,
+        8,
+        13,
+        7,
+        46,
+        34
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "app/public/sprites/sheet_lab/lab_steeple.png"
+    },
+    {
+      "path": "kurisu_v9/kurisu_webapp/public/sprites/sheet_lab/lab_tired.png",
+      "sizeBytes": 286326,
+      "sha256": "234057077f2ce9278eadff6708ee676094680344863b65e67646144d9ee02c52",
+      "dateTime": [
+        2026,
+        8,
+        13,
+        7,
+        46,
+        32
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "app/public/sprites/sheet_lab/lab_tired.png"
+    },
+    {
+      "path": "kurisu_v9/kurisu_webapp/public/sprites/sheet_trench_full/city_stand.png",
+      "sizeBytes": 397237,
+      "sha256": "884edc65fd7d9602c667eb2d5357c9fb00d0756bb5bf6ae7422834b254ad8212",
+      "dateTime": [
+        2026,
+        8,
+        13,
+        7,
+        46,
+        42
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "app/public/sprites/sheet_trench_full/city_stand.png"
+    },
+    {
+      "path": "kurisu_v9/kurisu_webapp/public/sprites/sheet_trench_full/clockwork.png",
+      "sizeBytes": 327764,
+      "sha256": "227c92d6995bc0df2bdf0ffe871c36304c77fe89511405c6d413108b704e7eb1",
+      "dateTime": [
+        2026,
+        8,
+        13,
+        7,
+        46,
+        44
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "app/public/sprites/sheet_trench_full/clockwork.png"
+    },
+    {
+      "path": "kurisu_v9/kurisu_webapp/public/sprites/sheet_trench_full/lab_think.png",
+      "sizeBytes": 341270,
+      "sha256": "8e27873d0a47a179323394a66dcac96bd988f18d9b1d85328aba652d1ebdff61",
+      "dateTime": [
+        2026,
+        8,
+        13,
+        7,
+        46,
+        44
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "app/public/sprites/sheet_trench_full/lab_think.png"
+    },
+    {
+      "path": "kurisu_v9/kurisu_webapp/public/sprites/sheet_trench_full/phone_lean.png",
+      "sizeBytes": 318696,
+      "sha256": "9c742c58aeaaa9652c2eeb68dc201fd39afc3e46aa3c7f36d28e37ee35c6f8a4",
+      "dateTime": [
+        2026,
+        8,
+        13,
+        7,
+        46,
+        44
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "app/public/sprites/sheet_trench_full/phone_lean.png"
+    },
+    {
+      "path": "kurisu_v9/kurisu_webapp/public/sprites/sheet_trench_full/rain_kneel.png",
+      "sizeBytes": 313994,
+      "sha256": "0cc8b2ccf25f8140c48598b6379a4b178288f55e74b75f35a0b2bb29c651d9bd",
+      "dateTime": [
+        2026,
+        8,
+        13,
+        7,
+        46,
+        42
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "app/public/sprites/sheet_trench_full/rain_kneel.png"
+    },
+    {
+      "path": "kurisu_v9/kurisu_webapp/public/sprites/sheet_trench_full/reach_out.png",
+      "sizeBytes": 343995,
+      "sha256": "741fda5b6f395e06b01f6f423af71577355f4a057722a82408bbc4fdaf72aed9",
+      "dateTime": [
+        2026,
+        8,
+        13,
+        7,
+        46,
+        42
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "app/public/sprites/sheet_trench_full/reach_out.png"
+    },
+    {
+      "path": "kurisu_v9/kurisu_webapp/public/sprites/sheet_trench_full/street_walk.png",
+      "sizeBytes": 427834,
+      "sha256": "ec9aa23faceb297fd051c70380e443864cf0590a464bfd09df76b33aef82cbeb",
+      "dateTime": [
+        2026,
+        8,
+        13,
+        7,
+        46,
+        44
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "app/public/sprites/sheet_trench_full/street_walk.png"
+    },
+    {
+      "path": "kurisu_v9/kurisu_webapp/public/sprites/sheet_trench_full/sunset_phone.png",
+      "sizeBytes": 359332,
+      "sha256": "e3385bb24eed5d94d4ab62b914e13d2366ae881a60cd5c9f1c547470d7bd9c8f",
+      "dateTime": [
+        2026,
+        8,
+        13,
+        7,
+        46,
+        44
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "app/public/sprites/sheet_trench_full/sunset_phone.png"
+    },
+    {
+      "path": "kurisu_v9/kurisu_webapp/server.ts",
+      "sizeBytes": 26330,
+      "sha256": "07930b808196e46d8736c22e3eb1149df88a8865822e478a9ddc05097b5ab7f5",
+      "dateTime": [
+        2026,
+        8,
+        13,
+        7,
+        47,
+        44
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v9/server.ts"
+    },
+    {
+      "path": "kurisu_v9/kurisu_webapp/src/App.tsx",
+      "sizeBytes": 38608,
+      "sha256": "d59e11131f24e6b138627951278a246b9ec6aab4471c2138e6f1dbbbe950fc05",
+      "dateTime": [
+        2026,
+        8,
+        13,
+        7,
+        45,
+        52
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v9/src/App.tsx"
+    },
+    {
+      "path": "kurisu_v9/kurisu_webapp/src/avatar/outfitCatalog.ts",
+      "sizeBytes": 3859,
+      "sha256": "7ab4c6bac6971c7b2f194419dceed24dc5db4dedb45baa779dacbf2c0b538459",
+      "dateTime": [
+        2026,
+        8,
+        13,
+        7,
+        45,
+        52
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/avatar/outfitCatalog.ts"
+    },
+    {
+      "path": "kurisu_v9/kurisu_webapp/src/avatar/spriteEngine.ts",
+      "sizeBytes": 2966,
+      "sha256": "2f0d75b9f00396a9a31d04c3b0846a99a67a90048a75567aa6f7605a0ad441dd",
+      "dateTime": [
+        2026,
+        8,
+        13,
+        7,
+        47,
+        2
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/avatar/spriteEngine.ts"
+    },
+    {
+      "path": "kurisu_v9/kurisu_webapp/src/brain/BrainOrchestrator.ts",
+      "sizeBytes": 5607,
+      "sha256": "a7fcde4bf63429d7f9f5eb697892844ffab7fb8b8eba1d97a9a87fdef4ac7511",
+      "dateTime": [
+        2026,
+        8,
+        13,
+        7,
+        45,
+        54
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v9/src/brain/BrainOrchestrator.ts"
+    },
+    {
+      "path": "kurisu_v9/kurisu_webapp/src/brain/embeddings.ts",
+      "sizeBytes": 1260,
+      "sha256": "3f6068d111d94bed5a330f624864ec8f6b3b3b81a91f51aaceaeb19f5cc3e386",
+      "dateTime": [
+        2026,
+        8,
+        13,
+        7,
+        45,
+        54
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v9/src/brain/embeddings.ts"
+    },
+    {
+      "path": "kurisu_v9/kurisu_webapp/src/brain/energyBudget.ts",
+      "sizeBytes": 1931,
+      "sha256": "a0410a013f94bea34832a300e88cb09f47c28dafc8cfd7069f88a0ebaac6b8ce",
+      "dateTime": [
+        2026,
+        8,
+        13,
+        7,
+        45,
+        54
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/brain/energyBudget.ts"
+    },
+    {
+      "path": "kurisu_v9/kurisu_webapp/src/brain/intentRouter.ts",
+      "sizeBytes": 3070,
+      "sha256": "a1749dc14e3391002f3dedfdbaf3448f7e4b774704dcd83ee77a0a346163eb04",
+      "dateTime": [
+        2026,
+        8,
+        13,
+        7,
+        45,
+        56
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v9/src/brain/intentRouter.ts"
+    },
+    {
+      "path": "kurisu_v9/kurisu_webapp/src/brain/modelManager.ts",
+      "sizeBytes": 2404,
+      "sha256": "78e3c799bddc5fcf5e7558fed400e1de89ba28ea1c32ddac05e51dc1d13283fa",
+      "dateTime": [
+        2026,
+        8,
+        13,
+        7,
+        45,
+        56
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v9/src/brain/modelManager.ts"
+    },
+    {
+      "path": "kurisu_v9/kurisu_webapp/src/brain/sleepCycle.ts",
+      "sizeBytes": 1591,
+      "sha256": "65b900cc77723e8dd2c333a55826d259f8455616c28765d888ea78e31e3370cd",
+      "dateTime": [
+        2026,
+        8,
+        13,
+        7,
+        45,
+        56
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v9/src/brain/sleepCycle.ts"
+    },
+    {
+      "path": "kurisu_v9/kurisu_webapp/src/cognitive/ConsciousnessCore.ts",
+      "sizeBytes": 14217,
+      "sha256": "7307b454e25d657d13092a5dfd48d9f467b6556a5866015eceb58260637dfcee",
+      "dateTime": [
+        2026,
+        8,
+        13,
+        7,
+        45,
+        56
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/cognitive/ConsciousnessCore.ts"
+    },
+    {
+      "path": "kurisu_v9/kurisu_webapp/src/cognitive/DesireAndPromiseStore.ts",
+      "sizeBytes": 3530,
+      "sha256": "37b0d45ee719dd7e807d99bcbd2708fcb5ecc9fb2472192278bc85beea6b760d",
+      "dateTime": [
+        2026,
+        8,
+        13,
+        7,
+        45,
+        58
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/cognitive/DesireAndPromiseStore.ts"
+    },
+    {
+      "path": "kurisu_v9/kurisu_webapp/src/cognitive/EmbodimentSystem.ts",
+      "sizeBytes": 5612,
+      "sha256": "eb50f8b3e77ab204b1fa5c78414c6e68b69cca19728c4009d685e96dc89cf580",
+      "dateTime": [
+        2026,
+        8,
+        13,
+        7,
+        45,
+        58
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/cognitive/EmbodimentSystem.ts"
+    },
+    {
+      "path": "kurisu_v9/kurisu_webapp/src/cognitive/GrokExtras.ts",
+      "sizeBytes": 3335,
+      "sha256": "aacda1ec1426f00aa36f2348cd67f5c21632f1c7a9c7ed8a4d2ee6ac89fc5f9a",
+      "dateTime": [
+        2026,
+        8,
+        13,
+        7,
+        45,
+        58
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/cognitive/GrokExtras.ts"
+    },
+    {
+      "path": "kurisu_v9/kurisu_webapp/src/cognitive/PersonalityRewardSystem.ts",
+      "sizeBytes": 9184,
+      "sha256": "f847b1da4b895305bfdd974ab6c6f2836a92113d081a0f3038cc1950d7dfc448",
+      "dateTime": [
+        2026,
+        8,
+        13,
+        7,
+        45,
+        58
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/cognitive/PersonalityRewardSystem.ts"
+    },
+    {
+      "path": "kurisu_v9/kurisu_webapp/src/cognitive/PresenceAndIdle.ts",
+      "sizeBytes": 7905,
+      "sha256": "5e36b8d70811a44158e3f3a2c571448134adaeaf9e1b581dfca75f7d5bec4697",
+      "dateTime": [
+        2026,
+        8,
+        13,
+        7,
+        46,
+        0
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/cognitive/PresenceAndIdle.ts"
+    },
+    {
+      "path": "kurisu_v9/kurisu_webapp/src/cognitive/RelationshipModel.ts",
+      "sizeBytes": 3698,
+      "sha256": "353d65155a4db2935ec61c84aaf01f1ad3e5c0a63f5d7ee5d6c269f566f0e80b",
+      "dateTime": [
+        2026,
+        8,
+        13,
+        7,
+        46,
+        0
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v9/src/cognitive/RelationshipModel.ts"
+    },
+    {
+      "path": "kurisu_v9/kurisu_webapp/src/cognitive/SelfImprovementEngine.ts",
+      "sizeBytes": 11384,
+      "sha256": "1a68bcecf13596269dbca86d1c7b70a9f68017c8bc1ade285afa05b2e76fda15",
+      "dateTime": [
+        2026,
+        8,
+        13,
+        7,
+        46,
+        0
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/cognitive/SelfImprovementEngine.ts"
+    },
+    {
+      "path": "kurisu_v9/kurisu_webapp/src/cognitive/StatusIndicators.ts",
+      "sizeBytes": 4341,
+      "sha256": "8dcd1a5f29bb19bf7ffc1dbc411edaa252aface0e3da04938c22019945e202ba",
+      "dateTime": [
+        2026,
+        8,
+        13,
+        7,
+        46,
+        0
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/cognitive/StatusIndicators.ts"
+    },
+    {
+      "path": "kurisu_v9/kurisu_webapp/src/components/AndroidCodeExportModal.tsx",
+      "sizeBytes": 14744,
+      "sha256": "59c21d4a0182c1d255ca7fea1be56c2ea6c5c87f119eb21af081b4d66b44bef2",
+      "dateTime": [
+        2026,
+        8,
+        13,
+        7,
+        46,
+        2
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/components/AndroidCodeExportModal.tsx"
+    },
+    {
+      "path": "kurisu_v9/kurisu_webapp/src/components/Avatar2D.tsx",
+      "sizeBytes": 27956,
+      "sha256": "7517405a47d11652e2526fd4be35051a8fbcd372e04f6787e962699c93aa128f",
+      "dateTime": [
+        2026,
+        8,
+        13,
+        7,
+        46,
+        2
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v9/src/components/Avatar2D.tsx"
+    },
+    {
+      "path": "kurisu_v9/kurisu_webapp/src/components/Avatar2DOverlay.tsx",
+      "sizeBytes": 8862,
+      "sha256": "b7d97f8ccd1aa6637e0c1f01438cd3eba937fb6820531d8a5baf26b0bacd8efc",
+      "dateTime": [
+        2026,
+        8,
+        13,
+        7,
+        46,
+        2
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/components/Avatar2DOverlay.tsx"
+    },
+    {
+      "path": "kurisu_v9/kurisu_webapp/src/components/Avatar3D.tsx",
+      "sizeBytes": 775,
+      "sha256": "2a7e67098e3cdee1f16e6af7ecfd27fc740b3c7a776f2cdfc5fe91a3380fd58c",
+      "dateTime": [
+        2026,
+        8,
+        13,
+        7,
+        46,
+        2
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/components/Avatar3D.tsx"
+    },
+    {
+      "path": "kurisu_v9/kurisu_webapp/src/components/BrainMonitorPanel.tsx",
+      "sizeBytes": 3759,
+      "sha256": "bedb8302039d3297ef0e2aafdfe0d617c80ba9782c6bd148016696fe3d178708",
+      "dateTime": [
+        2026,
+        8,
+        13,
+        7,
+        46,
+        2
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v9/src/components/BrainMonitorPanel.tsx"
+    },
+    {
+      "path": "kurisu_v9/kurisu_webapp/src/components/ChatView.tsx",
+      "sizeBytes": 14373,
+      "sha256": "8835f6e2122e60c435d688f50c346b5cb55dc81ec955fdee46b737151d35b6dd",
+      "dateTime": [
+        2026,
+        8,
+        13,
+        7,
+        46,
+        4
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v9/src/components/ChatView.tsx"
+    },
+    {
+      "path": "kurisu_v9/kurisu_webapp/src/components/EmotionalStatePanel.tsx",
+      "sizeBytes": 6410,
+      "sha256": "6825e1a53ebe99e36a50c57aa24c711a3114cb27c9b8901897c5b8fc4b5a85a2",
+      "dateTime": [
+        2026,
+        8,
+        13,
+        7,
+        46,
+        4
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/components/EmotionalStatePanel.tsx"
+    },
+    {
+      "path": "kurisu_v9/kurisu_webapp/src/components/ExpressionReferenceModal.tsx",
+      "sizeBytes": 33650,
+      "sha256": "254d396468c5182ed33a8bb8619a0f2a2db626a9cdf42e1b6902aeaea347fc4a",
+      "dateTime": [
+        2026,
+        8,
+        13,
+        7,
+        46,
+        4
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/components/ExpressionReferenceModal.tsx"
+    },
+    {
+      "path": "kurisu_v9/kurisu_webapp/src/components/LiveAvatar.tsx",
+      "sizeBytes": 6600,
+      "sha256": "c268df9fd64e612c5e3868fa501f1dfadab1f4ca44b4392a428484e13eb5d42e",
+      "dateTime": [
+        2026,
+        8,
+        13,
+        7,
+        47,
+        34
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v9/src/components/LiveAvatar.tsx"
+    },
+    {
+      "path": "kurisu_v9/kurisu_webapp/src/components/MemoryInspector.tsx",
+      "sizeBytes": 12886,
+      "sha256": "0492b5aaa0c346e16b618dc7aa23bb6cfac3043f747f74d030d76c7de3bff1c6",
+      "dateTime": [
+        2026,
+        8,
+        13,
+        7,
+        46,
+        4
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/components/MemoryInspector.tsx"
+    },
+    {
+      "path": "kurisu_v9/kurisu_webapp/src/components/MultimodalCamera.tsx",
+      "sizeBytes": 6954,
+      "sha256": "44fdc6ef31ee259c29e58228f0cfb027cdfef2622622bcad24a99922e49f1413",
+      "dateTime": [
+        2026,
+        8,
+        13,
+        7,
+        46,
+        6
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/components/MultimodalCamera.tsx"
+    },
+    {
+      "path": "kurisu_v9/kurisu_webapp/src/components/PersonalityMapPanel.tsx",
+      "sizeBytes": 15885,
+      "sha256": "c5b70d0cff5e48ab7c4c83ba88e8a9361643f0dd6f30fcc2005deb85b7a780e2",
+      "dateTime": [
+        2026,
+        8,
+        13,
+        7,
+        46,
+        6
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/components/PersonalityMapPanel.tsx"
+    },
+    {
+      "path": "kurisu_v9/kurisu_webapp/src/components/ReflectionJournal.tsx",
+      "sizeBytes": 16099,
+      "sha256": "34aa345d1767a98d76d22bc925b818beb21def27a011a5336ade6f92be2ed06f",
+      "dateTime": [
+        2026,
+        8,
+        13,
+        7,
+        46,
+        6
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/components/ReflectionJournal.tsx"
+    },
+    {
+      "path": "kurisu_v9/kurisu_webapp/src/components/SearchPermissionModal.tsx",
+      "sizeBytes": 2295,
+      "sha256": "c15438b0400bcbb4a3de6ed9633bb51dc993e6d513573e90e5206ed0dc0c8ded",
+      "dateTime": [
+        2026,
+        8,
+        13,
+        7,
+        46,
+        6
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/components/SearchPermissionModal.tsx"
+    },
+    {
+      "path": "kurisu_v9/kurisu_webapp/src/components/SelfOptimizationModal.tsx",
+      "sizeBytes": 26665,
+      "sha256": "4fa47e401c703c5f268a889bccb23c09e8f7b7672204ff48f7daa65239caf0cc",
+      "dateTime": [
+        2026,
+        8,
+        13,
+        7,
+        46,
+        6
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/components/SelfOptimizationModal.tsx"
+    },
+    {
+      "path": "kurisu_v9/kurisu_webapp/src/components/SettingsPanel.tsx",
+      "sizeBytes": 27420,
+      "sha256": "322091cc043b01899d5c7e398ca1a8e92bee586859d8dbc6be88505eca6c920a",
+      "dateTime": [
+        2026,
+        8,
+        13,
+        7,
+        46,
+        8
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v9/src/components/SettingsPanel.tsx"
+    },
+    {
+      "path": "kurisu_v9/kurisu_webapp/src/components/SmsPhoneTab.tsx",
+      "sizeBytes": 13848,
+      "sha256": "d6c565cb2322453fc452f9e056482c27d66d96e7975299a81c2bf18324d8b9d3",
+      "dateTime": [
+        2026,
+        8,
+        13,
+        7,
+        46,
+        8
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v9/src/components/SmsPhoneTab.tsx"
+    },
+    {
+      "path": "kurisu_v9/kurisu_webapp/src/components/SocialContractPanel.tsx",
+      "sizeBytes": 832,
+      "sha256": "d9a9c7f5d13af7fd36cc4307a54fad8a42e1b126220e1b6e132c54d84140f337",
+      "dateTime": [
+        2026,
+        8,
+        13,
+        7,
+        46,
+        8
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v9/src/components/SocialContractPanel.tsx"
+    },
+    {
+      "path": "kurisu_v9/kurisu_webapp/src/components/ThoughtBubbleOverlay.tsx",
+      "sizeBytes": 1217,
+      "sha256": "93a46e63a1f1f8ee67c0521f31907ac435534e3ec4c39b1a9132d4455a9cee00",
+      "dateTime": [
+        2026,
+        8,
+        13,
+        7,
+        46,
+        8
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/components/ThoughtBubbleOverlay.tsx"
+    },
+    {
+      "path": "kurisu_v9/kurisu_webapp/src/data/kurisuCanon.ts",
+      "sizeBytes": 12455,
+      "sha256": "89049ebadaf62ac4661d779a017e925845b0564b160ede9f528c8f0f5ab9540a",
+      "dateTime": [
+        2026,
+        8,
+        13,
+        7,
+        46,
+        10
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v9/src/data/kurisuCanon.ts"
+    },
+    {
+      "path": "kurisu_v9/kurisu_webapp/src/index.css",
+      "sizeBytes": 1766,
+      "sha256": "17dad0cb216614fb952afbdf4eb02ba32ccc6b6f93eec1ee1f4b1324411b5a0b",
+      "dateTime": [
+        2026,
+        8,
+        13,
+        7,
+        46,
+        10
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v9/src/index.css"
+    },
+    {
+      "path": "kurisu_v9/kurisu_webapp/src/main.tsx",
+      "sizeBytes": 231,
+      "sha256": "5580d48b0fec68698a113d45a640b88d479dc35eb1f4b87c51f67c6cc81cee9b",
+      "dateTime": [
+        2026,
+        8,
+        13,
+        7,
+        46,
+        10
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v9/src/main.tsx"
+    },
+    {
+      "path": "kurisu_v9/kurisu_webapp/src/services/autonomousEngine.ts",
+      "sizeBytes": 20007,
+      "sha256": "dc3ff56952ce17dcb045396e1e28c7b312de31cb2eadca22663f671119b6d32a",
+      "dateTime": [
+        2026,
+        8,
+        13,
+        7,
+        46,
+        10
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v9/src/services/autonomousEngine.ts"
+    },
+    {
+      "path": "kurisu_v9/kurisu_webapp/src/services/chatService.ts",
+      "sizeBytes": 6408,
+      "sha256": "d469d07b4f5f956cbf07aa43378476cc0f038e6ed31835e19f2709c5a42a0413",
+      "dateTime": [
+        2026,
+        8,
+        13,
+        7,
+        46,
+        12
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v9/src/services/chatService.ts"
+    },
+    {
+      "path": "kurisu_v9/kurisu_webapp/src/services/contextPacket.ts",
+      "sizeBytes": 3869,
+      "sha256": "328e863989e322b9dd8d2bb91ae168c7e8f07872636b88ecb0822ae7c24f95d5",
+      "dateTime": [
+        2026,
+        8,
+        13,
+        7,
+        46,
+        12
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v9/src/services/contextPacket.ts"
+    },
+    {
+      "path": "kurisu_v9/kurisu_webapp/src/services/localLLMEngine.ts",
+      "sizeBytes": 18931,
+      "sha256": "693c4349a3a833ac0c09cc29c257032586e62d011d5369537903601b60db60d8",
+      "dateTime": [
+        2026,
+        8,
+        13,
+        7,
+        46,
+        12
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v9/src/services/localLLMEngine.ts"
+    },
+    {
+      "path": "kurisu_v9/kurisu_webapp/src/services/memoryEngine.ts",
+      "sizeBytes": 14351,
+      "sha256": "920903dedf83370bac920de0f35ac2cf5c09549a71b64d041b110e10705cfadc",
+      "dateTime": [
+        2026,
+        8,
+        13,
+        7,
+        46,
+        12
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v9/src/services/memoryEngine.ts"
+    },
+    {
+      "path": "kurisu_v9/kurisu_webapp/src/services/neuralLocalEngine.ts",
+      "sizeBytes": 4402,
+      "sha256": "4e66f89f93cb429733c4825d7eb551de0da5185bce5d2fbf60618656156dca4d",
+      "dateTime": [
+        2026,
+        8,
+        13,
+        7,
+        46,
+        14
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v9/src/services/neuralLocalEngine.ts"
+    },
+    {
+      "path": "kurisu_v9/kurisu_webapp/src/services/notificationEngine.ts",
+      "sizeBytes": 4076,
+      "sha256": "9529ed8ef1158b676815d200f86e77b9f2683907d53db277a2446b56f17ce153",
+      "dateTime": [
+        2026,
+        8,
+        13,
+        7,
+        46,
+        14
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/services/notificationEngine.ts"
+    },
+    {
+      "path": "kurisu_v9/kurisu_webapp/src/services/providerConfig.ts",
+      "sizeBytes": 2582,
+      "sha256": "549d1e99dd3a4d467a7a8d1cc9cdf6c468e4a02808506b3002d728cdc6aa3552",
+      "dateTime": [
+        2026,
+        8,
+        13,
+        7,
+        46,
+        14
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v9/src/services/providerConfig.ts"
+    },
+    {
+      "path": "kurisu_v9/kurisu_webapp/src/services/ttsEngine.ts",
+      "sizeBytes": 687,
+      "sha256": "8876d855ab7b3083eeaccb538b6cd27ca0f6fdd58f30664196fdd40235bacf12",
+      "dateTime": [
+        2026,
+        8,
+        13,
+        7,
+        46,
+        14
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v9/src/services/ttsEngine.ts"
+    },
+    {
+      "path": "kurisu_v9/kurisu_webapp/src/tools/webSearch.ts",
+      "sizeBytes": 3093,
+      "sha256": "4d52f4b39a690c5dd2dbcfff0699b46c9349dac0fb28744f82a134dbc315a80b",
+      "dateTime": [
+        2026,
+        8,
+        13,
+        7,
+        46,
+        16
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/tools/webSearch.ts"
+    },
+    {
+      "path": "kurisu_v9/kurisu_webapp/src/types.ts",
+      "sizeBytes": 4324,
+      "sha256": "2c0ae7b7e658e80f4567d763df7c8eebef9de31cd21af76947096b1be7a4aef2",
+      "dateTime": [
+        2026,
+        8,
+        13,
+        7,
+        46,
+        16
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v9/src/types.ts"
+    },
+    {
+      "path": "kurisu_v9/kurisu_webapp/src/utils/spriteSheet.ts",
+      "sizeBytes": 1881,
+      "sha256": "3ee0618b3519df73754e15a73ad762cbb157f3ed3d2f2d65316f40452afe5704",
+      "dateTime": [
+        2026,
+        8,
+        13,
+        7,
+        46,
+        16
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/utils/spriteSheet.ts"
+    }
+  ],
+  "directories": [
+    {
+      "path": "kurisu_v9/",
+      "dateTime": [
+        2026,
+        8,
+        13,
+        7,
+        45,
+        50
+      ],
+      "externalAttr": 1106051088,
+      "createSystem": 3
+    },
+    {
+      "path": "kurisu_v9/kurisu_webapp/",
+      "dateTime": [
+        2026,
+        8,
+        13,
+        7,
+        45,
+        52
+      ],
+      "externalAttr": 1106051088,
+      "createSystem": 3
+    },
+    {
+      "path": "kurisu_v9/kurisu_webapp/public/",
+      "dateTime": [
+        2026,
+        8,
+        13,
+        7,
+        46,
+        28
+      ],
+      "externalAttr": 1106051088,
+      "createSystem": 3
+    },
+    {
+      "path": "kurisu_v9/kurisu_webapp/public/sprites/",
+      "dateTime": [
+        2026,
+        8,
+        13,
+        7,
+        46,
+        28
+      ],
+      "externalAttr": 1106051088,
+      "createSystem": 3
+    },
+    {
+      "path": "kurisu_v9/kurisu_webapp/public/sprites/sheet_anime_office/",
+      "dateTime": [
+        2026,
+        8,
+        13,
+        7,
+        46,
+        30
+      ],
+      "externalAttr": 1106051088,
+      "createSystem": 3
+    },
+    {
+      "path": "kurisu_v9/kurisu_webapp/public/sprites/sheet_cinematic/",
+      "dateTime": [
+        2026,
+        8,
+        13,
+        7,
+        46,
+        38
+      ],
+      "externalAttr": 1106051088,
+      "createSystem": 3
+    },
+    {
+      "path": "kurisu_v9/kurisu_webapp/public/sprites/sheet_lab/",
+      "dateTime": [
+        2026,
+        8,
+        13,
+        7,
+        46,
+        32
+      ],
+      "externalAttr": 1106051088,
+      "createSystem": 3
+    },
+    {
+      "path": "kurisu_v9/kurisu_webapp/public/sprites/sheet_trench_full/",
+      "dateTime": [
+        2026,
+        8,
+        13,
+        7,
+        46,
+        42
+      ],
+      "externalAttr": 1106051088,
+      "createSystem": 3
+    },
+    {
+      "path": "kurisu_v9/kurisu_webapp/src/",
+      "dateTime": [
+        2026,
+        8,
+        13,
+        7,
+        45,
+        52
+      ],
+      "externalAttr": 1106051088,
+      "createSystem": 3
+    },
+    {
+      "path": "kurisu_v9/kurisu_webapp/src/avatar/",
+      "dateTime": [
+        2026,
+        8,
+        13,
+        7,
+        45,
+        52
+      ],
+      "externalAttr": 1106051088,
+      "createSystem": 3
+    },
+    {
+      "path": "kurisu_v9/kurisu_webapp/src/brain/",
+      "dateTime": [
+        2026,
+        8,
+        13,
+        7,
+        45,
+        54
+      ],
+      "externalAttr": 1106051088,
+      "createSystem": 3
+    },
+    {
+      "path": "kurisu_v9/kurisu_webapp/src/cognitive/",
+      "dateTime": [
+        2026,
+        8,
+        13,
+        7,
+        45,
+        56
+      ],
+      "externalAttr": 1106051088,
+      "createSystem": 3
+    },
+    {
+      "path": "kurisu_v9/kurisu_webapp/src/components/",
+      "dateTime": [
+        2026,
+        8,
+        13,
+        7,
+        46,
+        0
+      ],
+      "externalAttr": 1106051088,
+      "createSystem": 3
+    },
+    {
+      "path": "kurisu_v9/kurisu_webapp/src/data/",
+      "dateTime": [
+        2026,
+        8,
+        13,
+        7,
+        46,
+        8
+      ],
+      "externalAttr": 1106051088,
+      "createSystem": 3
+    },
+    {
+      "path": "kurisu_v9/kurisu_webapp/src/services/",
+      "dateTime": [
+        2026,
+        8,
+        13,
+        7,
+        46,
+        10
+      ],
+      "externalAttr": 1106051088,
+      "createSystem": 3
+    },
+    {
+      "path": "kurisu_v9/kurisu_webapp/src/tools/",
+      "dateTime": [
+        2026,
+        8,
+        13,
+        7,
+        46,
+        14
+      ],
+      "externalAttr": 1106051088,
+      "createSystem": 3
+    },
+    {
+      "path": "kurisu_v9/kurisu_webapp/src/utils/",
+      "dateTime": [
+        2026,
+        8,
+        13,
+        7,
+        46,
+        16
+      ],
+      "externalAttr": 1106051088,
+      "createSystem": 3
+    }
+  ]
+}

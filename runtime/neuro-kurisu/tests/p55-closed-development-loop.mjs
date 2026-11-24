@@ -1,0 +1,27 @@
+import assert from 'node:assert/strict';
+import { P55DevelopmentalForkUniverse } from '../src/organism/developmental/P55DevelopmentalForkUniverse.ts';
+
+const u=new P55DevelopmentalForkUniverse();
+const profile={exploration:.5,verification:.5,reflection:.5,attention:.5,prediction:.5};
+const generated=u.generate({at:1,tick:24,identity01:.92,predictionError01:.35,selfPredictionError01:.3,grounding01:.8,agency01:.72,novelty01:.55,activeProfile:profile,reason:'closed-loop-test'});
+assert.equal(generated.length,4);
+u.simulate({tick:24,predictionError01:.35,selfPredictionError01:.3,grounding01:.8,agency01:.72,identity01:.92,novelty01:.55,uncertainty01:.42,worldAlignment01:.78});
+const rec=u.recommendation();
+assert.ok(rec,'no developmental recommendation');
+const actionCandidates=['explore','verify','reflect','respond','rest'];
+const biased=actionCandidates.map(action=>[action,u.actionBias(action)]).filter(([,v])=>Math.abs(v)>0.001);
+assert.ok(biased.length>0,'promotable developmental fork did not reach action selection');
+const prior=u.snapshot();
+const chosen=biased.slice().sort((a,b)=>Math.abs(b[1])-Math.abs(a[1]))[0][0];
+const obs1=u.observeAppliedOutcome({action:chosen,outcome01:.82,at:2});
+assert.ok(obs1?.appliedCount===1);
+const obs2=u.observeAppliedOutcome({action:chosen,outcome01:.79,at:3});
+assert.ok(obs2?.appliedCount===2);
+assert.ok(u.snapshot().calibration01>=prior.calibration01*.7,'calibration collapsed after compatible outcomes');
+const saved=u.snapshot();
+const restored=new P55DevelopmentalForkUniverse();
+restored.restore(saved);
+assert.equal(restored.snapshot().version,2);
+assert.equal(restored.snapshot().appliedCount,2);
+assert.ok(Math.abs(restored.actionBias(chosen))>0.001);
+console.log(`P55_CLOSED_DEVELOPMENT=PASS fork=${rec.forkId} action=${chosen} bias=${restored.actionBias(chosen).toFixed(4)} calibration=${restored.snapshot().calibration01.toFixed(3)} applications=${restored.snapshot().appliedCount}`);

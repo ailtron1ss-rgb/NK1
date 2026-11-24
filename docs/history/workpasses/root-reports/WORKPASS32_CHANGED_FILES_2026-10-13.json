@@ -1,0 +1,153 @@
+{
+  "workpass": 32,
+  "date": "2026-10-13",
+  "sourceBaseline": "Neuro_Kurisu_WORKPASS31_2026-10-13.zip",
+  "sourceBaselineSha256": "ce0cf4ab8ebd3825c4f71e2c3469a0cad37eb730081563a1a05a96b6cb8985dc",
+  "comparison": "SHA-256 exact comparison of current project files against WorkPass31 ZIP entries",
+  "selfReferenceExcluded": "WORKPASS32_CHANGED_FILES_2026-10-13.json",
+  "summary": {
+    "modified": 13,
+    "added": 10,
+    "removed": 0,
+    "unchanged": 12761,
+    "baselineFiles": 12774,
+    "comparedCurrentFiles": 12784
+  },
+  "modifiedFiles": [
+    {
+      "path": "CHANGELOG.md",
+      "change": "modified",
+      "beforeSha256": "9481406e4061cf9ead6b116ff0ccf31ba2682e751ec4285eb9968d4fddfc8c44",
+      "afterSha256": "a01eb93e556d2fcf81b56bfcab58d83387cd23df50f3d118582ed63f82962108"
+    },
+    {
+      "path": "README.md",
+      "change": "modified",
+      "beforeSha256": "3a0787c3e89f41d2b257f5cbfd8e6d2f1f4e5185bed901228ff26e1ac6775d05",
+      "afterSha256": "67a84bcbdbf5e50de8f36c8d82fbfb731b6ef2ca4871c3c4e6fa5c41368b9c95"
+    },
+    {
+      "path": "SUPER_VERSION.json",
+      "change": "modified",
+      "beforeSha256": "297cd3f733b50ff13400ce19febcd21cb651749763b5d91e2cc2c7684a8c04e0",
+      "afterSha256": "bad45a5c07ec1cfc9f2a4bb83ee5f2abed1e71e47d56861088432875974fcebd"
+    },
+    {
+      "path": "contracts/integration-manifest.json",
+      "change": "modified",
+      "beforeSha256": "0fd729499dd6f5ea27484dff7e6ea03827b198b5f7561ef024efddcc0e2777d9",
+      "afterSha256": "1cbe1890d708b095795d03531f94df2df546bd61212d53a3596372a3f9a4851e"
+    },
+    {
+      "path": "docs/NEURO_KURISU_FULL_RELEASE_BACKLOG_CANONICAL.md",
+      "change": "modified",
+      "beforeSha256": "e612724ebddd04875a93b448d9f189c0b21fc1efc118bb7ee010810f3472e778",
+      "afterSha256": "ba7ca92a762a640e167b9f8ddbd47c5da90e16d0628bd80f4280a47b6a56f18f"
+    },
+    {
+      "path": "package.json",
+      "change": "modified",
+      "beforeSha256": "cbf8ecb37e278ab6b3480ba6ef2de804ebeae876cb15116795ca3f1e1e5b092d",
+      "afterSha256": "7dd07ad6012a3c1e3593341ded78870f7f5caf4ea099dd452911fec5c54bd604"
+    },
+    {
+      "path": "runtime/neuro-kurisu/package-lock.json",
+      "change": "modified",
+      "beforeSha256": "25e74f7beb818a43212cfa0b7bb61e690838d2c5d83e08cbf4aafd120cddabbe",
+      "afterSha256": "e5b93ff028fa1605afec7af17ada081d40eca3e1252283091bbdeb9c6aee2386"
+    },
+    {
+      "path": "runtime/neuro-kurisu/package.json",
+      "change": "modified",
+      "beforeSha256": "6a2ee17af81cf6aeaae6f89d808db457f47122174e924dbf8817a6e4859d4898",
+      "afterSha256": "e6e885d97248488ea0aee6267e4b6bf871beb17dd538b44a86ea5ddbc40cb9e3"
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/developmental/MemoryOS2.ts",
+      "change": "modified",
+      "beforeSha256": "b79ee26eed29b8708ca199a32aac2019c6d25fb6224acad0685a9644c3091378",
+      "afterSha256": "29ad7d378f8bf551fdae27d6a708593cff24c08c2f00d540c47dcf063d7e3d83"
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/developmental/MemorySignalFusion.ts",
+      "change": "modified",
+      "beforeSha256": "0fc3e4907318d7044b238fbdf249a079a40b5c4c7e6f2b6d65671a3b6ee6fb0f",
+      "afterSha256": "16dee7ca2a07662258d928f575b1cf5bc42558d4f3c9f7c66a08013bc7605c6c"
+    },
+    {
+      "path": "runtime/neuro-kurisu/tests/memory-retrieval-candidate-coverage.mjs",
+      "change": "modified",
+      "beforeSha256": "7d38e5c8d9b24da62cfd81501be4763ff6f1a9bb25e2d77692c47169a928bf39",
+      "afterSha256": "114eedf32d6863ad7261c1884b67bab045376c84af0e516625cc9d6c8320ceb2"
+    },
+    {
+      "path": "runtime/neuro-kurisu/tests/memory-retrieval-experiment.mjs",
+      "change": "modified",
+      "beforeSha256": "b441c3e268bafa51e6d83dc6774b8010e88a299b8e2525ad361bde1156d662b2",
+      "afterSha256": "5e7536baf51d09c1ec63793ece0dda66c3636711b032036d32edfb1a75968560"
+    },
+    {
+      "path": "Список дел.md",
+      "change": "modified",
+      "beforeSha256": "0f91e6d23f2e617d1599a941b8fd7763ba7a2835dc82cf993105d24d2e685abe",
+      "afterSha256": "b30b7f6deead8239e84900950e05151d8497ae046e4626b9f47d2ecf81bf4924"
+    }
+  ],
+  "addedFiles": [
+    {
+      "path": "WORKPASS32_REPORT_2026-10-13.md",
+      "change": "added",
+      "afterSha256": "8d682e0edb47ee734bc23552dd6b8ba78407cd1375f44e7a4e2458a1f8bf9615"
+    },
+    {
+      "path": "WORKPASS32_TASKS_2026-10-13.md",
+      "change": "added",
+      "afterSha256": "5e2fbe5bdf79bc2643b11eb75d4380099748e3c826ff7d96179c8d66478e3e1a"
+    },
+    {
+      "path": "docs/NEURO_KURISU_FULL_RELEASE_BACKLOG_WorkPass32_2026-10-13.md",
+      "change": "added",
+      "afterSha256": "ba7ca92a762a640e167b9f8ddbd47c5da90e16d0628bd80f4280a47b6a56f18f"
+    },
+    {
+      "path": "docs/PROJECT_CURRENT_STATUS_2026-10-13_WORKPASS32.json",
+      "change": "added",
+      "afterSha256": "37460c5e4a15ca791a3072e540b5a9a7fcc9053b410204f845e64a003eeebde9"
+    },
+    {
+      "path": "docs/PROJECT_CURRENT_STATUS_2026-10-13_WORKPASS32.md",
+      "change": "added",
+      "afterSha256": "f1452f3a322d8d9942e542212b173c8864cc8e4620979b41a8ffe289f482e4e6"
+    },
+    {
+      "path": "docs/PROJECT_PROGRESS_SCORECARD_2026-10-13_WORKPASS32.json",
+      "change": "added",
+      "afterSha256": "1a6e254c0d4c94095a4339dd5b7bec61e2877c4008ced364e303ba2a8d0a088a"
+    },
+    {
+      "path": "docs/WORKPASS31_Список дел_исходный.md",
+      "change": "added",
+      "afterSha256": "0f91e6d23f2e617d1599a941b8fd7763ba7a2835dc82cf993105d24d2e685abe"
+    },
+    {
+      "path": "docs/WORKPASS32_REPORT_2026-10-13.md",
+      "change": "added",
+      "afterSha256": "d10f9459e19a6aa80b252fc7eaf51fe685ac43a597ba11f1bc36c2616a052d8b"
+    },
+    {
+      "path": "docs/WORKPASS32_TASKS_2026-10-13.md",
+      "change": "added",
+      "afterSha256": "5e2fbe5bdf79bc2643b11eb75d4380099748e3c826ff7d96179c8d66478e3e1a"
+    },
+    {
+      "path": "runtime/neuro-kurisu/tests/memory-retrieval-fuzzy-workpass32.mjs",
+      "change": "added",
+      "afterSha256": "411153f687be64458b02e99a804acd26442ab3ab17c444abaa3299e7c53b33e4"
+    }
+  ],
+  "removedFiles": [],
+  "notes": [
+    "The manifest excludes its own bytes to avoid recursive self-hashing.",
+    "Generated test outputs and dependency/cache directories are excluded."
+  ]
+}

@@ -1,0 +1,23 @@
+import assert from 'node:assert/strict';
+import { B267AdaptiveRegimeController } from '../src/organism/cognition/B267AdaptiveRegimeController.ts';
+
+const c=new B267AdaptiveRegimeController();
+const actions=['respond','explore','verify','rest','reflect','wait','defer'];
+let seen=[];
+for(let i=1;i<=36;i++) seen.push(c.observe({tick:i,context:Array.from({length:16},(_,j)=>(i+j)%17/16),action:'respond',reward01:.72,predictionError01:.06,surprise01:.05,uncertainty01:.18}));
+const stable=c.diagnostics();
+assert.equal(stable.mode,'exploit');
+for(let i=37;i<=64;i++) seen.push(c.observe({tick:i,context:Array.from({length:16},(_,j)=>((i*3)+j)%17/16),action:i%2?'respond':'explore',reward01:.08,predictionError01:.92,surprise01:.94,uncertainty01:.88}));
+const shifted=c.diagnostics();
+assert.ok(shifted.regimeShift01>.35);
+assert.ok(['monitor','explore','verify','recover'].includes(shifted.mode));
+assert.ok(shifted.shifts>0);
+const recovery=c.recoverFromShift(.82);
+assert.ok(recovery.recovery01>0);
+for(let i=65;i<=110;i++) c.observe({tick:i,context:Array.from({length:16},(_,j)=>(i+j)%17/16),action:'verify',reward01:.82,predictionError01:.08,surprise01:.06,uncertainty01:.22});
+const after=c.diagnostics();
+assert.ok(after.fastError01<shifted.fastError01);
+assert.ok(after.regimeShift01<shifted.regimeShift01);
+assert.ok(after.verificationCount>0);
+const snap=c.snapshot(); const r=new B267AdaptiveRegimeController(); r.restore(snap); assert.equal(r.diagnostics().observations, c.diagnostics().observations);
+console.log(JSON.stringify({pass:true,stable,shifted,recovery,after},null,2));

@@ -1,0 +1,20 @@
+B314_DOCUMENTS_MANIFEST_RU
+
+Primary:
+- DEEP_AUDIT_B314_CAUSAL_SCAR_RECOVERY_2026-09-13_RU.md
+- B314_EVIDENCE_REPORT_RU.md
+- B314_FINAL_AUDIT_STATUS_RU.md
+- B314_PROGRESS_V18_RU.md
+- B314_RELEASE_NOTES_RU.md
+- B314_ARCHITECTURE_DECISIONS_RU.md
+- B314_EXTERNAL_RESEARCH_AND_COMPARISON_RU.md
+- RELEASE_VERIFICATION_B314_2026-09-13_RU.md
+- B314_DOCUMENTS_MANIFEST_RU.txt
+- CLAUDE_DOCUMENTS_INDEX_RU.md
+- AUDIT_RECHECK_MATRIX_RU.md
+
+Release requirements:
+- all Claude PDFs remain in this directory;
+- B314 source/test files are inside the release archive;
+- schema remains 127;
+- current executable evidence is preferred over historical audit claims.

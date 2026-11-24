@@ -1,0 +1,4 @@
+import os from 'node:os'; import path from 'node:path'; import {mkdtemp,rm} from 'node:fs/promises';
+import {OrganismRuntime} from '../src/organism/core/OrganismRuntime.ts';
+const d=await mkdtemp(path.join(os.tmpdir(),'nk-replay-')); const r=new OrganismRuntime({stateFile:path.join(d,'s.json'),worldStateFile:path.join(d,'w.json')});
+try{await r.init(); for(let i=0;i<10;i++) await r.step(i%2?`verify ${i}`:undefined); const a=r.core.systemSnapshot().replaySignature; const rr=new OrganismRuntime({stateFile:path.join(d,'s.json'),worldStateFile:path.join(d,'w.json')}); await rr.init(); const b=rr.core.systemSnapshot().replaySignature; if(!a||!b) throw new Error('missing-replay'); if(a!==b) throw new Error('replay-drift'); await rr.stop(); console.log('REPLAY=PASS');}finally{await r.stop();await rm(d,{recursive:true,force:true});}

@@ -1,0 +1,20 @@
+import assert from 'node:assert/strict';
+import { P32CausalSelfModelEngine } from '../src/organism/cognition/P32CausalSelfModel.ts';
+
+const engine=new P32CausalSelfModelEngine();
+const state={version:35,tick:1,at:Date.now(),needs:{energy:.8,cognitiveLoad:.2,uncertainty:.3,socialNeed:.2,novelty:.4,identityCoherence:.9,goalPressure:.2},predictionError:.2,attentionBudget:.8,lastAction:'none',lastActionSuccess:null,autonomyScore:.7,selfPredictionError:.1,predictedNextAction:'respond',lastPredictionConfidence:.7,worldContextVersion:1};
+const prediction=engine.predict({state,action:'explore',autonomy01:.8,p31SelfAccess01:.8,p31Agency01:.75,uncertainty01:.25});
+assert.equal(prediction.action,'explore');
+engine.observeOutcome({action:'explore',success01:.92,reward01:.9,surprise01:.1,externallyRequested:false,observationId:'obs-1',state:{...state,tick:2}});
+let d=engine.diagnostics();
+assert.ok(d.nodes>=2 && d.edges>=2);
+assert.ok(d.predictions.count===1);
+assert.ok(d.metrics.selfPredictionAccuracy01>0);
+const intervention=engine.recordControlledIntervention({variable:'rest-vs-explore',control01:.35,treatment01:.78,independent:true,repetitions:4});
+assert.equal(intervention.evidenceLevel,'controlled-repeated');
+assert.ok(intervention.causalStrength01>.3);
+const before=engine.snapshot();
+engine.restore(before);
+assert.deepEqual(engine.snapshot(),before);
+console.log('P32_CAUSAL_SELF_MODEL=PASS');
+console.log(JSON.stringify({nodes:d.nodes,edges:d.edges,predictionAccuracy:d.metrics.selfPredictionAccuracy01,causalStrength:intervention.causalStrength01}));

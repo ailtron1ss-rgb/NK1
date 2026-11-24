@@ -1,0 +1,12 @@
+import assert from 'node:assert/strict';
+import { P36AutonomousSelfDevelopmentEngine } from '../src/organism/learning/P36AutonomousSelfDevelopment.ts';
+const e=new P36AutonomousSelfDevelopmentEngine();
+const state={tick:8,predictionError:.70,selfPredictionError:.35,autonomyScore:.62,attentionBudget:.80,needs:{energy:.86,cognitiveLoad:.18,uncertainty:.70,socialNeed:.25,novelty:.48,identityCoherence:.80,goalPressure:.42}};
+const a=e.decideLearningInvestment(state,{worldError01:.72,selfError01:.38,resourceRisk01:.15});
+assert.ok(['invest','observe','defer','recover'].includes(a.decision));
+const noSelfReward=e.snapshot().acceptedChanges===0;
+assert.equal(noSelfReward,true);
+const exhausted=e.decideLearningInvestment({...state,tick:16,needs:{...state.needs,energy:.10,cognitiveLoad:.90,uncertainty:.25}},{worldError01:.12,selfError01:.12,resourceRisk01:.92});
+assert.equal(exhausted.decision,'recover');
+assert.ok(e.learningInvestmentHistory(16).length>=2);
+console.log('LEARNING_INVESTMENT_AUDIT=PASS',JSON.stringify({decision:a.decision,recover:exhausted.decision,noSelfReward,records:e.learningInvestmentHistory(16).length}));

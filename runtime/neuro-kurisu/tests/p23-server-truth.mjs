@@ -1,0 +1,12 @@
+import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+const source = await readFile(new URL('../src/server/server.mjs', import.meta.url), 'utf8');
+const chatStart = source.indexOf("url.pathname === '/api/organism/chat'");
+const nextRoute = source.indexOf("url.pathname === '/api/organism/adaptive-development'", chatStart);
+assert.ok(chatStart >= 0);
+const chatBlock = source.slice(chatStart, nextRoute > chatStart ? nextRoute : chatStart + 5000);
+assert.match(chatBlock, /const step = await runtime\.step\(message, \{ deliberate \}\);/);
+assert.match(chatBlock, /const language = step\.language;/);
+assert.doesNotMatch(chatBlock, /generateLanguage\(/);
+assert.doesNotMatch(chatBlock, /buildCognitivePrompt\(/);
+console.log('P23_SERVER_TRUTH=PASS chatUsesSingleRuntimeLanguageResult');

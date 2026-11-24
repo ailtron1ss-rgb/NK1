@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#0d1117">
+  <title>Neuro‑Kurisu · Unified Organism</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<main class="app-shell">
+  <header class="topbar">
+    <div>
+      <h1>Neuro‑Kurisu</h1>
+      <p id="release-marker">Unified Organism</p>
+    </div>
+    <div class="top-actions">
+      <span id="health-dot" class="dot bad" title="Состояние сервера"></span>
+      <button id="refresh">Обновить</button>
+    </div>
+  </header>
+
+  <section class="hero-grid">
+    <section class="panel avatar-panel">
+      <div class="panel-title"><h2>2D / Live Avatar</h2><span id="avatar-state">offline</span></div>
+      <div id="avatar" class="avatar" aria-label="2D avatar">
+        <iframe id="avatar-frame" class="avatar-frame" title="Neuro-Kurisu Live2D" src="/live2d/viewer.html?profile=auto" allow="autoplay"></iframe>
+        <div id="avatar-safe" class="avatar-safe">
+          <div class="avatar-hair"></div><div class="avatar-face"><span class="eye left"></span><span class="eye right"></span><span class="mouth"></span></div>
+        </div>
+        <div class="avatar-badge" id="avatar-badge">INIT</div>
+        <div class="avatar-meta" id="avatar-meta">asset check…</div>
+      </div>
+      <div class="avatar-actions">
+        <button id="speak">Озвучить</button>
+        <button id="voice-stop">Стоп</button>
+        <button id="listen">Слушать</button><button id="voice-turn">Голосовой ход</button><button id="viewer">2D viewer</button><button id="camera">Камера</button>
+        <select id="avatar-expression" aria-label="Проверка выражения">
+          <option value="neutral">neutral</option><option value="happy">happy</option><option value="sad">sad</option><option value="angry">angry</option><option value="surprised">surprised</option><option value="flustered">flustered</option><option value="embarrassed">embarrassed</option><option value="tender">tender</option>
+        </select>
+        <button id="avatar-head-tap">Голова</button><button id="avatar-body-tap">Тело</button>
+        <select id="avatar-quality" aria-label="Профиль Live2D"><option value="auto">auto</option><option value="mobile">mobile 2048</option><option value="balanced">balanced 4096</option><option value="quality">quality 4096</option></select>
+      </div>
+    </section>
+
+    <section class="panel state-panel">
+      <div class="panel-title"><h2>Состояние организма</h2><span id="tick">tick —</span></div>
+      <div id="state-cards" class="state-cards"></div>
+      <pre id="status" class="status">Загрузка…</pre>
+      <pre id="temporal" class="status">Время: загрузка…</pre>
+    </section>
+  </section>
+
+  <section class="panel chat-panel">
+    <div class="panel-title"><h2>Когнитивный цикл</h2><span id="backend">backend —</span></div>
+    <div id="log" class="log" aria-live="polite"></div>
+    <form id="form" class="chat-form">
+      <input id="message" autocomplete="off" maxlength="12000" placeholder="Напишите сообщение…">
+      <button id="send" type="submit">Отправить</button>
+    </form>
+    <div class="row"><label><input id="speak-replies" type="checkbox"> Озвучивать ответы</label><span id="voice-status" class="muted">голос —</span></div>
+    <div class="row">
+      <button id="sleep">Сон</button>
+      <button id="wake">Пробуждение</button>
+      <button id="snapshot">Снимок</button>
+    </div>
+  </section>
+
+  <section class="dashboard-grid">
+    <section class="panel"><div class="panel-title"><h2>Network / GWS</h2></div><pre id="network">—</pre></section>
+    <section class="panel"><div class="panel-title"><h2>Neural Organism Spine</h2><span id="neural-spine-status">—</span></div><pre id="neural-spine">—</pre></section>
+    <section class="panel"><div class="panel-title"><h2>Neuromodulation</h2></div><pre id="neuromod">—</pre></section>
+    <section class="panel"><div class="panel-title"><h2>Memory Graph</h2></div><pre id="memory">—</pre></section>
+    <section class="panel"><div class="panel-title"><h2>Identity / Evolution</h2></div><pre id="evolution">—</pre></section>
+    <section class="panel"><div class="panel-title"><h2>Cognitive Field / Budget</h2></div><pre id="cognitive">—</pre></section>
+    <section class="panel"><div class="panel-title"><h2>Science / Skills / Immune</h2></div><pre id="science">—</pre></section><section class="panel"><div class="panel-title"><h2>Perception / Sensors</h2></div><pre id="perception">—</pre></section>
+    <section class="panel"><div class="panel-title"><h2>Development / MemoryOS / WorldModel</h2></div><pre id="development">—</pre></section>
+    <section class="panel"><div class="panel-title"><h2>Beliefs / Provenance</h2></div><pre id="beliefs">—</pre></section>
+    <section class="panel"><div class="panel-title"><h2>Social Mind / Relationships</h2></div><pre id="social">—</pre></section>
+    <section class="panel" id="additional-panel"><div class="panel-title"><h2>Resilience / Truthfulness</h2></div><pre id="additional">—</pre></section>
+    <section class="panel"><div class="panel-title"><h2>P23 · Реальное обучение</h2></div><pre id="p23">—</pre></section>
+    <section class="panel"><div class="panel-title"><h2>Experience Continuum</h2><span id="experience-status">—</span></div><pre id="experience-continuum">—</pre></section>
+    <section class="panel"><div class="panel-title"><h2>Subject Continuity / Integration</h2><span id="subject-status">—</span></div><pre id="subject-continuity">—</pre></section>
+    <section class="panel"><div class="panel-title"><h2>Identity Lineage / Causality</h2><span id="identity-lineage-status">—</span></div><pre id="identity-lineage">—</pre></section>
+    <section class="panel"><div class="panel-title"><h2>Developmental Identity</h2><span id="developmental-identity-status">—</span></div><pre id="developmental-identity">—</pre></section>
+    <section class="panel"><div class="panel-title"><h2>Voice Embodiment</h2><span id="voice-panel-status">—</span></div><pre id="voice-panel">—</pre></section>
+    <section class="panel"><div class="panel-title"><h2>Memory Inspector</h2><span id="memory-inspector-status">—</span></div><div class="row"><input id="memory-query" maxlength="180" placeholder="Поиск по памяти…"><button id="memory-search" type="button">Искать</button></div><pre id="memory-inspector">—</pre></section>
+  </section>
+
+  <footer><span id="footer-contract">release —</span><span>phenomenalClaim=false · functional research system</span></footer>
+</main>
+<script src="/app.js"></script>
+</body>
+</html>

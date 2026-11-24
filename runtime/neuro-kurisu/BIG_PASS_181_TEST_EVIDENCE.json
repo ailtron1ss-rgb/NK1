@@ -1,0 +1,1035 @@
+{
+  "pass": 181,
+  "functionClosure": {
+    "pass": 181,
+    "generatedAt": "2026-09-10T18:17:25.897Z",
+    "protocol": "instantiate class; snapshot; JSON transport; restore in same instance; exact compare; restore in independent instance; exact compare; restore twice; exact compare",
+    "sourceFiles": 269,
+    "imported": 265,
+    "candidates": 196,
+    "passed": 196,
+    "failed": 0,
+    "skipped": 0,
+    "rows": [
+      {
+        "file": "src/organism/body/MultimodalPerception.ts",
+        "class": "MultimodalPerception",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/body/MultimodalSituationModel.ts",
+        "class": "MultimodalSituationModel",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/body/P35SemanticWorldBody.ts",
+        "class": "P35SemanticWorldBodyEngine",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/body/P37EmbodiedSensorium.ts",
+        "class": "P37EmbodiedSensoriumEngine",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/body/PerceptualEvidenceCompiler.ts",
+        "class": "PerceptualEvidenceCompiler",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/cognition/BoredomExplorer.ts",
+        "class": "BoredomExplorer",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/cognition/CognitiveBudgetManager.ts",
+        "class": "CognitiveBudgetManager",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/cognition/CognitiveField.ts",
+        "class": "CognitiveFieldEngine",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/cognition/CognitiveImmuneSystem.ts",
+        "class": "CognitiveImmuneSystem",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/cognition/CognitiveNetworkBus.ts",
+        "class": "CognitiveNetworkBus",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/cognition/ConsciousnessEvidenceLedger.ts",
+        "class": "ConsciousnessEvidenceLedger",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/cognition/ContradictionReservoir.ts",
+        "class": "ContradictionReservoir",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/cognition/IdentityContinuity.ts",
+        "class": "IdentityContinuityEngine",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/cognition/IntrinsicMotivationEngine.ts",
+        "class": "IntrinsicMotivationEngine",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/cognition/MetaCognitiveMonitor.ts",
+        "class": "MetaCognitiveMonitor",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/cognition/NeuromodulationSystem.ts",
+        "class": "NeuromodulationSystem",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/cognition/P27NeuralWorldFoundation.ts",
+        "class": "P27NeuralWorldFoundation",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/cognition/P31FunctionalConsciousness.ts",
+        "class": "P31FunctionalConsciousnessEngine",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/cognition/P32CausalSelfModel.ts",
+        "class": "P32CausalSelfModelEngine",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/cognition/P33PersonhoodCore.ts",
+        "class": "P33PersonhoodCore",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/cognition/P34CausalPersonhood.ts",
+        "class": "P34CausalPersonhoodEngine",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/cognition/P40SemanticIntelligence.ts",
+        "class": "P40SemanticIntelligenceEngine",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/cognition/P41NativePerception.ts",
+        "class": "P41NativePerceptionEngine",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/cognition/P41SemanticPerception.ts",
+        "class": "P41SemanticPerceptionEngine",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/cognition/P41TemporalPerceptionModel.ts",
+        "class": "P41TemporalPerceptionModel",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/cognition/P42UnifiedEmbodiedExperience.ts",
+        "class": "P42UnifiedEmbodiedExperienceEngine",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/cognition/P43EmbodiedImageryWorkspace.ts",
+        "class": "P43EmbodiedImageryWorkspace",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/cognition/P48FunctionalAwarenessCore.ts",
+        "class": "P48FunctionalAwarenessCore",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/cognition/P58CognitiveKernel.ts",
+        "class": "P58CognitiveKernel",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/cognition/P61IntegratedMindKernel.ts",
+        "class": "P61IntegratedMindKernel",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/cognition/P64IntegratedOrganismDynamics.ts",
+        "class": "P64IntegratedOrganismDynamics",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/cognition/P66InteroceptiveHomeostasis.ts",
+        "class": "P66InteroceptiveHomeostasis",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/cognition/P69ConstitutionalArbiter.ts",
+        "class": "P69ConstitutionalArbiter",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/cognition/P71SelfConsistencyModel.ts",
+        "class": "P71SelfConsistencyModel",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/cognition/P74IntegratedOrganismKernel.ts",
+        "class": "P74IntegratedOrganismKernel",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/cognition/P80UnifiedSelfState.ts",
+        "class": "P80UnifiedSelfState",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/cognition/P81PredictiveAttention.ts",
+        "class": "P81PredictiveAttention",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/cognition/PerceptionEngine.ts",
+        "class": "PerceptionEngine",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/cognition/PerceptualContinuityModel.ts",
+        "class": "PerceptualContinuityModel",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/cognition/PerceptualEpistemicGraph.ts",
+        "class": "PerceptualEpistemicGraph",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/cognition/RecurrentWorkspaceV2.ts",
+        "class": "RecurrentWorkspaceV2",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/cognition/SelfAuthorship.ts",
+        "class": "SelfAuthorshipEngine",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/cognition/SelfModelV2.ts",
+        "class": "SelfModelEngine",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/cognition/SensorimotorLoop.ts",
+        "class": "SensorimotorLoop",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/cognition/SocialMindKernel.ts",
+        "class": "SocialMindKernel",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/cognition/SocialWorldModel.ts",
+        "class": "SocialWorldModel",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/cognition/ValuePlasticity.ts",
+        "class": "ValuePlasticity",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/cognition/evolution/AgencyDeliberationEngine.ts",
+        "class": "AgencyDeliberationEngine",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/cognition/evolution/AutobiographicalNarrative.ts",
+        "class": "AutobiographicalNarrativeEngine",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/cognition/evolution/DevelopmentalAttractorField.ts",
+        "class": "DevelopmentalAttractorField",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/cognition/evolution/FutureSelfModel.ts",
+        "class": "FutureSelfModel",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/cognition/evolution/IdentityTrajectoryEngine.ts",
+        "class": "IdentityTrajectoryEngine",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/cognition/evolution/SelfGovernanceEngine.ts",
+        "class": "SelfGovernanceEngine",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/cognition/evolution/SelfProjectEngine.ts",
+        "class": "SelfProjectEngine",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/cognition/evolution/ValueEvolutionEngine.ts",
+        "class": "ValueEvolutionEngine",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/core/AgencySubsystemRuntime.ts",
+        "class": "AgencySubsystemRuntime",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/core/CognitiveDependencyGraph.ts",
+        "class": "CognitiveDependencyGraph",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/core/CognitiveExecutionPlanner.ts",
+        "class": "CognitiveExecutionPlanner",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/core/EvidenceResearchSubsystemRuntime.ts",
+        "class": "EvidenceResearchSubsystemRuntime",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/core/SelfSubsystemRuntime.ts",
+        "class": "SelfSubsystemRuntime",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/core/TemporalResolutionGovernor.ts",
+        "class": "TemporalResolutionGovernor",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/core/UnifiedCognitiveSubstrate.ts",
+        "class": "UnifiedCognitiveSubstrate",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/developmental/CommitmentRepair.ts",
+        "class": "CommitmentRepair",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/developmental/DevelopmentalForks.ts",
+        "class": "DevelopmentalForks",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/developmental/FutureSimulator.ts",
+        "class": "FutureSimulator",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/developmental/LongTermSocialMind.ts",
+        "class": "LongTermSocialMind",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/developmental/MemoryOS2.ts",
+        "class": "MemoryOS2",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/developmental/MicroDreamEngine.ts",
+        "class": "MicroDreamEngine",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/developmental/ModelSwitchContinuity.ts",
+        "class": "ModelSwitchContinuity",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/developmental/MultiHypothesisPersonality.ts",
+        "class": "MultiHypothesisPersonality",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/developmental/P24WorldIdentityEngine.ts",
+        "class": "P24WorldIdentityEngine",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/developmental/P47TemporalMemoryMind.ts",
+        "class": "P47TemporalMemoryMind",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/developmental/P49TemporalLifeEngine.ts",
+        "class": "P49TemporalLifeEngine",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/developmental/P53DevelopmentalSelfModificationLab.ts",
+        "class": "P53DevelopmentalSelfModificationLab",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/developmental/P54LongHorizonEvidence.ts",
+        "class": "P54LongHorizonEvidence",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/developmental/P55DevelopmentalForkUniverse.ts",
+        "class": "P55DevelopmentalForkUniverse",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/developmental/P56IntegratedDevelopmentalMind.ts",
+        "class": "P56IntegratedDevelopmentalMind",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/developmental/P59MemoryOperatingSystem.ts",
+        "class": "P59MemoryOperatingSystem",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/developmental/P63DevelopmentalOperatingSystem.ts",
+        "class": "P63DevelopmentalOperatingSystem",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/developmental/P67AutonomousGoalGenesis.ts",
+        "class": "P67AutonomousGoalGenesis",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/developmental/P68GoalEcology.ts",
+        "class": "P68GoalEcology",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/developmental/P70MemoryLifecycleGovernor.ts",
+        "class": "P70MemoryLifecycleGovernor",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/developmental/P75MemoryContinuumOS.ts",
+        "class": "P75MemoryContinuumOS",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/developmental/P78AutobiographicalSelfContinuity.ts",
+        "class": "P78AutobiographicalSelfContinuity",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/developmental/P84AutobiographicalContinuityFabric.ts",
+        "class": "P84AutobiographicalContinuityFabric",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/developmental/RegretEngine.ts",
+        "class": "RegretEngine",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/developmental/RelationshipSelf.ts",
+        "class": "RelationshipSelf",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/developmental/SemanticScarEngine.ts",
+        "class": "SemanticScarEngine",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/developmental/SocialDevelopmentSystem.ts",
+        "class": "SocialDevelopmentSystem",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/developmental/TemporalMemoryCompressor.ts",
+        "class": "TemporalMemoryCompressor",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/developmental/UnifiedMemorySystem.ts",
+        "class": "UnifiedMemorySystem",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/developmental/ValueProvenance.ts",
+        "class": "ValueProvenance",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/developmental/WorldModel2.ts",
+        "class": "WorldModel2",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/learning/AdaptiveDevelopmentEngine.ts",
+        "class": "AdaptiveDevelopmentEngine",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/learning/AdaptivePolicyEngine.ts",
+        "class": "AdaptivePolicyEngine",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/learning/AdvancedResilienceEngine.ts",
+        "class": "AdvancedResilienceEngine",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/learning/AutonomousCognitiveLifeEngine.ts",
+        "class": "AutonomousCognitiveLifeEngine",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/learning/BehavioralGenome.ts",
+        "class": "BehavioralGenome",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/learning/CausalDevelopmentLoop.ts",
+        "class": "CausalDevelopmentLoop",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/learning/CausalExperienceStream.ts",
+        "class": "CausalExperienceStream",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/learning/CognitiveOrganismContinuityEngine.ts",
+        "class": "CognitiveOrganismContinuityEngine",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/learning/CognitiveResearchBattery.ts",
+        "class": "CognitiveResearchBattery",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/learning/DevelopmentalExecutiveEngine.ts",
+        "class": "DevelopmentalExecutiveEngine",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/learning/DevelopmentalPortfolioEngine.ts",
+        "class": "DevelopmentalPortfolioEngine",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/learning/DevelopmentalSynthesisEngine.ts",
+        "class": "DevelopmentalSynthesisEngine",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/learning/IntegratedLifeTrajectoryEngine.ts",
+        "class": "IntegratedLifeTrajectoryEngine",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/learning/LifeCourseNavigator.ts",
+        "class": "LifeCourseNavigator",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/learning/LifelongDevelopmentSystem.ts",
+        "class": "LifelongDevelopmentSystem",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/learning/LongitudinalOrganismEngine.ts",
+        "class": "LongitudinalOrganismEngine",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/learning/MetaDevelopmentalStrategyEngine.ts",
+        "class": "MetaDevelopmentalStrategyEngine",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/learning/OperationalLifeEngine.ts",
+        "class": "OperationalLifeEngine",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/learning/P23LearningEngine.ts",
+        "class": "P23LearningEngine",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/learning/P25ScientificDevelopmentEngine.ts",
+        "class": "P25ScientificDevelopmentEngine",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/learning/P26TrueLearningEngine.ts",
+        "class": "P26TrueLearningEngine",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/learning/P28PlasticitySubstrate.ts",
+        "class": "P28PlasticitySubstrate",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/learning/P29LearningGovernance.ts",
+        "class": "P29LearningGovernanceEngine",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/learning/P30ContinualIntelligence.ts",
+        "class": "P30ContinualIntelligenceEngine",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/learning/P36AutonomousSelfDevelopment.ts",
+        "class": "P36AutonomousSelfDevelopmentEngine",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/learning/P38AutonomousCausalResearch.ts",
+        "class": "P38AutonomousCausalResearchEngine",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/learning/P39ContinuousArtificialLife.ts",
+        "class": "P39ContinuousArtificialLifeEngine",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/learning/P40ModelEcology.ts",
+        "class": "P40ModelEcologyEngine",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/learning/ParametricPolicyLearner.ts",
+        "class": "ParametricPolicyLearner",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/learning/PersonalCurriculumEngine.ts",
+        "class": "PersonalCurriculumEngine",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/learning/PersonalWorldlineEngine.ts",
+        "class": "PersonalWorldlineEngine",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/learning/ProceduralSkillLibrary.ts",
+        "class": "ProceduralSkillLibrary",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/learning/ResearchGradeOrganismEngine.ts",
+        "class": "ResearchGradeOrganismEngine",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/learning/ScientificMethodEngine.ts",
+        "class": "ScientificMethodEngine",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/learning/TemporalContinuityEngine.ts",
+        "class": "TemporalContinuityEngine",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/learning/UnifiedLearningSubstrate.ts",
+        "class": "UnifiedLearningSubstrate",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/learning/VerifiedAutonomousLifeEngine.ts",
+        "class": "VerifiedAutonomousLifeEngine",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/memory/ExperienceContinuumFabric.ts",
+        "class": "ExperienceContinuumFabric",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/memory/MemoryFabric.ts",
+        "class": "MemoryFabric",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/memory/MultiTimescaleMemory.ts",
+        "class": "MultiTimescaleMemory",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/memory/P62MemoryFabric.ts",
+        "class": "P62MemoryFabric",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/memory/P65EpistemicLedger.ts",
+        "class": "P65EpistemicLedger",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/memory/SemanticMemoryGraph.ts",
+        "class": "SemanticMemoryGraph",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/memory/SourceMonitor.ts",
+        "class": "SourceMonitor",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/persistence/AdvancedProjectionScheduler.ts",
+        "class": "AdvancedProjectionScheduler",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/persistence/PersistenceProjectionGovernor.ts",
+        "class": "PersistenceProjectionGovernor",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/persistence/RevisionTokenRegistry.ts",
+        "class": "RevisionTokenRegistry",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/system/ActivePerceptionExecutor.ts",
+        "class": "ActivePerceptionExecutor",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/system/AutonomousProjectExecutor.ts",
+        "class": "AutonomousProjectExecutor",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/system/BehavioralInfluenceLedger.ts",
+        "class": "BehavioralInfluenceLedger",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/system/CausalAccountabilityGraph.ts",
+        "class": "CausalAccountabilityGraph",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/system/CausalLifeGraph.ts",
+        "class": "CausalLifeGraph",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/system/CognitiveEventFabric.ts",
+        "class": "CognitiveEventFabric",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/system/CognitiveQuorum.ts",
+        "class": "CognitiveQuorumEngine",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/system/CognitiveResourceEconomy.ts",
+        "class": "CognitiveResourceEconomy",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/system/CognitiveSpineScheduler.ts",
+        "class": "CognitiveSpineScheduler",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/system/DerivedWorldPreviewCache.ts",
+        "class": "DerivedWorldPreviewCache",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/system/EmotionAppraisalEngine.ts",
+        "class": "EmotionAppraisalEngine",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/system/EvidenceFirewall.ts",
+        "class": "EvidenceFirewallEngine",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/system/ExternalEvidenceTrust.ts",
+        "class": "ExternalEvidenceTrustEngine",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/system/ExternalObserverFabric.ts",
+        "class": "ExternalObserverFabric",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/system/FailureRecoveryCertification.ts",
+        "class": "FailureRecoveryCertification",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/system/IdentityCausalityGraph.ts",
+        "class": "IdentityCausalityGraphEngine",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/system/LongHorizonPredictionBenchmark.ts",
+        "class": "LongHorizonPredictionBenchmark",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/system/MemoryCausalEconomy.ts",
+        "class": "MemoryCausalEconomy",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/system/MemoryRetentionEconomy.ts",
+        "class": "MemoryRetentionEconomy",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/system/ModelOlympics.ts",
+        "class": "ModelOlympics",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/system/ModelSwitchBenchmark.ts",
+        "class": "ModelSwitchBenchmark",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/system/MultiProjectScheduler.ts",
+        "class": "MultiProjectScheduler",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/system/OrganismResourceAllocator.ts",
+        "class": "OrganismResourceAllocator",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/system/OutcomeCognitionFabric.ts",
+        "class": "OutcomeCognitionFabric",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/system/P57RealityFirstObservatory.ts",
+        "class": "P57RealityFirstObservatory",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/system/P60IdentityGuardian.ts",
+        "class": "P60IdentityGuardian",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/system/P72LifeCycleOrchestrator.ts",
+        "class": "P72LifeCycleOrchestrator",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/system/P73CapabilityEvolutionLedger.ts",
+        "class": "P73CapabilityEvolutionLedger",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/system/P76IdentityLifeOS.ts",
+        "class": "P76IdentityLifeOS",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/system/P77RealityExperimentOS.ts",
+        "class": "P77RealityExperimentOS",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/system/P82RealityProgressController.ts",
+        "class": "P82RealityProgressController",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/system/PredictionDebt.ts",
+        "class": "PredictionDebtEngine",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/system/PredictionLedger.ts",
+        "class": "PredictionLedger",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/system/ProjectResearchSession.ts",
+        "class": "ProjectResearchSession",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/system/RealityEvidenceLedger.ts",
+        "class": "RealityEvidenceLedger",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/system/RuntimeEvidenceBus.ts",
+        "class": "RuntimeEvidenceBus",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/system/SelfModelValidationEngine.ts",
+        "class": "SelfModelValidationEngine",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/system/SelfPredictionBenchmark.ts",
+        "class": "SelfPredictionBenchmark",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/system/ShadowOrganism.ts",
+        "class": "ShadowOrganismEngine",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/system/SkillAcquisitionBenchmark.ts",
+        "class": "SkillAcquisitionBenchmark",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/system/UnifiedCognitiveCycle.ts",
+        "class": "UnifiedCognitiveCycle",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/system/WorldCausalCalibration.ts",
+        "class": "WorldCausalCalibration",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/system/WorldModelEnsembleController.ts",
+        "class": "WorldModelEnsembleController",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/world/ActiveInferenceEngine.ts",
+        "class": "ActiveInferenceEngine",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/world/ContextualWorldModel.ts",
+        "class": "ContextualWorldModel",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/world/GroundedWorldState.ts",
+        "class": "GroundedWorldState",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/world/LearnedResidualWorldModel.ts",
+        "class": "LearnedResidualWorldModel",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/world/P44EmbodiedPredictiveSelfWorld.ts",
+        "class": "P44EmbodiedPredictiveSelfWorld",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/world/P50CausalSelfWorldEngine.ts",
+        "class": "P50CausalSelfWorldEngine",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/world/P51GroundedCausalWorkspace.ts",
+        "class": "P51GroundedCausalWorkspace",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/world/P52CounterfactualDevelopmentMind.ts",
+        "class": "P52CounterfactualDevelopmentMind",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/world/P79EmbodiedSituationModel.ts",
+        "class": "P79EmbodiedSituationModel",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/world/P83PersistentRealityModel.ts",
+        "class": "P83PersistentRealityModel",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/world/PhoneBodyWorldModel.ts",
+        "class": "PhoneBodyWorldModel",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/world/WorldEnvironment.ts",
+        "class": "WorldEnvironment",
+        "status": "PASS"
+      },
+      {
+        "file": "src/organism/world/WorldModel.ts",
+        "class": "WorldModel",
+        "status": "PASS"
+      }
+    ]
+  },
+  "regression": {
+    "total": 24,
+    "passed": 24,
+    "failed": 0
+  },
+  "semantic": {
+    "total": 2494,
+    "counts": {
+      "VERIFIED": 300,
+      "INTEGRATION_ONLY": 454,
+      "UNSAFE_TO_AUTO_RUN": 224,
+      "UNVERIFIED": 1516
+    },
+    "verifiedRate01": 0.12028869286287089,
+    "evidenceCoverage01": 0.1658
+  },
+  "criticalUnverified": 998,
+  "zeroReferenceUnverified": 158,
+  "parameterized": {
+    "attempted": 509,
+    "passed": 497,
+    "failed": 0,
+    "inputSynthesisNeeded": 0,
+    "lifecycleNeeded": 12
+  },
+  "release": {
+    "architecture": "PASS",
+    "integrity": "PASS",
+    "forensics": "PASS",
+    "hygiene": "PASS",
+    "releaseSource": "PASS",
+    "lock": "PASS",
+    "brain": "PASS",
+    "projectState": "PASS",
+    "sourceTruth": "PASS",
+    "subjectBoundary": "PASS",
+    "componentConflicts": "PASS",
+    "apiRoutes": "PASS"
+  }
+}

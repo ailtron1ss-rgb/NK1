@@ -1,0 +1,133 @@
+{
+  "title": "Neuro-Kurisu SUPER — reconciled weighted implementation roadmap scorecard",
+  "date": "2026-10-11",
+  "workpass": "24 — local NLI readiness and model-revision provenance consistency",
+  "baseArchive": "Neuro_Kurisu_SUPER_WILL_LUMINA_HEXIS_LETTA_CONSCIO_INTEGRATED_WORKPASS23_2026-10-11.zip",
+  "runtime": "Neuro-Kurisu 35.47.0",
+  "schema": 223,
+  "method": "Retains prior workstream weights. WorkPass24 adds operational readiness/liveness separation, bounded retry after model-load failure, and model-revision provenance consistency across claim evidence and restore. Weighted roadmap score is not release readiness or measured intelligence. Real pretrained inference and UI build remain blocked by registry DNS.",
+  "overallPercent": 71.85,
+  "previousOfficialScorePercent": 71.65,
+  "deltaPercentagePoints": 0.2,
+  "remainingWeightedRoadmapPoints": 28.15,
+  "workstreams": [
+    {
+      "id": "A",
+      "name": "Canonical source lineage and single-owner architecture",
+      "weight": 15,
+      "completionPercent": 100,
+      "weightedPoints": 15.0,
+      "previousPercent": 100,
+      "rationale": "No duplicate canonical owner; source manifests and metadata contract reconciled."
+    },
+    {
+      "id": "B",
+      "name": "Runtime integration, API/UI routes and smoke/linkage coverage",
+      "weight": 15,
+      "completionPercent": 95,
+      "weightedPoints": 14.25,
+      "previousPercent": 95,
+      "rationale": "WorkPass16 makes browser smoke fail closed on required brand warnings and actual auth mismatch, exposes indeterminate auth state, validates bounded timeouts, and atomically publishes private verdict files. The 212/212 source-only UI script suite passes; dependency-complete UI build and actual browser E2E remain open."
+    },
+    {
+      "id": "C",
+      "name": "Memory 2.0, retrieval/admission and benchmark evidence",
+      "weight": 15,
+      "completionPercent": 65,
+      "weightedPoints": 9.75,
+      "previousPercent": 64,
+      "rationale": "WorkPass23 adds a conservative near-duplicate train/holdout query leakage guard on top of existing exact duplicate checks. This improves dataset integrity but does not replace an independently labelled temporal holdout or prove retrieval uplift."
+    },
+    {
+      "id": "D",
+      "name": "Agency, action schema, execution, outcome and reafference",
+      "weight": 20,
+      "completionPercent": 68,
+      "weightedPoints": 13.6,
+      "previousPercent": 65,
+      "rationale": "WorkPass20 adds exact action execution/step receipt correlation and a persisted bounded idempotency ledger; duplicate/stale receipts cannot advance later project steps. Entire action→independent external receipt→reafference chain remains partial."
+    },
+    {
+      "id": "E",
+      "name": "Portable subject continuity and social/known-entity dossier",
+      "weight": 10,
+      "completionPercent": 75,
+      "weightedPoints": 7.5,
+      "previousPercent": 75,
+      "rationale": "Read-only dossier and fidelity contracts are present; browser-backed corrections and behavioral equivalence remain open."
+    },
+    {
+      "id": "F",
+      "name": "External transport, SDK, idempotency and replay",
+      "weight": 10,
+      "completionPercent": 40,
+      "weightedPoints": 4.0,
+      "previousPercent": 40,
+      "rationale": "Conscio/Hexis/WILL local idempotency, queue backpressure and ACK/replay contracts improved; remote provider receipt/reconnect proof remains open."
+    },
+    {
+      "id": "G",
+      "name": "Research promotion and controlled experiments",
+      "weight": 5,
+      "completionPercent": 63,
+      "weightedPoints": 3.15,
+      "previousPercent": 61,
+      "rationale": "WorkPass24 separates optional NLI process liveness from actual model readiness, adds sanitized bounded model-load cooldown, and preserves immutable model revision through per-claim provenance/restore. Real model inference and independent holdout remain open."
+    },
+    {
+      "id": "H",
+      "name": "Release durability: build, E2E, rollback, soak, SBOM/provenance",
+      "weight": 10,
+      "completionPercent": 46,
+      "weightedPoints": 4.6,
+      "previousPercent": 45,
+      "rationale": "Release metadata and operational readiness reporting improved; dependency-complete app install/build, browser E2E, clean-room restore/rollback, soak and final SBOM/provenance remain open."
+    }
+  ],
+  "normalizedTaskInventory": {
+    "count": 75,
+    "counts": {
+      "DONE": 54,
+      "PARTIAL": 11,
+      "TODO": 10
+    },
+    "strictDonePercent": 72.0,
+    "partialPercent": 14.67,
+    "todoPercent": 13.33,
+    "halfCreditEquivalentPercent": 79.33,
+    "note": "Normalized unique deliverables, not append-only historical tasklist line counts. PARTIAL is not always exactly half-complete; half-credit is a comparison aid."
+  },
+  "openReleaseGates": [
+    "Real autonomous research on at least two allowed external HTTPS hosts with distinct evidence and persisted source receipt",
+    "Real pretrained NLI inference on a fixed labelled, domain-relevant adversarial holdout; threshold review must remain separate from evaluation; multilingual/domain compatibility is unproven",
+    "Complete agency loop from competition to independent postcondition, persistence and reafference with cross-consumer no-double-credit",
+    "Entity correction/expiry/conflict across browser-backed multi-session flows",
+    "Portable subject continuity and behavioral fidelity",
+    "Capability evidence graph for critical user journeys",
+    "External provider delivery receipts, reconnect and replay guarantees",
+    "Clean-room backup/restore, schema migration and rollback drill",
+    "Research candidate integrations from NeuroCore/NOMEGA/DeepCode only where they measurably beat canonical baselines",
+    "Authorization/abuse/rate-limit review for diagnostic and benchmark APIs",
+    "Independent labelled temporal MemoryOS2 holdout and comparison to BM25 baseline",
+    "Dependency-complete app install and root/app semantic typecheck",
+    "React/Vite production build",
+    "Desktop/mobile browser E2E, including actual Live2D interaction",
+    "Multi-hour soak with memory and resource-growth limits",
+    "Final SBOM, license inventory and immutable release provenance sign-off",
+    "Release-candidate sign-off"
+  ],
+  "environmentNote": "WorkPass24 validates service liveness/readiness separation and bounded model-load retry, plus exact model revision provenance and restore consistency. Semantic NLI 23 tests, Python service 10 tests and evaluator 4 tests pass with mocked/injected inference. The actual pretrained model was not installed or run due registry DNS; Vite dependencies/build remain unavailable. Memory benchmark still reports not-promoted because uplift uncertainty allows regression.",
+  "releaseStatus": "implementation-workpass; NOT release-ready",
+  "limitations": [
+    "NLI integration is opt-in; score outputs are uncalibrated. The Python model load is pinned to an immutable revision and requires safetensors, but pretrained weights were not downloaded or run due sandbox DNS failure.",
+    "Batch NLI reduces local request/tokenization overhead but does not increase model correctness; evaluation against a genuinely held-out labelled corpus is still required.",
+    "Compound claim atomization is conservative and language-heuristic; it does not reliably parse arbitrary natural language or multi-hop claims.",
+    "Source lineage remains conservative near-duplicate/syndication detection, not complete upstream press-release genealogy.",
+    "A real independently labeled temporal MemoryOS2 holdout has not established retrieval uplift; experimental configs remain unpromoted.",
+    "Full agency chain from ActionCompetition through independent external receipt, reafference, persistence and UI remains partial despite receipt idempotency fixes.",
+    "Full app dependency installation, root/app semantic typecheck, React/Vite production build and desktop/mobile browser E2E remain open because the sandbox cannot resolve package registries.",
+    "Clean-room install/restore/upgrade/rollback, multi-hour soak, provider reconnect stress and final SBOM/provenance sign-off remain open.",
+    "No release-ready status or human-like/biological intelligence claim is made.",
+    "WorkPass24 health/readiness reports process/model states; they do not claim pretrained model accuracy. Model-load cooldown suppresses repeated downloads after failure but does not solve unavailable DNS."
+  ]
+}

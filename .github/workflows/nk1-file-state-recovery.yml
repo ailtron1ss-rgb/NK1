@@ -1,0 +1,37 @@
+name: NK1 File State Recovery
+on:
+  push:
+    branches: [workpass70-source]
+    paths:
+      - "runtime/neuro-kurisu/src/organism/persistence/FileStateStore.ts"
+      - "runtime/neuro-kurisu/tests/pass17-file-state-codec.mjs"
+      - ".github/workflows/nk1-file-state-recovery.yml"
+  pull_request:
+    branches: [workpass70-source]
+    paths:
+      - "runtime/neuro-kurisu/src/organism/persistence/FileStateStore.ts"
+      - "runtime/neuro-kurisu/tests/pass17-file-state-codec.mjs"
+      - ".github/workflows/nk1-file-state-recovery.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: nk1-file-state-recovery-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  recovery-contract:
+    name: FileStateStore crash-recovery contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout exact revision
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          package-manager-cache: false
+      - name: Verify backup recovery when primary state is missing
+        run: node --experimental-strip-types runtime/neuro-kurisu/tests/pass17-file-state-codec.mjs

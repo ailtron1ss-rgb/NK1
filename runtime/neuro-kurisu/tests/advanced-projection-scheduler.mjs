@@ -1,0 +1,21 @@
+import assert from 'node:assert/strict';
+import { AdvancedProjectionScheduler } from '../src/organism/persistence/AdvancedProjectionScheduler.ts';
+
+const s = new AdvancedProjectionScheduler();
+const groups = ['critical','memory','identity','reality','developmental','slow'];
+for (const g of groups) assert.equal(s.shouldMaterialize(g, 0), true, `${g} should materialize initially`);
+for (const g of groups) s.mark(g, 0);
+assert.equal(s.shouldMaterialize('critical', 0), false);
+assert.equal(s.shouldMaterialize('memory', 1), false);
+assert.equal(s.shouldMaterialize('memory', 2), true);
+assert.equal(s.shouldMaterialize('identity', 7), false);
+assert.equal(s.shouldMaterialize('identity', 8), true);
+assert.equal(s.shouldMaterialize('slow', 11), false);
+assert.equal(s.shouldMaterialize('slow', 12), true);
+assert.equal(s.shouldMaterialize('identity', 6, false, .9), true, 'high pressure must accelerate slow identity cadence');
+assert.equal(s.shouldMaterialize('slow', 6, true), true, 'force must always materialize');
+s.mark('identity', 8); s.begin(8);
+const m=s.metrics(8);
+assert.equal(m.lastFullTick, 8);
+assert.ok(m.freshness01 > 0.9);
+console.log('ADVANCED_PROJECTION_SCHEDULER=PASS');

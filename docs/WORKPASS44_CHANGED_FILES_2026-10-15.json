@@ -1,0 +1,250 @@
+{
+  "title": "WorkPass44 changed-file manifest vs WorkPass43",
+  "generatedDate": "2026-10-15",
+  "baseArchive": "Neuro_Kurisu_WORKPASS43_2026-10-15.zip",
+  "sourceFilesInBase": 9112,
+  "unchangedExistingFiles": 9089,
+  "modifiedExistingFiles": 23,
+  "addedFilesListed": 13,
+  "addedFilesManifestExcludedFromItsOwnList": true,
+  "extraFileAddedWithThisManifest": "docs/WORKPASS44_CHANGED_FILES_2026-10-15.json",
+  "deletedExistingFiles": 0,
+  "missingRestoredFromBaseline": 0,
+  "modified": [
+    {
+      "path": "CHANGELOG.md",
+      "oldSize": 68225,
+      "newSize": 71099,
+      "oldSha256": "cf5d639a1afdb1c688cc8517035dfa77c2136cbb491067e15821502d007ff08e",
+      "newSha256": "be31bf47a561f7fa96f5357321e6f9d170d8325ea8762c0f1ea35e4c23feb4d8"
+    },
+    {
+      "path": "SUPER_VERSION.json",
+      "oldSize": 3381,
+      "newSize": 3298,
+      "oldSha256": "84e835f600af1f724068ce594778d8323203ce863afd1724c0369016288a1efd",
+      "newSha256": "87e75b8b8f33fe0d28c926918dbd2c7e5baafb4bb7e3256e7156ba7205456a0a"
+    },
+    {
+      "path": "contracts/SBOM.final.json",
+      "oldSize": 361387,
+      "newSize": 361387,
+      "oldSha256": "f70bd540fa5bfbb24148f0566da0a83559f6e09b43be44ec36515970deb4d6c0",
+      "newSha256": "bfd914ff6249d8e9f9448ea663d8ddf040875906246a8d60d75e54cb49882a7c"
+    },
+    {
+      "path": "docs/archive-optimization/historical-snapshot-2026-10-06.manifest.json",
+      "oldSize": 5500350,
+      "newSize": 5501148,
+      "oldSha256": "4f101125483461bf8e61669b9e39b293713aab8204bba5951712f769327e0221",
+      "newSha256": "7b3dbf23e22c8c653eb41a47ef71789ec907dc24dbd5a353b963fcc731c006e4"
+    },
+    {
+      "path": "docs/archive-optimization/source-archive-manifests/Neuro_Kurisu_35.30.0_R16_PASS_11_SEMANTIC_ISOLATION_2026-09-29.manifest.json",
+      "oldSize": 1906393,
+      "newSize": 1906792,
+      "oldSha256": "c89d442185f7a983ad26d832a051cdfdf32ea93a1ddcac18b9848fc5a1070989",
+      "newSha256": "ce974d5f20d3de5bcab539d6cda2a7fe5f16c579ac0a356db4c3bbaa5fc8d385"
+    },
+    {
+      "path": "docs/archive-optimization/source-archive-manifests/Neuro_Kurisu_35.40.0_R26_PASS20_RESTORE_SYMMETRY_2026-10-01.manifest.json",
+      "oldSize": 1921743,
+      "newSize": 1922142,
+      "oldSha256": "f842ac0e551bc75696d3008247b3ba7868961a9ff43267d01d9afd3243b2d3b6",
+      "newSha256": "1a6ce726641068bf605fbb449036546cd3705aa36992d35e6a262d4135417faa"
+    },
+    {
+      "path": "package.json",
+      "oldSize": 24906,
+      "newSize": 26131,
+      "oldSha256": "43ff212750d6056283fe6a81d82d69b21819ca0d5f2ccbc0c1092b2d5324bcd4",
+      "newSha256": "a6438d28b8be4295522678843aea20b791d664fbe749b1eb45f8b8441d78a011"
+    },
+    {
+      "path": "runtime/neuro-kurisu/package-lock.json",
+      "oldSize": 1041,
+      "newSize": 1041,
+      "oldSha256": "aa505b7c1c403a656517deb1375d95e57c958c0a2466e7bb134b67870dd10620",
+      "newSha256": "c0f7b6e78e3faaefa234a03dd733c9dea1dcd7f09be2c81bb6644f4c1a11063e"
+    },
+    {
+      "path": "runtime/neuro-kurisu/package.json",
+      "oldSize": 242948,
+      "newSize": 243840,
+      "oldSha256": "042f61a4e0013295fa704d88c455dd6790dbcd610be9c0ccf62d81f49bab182c",
+      "newSha256": "56905ad7945f10e38d7454f5712f692d868511217ce17e8bc3fe9017be315b17"
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/core/OrganismCore.ts",
+      "oldSize": 1224599,
+      "newSize": 1228828,
+      "oldSha256": "0cdf7a3c880bb3c94803fcd2fc503a497dc49ec07c081d9ece75decafef4c46d",
+      "newSha256": "30046a026dc751ab183992d07718f6ddb0a71fa7bad4392cf5c77368bc5c108a"
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/developmental/P84AutobiographicalContinuityFabric.ts",
+      "oldSize": 22890,
+      "newSize": 24035,
+      "oldSha256": "e5e613e9fda34425860d0cedf25426b31066d1ebfc6de1e395a5f1e95d578e1f",
+      "newSha256": "5f625059c0aa1eeccf1857ff564634b7eeae9d91bb8271ecbb0065c3fd2ac19b"
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/learning/CanonicalTemporalCreditAuthority.ts",
+      "oldSize": 11947,
+      "newSize": 13502,
+      "oldSha256": "0ca87c50579f3f282b755a1a19a7586845a3c7463bf6718f96e34641a8258bf5",
+      "newSha256": "1873a32973127d09fe11612a24ff49216223ef3f6a3c753bc3830b6c8b1537b5"
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/memory/MemoryFabric.ts",
+      "oldSize": 27686,
+      "newSize": 32714,
+      "oldSha256": "41ea048a7d85c5ceb6a4fe0a3c0d60ab34d60242ee5e10c25b6bbd4122f8998d",
+      "newSha256": "d62534919991d46f6c737498abf2f1923e03c770397d23222a87836f25ceb897"
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/persistence/StateMigrations.ts",
+      "oldSize": 129422,
+      "newSize": 131453,
+      "oldSha256": "c5512f18eaa634153a44d5f84ab620d000cfcac4e5861469a3d785d093b661d0",
+      "newSha256": "78771ada7d62fc0053522ac34d78eec5bc95017bbadf9de772e7eadecf1d8bd0"
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/system/ActionGateway.ts",
+      "oldSize": 27212,
+      "newSize": 29009,
+      "oldSha256": "beda0db0b53e294f6cb52a83256fa8bfd95248e805dbabbac9a55b019c123c06",
+      "newSha256": "d1a47084cb3c79e565c336232508279de345f7f59551cbae026055a1db6cbeb3"
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/system/CausalAccountabilityGraph.ts",
+      "oldSize": 8463,
+      "newSize": 9692,
+      "oldSha256": "88099799233c5bac165569a6fa9d90df2096eff993a9f068fc67b2088bb773e5",
+      "newSha256": "7de000718b1f4948b79a7db3509a7e056c989b8263dd34c8852a258e50861bf6"
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/system/CognitiveEventFabric.ts",
+      "oldSize": 19523,
+      "newSize": 29020,
+      "oldSha256": "e6f140a3c9729ca0cd20309c10944e31b44ae786e1439c785744d2c0ad3211c8",
+      "newSha256": "cd55b12eece2923277ea3c25692c5698bcab61b89bb938bd48c421af1b83991b"
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/system/ExternalEvidenceTrust.ts",
+      "oldSize": 5506,
+      "newSize": 6569,
+      "oldSha256": "c3aa97e6951ba5e99c8e4eae15633ffd27eb632c5653aa964945a42a6b0fbb87",
+      "newSha256": "93999d62ac4748034ea366149a6f3b6ce6484d9b3ba2d4dad4dcc84ac27f416e"
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/system/ExternalObserverFabric.ts",
+      "oldSize": 23012,
+      "newSize": 23237,
+      "oldSha256": "73c9f4f3a62959abe6dd21225d3455b6f961e656e1dfe12fae83f5c61b73633e",
+      "newSha256": "d90815b07c79f36e8b7d710bef5369cacf96668aed42a5ab6473db9d34fed34a"
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/system/OutcomeCognitionFabric.ts",
+      "oldSize": 7082,
+      "newSize": 10673,
+      "oldSha256": "6d32c63cd0d977f225fd4fd1dfc3218a47ba4558c008242033be4b3e47da01d4",
+      "newSha256": "ec560ab4c13e8ad7809992790c16c4046b1832e08c706283cbd355151acef910"
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/world/P83PersistentRealityModel.ts",
+      "oldSize": 12230,
+      "newSize": 12444,
+      "oldSha256": "f37e9fb39f92f3730b470428a89ffa295b9781deffca3bec2be29204aebd6871",
+      "newSha256": "dbc35589cac50954406b727263b0a255a31f98e1aca1373a143e265e22a4cb26"
+    },
+    {
+      "path": "Список дел.md",
+      "oldSize": 33685,
+      "newSize": 40632,
+      "oldSha256": "4764c85ace1e8853bd96fd5d3920398d782261f83cd5464f3b20593931917f79",
+      "newSha256": "99201721becd5ed1904a07f5ceb6bc8ba78dc0a85de5b79e4dfa93104490cd6b"
+    },
+    {
+      "path": "runtime/neuro-kurisu/tests/big-pass-379-tool-receipt-integration.mjs",
+      "oldSize": 11720,
+      "newSize": 14304,
+      "oldSha256": "ebcdcdbf5a9b67067f6d78b05651eb0e2859a4490f9eaa95b938976eba53ee6e",
+      "newSha256": "681565cedabce7a753e966e095cb3c99e83e2ebf5cde983f2fbd63c717997012"
+    }
+  ],
+  "added": [
+    {
+      "path": "contracts/SOURCE_PROVENANCE_LICENSES_WORKPASS44.json",
+      "size": 7001,
+      "sha256": "d1466c52dda518a33ad6985f6714df29f94567e7e05b822e946a1cc36f96b15c"
+    },
+    {
+      "path": "docs/PROJECT_CURRENT_STATUS_2026-10-15_WORKPASS44.json",
+      "size": 63121,
+      "sha256": "edc26603ad80955dfa381abf20c29d64da4062a98adce3a20e9696117393d4b5"
+    },
+    {
+      "path": "docs/PROJECT_CURRENT_STATUS_2026-10-15_WORKPASS44.md",
+      "size": 3773,
+      "sha256": "79633bfc3acb6599062ff20edd2b1090db670d139245e4599ac2295690abba6c"
+    },
+    {
+      "path": "docs/PROJECT_PROGRESS_SCORECARD_2026-10-15_WORKPASS44.json",
+      "size": 12491,
+      "sha256": "1e859076f8a8ad686680448c8b20b393c95411c1019dccad559a6d2551c786ae"
+    },
+    {
+      "path": "docs/WORKPASS44_AUDIT_RESULTS_2026-10-15.json",
+      "size": 6322,
+      "sha256": "540abb18c6bfaae90eb050bc5855e3e735fe5abc5990b634a6dafb23df58d989"
+    },
+    {
+      "path": "docs/WORKPASS44_REPORT_2026-10-15.md",
+      "size": 14207,
+      "sha256": "1a63aa10386103705a82c38bc3e82b0ca6fa0791c18ef4b90ef69059eda81bb9"
+    },
+    {
+      "path": "docs/WORKPASS44_TASKS_2026-10-15.json",
+      "size": 8752,
+      "sha256": "ab3e2d8376cb52aefa8dd6a5731a21808946044c4632bcbce5f64b994d44bdae"
+    },
+    {
+      "path": "docs/WORKPASS44_TASKS_2026-10-15.md",
+      "size": 6940,
+      "sha256": "68f806e7b441708d3db4c2873a9fc7807eecfb886b682ff336dae14bfa79c8e1"
+    },
+    {
+      "path": "docs/archive-optimization/source-archive-blobs/88099799233c5bac165569a6fa9d90df2096eff993a9f068fc67b2088bb773e5",
+      "size": 8463,
+      "sha256": "88099799233c5bac165569a6fa9d90df2096eff993a9f068fc67b2088bb773e5"
+    },
+    {
+      "path": "docs/archive-optimization/source-archive-blobs/e5e613e9fda34425860d0cedf25426b31066d1ebfc6de1e395a5f1e95d578e1f",
+      "size": 22890,
+      "sha256": "e5e613e9fda34425860d0cedf25426b31066d1ebfc6de1e395a5f1e95d578e1f"
+    },
+    {
+      "path": "docs/archive-optimization/source-archive-blobs/f37e9fb39f92f3730b470428a89ffa295b9781deffca3bec2be29204aebd6871",
+      "size": 12230,
+      "sha256": "f37e9fb39f92f3730b470428a89ffa295b9781deffca3bec2be29204aebd6871"
+    },
+    {
+      "path": "runtime/neuro-kurisu/tests/big-pass-380-action-crash-reconciliation.mjs",
+      "size": 5841,
+      "sha256": "d45a317e4e10d68e2351a43c00618bfc0cff7800174a66e3e38a6721430d1012"
+    },
+    {
+      "path": "runtime/neuro-kurisu/tests/big-pass-380-evidence-and-retired-receipts.mjs",
+      "size": 19805,
+      "sha256": "65ee55be8d5166b1cea7a744f6abcc2ea75c3653b46f6391238d3a08107a8e73"
+    }
+  ],
+  "deleted": [],
+  "notes": [
+    "Modified files are byte-hash compared to WorkPass43; previous bytes of three historical source files are preserved in SHA-256 blobs and are not deleted.",
+    "21 generated app/public Live2D shadows are intentionally not shipped; canonical runtime assets and app-specific viewer/vendor files remain. assets:clean removed only byte-verified generated shadows.",
+    "No existing WorkPass43 project file was deleted. Generated state, node_modules, cache, logs, and verification temp are excluded from the archive.",
+    "This manifest excludes its own content hash to avoid circular self-reference; the archive manifest and SHA-256 sidecar verify the included file."
+  ]
+}

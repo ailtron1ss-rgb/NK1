@@ -1,0 +1,53 @@
+name: NK1 Emotion Restore Integrity
+
+on:
+  push:
+    branches:
+      - workpass70-source
+      - "aspect/**"
+    paths:
+      - runtime/neuro-kurisu/src/organism/system/EmotionAppraisalEngine.ts
+      - runtime/neuro-kurisu/tests/big-pass-172-emotion-interoceptive-mind.mjs
+      - runtime/neuro-kurisu/package.json
+      - runtime/neuro-kurisu/package-lock.json
+      - .github/workflows/nk1-emotion-restore-integrity.yml
+  pull_request:
+    branches:
+      - workpass70-source
+    paths:
+      - runtime/neuro-kurisu/src/organism/system/EmotionAppraisalEngine.ts
+      - runtime/neuro-kurisu/tests/big-pass-172-emotion-interoceptive-mind.mjs
+      - runtime/neuro-kurisu/package.json
+      - runtime/neuro-kurisu/package-lock.json
+      - .github/workflows/nk1-emotion-restore-integrity.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nk1-emotion-restore-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  emotion-restore:
+    name: WorkPass172 emotion restore contract
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: runtime/neuro-kurisu
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v7
+      - name: Set up pinned Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: runtime/neuro-kurisu/package-lock.json
+      - name: Install locked runtime dependencies
+        run: npm ci --ignore-scripts
+      - name: Run emotion and interoception regressions
+        run: npm run test:big-pass-172
+      - name: Typecheck runtime
+        run: npm run typecheck

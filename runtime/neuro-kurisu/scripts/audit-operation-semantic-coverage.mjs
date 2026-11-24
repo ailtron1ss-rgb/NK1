@@ -1,0 +1,10 @@
+import fs from 'node:fs';
+const cov=JSON.parse(fs.readFileSync('SEMANTIC_COVERAGE_AUDIT.json','utf8')); const runtime=fs.existsSync('OPERATION_RUNTIME_EVIDENCE_R22.json')?JSON.parse(fs.readFileSync('OPERATION_RUNTIME_EVIDENCE_R22.json','utf8')):null;
+const criticalDomains=new Set(['memory','world','learning','self','agency','consciousness','perception']);
+const rows=cov.contracts.filter(c=>criticalDomains.has(c.domain)&&c.safety==='stateful');
+const exact=rows.filter(c=>c.status==='VERIFIED'||c.status==='INTEGRATION_ONLY');
+const verified=rows.filter(c=>c.status==='VERIFIED');
+const ranked=rows.filter(c=>c.status==='UNVERIFIED').sort((a,b)=>(b.criticality-a.criticality)||(b.testReferences-a.testReferences)||(a.staticReferences-b.staticReferences)).slice(0,250);
+const runtimeVerified=runtime?.summary?.verified??0; const runtimeTotal=runtime?.summary?.total??0; const result={version:2,generatedAt:new Date().toISOString(),criticalOperations:rows.length,coveredOperations:exact.length,verifiedOperations:verified.length,coverage01:rows.length?exact.length/rows.length:0,strictCoverage01:rows.length?verified.length/rows.length:0,runtimeOperationEvidence:{total:runtimeTotal,verified:runtimeVerified,verificationRate01:runtimeTotal?runtimeVerified/runtimeTotal:0},domains:Object.fromEntries([...criticalDomains].map(d=>{const x=rows.filter(r=>r.domain===d);return[d,{total:x.length,covered:x.filter(r=>r.status!=='UNVERIFIED').length,verified:x.filter(r=>r.status==='VERIFIED').length}]})),priorityUnverified:ranked.map(c=>c.id)};
+fs.writeFileSync('OPERATION_SEMANTIC_COVERAGE_R22.json',JSON.stringify(result,null,2));
+console.log(JSON.stringify(result));

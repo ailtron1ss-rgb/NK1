@@ -1,0 +1,109 @@
+{
+  "release": "34.63.0",
+  "files": [
+    {
+      "path": "src/organism/learning/CausalExperienceStream.ts",
+      "sha256": "c6ce02e0524f85c1b0e758dbaf3deb1633614c11b87c7001b7c74b01925a5315"
+    },
+    {
+      "path": "src/organism/learning/P26TrueLearningEngine.ts",
+      "sha256": "1af2dc44639e0bd63861660b780b8b671bdc4a85865232aeaa16095d74ead749"
+    },
+    {
+      "path": "src/organism/learning/P30ContinualIntelligence.ts",
+      "sha256": "23dcbdee57ee37693b1315bdad4d412624a1bb41c4ce108b84ad4f6b2f01cb42"
+    },
+    {
+      "path": "src/organism/core/OrganismCore.ts",
+      "sha256": "52b2460c53be82ed77e8150eed025ac888f243573f6ef6e23b296bc8746d67a3"
+    },
+    {
+      "path": "src/organism/core/CognitiveFrame.ts",
+      "sha256": "b4565ee8f795309f7cb1f2ad13f944a2f7f82bcb31f502aa9fa47860fa7485e9"
+    },
+    {
+      "path": "src/organism/core/types.ts",
+      "sha256": "28b487d804b3cc910eec53b0f4ec2d7eff1bfd2d58601fafbb70fcfa02729e60"
+    },
+    {
+      "path": "src/organism/persistence/StateMigrations.ts",
+      "sha256": "7d6cc4783f8c0477686fa3a859d2dbdb713d33412ab97247de7651af2f9e53e4"
+    },
+    {
+      "path": "tests/big-pass-90-causal-learning-stream.mjs",
+      "sha256": "5cfc513175e93031240eb96b3c72b7b4335b68cd1009f5c1c6cf5ec7b3b76225"
+    },
+    {
+      "path": "tests/p30-integration.mjs",
+      "sha256": "048db4b49ac335c94c7996aa4c8556696a5cf61eb9047892cf7a781831d0326a"
+    },
+    {
+      "path": "package.json",
+      "sha256": "28ba077dfe4b7b27be47ba903dab93ab23a1008d724f0d7d987d09653b1d1101"
+    },
+    {
+      "path": "package-lock.json",
+      "sha256": "ee4d370baab5794c74174efbe2a1d46d96c03909b9501eee6832e6f9a9808816"
+    },
+    {
+      "path": "src/organism/system/ReleaseContract.ts",
+      "sha256": "5ee64cf2e7165080f5f2f888d910cdb42a341eabe46ff8826bb82c80a0295002"
+    },
+    {
+      "path": "VERSION.json",
+      "sha256": "df7b47fe828f4804259b2796f4db79f642c68bd342d8ebaae57e7981a52c2cd0"
+    },
+    {
+      "path": "RELEASE_MANIFEST.json",
+      "sha256": "aa01c08160a0a6e1c53a24cb45934c72fe87b3256efb6079860663c09fee1d49"
+    },
+    {
+      "path": "ARCHITECTURE_MANIFEST.json",
+      "sha256": "89fb8e786e15680bff7b99bdeeeff24add9ae427d9f13e0d3f3bb8c0c7944827"
+    },
+    {
+      "path": "RELEASE_ARCHIVE_MANIFEST.json",
+      "sha256": "dc064d59bc69a1a63d79484f3f43b4560155c9464a1ba6a8eec5c3b55cd25228"
+    },
+    {
+      "path": "README_RU.md",
+      "sha256": "bbaa8475f087fd6a7231743ff296a7aabe38dd85aea994d088d95bd77fb4f39b"
+    },
+    {
+      "path": "docs/PROJECT_PROGRESS_RU.md",
+      "sha256": "ef24f51651f0620509a806aa60b56d39acc370575104864e01954bbff1f25ccc"
+    },
+    {
+      "path": "docs/SYSTEM_OF_RECORD_RU.md",
+      "sha256": "8effa081761509f8328c10c19ed7d80fbe551cde1d8171711298961f63ed47dd"
+    },
+    {
+      "path": "docs/ARCHITECTURE_RU.md",
+      "sha256": "f1ef06ecf12486342f89d6cc2da40b9fa3a2c80f999e79b71a78e4f7b8b102b1"
+    },
+    {
+      "path": "docs/MASTER_ROADMAP_5_STAGES_RU.md",
+      "sha256": "bb33f592b37e6217d830e1fdd62d26ca9da2afadf77eb8223c66a13f1708909e"
+    },
+    {
+      "path": "docs/EVOLUTION_HANDOFF_RU.md",
+      "sha256": "832645196a350c9f399aef52767ddef4e16a29aee7dc858c24e4efc1a312f15d"
+    },
+    {
+      "path": "docs/00_MASTER_PERSONHOOD_CONSTITUTION_RU.md",
+      "sha256": "638a1ae2e4889e3edc6925f727ae9d97a33d6c3bd4809a58433dc1344b966b17"
+    },
+    {
+      "path": "docs/WORKING_PROMPT_RU.md",
+      "sha256": "b370f7881f8238b4ee6283d0d81641d27202fde2f8eaf260aa41e264d0a67d08"
+    },
+    {
+      "path": "docs/RELEASE_NOTES_34.63.0_RU.md",
+      "sha256": "4c097cbb71201da4b6e446630ee1e32b3098e44a04e671448fe250e547be77e5"
+    },
+    {
+      "path": "docs/BIG_PASS_90_PROGRESS_AND_DECISIONS_RU.md",
+      "sha256": "011fb71f49d5cf2c8677c8ccda000ef986624143b2e80802343d0834a643a6cd"
+    }
+  ]
+}

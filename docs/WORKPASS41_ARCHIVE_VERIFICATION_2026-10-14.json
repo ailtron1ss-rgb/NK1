@@ -1,0 +1,27 @@
+{
+  "workpass": 41,
+  "date": "2026-10-14",
+  "baselineArchive": "Neuro_Kurisu_WORKPASS40_2026-10-14.zip",
+  "baselineArchiveSha256": "5c9729d964c6f5f1b785f5cea882c7cccabc66d2f92d63a47461dd7f66716325",
+  "baselineFileCount": 9126,
+  "baselinePathsPresentBeforePackaging": 9126,
+  "deletedBaselinePaths": [],
+  "initiallyAddedPaths": [
+    "SEMANTIC_DYNAMIC_EVIDENCE.json",
+    "contracts/SOURCE_PROVENANCE_LICENSES_WORKPASS41.json",
+    "docs/INTEGRATION_MATRIX_WORKPASS41_2026-10-14.md",
+    "docs/PROJECT_CURRENT_STATUS_2026-10-14_WORKPASS41.json",
+    "docs/PROJECT_CURRENT_STATUS_2026-10-14_WORKPASS41.md",
+    "docs/PROJECT_PROGRESS_SCORECARD_2026-10-14_WORKPASS41.json",
+    "docs/WORKPASS41_AUDIT_RESULTS_2026-10-14.json",
+    "docs/WORKPASS41_REPORT_2026-10-14.md",
+    "docs/WORKPASS41_TASKS_2026-10-14.md",
+    "runtime/neuro-kurisu/tests/cognitive-cycle-local-lineage-workpass41.mjs",
+    "runtime/neuro-kurisu/tests/memory-retention-net-value-workpass41.mjs"
+  ],
+  "modifiedBaselineFileCount": 20,
+  "verificationMethod": "After packaging, companion verification reads every ZIP entry, tests CRC, rejects duplicate paths, and compares every uncompressed byte stream against this work tree. The companion JSON carries the resulting archive SHA-256; the archive cannot contain its own final hash.",
+  "sourceRetentionPolicy": "Only generated caches/state/coverage/bytecode/logs are excluded; repository source, embedded source archives, Legacy, UI and Live2D assets are not excluded.",
+  "releaseReady": false,
+  "knownBlocker": "Vite production build and interactive browser/Live2D E2E remain blocked by missing locked app dependencies in this environment."
+}

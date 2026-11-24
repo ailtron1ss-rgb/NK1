@@ -1,0 +1,96 @@
+{
+  "release": "35.6.1-B292",
+  "date": "2026-09-13",
+  "status": "validated-integrated-mobile-window-pass-1000-unresolved-on-host",
+  "baseline": {
+    "previous": "B291",
+    "functions": 3573,
+    "verified": 38,
+    "integrationOnly": 818,
+    "unsafeToAutoRun": 259,
+    "unverified": 2458
+  },
+  "b292": {
+    "standalone": {
+      "pass": true,
+      "busCycles": 240,
+      "intentDecisions": 240,
+      "switchCount": 24,
+      "continuity01": 0.7070891647,
+      "successEMA01": 0.6776271798
+    },
+    "core": {
+      "pass": true,
+      "tick": 24,
+      "readiness01": 0.7066199741,
+      "stability01": 0.7687179003,
+      "commitment01": 1.0,
+      "continuity01": 0.5999459182,
+      "records": 24
+    },
+    "mobile1000": {
+      "pass": false,
+      "status": "UNRESOLVED_HOST_RUNTIME",
+      "reason": "1000-cycle host run exceeded the available execution window after latest hot-loop optimization; B291 baseline on same host also timed out. Threshold was not relaxed."
+    },
+    "operational250": {
+      "pass": true,
+      "warmedMedianRatio": 1.378,
+      "firstMedianMs": 74.57,
+      "lastMedianMs": 102.74,
+      "p95ApproxMs": 151.97,
+      "heapGrowth": 1.818
+    },
+    "restart": "PASS",
+    "concurrency": "PASS",
+    "ui": "PASS",
+    "server": "PASS",
+    "mobile250": {
+      "pass": true,
+      "p95Ms": 128.2876,
+      "firstMedianMs": 0.2655,
+      "lastMedianMs": 0.1228,
+      "heapMB": 91.83,
+      "memoryCount": 37
+    },
+    "mobile600Profile": {
+      "pass": true,
+      "p95Ms": 152.28,
+      "maxMs": 336.56
+    },
+    "mobile900Profile": {
+      "pass": true,
+      "completed": true,
+      "p95Ms": 191.44,
+      "maxMs": 397.97
+    }
+  },
+  "audits": {
+    "typecheck": "PASS",
+    "architecture": "PASS",
+    "integrity": "PASS",
+    "forensics": "PASS",
+    "hygiene": "PASS",
+    "contract": "PASS",
+    "releaseSource": "PASS",
+    "full": "PASS"
+  },
+  "realityClosure": {
+    "candidateBacklog": 64,
+    "policy": "candidate-only; no automatic VERIFIED promotion"
+  },
+  "documents": {
+    "b291ReportRechecked": true,
+    "b292ReportVisualQARequired": true,
+    "b292ReportVisualQA": true
+  },
+  "claimsBoundary": "B292 demonstrates stronger cross-cycle autonomy continuity and evidence-linked executive control; mobile 250-cycle profile passes with p95 128.29 ms; 1000-cycle host gate remains unresolved and is not claimed as PASS; no claim of phenomenal consciousness or human equivalence.",
+  "performanceOptimization": {
+    "harness": "B292 scripts now execute TypeScript tests with --experimental-strip-types.",
+    "hotLoop": [
+      "B292 bus build returns internal state instead of cloning each build",
+      "B292 intent trace uses bounded in-place deque updates",
+      "B290/B291 metrics are cached once per cycle"
+    ]
+  }
+}

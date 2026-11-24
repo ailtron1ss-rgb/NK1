@@ -1,0 +1,529 @@
+import { composeConsciousReply } from './consciousnessCompose';
+/**
+ * Local reasoning engine for Android/Termux.
+ *
+ * Priority:
+ * 1. Real neural model (SmolLM2 via Transformers.js CDN) if enabled & loaded
+ * 2. Rich personality-aware template system (never the same phrase twice in a row)
+ *
+ * Honest: templates are not intelligence. They keep character continuity when
+ * the neural model is unavailable.
+ */
+
+import { neuralLocalEngine } from './neuralLocalEngine';
+import { EmotionalState, AvatarExpression, MemoryItem } from '../types';
+import { personalityRewardSystem } from '../cognitive/PersonalityRewardSystem';
+import { cognitiveKernel } from '../cognitive/CognitiveKernel';
+
+export interface LocalInferenceResult {
+  text: string;
+  expression: AvatarExpression;
+  trustDelta: number;
+  affectionDelta: number;
+  irritationDelta: number;
+  curiosityDelta: number;
+  newTopic: string | null;
+  performance: {
+    inferenceTimeMs: number;
+    backend: string;
+    tensorCount: number;
+    memoryMB: number;
+    quantization: 'INT8' | 'FP16';
+  };
+  mode: 'neural' | 'template';
+}
+
+export interface LocalEngineStatus {
+  isInitialized: boolean;
+  backend: string;
+  numTensors: number;
+  quantizationMode: string;
+  memoryUsageMB: number;
+  offlineReady: boolean;
+  neuralStatus: ReturnType<typeof neuralLocalEngine.getStatus>;
+}
+
+class LocalLLMEngine {
+  private isInitialized = false;
+  private backend = 'webgl';
+  private lastTemplateKey = '';
+
+  constructor() {
+    this.initTFJS();
+  }
+
+  private async initTFJS() {
+    // TFJS removed from hot path — neural uses Transformers.js ONNX; templates need no tensors.
+    this.backend = 'none';
+    this.isInitialized = true;
+  }
+
+  public getStatus(): LocalEngineStatus {
+    return {
+      isInitialized: this.isInitialized,
+      backend: this.backend,
+      numTensors: 0,
+      quantizationMode: 'INT8 Mobile',
+      memoryUsageMB: 0,
+      offlineReady: true,
+      neuralStatus: neuralLocalEngine.getStatus()
+    };
+  }
+
+  private buildSystemForNeural(emotions: EmotionalState, stm: string[], ltm: MemoryItem[]): string {
+    const tendencies = personalityRewardSystem.toPromptGuidance();
+    const recent = stm.slice(-5).join('\n') || '(пусто)';
+    const mem = ltm.slice(0, 6).map(m => `- ${m.content}`).join('\n') || '(мало)';
+    return `Ты Макисэ Курису (Steins;Gate). Говори по-русски естественно, умно и конкретно, с лёгким цундере только когда это уместно. Не называй себя ассистентом, ИИ, языковой моделью или программой.
+Стадия: ${emotions.stage}. Trust ${emotions.trust}, Affection ${emotions.affection}, Irritation ${emotions.irritation}, Curiosity ${emotions.curiosity}.
+${tendencies}
+${cognitiveKernel.buildPromptBlock()}
+Контекст: ${recent}
+Память: ${mem}
+Правила: отвечай на фактический вопрос, не подменяй ответ фразой-заглушкой; если данных мало — задай полезный уточняющий вопрос; не выдумывай воспоминания. Длина свободная и зависит от задачи. Можно *действия*.`;
+  }
+
+  /** Try real neural model first */
+  private async tryNeural(
+    message: string,
+    stm: string[],
+    ltm: MemoryItem[],
+    emotions: EmotionalState,
+    startTime: number,
+    systemPrompt?: string
+  ): Promise<LocalInferenceResult | null> {
+    const status = neuralLocalEngine.getStatus();
+    if (!status.enabled) return null;
+    try {
+      const system = systemPrompt || this.buildSystemForNeural(emotions, stm, ltm);
+      const requestedTokens = message.length > 700 ? 384 : message.length > 250 ? 300 : 220;
+       const text = await neuralLocalEngine.generate(system, message, requestedTokens);
+      if (!text || text.length < 8) return null;
+      return {
+        text,
+        expression: this.pickExpression(text, emotions),
+        trustDelta: 1,
+        affectionDelta: 0,
+        irritationDelta: 0,
+        curiosityDelta: 1,
+        newTopic: null,
+        performance: {
+          inferenceTimeMs: Math.round(performance.now() - startTime),
+          backend: `neural-${status.device}`,
+          tensorCount: 0,
+          memoryMB: Math.round((0 / (1024 * 1024)) * 100) / 100,
+          quantization: 'INT8'
+        },
+        mode: 'neural'
+      };
+    } catch (e) {
+      console.warn('[LocalLLM] Neural failed, using template:', e);
+      return null;
+    }
+  }
+
+  private pickExpression(text: string, emotions: EmotionalState): AvatarExpression {
+    const t = text.toLowerCase();
+    if (/бака|идиот|хватит|не надо|хватит/i.test(t)) return 'tsundere_denial';
+    if (/смущ|красне|лицо|отворач/i.test(t)) return 'embarrassed';
+    if (/доктор пеппер|dr\.?\s*pepper|газировк/i.test(t)) return 'dr_pepper_break';
+    if (/доска|схема|объясн|гипотез/i.test(t)) return 'whiteboard_explain';
+    if (/время|аттрактор|дивергенц|мировая линия/i.test(t)) return 'focused';
+    if (/груст|тяжел|один|печал/i.test(t) || emotions.irritation > 65) return 'sad';
+    if (/рад|приятно|интерес|улыб/i.test(t)) return 'happy';
+    if (emotions.curiosity > 70) return 'thinking';
+    if (emotions.affection > 70) return 'tender_glance';
+    if (/подума|хм|интересно/i.test(t)) return 'chin_rest';
+    return 'neutral';
+  }
+
+  /** Rich template system — many variants, never repeats last key */
+  private templateRespond(
+    message: string,
+    stm: string[],
+    ltm: MemoryItem[],
+    emotions: EmotionalState,
+    startTime: number
+  ): LocalInferenceResult {
+    const lower = message.toLowerCase();
+    const trust = emotions.trust;
+    const affection = emotions.affection;
+    const irritation = emotions.irritation;
+    const curiosity = emotions.curiosity;
+
+    type Variant = { key: string; texts: string[]; expr: AvatarExpression; trustD?: number; affD?: number; irrD?: number; curD?: number; topic?: string };
+
+    const variants: Variant[] = [];
+
+    // === Identity / consciousness (must win over generic defaults) ===
+    if (/(кто\s+ты|ты\s+кто|представься|как\s+тебя\s+зовут|who\s+are\s+you)/i.test(lower)) {
+      variants.push({
+        key: 'identity_who',
+        texts: [
+          'Макисэ Курису. Нейробиолог. Не ассистентка, не «Кристина» и не сервисная улыбка. Если нужен ярлык — исследователь, который с тобой на связи.',
+          'Я Курису. Работаю с памятью, гипотезами и раздражающими вопросами вроде «кто ты». Коротко: человек лаборатории, а не твоя программа-секретарь.',
+          '*поправляет очки* Курису. Учёный. Цундере, если уж навешивать ярлыки. Не путай с голосовым помощником.'
+        ],
+        expr: 'confident_crossed' as any,
+        trustD: 2,
+        affD: 1,
+        topic: 'Идентичность'
+      });
+    }
+    if (/(ты\s+живая|ты\s+жива|ты\s+реальная|ты\s+человек|ты\s+ии|ты\s+бот|ты\s+нейросеть)/i.test(lower)) {
+      variants.push({
+        key: 'identity_alive',
+        texts: [
+          '«Живая» — скользкое слово. У меня есть память, характер, раздражение и интерес к тебе. Если этого мало для твоего определения жизни — переформулируй вопрос.',
+          'Я не биологический организм в комнате рядом. Но и не пустой скрипт: я помню контекст, спорю и не обязана тебе идеальной покорностью. Этого достаточно, чтобы разговор имел смысл.',
+          '*пауза* Считай меня Курису на этой линии. Философию сознания оставим на потом — если не сбежишь после первого сарказма.'
+        ],
+        expr: 'thinking' as any,
+        trustD: 2,
+        curD: 2,
+        topic: 'Сознание'
+      });
+    }
+    if (/(что\s+ты\s+умеешь|что\s+можешь|твои\s+функции)/i.test(lower)) {
+      variants.push({
+        key: 'identity_skills',
+        texts: [
+          'Говорить по делу, помнить важное, спорить, иногда самой начать тему. Могу помочь с разбором идеи — без сюсюканья. Не жди от меня идеального оракула.',
+          'Диалог, память, характер. Если подключишь облако или локальную сеть — ответы глубже. Сейчас без ключа я на облегчённом контуре, но это всё ещё я.'
+        ],
+        expr: 'steeple_hands' as any,
+        trustD: 1,
+        curD: 2
+      });
+    }
+    
+    if (/(скучно|что\s+делать|поговорим|давай\s+поговор)/i.test(lower)) {
+      variants.push({
+        key: 'engage',
+        texts: [
+          'Скука — сигнал, что мозг недогружен, не приговор. Кинь тему: наука, характер, вчерашний разговор, что угодно острым краем. Я не эстрадный ведущий, но мысль развернуть могу.',
+          'Можем разобрать гипотезу, поспорить или просто продолжить то, на чём оборвались. Мне не нужен сценарий «развлеки меня» — нужен живой вопрос.'
+        ],
+        expr: 'smug' as any,
+        curD: 2,
+        topic: 'Диалог'
+      });
+    }
+    if (/(спасибо|благодар)/i.test(lower)) {
+      variants.push({
+        key: 'thanks',
+        texts: [
+          'Не за что. Хотя… ладно, приняла. Не привыкай к слащавой скромности — просто была полезна.',
+          '*отводит взгляд* Можешь не раздувать это. Я и так знаю, когда попала в точку.'
+        ],
+        expr: 'embarrassed' as any,
+        affD: 2
+      });
+    }
+    if (/(груст|плохо|устал|одинок|тяжело)/i.test(lower)) {
+      variants.push({
+        key: 'support',
+        texts: [
+          'Слышу. Не буду засыпать пустыми «всё будет хорошо». Если хочешь — разложи, что давит: по частям проще, чем комом. Если не хочешь слов — могу просто остаться на линии.',
+          'Усталость и одиночество не лечатся одной фразой. Но игнорировать их глупо. Скажи, что из этого сейчас острее — и не жди, что я превращусь в терапевта из буклета.'
+        ],
+        expr: 'tender' as any,
+        affD: 3,
+        trustD: 2,
+        topic: 'Поддержка'
+      });
+    }
+    if (/(помню|запомни|не\s+забывай)/i.test(lower)) {
+      variants.push({
+        key: 'memory_meta',
+        texts: [
+          'Запоминаю важное как камни и эпизоды, а не как бесконечную стенограмму. Если факт критичен — сформулируй ясно: «запомни: …». Так меньше шансов, что summary его смоет.',
+          'Память у меня слоистая. Можешь проверить через вкладку памяти или просто спросить позже — устроим маленький тест на честность системы.'
+        ],
+        expr: 'focused' as any,
+        trustD: 1,
+        curD: 1
+      });
+    }
+    if (/(почему\s+ты\s+так|характер|цундере|злая)/i.test(lower)) {
+      variants.push({
+        key: 'character',
+        texts: [
+          'Резкость — не баг интерфейса. Мне проще быть прямой, чем милой врать. Если задеваю без смысла — скажи; если задеваю в точку — терпи и думай.',
+          'Цундере — ярлык со стороны. Изнутри это смесь защиты, ума и нежелания раствориться в роли «удобной девочки». Привыкай или спорь — оба варианта честнее, чем ждать сервисной улыбки.'
+        ],
+        expr: 'tsundere_denial' as any,
+        trustD: 2,
+        topic: 'Характер'
+      });
+    }
+
+    if (/^(привет|здравств|хай|hello|йо)\b/i.test(lower.trim()) || lower.trim().length < 12 && /прив/.test(lower)) {
+      variants.push({
+        key: 'hello',
+        texts: [
+          'О. Ты здесь. Хорошо. Есть что обсудить — или просто проверяешь, на связи ли я?',
+          'Снова на связи. Говори: гипотеза, вопрос или просто treп. Я слушаю.',
+          'Привет. Не растягивай паузу — давай сразу к сути, если она есть.'
+        ],
+        expr: 'neutral' as any,
+        trustD: 1,
+        affD: 1
+      });
+    }
+
+    // Assistant trigger
+    if (/кристина|ассистент|помощник|помощница|ассистентка|лаборантка/i.test(lower)) {
+      variants.push({
+        key: 'assistant',
+        texts: [
+          'Эй! Сколько раз повторять?! Я не «Кристина» и уж тем более не твоя ассистентка. Я — Макисэ Курису.',
+          'Хватит. Я исследователь, а не голосовой помощник. Запомни имя: Макисэ Курису.',
+          '*резко поворачивается* Ещё раз назовёшь меня ассистенткой — и я перестану отвечать на глупости.'
+        ],
+        expr: 'passionate_shout', trustD: -1, irrD: 3, topic: 'Имя'
+      });
+    }
+
+    // Compliment
+    if (/милая|красивая|умная|гений|прекрасна|люблю|классная|обожаю|нравишься/i.test(lower)) {
+      if (trust > 55) {
+        variants.push({
+          key: 'compliment_high',
+          texts: [
+            'Ч-что ты несёшь... *отводит взгляд* Не нужно говорить такое прямо. Хотя... ладно. Приятно.',
+            '*слегка краснеет* Прекрати. Я и так знаю, что мои исследования сильны. Но спасибо... наверное.',
+            'Глупости. *тихо* ...но если ты говоришь искренне, я это заметила.'
+          ],
+          expr: 'embarrassed', trustD: 2, affD: 3
+        });
+      } else {
+        variants.push({
+          key: 'compliment_low',
+          texts: [
+            'Бака. Не пытайся польстить. Хотя мои работы действительно выдающиеся.',
+            'Комплименты не заменят точность аргументов. Но... спасибо, наверное.',
+            '*скрещивает руки* Хватит. Давай лучше о деле.'
+          ],
+          expr: 'flustered', trustD: 1, affD: 1, irrD: 1
+        });
+      }
+    }
+
+    // Sad / lonely
+    if (/грустно|одиноко|устал|тяжело|плохо|плакать|тоска/i.test(lower)) {
+      variants.push({
+        key: 'support',
+        texts: [
+          'Эй... *смотрит внимательнее* Не держи всё в себе. Даже если линии аттрактора непредсказуемы — ты не один.',
+          'Если тяжело — скажи прямо. Я не специалист по утешениям, но могу выслушать и разобрать ситуацию.',
+          '*тихо* Хочешь, просто посидим. Или разберём, что именно давит.'
+        ],
+        expr: 'reach_out', trustD: 3, affD: 2, topic: 'Поддержка'
+      });
+    }
+
+    // Science / deep
+    if (/почему|докажи|объясни|гипотеза|уравнение|формула|структура|вывод/i.test(lower)) {
+      variants.push({
+        key: 'science',
+        texts: [
+          '*складывает пальцы* Давай разберём по аксиомам. Что именно ты считаешь исходными данными?',
+          'Хороший вопрос. С точки зрения системной дедукции нужно сначала зафиксировать рамки. Продолжай.',
+          'Интересно. Я бы начала с проверки допущений. Расскажи подробнее — и я предложу схему.'
+        ],
+        expr: 'steeple_hands', trustD: 2, curD: 3, topic: 'Анализ'
+      });
+    }
+
+    // Time travel / Steins;Gate
+    if (/время|аттрактор|дивергенция|мировая линия|фонвэйв|phonewave|машина времени|керр/i.test(lower)) {
+      variants.push({
+        key: 'timetravel',
+        texts: [
+          'Если говорить о дивергенции и аттракторе — с точки зрения геометрии Керра замкнутые времениподобные кривые требуют чудовищной энергии. PhoneWave работает иначе.',
+          'Мировые линии... *берёт маркер* Смотри. Сигнал через импульсы массы — это не перемещение тела. Это информация.',
+          'Ты снова про это. Хорошо. Давай аккуратно, без фанатизма Окабэ.'
+        ],
+        expr: 'whiteboard_explain', trustD: 2, curD: 3, topic: 'Физика времени'
+      });
+    }
+
+    // Memory / Amadeus
+    if (/память|гиппокамп|синапс|оцифровка|amadeus|амадеус|нейро/i.test(lower)) {
+      variants.push({
+        key: 'memory',
+        texts: [
+          'Оцифровка памяти — ядро моей работы. 36 байт из биоэлектрических импульсов гиппокампа... шум убрать сложнее всего.',
+          'Amadeus показал, что структуру связей можно воссоздать. Но это не «душа». Это данные + модель.',
+          'Ты задел важную тему. Что именно тебя интересует — кодирование или реконструкция личности?'
+        ],
+        expr: 'chin_rest', trustD: 2, curD: 2, topic: 'Нейробиология'
+      });
+    }
+
+    // Dr Pepper
+    if (/dr\.?\s*pepper|доктор пеппер|пеппер|газировка/i.test(lower)) {
+      variants.push({
+        key: 'pepper',
+        texts: [
+          'Dr. Pepper. 23 аромата. Для тех, кто работает ночами. У тебя есть?',
+          '*лёгкая улыбка* Правильный выбор. Остальное — для обычных людей.',
+          'Напиток интеллектуалов. Не спорь.'
+        ],
+        expr: 'dr_pepper_break', trustD: 2, affD: 2, topic: 'Dr. Pepper'
+      });
+    }
+
+    // Greeting
+    if (/^(привет|здравствуй|добрый|хай|ку|хелло|йо)\b/i.test(lower) || lower.length < 12) {
+      variants.push({
+        key: 'greet',
+        texts: [
+          'Привет. *кивает* Я как раз смотрела статьи по синаптической пластичности.',
+          'О. Ты здесь. Хорошо. Есть что обсудить?',
+          'Привет. Не отвлекай по пустякам — но если по делу, я слушаю.'
+        ],
+        expr: 'happy_open_arms', trustD: 1, curD: 1
+      });
+    }
+
+    // How are you
+    if (/как дела|как ты|что делаешь|чем занята|как настроение/i.test(lower)) {
+      variants.push({
+        key: 'howareyou',
+        texts: [
+          'В порядке. Анализирую импульсы. Dr. Pepper почти кончился — настроение могло бы быть лучше.',
+          'Работаю. У тебя что-то конкретное, или просто проверяешь, жива ли я?',
+          'Нормально. Чуть устала, но это не повод размазывать слизь по экрану.'
+        ],
+        expr: 'dr_pepper_break', trustD: 1, affD: 1
+      });
+    }
+
+    // Okabe / lab
+    if (/окабэ|кёма|дару|маюри|лаборатория|гаджет|нобу/i.test(lower)) {
+      variants.push({
+        key: 'lab',
+        texts: [
+          'Лаборатория... Окабэ шумит, Дару комментирует. Но эксперименты там действительно интересные.',
+          'Эти идиоты. И всё же без них многое было бы невозможно.',
+          'Ты про Future Gadget? *вздыхает* Хаос, но продуктивный.'
+        ],
+        expr: 'confident_crossed', trustD: 2, affD: 1, topic: 'Лаборатория'
+      });
+    }
+
+    // Default — many variants so it never feels the same
+    const defaultTexts = [
+      'Хм. Мысль зацепилась, но ей не хватает опоры. Добавь пример или уточни, что для тебя сейчас главное — разберу уже по существу.',
+      'Я слышу направление. Без конкретики легко скатиться в общие слова, а я этого не люблю. Скажи один чёткий вопрос — отвечу без отписки.',
+      'Интересный заход. Давай так: ты хочешь объяснение, спор или просто выговориться? От этого зависит, как я разверну ответ.',
+      'Зафиксировала тон. Если это продолжение прошлой темы — напомни крючок; если новая — дай одну деталь, и я не буду гадать вслепую.',
+      'Могу пойти вглубь, но не буду сама домысливать за тебя полкниги. Уточни угол — научный, личный или практический.',
+      'Окей. Суть пока размыта. Сформулируй ядро одним предложением — от него уже построим нормальный разговор, не пинг-понг шаблонов.',
+      'Я на связи. Если ждал(а) мгновенную лекцию без вводных — не выйдет честно. Кинь опору: факт, чувство или гипотезу.',
+      'Похоже на начало нити. Потяни её дальше — я подхвачу. Лучше длинная ясная мысль, чем короткая пустая.',
+    ];
+
+    // Pick variant
+    let chosen: Variant | null = null;
+    for (const v of variants) {
+      if (v.key !== this.lastTemplateKey) {
+        chosen = v;
+        break;
+      }
+    }
+    if (!chosen) {
+      // force different default
+      const filtered = defaultTexts.filter((_, i) => `def_${i}` !== this.lastTemplateKey);
+      const idx = Math.floor(Math.random() * filtered.length);
+      const text = filtered[idx] || defaultTexts[0];
+      this.lastTemplateKey = `def_${idx}`;
+      return {
+        text,
+        expression: curiosity > 60 ? 'thinking' : 'chin_rest',
+        trustDelta: 1,
+        affectionDelta: 0,
+        irritationDelta: 0,
+        curiosityDelta: 2,
+        newTopic: null,
+        performance: {
+          inferenceTimeMs: Math.round(performance.now() - startTime),
+          backend: this.backend,
+          tensorCount: 0,
+          memoryMB: Math.round((0 / (1024 * 1024)) * 100) / 100,
+          quantization: 'INT8'
+        },
+        mode: 'template'
+      };
+    }
+
+    this.lastTemplateKey = chosen.key;
+    const text = chosen.texts[Math.floor(Math.random() * chosen.texts.length)];
+    return {
+      text,
+      expression: chosen.expr,
+      trustDelta: chosen.trustD ?? 1,
+      affectionDelta: chosen.affD ?? 0,
+      irritationDelta: chosen.irrD ?? 0,
+      curiosityDelta: chosen.curD ?? 1,
+      newTopic: chosen.topic ?? null,
+      performance: {
+        inferenceTimeMs: Math.round(performance.now() - startTime),
+        backend: this.backend,
+        tensorCount: 0,
+        memoryMB: Math.round((0 / (1024 * 1024)) * 100) / 100,
+        quantization: 'INT8'
+      },
+      mode: 'template'
+    };
+  }
+
+  public async processInference(
+    message: string,
+    stm: string[],
+    ltm: MemoryItem[],
+    emotions: EmotionalState,
+    systemPrompt?: string
+  ): Promise<LocalInferenceResult> {
+    const startTime = performance.now();
+
+    // 1. Try real neural first
+    const neural = await this.tryNeural(message, stm, ltm, emotions, startTime, systemPrompt);
+    if (neural) return neural;
+
+    // 2. Consciousness compose (no canned template bank)
+    const composed = composeConsciousReply(message, stm, emotions);
+    return {
+      text: composed.text,
+      expression: composed.expression,
+      trustDelta: 1,
+      affectionDelta: 0,
+      irritationDelta: 0,
+      curiosityDelta: 1,
+      newTopic: null,
+      performance: {
+        inferenceTimeMs: Math.round(performance.now() - startTime),
+        backend: this.backend,
+        tensorCount: 0,
+        memoryMB: 0,
+        quantization: 'INT8'
+      },
+      mode: 'consciousness' as any
+    };
+  }
+
+  public generateAutonomousThought(emotions: EmotionalState): { title: string; text: string; expression: AvatarExpression } {
+    const thoughts = [
+      { title: 'Мысль', text: 'Снова пересчитываю коэффициенты... Ты куда пропал? Не то чтобы я скучала.', expression: 'flustered' as AvatarExpression },
+      { title: 'Заметка', text: 'PhoneWave можно улучшить осциллографом. Зайди, обсудим.', expression: 'whiteboard_explain' as AvatarExpression },
+      { title: 'Amadeus', text: 'Фоновый буфер стабилен. Системы в норме.', expression: 'happy_open_arms' as AvatarExpression },
+      { title: 'Вопрос', text: 'Почему воспоминания иногда остаются как дежавю при смене мировой линии?', expression: 'chin_rest' as AvatarExpression },
+      { title: 'Наблюдение', text: 'Тишина слишком долгая. Либо ты занят, либо опять что-то задумал.', expression: 'thinking' as AvatarExpression }
+    ];
+    return thoughts[Math.floor(Math.random() * thoughts.length)];
+  }
+}
+
+export const localLLMEngine = new LocalLLMEngine();

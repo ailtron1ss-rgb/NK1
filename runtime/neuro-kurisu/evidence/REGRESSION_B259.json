@@ -1,0 +1,12 @@
+{
+  "pass": "BIG_PASS_259_CANONICAL_NEURAL_SUBSTRATE",
+  "verified": true,
+  "learningUpdates": 20,
+  "trainError01": 0.43062722608764437,
+  "holdoutError01": 0.34398196219199206,
+  "holdoutDelta01": 0.15601803780800794,
+  "generalization01": 0.6560180378080079,
+  "lesionDrop01": 0.000020307629634164214,
+  "coreCycles": 8,
+  "restartPreserved": true
+}

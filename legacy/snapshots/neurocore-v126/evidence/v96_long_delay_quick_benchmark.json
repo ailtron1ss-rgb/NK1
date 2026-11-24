@@ -1,0 +1,46 @@
+[
+  {
+    "name": "single_timescale",
+    "seed": 0,
+    "steps": 70,
+    "delay": 18,
+    "train_seconds": 2.2746001909999904,
+    "final_loss": 0.7389446496963501,
+    "eval_cosine": 0.19160115718841553,
+    "eval_top1": 0.02777777798473835,
+    "mean_long_decay": 0.9649257659912109
+  },
+  {
+    "name": "multiscale_timescale",
+    "seed": 0,
+    "steps": 70,
+    "delay": 18,
+    "train_seconds": 2.501078378000102,
+    "final_loss": 0.739100992679596,
+    "eval_cosine": 0.19175463914871216,
+    "eval_top1": 0.02777777798473835,
+    "mean_long_decay": 0.924339234828949
+  },
+  {
+    "name": "single_timescale",
+    "seed": 1,
+    "steps": 70,
+    "delay": 18,
+    "train_seconds": 2.206123016000106,
+    "final_loss": 0.7462148666381836,
+    "eval_cosine": 0.2111765295267105,
+    "eval_top1": 0.0555555559694767,
+    "mean_long_decay": 0.9644514918327332
+  },
+  {
+    "name": "multiscale_timescale",
+    "seed": 1,
+    "steps": 70,
+    "delay": 18,
+    "train_seconds": 2.49357782200002,
+    "final_loss": 0.7457566261291504,
+    "eval_cosine": 0.21157991886138916,
+    "eval_top1": 0.0555555559694767,
+    "mean_long_decay": 0.924339234828949
+  }
+]

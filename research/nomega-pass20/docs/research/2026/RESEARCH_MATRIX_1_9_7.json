@@ -1,0 +1,13 @@
+{
+  "version": "1.9.7",
+  "sources": [
+    {"id":"DGM-2025","title":"Darwin Gödel Machine: Open-Ended Evolution of Self-Improving Agents","year":2025,"status":"design_reference","mapping":["evolution_archive","execution_validation","diverse_search"]},
+    {"id":"AlphaEvolve-2025-2026","title":"AlphaEvolve: Gemini-powered coding agent for algorithm discovery","year":2025,"status":"design_reference","mapping":["candidate_portfolio","automated_evaluator","evolutionary_selection"]},
+    {"id":"SelfEvolvingCodingAgents-2026","title":"Self-Evolving Coding Agents","year":2026,"status":"survey","mapping":["trajectory_evidence","feedback_reliability","ood","cost"]},
+    {"id":"AdaMEM-2026","title":"AdaMEM: Test-Time Adaptive Memory for Language Agents","year":2026,"status":"design_reference","mapping":["adaptive_replay","short_term_strategy_memory"]},
+    {"id":"AgeMem-2026","title":"Agentic Memory: Learning Unified Long-Term and Short-Term Memory Management for Large Language Model Agents","year":2026,"status":"design_reference","mapping":["memory_lifecycle","store_retrieve_update_discard"]},
+    {"id":"MemoryContinual-2026","title":"When Continual Learning Moves to Memory: A Study of Experience Reuse in LLM Agents","year":2026,"status":"risk_reference","mapping":["negative_transfer","procedural_memory","retrieval_bottleneck"]},
+    {"id":"NestedLearning-2025","title":"Nested Learning: The Illusion of Deep Learning Architectures","year":2025,"status":"design_reference","mapping":["multi_timescale_learning","continuum_memory"]},
+    {"id":"BCoder-2024","title":"B-CODER: Value-Based Deep Reinforcement Learning for Program Synthesis","year":2024,"status":"algorithm_reference","mapping":["candidate_value_model","execution_reward"]}
+  ]
+}

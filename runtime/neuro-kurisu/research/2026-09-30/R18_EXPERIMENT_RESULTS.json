@@ -1,0 +1,15 @@
+{
+  "release": "35.32.1",
+  "phase": "R18.1",
+  "date": "2026-09-30",
+  "experiments": {
+    "P2887": {"status": "PASS", "implicitConflictsResolved": 1, "staleRetrievalsAvoided": 1},
+    "P2888": {"status": "PASS", "samples": 96, "meanUtilityGap01": 0.413699},
+    "P2889": {"status": "PASS", "contextSamples": 12, "readiness01": 0.8932, "rawConfidence01": 0.3, "calibratedConfidence01": 0.6466},
+    "P2890": {"status": "PASS", "coldConfidence01": 0.42660235, "warmConfidence01": 0.49220821, "delta01": 0.0656059},
+    "P2891": {"status": "PASS"},
+    "P2868": {"status": "PASS", "deterministicLogicalClock": true, "deterministicTestRng": true, "semanticMobileProfileAlignedToBalanced": true, "note": "two independent balanced/mobile repeated comparisons matched; a 5-run batch exceeded the outer execution timeout"},
+    "P2867": {"status": "BASELINE_SENSITIVE", "note": "strict post-GC RSS/heap threshold also exceeded on R16 baseline; requires dedicated Android/RSS protocol"}
+  },
+  "interpretation": "These are functional engineering measurements, not evidence of subjective consciousness."
+}

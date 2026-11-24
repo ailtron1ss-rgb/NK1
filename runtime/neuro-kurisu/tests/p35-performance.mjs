@@ -1,0 +1,10 @@
+import { performance } from 'node:perf_hooks';
+import assert from 'node:assert/strict';
+import { P35SemanticWorldBodyEngine } from '../src/organism/body/P35SemanticWorldBody.ts';
+const e=new P35SemanticWorldBodyEngine();
+const start=performance.now();
+for(let i=0;i<10000;i++) e.ingest({vision:{objects:[{label:`obj-${i%12}`,kind:'object',confidence01:.55}]},body:{energy01:.7,thermal01:.2,capacity01:.8,awake:true}});
+const elapsed=performance.now()-start;
+assert.ok(elapsed<4000);
+assert.ok(e.snapshot().entities.length<=160);
+console.log('P35_PERFORMANCE=PASS',JSON.stringify({cycles:10000,ms:Number(elapsed.toFixed(2)),entities:e.snapshot().entities.length}));

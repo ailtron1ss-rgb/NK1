@@ -1,0 +1,16 @@
+import assert from 'node:assert/strict';
+import { B299CausalPersonalityDevelopmentLoop } from '../src/organism/system/B299CausalPersonalityDevelopmentLoop.ts';
+const loop=new B299CausalPersonalityDevelopmentLoop();
+const learn=(context,reward,start)=>{loop.setContext(context);for(let i=0;i<40;i++)loop.observeOutcome({tick:start+i,action:'respond',reward01:reward,predictionError01:Math.abs(reward-.5),causalConfidence01:.82,identityContinuity01:.92,externalEvidence01:1,worldTransition:true,independent:true,autonomous:false,predictedUtility01:.75,neuralPlasticity01:.8,context});};
+const social={social:1,epistemic:0,autonomy:0,maintenance:0};
+const epistemic={social:0,epistemic:1,autonomy:0,maintenance:0};
+learn(social,.9,0); learn(epistemic,.2,40);
+loop.setContext({social:.55,epistemic:.35,autonomy:.10,maintenance:0});
+const mixed=loop.actionBias('respond');
+const socialBias=(()=>{loop.setContext(social);return loop.actionBias('respond')})();
+const epistemicBias=(()=>{loop.setContext(epistemic);return loop.actionBias('respond')})();
+assert.ok(socialBias>epistemicBias,'training did not separate contexts');
+assert.ok(mixed<socialBias && mixed>epistemicBias,'unseen mixed context did not interpolate between learned contexts');
+const before=loop.actionBias('respond'); loop.lesion(.9); const after=loop.actionBias('respond');
+assert.ok(Math.abs(after)<Math.abs(before)*.2+1e-9,'lesion did not suppress transferred contextual bias');
+console.log(JSON.stringify({pass:true,socialBias,epistemicBias,mixedBias:mixed,transferWithinRange:mixed<socialBias&&mixed>epistemicBias,lesionBias:after,contextCreditAssignments:loop.diagnostics().contextCreditAssignments}));

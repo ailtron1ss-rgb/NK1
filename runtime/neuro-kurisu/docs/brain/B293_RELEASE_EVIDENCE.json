@@ -1,0 +1,113 @@
+{
+  "release": "35.6.1-B293",
+  "date": "2026-09-13",
+  "status": "validated-integrated-build; mobile-1000-host-gate-unresolved",
+  "baseline": "B292",
+  "implementation": {
+    "newModule": "src/organism/system/B293SelfWorldPredictiveMicrocircuit.ts",
+    "newTests": [
+      "tests/big-pass-293-self-world-predictive-microcircuit.mjs",
+      "tests/big-pass-293-core-integration.mjs"
+    ],
+    "neuronCount": 24,
+    "inputDim": 12,
+    "historyBound": 128,
+    "learning": "reward/prediction-error gated recurrent Hebbian/STDP-like plasticity"
+  },
+  "b293Standalone": {
+    "pass": true,
+    "cycles": 1002,
+    "learningUpdates": 1000,
+    "spikes": 1612,
+    "synapticUpdates": 545567,
+    "predictionError01": 0.2451040300163987,
+    "causalConfidence01": 0.6418414418513537,
+    "lesionCausalDelta": 0.3294928
+  },
+  "b293Core": {
+    "pass": true,
+    "performanceProfile": "balanced",
+    "organismTicks": 32,
+    "neuralCycles": 4,
+    "learningUpdates": 0,
+    "spikes": 0,
+    "predictionError01": 0.44836081265675914,
+    "causalConfidence01": 0.3150228862328469,
+    "persisted": true,
+    "b290Live": true,
+    "b291Live": true,
+    "b292Live": true,
+    "lesionChanged": true
+  },
+  "regressionA11": {
+    "b292SmokeSeconds": 17.07,
+    "b293SmokeSeconds": 16.96,
+    "b292ConcurrencySeconds": 6.24,
+    "b293ConcurrencySeconds": 6.14,
+    "initialRegression": "per-outcome B293 snapshot + per-candidate actionBias recomputation",
+    "repair": "slow-timescale checkpoint + precomputed action bias"
+  },
+  "gates": {
+    "typecheck": "PASS",
+    "smoke": "PASS",
+    "restart": "PASS",
+    "concurrency": "PASS",
+    "ui": "PASS",
+    "server": "PASS",
+    "live2d": "PASS",
+    "subjectUIContract": "PASS",
+    "architecture": "PASS",
+    "coreOwnership": "PASS",
+    "integrity": "PASS",
+    "forensics": "PASS",
+    "hygiene": "PASS",
+    "contract": "PASS",
+    "sourceTruth": "PASS",
+    "fullAudit": "PASS",
+    "mobilePerformanceProfile": "PASS",
+    "mobileHorizon1000": "UNRESOLVED_HOST_RUNTIME"
+  },
+  "functionReality": {
+    "functionLikeDeclarations": 3722,
+    "semanticTotalFunctions": 3602,
+    "verified": 38,
+    "integrationOnly": 827,
+    "unsafeToAutoRun": 259,
+    "unverified": 2478,
+    "verifiedRate01": 0.0105,
+    "evidenceCoverage01": 0.0679,
+    "parameterizedAttempted": 902,
+    "parameterizedPassed": 868,
+    "parameterizedFailed": 0,
+    "inputSynthesisNeeded": 22,
+    "lifecycleNeeded": 12,
+    "skipped": 39
+  },
+  "forensics": {
+    "sourceFiles": 1109,
+    "canonicalFiles": 377,
+    "activeFiles": 2218,
+    "duplicateContent": 0,
+    "duplicateNames": 0,
+    "pathMarkers": 0,
+    "staleMarkers": 0,
+    "legacySnapshotEntries": 0
+  },
+  "externalResearch": "NengoSPA, Norse, Brian2, DreamerV3 and neuromorphic event-driven frameworks reviewed as architectural references; none are copied into runtime.",
+  "claimsBoundary": "B293 demonstrates an explicit bounded recurrent predictive neural mechanism with online plasticity and causal lesion evidence. It does not establish phenomenal consciousness or human equivalence.",
+  "auditFull": {
+    "ok": true,
+    "files": 2233,
+    "canonicalFiles": 377,
+    "legacySnapshotEntries": 0,
+    "errors": [],
+    "warnings": []
+  },
+  "docs": {
+    "priorB292Pages": 47,
+    "currentB293Pages": 67,
+    "priorB292Rechecked": true,
+    "currentB293VisualQA": true,
+    "mobile1000ClaimPolicy": "latest evidence wins; unresolved host runtime gate remains unresolved"
+  }
+}

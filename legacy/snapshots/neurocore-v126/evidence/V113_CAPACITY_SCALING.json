@@ -1,0 +1,52 @@
+{
+  "version": 113,
+  "benchmark": "capacity_scaling",
+  "rows": [
+    {
+      "rank": 8,
+      "topk": 3,
+      "params": 69137,
+      "state_elements": 64,
+      "state_bytes_fp32": 256,
+      "forward_ms_B1_T16": 23.63223840000046,
+      "latent_norm": 1.0
+    },
+    {
+      "rank": 12,
+      "topk": 3,
+      "params": 70949,
+      "state_elements": 144,
+      "state_bytes_fp32": 576,
+      "forward_ms_B1_T16": 24.952327799996965,
+      "latent_norm": 1.0
+    },
+    {
+      "rank": 16,
+      "topk": 3,
+      "params": 72761,
+      "state_elements": 256,
+      "state_bytes_fp32": 1024,
+      "forward_ms_B1_T16": 32.95716380000613,
+      "latent_norm": 1.0
+    },
+    {
+      "rank": 24,
+      "topk": 3,
+      "params": 76385,
+      "state_elements": 576,
+      "state_bytes_fp32": 2304,
+      "forward_ms_B1_T16": 27.78006019998429,
+      "latent_norm": 1.0
+    },
+    {
+      "rank": 32,
+      "topk": 3,
+      "params": 80009,
+      "state_elements": 1024,
+      "state_bytes_fp32": 4096,
+      "forward_ms_B1_T16": 26.68058360000032,
+      "latent_norm": 1.0
+    }
+  ],
+  "note": "CPU reference; directional only, not device-specific mobile performance"
+}

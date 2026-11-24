@@ -1,0 +1,70 @@
+{
+  "pass": 190,
+  "generatedAt": "2026-09-25T08:11:18.747Z",
+  "gate": true,
+  "checks": [
+    {
+      "name": "runtime.stepInternal -> fabric.step",
+      "ok": true
+    },
+    {
+      "name": "runtime.init -> fabric.restore",
+      "ok": true
+    },
+    {
+      "name": "runtime diagnostics -> fabric.diagnostics",
+      "ok": true
+    },
+    {
+      "name": "fabric.step -> integration.process",
+      "ok": true
+    },
+    {
+      "name": "fabric.step -> memory.ingest",
+      "ok": true
+    },
+    {
+      "name": "fabric.step -> memory.consolidate",
+      "ok": true
+    },
+    {
+      "name": "fabric.step -> identity.absorb",
+      "ok": true
+    },
+    {
+      "name": "fabric.step -> identity.snapshot",
+      "ok": true
+    },
+    {
+      "name": "fabric.step -> dream.consolidate",
+      "ok": true
+    },
+    {
+      "name": "fabric.step -> conflict.analyze",
+      "ok": true
+    },
+    {
+      "name": "fabric.step -> spine.integrate",
+      "ok": true
+    }
+  ],
+  "runtimeReachableFunctions": 507,
+  "testOnlyFunctions": 466,
+  "referencedNotRuntimeReachable": 4644,
+  "orphanFunctions": 346,
+  "semanticVerified": 34,
+  "semanticUnverified": 4909,
+  "parameterized": {
+    "attempted": 1206,
+    "passed": 1143,
+    "failed": 0,
+    "skipped": 41,
+    "lifecycleNeeded": 10
+  },
+  "liveness": {
+    "declarations": 5514,
+    "withBody": 5485,
+    "zeroReference": 308,
+    "oneOrLessReference": 966
+  }
+}

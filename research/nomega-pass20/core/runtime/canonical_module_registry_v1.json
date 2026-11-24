@@ -1,0 +1,13 @@
+{
+  "version": "canonical-module-registry-v1",
+  "generated_at": 1790080723.5600235,
+  "total_modules": 0,
+  "canonical_modules": 0,
+  "research_modules": 0,
+  "legacy_or_versioned_modules": 0,
+  "consolidation_candidates": 0,
+  "import_edges": 0,
+  "lazy_import_edges": 0,
+  "cycles": [],
+  "records": []
+}

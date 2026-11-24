@@ -1,0 +1,36 @@
+{
+  "pass": "B259",
+  "date": "2026-09-12",
+  "verified": true,
+  "typecheck": true,
+  "architecture": true,
+  "integrity": true,
+  "hygiene": true,
+  "fullAudit": true,
+  "contract": true,
+  "releaseSource": true,
+  "archiveManifest": true,
+  "canonicalNeural": {
+    "learningUpdates": 20,
+    "trainPredictionError01": 0.43062722608764437,
+    "holdoutPredictionError01": 0.34398196219199206,
+    "holdoutDelta01": 0.15601803780800794,
+    "generalization01": 0.6560180378080079,
+    "lesionDrop01": 0.000020307629634164214,
+    "restartPreserved": true
+  },
+  "regression250to258": {
+    "cycles": 30,
+    "sparseEdges": 150,
+    "localCredits": 30,
+    "rewriteValidated": 30,
+    "metaPrecision01": 0.7992527630389955,
+    "sensorTransfer01": 0.42610593742985625,
+    "phase": "learn",
+    "portability01": 0.7583149850552608,
+    "longitudinalEpisodes": 30,
+    "compilerCommits": 30,
+    "restartPreserved": true
+  },
+  "syntaxAudit": "timeout-in-current-environment-not-a-pass"
+}

@@ -1,0 +1,23 @@
+{
+  "pass": true,
+  "schema": 127,
+  "preserved": {
+    "version": 1,
+    "neuronCount": 48,
+    "cycles": 33,
+    "learningUpdates": 11,
+    "spikes": 21,
+    "synapticUpdates": 14,
+    "structuralUpdates": 2,
+    "history": [
+      {
+        "tick": 33,
+        "action": "reflect",
+        "spikes": 4,
+        "prediction01": 0.51,
+        "reward01": 0.8,
+        "modulation01": 0.67
+      }
+    ]
+  }
+}

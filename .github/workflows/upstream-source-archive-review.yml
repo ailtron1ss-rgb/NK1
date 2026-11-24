@@ -1,0 +1,29 @@
+name: NK1 upstream source archive review
+
+on:
+  pull_request:
+    paths:
+      - "contracts/UPSTREAM_SOURCE_ARCHIVE_REVIEW_2026-11-03.json"
+      - "tools/source-archive-review.test.mjs"
+      - ".github/workflows/upstream-source-archive-review.yml"
+  push:
+    branches: [workpass70-source, main]
+    paths:
+      - "contracts/UPSTREAM_SOURCE_ARCHIVE_REVIEW_2026-11-03.json"
+      - "tools/source-archive-review.test.mjs"
+      - ".github/workflows/upstream-source-archive-review.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  validate-source-review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          package-manager-cache: false
+      - name: Validate source archive provenance manifest
+        run: node tools/source-archive-review.test.mjs

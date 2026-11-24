@@ -1,0 +1,12 @@
+{
+  "pass":"BIG_PASS_219_BRAINSTEM_AROUSAL_SLEEP_SCHEDULER",
+  "verified":true,
+  "causal":{
+    "active":{"mode":"active","computeScale01":1,"plasticityScale01":0.92,"consolidationQuota01":0.08},
+    "sleep":{"mode":"sleep","computeScale01":0.18,"plasticityScale01":0.14,"consolidationQuota01":0.6793768784},
+    "recovery":{"mode":"recovery","computeScale01":0.52,"restorative01":0.2888}
+  },
+  "persistence":{"ticks":3,"restored":true},
+  "regression":"B208-B218 PASS",
+  "integration":"CognitiveKernelCoordinator sleep-pressure gating PASS"
+}

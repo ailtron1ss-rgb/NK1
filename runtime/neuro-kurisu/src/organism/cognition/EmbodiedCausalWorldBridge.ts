@@ -1,0 +1,295 @@
+import type { ActionKind } from '../core/types.ts';
+import { cosineSimilarity as cosine } from '../core/NumericPrimitives.ts';
+const ACTIONS: ActionKind[] = ['respond','explore','verify','rest','reflect','wait','defer'];
+const HORIZONS = [1,2,4,8,16] as const;
+const LATENT = 16;
+const MODALITIES = 6;
+const clamp=(x:number,a=0,b=1)=>Math.max(a,Math.min(b,Number.isFinite(x)?x:(a+b)/2));
+const tanh=(x:number)=>Math.tanh(Math.max(-6,Math.min(6,x)));
+const finite=(x:number,f=0)=>Number.isFinite(x)?x:f;
+const sigmoid=(x:number)=>1/(1+Math.exp(-Math.max(-8,Math.min(8,x))));
+const deep=<T>(x:T):T=>structuredClone(x);
+const prand=(seed:number)=>{let x=seed|0;x=Math.imul(x^(x>>>16),0x21f0aaad);x=Math.imul(x^(x>>>15),0x735a2d97);x^=x>>>13;return (x>>>0)/0xffffffff;};
+
+const mse=(a:number[],b:number[])=>{let s=0,n=Math.min(a.length,b.length);for(let i=0;i<n;i++){const d=finite(a[i])-finite(b[i]);s+=d*d;}return Math.sqrt(s/Math.max(1,n));};
+const makeMatrix=(r:number,c:number,seed:number,scale=.08)=>Array.from({length:r},(_,i)=>Array.from({length:c},(_,j)=>((prand(seed+i*97+j*31)*2)-1)*scale));
+const makeTensor=(a:number,b:number,c:number,seed:number,scale=.05)=>Array.from({length:a},(_,i)=>makeMatrix(b,c,seed+i*997,scale));
+
+type SensorFrame = {tick:number;values:number[];freshness01:number;confidence01:number;ageTicks:number;source:string};
+
+export interface EmbodiedTransitionRecord {
+  tick:number;
+  action:ActionKind;
+  before:number[];
+  predictedNext:number[];
+  realizedNext:number[];
+  predictedReward01:number;
+  realizedReward01:number;
+  nextError01:number;
+  rewardError01:number;
+  sensorFreshness01:number;
+  verified01:number;
+}
+
+export interface EmbodiedCausalWorldBridgeState {
+  version:3;
+  tick:number;
+  observations:number;
+  transitions:number;
+  learnedTransitions:number;
+  interventionComparisons:number;
+  matchedAlternativeCount:number;
+  matchedCausalGain01:number;
+  transferComparisons:number;
+  actionUse:number[];
+  actionSuccess:number[];
+  actionRewardMean01:number[];
+  actionConfidence01:number[];
+  actionBias:number[];
+  actionEmbedding:number[][];
+  modalityFreshness01:number[];
+  modalityConfidence01:number[];
+  modalityStalenessTicks:number[];
+  latent:number[];
+  latentVelocity:number[];
+  encoder:number[][];
+  dynamics:number[][][];
+  dynamicsBias:number[][];
+  rewardReadout:number[][];
+  rewardBias:number[];
+  horizonErrors:number[];
+  horizonCounts:number[];
+  horizonConfidence01:number[];
+  predictionConsistency01:number;
+  closedLoopGain01:number;
+  causalSensitivity01:number;
+  transfer01:number;
+  sensorimotorError01:number;
+  epistemicValue01:number;
+  activePerception01:number;
+  selectedSensorBudget01:number;
+  selectedSensorMask:number[];
+  activeNeuronFraction01:number;
+  computeCost01:number;
+  asyncSensorPenalty01:number;
+  history:SensorFrame[];
+  transitionsLog:EmbodiedTransitionRecord[];
+  lastPrediction:number[];
+  lastAction:ActionKind|null;
+  lastConfidence01:number;
+  selectedHorizonDepth:number;
+  causalEffectFocus01:number;
+  residualAdapter:number[][];
+  onlineAdaptation01:number;
+  calibrationError01:number;
+  modelDrift01:number;
+  adaptationUpdates:number;
+  failureEvents:number;
+  recoveryGain01:number;
+}
+
+const defaultState=():EmbodiedCausalWorldBridgeState=>({
+  version:3,tick:0,observations:0,transitions:0,learnedTransitions:0,interventionComparisons:0,matchedAlternativeCount:0,matchedCausalGain01:0,transferComparisons:0,
+  actionUse:new Array(ACTIONS.length).fill(0),actionSuccess:new Array(ACTIONS.length).fill(0),actionRewardMean01:new Array(ACTIONS.length).fill(.5),actionConfidence01:new Array(ACTIONS.length).fill(.25),actionBias:new Array(ACTIONS.length).fill(0),actionEmbedding:makeMatrix(ACTIONS.length,4,37001,.06),
+  modalityFreshness01:new Array(MODALITIES).fill(.5),modalityConfidence01:new Array(MODALITIES).fill(.5),modalityStalenessTicks:new Array(MODALITIES).fill(0),latent:new Array(LATENT).fill(0),latentVelocity:new Array(LATENT).fill(0),
+  encoder:makeMatrix(LATENT,64,33001,.035),dynamics:makeTensor(ACTIONS.length,LATENT,LATENT,34111,.025),dynamicsBias:Array.from({length:ACTIONS.length},(_,a)=>Array.from({length:LATENT},(_,i)=>Math.sin((a+1)*(i+1))*0.006)),
+  rewardReadout:Array.from({length:ACTIONS.length},(_,a)=>Array.from({length:LATENT},(_,i)=>Math.sin((a+2)*(i+3))*0.025)),rewardBias:new Array(ACTIONS.length).fill(0),
+  horizonErrors:[.5,.5,.5,.5,.5],horizonCounts:[0,0,0,0,0],horizonConfidence01:[.25,.25,.25,.25,.25],predictionConsistency01:.5,closedLoopGain01:.5,causalSensitivity01:0,transfer01:0,sensorimotorError01:.5,epistemicValue01:.5,activePerception01:.5,selectedSensorBudget01:.6,selectedSensorMask:[1,1,1,1,1,1],activeNeuronFraction01:.75,computeCost01:.5,asyncSensorPenalty01:.2,
+  history:[],transitionsLog:[],lastPrediction:new Array(LATENT).fill(0),lastAction:null,lastConfidence01:.25,selectedHorizonDepth:1,causalEffectFocus01:.5,residualAdapter:Array.from({length:ACTIONS.length},()=>new Array(LATENT).fill(0)),onlineAdaptation01:0,calibrationError01:.5,modelDrift01:0,adaptationUpdates:0,failureEvents:0,recoveryGain01:.5,
+});
+
+const modalityNames=['vision','audio','interoception','world','social','context'];
+
+export class EmbodiedCausalWorldBridge {
+  private state=defaultState();
+  snapshot(){return deep(this.state);}
+  restore(raw?:Partial<EmbodiedCausalWorldBridgeState>|null){
+    const d=defaultState(),r:any=raw??{};
+    const arr=(v:any,n:number,f=0)=>Array.isArray(v)?v.slice(0,n).concat(new Array(Math.max(0,n-v.length)).fill(f)).slice(0,n):new Array(n).fill(f);
+    const matrix=(v:any,rows:number,cols:number,f=0)=>Array.isArray(v)?Array.from({length:rows},(_,i)=>arr(v[i],cols,f)):Array.from({length:rows},()=>new Array(cols).fill(f));
+    const tensor=(v:any,a:number,b:number,c:number)=>Array.isArray(v)?Array.from({length:a},(_,i)=>Array.from({length:b},(_,j)=>arr(v[i]?.[j],c))):d.dynamics;
+    this.state={...d,...deep(r),version:3,
+      actionUse:arr(r.actionUse,ACTIONS.length),actionSuccess:arr(r.actionSuccess,ACTIONS.length),actionRewardMean01:arr(r.actionRewardMean01,ACTIONS.length,.5),actionConfidence01:arr(r.actionConfidence01,ACTIONS.length,.25),actionBias:arr(r.actionBias,ACTIONS.length),actionEmbedding:matrix(r.actionEmbedding,ACTIONS.length,4),
+      modalityFreshness01:arr(r.modalityFreshness01,MODALITIES,.5),modalityConfidence01:arr(r.modalityConfidence01,MODALITIES,.5),modalityStalenessTicks:arr(r.modalityStalenessTicks,MODALITIES),latent:arr(r.latent,LATENT),latentVelocity:arr(r.latentVelocity,LATENT),encoder:matrix(r.encoder,LATENT,64),
+      dynamics:tensor(r.dynamics,ACTIONS.length,LATENT,LATENT),dynamicsBias:matrix(r.dynamicsBias,ACTIONS.length,LATENT),rewardReadout:matrix(r.rewardReadout,ACTIONS.length,LATENT),rewardBias:arr(r.rewardBias,ACTIONS.length),
+      horizonErrors:arr(r.horizonErrors,HORIZONS.length,.5),horizonCounts:arr(r.horizonCounts,HORIZONS.length),horizonConfidence01:arr(r.horizonConfidence01,HORIZONS.length,.25),selectedSensorMask:arr(r.selectedSensorMask,MODALITIES,1),history:Array.isArray(r.history)?r.history.slice(-16):[],transitionsLog:Array.isArray(r.transitionsLog)?r.transitionsLog.slice(-64):[],
+      lastPrediction:arr(r.lastPrediction,LATENT),lastAction:r.lastAction??null,selectedHorizonDepth:Math.max(1,Math.min(16,Number(r.selectedHorizonDepth??1))),causalEffectFocus01:clamp(Number(r.causalEffectFocus01??.5)),residualAdapter:Array.isArray(r.residualAdapter)?Array.from({length:ACTIONS.length},(_,i)=>arr(r.residualAdapter?.[i],LATENT)):Array.from({length:ACTIONS.length},()=>new Array(LATENT).fill(0)),onlineAdaptation01:clamp(Number(r.onlineAdaptation01??0)),calibrationError01:clamp(Number(r.calibrationError01??.5)),modelDrift01:clamp(Number(r.modelDrift01??0)),adaptationUpdates:Math.max(0,Number(r.adaptationUpdates??0)),failureEvents:Math.max(0,Number(r.failureEvents??0)),recoveryGain01:clamp(Number(r.recoveryGain01??.5)),
+    };
+  }
+
+  private encode(features:number[]){
+    const y=new Array(LATENT).fill(0);
+    for(let i=0;i<LATENT;i++){
+      let s=0;for(let j=0;j<Math.min(64,features.length);j++)s+=(this.state.encoder[i]?.[j]??0)*(features[j]??0);
+      y[i]=tanh(s);
+    }
+    return y;
+  }
+  private predict(latent:number[],action:ActionKind,horizon=1){
+    const ai=Math.max(0,ACTIONS.indexOf(action)), row=this.state.dynamics[ai]!;
+    let cur=latent.slice();
+    for(let h=0;h<horizon;h++){
+      const next=new Array(LATENT).fill(0);
+      for(let i=0;i<LATENT;i++){let s=(this.state.dynamicsBias[ai]?.[i]??0)+(this.state.residualAdapter[ai]?.[i]??0)*.35;const ae=this.state.actionEmbedding[ai]??[];s+=(ae[i%4]??0)*.06;for(let j=0;j<LATENT;j++)s+=(row[i]?.[j]??0)*(cur[j]??0);next[i]=tanh(s);}
+      cur=next;
+    }
+    let rs=this.state.rewardBias[ai]??0;for(let i=0;i<LATENT;i++)rs+=(this.state.rewardReadout[ai]?.[i]??0)*(cur[i]??0);
+    return {next:cur,reward:clamp(.5+Math.tanh(rs)*.5)};
+  }
+
+  beforeDecision(args:{tick:number;features:number[];actionUtilities:Record<ActionKind,number>;novelty01:number;uncertainty01:number;predictionError01:number;computeBudget01:number;sensors?:{vision?:SensorFrame;audio?:SensorFrame;interoception?:SensorFrame;world?:SensorFrame;social?:SensorFrame;context?:SensorFrame}}){
+    this.state.tick=args.tick;this.state.observations++;
+    const frames=[args.sensors?.vision,args.sensors?.audio,args.sensors?.interoception,args.sensors?.world,args.sensors?.social,args.sensors?.context];
+    for(let i=0;i<MODALITIES;i++){
+      const f=frames[i];
+      const fresh=f?clamp(f.freshness01):0;
+      const conf=f?clamp(f.confidence01):0;
+      this.state.modalityFreshness01[i]=clamp(this.state.modalityFreshness01[i]!*0.88+fresh*.12);
+      this.state.modalityConfidence01[i]=clamp(this.state.modalityConfidence01[i]!*0.88+conf*.12);
+      this.state.modalityStalenessTicks[i]=f?Math.max(0,f.ageTicks):this.state.modalityStalenessTicks[i]!+1;
+    }
+    const weightedFresh=this.state.modalityFreshness01.reduce((s,x,i)=>s+x*(this.state.modalityConfidence01[i]??0),0)/Math.max(1,this.state.modalityConfidence01.reduce((s,x)=>s+x,0));
+    this.state.asyncSensorPenalty01=clamp(this.state.modalityStalenessTicks.reduce((s,x)=>s+Math.min(1,x/6),0)/(MODALITIES||1)*.6+(1-weightedFresh)*.4);
+    const budget=clamp(args.computeBudget01),urgency=clamp(args.novelty01*.32+args.uncertainty01*.30+args.predictionError01*.24+(1-weightedFresh)*.14);
+    const desired=clamp(.40+urgency*.60-budget*.08,.25,.98);
+    this.state.activeNeuronFraction01=desired;
+    this.state.selectedSensorBudget01=clamp(.35+urgency*.55);
+    const sensorScores=this.state.modalityFreshness01.map((f,i)=>clamp(f*.45+(this.state.modalityConfidence01[i]??0)*.35+(1-Math.min(1,(this.state.modalityStalenessTicks[i]??0)/8))*.20));
+    const order=sensorScores.map((v,i)=>({v,i})).sort((a,b)=>b.v-a.v);this.state.selectedSensorMask=new Array(MODALITIES).fill(0);const keep=Math.max(2,Math.min(MODALITIES,Math.round(MODALITIES*this.state.selectedSensorBudget01)));for(const p of order.slice(0,keep))this.state.selectedSensorMask[p.i]=1;
+    this.state.activePerception01=clamp(this.state.activePerception01*.94+(order[0]?.v??.5)*.06);
+    const latent=this.encode(args.features);const prev=this.state.latent.slice();this.state.latent=latent;for(let i=0;i<LATENT;i++)this.state.latentVelocity[i]=latent[i]-prev[i];
+    const actionBias:number[]=new Array(ACTIONS.length).fill(0),score: number[]=[], confidences:number[]=[];
+    const h1:any[] = new Array(ACTIONS.length);
+    for(let ai=0;ai<ACTIONS.length;ai++){
+      const a=ACTIONS[ai]!;
+      const p=this.predict(latent,a,1);
+      const expected=clamp(args.actionUtilities[a]??.5);
+      const learned=this.state.actionRewardMean01[ai]??.5;
+      const conf=clamp((this.state.actionConfidence01[ai]??.25)*.62+(1-this.state.horizonErrors[0]!)*.38);
+      const preliminary=clamp(expected*.72+p.reward*.18+learned*.10);
+      h1[ai]={p,expected,learned,conf,preliminary};
+      score[ai]=preliminary;
+      confidences[ai]=conf;
+    }
+    const ranking=score.map((v,i)=>({v,i})).sort((a,b)=>b.v-a.v);
+    const horizonBudget=clamp(args.computeBudget01,.25,1);
+    const deepK=horizonBudget>.72?4:horizonBudget>.50?3:2;
+    const deepSet=new Set(ranking.slice(0,deepK).map(x=>x.i));
+    const h8Set=new Set(horizonBudget>.68?ranking.slice(0,Math.min(2,deepK)).map(x=>x.i):[]);
+    const h16Set=new Set(horizonBudget>.84?ranking.slice(0,1).map(x=>x.i):[]);
+    this.state.selectedHorizonDepth=h16Set.size?16:(h8Set.size?8:(deepSet.size?4:1));
+    for(let ai=0;ai<ACTIONS.length;ai++){
+      const a=ACTIONS[ai]!, base=h1[ai]!;
+      let h2=base.p,h4=base.p,h8=base.p,h16=base.p;
+      if(deepSet.has(ai)){h2=this.predict(latent,a,2);h4=this.predict(latent,a,4);}
+      if(h8Set.has(ai)){h8=this.predict(latent,a,8);}
+      if(h16Set.has(ai)){h16=this.predict(latent,a,16);}
+      const uncertaintyBonus=(a==='explore'||a==='verify')?args.uncertainty01*.035:0;
+      const ladderMse=deepSet.has(ai)?mse(base.p.next,h2.next)+mse(h2.next,h4.next):this.state.horizonErrors[0]!* .35;
+      const longMse=h8Set.has(ai)?mse(h4.next,h8.next):0;
+      const terminalMse=h16Set.has(ai)?mse(h8.next,h16.next):0;
+      const disagreement=clamp((ladderMse+longMse*.7+terminalMse*.5)/1.35);
+      const conf=clamp(base.conf*.64+(1-disagreement)*.36);
+      const modelReward=deepSet.has(ai)?(base.p.reward*.38+h4.reward*.20+base.learned*.18+(h8Set.has(ai)?h8.reward*.10:0)+(h16Set.has(ai)?h16.reward*.14:0)):(base.p.reward*.72+base.learned*.28);
+      const modelLift=modelReward-base.expected;
+      const horizonBonus=longMse<.22&&h8Set.has(ai)?.012:(terminalMse<.22&&h16Set.has(ai)?.018:0);
+      const bounded=clamp(modelLift*.28*conf+uncertaintyBonus+horizonBonus-disagreement*.020,-.075,.075);
+      actionBias[ai]=bounded;score[ai]=clamp(base.expected+bounded);confidences[ai]=conf;
+    }
+    this.state.actionBias=actionBias;const best=score.indexOf(Math.max(...score));this.state.lastConfidence01=confidences[best]??.25;this.state.epistemicValue01=clamp(args.uncertainty01*.48+this.state.asyncSensorPenalty01*.22+(1-this.state.lastConfidence01)*.30);
+    this.state.lastPrediction=this.predict(latent,ACTIONS[best]!,1).next;
+    this.state.lastAction=ACTIONS[best]!;
+    this.state.computeCost01=clamp(.18+.82*desired*(keep/MODALITIES));
+    return {actionBias:Object.fromEntries(ACTIONS.map((a,i)=>[a,actionBias[i]??0])) as Record<ActionKind,number>,latent:latent.slice(),selectedActionHint:ACTIONS[best]!,selectedReward01:clamp(score[best]??.5),selectedConfidence01:clamp(confidences[best]??.25),actionModelRewards:score.map(v=>clamp(v)),actionModelConfidence:confidences.map(v=>clamp(v)),horizonDepth:this.state.selectedHorizonDepth,epistemicValue01:this.state.epistemicValue01,activeNeuronFraction01:this.state.activeNeuronFraction01,activePerception01:this.state.activePerception01,computeCost01:this.state.computeCost01,asyncSensorPenalty01:this.state.asyncSensorPenalty01};
+  }
+
+  afterOutcome(args:{tick:number;action:ActionKind;nextFeatures:number[];reward01:number;verified01:number;predictionError01:number;sensorFreshness01?:number}){
+    const ai=Math.max(0,ACTIONS.indexOf(args.action));const from=this.state.latent.slice();const observed=this.encode(args.nextFeatures);const pred=this.predict(from,args.action,1);const nextError=clamp(mse(pred.next,observed));const rewardErr=clamp(Math.abs(pred.reward-args.reward01));
+    const verified=clamp(args.verified01);const lr=.012+verified*.018;
+    const row=this.state.dynamics[ai]!;
+    let effectMass=0;for(let i=0;i<LATENT;i++)effectMass+=Math.abs((observed[i]??0)-(from[i]??0));
+    const effectBase=effectMass/Math.max(1,LATENT);this.state.causalEffectFocus01=clamp(this.state.causalEffectFocus01*.94+clamp(effectBase*2.6)*.06);
+    for(let i=0;i<LATENT;i++){
+      const actionEffect=clamp(Math.abs((observed[i]??0)-(from[i]??0))/(effectBase+.06));
+      const causalWeight=.55+.65*actionEffect;
+      const err=(observed[i]-pred.next[i])*causalWeight;this.state.dynamicsBias[ai]![i]=clamp((this.state.dynamicsBias[ai]![i]??0)+err*lr,-.18,.18);
+      for(let j=0;j<LATENT;j++){const grad=err*(from[j]??0);this.state.dynamics[ai]![i]![j]=clamp((row[i]?.[j]??0)+grad*lr,-.20,.20);}
+      const rr=this.state.rewardReadout[ai]![i]??0;this.state.rewardReadout[ai]![i]=clamp(rr+(args.reward01-pred.reward)*(from[i]??0)*lr*causalWeight,-.20,.20);
+    }
+    this.state.rewardBias[ai]=clamp((this.state.rewardBias[ai]??0)+(args.reward01-pred.reward)*lr,-.25,.25);
+    for(let k=0;k<4;k++){const target=tanh((observed[k]??0)-(from[k]??0));this.state.actionEmbedding[ai]![k]=clamp((this.state.actionEmbedding[ai]![k]??0)*.97+target*.03,-1,1);}
+    this.state.actionUse[ai]=(this.state.actionUse[ai]??0)+1;this.state.actionRewardMean01[ai]=clamp((this.state.actionRewardMean01[ai]??.5)*.96+args.reward01*.04);this.state.actionSuccess[ai]=(this.state.actionSuccess[ai]??0)+(args.reward01>.55?1:0);this.state.actionConfidence01[ai]=clamp((this.state.actionConfidence01[ai]??.25)*.93+(1-nextError*.7-rewardErr*.3)*.07);
+    // Test-time adaptation: a tiny residual adapter learns only from the observed closed-loop error.
+    // It is deliberately bounded so online adaptation cannot destabilize the main dynamics.
+    const adaptGate=clamp(.25+args.verified01*.35+Math.min(.30,args.predictionError01*.55),.20,.85);
+    const adapterEta=.006*adaptGate;
+    let adapterMass=0;
+    for(let i=0;i<LATENT;i++){const residual=(observed[i]??0)-(pred.next[i]??0);adapterMass+=Math.abs(residual);this.state.residualAdapter[ai]![i]=clamp((this.state.residualAdapter[ai]![i]??0)+residual*adapterEta,-.12,.12);}
+    this.state.adaptationUpdates++;
+    const drift=clamp(adapterMass/LATENT*3);
+    this.state.modelDrift01=clamp(this.state.modelDrift01*.94+drift*.06);
+    this.state.onlineAdaptation01=clamp(this.state.onlineAdaptation01*.95+clamp(adapterMass/LATENT*4)*.05);
+    this.state.calibrationError01=clamp(this.state.calibrationError01*.94+Math.abs((1-nextError)-(this.state.actionConfidence01[ai]??.25))*.06);
+    if(nextError>.48 || args.predictionError01>.72){this.state.failureEvents++;const recovery=clamp((this.state.actionConfidence01[ai]??.25)+verified*.25-(Math.max(nextError,args.predictionError01)*.35));this.state.recoveryGain01=clamp(this.state.recoveryGain01*.92+recovery*.08);}
+
+    const trainDepth=this.state.selectedHorizonDepth>=16?16:(this.state.selectedHorizonDepth>=8?8:(this.state.selectedHorizonDepth>=4?4:2));
+    for(let h=0;h<HORIZONS.length;h++){
+      const horizon=HORIZONS[h]!;if(horizon>trainDepth)break;
+      const p=this.predict(from,args.action,horizon);const e=clamp(mse(p.next,observed)*(.72+.28*(horizon-1)/15));
+      this.state.horizonErrors[h]=clamp(this.state.horizonErrors[h]!*0.96+e*.04);this.state.horizonCounts[h]=(this.state.horizonCounts[h]??0)+1;this.state.horizonConfidence01[h]=clamp(this.state.horizonConfidence01[h]!*0.96+(1-e)*.04);
+    }
+    const transition:EmbodiedTransitionRecord={tick:args.tick,action:args.action,before:from,predictedNext:pred.next,realizedNext:observed,predictedReward01:pred.reward,realizedReward01:args.reward01,nextError01:nextError,rewardError01:rewardErr,sensorFreshness01:clamp(args.sensorFreshness01??(1-this.state.asyncSensorPenalty01)),verified01:verified};
+    this.state.transitionsLog.push(transition); if(this.state.transitionsLog.length>64)this.state.transitionsLog.splice(0,this.state.transitionsLog.length-64);
+    this.state.transitions++;this.state.learnedTransitions++;this.state.interventionComparisons+=ACTIONS.length-1;
+    let bestAltGain=0,matched=0;
+    for(const prev of this.state.transitionsLog.slice(-64)) {
+      if(prev.action===args.action) continue;
+      const sim=cosine(prev.before,from);
+      if(sim<.88) continue;
+      matched++;
+      const gain=args.reward01-prev.realizedReward01;
+      if(Math.abs(gain)>Math.abs(bestAltGain)) bestAltGain=gain;
+    }
+    this.state.matchedAlternativeCount+=matched;
+    this.state.matchedCausalGain01=clamp(this.state.matchedCausalGain01*.94+Math.abs(bestAltGain)*.06);
+    const baseline=this.state.actionRewardMean01.reduce((a,b)=>a+b,0)/ACTIONS.length;const selectedGain=(this.state.actionRewardMean01[ai]??.5)-baseline;
+    this.state.causalSensitivity01=clamp(this.state.causalSensitivity01*.90+(Math.abs(selectedGain)*.35+Math.abs(bestAltGain)*.65)*.10);
+    this.state.predictionConsistency01=clamp(this.state.predictionConsistency01*.95+(1-nextError)*.05);
+    this.state.sensorimotorError01=clamp(this.state.sensorimotorError01*.90+(nextError*.7+rewardErr*.3)*.10);
+    this.state.closedLoopGain01=clamp(this.state.closedLoopGain01*.94+clamp((args.reward01-.5)*2)*.06);
+    this.state.transferComparisons+=Math.max(0,this.state.transitionsLog.length-1>0?Math.min(8,this.state.transitionsLog.length-1):0);
+    this.state.transfer01=clamp(this.state.transfer01*.97+(1-nextError)*.03);
+    this.state.lastPrediction=pred.next.slice();this.state.lastConfidence01=this.state.actionConfidence01[ai]??.25;this.state.latent=observed;this.state.tick=args.tick;
+  }
+
+  diagnostics(){return deep(this.state);}
+  metrics(){
+    return {
+      causalSensitivity01:this.state.causalSensitivity01,
+      matchedCausalGain01:this.state.matchedCausalGain01,
+      matchedAlternativeCount:this.state.matchedAlternativeCount,
+      transfer01:this.state.transfer01,
+      closedLoopGain01:this.state.closedLoopGain01,
+      predictionConsistency01:this.state.predictionConsistency01,
+      sensorimotorError01:this.state.sensorimotorError01,
+      epistemicValue01:this.state.epistemicValue01,
+      activePerception01:this.state.activePerception01,
+      activeNeuronFraction01:this.state.activeNeuronFraction01,
+      computeCost01:this.state.computeCost01,
+      selectedSensorBudget01:this.state.selectedSensorBudget01,
+      asyncSensorPenalty01:this.state.asyncSensorPenalty01,
+      horizonDepth:this.state.selectedHorizonDepth,
+      causalEffectFocus01:this.state.causalEffectFocus01,
+      horizonErrors:this.state.horizonErrors.slice(),
+      horizonCounts:this.state.horizonCounts.slice(),
+      horizonConfidence01:this.state.horizonConfidence01.slice(),onlineAdaptation01:this.state.onlineAdaptation01,calibrationError01:this.state.calibrationError01,modelDrift01:this.state.modelDrift01,adaptationUpdates:this.state.adaptationUpdates,failureEvents:this.state.failureEvents,recoveryGain01:this.state.recoveryGain01,
+      observations:this.state.observations,
+      transitions:this.state.transitions,
+      interventionComparisons:this.state.interventionComparisons,
+      transferComparisons:this.state.transferComparisons,
+    };
+  }
+}
+
+export const defaultEmbodiedCausalWorldBridge=defaultState;
+export const EMBODIED_MODALITIES=modalityNames;

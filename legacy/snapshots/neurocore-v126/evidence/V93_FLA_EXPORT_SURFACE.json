@@ -1,0 +1,8 @@
+{
+  "source": "https://github.com/fla-org/flash-linear-attention",
+  "observed_from": "fla/layers/__init__.py",
+  "observed_date": "2026-09-25",
+  "export_count": 42,
+  "policy": "catalogue only until local source bytes, license, deterministic probe and matched qualification exist",
+  "note": "42 current public fla.layers exports are tracked exactly; additional FLA model/backend candidates are catalogued separately when they are not stable layer exports."
+}

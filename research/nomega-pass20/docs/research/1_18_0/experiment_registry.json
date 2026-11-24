@@ -1,0 +1,40 @@
+{
+  "release": "1.18.0-dev",
+  "experiments": [
+    {
+      "id": "substrate-v1-temporal-binding",
+      "status": "completed",
+      "result": "not_promoted",
+      "evidence": "runtime/neural_substrate_v1_benchmark.json",
+      "summary": "Five-seed temporal binding benchmark; substrate mean accuracy was slightly below the mean baseline despite valid sparse spiking."
+    },
+    {
+      "id": "dendritic-adapter-v1",
+      "status": "completed",
+      "result": "research_positive",
+      "evidence": "runtime/dendritic_adapter_v1_benchmark.json",
+      "summary": "Local fast-synapse adaptation reduced held-out query MSE from 4.4851 to 4.2293 (~5.7%)."
+    },
+    {
+      "id": "v9-v13-matched-16step",
+      "status": "completed",
+      "result": "not_promoted",
+      "evidence": "runtime/neural_v9_v13_matched_16step.json",
+      "summary": "V13 improved family routing 0.80 -> 0.9333 while verified rate remained 0.0; host wall time increased ~2.9x and parameter count ~31.4%."
+    },
+    {
+      "id": "v9-v13-8step-portfolio",
+      "status": "completed",
+      "result": "research_positive_routing_only",
+      "evidence": "runtime/neural_substrate_grounding_v11_matched_ablation.json",
+      "summary": "Deeper neural backends improved short family-routing accuracy but did not improve verified execution."
+    },
+    {
+      "id": "full-regression",
+      "status": "incomplete",
+      "result": "timeout",
+      "evidence": "terminal run, no false PASS recorded",
+      "summary": "272 tests collect successfully but the aggregate suite did not finish within 180 seconds."
+    }
+  ]
+}

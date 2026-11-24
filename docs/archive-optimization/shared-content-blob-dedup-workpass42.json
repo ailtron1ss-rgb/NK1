@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "workpass": 42,
+  "strategy": "deduplicate identical snapshot historical preimages against already-preserved immutable source archive blobs; keep one verified blob per SHA-256",
+  "removedCopies": [
+    {
+      "sha256": "d2a76eb41aa6fad57119854c1f7341312e2af1b3ef18c16236e625ee34b2d17d",
+      "bytes": 12116,
+      "oldPath": "docs/archive-optimization/historical-snapshot-blobs/d2a76eb41aa6fad57119854c1f7341312e2af1b3ef18c16236e625ee34b2d17d",
+      "canonicalBlobPath": "docs/archive-optimization/source-archive-blobs/d2a76eb41aa6fad57119854c1f7341312e2af1b3ef18c16236e625ee34b2d17d"
+    },
+    {
+      "sha256": "15a79a5fe845f5d949a7a6a36e9d9b9ade3dafe6a2ffb1ffa576f3a5d2185ad0",
+      "bytes": 6532,
+      "oldPath": "docs/archive-optimization/historical-snapshot-blobs/15a79a5fe845f5d949a7a6a36e9d9b9ade3dafe6a2ffb1ffa576f3a5d2185ad0",
+      "canonicalBlobPath": "docs/archive-optimization/source-archive-blobs/15a79a5fe845f5d949a7a6a36e9d9b9ade3dafe6a2ffb1ffa576f3a5d2185ad0"
+    },
+    {
+      "sha256": "3cf2c5235692b4effd14f912b55416168fe1a0ff405d0b80f65f25e0161bec22",
+      "bytes": 5934,
+      "oldPath": "docs/archive-optimization/historical-snapshot-blobs/3cf2c5235692b4effd14f912b55416168fe1a0ff405d0b80f65f25e0161bec22",
+      "canonicalBlobPath": "docs/archive-optimization/source-archive-blobs/3cf2c5235692b4effd14f912b55416168fe1a0ff405d0b80f65f25e0161bec22"
+    },
+    {
+      "sha256": "7eed92628e4e65733a2bbe601d3bb5fbc52b00f36189d20fc1af2143975da2e2",
+      "bytes": 5408,
+      "oldPath": "docs/archive-optimization/historical-snapshot-blobs/7eed92628e4e65733a2bbe601d3bb5fbc52b00f36189d20fc1af2143975da2e2",
+      "canonicalBlobPath": "docs/archive-optimization/source-archive-blobs/7eed92628e4e65733a2bbe601d3bb5fbc52b00f36189d20fc1af2143975da2e2"
+    },
+    {
+      "sha256": "fe0421c7b496bef5571871157fe03d0f88208c139a43b2562cbca2db38227d72",
+      "bytes": 1903,
+      "oldPath": "docs/archive-optimization/historical-snapshot-blobs/fe0421c7b496bef5571871157fe03d0f88208c139a43b2562cbca2db38227d72",
+      "canonicalBlobPath": "docs/archive-optimization/source-archive-blobs/fe0421c7b496bef5571871157fe03d0f88208c139a43b2562cbca2db38227d72"
+    }
+  ],
+  "removedCopyCount": 5,
+  "rawBytesSaved": 31893,
+  "sourceArchiveManifestsStillUseCanonicalImmutableBlobs": true
+}

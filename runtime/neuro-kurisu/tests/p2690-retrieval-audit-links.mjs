@@ -1,0 +1,17 @@
+import assert from 'node:assert/strict';
+import { MemoryFabric } from '../src/organism/memory/MemoryFabric.ts';
+import { MemoryOS2 } from '../src/organism/developmental/MemoryOS2.ts';
+import { EventLog } from '../src/organism/memory/EventSourcing.ts';
+import { MultiTimescaleMemory } from '../src/organism/memory/MultiTimescaleMemory.ts';
+import { MemorySubstrateCoordinator } from '../src/organism/developmental/MemorySubstrateCoordinator.ts';
+import { UnifiedMemorySystem } from '../src/organism/developmental/UnifiedMemorySystem.ts';
+import { P62MemoryFabric } from '../src/organism/memory/P62MemoryFabric.ts';
+import { SemanticMemoryGraph } from '../src/organism/memory/SemanticMemoryGraph.ts';
+const memoryOS=new MemoryOS2({signalFusionProfile:'balanced'}); const events=new EventLog(64); const multi=new MultiTimescaleMemory(); const substrate=new MemorySubstrateCoordinator(); const unified=new UnifiedMemorySystem(); const p62=new P62MemoryFabric(); const semantic=new SemanticMemoryGraph();
+const fabric=new MemoryFabric(memoryOS,events,multi,substrate,unified,p62,semantic);
+const row={content:'identity continuity restart memory',kind:'identity',salience:.9,emotionalWeight:.2,identityRelevance:.95,goalRelevance:.8,socialRelevance:.1,predictionError:.2,confidence:.9,epistemicStatus:'fact',source:'p2690',entities:['identity','continuity','restart'],semanticLinks:[],temporalLinks:[],causalLinks:[]};
+const item=fabric.encode(row,{tick:1,emitEvent:false});
+const hits=fabric.retrieve('identity continuity restart',4,.8,.9,{tick:2,emitEvent:true});
+const eventsOut=events.recent(16,false); const attention=eventsOut.find(e=>e.type==='attention');
+assert.ok(hits.some(x=>x.id===item.id)); assert.ok(attention); assert.ok(Array.isArray((attention.payload).touchedMemoryIds)); assert.ok((attention.payload).touchedMemoryIds.includes(item.id));
+console.log(JSON.stringify({pass:true,itemId:item.id,hits:hits.length,touched:(attention.payload).touchedMemoryIds.length,evidenceMode:(attention.payload).evidenceMode}));

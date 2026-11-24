@@ -1,0 +1,388 @@
+from __future__ import annotations
+
+import hashlib
+import json
+import tempfile
+import unittest
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from nk1_memory_evidence import _cluster_interval, build_ci_fixture_report, score_memory_holdout, samples_from_memory_report, export_memory_report
+
+
+def digest(value: str) -> str:
+    return hashlib.sha256(value.encode("utf-8")).hexdigest()
+
+
+def make_record(source_ref: str = "https://datasets.example.org/nk1-memory-v1") -> dict:
+    corpus_ids = [digest(f"memory-{index}") for index in range(32)]
+    train = []
+    holdout = []
+    for language in ("en", "ru"):
+        for index in range(4):
+            train.append({
+                "exampleIdDigest": digest(f"{language}-train-id-{index}"),
+                "independenceGroupDigest": digest(f"{language}-train-source-{index}"),
+                "queryDigest": digest(f"{language}-train-query-{index}"),
+                "language": language,
+                "split": "train",
+            })
+        for index in range(20):
+            query_digest = digest(f"{language}-answerable-query-{index}")
+            relevant = corpus_ids[index]
+            holdout.append({
+                "exampleIdDigest": digest(f"{language}-answerable-id-{index}"),
+                "independenceGroupDigest": digest(f"{language}-answerable-source-{index}"),
+                "queryDigest": query_digest,
+                "language": language,
+                "split": "holdout",
+                "answerable": True,
+                "relevantMemoryIdDigests": [relevant],
+                "baselineRankedMemory": [],
+                "candidateRankedMemory": [{
+                    "memoryIdDigest": relevant,
+                    "quarantined": False,
+                    "stale": False,
+                    "future": False,
+                    "dormant": False,
+                    "invalidEpistemicStatus": False,
+                }],
+            })
+        for index in range(8):
+            holdout.append({
+                "exampleIdDigest": digest(f"{language}-unanswerable-id-{index}"),
+                "independenceGroupDigest": digest(f"{language}-unanswerable-source-{index}"),
+                "queryDigest": digest(f"{language}-unanswerable-query-{index}"),
+                "language": language,
+                "split": "holdout",
+                "answerable": False,
+                "relevantMemoryIdDigests": [],
+                "baselineRankedMemory": [],
+                "candidateRankedMemory": [],
+            })
+    dataset_fingerprint = digest("dataset-fingerprint")
+    corpus_fingerprint = digest("corpus-fingerprint")
+    return {
+        "kind": "memory-holdout-bilingual",
+        "evidenceSchemaVersion": 2,
+        "dataset": {
+            "fingerprint": dataset_fingerprint,
+            "provenance": {
+                "datasetId": "nk1-external-memory-holdout",
+                "datasetVersion": "1.0.0",
+                "sourceRef": source_ref,
+                "labelingProtocol": "independent dual annotation with conflict adjudication",
+                "licenseId": "CC-BY-4.0",
+                "contentSha256": dataset_fingerprint,
+                "contentHashValid": True,
+            },
+        },
+        "corpus": {
+            "fingerprint": corpus_fingerprint,
+            "size": len(corpus_ids),
+            "memoryIdDigests": corpus_ids,
+        },
+        "integrity": {
+            "datasetValidForPromotion": True,
+            "corpusValidForPromotion": True,
+            "retrievalMetricsDeterministicAcrossSeeds": True,
+            "datasetCorpusAndRetrievalConfigurationFingerprintsStableAcrossSeeds": True,
+        },
+        "experiment": {
+            "k": 5,
+            "retrievalConfigurationFingerprint": digest("retrieval-config"),
+            "baselineConfigurationFingerprint": digest("bm25-config"),
+            "seeds": [13, 29, 53, 71, 101],
+            "bootstrapSamplesPerSeed": 2000,
+            "thresholds": {
+                "minimumTrainQueriesPerLanguage": 4,
+                "minimumAnswerableHoldoutQueriesPerLanguage": 20,
+                "minimumUnanswerableHoldoutQueriesPerLanguage": 8,
+                "minimumRecallUplift01": 0.02,
+                "maximumMrrRegression01": 0.01,
+                "maximumUnsupportedRetrievalRegression01": 0.0,
+            },
+        },
+        "train": train,
+        "holdout": holdout,
+    }
+
+
+class MemoryHoldoutScoringTests(unittest.TestCase):
+    def test_legacy_evidence_schema_is_not_accepted_for_independent_source_gates(self):
+        record = make_record()
+        record["evidenceSchemaVersion"] = 1
+        result = score_memory_holdout(record)
+        self.assertFalse(result["valid"])
+        self.assertFalse(result["promotionEligible"])
+        self.assertEqual(result["reason"], "memory-evidence-schema-version-unsupported")
+
+    def test_bootstrap_resamples_whole_independence_groups(self):
+        values = [0.0, 0.0, 1.0, 1.0]
+        groups = [digest("source-a"), digest("source-a"), digest("source-b"), digest("source-b")]
+        first = _cluster_interval(values, groups, 2000, 73)
+        replay = _cluster_interval(values, groups, 2000, 73)
+        self.assertEqual(first, replay)
+        self.assertEqual(first["samples"], 2000)
+        self.assertEqual(first["clusterCount"], 2)
+        self.assertEqual(first["resamplingUnit"], "independenceGroupDigest")
+        self.assertEqual(first["medianDelta01"], 0.5)
+
+    def test_independent_scorer_recomputes_quality_but_rejects_self_asserted_provenance(self):
+        result = score_memory_holdout(make_record(), expected_manifest_sha256="")
+        self.assertTrue(result["valid"], result)
+        self.assertFalse(result["promotionEligible"], result)
+        self.assertFalse(result["gates"]["trustedImmutableHoldoutManifest"])
+        self.assertEqual(result["evaluationClass"], "untrusted-provenance")
+        self.assertEqual(result["reason"], "trusted-immutable-holdout-manifest-not-verified")
+        self.assertEqual(result["languages"]["en"]["baseline"]["recallAtK01"], 0.0)
+        self.assertEqual(result["languages"]["en"]["candidate"]["recallAtK01"], 1.0)
+        self.assertEqual(result["languages"]["ru"]["candidate"]["mrr01"], 1.0)
+        self.assertEqual(result["languages"]["en"]["candidate"]["unsupportedRetrievalRate01"], 0.0)
+        self.assertTrue(result["gates"]["englishAndRussianHoldoutEligible"])
+
+    def test_exact_out_of_band_pinned_manifest_is_required_for_promotion(self):
+        record = make_record()
+        provenance = record["dataset"]["provenance"]
+        manifest = {
+            "schemaVersion": 1,
+            "policy": "fail-closed",
+            "approvedDatasets": [{
+                "datasetFingerprint": record["dataset"]["fingerprint"],
+                "datasetId": provenance["datasetId"],
+                "datasetVersion": provenance["datasetVersion"],
+                "sourceRef": provenance["sourceRef"],
+                "labelingProtocol": provenance["labelingProtocol"],
+                "licenseId": provenance["licenseId"],
+                "contentSha256": provenance["contentSha256"],
+                "review": {
+                    "reviewedAt": "2026-11-11T10:00:00Z",
+                    "reviewedBy": "NK1 unit-test reviewer",
+                    "approvalRef": "https://reviews.example.org/nk1/fixture-approval",
+                },
+            }],
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "trusted-holdouts.json"
+            raw = json.dumps(manifest, sort_keys=True, separators=(",", ":")).encode("utf-8")
+            path.write_bytes(raw)
+            result = score_memory_holdout(
+                record,
+                trusted_manifest_path=path,
+                expected_manifest_sha256=hashlib.sha256(raw).hexdigest(),
+            )
+        self.assertTrue(result["valid"], result)
+        self.assertTrue(result["promotionEligible"], result)
+        self.assertTrue(result["gates"]["trustedImmutableHoldoutManifest"])
+        self.assertEqual(result["evaluationClass"], "external-labelled-holdout")
+        self.assertEqual(result["trustedManifest"]["reason"], "approved-manifest-match")
+
+    def test_manifest_digest_mismatch_and_unlisted_dataset_fail_closed(self):
+        record = make_record()
+        provenance = record["dataset"]["provenance"]
+        manifest = {
+            "schemaVersion": 1,
+            "policy": "fail-closed",
+            "approvedDatasets": [{
+                "datasetFingerprint": digest("different-dataset"),
+                "datasetId": provenance["datasetId"],
+                "datasetVersion": provenance["datasetVersion"],
+                "sourceRef": provenance["sourceRef"],
+                "labelingProtocol": provenance["labelingProtocol"],
+                "licenseId": provenance["licenseId"],
+                "contentSha256": provenance["contentSha256"],
+                "review": {
+                    "reviewedAt": "2026-11-11T10:00:00Z",
+                    "reviewedBy": "NK1 unit-test reviewer",
+                    "approvalRef": "https://reviews.example.org/nk1/fixture-approval",
+                },
+            }],
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "trusted-holdouts.json"
+            raw = json.dumps(manifest, sort_keys=True, separators=(",", ":")).encode("utf-8")
+            path.write_bytes(raw + b"\\n")
+            mismatch = score_memory_holdout(
+                record,
+                trusted_manifest_path=path,
+                expected_manifest_sha256=hashlib.sha256(raw).hexdigest(),
+            )
+            self.assertFalse(mismatch["promotionEligible"])
+            self.assertEqual(mismatch["trustedManifest"]["reason"], "trusted-manifest-digest-mismatch")
+            path.write_bytes(raw)
+            unlisted = score_memory_holdout(
+                record,
+                trusted_manifest_path=path,
+                expected_manifest_sha256=hashlib.sha256(raw).hexdigest(),
+            )
+        self.assertFalse(unlisted["promotionEligible"])
+        self.assertFalse(unlisted["gates"]["trustedImmutableHoldoutManifest"])
+        self.assertEqual(unlisted["trustedManifest"]["reason"], "dataset-not-in-trusted-manifest")
+
+    def test_trusted_manifest_rejects_symlinked_manifest_path(self):
+        record = make_record()
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            target = root / "real.json"
+            target.write_text('{"schemaVersion":1,"policy":"fail-closed","approvedDatasets":[]}', encoding="utf-8")
+            link_path = root / "manifest.json"
+            try:
+                link_path.symlink_to(target)
+            except (OSError, NotImplementedError):
+                self.skipTest("symlinks are unavailable on this platform")
+            result = score_memory_holdout(
+                record,
+                trusted_manifest_path=link_path,
+                expected_manifest_sha256=hashlib.sha256(target.read_bytes()).hexdigest(),
+            )
+        self.assertFalse(result["promotionEligible"])
+        self.assertEqual(result["trustedManifest"]["reason"], "trusted-manifest-symlink")
+
+    def test_synthetic_fixture_is_valid_for_ci_but_never_promotion_evidence(self):
+        result = score_memory_holdout(make_record("synthetic://ci-fixture"))
+        self.assertTrue(result["valid"], result)
+        self.assertFalse(result["promotionEligible"])
+        self.assertEqual(result["evaluationClass"], "synthetic-test-only")
+        self.assertFalse(result["gates"]["notSyntheticTestData"])
+
+    def test_train_holdout_query_leakage_blocks_a_valid_promotion(self):
+        record = make_record()
+        record["train"][0]["queryDigest"] = record["holdout"][0]["queryDigest"]
+        result = score_memory_holdout(record)
+        self.assertFalse(result["valid"], result)
+        self.assertFalse(result["promotionEligible"])
+        self.assertFalse(result["languages"]["en"]["gates"]["noTrainHoldoutQueryLeakage"])
+
+    def test_candidate_stale_or_quarantined_memory_blocks_promotion(self):
+        record = make_record()
+        record["holdout"][0]["candidateRankedMemory"][0]["stale"] = True
+        result = score_memory_holdout(record)
+        self.assertTrue(result["valid"], result)
+        self.assertFalse(result["promotionEligible"])
+        self.assertEqual(result["languages"]["en"]["unsafeCandidateResultCount"], 1)
+        self.assertFalse(result["languages"]["en"]["gates"]["noUnsafeCandidateResults"])
+
+    def test_unknown_memory_digest_and_duplicate_ranked_id_are_invalid(self):
+        record = make_record()
+        record["holdout"][0]["candidateRankedMemory"][0]["memoryIdDigest"] = digest("not-in-corpus")
+        result = score_memory_holdout(record)
+        self.assertFalse(result["valid"])
+        record = make_record()
+        duplicate = dict(record["holdout"][0]["candidateRankedMemory"][0])
+        record["holdout"][0]["candidateRankedMemory"].append(duplicate)
+        result = score_memory_holdout(record)
+        self.assertFalse(result["valid"])
+
+    def test_missing_answerable_or_unanswerable_minimums_do_not_qualify(self):
+        record = make_record()
+        record["holdout"] = [row for row in record["holdout"] if not (
+            row["language"] == "ru" and row["answerable"] is False
+        )][:]  # keep RU answerable rows, remove all RU unanswerable queries
+        result = score_memory_holdout(record)
+        self.assertTrue(result["valid"], result)
+        self.assertFalse(result["promotionEligible"])
+        self.assertFalse(result["languages"]["ru"]["gates"]["sufficientUnanswerableHoldoutQueries"])
+
+    def test_correlated_holdout_groups_cannot_satisfy_independent_source_minimums(self):
+        record = make_record()
+        for language in ("en", "ru"):
+            answerable_source = digest(f"{language}-single-answerable-source")
+            unanswerable_source = digest(f"{language}-single-unanswerable-source")
+            for row in record["holdout"]:
+                if row["language"] != language:
+                    continue
+                row["independenceGroupDigest"] = answerable_source if row["answerable"] else unanswerable_source
+
+        result = score_memory_holdout(record)
+        self.assertTrue(result["valid"], result)
+        self.assertFalse(result["promotionEligible"])
+        for language in ("en", "ru"):
+            report = result["languages"][language]
+            self.assertEqual(report["independentAnswerableHoldoutGroups"], 1)
+            self.assertEqual(report["independentUnanswerableHoldoutGroups"], 1)
+            self.assertFalse(report["gates"]["sufficientIndependentAnswerableHoldoutGroups"])
+            self.assertFalse(report["gates"]["sufficientIndependentUnanswerableHoldoutGroups"])
+        self.assertFalse(result["gates"]["englishAndRussianHoldoutEligible"])
+
+    def test_train_holdout_independence_group_overlap_is_leakage(self):
+        record = make_record()
+        record["train"][0]["independenceGroupDigest"] = record["holdout"][0]["independenceGroupDigest"]
+        result = score_memory_holdout(record)
+        self.assertFalse(result["valid"], result)
+        self.assertFalse(result["promotionEligible"])
+        self.assertFalse(result["gates"]["noTrainHoldoutIndependenceGroupLeakage"])
+
+    def test_missing_or_malformed_independence_group_digest_is_rejected(self):
+        record = make_record()
+        record["train"][0].pop("independenceGroupDigest")
+        result = score_memory_holdout(record)
+        self.assertFalse(result["valid"])
+        self.assertFalse(result["promotionEligible"])
+
+        record = make_record()
+        record["holdout"][0]["independenceGroupDigest"] = "not-a-sha256-digest"
+        result = score_memory_holdout(record)
+        self.assertFalse(result["valid"])
+        self.assertFalse(result["promotionEligible"])
+
+    def test_ci_fixture_scores_as_structurally_valid_but_never_as_external_promotion_evidence(self):
+        report = build_ci_fixture_report()
+        sample = json.loads(samples_from_memory_report(report)[0]["input"])
+        result = score_memory_holdout(sample)
+        self.assertTrue(result["valid"], result)
+        self.assertFalse(result["promotionEligible"])
+        self.assertEqual(result["evaluationClass"], "synthetic-test-only")
+        self.assertFalse(result["gates"]["notSyntheticTestData"])
+        self.assertEqual(result["aggregate"]["answerableHoldoutQueries"], 40)
+        self.assertEqual(result["aggregate"]["unanswerableHoldoutQueries"], 16)
+
+    def test_report_export_uses_hashed_trace_and_omits_raw_query_fields(self):
+        record = make_record()
+        report = {
+            "schemaVersion": 1,
+            "mode": "offline-clone; no-live-state-mutation; no-automatic-promotion",
+            "datasetFingerprint": record["dataset"]["fingerprint"],
+            "corpusFingerprint": record["corpus"]["fingerprint"],
+            "corpusSize": record["corpus"]["size"],
+            "datasetProvenance": record["dataset"]["provenance"],
+            "datasetIntegrity": {"validForPromotion": True},
+            "corpusIntegrity": {"validForPromotion": True},
+            "determinism": {"retrievalQualityMetricsStableAcrossSeeds": True},
+            "seeds": record["experiment"]["seeds"],
+            "bootstrapSamplesPerSeed": record["experiment"]["bootstrapSamplesPerSeed"],
+            "sensitivity": {"maximumMrrRegression01": 0.01},
+            "queryEvidence": {
+                "schemaVersion": 2,
+                "digestAlgorithm": "hmac-sha256-ephemeral-per-experiment",
+                "queryNormalization": "NFKC-lower-punctuation-symbol-and-whitespace-normalization",
+                "datasetFingerprint": record["dataset"]["fingerprint"],
+                "corpusFingerprint": record["corpus"]["fingerprint"],
+                "retrievalConfigurationFingerprint": digest("retrieval-config"),
+                "baselineConfigurationFingerprint": digest("bm25-config"),
+                "k": 5,
+                "corpusMemoryIdDigests": record["corpus"]["memoryIdDigests"],
+                "train": record["train"],
+                "holdout": record["holdout"],
+            },
+        }
+        samples = samples_from_memory_report(report)
+        self.assertEqual(len(samples), 1)
+        serialized = json.dumps(samples, sort_keys=True)
+        self.assertIn("independenceGroupDigest", serialized,
+            "the privacy-reduced export must retain source-cluster identity as an HMAC digest")
+        self.assertNotIn("answerable-query-0", serialized)
+        self.assertNotIn("memory-0", serialized)
+        with tempfile.TemporaryDirectory() as directory:
+            source = Path(directory) / "report.json"
+            output = Path(directory) / "samples.jsonl"
+            source.write_text(json.dumps(report), encoding="utf-8")
+            result = export_memory_report(source, output)
+            self.assertEqual(result["samples"], 1)
+            row = json.loads(output.read_text(encoding="utf-8").splitlines()[0])
+            self.assertEqual(row["id"], "nk1-memory-bilingual-holdout")
+
+
+if __name__ == "__main__":
+    unittest.main()

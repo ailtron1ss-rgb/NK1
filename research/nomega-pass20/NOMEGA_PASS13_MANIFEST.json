@@ -1,0 +1,28 @@
+{
+  "version": "NOMEGA-PASS13",
+  "base": "NOMEGA_1.29.0_PASS11",
+  "generated_at": 1790225523.6717625,
+  "file_count": 1041,
+  "python_files": 539,
+  "test_files": 140,
+  "canonical_registry": 38,
+  "canonical_consolidation_candidates": 118,
+  "changes": [
+    "preserve E/I signs through fast plasticity",
+    "repair structural-plasticity reachability",
+    "add deterministic neural state digest",
+    "make skill promotion distinct from execution usage",
+    "add skill quarantine/retirement",
+    "stabilize skill identity and compiler provenance",
+    "require expected-result agreement for verified skills"
+  ],
+  "verification": {
+    "compileall": "pass",
+    "targeted_tests": 42,
+    "canonical_records": 38,
+    "canonical_failures": 0,
+    "pytest_collection": 424,
+    "full_suite": "not_claimed_green"
+  },
+  "tree_digest": "91a99df9f798a23f8be104409253f06b044a59aeeca16ed526c4c7bd009793a5"
+}

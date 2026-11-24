@@ -1,0 +1,11 @@
+{
+  "version": "V106",
+  "sources": [
+    {"name": "Gated DeltaNet-2", "year": 2026, "arxiv": "2605.22791", "use": "independent channel-wise erase/write"},
+    {"name": "Preconditioned DeltaNet", "year": 2026, "arxiv": "2604.21100", "use": "curvature-aware recurrent preconditioning"},
+    {"name": "OSDN", "year": 2026, "arxiv": "2605.13473", "use": "diagonal online preconditioning and adaptive forgetting reference"},
+    {"name": "Kalman Delta Networks", "year": 2026, "arxiv": "2609.07816", "use": "uncertainty-aware associative-memory reference"},
+    {"name": "BrainTrace", "year": 2026, "venue": "Nature Communications", "use": "linear-memory online learning / eligibility traces"},
+    {"name": "Learning from the Past with Cascading Eligibility Traces", "year": 2026, "venue": "ICLR 2026", "use": "sequential cascade eligibility reference"}
+  ]
+}

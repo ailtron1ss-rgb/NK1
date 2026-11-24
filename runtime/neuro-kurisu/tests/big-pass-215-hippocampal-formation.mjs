@@ -1,0 +1,27 @@
+import { HippocampalFormationCircuit } from '../src/organism/memory/HippocampalFormationCircuit.ts';
+
+const assert=(ok,msg)=>{if(!ok)throw new Error(msg)};
+const v=(shift=0)=>Array.from({length:64},(_,i)=>Math.sin((i+shift)*.37)+Math.cos((i*3+shift)*.11));
+const circuit=new HippocampalFormationCircuit();
+const a=v(0), b=v(1), cue=a.map((x,i)=>i%5===0?x*.85:x);
+circuit.encode('m1',a,1,.2);
+circuit.encode('m2',b,2,.8);
+const healthy=circuit.recall(cue,3);
+assert(healthy.memoryId==='m1','healthy retrieval should recover m1');
+assert(healthy.completion01>0.55,'CA3-like completion too weak');
+assert(healthy.predictionError01<0.45,'CA1-like prediction error too high');
+circuit.setRegionEnabled('dg',false);
+const noDg=circuit.recall(cue,4);
+assert(noDg.separation01 < healthy.separation01,'DG ablation must reduce separation');
+circuit.setRegionEnabled('dg',true);
+circuit.setRegionEnabled('ca3',false);
+const noCa3=circuit.recall(cue,5);
+assert(noCa3.completion01 <= healthy.completion01 + .05,'CA3 ablation should not improve completion materially');
+circuit.setRegionEnabled('ca3',true);
+for(let i=0;i<12;i++) circuit.replay(2,10+i);
+const snap=circuit.snapshot();
+const restored=new HippocampalFormationCircuit(); restored.restore(snap);
+const after=restored.recall(cue,30);
+assert(after.memoryId===healthy.memoryId,'restored retrieval identity mismatch');
+assert(restored.diagnostics().replayRuns===snap.replayRuns,'replay state not restored');
+console.log(JSON.stringify({pass:'BIG_PASS_215_HIPPOCAMPAL_FORMATION',healthy,noDg,noCa3,persistence:{restored:after.memoryId===healthy.memoryId,replayRuns:restored.diagnostics().replayRuns},diagnostics:restored.diagnostics(),verified:true},null,2));

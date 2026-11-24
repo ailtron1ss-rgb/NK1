@@ -1,0 +1,92 @@
+{
+  "title": "Neuro-Kurisu WorkPass42 cleanup acceptance results",
+  "generatedAtUtc": "2026-10-14T08:44:05.024218+00:00",
+  "workpass": 42,
+  "baseArchive": "Neuro_Kurisu_WORKPASS41_2026-10-14.zip",
+  "rootPackageVersion": "35.0.0-super-workpass42",
+  "runtimeVersion": "35.63.0",
+  "runtimeContractVersion": "35.63.0",
+  "stateSchema": 225,
+  "cleanupDelta": {
+    "baseFiles": 9139,
+    "currentFiles": 9089,
+    "added": 102,
+    "samePathModified": 24,
+    "missingBaselinePaths": 152,
+    "unexplainedMissingPaths": 0,
+    "sourcePathClassification": {
+      "byteIdenticalMoved": 68,
+      "restorableExactDuplicate": 56,
+      "generatedAssetShadow": 21,
+      "unreferencedSupersededBlob": 7,
+      "unexplained": 0
+    },
+    "unclassifiedMissingBaselinePaths": 0,
+    "allMissingBaselinePathsClassified": true
+  },
+  "archiveAndSnapshotIntegrity": {
+    "sourceArchiveMembers": 8512,
+    "sourceArchiveMembersPassed": 8512,
+    "historicalSnapshotMembers": 10427,
+    "historicalSnapshotMembersPassed": 10427,
+    "legacyDedupEntries": 3873,
+    "legacyMissingOrConflict": 0
+  },
+  "retainedExactDuplicates": {
+    "groups": 18,
+    "extraPaths": 39,
+    "rawBytes": 91244,
+    "policy": "18 hash-identical groups retained because paths serve distinct semantic roles: LICENSE/SOURCE notices, SQL bootstrap vs migrations, named fixtures, package markers, versioned evidence/provenance. No remaining group was removed by hash alone."
+  },
+  "lastVerification": {
+    "releaseMetadata": "34/34 PASS",
+    "releaseMetadataContract": "6/6 PASS",
+    "provenance": "1/1 PASS",
+    "appScripts": "218/218 PASS",
+    "browserSmokeContract": "51/51 PASS",
+    "runtimeTypecheck": "PASS",
+    "runtimeReleaseContract": "35.63.0 / schema 225 / version+phase aligned",
+    "architecture": "1,878 source / 581 canonical / missing 0 / cycles 0 / legacyLeakage 0",
+    "hygiene": "3,998 files / 0 errors / 0 warnings",
+    "syntax": "1,318 JS / 6 shell / 247 JSON / 0 failures",
+    "assets": "PASS after all 21 generated shadows cleaned",
+    "retrievalRecallDelta": 0,
+    "retrievalPromotion": "not-promoted",
+    "viteBuild": "BLOCKED: app dependencies/Vite unavailable; do not claim production build"
+  },
+  "historicalIntegrityGates": [
+    {
+      "command": "python3 tools/verify-compacted-source-archives.py",
+      "exitCode": 0,
+      "ok": true,
+      "stdout": "{\n  \"ok\": true,\n  \"manifestCount\": 4,\n  \"members\": 8512,\n  \"verifiedMembers\": 8512,\n  \"results\": [\n    {\n      \"manifest\": \"Kurisu_v9_Sprites_Live.manifest.json\",\n      \"members\": 98,\n      \"verified\": 98,\n      \"ok\": true,\n      \"originalArchiveBytes\": 9893957\n    },\n    {\n      \"manifest\": \"Neuro_Kurisu_35.30.0_R16_PASS_11_SEMANTIC_ISOLATION_2026-09-29.manifest.json\",\n      \"members\": 4022,\n      \"verified\": 4022,\n      \"ok\": true,\n      \"originalArchiveBytes\": 21138698\n    },\n    {\n      \"manifest\": \"Neuro_Kurisu_35.40.0_R26_PASS20_RESTORE_SYMMETRY_2026-10-01.manifest.json\",\n      \"members\": 4144,\n      \"verified\": 4144,\n      \"ok\": true,\n      \"originalArchiveBytes\": 21101126\n    },\n    {\n      \"manifest\": \"Neuro_Kurisu_v56_TraitsHierarchy.manifest.json\",\n      \"members\": 248,\n      \"verified\": 248,\n      \"ok\": true,\n      \"originalArchiveBytes\": 9182283\n    }\n  ],\n  \"errors\": []\n}\n",
+      "stderr": ""
+    },
+    {
+      "command": "python3 tools/restore-historical-snapshot.py --check",
+      "exitCode": 0,
+      "ok": true,
+      "stdout": "{\n  \"ok\": true,\n  \"mode\": \"check\",\n  \"members\": 10427,\n  \"contentSourcesChecked\": 18935,\n  \"errors\": []\n}\n",
+      "stderr": ""
+    },
+    {
+      "command": "node tools/restore-historical-duplicate-paths.mjs",
+      "exitCode": 0,
+      "ok": true,
+      "stdout": "{\n  \"ok\": true,\n  \"mode\": \"check\",\n  \"manifestEntries\": 56,\n  \"restored\": 0,\n  \"alreadyExact\": 0,\n  \"missingOrChangedCanonical\": 0,\n  \"conflicts\": 0,\n  \"results\": [\n    {\n      \"path\": \"runtime/neuro-kurisu/docs/history/releases/33.0.0/RELEASE_NOTES_15_RU.md\",\n      \"result\": \"restorable\"\n    },\n    {\n      \"path\": \"runtime/neuro-kurisu/docs/history/releases/33.0.0/RELEASE_NOTES_13_RU.md\",\n      \"result\": \"restorable\"\n    },\n    {\n      \"path\": \"runtime/neuro-kurisu/docs/history/p-phases/2026-09-01/README_P49_BIG_STEP_RU.md\",\n      \"result\": \"restorable\"\n    },\n    {\n      \"path\": \"runtime/neuro-kurisu/docs/history/FORENSIC_DEDUP_2026-09-15/RELEASE_NOTES_B324_RU.md\",\n      \"result\": \"restorable\"\n    },\n    {\n      \"path\": \"runtime/neuro-kurisu/docs/history/p-phases/2026-09-18/P2659_P2674/RELEASE_NOTES_RU.md\",\n      \"result\": \"restorable\"\n    },\n    {\n      \"path\": \"runtime/neuro-kurisu/docs/history/p-phases/2026-09-01/README_P53_P54_BIG_STEP_RU.md\",\n      \"result\": \"restorable\"\n    },\n    {\n      \"path\": \"runtime/neuro-kurisu/docs/history/p-phases/2026-09-01/README_P48_BIG_STEP_RU.md\",\n      \"result\": \"restorable\"\n    },\n    {\n      \"path\": \"runtime/neuro-kurisu/docs/history/releases/33.0.0/RELEASE_NOTES_19_RU.md\",\n      \"result\": \"restorable\"\n    },\n    {\n      \"path\": \"runtime/neuro-kurisu/docs/history/p-phases/2026-09-01/README_P51_BIG_STEP_RU.md\",\n      \"result\": \"restorable\"\n    },\n    {\n      \"path\": \"runtime/neuro-kurisu/docs/history/p-phases/2026-09-01/README_P47_BIG_STEP_RU.md\",\n      \"result\": \"restorable\"\n    },\n    {\n      \"path\": \"runtime/neuro-kurisu/docs/history/releases/33.0.0/RELEASE_NOTES_23_RU.md\",\n      \"result\": \"restorable\"\n    },\n    {\n      \"path\": \"runtime/neuro-kurisu/docs/history/releases/33.0.0/RELEASE_NOTES_11_RU.md\",\n      \"result\": \"restorable\"\n    },\n    {\n      \"path\": \"runtime/neuro-kurisu/docs/history/FORENSIC_DEDUP_2026-09-15/BIG_PASS_338_PREVIOUS_B337_BASE_RU.md\",\n      \"result\": \"restorable\"\n    },\n    {\n      \"path\": \"runtime/neuro-kurisu/docs/history/releases/33.0.0/RELEASE_NOTES_16_RU.md\",\n      \"result\": \"restorable\"\n    },\n    {\n      \"path\": \"runtime/neuro-kurisu/docs/history/releases/33.0.0/RELEASE_NOTES_18_RU.md\",\n      \"result\": \"restorable\"\n    },\n    {\n      \"path\": \"runtime/neuro-kurisu/docs/history/releases/33.0.0/RELEASE_NOTES_14_RU.md\",\n      \"result\": \"restorable\"\n    },\n    {\n      \"path\": \"runtime/neuro-kurisu/docs/history/releases/33.0.0/RELEASE_NOTES_17_RU.md\",\n      \"result\": \"restorable\"\n    },\n    {\n      \"path\": \"runtime/neuro-kurisu/docs/history/releases/33.0.0/RELEASE_NOTES_12_RU.md\",\n      \"result\": \"restorable\"\n    },\n    {\n      \"path\": \"runtime/neuro-kurisu/docs/history/p-phases/2026-09-01/README_P50_BIG_STEP_RU.md\",\n      \"result\": \"restorable\"\n    },\n    {\n      \"path\": \"runtime/neuro-kurisu/docs/history/p-phases/2026-09-01/README_P46_BIG_STEP_RU.md\",\n      \"result\": \"restorable\"\n    },\n    {\n      \"path\": \"runtime/neuro-kurisu/docs/history/p-phases/2026-09-01/README_FIRST_STEP_11_RU.md\",\n      \"result\": \"restorable\"\n    },\n    {\n      \"path\": \"runtime/neuro-kurisu/docs/history/p-phases/2026-09-01/README_P52_BIG_STEP_RU.md\",\n      \"result\": \"restorable\"\n    },\n    {\n      \"path\": \"runtime/neuro-kurisu/docs/history/FORENSIC_DEDUP_2026-09-15/BIG_PASS_320_MOBILE_DURABILITY_RU.md\",\n      \"result\": \"restorable\"\n    },\n    {\n      \"path\": \"runtime/neuro-kurisu/docs/history/FORENSIC_DEDUP_2026-09-15/RELEASE_NOTES_B319_RU.md\",\n      \"result\": \"restorable\"\n    },\n    {\n      \"path\": \"runtime/neuro-kurisu/docs/history/FORENSIC_DEDUP_2026-09-15/BIG_PASS_319_PROGRESS_RU.md\",\n      \"result\": \"restorable\"\n    },\n    {\n      \"path\": \"runtime/neuro-kurisu/docs/history/FORENSIC_DEDUP_2026-09-15/BIG_PASS_321_DEVICE_REALITY_RU.md\",\n      \"result\": \"restorable\"\n    },\n    {\n      \"path\": \"runtime/neuro-kurisu/docs/history/FORENSIC_DEDUP_2026-09-15/RELEASE_NOTES_B320_RU.md\",\n      \"result\": \"restorable\"\n    },\n    {\n      \"path\": \"legacy/kurisu-v9/index.html\",\n      \"result\": \"restorable\"\n    },\n    {\n      \"path\": \"legacy/kurisu-v9/src/avatar/outfitCatalog.ts\",\n      \"result\": \"restorable\"\n    },\n    {\n      \"path\": \"legacy/kurisu-v9/src/avatar/spriteEngine.ts\",\n      \"result\": \"restorable\"\n    },\n    {\n      \"path\": \"legacy/kurisu-v9/src/brain/energyBudget.ts\",\n      \"result\": \"restorable\"\n    },\n    {\n      \"path\": \"legacy/kurisu-v9/src/cognitive/ConsciousnessCore.ts\",\n      \"result\": \"restorable\"\n    },\n    {\n      \"path\": \"legacy/kurisu-v9/src/cognitive/DesireAndPromiseStore.ts\",\n      \"result\": \"restorable\"\n    },\n    {\n      \"path\": \"legacy/kurisu-v9/src/cognitive/EmbodimentSystem.ts\",\n      \"result\": \"restorable\"\n    },\n    {\n      \"path\": \"legacy/kurisu-v9/src/cognitive/GrokExtras.ts\",\n      \"result\": \"restorable\"\n    },\n    {\n      \"path\": \"legacy/kurisu-v9/src/cognitive/PersonalityRewardSystem.ts\",\n      \"result\": \"restorable\"\n    },\n    {\n      \"path\": \"legacy/kurisu-v9/src/cognitive/PresenceAndIdle.ts\",\n      \"result\": \"restorable\"\n    },\n    {\n      \"path\": \"legacy/kurisu-v9/src/cognitive/SelfImprovementEngine.ts\",\n      \"result\": \"restorable\"\n    },\n    {\n      \"path\": \"legacy/kurisu-v9/src/cognitive/StatusIndicators.ts\",\n      \"result\": \"restorable\"\n    },\n    {\n      \"path\": \"legacy/kurisu-v9/src/components/AndroidCodeExportModal.tsx\",\n      \"result\": \"restorable\"\n    },\n    {\n      \"path\": \"legacy/kurisu-v9/src/components/Avatar2DOverlay.tsx\",\n      \"result\": \"restorable\"\n    },\n    {\n      \"path\": \"legacy/kurisu-v9/src/components/Avatar3D.tsx\",\n      \"result\": \"restorable\"\n    },\n    {\n      \"path\": \"legacy/kurisu-v9/src/components/EmotionalStatePanel.tsx\",\n      \"result\": \"restorable\"\n    },\n    {\n      \"path\": \"legacy/kurisu-v9/src/components/ExpressionReferenceModal.tsx\",\n      \"result\": \"restorable\"\n    },\n    {\n      \"path\": \"legacy/kurisu-v9/src/components/MemoryInspector.tsx\",\n      \"result\": \"restorable\"\n    },\n    {\n      \"path\": \"legacy/kurisu-v9/src/components/MultimodalCamera.tsx\",\n      \"result\": \"restorable\"\n    },\n    {\n      \"path\": \"legacy/kurisu-v9/src/components/PersonalityMapPanel.tsx\",\n      \"result\": \"restorable\"\n    },\n    {\n      \"path\": \"legacy/kurisu-v9/src/components/ReflectionJournal.tsx\",\n      \"result\": \"restorable\"\n    },\n    {\n      \"path\": \"legacy/kurisu-v9/src/components/SearchPermissionModal.tsx\",\n      \"result\": \"restorable\"\n    },\n    {\n      \"path\": \"legacy/kurisu-v9/src/components/SelfOptimizationModal.tsx\",\n      \"result\": \"restorable\"\n    },\n    {\n      \"path\": \"legacy/kurisu-v9/src/components/ThoughtBubbleOverlay.tsx\",\n      \"result\": \"restorable\"\n    },\n    {\n      \"path\": \"legacy/kurisu-v9/src/services/notificationEngine.ts\",\n      \"result\": \"restorable\"\n    },\n    {\n      \"path\": \"legacy/kurisu-v9/src/tools/webSearch.ts\",\n      \"result\": \"restorable\"\n    },\n    {\n      \"path\": \"legacy/kurisu-v9/src/utils/spriteSheet.ts\",\n      \"result\": \"restorable\"\n    },\n    {\n      \"path\": \"legacy/input-archives/lumina-main-2026-10-08.zip\",\n      \"result\": \"restorable\"\n    },\n    {\n      \"path\": \"legacy/input-archives/letta-main-2026-10-08.zip\",\n      \"result\": \"restorable\"\n    }\n  ]\n}\n",
+      "stderr": ""
+    },
+    {
+      "command": "node tools/restore-legacy-deduplicated-files.mjs",
+      "exitCode": 0,
+      "ok": true,
+      "stdout": "{\n  \"mode\": \"check\",\n  \"manifestEntries\": 3873,\n  \"alreadyPresent\": 6,\n  \"preservedByImmutableBlob\": 25,\n  \"restored\": 0,\n  \"missingOrChangedCanonical\": 0,\n  \"conflicts\": 0\n}\n",
+      "stderr": ""
+    }
+  ],
+  "changedFilesManifest": "docs/WORKPASS42_CHANGED_FILES_2026-10-14.json",
+  "changedFilesManifestSha256": "d610d08f6a692ef9fdee432d398cc41742b74b89984e60098d637f4d4c4d20f4",
+  "archiveBuild": "Final ZIP built using Python zipfile with UTF-8 names; the adjacent Neuro_Kurisu_WORKPASS42_ARCHIVE_VERIFICATION_2026-10-14.json contains CRC, SHA-256, path-set, and byte-for-byte verification results.",
+  "releaseStatus": "implementation-workpass; release gates remain open",
+  "ok": true
+}

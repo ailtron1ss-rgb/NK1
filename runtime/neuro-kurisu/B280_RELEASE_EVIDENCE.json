@@ -1,0 +1,35 @@
+{
+  "release": "35.6.1",
+  "pass": "B280",
+  "date": "2026-09-12",
+  "functional": {
+    "cycles": 320,
+    "learningUpdates": 320,
+    "plasticUpdates": 57307,
+    "causalIntegration01": 0.707107679662173,
+    "excitationInhibitionBalance01": 0.4869277612486781,
+    "shortTermPlasticity01": 0.7298263704892236,
+    "crossAreaCoherence01": 0.823392852782512,
+    "sparseActivity01": 0.5833333333333333,
+    "dendriticContext01": 0.7025000001632632,
+    "localLesionDrop01": 0.08960865916593841,
+    "crossAreaLesionDrop01": 0.023268705377203935,
+    "contextDiff01": 0.10416666666666667,
+    "migration": true,
+    "coreRestart": true
+  },
+  "staticGates": {
+    "typecheck": "PASS",
+    "architecture": "PASS",
+    "integrity": "PASS",
+    "hygiene": "PASS",
+    "forensics": "PASS",
+    "contract": "PASS",
+    "lock": "PASS",
+    "releaseSource": "PASS",
+    "doctor": "PASS",
+    "syntax": "PASS",
+    "fullAudit": "PASS"
+  },
+  "classification": "multi-area recurrent neural computational substrate; not biophysical brain simulation and not evidence of consciousness"
+}

@@ -1,0 +1,28 @@
+NeuroCore Frontier V90 — release manifest
+Date: 2026-09-25
+Current frontier: V90
+Current engine version: v90-routed-preconditioned-delta
+Current tests: 9/9
+V86-V88 preserved gate: 19/19
+Compilation: PASS
+V89-style checkpoint migration: PASS
+Migration loaded tensors: 2158
+Migration skipped legacy recurrent tensors: 32
+Migration optimizer reset: TRUE (expected for changed parameter groups)
+V90 isolated recall qualification: 5 seeds x 240 steps
+V82 cosine mean: 0.3871236384
+V90 cosine mean: 0.4649625421
+Relative cosine change: +20.106988%
+V82 top1 mean: 0.1958333343
+V90 top1 mean: 0.3255208343
+Relative top1 change: +66.223404%
+Mean training micro-time V82: 2.44098853 s
+Mean training micro-time V90: 3.27503424 s
+Relative training micro-time: +34.168359%
+
+Research references:
+https://research.nvidia.com/publication/2026-05_gated-deltanet-2-decoupling-erase-and-write-linear-attention
+https://github.com/NVlabs/GatedDeltaNet-2
+https://arxiv.org/abs/2607.25357
+https://arxiv.org/abs/2604.21100
+https://github.com/fla-org/flash-linear-attention

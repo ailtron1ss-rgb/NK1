@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "description": "Single-owner source boundary informed by the Letta landing/repository governance model.",
+  "states": {
+    "canonical": {"writable": true, "canEnterCanonical": true},
+    "research": {"writable": false, "canEnterCanonical": false},
+    "legacy": {"writable": false, "canEnterCanonical": false},
+    "provenance-only": {"writable": false, "canEnterCanonical": false}
+  },
+  "branches": [
+    {"name":"Neuro-Kurisu 35.40","state":"canonical","role":"single writable organism owner"},
+    {"name":"NeuroCore/NOMEGA/DeepCode","state":"research","role":"governed research candidates"},
+    {"name":"Historical Neuro-Kurisu/Kurisu","state":"legacy","role":"historical/compatibility references"},
+    {"name":"WILL/Lumina/Hexis input archives","state":"provenance-only","role":"immutable source provenance"},
+    {"name":"Letta main 2026-10-08","state":"provenance-only","role":"governance reference; no current runtime code present"}
+  ],
+  "security": {
+    "excludeCredentialFiles": true,
+    "blockedPatterns": ["**/.env*", "**/*credentials*.json", "**/*secret*.json", "**/*private-key*.pem", "**/*.key"]
+  }
+}

@@ -1,0 +1,58 @@
+{
+  "version": 125,
+  "release": "V125",
+  "package_version": "1.25.0",
+  "engine_version": "v125-memory-truth",
+  "schema_version": 30,
+  "architecture": "standalone_causal_trunk_with_candidate_unified_sparse_memory_and_key_fingerprint",
+  "quality_gates": {
+    "current_tests": "89/89 PASS",
+    "compileall": "PASS",
+    "verify_current": "PASS",
+    "checkpoint": "108/108 tensors; 0 missing; 0 mismatch; 0 unexpected",
+    "decontamination": "PASS",
+    "executable_stub_suspects": 0,
+    "legacy_current_test_surface_removed": true,
+    "recurrent_owner_count": 1,
+    "gradient_parameter_fraction": 1.0,
+    "gradient_tensor_fraction": 1.0,
+    "wheel": "neurocore_frontier-1.25.0-py3-none-any.whl built with --no-build-isolation"
+  },
+  "changes": {
+    "integrated": [
+      "canonical_sparse_read_only_path",
+      "key_fingerprint_collision_candidate",
+      "production_benchmark_read_path_deduplication",
+      "version_metadata_reconciliation"
+    ],
+    "candidate_only": [
+      "unified_sparse_associative_memory_v125",
+      "collision_resistant_key_fingerprint_v125"
+    ],
+    "not_promoted": [
+      "collision_aware_sparse_admission_v125",
+      "token_decay"
+    ],
+    "removed_or_refactored": [
+      "duplicated_sparse_memory_read_logic_in_qualification"
+    ]
+  },
+  "evidence": [
+    "evidence/V125_COLLISION_PROBE.json",
+    "evidence/V125_DECONTAMINATION.json",
+    "evidence/V125_CHECKPOINT.txt",
+    "evidence/verify_current_V125.txt",
+    "evidence/V125_TESTS.txt"
+  ],
+  "collision_probe": {
+    "route_overlap": 2.0,
+    "baseline_mean_target_cosine": 0.9712908565998077,
+    "fingerprint_mean_target_cosine": 0.9916910827159882,
+    "baseline_cross_leak": 0.6987652480602264,
+    "fingerprint_cross_leak": 0.647798627614975,
+    "target_cosine_gain": 0.02040022611618042,
+    "cross_leak_reduction": 0.050966620445251465,
+    "fingerprint_score_gain": 0.6
+  },
+  "next_frontier": "V126 memory consolidation + sparse state runtime + continual-learning qualification"
+}

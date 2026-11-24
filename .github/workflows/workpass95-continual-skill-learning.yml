@@ -1,0 +1,73 @@
+name: WorkPass97 Node 24 and continual skill learning
+
+on:
+  push:
+    branches: [workpass79-cognitive-rebuild, workpass206-runtime-evaluator-wiring]
+  pull_request:
+    branches: [main, workpass203-independent-candidate-evaluator]
+    paths:
+      - 'runtime/neuro-kurisu/src/organism/learning/P23LearningEngine.ts'
+      - 'runtime/neuro-kurisu/src/organism/learning/ParametricPolicyLearner.ts'
+      - 'runtime/neuro-kurisu/src/organism/learning/AdaptivePolicyEngine.ts'
+      - 'runtime/neuro-kurisu/src/organism/core/OrganismCore.ts'
+      - 'runtime/neuro-kurisu/tests/p23-true-learning.mjs'
+      - 'runtime/neuro-kurisu/tests/p23-integration.mjs'
+      - 'runtime/neuro-kurisu/tests/p26-true-learning.mjs'
+      - '.github/workflows/workpass95-continual-skill-learning.yml'
+      - '.nvmrc'
+      - 'runtime/neuro-kurisu/package.json'
+      - 'runtime/neuro-kurisu/package-lock.json'
+      - 'runtime/neuro-kurisu/tsconfig.clean.json'
+      - 'runtime/neuro-kurisu/src/node-shims.d.ts'
+      - 'runtime/neuro-kurisu/scripts/typecheck-runtime.mjs'
+      - 'runtime/neuro-kurisu/scripts/audit-actions-runtime.mjs'
+      - 'app/package.json'
+      - 'app/package-lock.json'
+
+      - 'runtime/neuro-kurisu/tests/workpass310-p23-learning-restore-integrity.mjs'
+permissions:
+  contents: read
+
+concurrency:
+  group: nk1-${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  continual-skill-learning:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          package-manager-cache: false
+      - name: Install pinned TypeScript compiler from app lockfile
+        run: npm ci --prefix app --ignore-scripts --no-audit --no-fund
+      - name: Enforce current Node.js runtime contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --version
+          npm --version
+          node -e "if (process.versions.node.split('.')[0] !== '24') process.exit(1)"
+      - name: Audit GitHub Actions runtime compatibility
+        run: npm --prefix runtime/neuro-kurisu run audit:actions-runtime
+      - name: Audit cognitive subsystem ownership
+        run: npm --prefix runtime/neuro-kurisu run audit:core-ownership
+      - name: Runtime smoke integration
+        run: npm --prefix runtime/neuro-kurisu run test:smoke
+      - name: Runtime typecheck
+        run: npm --prefix runtime/neuro-kurisu run typecheck
+      - name: Validate skill learning and cross-context transfer boundaries
+        run: npm --prefix runtime/neuro-kurisu run test:p23:learning
+      - name: Validate core skill-learning persistence and restart recovery
+        run: npm --prefix runtime/neuro-kurisu run test:p23:integration
+      - name: Validate P23 persisted learning restore integrity
+        run: npm --prefix runtime/neuro-kurisu run test:workpass310:p23-restore-integrity
+      - name: Validate parametric learning generalization and finite-state guards
+        run: npm --prefix runtime/neuro-kurisu run test:p26:true-learning
+      - name: Validate continual transfer calibration
+        run: npm --prefix runtime/neuro-kurisu run test:big-pass-116
+      - name: Validate personal learning curriculum
+        run: npm --prefix runtime/neuro-kurisu run test:big-pass-122

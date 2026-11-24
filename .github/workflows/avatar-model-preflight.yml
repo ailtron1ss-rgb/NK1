@@ -1,0 +1,61 @@
+name: NK1 Avatar Model Preflight
+
+on:
+  push:
+    branches:
+      - workpass70-source
+    paths:
+      - "app/src/components/avatar/avatarModelLimits.ts"
+      - "app/src/components/avatar/avatarModelPreflight.ts"
+      - "app/scripts/avatar-model-preflight.test.mjs"
+      - "app/src/components/avatar/remoteAvatarSource.ts"
+      - "app/src/components/Avatar3DStage.tsx"
+      - "app/scripts/avatar-remote-source.test.mjs"
+      - "app/src/components/avatar/avatarAnimationRuntime.ts"
+      - "app/scripts/avatar-animation-runtime.test.mjs"
+      - ".github/workflows/avatar-model-preflight.yml"
+  pull_request:
+    branches:
+      - workpass70-source
+    paths:
+      - "app/src/components/avatar/avatarModelLimits.ts"
+      - "app/src/components/avatar/avatarModelPreflight.ts"
+      - "app/scripts/avatar-model-preflight.test.mjs"
+      - "app/src/components/avatar/remoteAvatarSource.ts"
+      - "app/src/components/Avatar3DStage.tsx"
+      - "app/scripts/avatar-remote-source.test.mjs"
+      - "app/src/components/avatar/avatarAnimationRuntime.ts"
+      - "app/scripts/avatar-animation-runtime.test.mjs"
+      - ".github/workflows/avatar-model-preflight.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nk1-avatar-model-preflight-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  preflight-contract:
+    name: GLB / VRM preflight contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout exact revision
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          package-manager-cache: false
+      - name: Install locked app dependencies for real Three.js mixer regression
+        run: npm ci --prefix app --ignore-scripts --no-audit --no-fund
+      - name: Run avatar animation lifecycle regressions
+        run: npm --prefix app run test:avatar-animation-runtime
+      - name: Run parser boundary regressions
+        run: node --experimental-strip-types --test app/scripts/avatar-model-preflight.test.mjs
+      - name: Run remote URL downloader security regressions
+        run: node --experimental-strip-types --test app/scripts/avatar-remote-source.test.mjs

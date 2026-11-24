@@ -1,0 +1,60 @@
+{
+  "version": "34.82.0",
+  "stateSchema": 117,
+  "bigPass": 108,
+  "focus": "session firewall, reproducible schedule, external evaluator boundary, trajectory evidence ledger",
+  "metrics01to100": {
+    "replayInstrumentation": 100,
+    "goalConditionedReplay": 94,
+    "causalIntegration": 98,
+    "unifiedLearningIntegration": 98,
+    "retentionValidation": 97,
+    "forgettingCurve": 72,
+    "crossTaskTransfer": 92,
+    "negativeTransferInterference": 92,
+    "pairedExperimentRigour": 100,
+    "experimentalProtocolRigor": 100,
+    "longitudinalExperiment": 98,
+    "reproducibility": 100,
+    "uncertaintyQuantification": 91,
+    "dataQualityGating": 97,
+    "claimIntegrity": 100,
+    "sessionIntegrity": 99,
+    "trajectoryEvidence": 93,
+    "externalEvaluatorBoundary": 98,
+    "memorySkillCoupling": 68,
+    "epistemicProvenance": 100,
+    "canonicalMemorySafety": 99,
+    "mobileEfficiency": 94,
+    "migration": 100,
+    "regressionCoverage": 100,
+    "engineeringReadiness": 95,
+    "empiricalReplayEvidence": 50,
+    "consciousnessMechanism": 20,
+    "consciousnessEvidence": 0
+  },
+  "planCompletion": {
+    "previousPassRecommendations": 100,
+    "pass108Scope": 100,
+    "documentationAndReleaseIntegrity": 100
+  },
+  "verification": {
+    "typecheck": "PASS",
+    "pass108Functional": "PASS",
+    "pass108Migration": "PASS",
+    "pass108CoreIntegration": "PASS",
+    "cognitiveBatteryAudit": "PASS",
+    "reproducibilityAudit": "PASS",
+    "pass107MigrationCompatibility": "PASS",
+    "mobileHorizon1000": "PASS",
+    "operationalHorizon500": "PASS",
+    "operationalHorizon1000": "PASS",
+    "targetedAudit": "PASS",
+    "archiveManifest": "PASS:1415"
+  },
+  "knownNonPass": {
+    "aggregateAudit": "NOT_RUN_AS_SINGLE_LONG_CHAIN",
+    "reason": "long tests are intentionally separated from bounded release audit; each required long test passes independently"
+  },
+  "scientificBoundary": "Synthetic fixtures validate software mechanics only; they do not constitute evidence of learning, sentience or consciousness."
+}

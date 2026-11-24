@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';
+import { P80UnifiedSelfState, defaultP80 } from '../src/organism/cognition/P80UnifiedSelfState.ts';
+import { P31FunctionalConsciousnessEngine, defaultP31Consciousness } from '../src/organism/cognition/P31FunctionalConsciousness.ts';
+const p80=new P80UnifiedSelfState(); p80.restore(defaultP80());
+const beforeWait=p80.actionBias('wait');
+p80.update({tick:1,mode:'verify',identity01:.9,memoryContinuity01:.9,realityGap01:.1,predictionError01:.7,uncertainty01:.6,energy01:.7,cognitiveCapacity01:.8,goalPressure01:.7,grounding01:.8,causal01:.75,workspace01:.8,action:'verify',actionScore01:.8,externalInput:true,novelty01:.8});
+assert.equal(p80.actionBias('wait'),beforeWait); assert.ok(p80.actionBias('verify')>=beforeWait);
+const p31=new P31FunctionalConsciousnessEngine(); p31.restore(defaultP31Consciousness());
+const x=p31.integrate({tick:1,observationId:'x',externalInput:true,selectedAction:'verify',selectedConfidence:.8,workspaceCapacity:3,workspaceItems:[{id:'x',source:'external',salience:.9,content:{action:'verify'}},{id:'g',source:'goal',salience:.8,content:{action:'verify'}}],identityContinuity01:.8,metacognitiveAccuracy01:.8,decisionUncertainty01:.2,predictionError01:.6,body:{energy:.7,cognitiveLoad:.3,uncertainty:.5,novelty:.7,identityCoherence:.8}});
+const lesion=p31.lesion('workspace'); assert.ok(lesion.after<lesion.before); assert.ok(x.globalWorkspace.ignition01>0);
+console.log('ANTI_DECORATION=PASS',JSON.stringify({workspaceDrop:lesion.delta,ignition:x.globalWorkspace.ignition01,waitBias:p80.actionBias('wait')}));

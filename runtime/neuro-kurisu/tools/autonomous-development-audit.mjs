@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';
+import { P36AutonomousSelfDevelopmentEngine } from '../src/organism/learning/P36AutonomousSelfDevelopment.ts';
+const e=new P36AutonomousSelfDevelopmentEngine();
+const state={tick:1,predictionError:.66,selfPredictionError:.4,autonomyScore:.7,attentionBudget:.8,needs:{energy:.8,cognitiveLoad:.2,uncertainty:.6,socialNeed:.2,novelty:.4,identityCoherence:.8,goalPressure:.4}};
+const h=e.propose(state,{worldError01:.6,selfError01:.4,relationship01:.2,resourceRisk01:.2}); assert.ok(h);
+const preview=e.runSafeExperiment(h.id,state,3); assert.ok(preview); assert.equal(e.snapshot().acceptedChanges,0); assert.equal(preview.evidenceGate,'sandbox-preview');
+const cycle=e.beginAutonomousDevelopmentCycle({hypothesisId:h.id,origin:'autonomous-gap',requestedAction:'verify'}); assert.ok(cycle);
+assert.ok(e.developmentTaskBias('verify')>0); assert.equal(e.developmentTaskBias('respond')<e.developmentTaskBias('verify'),true);
+for(const [i,d] of [100,200,400,800,1600,3200].entries()) e.recordExternalEvidence({hypothesisId:h.id,contextKey:i<2?'a':i<4?'b':'c',control01:.5,treatment01:.59,independentVerified:true,holdout:i>=2,delayMs:d,evaluatorVersion:'audit-v1',evidenceSource:'external-evaluator',protocolId:'audit-protocol',sessionId:'audit-session',trialId:`a-${i}`,at:1000+i});
+const before=e.snapshot().acceptedChanges; assert.equal(before,1); const late=e.recordExternalEvidence({hypothesisId:h.id,contextKey:'c',control01:.5,treatment01:.59,independentVerified:true,holdout:true,delayMs:6400,evaluatorVersion:'audit-v1',evidenceSource:'external-evaluator',protocolId:'audit-protocol',sessionId:'audit-session',trialId:'a-6',at:2000}); assert.equal(late.promoted,false); assert.equal(e.snapshot().acceptedChanges,1);
+console.log('AUTONOMOUS_DEVELOPMENT_AUDIT=PASS',JSON.stringify({cycleStage:e.snapshot().developmentCycles[0].stage,acceptedChanges:e.snapshot().acceptedChanges,request:e.developmentTaskRequest()}));

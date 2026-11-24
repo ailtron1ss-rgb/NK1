@@ -1,0 +1,28 @@
+import type { ActionKind } from '../core/types.ts';
+const A:ActionKind[]=['respond','explore','verify','rest','reflect','wait','defer'];
+const clamp=(x:number,a=0,b=1)=>Math.max(a,Math.min(b,Number.isFinite(x)?x:(a+b)/2));
+const dist=(a:number[],b:number[])=>Math.sqrt(a.reduce((s,x,i)=>s+Math.pow((x??0)-(b[i]??0),2),0)/Math.max(1,Math.max(a.length,b.length)));
+export interface B2524Prototype{ id:number; context:number[]; action:ActionKind; reward01:number; predictionError01:number; count:number; success01:number; lastTick:number; }
+export interface B2524State{version:1;enabled:boolean;tick:number;writes:number;queries:number;hits:number;prototypes:B2524Prototype[];maxPrototypes:number;meanDistance01:number;predictionConfidence01:number;novelty01:number;lastContext:number[];actionBias:Record<ActionKind,number>;learningGain01:number;lesionFraction01:number;}
+export const defaultB2524State=():B2524State=>({version:1,enabled:true,tick:0,writes:0,queries:0,hits:0,prototypes:[],maxPrototypes:256,meanDistance01:.5,lastContext:new Array(32).fill(.5),predictionConfidence01:.25,novelty01:.5,actionBias:Object.fromEntries(A.map(a=>[a,0])) as Record<ActionKind,number>,learningGain01:0,lesionFraction01:0});
+export class B2524NonparametricWorldExperienceMemory{
+ private state=defaultB2524State(); readonly systemName='cognition:b2524-nonparametric-world-experience-memory' as const;
+ snapshot(){return structuredClone(this.state)}
+ restore(raw?:Partial<B2524State>|null){const d=defaultB2524State(),r:any=raw??{};this.state={...d,...structuredClone(r),prototypes:Array.isArray(r.prototypes)?structuredClone(r.prototypes):[],lastContext:Array.isArray(r.lastContext)?r.lastContext.slice(0,32):d.lastContext,actionBias:{...d.actionBias,...(r.actionBias??{})},version:1};}
+ setEnabled(v:boolean){this.state.enabled=!!v} setLesion(v:number){this.state.lesionFraction01=clamp(v)}
+ beforeDecision(i:{tick:number;context:number[];baseUtilities:Record<ActionKind,number>;uncertainty01:number;novelty01:number;computeBudget01:number}){
+  this.state.tick=i.tick;const zero=Object.fromEntries(A.map(a=>[a,0])) as Record<ActionKind,number>;if(!this.state.enabled)return {actionBias:zero,predictionConfidence01:this.state.predictionConfidence01,novelty01:this.state.novelty01,nearestDistance01:this.state.meanDistance01,hits:0};
+  this.state.queries++; this.state.lastContext=i.context.slice(0,32); const ranked=this.state.prototypes.map(p=>({p,d:dist(i.context,p.context)})).sort((x,y)=>x.d-y.d).slice(0,8); const radius=.28+.32*i.uncertainty01; const weights=ranked.map(x=>Math.exp(-x.d/(.10+.20*i.uncertainty01))*(x.d<=radius?1:.18));
+  const nearest=ranked[0]?.d??1; this.state.meanDistance01=clamp(this.state.meanDistance01*.9+clamp(nearest)*.1); this.state.novelty01=clamp(this.state.novelty01*.9+clamp(nearest)*.1); if(ranked.length&&nearest<radius)this.state.hits++;
+  const bias=zero; for(const a of A){const rows=ranked.filter(x=>x.p.action===a); if(!rows.length)continue; const ws=rows.map((x,idx)=>weights[ranked.indexOf(x)]??Math.exp(-x.d/.2)); const denom=ws.reduce((s,x)=>s+x,0)||1; const q=rows.reduce((s,x,j)=>s+ws[j]!*(x.p.reward01-.5),0)/denom; const uncertainty=1-Math.min(1,rows.reduce((s,x,j)=>s+ws[j]!*(1/(1+x.p.count)),0)/denom); bias[a]=clamp(q*.42*(.35+.65*i.computeBudget01)*(1-.55*this.state.lesionFraction01),-.12,.12); if(a==='explore'||a==='verify')bias[a]+=clamp((i.novelty01*.018+uncertainty*.012),0,.035);}
+  const localConf=ranked.length?clamp(1-nearest)*(0.35+0.65*Math.min(1,ranked.length/4)):0;this.state.predictionConfidence01=clamp(this.state.predictionConfidence01*.93+localConf*.07);this.state.actionBias=bias;return {actionBias:{...bias},predictionConfidence01:this.state.predictionConfidence01,novelty01:this.state.novelty01,nearestDistance01:this.state.meanDistance01,hits:ranked.length};
+ }
+ afterOutcome(i:{tick:number;context:number[];action:ActionKind;reward01:number;predictionError01:number}){
+  if(!this.state.enabled)return; const candidates=this.state.prototypes.filter(p=>p.action===i.action).map(p=>({p,d:dist(i.context,p.context)})).sort((a,b)=>a.d-b.d); const nearest=candidates[0]; const merge=.28/(1+(nearest?.p.count??0)*.035);
+  if(nearest&&nearest.d<.18){const p=nearest.p;p.reward01=clamp(p.reward01*(1-merge)+i.reward01*merge);p.predictionError01=clamp(p.predictionError01*(1-merge)+i.predictionError01*merge);p.success01=clamp(p.success01*(1-merge)+(i.reward01>=.5?1:0)*merge);p.count++;p.lastTick=i.tick;this.state.learningGain01=clamp(this.state.learningGain01*.97+(1/(1+p.count))*.03);}
+  else {this.state.prototypes.push({id:(this.state.prototypes.at(-1)?.id??0)+1,context:i.context.slice(0,32),action:i.action,reward01:clamp(i.reward01),predictionError01:clamp(i.predictionError01),count:1,success01:i.reward01>=.5?1:0,lastTick:i.tick}); if(this.state.prototypes.length>this.state.maxPrototypes)this.state.prototypes.splice(0,this.state.prototypes.length-this.state.maxPrototypes);this.state.learningGain01=clamp(this.state.learningGain01*.97+.03);}
+  this.state.writes++;this.state.tick=i.tick;
+ }
+ diagnostics(){return structuredClone(this.state)}
+ lesion(f=.5){const base={tick:this.state.tick+1,context:new Array(32).fill(.5),baseUtilities:Object.fromEntries(A.map(a=>[a,.5])) as Record<ActionKind,number>,uncertainty01:.7,novelty01:.7,computeBudget01:.9};this.setLesion(0);const on=this.beforeDecision(base).actionBias;this.setLesion(f);const off=this.beforeDecision({...base,tick:base.tick+1}).actionBias;this.setLesion(0);const effect=A.reduce((s,a)=>s+Math.abs(on[a]-off[a]),0);return {causalDrop01:clamp(effect*3),effect01:clamp(effect)};}
+}

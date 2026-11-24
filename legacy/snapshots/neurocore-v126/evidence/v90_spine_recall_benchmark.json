@@ -1,0 +1,12 @@
+[
+  {"name":"v82_baseline","seed":0,"train_steps":240,"train_seconds":2.386054110999794,"final_loss":0.6023445129394531,"eval_cosine":0.3845743238925934,"eval_top1":0.2135416716337204,"active_slots":null,"router_entropy":null},
+  {"name":"v90_routed_preconditioned","seed":0,"train_steps":240,"train_seconds":3.2365449250000893,"final_loss":0.6011279821395874,"eval_cosine":0.38532665371894836,"eval_top1":0.1666666716337204,"active_slots":3.0,"router_entropy":1.970040202140808},
+  {"name":"v82_baseline","seed":1,"train_steps":240,"train_seconds":2.4031175539998912,"final_loss":0.571456789970398,"eval_cosine":0.41522860527038574,"eval_top1":0.2317708283662796,"active_slots":null,"router_entropy":null},
+  {"name":"v90_routed_preconditioned","seed":1,"train_steps":240,"train_seconds":3.3877686699997867,"final_loss":0.4490947127342224,"eval_cosine":0.5876006484031677,"eval_top1":0.5494791865348816,"active_slots":3.0,"router_entropy":1.9102247953414917},
+  {"name":"v82_baseline","seed":2,"train_steps":240,"train_seconds":2.4289257579998775,"final_loss":0.6141387224197388,"eval_cosine":0.376248836517334,"eval_top1":0.171875,"active_slots":null,"router_entropy":null},
+  {"name":"v90_routed_preconditioned","seed":2,"train_steps":240,"train_seconds":3.229441929999666,"final_loss":0.5639946460723877,"eval_cosine":0.4413210153579712,"eval_top1":0.2994791567325592,"active_slots":3.0,"router_entropy":1.982525110244751},
+  {"name":"v82_baseline","seed":3,"train_steps":240,"train_seconds":2.571688568999889,"final_loss":0.6459967494010925,"eval_cosine":0.3506774604320526,"eval_top1":0.1328125,"active_slots":null,"router_entropy":null},
+  {"name":"v90_routed_preconditioned","seed":3,"train_steps":240,"train_seconds":3.266968542000086,"final_loss":0.5702027678489685,"eval_cosine":0.40821340680122375,"eval_top1":0.25,"active_slots":3.0,"router_entropy":1.853564977645874},
+  {"name":"v82_baseline","seed":4,"train_steps":240,"train_seconds":2.415156658000342,"final_loss":0.6351711750030518,"eval_cosine":0.40888896584510803,"eval_top1":0.2291666716337204,"active_slots":null,"router_entropy":null},
+  {"name":"v90_routed_preconditioned","seed":4,"train_steps":240,"train_seconds":3.254447146000075,"final_loss":0.5506768226623535,"eval_cosine":0.5023509860038757,"eval_top1":0.3619791567325592,"active_slots":3.0,"router_entropy":1.5341004133224487}
+]

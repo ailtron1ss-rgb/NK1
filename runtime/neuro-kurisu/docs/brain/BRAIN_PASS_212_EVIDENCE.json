@@ -1,0 +1,65 @@
+{
+  "pass": "BIG_PASS_212_CORTICAL_MICROCIRCUIT",
+  "base": "Neuro-Kurisu 35.6.1 B211",
+  "status": "IMPLEMENTED_VERIFIED",
+  "implementation": {
+    "primary": "src/organism/system/CorticalHierarchyEngine.ts",
+    "test": "tests/big-pass-212-cortical-microcircuit.mjs",
+    "atlas": "src/organism/system/ArtificialBrainAtlas.ts"
+  },
+  "causal_ablation": {
+    "microcircuit_disabled": true,
+    "gainDiff01": 0.4824240060117676,
+    "disabledMicrocircuitGainIsIdentity": true
+  },
+  "sparsity": {
+    "winner01": 0.8028799999999999,
+    "loser01": 0.18,
+    "spread01": 0.6228799999999999
+  },
+  "stability": {
+    "calm01": 0.9204727487418208,
+    "unstable01": 0.9197346275887766,
+    "calmBrake01": 0.07954579283137357,
+    "unstableBrake01": 0.08069030872075171
+  },
+  "state": {
+    "microcircuitCycles": 4,
+    "restore": "PASS"
+  },
+  "release": {
+    "b211Regression": "PASS",
+    "b212Targeted": "PASS",
+    "typecheck": "PASS",
+    "functionPassportGate": "PASS",
+    "architecture": "PASS",
+    "integrity": "PASS",
+    "hygiene": "PASS",
+    "syntax": "PASS",
+    "contract": "PASS",
+    "forensics": "PASS",
+    "releaseSource": "PASS",
+    "archiveManifest": "PASS"
+  },
+  "functionReality": {
+    "total": 2745,
+    "VERIFIED": 14,
+    "INTEGRATION_ONLY": 27,
+    "UNSAFE_TO_AUTO_RUN": 129,
+    "UNVERIFIED": 2575
+  },
+  "research": [
+    {
+      "title": "Exploiting neuro-inspired dynamic sparsity for energy-efficient intelligent perception",
+      "url": "https://www.nature.com/articles/s41467-025-65387-7"
+    },
+    {
+      "title": "Feature selective inhibitory mechanisms enable expectation suppression in cortical microcircuits",
+      "url": "https://www.nature.com/articles/s41598-025-28227-8"
+    },
+    {
+      "title": "Ex vivo cortical circuits learn to predict and spontaneously replay temporal patterns",
+      "url": "https://www.nature.com/articles/s41467-025-58013-z"
+    }
+  ]
+}

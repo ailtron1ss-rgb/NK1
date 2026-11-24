@@ -1,0 +1,3 @@
+import { OrganismCore } from '../src/organism/core/OrganismCore.ts'; import { MemoryStateStore } from '../src/organism/persistence/MemoryStateStore.ts';
+const c=new OrganismCore(new MemoryStateStore(),{performanceProfile:'mobile',cycleResultMode:'operational',checkpointMinIntervalMs:60000}); await c.init(); const o={embodiment:{bodyEnergy01:.8,thermalStrain01:.18,cognitiveCapacity01:.82,sensoryFreshness01:.86,awake:true,battery01:.8,cpuLoad01:.22,ramPressure01:.2}};
+for(let i=0;i<1000;i++) await c.observeOperational(o); console.log(JSON.stringify(c.p54Summary?c.p54Summary():{})); console.log(JSON.stringify(c.p49TemporalLife?.summary?.()??'no'));

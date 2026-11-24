@@ -1,0 +1,189 @@
+{
+  "release": "V121",
+  "engine_version": "v121-foundations",
+  "package_version": "1.21.0",
+  "schema_version": 20,
+  "quality_gates": {
+    "current_tests": "63 passed",
+    "compileall": true,
+    "verify_current": true,
+    "checkpoint_roundtrip": "108/108",
+    "legacy_imports": 0,
+    "duplicate_state_keys": 0,
+    "recurrent_owner_count": 1,
+    "gradient_element_coverage": 1.0
+  },
+  "architecture": {
+    "total_parameters": 69137,
+    "trainable_parameters": 69137,
+    "upstream_catalog_count": 53
+  },
+  "benchmarks": {
+    "version": 121,
+    "adaptive_compute": {
+      "batch": 16.0,
+      "selected_rows": 4.0,
+      "selected_fraction": 0.25
+    },
+    "adaptive_wall_clock": {
+      "batch": 64.0,
+      "repeats": 10.0,
+      "dense_seconds": 0.03896187200007262,
+      "adaptive_seconds": 0.05533882600002471,
+      "adaptive_over_dense": 1.420332832054927,
+      "expected_deep_fraction": 0.25
+    },
+    "decay_controller_baseline": {
+      "token_decay": false,
+      "delays": {
+        "8": [
+          {
+            "mean": 0.9650000929832458,
+            "min": 0.9649999737739563,
+            "max": 0.9649999737739563
+          }
+        ],
+        "32": [
+          {
+            "mean": 0.9650000929832458,
+            "min": 0.9649999737739563,
+            "max": 0.9649999737739563
+          }
+        ],
+        "64": [
+          {
+            "mean": 0.9650000929832458,
+            "min": 0.9649999737739563,
+            "max": 0.9649999737739563
+          }
+        ],
+        "128": [
+          {
+            "mean": 0.9650000929832458,
+            "min": 0.9649999737739563,
+            "max": 0.9649999737739563
+          }
+        ]
+      }
+    },
+    "decay_controller_token": {
+      "token_decay": true,
+      "delays": {
+        "8": [
+          {
+            "mean": 0.9634490013122559,
+            "min": 0.9590482711791992,
+            "max": 0.9713042378425598
+          }
+        ],
+        "32": [
+          {
+            "mean": 0.9634490013122559,
+            "min": 0.9590482711791992,
+            "max": 0.9713042378425598
+          }
+        ],
+        "64": [
+          {
+            "mean": 0.9634490013122559,
+            "min": 0.9590482711791992,
+            "max": 0.9713042378425598
+          }
+        ],
+        "128": [
+          {
+            "mean": 0.9634490013122559,
+            "min": 0.9590482711791992,
+            "max": 0.9713042378425598
+          }
+        ]
+      }
+    },
+    "train_baseline": {
+      "initial_loss": 2.8504629135131836,
+      "final_loss": 2.442176342010498,
+      "seconds": 4.343239440999923
+    },
+    "train_token_decay": {
+      "initial_loss": 2.8783535957336426,
+      "final_loss": 2.455275058746338,
+      "seconds": 4.5877449429999615
+    }
+  },
+  "multi_seed_short_training": [
+    {
+      "seed": 0,
+      "initial_loss": 2.8787474632263184,
+      "final_loss": 2.669224500656128,
+      "relative_drop": 0.07278268248489235
+    },
+    {
+      "seed": 1,
+      "initial_loss": 2.9050803184509277,
+      "final_loss": 2.668811082839966,
+      "relative_drop": 0.08132967412651347
+    },
+    {
+      "seed": 2,
+      "initial_loss": 2.878314256668091,
+      "final_loss": 2.630337953567505,
+      "relative_drop": 0.08615331092708443
+    }
+  ],
+  "delayed_credit_failure_gate": {
+    "single": {
+      "32": {
+        "cosine": 1.00000003973643,
+        "amplitude": 5.798243517648417e-07,
+        "relative_mse": 0.9999988873800115
+      },
+      "128": {
+        "cosine": 7.811018677564632e-14,
+        "amplitude": 7.81642898180252e-22,
+        "relative_mse": 1.0
+      }
+    },
+    "hippo": {
+      "32": {
+        "cosine": 1.0000000794728596,
+        "amplitude": 0.17450044402481044,
+        "relative_mse": 0.681449525298696
+      },
+      "128": {
+        "cosine": 1.0,
+        "amplitude": 6.658996316038022e-05,
+        "relative_mse": 0.9998668233606599
+      }
+    },
+    "hybrid": {
+      "32": {
+        "cosine": 1.0000000596046448,
+        "amplitude": 0.08730414434878316,
+        "relative_mse": 0.8330137001270614
+      },
+      "128": {
+        "cosine": 1.0000000596046448,
+        "amplitude": 0.00037298905240101804,
+        "relative_mse": 0.9992541472413544
+      }
+    },
+    "adaptive_hybrid": {
+      "32": {
+        "cosine": 1.0000000794728596,
+        "amplitude": 0.026384337398098676,
+        "relative_mse": 0.9479274571765536
+      },
+      "128": {
+        "cosine": 1.0000000596046448,
+        "amplitude": 0.000587468435242147,
+        "relative_mse": 0.9988253713120964
+      }
+    }
+  },
+  "promotion_decisions": {
+    "adaptive_compute": "implemented/functional; resource promotion pending hardware-aware policy",
+    "event_bank_routing_key": "implemented/functional",
+    "mamba3_heavy_tail_activation": "candidate/functional",
+    "input_dependent_channel_decay": "candidate/not_promoted"
+  }
+}

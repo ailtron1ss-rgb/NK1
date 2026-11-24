@@ -1,0 +1,9 @@
+[
+  {"id":"worldevolver","title":"Self-Evolving World Models for LLM Agent Planning","arxiv":"2606.30639","date":"2026-06-29","url":"https://arxiv.org/abs/2606.30639"},
+  {"id":"selfmem","title":"SelfMem: Self-Optimizing Memory for AI Agents","arxiv":"2607.03726","date":"2026-07-04","url":"https://arxiv.org/abs/2607.03726"},
+  {"id":"memory-value","title":"Learning What to Remember: A Cognitively Grounded Multi-Factor Value Model for Agentic Memory","arxiv":"2606.12945","date":"2026-06-11","url":"https://arxiv.org/abs/2606.12945"},
+  {"id":"pilot-loop","title":"PILOT in the Loop: Live Self-Improvement for Long-Horizon Agents","arxiv":"2608.26530","date":"2026-08-31","url":"https://arxiv.org/abs/2608.26530"},
+  {"id":"memwm","title":"MemWM: Memory-Augmented Text-Based World Model","arxiv":"2608.07107","date":"2026-08-07","url":"https://arxiv.org/abs/2608.07107"},
+  {"id":"break-it-down","title":"Break It Down, Pass It On: Cross-Task Skill Transfer in LLM Agents","arxiv":"2608.20274","date":"2026-08-20","url":"https://arxiv.org/abs/2608.20274"},
+  {"id":"continual-wm","title":"Continual Reinforcement Learning by Planning with Online World Models","arxiv":"2507.09177","date":"2025-07-12","url":"https://arxiv.org/abs/2507.09177"}
+]

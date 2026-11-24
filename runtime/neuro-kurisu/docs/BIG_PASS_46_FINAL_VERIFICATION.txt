@@ -1,0 +1,65 @@
+NEURO-KURISU BIG PASS 46 FINAL VERIFICATION
+Release: 34.16.0
+State schema: 89
+Date: 2026-09-05
+
+CORE GATES
+TYPECHECK=PASS
+AUDIT_FULL=PASS files=583 canonical=191
+CLEAN_ARCHITECTURE=PASS sourceFiles=447 canonicalFiles=191 missing=0 cycles=0 legacyLeakage=0
+FORENSICS=PASS activeFiles=587 empty=0 duplicateContent=0 duplicateNames=0 pathMarkers=0 staleMarkers=0
+SOURCE_HYGIENE=PASS files=587 errors=0 warnings=0
+SOURCE_TRUTH=PASS
+RELEASE_CONTRACT=PASS
+RELEASE_SOURCE=PASS
+LOCKFILE=PASS
+SUBJECT_BOUNDARY=PASS
+API_ROUTES=90 duplicates=0
+
+FUNCTIONAL GATES
+BIG_PASS_46_MULTI_PROJECT_MODELS=PASS
+BIG_PASS_45_ARCHITECTURE_PERFORMANCE=PASS first=13.15ms last=17.14ms ratio=1.303
+P64_P65_INTEGRATION=PASS
+P67_PROJECT_EVIDENCE=PASS validated=16 replicated=8
+CLEAN_ORGANISM_SMOKE=PASS
+CLEAN_RESTART_PERSISTENCE=PASS
+MEMORY_DEDUP=PASS
+IDENTITY_LOCK=PASS
+REPLAY=PASS
+CONCURRENCY=PASS
+OPERATIONAL_HARDENING=PASS
+SERVER_SMOKE=PASS
+PERSISTENCE_PROJECTION=PASS
+PROJECTION_EFFICIENCY=PASS reduction=64.6%
+
+LONG-HORIZON
+LONG_HORIZON_OPERATIONAL_250=PASS warmedMedianRatio=1.504 firstMedianMs=18.76 lastMedianMs=28.21 p95ApproxMs=30.15 heapGrowth=2.243
+LONG_HORIZON_OPERATIONAL_500=PASS ratio=4.686 firstMs=7.66 lastMs=35.91 p95=36.51 heapFirstMB=26.80 heapLastMB=90.39
+LONG_HORIZON_OPERATIONAL_1000=PASS ratio=2.231 firstWarmMs=18.00 lastMs=40.16 p95=43.56 heapFirstMB=48.31 heapLastMB=79.59 memory=224
+
+BIG PASS CHECKLIST
+87/87 = 100%
+
+FIRST AUDIT STRICT WEIGHTED IMPLEMENTATION
+approx 88%
+
+ROADMAP FOLLOW-THROUGH
+approx 99% actionable items available in the current host environment
+
+UNRESOLVED / NOT CLAIMED COMPLETE
+- 1000-cycle natural repeat campaign
+- 24h/72h/7d/30d physical-device endurance
+- native Android final lifecycle host
+- real semantic vision backend
+- device ASR/TTS validation
+- real external tool ecosystem
+- learned world-model tournament
+- independent Shadow Organism
+- advanced social cognition benchmark
+- independent consciousness evaluation
+
+COMPOSITE AUDIT NOTE
+`audit:all` may exceed the aggregate execution window during its long server-smoke series even though the server-smoke gate itself passes separately. This is treated as a harness-duration issue, not as a blanket PASS.
+
+ARCHIVE
+Archive manifest is regenerated after all release files. Final archive must be checked with unzip -t after packaging.

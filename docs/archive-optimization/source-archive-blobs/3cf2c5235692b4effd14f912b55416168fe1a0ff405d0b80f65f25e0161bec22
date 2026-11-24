@@ -1,0 +1,167 @@
+import type { ActionKind } from '../core/types.ts';
+
+const clamp = (x:number) => Math.max(0, Math.min(1, Number.isFinite(x) ? x : 0));
+export type P40Task='language'|'reasoning'|'vision'|'audio'|'planning'|'local-fallback';
+
+export interface P40ModelProfile {
+  id:string;
+  kind:string;
+  tasks:P40Task[];
+  quality01:number;
+  latency01:number;
+  cost01:number;
+  reliability01:number;
+  continuity01:number;
+  contextWindow:number;
+  local:boolean;
+  available:boolean;
+  configured:boolean;
+  cooldownUntil:number;
+  consecutiveFailures:number;
+  lastSuccessAt:number;
+  lastFailureAt:number;
+  samples:number;
+  failures:number;
+}
+
+export interface P40ModelEcologyState {
+  version:1;
+  current:string;
+  profiles:P40ModelProfile[];
+  decisions:Array<{
+    task:P40Task;
+    selected:string;
+    alternatives:string[];
+    score01:number;
+    reason:string;
+    at:number;
+  }>;
+  metrics:{switches:number;failures:number;decisions:number;avgScore01:number};
+}
+
+const profile = (
+  p:Partial<P40ModelProfile> & Pick<P40ModelProfile,'id'|'kind'|'tasks'|'local'>,
+):P40ModelProfile => ({
+  quality01:.5,
+  latency01:.5,
+  cost01:p.local ? .12 : .7,
+  reliability01:.5,
+  continuity01:1,
+  contextWindow:p.local ? 4096 : 8192,
+  available:true,
+  configured:true,
+  cooldownUntil:0,
+  consecutiveFailures:0,
+  lastSuccessAt:0,
+  lastFailureAt:0,
+  samples:0,
+  failures:0,
+  ...p,
+});
+
+export const defaultP40ModelEcology = ():P40ModelEcologyState => ({
+  version:1,
+  current:'local-fallback',
+  profiles:[
+    profile({id:'local-fallback',kind:'deterministic',tasks:['language','reasoning','planning','local-fallback'],local:true,quality01:.42,latency01:.12,reliability01:.92}),
+    profile({id:'kobold',kind:'local-llm',tasks:['language','reasoning','planning'],local:true,quality01:.72,latency01:.68,cost01:.18,reliability01:.62}),
+    profile({id:'gemini',kind:'cloud-llm',tasks:['language','reasoning','planning','vision','audio'],local:false,quality01:.88,latency01:.52,cost01:.64,reliability01:.78}),
+  ],
+  decisions:[],
+  metrics:{switches:0,failures:0,decisions:0,avgScore01:0},
+});
+
+export interface P40SelectInput {
+  task:P40Task;
+  urgency01:number;
+  resourceRisk01:number;
+  desiredQuality01:number;
+  allowCloud:boolean;
+  preferredBackend?:string;
+}
+
+export class P40ModelEcologyEngine {
+  private state = defaultP40ModelEcology();
+
+  restore(raw?:Partial<P40ModelEcologyState>|null){
+    const d = defaultP40ModelEcology();
+    const r = raw ?? {};
+    this.state = {
+      ...d,
+      ...r,
+      profiles:Array.isArray(r.profiles) ? r.profiles.slice(0,16).map(x => {
+        const base=d.profiles.find(p=>p.id===x.id) ?? profile({id:String(x.id??'unknown'),kind:String(x.kind??'unknown'),tasks:Array.isArray(x.tasks)?x.tasks:[],local:Boolean(x.local)});
+        return {...base,...x,configured:x.configured ?? x.available ?? base.configured,cooldownUntil:Number(x.cooldownUntil??0),consecutiveFailures:Number(x.consecutiveFailures??0),lastSuccessAt:Number(x.lastSuccessAt??0),lastFailureAt:Number(x.lastFailureAt??0)};
+      }) : d.profiles,
+      decisions:Array.isArray(r.decisions) ? r.decisions.slice(-128) : [],
+      metrics:{...d.metrics,...(r.metrics??{})},
+    };
+  }
+
+  snapshot(){return structuredClone(this.state);}
+
+  select(input:P40SelectInput){
+    const at = Date.now();
+    const eligible = this.state.profiles.filter(
+      p => p.configured && p.available && p.cooldownUntil <= at && p.tasks.includes(input.task) && (input.allowCloud || p.local),
+    );
+    const scored = eligible.map(p => {
+      const qualityFit = 1 - Math.abs(p.quality01-input.desiredQuality01);
+      const resource = .45
+        + (1-input.resourceRisk01)*.25
+        + (1-p.cost01)*.12
+        + (1-p.latency01)*input.urgency01*.18;
+      const score = clamp(
+        qualityFit*.4
+        + p.reliability01*.25
+        + resource*.2
+        + p.continuity01*.1
+        + (p.local ? .05 : 0),
+      );
+      return {p,score};
+    }).sort((a,b) => b.score-a.score);
+    const selected = scored[0]?.p;
+    if(selected && this.state.current !== selected.id) this.state.metrics.switches++;
+    this.state.current = selected?.id ?? 'local-fallback';
+    this.state.metrics.decisions++;
+    this.state.metrics.avgScore01 = clamp(this.state.metrics.avgScore01*.97 + (scored[0]?.score ?? 0)*.03);
+    this.state.decisions.unshift({
+      task:input.task,
+      selected:this.state.current,
+      alternatives:scored.slice(1,4).map(x => x.p.id),
+      score01:scored[0]?.score ?? 0,
+      reason:`qualityFit/resource/reliability;cloud=${input.allowCloud}`,
+      at:Date.now(),
+    });
+    this.state.decisions = this.state.decisions.slice(0,128);
+    return this.state.current;
+  }
+
+  configure(id:string,configured:boolean){
+    const p=this.state.profiles.find(x=>x.id===id);
+    if(!p) return null;
+    p.configured=Boolean(configured);
+    if(!p.configured) p.available=false;
+    else if(p.cooldownUntil<=Date.now()) p.available=true;
+    return {...p};
+  }
+  observe(backend:string,success:boolean,latency01:number,quality01?:number){
+    const p = this.state.profiles.find(x => x.id === backend);
+    if(!p) return;
+    const at=Date.now();
+    p.samples++;
+    p.latency01 = clamp(p.latency01*.85 + clamp(latency01)*.15);
+    if(quality01 != null) p.quality01 = clamp(p.quality01*.9 + clamp(quality01)*.1);
+    p.reliability01 = clamp(p.reliability01*.95 + (success ? 1 : 0)*.05);
+    if(success){
+      p.consecutiveFailures=0; p.lastSuccessAt=at; p.cooldownUntil=0; p.available=p.configured;
+    } else {
+      p.failures++; p.consecutiveFailures++; p.lastFailureAt=at; this.state.metrics.failures++;
+      if(p.id!=='local-fallback' && p.consecutiveFailures>=2){
+        const seconds=Math.min(300,30*Math.pow(2,Math.min(3,p.consecutiveFailures-2)));
+        p.cooldownUntil=at+seconds*1000; p.available=false;
+      }
+    }
+  }
+  profile(id:string){return this.state.profiles.find(p => p.id === id) ?? null;}
+}

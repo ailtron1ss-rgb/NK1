@@ -1,0 +1,81 @@
+{
+  "pairs": [
+    [
+      "sum3",
+      "xor3"
+    ],
+    [
+      "xor3",
+      "sum3"
+    ],
+    [
+      "mul2",
+      "sum3"
+    ]
+  ],
+  "rows": [
+    {
+      "candidates_tested": 8,
+      "future_hidden_gain": 0.625,
+      "future_hidden_score": 1.0,
+      "holdout_gain": 0.75,
+      "learned_operator_ranking": [
+        "replace_opcode"
+      ],
+      "seed": 8901,
+      "source_family": "sum3",
+      "source_train_score": 1.0,
+      "target_broken_train_score": 0.4375,
+      "target_family": "xor3",
+      "target_holdout_score": 1.0,
+      "train_gain": 0.5625,
+      "transferred_train_score": 1.0
+    },
+    {
+      "candidates_tested": 8,
+      "future_hidden_gain": 0.625,
+      "future_hidden_score": 1.0,
+      "holdout_gain": 0.75,
+      "learned_operator_ranking": [
+        "replace_opcode"
+      ],
+      "seed": 8901,
+      "source_family": "xor3",
+      "source_train_score": 1.0,
+      "target_broken_train_score": 0.4375,
+      "target_family": "sum3",
+      "target_holdout_score": 1.0,
+      "train_gain": 0.5625,
+      "transferred_train_score": 1.0
+    },
+    {
+      "candidates_tested": 8,
+      "future_hidden_gain": 0.625,
+      "future_hidden_score": 1.0,
+      "holdout_gain": 0.75,
+      "learned_operator_ranking": [
+        "replace_opcode"
+      ],
+      "seed": 8901,
+      "source_family": "mul2",
+      "source_train_score": 1.0,
+      "target_broken_train_score": 0.4375,
+      "target_family": "sum3",
+      "target_holdout_score": 1.0,
+      "train_gain": 0.5625,
+      "transferred_train_score": 1.0
+    }
+  ],
+  "seeds": [
+    8901
+  ],
+  "selection_protocol": "source_train_operator_learning_then_target_train_selection_then_hidden_holdout_then_future_holdout",
+  "summary": {
+    "mean_future_hidden_gain": 0.625,
+    "mean_holdout_gain": 0.75,
+    "mean_train_gain": 0.5625,
+    "positive_future_fraction": 1.0,
+    "positive_holdout_fraction": 1.0
+  },
+  "version": "capability-transfer-evaluator-v2"
+}

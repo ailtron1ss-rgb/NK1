@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';
+import { migratePersistedOrganism } from '../src/organism/persistence/StateMigrations.ts';
+const raw={schemaVersion:127,state:{tick:305},system:{criticalPathVerificationB305:{version:1,cycles:19,neuralUpdateCycles:17,causalBridgeCycles:14,personalityUpdateCycles:16,policyShiftCycles:12,verifiedOutcomeCycles:8,persistenceChecks:8,holdoutNovelCycles:5,edgeIntegrity01:.71,lastActionBiasMagnitude01:-.22,records:[{tick:19,action:'respond',neuralUpdate:true,causalBridge:true,personalityUpdate:true,policyShift:true,verifiedOutcome:true,autonomousOutcome:false,persisted:true,holdoutNovel:true,neuralLearningUpdates:19,synapticUpdates:2964,personalityLearningUpdates:19,verifiedUpdates:8,actionBiasMagnitude01:-.22}]}}};
+const out=migratePersistedOrganism(raw);
+assert.equal(out.schemaVersion,127);
+assert.equal(out.system.criticalPathVerificationB305.cycles,19,'B305 cycles lost');
+assert.equal(out.system.criticalPathVerificationB305.verifiedOutcomeCycles,8,'B305 verified count lost');
+assert.equal(out.system.criticalPathVerificationB305.lastActionBiasMagnitude01,-.22,'B305 signed bias was altered');
+assert.deepEqual(out.system.criticalPathVerificationB305.records[0].holdoutNovel,true,'B305 record lost');
+console.log(JSON.stringify({pass:true,schemaVersion:out.schemaVersion,cycles:out.system.criticalPathVerificationB305.cycles,verified:out.system.criticalPathVerificationB305.verifiedOutcomeCycles,negativeBiasPreserved:out.system.criticalPathVerificationB305.lastActionBiasMagnitude01},null,2));
+process.exit(0);

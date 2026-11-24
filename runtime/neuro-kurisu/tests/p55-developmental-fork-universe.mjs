@@ -1,0 +1,12 @@
+import assert from 'node:assert/strict';
+import { P55DevelopmentalForkUniverse } from '../src/organism/developmental/P55DevelopmentalForkUniverse.ts';
+const u=new P55DevelopmentalForkUniverse();
+const profile={exploration:.5,verification:.5,reflection:.5,attention:.5,prediction:.5};
+const forks=u.generate({at:1,tick:24,identity01:.92,predictionError01:.35,selfPredictionError01:.3,grounding01:.8,agency01:.72,novelty01:.55,activeProfile:profile,reason:'test'});
+assert.equal(forks.length,4);
+const result=u.simulate({tick:24,predictionError01:.35,selfPredictionError01:.3,grounding01:.8,agency01:.72,identity01:.92,novelty01:.55,uncertainty01:.42,worldAlignment01:.78});
+assert.equal(result.length,4);
+assert.ok(u.snapshot().branchDiversity01>0);
+const rec=u.recommendation();
+if(rec) assert.ok(rec.identity01>=.86 && rec.risk01<.24);
+console.log('P55 developmental fork universe: PASS');

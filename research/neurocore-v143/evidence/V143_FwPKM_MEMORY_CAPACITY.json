@@ -1,0 +1,31 @@
+{
+  "seeds": [
+    {
+      "seed": 0,
+      "mean_recall": 0.9537677858024836,
+      "min_recall": 0.8182724714279175,
+      "revision_new_cos": 0.9553464651107788,
+      "revision_old_cos": 0.32544949650764465,
+      "unique_after_distractor": 125.0
+    },
+    {
+      "seed": 1,
+      "mean_recall": 0.9693282078951597,
+      "min_recall": 0.7429152131080627,
+      "revision_new_cos": 0.9542351365089417,
+      "revision_old_cos": 0.1501070111989975,
+      "unique_after_distractor": 125.0
+    },
+    {
+      "seed": 2,
+      "mean_recall": 0.9653639886528254,
+      "min_recall": 0.8368455171585083,
+      "revision_new_cos": 0.9553652405738831,
+      "revision_old_cos": 0.3260056674480438,
+      "unique_after_distractor": 126.0
+    }
+  ],
+  "mean_recall": 0.9628199941168228,
+  "revision_new_cos_mean": 0.9549822807312012,
+  "revision_old_cos_mean": 0.26718739171822864
+}

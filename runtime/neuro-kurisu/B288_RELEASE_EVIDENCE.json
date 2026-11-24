@@ -1,0 +1,72 @@
+{
+  "release": "35.6.1",
+  "pass": true,
+  "passId": "B288",
+  "date": "2026-09-12",
+  "canonicalOwner": "B288SocialPredictiveSelfOtherBrain",
+  "functional": {
+    "standalone": {
+      "steps": 320,
+      "learningUpdates": 320,
+      "persons": 2,
+      "relationshipDifferentiation01": 0.31389196191083757,
+      "actionInfluence01": 0.054517425966564566,
+      "neuralActivity01": 0.08201585476525163,
+      "inhibitoryBalance01": 0.5055501848,
+      "respondBiasRange": 0.022694811232425206,
+      "snapshotRestore": true
+    },
+    "hiddenSocial": {
+      "steps": 240,
+      "learningUpdates": 240,
+      "relationshipDifferentiation01": 0.31389196191083757,
+      "respondBiasA": -0.0002815233275272021,
+      "respondBiasB": -0.01997740949683049,
+      "respondBiasC": 0.002717401735594713,
+      "biasRange": 0.022694811232425206
+    },
+    "core": {
+      "steps": 16,
+      "learningUpdates": 16,
+      "persons": 1,
+      "neuralActivity01": 0.005364486243039393,
+      "inhibitoryBalance01": 0.5008615781600737,
+      "actionBias": 0.0026766707723464077,
+      "lesion": 0.0002620520538636801,
+      "restart": true
+    },
+    "migration": {
+      "bytes": 114121,
+      "persons": 2,
+      "pass": true
+    },
+    "consolidation": {
+      "coverage01": 1,
+      "deduplicatedSources": 9,
+      "legacyConflict01": 0.15725,
+      "restore": true
+    }
+  },
+  "staticGates": {
+    "typecheck": true,
+    "fullAudit": true,
+    "architecture": true,
+    "integrity": true,
+    "forensics": true,
+    "hygiene": true,
+    "syntax": true,
+    "contract": true,
+    "lockfile": true,
+    "releaseSource": true,
+    "doctor": true,
+    "brainAudit": true,
+    "archiveManifest": true,
+    "archiveVerification": true
+  },
+  "limitations": [
+    "direct social-to-action effect remains modest in single-person Core smoke",
+    "legacy social modules remain compatibility sources until retirement proof",
+    "neural model is computationally neural-like rather than biophysical",
+    "no consciousness claim"
+  ]
+}

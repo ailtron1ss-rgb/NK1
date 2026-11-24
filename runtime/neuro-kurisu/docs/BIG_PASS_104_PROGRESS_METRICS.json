@@ -1,0 +1,42 @@
+{
+  "version": "34.78.0",
+  "stateSchema": 113,
+  "bigPass": 104,
+  "focus": "evidence-gated retention and transfer",
+  "metrics01to100": {
+    "replayInstrumentation": 99,
+    "goalConditionedReplay": 92,
+    "causalIntegration": 97,
+    "unifiedLearningIntegration": 97,
+    "retentionValidation": 94,
+    "forgettingCurve": 63,
+    "crossTaskTransfer": 88,
+    "negativeTransferInterference": 86,
+    "pairedExperimentRigour": 96,
+    "skillMemoryCoupling": 58,
+    "epistemicProvenance": 99,
+    "canonicalMemorySafety": 97,
+    "mobileEfficiency": 95,
+    "migration": 100,
+    "regressionCoverage": 96,
+    "engineeringReadiness": 86,
+    "empiricalReplayEvidence": 41,
+    "consciousnessMechanism": 20,
+    "consciousnessEvidence": 0
+  },
+  "planCompletion": {
+    "previousPassRecommendations": 91,
+    "pass104Scope": 94,
+    "documentationAndReleaseIntegrity": 98
+  },
+  "verification": {
+    "typecheck": "PASS",
+    "pass103Regression": "PASS",
+    "pass104Functional": "PASS",
+    "migration112to113": "PASS",
+    "evidenceGatingAudit": "PASS",
+    "mobileHorizon1000": "PASS",
+    "operationalHorizon500": "PASS",
+    "operationalHorizon1000": "NOT_CONFIRMED_TIMEOUT"
+  }
+}

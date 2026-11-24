@@ -1,0 +1,17 @@
+import assert from 'node:assert/strict';
+import { OrganismCore } from '../src/organism/core/OrganismCore.ts';
+import { MemoryStateStore } from '../src/organism/persistence/MemoryStateStore.ts';
+const config={performanceProfile:'mobile',cycleResultMode:'operational',checkpointMinIntervalMs:0,predictivePlanningHorizon:5,spineOnly:true};
+const body={bodyEnergy01:.78,cognitiveCapacity01:.78,thermalStrain01:.18,battery01:.82,cpuLoad01:.18,ramPressure01:.2,awake:true};
+const base=new OrganismCore(new MemoryStateStore(),config); await base.init();
+for(let t=0;t<12;t++) await base.observe({novelty:(t%5)/10,uncertainty:(t%3)/6,embodiment:body,reward:t%3===0?.74:.36},'operational');
+const snap=base.snapshot();
+const on=new OrganismCore(new MemoryStateStore({initial:snap}),config); await on.init();
+const lesionSnap=structuredClone(snap); for(const s of lesionSnap.system.unifiedNeuroCausalCoreB365.synapses) s.active=false;
+const lesion=new OrganismCore(new MemoryStateStore({initial:lesionSnap}),config); await lesion.init();
+const a=await on.observe({novelty:.41,uncertainty:.35,embodiment:body},'operational');
+const l=await lesion.observe({novelty:.41,uncertainty:.35,embodiment:body},'operational');
+const actions=['respond','explore','verify','rest','reflect','wait','defer'];
+const l1=actions.reduce((sum,x)=>sum+Math.abs((a.decision.candidates.find(c=>c.action===x)?.score??0)-(l.decision.candidates.find(c=>c.action===x)?.score??0)),0);
+assert.ok(l1>.001,`lesion shift too small: ${l1}`);
+console.log(`P2836_NEURAL_ABLATION_FAST=PASS scoreL1=${l1.toFixed(6)}`);

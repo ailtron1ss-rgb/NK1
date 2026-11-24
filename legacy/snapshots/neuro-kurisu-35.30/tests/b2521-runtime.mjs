@@ -1,0 +1,10 @@
+import assert from 'node:assert/strict';
+import { OrganismRuntime } from '../src/organism/core/OrganismRuntime.ts';
+import { MemoryStateStore } from '../src/organism/persistence/MemoryStateStore.ts';
+const runtime=new OrganismRuntime({stateFile:'/tmp/nk-b2521-runtime.json',stateStore:new MemoryStateStore(),enableLanguage:false,autoRun:false,intervalMs:30000,cycleResultMode:'full',performanceProfile:'mobile'});
+await runtime.init();
+for(let i=0;i<10;i++) await runtime.autonomousStep({novelty:.2+.06*(i%4),uncertainty:.4+.04*(i%3),reward:i%2?.78:.38,embodiment:{bodyEnergy01:.72,cognitiveCapacity01:.81,thermalStrain01:.16,sensoryFreshness01:.84,awake:true,battery01:.76,cpuLoad01:.22,ramPressure01:.20}});
+const d=runtime.core.b2521LearnedGenerativeOrganismLoopDiagnostics();
+assert(d.cycles>0); assert(d.learningUpdates>0); assert(d.rollouts>0); assert(d.transitions>0); assert(d.generativeAccuracy01>=0); assert(d.counterfactualUse01>=0);
+runtime.stop();
+console.log('B2521_RUNTIME_PASS',JSON.stringify({cycles:d.cycles,rollouts:d.rollouts,learningUpdates:d.learningUpdates,transitions:d.transitions,accuracy:d.generativeAccuracy01,coverage:d.modelCoverage01,counterfactualUse:d.counterfactualUse01}));
