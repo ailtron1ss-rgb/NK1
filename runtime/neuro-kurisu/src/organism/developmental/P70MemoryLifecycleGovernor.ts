@@ -18,7 +18,9 @@ export class P70MemoryLifecycleGovernor {
    const requestedCapacity=Number.isSafeInteger(input.canonicalCapacity)?Number(input.canonicalCapacity):1600;
    const canonicalCapacity=Math.max(128,Math.min(10_000,Math.floor(requestedCapacity)));
    const baseMemoryBudget=stressed ? Math.max(320,Math.min(460,280+hotCount*4+identityTension*40)) : Math.min(640,440+hotCount*3+Math.min(80,warmCount*.4));
-   const memoryBudget=Math.max(128,Math.min(canonicalCapacity,Math.round(baseMemoryBudget*(canonicalCapacity/1600))));
+   // Preserve the legacy absolute eviction reserve while allowing an explicitly larger canonical store.
+   const legacyEvictionReserve=Math.max(0,1600-baseMemoryBudget);
+   const memoryBudget=Math.max(128,Math.min(canonicalCapacity,canonicalCapacity-legacyEvictionReserve));
    const semanticBudget=stressed ? Math.max(900,Math.min(1200,860+hotCount*2+identityTension*35)) : Math.min(1500,1320+Math.min(100,coldCount*.1));
    const budgets={traces:stressed?160:260,events:stressed?256:512,goals:12,memories:Math.floor(memoryBudget),semanticItems:Math.floor(semanticBudget)};
    const action: P70State['lastAction']=stressed?'trim':(input.tick%96===0?'compact':'idle');
