@@ -33,6 +33,8 @@ export interface CanonicalMemoryLifecycleInput {
   experienceWarmCount?:number;
   experienceColdCount?:number;
   identityTension01?:number;
+  canonicalCapacity?:number;
+  byteBudget?:number;
 }
 
 export interface CanonicalMemoryLifecycleState {
@@ -119,6 +121,7 @@ export class CanonicalMemoryLifecycleAuthority {
       tick:input.tick,
       pressure01:pressure,
       maxItems:plan.budgets.memories,
+      byteBudget:input.byteBudget,
       hotBudget:plan.budgets.memories>=520?64:48,
       warmBudget:plan.budgets.memories>=520?256:192,
       coldBudget:Math.max(256,Math.min(960,plan.budgets.memories)),
@@ -143,7 +146,7 @@ export class CanonicalMemoryLifecycleAuthority {
     return decisions;
   }
 
-  maintainCanonical(input:{tick:number;pressure01?:number;maxItems?:number;hotBudget?:number;warmBudget?:number;coldBudget?:number;identityTension01?:number}){
+  maintainCanonical(input:{tick:number;pressure01?:number;maxItems?:number;hotBudget?:number;warmBudget?:number;coldBudget?:number;identityTension01?:number;byteBudget?:number}){
     const result=this.fabric.maintain(input);
     this.state.maintenanceRuns+=result.skipped?0:1;
     this.state.lastTick=input.tick;

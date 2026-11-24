@@ -1,4 +1,5 @@
 import { actionCost } from './ActionCostPolicy.ts';
+import { resolveCanonicalMaintenanceItemLimit } from '../developmental/P75MemoryContinuumOS.ts';
 import type { LearningFitnessJournalSink } from '../learning/LearningFitnessJournal.ts';
 import type { LearningLifecycleJournalSink } from '../learning/LearningLifecycleJournal.ts';
 import { sha256Stable } from './StableSerialization.ts';
@@ -14,7 +15,7 @@ import { normalizeEvidenceLineageProvenance } from '../memory/EvidenceLineagePro
 import { redactHmxExportValue } from '../integration/hexis/HmxImportRedactor.ts';
 import { defaultLettaGovernanceAdaptationState, type LettaGovernanceAdaptationState, type SourceBranchState, type ArtifactReviewRecord, type TelemetryPolicyState } from '../integration/letta/LettaGovernanceAdaptationFabric.ts';
 import { ConscioAdaptationFabric, defaultConscioAdaptationState, type ConscioAdaptationState, type ConscioSourceState } from '../integration/conscio/ConscioAdaptationFabric.ts';
-import type { ActionKind, OrganismDecisionTrace, IntentCandidate, OrganismCycleResult, OrganismGoal, OrganismObservation, OrganismState, LearningProvenance, OrganismNeeds, EmbodimentFacet, WorkspaceFrame, ConsolidatedMemory, PredictedActionOutcome, WorldTransitionForOrganism, } from './types.ts';
+import type { ActionKind, DecisionMemoryEvidenceReceipt, OrganismDecisionTrace, IntentCandidate, OrganismCycleResult, OrganismGoal, OrganismObservation, OrganismState, LearningProvenance, OrganismNeeds, EmbodimentFacet, WorkspaceFrame, ConsolidatedMemory, PredictedActionOutcome, WorldTransitionForOrganism, } from './types.ts';
 import { FileStateStore, type JsonStateStore } from '../persistence/FileStateStore.ts';
 import { FileActionExecutionLedgerArchive } from '../persistence/FileActionExecutionLedgerArchive.ts';
 import { RecoveryWatchdog, type RecoveryWatchdogState } from '../persistence/RecoveryWatchdog.ts';
@@ -2991,6 +2992,7 @@ export class OrganismCore {
         // stageMessage may reject an unsafe message while still changing it to deferred;
         // persist the resulting state even when no message is staged for delivery.
         this.persisted.system.autonomousSocialInitiative = this.organismSystems.agency.autonomousSocialInitiative.snapshot();
+        this.markPersistenceDirty();
         return staged;
     }
     pendingAutonomousSocialInitiativeMessage() {
@@ -2998,13 +3000,28 @@ export class OrganismCore {
     }
     acknowledgeAutonomousSocialInitiative(id: string, at = Date.now()) {
         const acknowledged = this.organismSystems.agency.autonomousSocialInitiative.acknowledge(id, at);
-        if (acknowledged) this.persisted.system.autonomousSocialInitiative = this.organismSystems.agency.autonomousSocialInitiative.snapshot();
+        if (acknowledged) {
+            this.persisted.system.autonomousSocialInitiative = this.organismSystems.agency.autonomousSocialInitiative.snapshot();
+            this.markPersistenceDirty();
+        }
         return acknowledged;
     }
     deferAutonomousSocialInitiative(id: string, at = Date.now()) {
         const deferred = this.organismSystems.agency.autonomousSocialInitiative.defer(id, at);
-        if (deferred) this.persisted.system.autonomousSocialInitiative = this.organismSystems.agency.autonomousSocialInitiative.snapshot();
+        if (deferred) {
+            this.persisted.system.autonomousSocialInitiative = this.organismSystems.agency.autonomousSocialInitiative.snapshot();
+            this.markPersistenceDirty();
+        }
         return deferred;
+    }
+    /** Cancel a pending proactive message. Cancellation is terminal and survives restart. */
+    cancelAutonomousSocialInitiative(id: string, at = Date.now()) {
+        const cancelled = this.organismSystems.agency.autonomousSocialInitiative.cancel(id, at);
+        if (cancelled) {
+            this.persisted.system.autonomousSocialInitiative = this.organismSystems.agency.autonomousSocialInitiative.snapshot();
+            this.markPersistenceDirty();
+        }
+        return cancelled;
     }
     /** Offline A/B benchmark against an isolated MemoryOS2 clone; never trains or mutates live memory. */
     memoryRetrievalBenchmark(examples: MemoryRetrievalBenchmarkExample[], options: MemoryRetrievalBenchmarkOptions = {}) {
@@ -3684,7 +3701,7 @@ export class OrganismCore {
             const question = this.cognitiveRuntime.contradictions.open(1)[0]?.claim ?? 'unresolved question from recent experience';
             this.cognitiveRuntime.lifelong.dream(question, this.persisted.facets.embodiment.body.awake ? 'micro' : 'deep', this.persisted.facets.memory.lastRetrievedMemoryIds, budget);
             const beforeMemoryDormant = this.memorySubsystem.memoryOS.statsLight().dormant;
-            this.memorySubsystem.memoryLifecycleAuthority.maintainCanonical({ tick: this.persisted.state.tick, pressure01: .72, maxItems: 1480 });
+            this.memorySubsystem.memoryLifecycleAuthority.maintainCanonical({ tick: this.persisted.state.tick, pressure01: .72, maxItems: Math.max(128, Math.floor(this.memorySubsystem.memoryItemCap * .925)), byteBudget: this.memorySubsystem.memoryByteBudget });
             this.persisted.facets.advanced.memoryLifecycleAuthority = this.memorySubsystem.memoryLifecycleAuthority.snapshot();
             const afterMemoryDormant = this.memorySubsystem.memoryOS.statsLight().dormant;
             this.cognitiveRuntime.lifelong.markMemoryMaintenance(Math.max(0, afterMemoryDormant - beforeMemoryDormant), 0, this.memorySubsystem.memoryOS.statsLight().reconsolidations);
@@ -3757,6 +3774,7 @@ export class OrganismCore {
             await this.feedbackSpineOnly(observation);
         }
         const state = this.persisted.state;
+        const externalRequest = Boolean(observation.text || observation.externalGoal);
         const previous: OrganismState = { ...state, needs: { ...state.needs } };
         const at = now();
         state.at = at;
@@ -4130,7 +4148,7 @@ export class OrganismCore {
             tick: state.tick, energy01: state.needs.energy, thermal01: thermal, capacity01: body?.cognitiveCapacity01 ?? (1 - state.needs.cognitiveLoad),
             identity01: this.persisted.facets.consciousness.identityContinuity.continuity, realityGap01: 0,
             uncertainty01: state.needs.uncertainty, novelty01: state.needs.novelty, socialNeed01: state.needs.socialNeed, attention01: state.attentionBudget,
-            homeostaticPressure01: clamp((1 - state.needs.energy) * .45 + state.needs.cognitiveLoad * .35 + thermal * .20), candidates, requestedAction: userRequestedAction, userPresent: Boolean(observation.text), upstreamMode: 'spine-only',
+            homeostaticPressure01: clamp((1 - state.needs.energy) * .45 + state.needs.cognitiveLoad * .35 + thermal * .20), candidates, requestedAction: userRequestedAction, userPresent: externalRequest, upstreamMode: 'spine-only',
         });
         // Distributional policy: B299 remains a policy writer, so selection is a deterministic
         // softmax sample rather than a pure argmax. The seed is the organism tick, making the
@@ -4198,13 +4216,19 @@ export class OrganismCore {
                 b391IntegratedConfidence01: clamp(b391Decision.integratedConfidence01),
                 worldCalibrationUsed01: selected && this.organismSystems.world.worldCausalCalibration.calibratedConfidence(selected.action, selected.confidence, worldContextKey) !== selected.confidence ? 1 : 0,
             },
-            userRequestedAction: userRequestedAction ?? null, autonomousOverride: !Boolean(observation.text), predictedOutcomes, worldContextKey,
+            userRequestedAction: userRequestedAction ?? null, autonomousOverride: !externalRequest, predictedOutcomes, worldContextKey,
         };
         decision.semanticEvidence = buildDecisionSemanticEvidence({ stateBefore: previous, candidates, selected, worldContextKey });
         this.persisted.traces = [decision, ...this.persisted.traces].slice(0, 64);
-        if (observation.reward !== undefined || observation.success !== undefined) {
-            decision.outcome = { success: clamp(observation.success ?? (observation.reward == null ? .5 : .5 + observation.reward * .5)), reward: observation.reward, surprise: observation.surprise, notes: 'spine-only-inline-feedback', at: Date.now() };
-        }
+        this.selfSubsystem.selfAuthorship.observeDecision({
+            decisionId: decision.id,
+            action: selected?.action ?? 'wait',
+            autonomous: !externalRequest,
+            externalRequest,
+            goalTitle: active?.title,
+            reason: active?.reason ?? 'spine-only-cycle',
+        });
+        this.persisted.facets.learning.selfAuthorship = this.selfSubsystem.selfAuthorship.snapshot();
         const workspace: WorkspaceFrame = { tick: state.tick, broadcastId: `spine:${state.tick}`, selected: selected ? [selected.action] : [], content: { mode: 'SPINE_ONLY', b299LearningUpdates: this.developmentalNeural.causalPersonalityDevelopmentB299.snapshot().learningUpdates, b269Cycles: b269Snapshot.cycles, b269Prediction01: b269Prediction01, b269FiringRate01: b269Frame.firingRate01, b269Plasticity01: b269Frame.plasticity01 }, recurrentCycles: 1 };
         this.markPersistenceDirty();
         const checkpointCadence = Math.max(64, Math.floor(Number(this.config.checkpointMaxDirtyCycles || 64)));
@@ -4232,6 +4256,17 @@ export class OrganismCore {
         state.needs.uncertainty = clamp(state.needs.uncertainty * .82 + surprise * .18);
         const reward01 = clamp(outcome.reward ?? success);
         const verified = Boolean(outcome.worldTransition) || Boolean(outcome.evidenceSource && ['os', 'device', 'user', 'external-api'].includes(String(outcome.evidenceSource).toLowerCase()));
+        const authorshipGoalTitle = trace.selected.goalId
+            ? this.persisted.goals.find(goal => goal.id === trace.selected?.goalId)?.title ?? null
+            : null;
+        this.selfSubsystem.selfAuthorship.observeOutcome({
+            decisionId: trace.id,
+            executed: verified,
+            success,
+            surprise,
+            selectedGoal: authorshipGoalTitle,
+        });
+        this.persisted.facets.learning.selfAuthorship = this.selfSubsystem.selfAuthorship.snapshot();
         const b269AfterPrediction = this.developmentalNeural.spikingPlasticNeuralB269.snapshot().lastPrediction01;
         const neuralPredictionError = clamp(Math.abs(reward01 - b269AfterPrediction));
         const b269Learning = this.developmentalNeural.spikingPlasticNeuralB269.learnFromOutcome({ reward01, predictionError01: neuralPredictionError, tick: state.tick, action: trace.selected.action });
@@ -5282,11 +5317,13 @@ export class OrganismCore {
             delta01: number;
             memoryEvidence: any;
         } | null = null;
+        let memoryWorldCausalLinkId: string | null = null;
         if (advancedRetrieved.length && this.config.enableWorldModel) {
             const meanConfidence = advancedRetrieved.reduce((s, m) => s + Number(m.confidence ?? 0), 0) / advancedRetrieved.length;
             const meanSalience = advancedRetrieved.reduce((s, m) => s + Number(m.salience ?? 0), 0) / advancedRetrieved.length;
             memoryWorldApplication = this.worldSubsystem.applyMemoryEvidence({ memoryIds: advancedRetrieved.map(m => m.id), query: memoryQuery, confidence01: meanConfidence, salience01: meanSalience, at: state.at });
             const link = this.organismSystems.memory.memoryWorldCausalBridge.record({ tick: state.tick, at: state.at, memoryIds: advancedRetrieved.map(m => m.id), query: memoryQuery, predictionWithoutMemory01: memoryWorldApplication.predictionWithoutMemory01, predictionWithMemory01: memoryWorldApplication.predictionWithMemory01, replayDelta01: memoryWorldApplication.delta01, provenance: memoryWorldApplication.provenanceId });
+            memoryWorldCausalLinkId = link.id;
             this.persisted.system.memoryWorldCausalBridge = this.organismSystems.memory.memoryWorldCausalBridge.snapshot();
             this.memorySubsystem.events.append(makeEvent('memory-world-causal-link', state.tick, { linkId: link.id, status: link.status, memoryIds: link.memoryIds, delta01: link.delta01, influence01: link.influence01, provenance: link.provenance } as any));
         }
@@ -5518,6 +5555,7 @@ export class OrganismCore {
         });
         const b273Lifecycle = this.developmentalNeural.autonomousGoalLifecycleB273.step({
             tick: state.tick,
+            autonomousAllowed: canonicalGoalAdmission.admitted,
             endogenousGoalVector: canonicalGoalVector,
             selfLatent: b270PostGerminalState.selfLatent,
             worldLatent: p27Latent.vector,
@@ -5610,7 +5648,7 @@ export class OrganismCore {
             interoceptiveError01: clamp(1 - (observation.embodiment?.cognitiveCapacity01 ?? 0.8)),
             uncertainty01: n.uncertainty,
             novelty01: n.novelty,
-            memoryPressure01: clamp(this.memorySubsystem.memoryOS.size() / 1600),
+            memoryPressure01: clamp(this.memorySubsystem.memoryOS.size() / this.memorySubsystem.memoryItemCap),
             developmentalReadiness01: clamp(0.4 + p54Summary.stability01 * 0.35 + (1 - p54Summary.currentError01) * 0.25),
             realityGap01: clamp(p57RealitySummary.meanRealityGap01),
         });
@@ -6974,7 +7012,7 @@ export class OrganismCore {
             perception: [...p42Central, semanticP41?.scene?.confidence01 ?? 0, p37Sensor.crossModalAgreement01 ?? 0, nativeP41.metrics.audioActivity01 ?? 0, nativeP41.metrics.visionChange01 ?? 0, socialNeuralFrame.higherOrderBelief01, socialNeuralFrame.predictionError01, socialNeuralFrame.confidence01],
             world: [...p27Central, normalizedObservation.worldContext?.uncertainty ?? n.uncertainty, p51Summary.groundingQuality01, p50Summary.selfWorldAlignment01, this.worldSubsystem.worldModelAgreement()],
             self: [p80Central.continuity01, p80Central.coherence01, p80Central.agency01, p80Central.realityAlignment01, identityContinuity.continuity, 1 - identityContinuity.drift, p31MetricsNow.agencyBinding01, n.identityCoherence],
-            memory: [...centralBrainMemoryFeatures, clamp(memorySizeNow / 1600), p59HealthNow, ...hippocampalFeatures],
+            memory: [...centralBrainMemoryFeatures, clamp(memorySizeNow / this.memorySubsystem.memoryItemCap), p59HealthNow, ...hippocampalFeatures],
             attention: [this.persisted.facets.memory.attention.confidence ?? 0.5, n.cognitiveLoad, fieldNow.attentionDebt01 ?? 0, n.novelty],
             body: [n.energy, observation.embodiment?.thermalStrain01 ?? .2, observation.embodiment?.cognitiveCapacity01 ?? (1 - n.cognitiveLoad), observation.embodiment?.awake === false ? 0 : 1],
             motivation: [n.goalPressure, n.socialNeed, n.uncertainty, n.novelty],
@@ -7014,7 +7052,7 @@ export class OrganismCore {
             metacognitive01: clamp(this.persisted.facets.consciousness.metacognition.metacognitiveAccuracy * .55 + metacognitiveNeuralFrame.predictionCalibration01 * .45), predictionError01: state.predictionError, uncertainty01: n.uncertainty, novelty01: n.novelty,
             grounding01: p51Summary.groundingQuality01, causal01: p50Summary.selfWorldAlignment01,
             bodyEnergy01: n.energy, thermal01: observation.embodiment?.thermalStrain01 ?? .2, cognitiveCapacity01: observation.embodiment?.cognitiveCapacity01 ?? (1 - n.cognitiveLoad),
-            memoryPressure01: clamp(memorySizeNow / 1600), socialNeed01: n.socialNeed, goalPressure01: n.goalPressure, realityGap01: p57RealitySummary.meanRealityGap01
+            memoryPressure01: clamp(memorySizeNow / this.memorySubsystem.memoryItemCap), socialNeed01: n.socialNeed, goalPressure01: n.goalPressure, realityGap01: p57RealitySummary.meanRealityGap01
         });
         const identityDecision = this.selfSubsystem.p60IdentityGuardian.evaluate({
             continuity01: identityContinuity.continuity, drift01: identityContinuity.drift,
@@ -7039,7 +7077,7 @@ export class OrganismCore {
             p58: { mode: p58Frame.mode, stability01: p58Frame.stability01, integrated01: p58Frame.integrated01, realityGap01: p58Frame.realityGap01 },
             p59: { mode: p59Plan.mode, priority01: p59Plan.priority01, retentionBias01: p59Plan.retentionBias01 }, p60: identityDecision,
             predictionError01: state.predictionError, uncertainty01: n.uncertainty, novelty01: n.novelty, identity01: identityContinuity.continuity,
-            bodyEnergy01: n.energy, thermal01: observation.embodiment?.thermalStrain01 ?? .2, memoryPressure01: clamp(memorySizeNow / 1600), realityGap01: p57RealitySummary.meanRealityGap01,
+            bodyEnergy01: n.energy, thermal01: observation.embodiment?.thermalStrain01 ?? .2, memoryPressure01: clamp(memorySizeNow / this.memorySubsystem.memoryItemCap), realityGap01: p57RealitySummary.meanRealityGap01,
         });
         const integrationSignals = {
             identity01: identityContinuity.continuity,
@@ -7048,7 +7086,7 @@ export class OrganismCore {
             predictionError01: state.predictionError, uncertainty01: n.uncertainty, novelty01: n.novelty,
             grounding01: p51Summary.groundingQuality01, causal01: p50Summary.selfWorldAlignment01,
             bodyEnergy01: n.energy, thermal01: observation.embodiment?.thermalStrain01 ?? .2, cognitiveCapacity01: observation.embodiment?.cognitiveCapacity01 ?? (1 - n.cognitiveLoad),
-            memoryPressure01: clamp(memorySizeNow / 1600), socialNeed01: n.socialNeed, goalPressure01: effectiveGoalPressure, realityGap01: p57RealitySummary.meanRealityGap01,
+            memoryPressure01: clamp(memorySizeNow / this.memorySubsystem.memoryItemCap), socialNeed01: n.socialNeed, goalPressure01: effectiveGoalPressure, realityGap01: p57RealitySummary.meanRealityGap01,
             memoryHealth01: p59HealthNow, agency01: p31MetricsNow.agencyBinding01,
             externalInput: Boolean(observation.text), identityDecision, p58Mode: p58Frame.mode, p58Stability01: p58Frame.stability01,
             p63Mode: p63Plan.mode, p63Priority01: p63Plan.priority01, retrievalQuality01: p62Frame.retrievalQuality01,
@@ -7090,7 +7128,8 @@ export class OrganismCore {
         const experienceBeforeTick = this.memorySubsystem.experienceContinuum.summary();
         const p75Plan = this.memorySubsystem.p75MemoryContinuumOS.plan({
             tick: state.tick,
-            pressure01: clamp((memorySizeNow / 1600) * .5 + n.cognitiveLoad * .25 + p66Homeostasis.pressure01 * .25),
+            pressure01: clamp((memorySizeNow / this.memorySubsystem.memoryItemCap) * .5 + n.cognitiveLoad * .25 + p66Homeostasis.pressure01 * .25),
+            canonicalCapacity: this.memorySubsystem.memoryItemCap,
             recentEpisodes: this.persisted.traces.length,
             semanticNodes: this.persisted.facets.memory.semanticGraph.nodes.length,
             activeGoals: this.persisted.goals.filter(g => g.status === 'active').length,
@@ -7302,14 +7341,14 @@ export class OrganismCore {
                 causal: 0, neural: 0, kernel: 0, resource: 0, policy: canonicalPolicySignal,
             });
         }
-        const p82Progress = this.organismSystems.research.p82RealityProgress.observe({ tick: state.tick, capability01: this.governanceSubsystem.p73CapabilityLedger.summary().currentCapability01, complexity01: clamp((this.persisted.traces.length / 320) * .3 + (this.persisted.facets.memory.eventLog.length / 768) * .25 + (memorySizeNow / 1600) * .25 + (1 - p80Self.coherence01) * .2), externalEvidence: Boolean(observation.success != null || observation.reward != null), identity01: p76Identity.continuity01, continuity01: identityContinuity.continuity });
+        const p82Progress = this.organismSystems.research.p82RealityProgress.observe({ tick: state.tick, capability01: this.governanceSubsystem.p73CapabilityLedger.summary().currentCapability01, complexity01: clamp((this.persisted.traces.length / 320) * .3 + (this.persisted.facets.memory.eventLog.length / 768) * .25 + (memorySizeNow / this.memorySubsystem.memoryItemCap) * .25 + (1 - p80Self.coherence01) * .2), externalEvidence: Boolean(observation.success != null || observation.reward != null), identity01: p76Identity.continuity01, continuity01: identityContinuity.continuity });
         const p74Frame = this.organismSystems.self.p74IntegratedOrganismKernel.evaluate({
             tick: state.tick, at: state.at, identity01: p76Identity.continuity01, identityDrift01: p76Identity.drift01,
             grounding01: p51Summary.groundingQuality01, causal01: p50Summary.selfWorldAlignment01,
             predictionAccuracy01: 1 - state.predictionError, uncertainty01: n.uncertainty, novelty01: n.novelty, socialNeed01: n.socialNeed,
             goalPressure01: effectiveGoalPressure, energy01: n.energy, thermal01: observation.embodiment?.thermalStrain01 ?? .2,
             cognitiveCapacity01: observation.embodiment?.cognitiveCapacity01 ?? (1 - n.cognitiveLoad),
-            memoryHealth01: p59HealthNow, memoryPressure01: clamp(memorySizeNow / 1600),
+            memoryHealth01: p59HealthNow, memoryPressure01: clamp(memorySizeNow / this.memorySubsystem.memoryItemCap),
             homeostaticPressure01: p66Homeostasis.pressure01, workspace01: p61Frame.integration01,
             metacognitive01: clamp(this.persisted.facets.consciousness.metacognition.metacognitiveAccuracy * .55 + metacognitiveNeuralFrame.predictionCalibration01 * .45),
             realityGap01: p57RealitySummaryNow.meanRealityGap01,
@@ -7930,13 +7969,13 @@ export class OrganismCore {
             complexity01: clamp(
                 (this.persisted.traces.length / 320) * .35 +
                 (this.persisted.facets.memory.eventLog.length / 768) * .25 +
-                (memorySizeNow / 1600) * .40,
+                (memorySizeNow / this.memorySubsystem.memoryItemCap) * .40,
             ),
             externalEvidence: Boolean(observation.success != null || observation.reward != null),
             outcome01: observation.success ?? observation.reward ?? null,
         });
         this.organismSystems.research.p77RealityExperimentOS.record(state.tick, { capabilityId: 'organism-outcome', before01: clamp(selectedIntent?.predictedUtility ?? p73Capability.capability01), after01: clamp(observation.success ?? observation.reward ?? 0), evidence: observation.success != null || observation.reward != null ? 'external-outcome' : 'none', context: `mode=${p74Frame.mode};memory=${p75Plan.retrievalFocus};action=${selectedIntent?.action ?? 'none'}` });
-        this.organismSystems.research.p77RealityExperimentOS.noteComplexity(clamp((this.persisted.traces.length / 320) * .25 + (this.persisted.facets.memory.eventLog.length / 768) * .25 + (memorySizeNow / 1600) * .25 + (p74RecentModesNow / 32) * .25));
+        this.organismSystems.research.p77RealityExperimentOS.noteComplexity(clamp((this.persisted.traces.length / 320) * .25 + (this.persisted.facets.memory.eventLog.length / 768) * .25 + (memorySizeNow / this.memorySubsystem.memoryItemCap) * .25 + (p74RecentModesNow / 32) * .25));
         if (!spineOnly && p71Consistency.repairPressure01 > .62 && selectedIntent && !['rest', 'verify', 'reflect'].includes(selectedIntent.action)) {
             const repairCandidate = governedCandidates.find(c => c.action === 'verify') ?? governedCandidates.find(c => c.action === 'reflect') ?? null;
             if (repairCandidate && repairCandidate.score >= selectedIntent.score - .16) {
@@ -8073,7 +8112,7 @@ export class OrganismCore {
         }
         const agencyRecord = this.config.enableAgencyModel ? this.agencySubsystem.deliberation.record({ requestedAction: userRequestedAction, chosenAction: selectedIntent?.action ?? 'wait', externalPressure: observation.text ? 0.62 : 0, intrinsicPressure: activeProject ? activeProjectScore : intrinsicState.overall, reason: activeProject ? `active-self-project:${activeProject.title}` : `intrinsic:${intrinsicState.dominant}`, autonomous: autonomousOverride || !Boolean(observation.text) }) : null;
         const governanceRecord = this.config.enableAgencyModel ? this.governanceSubsystem.selfGovernance.recordDecision({ requestedAction: userRequestedAction, chosenAction: selectedIntent?.action ?? 'wait', autonomous: autonomousOverride || !Boolean(observation.text), internalPressure: internalPressureForAgency, commitmentPressure: governedCandidates.filter(c => c.goalId && goals.some(g => g.id === c.goalId && g.status === 'active')).length / Math.max(1, governedCandidates.length), regretPressure: regretPressureForAgency, reason: activeProject ? `project:${activeProject.title}` : `goal:${active?.title ?? 'none'}` }) : null;
-        this.selfSubsystem.selfAuthorship.observeDecision({ action: selectedIntent?.action ?? 'wait', autonomous: autonomousOverride || !Boolean(observation.text), externalRequest: Boolean(observation.text), goalTitle: active?.title, reason: active?.reason });
+
         this.cognitiveRuntime.futureSelf.resolve(selectedIntent?.action ?? null);
         const futureForecast = this.cognitiveRuntime.futureSelf.forecast(state, goals, governedCandidates[0]?.action ?? selectedIntent?.action ?? 'wait', governedCandidates[0]?.confidence ?? 0.35, 4);
         if (selectedIntent) {
@@ -8314,6 +8353,8 @@ export class OrganismCore {
             userRequestedAction,
             autonomousOverride,
             goalAuthorshipAdmitted: canonicalGoalAdmission.admitted,
+            autonomousGoalId: b273Lifecycle.goalId,
+            autonomousGoalPlan: b273Lifecycle.plan.slice(),
             worldContextKey,
             predictedOutcomes: governedCandidates.slice(0, 7).map(c => {
                 const p = predictions.get(c.action);
@@ -8329,6 +8370,33 @@ export class OrganismCore {
             requestedAction: userRequestedAction,
         });
         decision.semanticEvidence = buildDecisionSemanticEvidence({ stateBefore: previous, candidates: governedCandidates.slice(0, 7), selected: selectedIntent, worldContextKey });
+        const decisionMemoryIds = advancedRetrieved.map(memory => memory.id).slice(0, 8);
+        const decisionMemoryEvidence: DecisionMemoryEvidenceReceipt = {
+            version: 1,
+            receiptId: `memory-query:${state.tick}:${randomUUID()}`,
+            tick: state.tick,
+            queryHash: createHash('sha256').update(memoryQuery).digest('hex'),
+            queryKind: memoryQueryKind,
+            status: !cognitiveExecutionPlan.run.memory ? 'skipped' : decisionMemoryIds.length ? 'retrieved' : 'empty',
+            retrievedMemoryIds: decisionMemoryIds,
+            retrievedCount: decisionMemoryIds.length,
+            appliedToWorldModel: Boolean(memoryWorldApplication?.applied),
+            memoryWorldCausalLinkId,
+            counterfactualDelta01: clamp(memoryWorldApplication?.delta01 ?? 0),
+            counterfactualInfluence01: clamp(memoryWorldApplication?.strength01 ?? 0),
+            influenceBasis: memoryWorldApplication?.applied
+                ? 'internal-counterfactual-world-model'
+                : decisionMemoryIds.length ? 'retrieval-only' : 'not-applied',
+        };
+        decision.memoryEvidence = decisionMemoryEvidence;
+        decision.reasoningSignals.memoryRetrievedCount = decisionMemoryEvidence.retrievedCount;
+        decision.reasoningSignals.memoryWorldApplied01 = decisionMemoryEvidence.appliedToWorldModel ? 1 : 0;
+        decision.reasoningSignals.memoryWorldCounterfactualInfluence01 = decisionMemoryEvidence.counterfactualInfluence01;
+        if (memoryWorldCausalLinkId) {
+            const boundLink = this.organismSystems.memory.memoryWorldCausalBridge.bindDecision(memoryWorldCausalLinkId, decision.id);
+            if (!boundLink) throw new Error('memory-world-causal-decision-link-missing');
+            this.persisted.system.memoryWorldCausalBridge = this.organismSystems.memory.memoryWorldCausalBridge.snapshot();
+        }
         let decisionSafety={authorized:false,reason:'no-action-selected'};
         if (selectedIntent) {
             this.cognitiveRuntime.adaptiveDevelopment.observeDecision(selectedIntent.action, !Boolean(observation.text), state.predictionError, n.novelty, candidates);
@@ -8350,6 +8418,15 @@ export class OrganismCore {
         }
         const previousTrace = this.persisted.traces[0];
         this.persisted.traces.unshift(decision);
+        this.selfSubsystem.selfAuthorship.observeDecision({
+            decisionId: decision.id,
+            action: selectedIntent?.action ?? 'wait',
+            autonomous: autonomousOverride || !Boolean(observation.text || observation.externalGoal),
+            externalRequest: Boolean(observation.text || observation.externalGoal),
+            goalTitle: active?.title,
+            reason: active?.reason,
+        });
+        this.persisted.facets.learning.selfAuthorship = this.selfSubsystem.selfAuthorship.snapshot();
         const receiptDrives={
             epistemic:clamp(state.needs.uncertainty),
             novelty:clamp(state.needs.novelty),
@@ -8501,7 +8578,7 @@ export class OrganismCore {
                 storageCost01: clamp(memItem.content.length / 1800),
                 estimatedBytes: Math.max(128, new TextEncoder().encode(JSON.stringify({ content: memItem.content, context: memItem.context, tags: memItem.tags, links: { s: memItem.semanticLinks, c: memItem.causalLinks, t: memItem.temporalLinks }, confidence: memItem.confidence })).byteLength),
                 memoryBytesUsed: Math.max(0, Number(this.memorySubsystem.memoryOS.residencyDiagnostics().estimatedBytes ?? 0)),
-                memoryByteBudget: Math.max(262144, Math.min(1048576, Math.floor((p75Plan.canonicalBudget || 768) * 720))),
+                memoryByteBudget: this.memorySubsystem.memoryByteBudget,
                 provenanceConfidence01: memoryConfidence,
                 pressure01: p66Homeostasis.pressure01,
             });
@@ -8564,7 +8641,8 @@ export class OrganismCore {
         if (state.tick % 8 === 0)
             this.memorySubsystem.fabric.maintain({
                 tick: state.tick, pressure01: p66Homeostasis.pressure01,
-                maxItems: p66Homeostasis.pressure01 > .92 ? Math.min(720, p75Plan.canonicalBudget) : p66Homeostasis.pressure01 > .78 ? Math.min(960, p75Plan.canonicalBudget) : p75Plan.canonicalBudget,
+                maxItems: resolveCanonicalMaintenanceItemLimit(this.memorySubsystem.memoryItemCap, p66Homeostasis.pressure01, p75Plan.canonicalBudget),
+                byteBudget: this.memorySubsystem.memoryByteBudget,
                 ...(state.tick % 32 === 0 || p66Homeostasis.pressure01 > .82 ? {
                     hotBudget: p75Plan.hotBudget, warmBudget: p75Plan.warmBudget, coldBudget: p75Plan.coldBudget, identityTension01: p75Plan.retrievalFocus === 'identity-critical' ? .78 : experienceBeforeTick.identityGravity.tension01,
                 } : {}),
@@ -8626,6 +8704,7 @@ export class OrganismCore {
         if (resultMode !== 'operational')
             this.syncHotPersistenceProjection();
         const experienceForRetention = this.memorySubsystem.experienceContinuum.summary();
+        // Keep P70 working-set pressure and MemoryFabric byte eviction aligned to the host's canonical capacity profile.
         const memoryLifecycleResult = this.memorySubsystem.memoryLifecycleAuthority.run({
             tick: state.tick,
             at: state.at,
@@ -8637,8 +8716,10 @@ export class OrganismCore {
             workingSet01: clamp(
                 (this.persisted.traces.length / 320) * .25 +
                 (this.persisted.facets.memory.eventLog.length / 768) * .25 +
-                (memorySizeNow / 1600) * .5,
+                (memorySizeNow / this.memorySubsystem.memoryItemCap) * .5,
             ),
+            canonicalCapacity: this.memorySubsystem.memoryItemCap,
+            byteBudget: this.memorySubsystem.memoryByteBudget,
             energy01: n.energy,
             pressure01: clamp(p66Homeostasis.pressure01 + p71Consistency.repairPressure01 * .25),
             experienceHotCount: experienceForRetention.hotCount,
@@ -9368,7 +9449,14 @@ export class OrganismCore {
             if (person?.openCommitments.includes(goalId))
                 this.cognitiveRuntime.socialDevelopment.repairCommitment('user', goalId, 'low-outcome on a shared commitment', 're-evaluate plan and communicate the correction');
         }
-        this.selfSubsystem.selfAuthorship.observeOutcome({ success: gatedSuccess01, surprise: gatedSurprise01, selectedGoal: selectedGoalTitle });
+        this.selfSubsystem.selfAuthorship.observeOutcome({
+            decisionId: trace?.id ?? '',
+            executed: Boolean(outcome.worldTransition) || projectEvidenceExternal,
+            success: gatedSuccess01,
+            surprise: gatedSurprise01,
+            selectedGoal: selectedGoalTitle,
+        });
+        this.persisted.facets.learning.selfAuthorship = this.selfSubsystem.selfAuthorship.snapshot();
         if (trace?.selected) {
             const trajectoryTrust = projectEvidenceExternal ? 1 : outcome.worldTransition ? .78 : .55;
             this.cognitiveRuntime.identityTrajectory.observeOutcome({
@@ -10195,8 +10283,18 @@ export class OrganismCore {
                         acceptedExternalGoal: gatedSuccess01 >= .58 || projectEvidenceExternal,
                     });
                 }
-                const b273Current = this.developmentalNeural.autonomousGoalLifecycleB273.current();
-                const b273Learning = this.developmentalNeural.autonomousGoalLifecycleB273.learnFromOutcome({ tick: state.tick, action: trace.selected.action, plan: b273Current.plan, reward01: gatedReward01, predictionError01: state.predictionError, independentGain01: b272IndependentGain, personalityAlignment01: clamp(.55 + this.cognitiveRuntime.multiHypothesisPersonality.actionBias(trace.selected.action) * 8), externalEvidence01: projectEvidenceExternal ? 1 : 0 });
+                const b273Learning = this.developmentalNeural.autonomousGoalLifecycleB273.learnFromOutcome({
+                    goalId: trace.autonomousGoalId ?? null,
+                    decisionAutonomous: trace.goalAuthorshipAdmitted === true,
+                    tick: state.tick,
+                    action: trace.selected.action,
+                    plan: trace.autonomousGoalPlan ?? [],
+                    reward01: gatedReward01,
+                    predictionError01: state.predictionError,
+                    independentGain01: b272IndependentGain,
+                    personalityAlignment01: clamp(.55 + this.cognitiveRuntime.multiHypothesisPersonality.actionBias(trace.selected.action) * 8),
+                    externalEvidence01: projectEvidenceExternal ? 1 : 0,
+                });
                 if(this.organismSystems.agency.decisionReceipts.recordLearning(trace.tick,{
                     accepted:b273Learning.accepted,gain01:b273Learning.gain01,
                     note:b273Learning.completed?'goal-completed':b273Learning.abandoned?'goal-abandoned':b273Learning.revised?'goal-revised':b273Learning.accepted?'goal-progress-accepted':'goal-progress-rejected',
@@ -10486,11 +10584,12 @@ export class OrganismCore {
                         acceptedExternalGoal: gatedSuccess01 >= .58 || projectEvidenceExternal,
                     });
                 }
-                const b338Lifecycle = this.developmentalNeural.autonomousGoalLifecycleB273.current();
                 this.developmentalNeural.autonomousGoalLifecycleB273.learnFromOutcome({
+                    goalId: trace.autonomousGoalId ?? null,
+                    decisionAutonomous: trace.goalAuthorshipAdmitted === true,
                     tick: state.tick,
                     action: trace.selected.action,
-                    plan: b338Lifecycle.plan,
+                    plan: trace.autonomousGoalPlan ?? [],
                     reward01: gatedReward01,
                     predictionError01: state.predictionError,
                     independentGain01: b338IndependentGain,
@@ -12020,7 +12119,7 @@ export class OrganismCore {
         const replayUpdatesP23 = this.developmentalNeural.p23Learning.replayPending(this.persisted.traces, this.cognitiveRuntime.adaptivePolicy);
         const replayUpdates = replayUpdatesP23;
         const memoryPromotions = this.cognitiveRuntime.longitudinal.consolidateMemory({ items: this.memorySubsystem.memoryOS.snapshot().items.map(i => ({ id: i.id, epistemicStatus: i.epistemicStatus, confidence: i.confidence, source: i.source, entities: i.entities, semanticLinks: i.semanticLinks, predictionError: i.predictionError })) });
-        this.memorySubsystem.memoryLifecycleAuthority.maintainCanonical({ tick: this.persisted.state.tick, pressure01: .5, maxItems: 1600 });
+        this.memorySubsystem.memoryLifecycleAuthority.maintainCanonical({ tick: this.persisted.state.tick, pressure01: .5, maxItems: this.memorySubsystem.memoryItemCap, byteBudget: this.memorySubsystem.memoryByteBudget });
         this.persisted.facets.learning.adaptivePolicy = this.cognitiveRuntime.adaptivePolicy.snapshot();
         this.persisted.facets.learning.p23 = this.developmentalNeural.p23Learning.snapshot();
         this.persisted.facets.cognition.contextualWorld = this.worldSubsystem.contextualWorld.snapshot();
@@ -12789,6 +12888,21 @@ export class OrganismCore {
             this.persisted.facets.embodiment.toolAudit = this.cognitiveRuntime.actionGateway.snapshot();
             return;
         }
+        const settleVerifiedSelfAuthorship = (): void => {
+            if (!decisionLinkedExternalPostcondition || !matchingDecisionTrace ||
+                result.ok !== true || result.verified !== true || result.verification.verified !== true) return;
+            const selectedGoalTitle = matchingDecisionTrace.selected?.goalId
+                ? this.persisted.goals.find(goal => goal.id === matchingDecisionTrace.selected?.goalId)?.title ?? null
+                : null;
+            this.selfSubsystem.selfAuthorship.observeOutcome({
+                decisionId: suppliedDecisionId,
+                executed: true,
+                success: 1,
+                surprise: 0,
+                selectedGoal: selectedGoalTitle,
+            });
+            this.persisted.facets.learning.selfAuthorship = this.selfSubsystem.selfAuthorship.snapshot();
+        };
         // If an earlier terminal outcome was already projected, an authoritative
         // provider receipt is an append-only evidence revision for that same execution.
         // If the first attempt stayed pending because acceptance was ambiguous, there
@@ -12862,6 +12976,7 @@ export class OrganismCore {
             this.persisted.system.causalAccountability = outcomeSnapshot.causal;
             this.persisted.system.cognitiveEventFabric = this.cognitiveRuntime.cognitiveEventFabric.snapshot();
             this.persisted.facets.embodiment.toolAudit = this.cognitiveRuntime.actionGateway.snapshot();
+            settleVerifiedSelfAuthorship();
             return;
         }
         const projected = this.cognitiveRuntime.outcomeCognition.project({ tick: this.persisted.state.tick, tool: id, ok: result.ok, verification: result.verification, reason, inputKeys, predictedAction: this.persisted.state.predictedNextAction, predictionConfidence01: this.persisted.state.lastPredictionConfidence, executionId: result.executionId, outcomeClass: result.outcomeClass });
@@ -12921,6 +13036,7 @@ export class OrganismCore {
         }
         this.persisted.system.cognitiveEventFabric = this.cognitiveRuntime.cognitiveEventFabric.snapshot();
         this.persisted.facets.embodiment.toolAudit = this.cognitiveRuntime.actionGateway.snapshot();
+        settleVerifiedSelfAuthorship();
     }
 
     private async integrateVerifiedToolObservation(

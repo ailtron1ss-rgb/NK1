@@ -136,6 +136,23 @@ export interface DecisionAgencyEvidence {
   };
 }
 
+export interface DecisionMemoryEvidenceReceipt {
+  version: 1;
+  receiptId: string;
+  tick: number;
+  queryHash: string;
+  queryKind: 'observation-text' | 'active-goal-fallback' | 'context-fallback';
+  status: 'skipped' | 'empty' | 'retrieved';
+  retrievedMemoryIds: string[];
+  retrievedCount: number;
+  appliedToWorldModel: boolean;
+  memoryWorldCausalLinkId: string | null;
+  counterfactualDelta01: number;
+  counterfactualInfluence01: number;
+  /** Internal model counterfactual is not independent evidence of an external-world effect. */
+  influenceBasis: 'internal-counterfactual-world-model' | 'retrieval-only' | 'not-applied';
+}
+
 export interface OrganismDecisionTrace {
   id: string;
   tick: number;
@@ -149,12 +166,18 @@ export interface OrganismDecisionTrace {
   worldContextKey?: string;
   /** R19 operation-level semantic proof: hashes + invariant checks for the selected decision. */
   semanticEvidence?: import('../system/DecisionSemanticEvidence.ts').DecisionSemanticEvidence;
+  /** Exact read receipt for memory evidence consumed in this decision's tick. */
+  memoryEvidence?: DecisionMemoryEvidenceReceipt;
   /** WILL-inspired read-only affordance and competition evidence; never a second selector. */
   agencyEvidence?: DecisionAgencyEvidence;
   userRequestedAction: ActionKind | null;
   autonomousOverride: boolean;
   /** Canonical self-agency admission for the endogenous goal authored in this cycle. */
   goalAuthorshipAdmitted?: boolean;
+  /** Exact B273 goal generation that was active when this decision was authored. */
+  autonomousGoalId?: string | null;
+  /** Decision-time B273 plan; feedback must not read a later goal's plan. */
+  autonomousGoalPlan?: ActionKind[];
   predictedOutcomes: PredictedActionOutcome[];
   outcome?: { success:number; reward?:number; surprise?:number; notes?:string; at:number };
 }

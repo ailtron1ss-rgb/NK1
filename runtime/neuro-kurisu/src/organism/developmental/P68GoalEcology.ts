@@ -9,7 +9,7 @@
  */
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
 
-type GoalStatus='candidate'|'active'|'paused'|'completed'|'abandoned';
+type GoalStatus='candidate'|'active'|'paused'|'deferred'|'blocked'|'cancelled'|'completed'|'expired'|'superseded'|'abandoned';
 export interface P68Goal {id:string;title:string;reason:string;source:string;status:GoalStatus;importance:number;urgency:number;confidence:number;progress:number;createdAt:number;updatedAt:number;parentId?:string;}
 export interface P68GoalView {id:string;title:string;status:GoalStatus;vitality01:number;staleness01:number;conflict01:number;progress01:number;}
 export interface P68State {
@@ -59,7 +59,14 @@ export class P68GoalEcology {
   const MAX_GOAL_RECORDS=15;
   if(goals.length>MAX_GOAL_RECORDS){
     const removable=[...goals].filter(g=>g.status!=='active').sort((a,b)=>{
-      const statusRank=(g:GoalStatus)=>g==='abandoned'?0:g==='completed'?1:g==='paused'?2:3;
+      // Terminal records are audit history, not active work. Under the bounded
+      // population budget they are evicted before open candidates or blocked/deferred goals.
+      const statusRank=(g:GoalStatus)=>
+        g==='abandoned'||g==='cancelled'||g==='expired'||g==='superseded'?0:
+        g==='completed'?1:
+        g==='paused'?2:
+        g==='candidate'?3:
+        g==='deferred'||g==='blocked'?4:5;
       return statusRank(a.status)-statusRank(b.status) || a.importance-b.importance || a.updatedAt-b.updatedAt;
     });
     const excess=goals.length-MAX_GOAL_RECORDS;

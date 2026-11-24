@@ -386,6 +386,40 @@ function bm25Score(queryTokens:string[],content:string,docCount:number,documentF
   for(const q of uniqueQ){const f=tf.get(q)||0;if(!f)continue;const df=documentFrequency.get(q)||0;const idf=Math.log(1+(docCount-df+0.5)/(df+0.5));const denom=f+k1*(1-b+b*dl/avgLen);score+=idf*((f*(k1+1))/denom);}
   return Math.max(0,score);
 }
+/** Bounded deterministic top-k selection; avoids sorting high-fanout postings in full. */
+function takeTopBy<T>(values:Iterable<T>,limit:number,compare:(a:T,b:T)=>number):T[]{
+ const cap=Math.max(0,Math.floor(limit));
+ if(cap===0)return [];
+ const heap:T[]=[];
+ const swap=(a:number,b:number)=>{const value=heap[a];heap[a]=heap[b];heap[b]=value;};
+ const siftDown=(start:number)=>{
+  let index=start;
+  while(true){
+   const left=index*2+1,right=left+1;
+   let worst=index;
+   if(left<heap.length&&compare(heap[left],heap[worst])>0)worst=left;
+   if(right<heap.length&&compare(heap[right],heap[worst])>0)worst=right;
+   if(worst===index)return;
+   swap(index,worst);index=worst;
+  }
+ };
+ for(const value of values){
+  if(heap.length<cap){
+   heap.push(value);
+   let index=heap.length-1;
+   while(index>0){
+    const parent=Math.floor((index-1)/2);
+    if(compare(heap[index],heap[parent])<=0)break;
+    swap(index,parent);index=parent;
+   }
+   continue;
+  }
+  // The root is the worst retained row. Replace it only with a strictly
+  // better candidate; the caller's total comparator includes a stable ID tie-break.
+  if(compare(value,heap[0])<0){heap[0]=value;siftDown(0);}
+ }
+ return heap.sort(compare);
+}
 type MemoryEncodeInput=Omit<MemoryItem2,'id'|'createdAt'|'lastAccessAt'|'retrievalCount'|'revisionHistory'|'dormant'|'semanticVector'|'temperature01'|'residencyTier'> & {id?:string};
 export const defaultMemoryOS2=():MemoryOSState2=>({items:[],forgetCount:0,reconsolidations:0,quarantined:0,lastMaintenanceAt:0,semanticQueries:0,semanticHits:0,linkUpdates:0,version:7,implicitConflictCandidates:0,implicitConflictsResolved:0,staleRetrievalsAvoided:0,lastConflictScanAt:0,implicitConflictsDeferred:0,provenanceProtected:0,estimatedBytes:0,byteBudget:524288,budgetEvictions:0,budgetMisses:0,meanEvictionRegret01:0,evictionWitnesses:[],restoreIntegrityFindings:[]});
 const MAX_MEMORY_REVISION_HISTORY=64;
@@ -595,6 +629,7 @@ function normalizeMemoryRevisionGraph(items:MemoryItem2[],onDuplicate?:(id:strin
 type MemoryEstimateShape=Pick<MemoryItem2,'content'|'tags'|'context'|'semanticLinks'|'temporalLinks'|'causalLinks'|'contradictionLinks'|'evidenceSources'|'evidenceLineageKeys'|'revisionIntegrityIssues'> & Partial<Pick<MemoryItem2,'revisionHistory'|'bitemporalHistory'|'recordedFromAt'|'recordedUntilAt'|'freshnessUntilAt'|'temporalKind'|'freshnessHalfLifeMs'>>;
 const estimateMemoryBytes=(m:MemoryEstimateShape)=>Math.max(96,new TextEncoder().encode(JSON.stringify({content:m.content,tags:(m.tags?.length?m.tags:undefined),context:m.context,s:m.semanticLinks,t:m.temporalLinks,c:m.causalLinks,k:m.contradictionLinks,e:m.evidenceSources,ek:m.evidenceLineageKeys,ri:(m.revisionIntegrityIssues?.length?m.revisionIntegrityIssues:undefined),r:normalizeRevisionHistory(m.revisionHistory),bh:m.bitemporalHistory,rf:m.recordedFromAt,ru:m.recordedUntilAt,fu:m.freshnessUntilAt,fh:m.freshnessHalfLifeMs,tk:m.temporalKind})).byteLength);
 const MEMORY_OS2_ITEM_CAP=1600;
+const MEMORY_OS2_MAX_ITEM_CAP=10_000;
 const MEMORY_OS2_RESTORE_SCAN_LIMIT=100_000;
 export class MemoryCapacityExhaustedError extends Error {
  constructor(required:number,available:number){super('Memory capacity exhausted: '+required+' eligible eviction(s) required, only '+available+' available.');this.name='MemoryCapacityExhaustedError';}
@@ -657,9 +692,18 @@ export class MemoryOS2{
  private readonly signalFusionProfile:MemoryFusionProfile;
  /** Candidate metadata recall stays opt-in until independent holdout uplift is demonstrated. */
  private readonly metadataRecallEnabled:boolean;
+ /** Per-instance hot-memory capacity. Mobile/default profile remains 1,600 until device soak. */
+ private readonly itemCap:number;
  private readonly adaptivePolicy=new AdaptiveMemoryPolicy();
  private activePolicy:MemoryPolicyName='balanced';
- constructor(options:{signalFusionProfile?:MemoryFusionProfile;embeddingProvider?:TextEmbeddingProvider|null;metadataRecallEnabled?:boolean}={}){ this.signalFusionProfile=options.signalFusionProfile??'balanced'; this.signalFusion=new MemorySignalFusion(this.signalFusionProfile); this.embeddingProvider=options.embeddingProvider===null?undefined:(options.embeddingProvider??LocalEmbeddingProvider.fromEnvironment()); this.metadataRecallEnabled=options.metadataRecallEnabled===true; }
+ constructor(options:{signalFusionProfile?:MemoryFusionProfile;embeddingProvider?:TextEmbeddingProvider|null;metadataRecallEnabled?:boolean;itemCap?:number}={}){
+  this.signalFusionProfile=options.signalFusionProfile??'balanced';
+  this.signalFusion=new MemorySignalFusion(this.signalFusionProfile);
+  this.embeddingProvider=options.embeddingProvider===null?undefined:(options.embeddingProvider??LocalEmbeddingProvider.fromEnvironment());
+  this.metadataRecallEnabled=options.metadataRecallEnabled===true;
+  const requestedItemCap=Number.isSafeInteger(options.itemCap)?Number(options.itemCap):MEMORY_OS2_ITEM_CAP;
+  this.itemCap=Math.max(128,Math.min(MEMORY_OS2_MAX_ITEM_CAP,Math.floor(requestedItemCap)));
+ }
  embeddingConfigured(){return Boolean(this.embeddingProvider); }
   restoreDiagnostics():MemoryRestoreDiagnostics{return {...this.lastRestoreDiagnosticsData};}
   private incrementRestoreDiagnostic(counter:'contentHashMismatchesRepaired'|'missingContentHashesRebuilt'|'invalidVectorsDiscarded'|'invalidExpiriesClosed'|'factsDowngraded'){
@@ -906,7 +950,7 @@ export class MemoryOS2{
   * memory temperature, stale counters, or retrieval diagnostics on this instance.
   */
  previewRetrieveWithDiagnostics(query:string,limit=8,goalRelevance=0,identityRelevance=0,temporalOptions:MemoryTemporalQueryOptions={}){
-   const isolated=new MemoryOS2({signalFusionProfile:this.signalFusionProfile,metadataRecallEnabled:this.metadataRecallEnabled});
+   const isolated=new MemoryOS2({signalFusionProfile:this.signalFusionProfile,metadataRecallEnabled:this.metadataRecallEnabled,itemCap:this.itemCap});
    isolated.restore(this.snapshot());
    const items=isolated.retrieve(query,limit,goalRelevance,identityRelevance,temporalOptions,true) as MemoryItem2[];
    return {items,diagnostics:isolated.retrievalDiagnostics(),policy:isolated.adaptivePolicyDiagnostics()};
@@ -924,7 +968,7 @@ export class MemoryOS2{
    if(!Number.isSafeInteger(limit)||limit<1||limit>64)throw new RangeError('memory-ranked-channel-preview-result-limit-invalid');
    const boundedChannelLimit=maxPerChannel;
    const boundedResultLimit=limit;
-   const isolated=new MemoryOS2({signalFusionProfile:this.signalFusionProfile,metadataRecallEnabled:this.metadataRecallEnabled,embeddingProvider:null});
+   const isolated=new MemoryOS2({signalFusionProfile:this.signalFusionProfile,metadataRecallEnabled:this.metadataRecallEnabled,embeddingProvider:null,itemCap:this.itemCap});
    isolated.restore(this.snapshot());
    isolated.captureRankedChannelIds=true;
    isolated.rankedChannelCaptureLimit=boundedChannelLimit;
@@ -1211,12 +1255,12 @@ export class MemoryOS2{
   }
   const normalizedRows=this.state.items;
    const protectedRows=normalizedRows.filter(item=>this.isProtectedMemoryItem(item));
-   const capacityOverrunRows=Math.max(0,protectedRows.length-MEMORY_OS2_ITEM_CAP);
+   const capacityOverrunRows=Math.max(0,protectedRows.length-this.itemCap);
    const retainedIds=new Set<string>();
    if(capacityOverrunRows>0){for(const item of protectedRows)retainedIds.add(item.id);}
    else{
     const protectedIds=new Set(protectedRows.map(item=>item.id));
-    const slots=MEMORY_OS2_ITEM_CAP-protectedRows.length;
+    const slots=this.itemCap-protectedRows.length;
     const selectedUnprotected=normalizedRows.filter(item=>!protectedIds.has(item.id)).sort((a,b)=>
      this.memoryRetentionScore(b)-this.memoryRetentionScore(a)||b.lastAccessAt-a.lastAccessAt||b.createdAt-a.createdAt||a.id.localeCompare(b.id)
     ).slice(0,slots);
@@ -1642,7 +1686,7 @@ export class MemoryOS2{
    }).slice(0,6).map(x=>x.id);
    item.causalLinks=this.state.items.slice(0,256).filter(x=>x.causalLinks.includes(item.id)).slice(0,3).map(x=>x.id);
    item.contradictionLinks=best.filter(x=>x.sim>=.64&&sharedEntityCount(entities,x.x.entities)>=2&&hasNegationPolarityDifference(item.content,x.x.content)).map(x=>x.x.id).slice(0,4);
-   const requiredEvictions=Math.max(0,this.state.items.length-MEMORY_OS2_ITEM_CAP+1);
+   const requiredEvictions=Math.max(0,this.state.items.length-this.itemCap+1);
    if(requiredEvictions>0){
     const victims=this.selectCapacityVictims(requiredEvictions);
     if(victims.length!==requiredEvictions)throw new MemoryCapacityExhaustedError(requiredEvictions,victims.length);
@@ -1756,7 +1800,10 @@ export class MemoryOS2{
      const ids=this.conceptGroupIndex.get(groupIndex);if(!ids)continue;
      for(const id of ids){const priority=priorityFor(id);priority.conceptSupport+=.9;priority.conceptMatches++;}
    }
-   const rankedSeedIds=[...candidatePriority.entries()].map(([id,priority])=>{
+   const compareRankedSeeds=(a:{id:string;score:number;matchedTerms:number;fuzzyMatches:number;exactPhrase:number;validAt:number;lastAccessAt:number;salience:number;createdAt:number;revisionSequence:number},b:{id:string;score:number;matchedTerms:number;fuzzyMatches:number;exactPhrase:number;validAt:number;lastAccessAt:number;salience:number;createdAt:number;revisionSequence:number})=>
+    b.score-a.score||b.matchedTerms-a.matchedTerms||b.fuzzyMatches-a.fuzzyMatches||b.exactPhrase-a.exactPhrase||b.validAt-a.validAt||b.revisionSequence-a.revisionSequence||b.lastAccessAt-a.lastAccessAt||b.salience-a.salience||b.createdAt-a.createdAt||a.id.localeCompare(b.id);
+   // Materialize MapIterator before projection so strict TypeScript and Node share the same candidate set.
+   const rankedSeedRows=takeTopBy(Array.from(candidatePriority.entries(),([id,priority])=>{
      const item=this.itemIndex.get(id);
      if(!item)return {id,score:priority.idfSupport+priority.fuzzySupport,matchedTerms:priority.matchedTerms,fuzzyMatches:priority.fuzzyMatches,exactPhrase:0,validAt:0,lastAccessAt:0,salience:0,createdAt:0,revisionSequence:0};
      const exactPhrase=queryPhrase.length>=4&&this.lowerFor(id,item.content).includes(queryPhrase)?1:0;
@@ -1765,7 +1812,8 @@ export class MemoryOS2{
      // recency overpower a genuinely rarer query match.
      const score=priority.idfSupport+priority.fuzzySupport*.70+priority.metadataSupport*.72+priority.conceptSupport*.30+exactPhrase*.65+Math.min(priority.matchedTerms,8)*.035;
      return {id,score,matchedTerms:priority.matchedTerms,fuzzyMatches:priority.fuzzyMatches,exactPhrase,validAt,lastAccessAt:Number(item.lastAccessAt??0),salience:clamp(Number(item.salience??0)),createdAt:Number(item.observedAt??item.createdAt??0),revisionSequence:Number(item.revisionSequence??1)};
-   }).sort((a,b)=>b.score-a.score||b.matchedTerms-a.matchedTerms||b.fuzzyMatches-a.fuzzyMatches||b.exactPhrase-a.exactPhrase||b.validAt-a.validAt||b.revisionSequence-a.revisionSequence||b.lastAccessAt-a.lastAccessAt||b.salience-a.salience||b.createdAt-a.createdAt||a.id.localeCompare(b.id)).slice(0,spatialQuery?128:192).map(row=>row.id);
+   }),spatialQuery?128:192,compareRankedSeeds);
+   const rankedSeedIds=rankedSeedRows.map(row=>row.id);
    const candidateIds=new Set<string>(rankedSeedIds);
    // Reserve at most 64 slots for explicit spatial evidence while preserving the
    // global 192-candidate ceiling and ordinary lexical candidate ordering.
@@ -2388,7 +2436,7 @@ export class MemoryOS2{
    if(ageDays<7&&m.dormant&&durability>.42&&!invalidHistorical)m.dormant=false;
   }
   if(now-this.state.lastConflictScanAt>=1000)this.adjudicateImplicitConflicts({at:now,limit:32,pairBudget:192});
-  const hardCap=Math.max(128,Math.min(MEMORY_OS2_ITEM_CAP,Math.floor(options.maxItems??MEMORY_OS2_ITEM_CAP)));
+  const hardCap=Math.max(128,Math.min(this.itemCap,Math.floor(options.maxItems??this.itemCap)));
   const required=Math.max(0,this.state.items.length-hardCap);
   for(const victim of this.selectCapacityVictims(required))if(this.forgetById(victim.id,'capacity'))removedIds.push(victim.id);
   if(pressure>=.85){
@@ -2617,7 +2665,7 @@ export class MemoryOS2{
  capacityDiagnostics(){
   const protectedRows=this.state.items.filter(item=>this.isProtectedMemoryItem(item)).length;
   const items=this.state.items.length;
-  return {items,hardCap:MEMORY_OS2_ITEM_CAP,overCapacity:items>MEMORY_OS2_ITEM_CAP,overCapacityRows:Math.max(0,items-MEMORY_OS2_ITEM_CAP),protectedRows,evictableRows:items-protectedRows};
+  return {items,hardCap:this.itemCap,overCapacity:items>this.itemCap,overCapacityRows:Math.max(0,items-this.itemCap),protectedRows,evictableRows:items-protectedRows};
  }
  retrievalDiagnostics(){return {candidateCount:this.lastCandidateCount,totalItems:this.state.items.length,pruning01:this.state.items.length?Math.max(0,1-this.lastCandidateCount/this.state.items.length):0,signalFusion:true,hybridRetrieval:true,...this.lastHybridDiagnostics};}
  indexDiagnostics(){

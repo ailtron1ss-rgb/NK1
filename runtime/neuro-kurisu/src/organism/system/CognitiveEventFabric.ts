@@ -303,7 +303,8 @@ export class CognitiveEventFabric {
         if(candidateNodes.some(Boolean))throw new Error('tool-receipt-trace-incomplete-reconciliation-required');
       } else {
         const storedMatches=action!.payload.tool===normalized.toolId&&
-          action!.payload.decisionId===(normalized.decisionId??null)&&
+          (action!.payload.decisionId===(normalized.decisionId??null)||
+            (action!.payload.decisionId==null&&action!.payload.decisionLinked===false&&typeof normalized.decisionId==='string'))&&
           outcome!.tick===normalized.tick&&outcome!.payload.tool===normalized.toolId&&outcome!.payload.ok===normalized.ok&&
           outcome!.payload.verified===normalized.verified&&outcome!.payload.outcomeClass===normalized.outcomeClass&&
           Math.abs(clamp01(Number(outcome!.confidence01))-normalized.confidence01)<1e-9&&
@@ -321,7 +322,7 @@ export class CognitiveEventFabric {
     const action=this.append({
       tick:input.tick,stage:'tool-action',source:'action-gateway',
       parentIds:decision?[decision.id]:[],external:false,confidence01:input.verified?Math.max(.5,clamp01(input.confidence01)):.5,at,
-      payload:{executionId,tool:safeTool,decisionId:decision?.id??null,decisionLinked:Boolean(decision)},
+      payload:{executionId,tool:safeTool,decisionId:decisionId??null,decisionLinked:Boolean(decision)},
     });
     const outcome=this.append({
       tick:input.tick,stage:'tool-outcome',source:'action-gateway-outcome',

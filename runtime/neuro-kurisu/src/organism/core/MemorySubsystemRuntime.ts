@@ -32,6 +32,32 @@ import { MemoryCausalEconomy, defaultMemoryCausalEconomy } from '../system/Memor
 import { CausalLifeGraph } from '../system/CausalLifeGraph.ts';
 import { MemoryWorldCausalBridge, defaultMemoryWorldCausalBridge } from '../system/MemoryWorldCausalBridge.ts';
 
+const DEFAULT_MEMORY_ITEM_CAP=1600;
+const MAX_MEMORY_ITEM_CAP=10_000;
+const MIN_MEMORY_ITEM_CAP=128;
+const DEFAULT_MEMORY_BYTE_BUDGET=1_048_576;
+const MAX_MEMORY_BYTE_BUDGET=8_388_608;
+/** Host-only capacity selector. Invalid or absent values preserve the safe 1,600-row default. */
+function configuredMemoryItemCap():number{
+  const raw=process.env.NEURO_MEMORY_ITEM_CAP;
+  if(typeof raw!=='string'||!raw.trim())return DEFAULT_MEMORY_ITEM_CAP;
+  const parsed=Number(raw);
+  return Number.isSafeInteger(parsed)
+    ?Math.max(MIN_MEMORY_ITEM_CAP,Math.min(MAX_MEMORY_ITEM_CAP,Math.floor(parsed)))
+    :DEFAULT_MEMORY_ITEM_CAP;
+}
+/** Keep item and byte budgets paired: the mobile default is unchanged; larger
+ * explicit profiles receive a bounded proportional byte allowance. */
+function configuredMemoryByteBudget(itemCap:number):number{
+  const raw=process.env.NEURO_MEMORY_BYTE_BUDGET;
+  const parsed=typeof raw==='string'&&raw.trim()?Number(raw):Number.NaN;
+  const derived=itemCap<=DEFAULT_MEMORY_ITEM_CAP
+    ?DEFAULT_MEMORY_BYTE_BUDGET
+    :Math.max(DEFAULT_MEMORY_BYTE_BUDGET,Math.min(MAX_MEMORY_BYTE_BUDGET,Math.floor(itemCap*720)));
+  const requested=Number.isSafeInteger(parsed)?parsed:derived;
+  return Math.max(262_144,Math.min(MAX_MEMORY_BYTE_BUDGET,Math.floor(requested)));
+}
+
 /** BIG PASS 51: physical owner for persistent and working-memory machinery. */
 export class MemorySubsystemRuntime {
   readonly systemName='memory' as const;
@@ -47,7 +73,9 @@ export class MemorySubsystemRuntime {
   readonly valuePlasticity = new ValuePlasticity();
   readonly workspaceV2 = new RecurrentWorkspaceV2();
   readonly semanticMemory = new SemanticMemoryGraph();
-  readonly memoryOS = new MemoryOS2();
+  readonly memoryItemCap = configuredMemoryItemCap();
+  readonly memoryByteBudget = configuredMemoryByteBudget(this.memoryItemCap);
+  readonly memoryOS = new MemoryOS2({ itemCap: this.memoryItemCap });
   readonly memorySubstrate = new MemorySubstrateCoordinator();
   readonly unifiedMemory = new UnifiedMemorySystem();
   readonly p47MemoryMind = new P47TemporalMemoryMind();
