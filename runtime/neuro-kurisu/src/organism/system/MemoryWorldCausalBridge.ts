@@ -13,6 +13,8 @@ export interface MemoryWorldCausalLink {
   replayDelta01:number;
   status:MemoryWorldCausalStatus;
   provenance:string;
+  /** Core decision that consumed this tick's memory evidence. */
+  decisionId?:string;
 }
 
 export interface MemoryWorldCausalBridgeState {
@@ -69,10 +71,20 @@ export class MemoryWorldCausalBridge {
     this.state.recent=[link,...this.state.recent].slice(0,this.capacity);
     return structuredClone(link);
   }
+  bindDecision(linkId:string,decisionId:string):MemoryWorldCausalLink|null {
+    const id=String(linkId??'').trim();
+    const decision=String(decisionId??'').trim();
+    if(!id||id.length>180||!decision||decision.length>180)return null;
+    const link=this.state.recent.find(row=>row.id===id);
+    if(!link)return null;
+    if(link.decisionId&&link.decisionId!==decision)throw new Error('memory-world-decision-binding-conflict');
+    link.decisionId=decision;
+    return structuredClone(link);
+  }
   verifiedForTick(tick:number):boolean{return this.state.recent.some(x=>x.tick===tick&&x.status==='verified');}
   snapshot():MemoryWorldCausalBridgeState{return structuredClone(this.state);}
   diagnostics(){return {applications:this.state.applications,verifiedLinks:this.state.verifiedLinks,contestedLinks:this.state.contestedLinks,lastVerifiedTick:this.state.lastVerifiedTick,lastInfluence01:this.state.lastInfluence01,verificationRate01:clamp(this.state.verifiedLinks/Math.max(1,this.state.applications))};}
   private clean(raw:any):MemoryWorldCausalLink{
-    return {id:String(raw?.id??''),tick:Math.max(0,Number(raw?.tick??0)),at:Number(raw?.at??0),memoryIds:Array.isArray(raw?.memoryIds)?raw.memoryIds.map(String).slice(0,8):[],query:String(raw?.query??''),influence01:clamp(Number(raw?.influence01??0)),predictionWithoutMemory01:clamp(Number(raw?.predictionWithoutMemory01??0)),predictionWithMemory01:clamp(Number(raw?.predictionWithMemory01??0)),delta01:clamp(Number(raw?.delta01??0)),replayDelta01:clamp(Number(raw?.replayDelta01??0)),status:['candidate','verified','contested'].includes(raw?.status)?raw.status:'candidate',provenance:String(raw?.provenance??'')};
+    return {id:String(raw?.id??''),tick:Math.max(0,Number(raw?.tick??0)),at:Number(raw?.at??0),memoryIds:Array.isArray(raw?.memoryIds)?raw.memoryIds.map(String).slice(0,8):[],query:String(raw?.query??''),influence01:clamp(Number(raw?.influence01??0)),predictionWithoutMemory01:clamp(Number(raw?.predictionWithoutMemory01??0)),predictionWithMemory01:clamp(Number(raw?.predictionWithMemory01??0)),delta01:clamp(Number(raw?.delta01??0)),replayDelta01:clamp(Number(raw?.replayDelta01??0)),status:['candidate','verified','contested'].includes(raw?.status)?raw.status:'candidate',provenance:String(raw?.provenance??''),...(typeof raw?.decisionId==='string'&&raw.decisionId.trim().length>0&&raw.decisionId.trim().length<=180?{decisionId:raw.decisionId.trim()}: {})};
   }
 }

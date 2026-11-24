@@ -14,7 +14,7 @@ import { normalizeEvidenceLineageProvenance } from '../memory/EvidenceLineagePro
 import { redactHmxExportValue } from '../integration/hexis/HmxImportRedactor.ts';
 import { defaultLettaGovernanceAdaptationState, type LettaGovernanceAdaptationState, type SourceBranchState, type ArtifactReviewRecord, type TelemetryPolicyState } from '../integration/letta/LettaGovernanceAdaptationFabric.ts';
 import { ConscioAdaptationFabric, defaultConscioAdaptationState, type ConscioAdaptationState, type ConscioSourceState } from '../integration/conscio/ConscioAdaptationFabric.ts';
-import type { ActionKind, OrganismDecisionTrace, IntentCandidate, OrganismCycleResult, OrganismGoal, OrganismObservation, OrganismState, LearningProvenance, OrganismNeeds, EmbodimentFacet, WorkspaceFrame, ConsolidatedMemory, PredictedActionOutcome, WorldTransitionForOrganism, } from './types.ts';
+import type { ActionKind, DecisionMemoryEvidenceReceipt, OrganismDecisionTrace, IntentCandidate, OrganismCycleResult, OrganismGoal, OrganismObservation, OrganismState, LearningProvenance, OrganismNeeds, EmbodimentFacet, WorkspaceFrame, ConsolidatedMemory, PredictedActionOutcome, WorldTransitionForOrganism, } from './types.ts';
 import { FileStateStore, type JsonStateStore } from '../persistence/FileStateStore.ts';
 import { FileActionExecutionLedgerArchive } from '../persistence/FileActionExecutionLedgerArchive.ts';
 import { RecoveryWatchdog, type RecoveryWatchdogState } from '../persistence/RecoveryWatchdog.ts';
@@ -5300,11 +5300,13 @@ export class OrganismCore {
             delta01: number;
             memoryEvidence: any;
         } | null = null;
+        let memoryWorldCausalLinkId: string | null = null;
         if (advancedRetrieved.length && this.config.enableWorldModel) {
             const meanConfidence = advancedRetrieved.reduce((s, m) => s + Number(m.confidence ?? 0), 0) / advancedRetrieved.length;
             const meanSalience = advancedRetrieved.reduce((s, m) => s + Number(m.salience ?? 0), 0) / advancedRetrieved.length;
             memoryWorldApplication = this.worldSubsystem.applyMemoryEvidence({ memoryIds: advancedRetrieved.map(m => m.id), query: memoryQuery, confidence01: meanConfidence, salience01: meanSalience, at: state.at });
             const link = this.organismSystems.memory.memoryWorldCausalBridge.record({ tick: state.tick, at: state.at, memoryIds: advancedRetrieved.map(m => m.id), query: memoryQuery, predictionWithoutMemory01: memoryWorldApplication.predictionWithoutMemory01, predictionWithMemory01: memoryWorldApplication.predictionWithMemory01, replayDelta01: memoryWorldApplication.delta01, provenance: memoryWorldApplication.provenanceId });
+            memoryWorldCausalLinkId = link.id;
             this.persisted.system.memoryWorldCausalBridge = this.organismSystems.memory.memoryWorldCausalBridge.snapshot();
             this.memorySubsystem.events.append(makeEvent('memory-world-causal-link', state.tick, { linkId: link.id, status: link.status, memoryIds: link.memoryIds, delta01: link.delta01, influence01: link.influence01, provenance: link.provenance } as any));
         }
@@ -8347,6 +8349,33 @@ export class OrganismCore {
             requestedAction: userRequestedAction,
         });
         decision.semanticEvidence = buildDecisionSemanticEvidence({ stateBefore: previous, candidates: governedCandidates.slice(0, 7), selected: selectedIntent, worldContextKey });
+        const retrievedMemoryIds = advancedRetrieved.map(memory => memory.id).slice(0, 8);
+        const memoryEvidence: DecisionMemoryEvidenceReceipt = {
+            version: 1,
+            receiptId: `memory-query:${state.tick}:${randomUUID()}`,
+            tick: state.tick,
+            queryHash: createHash('sha256').update(memoryQuery).digest('hex'),
+            queryKind: memoryQueryKind,
+            status: !cognitiveExecutionPlan.run.memory ? 'skipped' : retrievedMemoryIds.length ? 'retrieved' : 'empty',
+            retrievedMemoryIds,
+            retrievedCount: retrievedMemoryIds.length,
+            appliedToWorldModel: Boolean(memoryWorldApplication?.applied),
+            memoryWorldCausalLinkId,
+            counterfactualDelta01: clamp(memoryWorldApplication?.delta01 ?? 0),
+            counterfactualInfluence01: clamp(memoryWorldApplication?.strength01 ?? 0),
+            influenceBasis: memoryWorldApplication?.applied
+                ? 'internal-counterfactual-world-model'
+                : retrievedMemoryIds.length ? 'retrieval-only' : 'not-applied',
+        };
+        decision.memoryEvidence = memoryEvidence;
+        decision.reasoningSignals.memoryRetrievedCount = memoryEvidence.retrievedCount;
+        decision.reasoningSignals.memoryWorldApplied01 = memoryEvidence.appliedToWorldModel ? 1 : 0;
+        decision.reasoningSignals.memoryWorldCounterfactualInfluence01 = memoryEvidence.counterfactualInfluence01;
+        if (memoryWorldCausalLinkId) {
+            const boundLink = this.organismSystems.memory.memoryWorldCausalBridge.bindDecision(memoryWorldCausalLinkId, decision.id);
+            if (!boundLink) throw new Error('memory-world-causal-decision-link-missing');
+            this.persisted.system.memoryWorldCausalBridge = this.organismSystems.memory.memoryWorldCausalBridge.snapshot();
+        }
         let decisionSafety={authorized:false,reason:'no-action-selected'};
         if (selectedIntent) {
             this.cognitiveRuntime.adaptiveDevelopment.observeDecision(selectedIntent.action, !Boolean(observation.text), state.predictionError, n.novelty, candidates);
