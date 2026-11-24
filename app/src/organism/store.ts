@@ -152,6 +152,10 @@ export const useKurisu = create<KurisuStore>((set, get) => {
     },
 
     refresh: async () => {
+      const current = get().connection;
+      if (current.lastSyncedAt === null) {
+        set({ connection: { ...current, status: "connecting", lastError: null } });
+      }
       await pullCanonicalSnapshot(false);
     },
 
