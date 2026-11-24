@@ -32,7 +32,7 @@ export function ChatPanel() {
           </p>
         </div>
         <div className="flex gap-1">
-          <Button variant="ghost" size="icon" aria-label={snap.awake ? "Sleep" : "Wake"} onClick={snap.awake ? sleep : wake}>
+          <Button variant="ghost" size="icon" aria-label={snap.awake ? "Sleep" : "Wake"} onClick={snap.awake ? sleep : wake} disabled={connection.status !== "connected" || busy}>
             {snap.awake ? <Moon className="size-4" /> : <Sun className="size-4" />}
           </Button>
           <Button variant="ghost" size="icon" aria-label="Clear UI chat history" onClick={reset}>
