@@ -21,6 +21,7 @@ export function ConnectionStatus() {
         <Icon className="size-3.5" aria-hidden="true" />
         {state.label}
       </span>
+      {connection.serviceDegraded ? <span className="hidden text-[10px] text-amber-400 sm:inline">Language fallback</span> : null}
       {connection.version ? (
         <span className="hidden text-[10px] tabular-nums text-subtle sm:inline">
           {connection.version} · schema {connection.schemaVersion} · tick {connection.tick}
