@@ -1,6 +1,6 @@
 import type { ChatTurn } from "./types";
 
-export type ChatDeliveryStatus = "sending" | "sent" | "unknown";
+export type ChatDeliveryStatus = "sending" | "sent" | "unknown" | "rejected";
 
 /** Update only the matching user turn; unrelated or legacy turns stay untouched. */
 export function withChatDeliveryStatus(
