@@ -267,4 +267,9 @@ test("hosted model verifier pins the public v12 asset and all morph target names
  assert.match(verify,/gltf\.skins\[0\]\.joints\.length, 19/);
  for(const key of ["EYE_white_L","EYE_white_R","FACE_mouth","HEAD_face","viseme_aa","viseme_oh","viseme_ee","viseme_ih","viseme_ou","NK1_Jaw_Taper"])assert.ok(verify.includes(key),`missing hosted v12 morph contract: ${key}`);
  assert.match(verify,/HOSTED_KURISU_V12_MORPH_PREVIEW=PASS/);
+ assert.match(verify,/talk_gesture/);
+ assert.match(verify,/thinking_pose/);
+ assert.match(verify,/explore_turn/);
+ assert.match(verify,/animation\.channels\.length, 57/);
+ assert.match(verify,/HOSTED_KURISU_V12_MORPH_PREVIEW=PASS/);
 });
