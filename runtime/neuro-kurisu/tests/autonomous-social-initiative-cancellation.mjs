@@ -3,8 +3,8 @@ import { AutonomousSocialInitiativeEngine } from '../src/organism/system/Autonom
 import { OrganismCore } from '../src/organism/core/OrganismCore.ts';
 import { MemoryStateStore } from '../src/organism/persistence/MemoryStateStore.ts';
 
-// Keep the synthetic clock ahead of OrganismCore's real-time initialization.
-const at = Date.now() + 60_000;
+// Keep synthetic events recent but behind wall clock for getters that use Date.now().
+const at = Date.now() - 60_000;
 const input = {
   at,
   externalInput: false,
