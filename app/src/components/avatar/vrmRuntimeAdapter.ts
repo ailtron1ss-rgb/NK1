@@ -117,6 +117,7 @@ export interface VrmNormalizedMotorFrame {
   speaking: boolean;
   /** Shared semantic motor tilt; older callers may omit it. */
   headTilt?: number;
+  headYaw?: number;
   leftArmIntent?: number;
   rightArmIntent?: number;
 }
@@ -222,7 +223,7 @@ export function applyVrmNormalizedMotorFrame(
   const uncertainty = clamp01(frame.uncertainty);
 
   const headX = -gazeY * 0.12 - load * 0.035 + (1 - energy) * 0.04;
-  const headY = gazeX * (0.22 - social * 0.05) + uncertainty * 0.025;
+  const headY = gazeX * (0.22 - social * 0.05) + uncertainty * 0.025 + clampSigned(frame.headYaw ?? 0) * 0.055;
   const fallbackAffectRoll = frame.emotion === "sadness"
     ? 0.055
     : frame.emotion === "anger" || frame.emotion === "frustration" ? -0.04 : 0;
