@@ -1802,6 +1802,7 @@ export class MemoryOS2{
    }
    const compareRankedSeeds=(a:{id:string;score:number;matchedTerms:number;fuzzyMatches:number;exactPhrase:number;validAt:number;lastAccessAt:number;salience:number;createdAt:number;revisionSequence:number},b:{id:string;score:number;matchedTerms:number;fuzzyMatches:number;exactPhrase:number;validAt:number;lastAccessAt:number;salience:number;createdAt:number;revisionSequence:number})=>
     b.score-a.score||b.matchedTerms-a.matchedTerms||b.fuzzyMatches-a.fuzzyMatches||b.exactPhrase-a.exactPhrase||b.validAt-a.validAt||b.revisionSequence-a.revisionSequence||b.lastAccessAt-a.lastAccessAt||b.salience-a.salience||b.createdAt-a.createdAt||a.id.localeCompare(b.id);
+   // Materialize MapIterator before projection so strict TypeScript and Node share the same candidate set.
    const rankedSeedRows=takeTopBy(Array.from(candidatePriority.entries(),([id,priority])=>{
      const item=this.itemIndex.get(id);
      if(!item)return {id,score:priority.idfSupport+priority.fuzzySupport,matchedTerms:priority.matchedTerms,fuzzyMatches:priority.fuzzyMatches,exactPhrase:0,validAt:0,lastAccessAt:0,salience:0,createdAt:0,revisionSequence:0};
