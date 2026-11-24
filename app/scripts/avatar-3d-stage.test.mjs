@@ -291,3 +291,14 @@ test("avatar speech capability and saved preferences hydrate without SSR browser
  assert.doesNotMatch(stage,/useState\(\(\) => readAvatarPreference/);
  assert.doesNotMatch(stage,/typeof window !== "undefined" && "speechSynthesis" in window/);
 });
+
+
+test("3D fitting uses rigged character meshes instead of the scene environment floor",async()=>{
+ const stage=await readFile(stagePath,"utf8");
+ const fit=await readFile(path.join(root,"src/components/avatar/avatarModelFitBounds.ts"),"utf8");
+ assert.match(stage,/resolveAvatarModelFitBounds\(root\)/);
+ assert.match(fit,/node\.isSkinnedMesh/);
+ assert.match(fit,/skinnedMeshes\.length > 0 \? skinnedMeshes : characterMeshes/);
+ assert.match(fit,/ENVIRONMENT_NAME/);
+ assert.match(fit,/largest > 10 && smallest < 0\.01/);
+});
