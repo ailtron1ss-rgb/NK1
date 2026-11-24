@@ -63,6 +63,16 @@ function assertSingleImplicitConflictParentPerObservation() {
   const predecessor = memory.get(successor.supersedesId);
   assert.equal(predecessor?.supersededById, newer, 'revision pointers must remain reciprocal');
 
+  // A legitimate correction to the historical predecessor updates its current
+  // bitemporal state, but must not invalidate the immutable revision edge that
+  // was established before that metadata update.
+  memory.updateContext(predecessor.id, { reviewedAfterSupersession: 'yes' });
+  const updatedPredecessor = memory.get(predecessor.id);
+  assert.ok(
+    updatedPredecessor.recordedFromAt > successor.recordedFromAt,
+    'the fixture must move the predecessor current transaction version past its successor',
+  );
+
   const untouchedId = successor.supersedesId === olderA ? olderB : olderA;
   const untouched = memory.get(untouchedId);
   assert.equal(untouched?.supersededById ?? null, null, 'the second candidate must remain standalone');
