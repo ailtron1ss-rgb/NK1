@@ -5,6 +5,11 @@ export interface SignedPairedHoldoutPayload {
   schemaVersion: 1;
   candidateId: string;
   patchSha256: string;
+  experimentId: string;
+  protocolFingerprint: string;
+  taskManifestFingerprint: string;
+  testFingerprint: string;
+  attempt: 1;
   evidenceId: string;
   seed: number;
   split: 'holdout';
@@ -27,6 +32,10 @@ export interface VerifiedPairedHoldoutBatch {
   verifierCount: number;
   environmentCount: number;
   fingerprint: string;
+  experimentId: string;
+  protocolFingerprint: string;
+  taskManifestFingerprint: string;
+  testFingerprint: string;
 }
 
 export interface RefusedPairedHoldoutBatch {
@@ -99,6 +108,11 @@ export function canonicalPairedHoldoutPayload(payload: SignedPairedHoldoutPayloa
     schemaVersion: 1,
     candidateId: payload.candidateId,
     patchSha256: payload.patchSha256.toLowerCase(),
+    experimentId: payload.experimentId,
+    protocolFingerprint: payload.protocolFingerprint.toLowerCase(),
+    taskManifestFingerprint: payload.taskManifestFingerprint.toLowerCase(),
+    testFingerprint: payload.testFingerprint.toLowerCase(),
+    attempt: 1,
     evidenceId: payload.evidenceId,
     seed: payload.seed,
     split: 'holdout',
@@ -131,7 +145,8 @@ export function verifySignedPairedHoldoutEvidence(
   if (!plain(trustedVerifierKeys)) return { accepted: false, reason: 'host-verifier-keys-invalid' };
 
   const allowedPayloadKeys = new Set([
-    'schemaVersion', 'candidateId', 'patchSha256', 'evidenceId', 'seed', 'split',
+    'schemaVersion', 'candidateId', 'patchSha256', 'experimentId', 'protocolFingerprint',
+    'taskManifestFingerprint', 'testFingerprint', 'attempt', 'evidenceId', 'seed', 'split',
     'verifierId', 'environmentId', 'proxyGain', 'downstreamGain', 'observedAt',
   ]);
   const observations: PairedObservation[] = [];
@@ -140,19 +155,29 @@ export function verifySignedPairedHoldoutEvidence(
   const verifiers = new Set<string>();
   const environments = new Set<string>();
   const canonicalRows: string[] = [];
+  let protocolIdentity: string | null = null;
 
   for (const raw of rows) {
-    if (!plain(raw) || Object.keys(raw).some(key => !['payload', 'signature'].includes(key))) {
+    if (!plain(raw)) return { accepted: false, reason: 'signed-outcome-artifact-malformed' };
+    const artifactKeys = ownKeys(raw);
+    if (!artifactKeys || artifactKeys.some(key => !['payload', 'signature'].includes(key))) {
       return { accepted: false, reason: 'signed-outcome-artifact-malformed' };
     }
     const payload = own(raw, 'payload');
     const signature = own(raw, 'signature');
-    if (!plain(payload) || Object.keys(payload).some(key => !allowedPayloadKeys.has(key))) {
+    if (!plain(payload)) return { accepted: false, reason: 'signed-outcome-payload-malformed' };
+    const payloadKeys = ownKeys(payload);
+    if (!payloadKeys || payloadKeys.some(key => !allowedPayloadKeys.has(key))) {
       return { accepted: false, reason: 'signed-outcome-payload-malformed' };
     }
     const schemaVersion = own(payload, 'schemaVersion');
     const candidateId = own(payload, 'candidateId');
     const patchSha256 = own(payload, 'patchSha256');
+    const experimentId = own(payload, 'experimentId');
+    const protocolFingerprint = own(payload, 'protocolFingerprint');
+    const taskManifestFingerprint = own(payload, 'taskManifestFingerprint');
+    const testFingerprint = own(payload, 'testFingerprint');
+    const attempt = own(payload, 'attempt');
     const evidenceId = own(payload, 'evidenceId');
     const seed = own(payload, 'seed');
     const split = own(payload, 'split');
@@ -163,7 +188,11 @@ export function verifySignedPairedHoldoutEvidence(
     const observedAt = own(payload, 'observedAt');
 
     if (schemaVersion !== 1 || !boundedText(candidateId, 128) ||
-        !SHA256.test(String(patchSha256 ?? '')) || !boundedText(evidenceId, 160) ||
+        !SHA256.test(String(patchSha256 ?? '')) || !boundedText(experimentId, 120) ||
+        !SHA256.test(String(protocolFingerprint ?? '')) ||
+        !SHA256.test(String(taskManifestFingerprint ?? '')) ||
+        !SHA256.test(String(testFingerprint ?? '')) || attempt !== 1 ||
+        !boundedText(evidenceId, 160) ||
         typeof seed !== 'number' || !Number.isSafeInteger(seed) || seed < 0 ||
         split !== 'holdout' || !boundedText(verifierId, 96) || !KEY_ID.test(verifierId) ||
         !boundedText(environmentId, 180) || !finiteUnit(proxyGain) || !finiteUnit(downstreamGain) ||
@@ -171,6 +200,17 @@ export function verifySignedPairedHoldoutEvidence(
       return { accepted: false, reason: 'signed-outcome-payload-invalid' };
     }
     if (candidateId !== expectedCandidateId) return { accepted: false, reason: 'candidate-id-mismatch' };
+    const nextProtocolIdentity = JSON.stringify({
+      experimentId,
+      protocolFingerprint: String(protocolFingerprint).toLowerCase(),
+      taskManifestFingerprint: String(taskManifestFingerprint).toLowerCase(),
+      testFingerprint: String(testFingerprint).toLowerCase(),
+      attempt,
+    });
+    if (protocolIdentity !== null && protocolIdentity !== nextProtocolIdentity) {
+      return { accepted: false, reason: 'inconsistent-holdout-protocol' };
+    }
+    protocolIdentity = nextProtocolIdentity;
     if (String(patchSha256).toLowerCase() !== expectedPatchSha256.toLowerCase()) {
       return { accepted: false, reason: 'patch-digest-mismatch' };
     }
@@ -218,5 +258,9 @@ export function verifySignedPairedHoldoutEvidence(
     verifierCount: verifiers.size,
     environmentCount: environments.size,
     fingerprint,
+    experimentId: JSON.parse(protocolIdentity as string).experimentId,
+    protocolFingerprint: JSON.parse(protocolIdentity as string).protocolFingerprint,
+    taskManifestFingerprint: JSON.parse(protocolIdentity as string).taskManifestFingerprint,
+    testFingerprint: JSON.parse(protocolIdentity as string).testFingerprint,
   };
 }
