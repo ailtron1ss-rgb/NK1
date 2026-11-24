@@ -29,8 +29,15 @@ let canonicalAssets = [];
 try {
   const manifest = JSON.parse(readFileSync(canonicalAssetManifestPath, 'utf8'));
   canonicalAssets = manifest.items ?? [];
-  add('live2d:canonical-asset-manifest', manifest.schemaVersion === 1 && canonicalAssets.length === 21,
-    `${canonicalAssets.length} byte-identical app shadows map to runtime-owned assets`);
+  const uniqueTargets = new Set(canonicalAssets.map((item) => item.targetPath)).size;
+  const uniqueCanonicals = new Set(canonicalAssets.map((item) => item.canonicalPath)).size;
+  const validEntries = canonicalAssets.every((item) =>
+    typeof item.targetPath === 'string' && typeof item.canonicalPath === 'string' &&
+    Number.isSafeInteger(item.sizeBytes) && item.sizeBytes > 0 && /^[a-f0-9]{64}$/.test(item.sha256 ?? '')
+  );
+  add('live2d:canonical-asset-manifest', manifest.schemaVersion === 1 && canonicalAssets.length > 0 &&
+    uniqueTargets === canonicalAssets.length && uniqueCanonicals === canonicalAssets.length && validEntries,
+    `${canonicalAssets.length} unique byte-identical app shadows map to runtime-owned assets`);
   for (const item of canonicalAssets) {
     const canonical = resolve(ROOT, item.canonicalPath);
     const target = resolve(ROOT, item.targetPath);
