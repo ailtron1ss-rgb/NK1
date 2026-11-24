@@ -26,8 +26,12 @@ const input = {
   startupGraceMs: 0,
 };
 
-function createInitiative(engine, offset = 0) {
-  const result = engine.cycle({ ...input, at: at + offset });
+function createInitiative(engine, offset = 0, topic = input.topics[0].topic) {
+  const result = engine.cycle({
+    ...input,
+    topics: [{ ...input.topics[0], topic }],
+    at: at + offset,
+  });
   assert.equal(result.shouldInitiate, true);
   assert.ok(result.initiative?.id);
   return result.initiative;
@@ -118,7 +122,8 @@ try {
       'Core cancellation must survive a process restart');
     assert.equal(resumed.acknowledgeAutonomousSocialInitiative(coreInitiative.id, at + 32), false);
 
-  const deliveredInitiative = createInitiative(coreEngine, 40);
+  const deliveredInitiative = createInitiative(coreEngine, 40,
+    'Review a separate unresolved question about bounded memory continuity');
   assert.equal(core.stageAutonomousSocialInitiativeMessage(deliveredInitiative.id,
     'A short message acknowledged by the host UI.', at + 41), true);
   assert.ok(core.pendingAutonomousSocialInitiativeMessage());
