@@ -23,7 +23,7 @@ import {
 import { resolveSemanticGestureIntent } from "./avatar/semanticGestureIntent";
 import {
   avatarBrainBodyChannels,
-  avatarBrainExpressionForLive2D,
+  avatarBrainLive2DExpression,
   avatarBrainFrameForTick,
   avatarBrainGaze,
   avatarBrainHeadTilt,
@@ -516,7 +516,7 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
   useEffect(() => {
     const win = frame.current?.contentWindow;
     if (!win || !live || mode !== "live2d") return;
-    const expression = currentBrainFrame ? avatarBrainExpressionForLive2D(currentBrainFrame) : (EXPRESSION_TEXT[snap.emotion.label] ?? "neutral");
+    const expression = currentBrainFrame ? avatarBrainLive2DExpression(currentBrainFrame) : (EXPRESSION_TEXT[snap.emotion.label] ?? "neutral");
     const gazeByAction: Record<OrganismSnapshot["lastOption"], { x: number; y: number }> = {
       explore: { x: 0.24, y: 0.04 }, verify: { x: 0.14, y: -0.10 }, reflect: { x: -0.19, y: -0.14 },
       respond: { x: 0.01, y: 0.01 }, wait: { x: -0.035, y: -0.005 }, rest: { x: -0.06, y: 0.075 },
