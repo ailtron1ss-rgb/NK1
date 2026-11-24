@@ -1,3 +1,4 @@
+import type { EmotionLabel } from "@/organism/types";
 import type { MouthPose } from "./embodimentTimeline";
 
 export interface GlbMouthMorphWeight {
@@ -87,6 +88,49 @@ export function resolveGlbMouthMorphWeights(
   if (selected !== undefined) {
     const target = result.find((item) => item.index === selected);
     if (target) target.value = open;
+  }
+
+  return result;
+}
+
+
+/**
+ * Resolve the GLB expression and blink morphs owned by the current organism
+ * frame. Unrelated face channels (speech visemes and static jaw-shape keys)
+ * are deliberately left to their own owners.
+ */
+export function resolveGlbExpressionMorphWeights(
+  dictionary: unknown,
+  emotion: EmotionLabel,
+  blink: boolean,
+  warmth: number,
+): GlbMouthMorphWeight[] {
+  if (!dictionary || typeof dictionary !== "object" || Array.isArray(dictionary)) return [];
+
+  const entries = Object.entries(dictionary as Record<string, unknown>)
+    .filter((entry): entry is [string, number] =>
+      typeof entry[1] === "number" && Number.isSafeInteger(entry[1]) && entry[1] >= 0,
+    );
+  const result: GlbMouthMorphWeight[] = [];
+
+  for (const [name, index] of entries) {
+    const normalized = normalizeTargetName(name);
+    let value: number | null = null;
+
+    if (/happy|joy|smile/.test(normalized)) {
+      value = emotion === "joy" ? 0.75
+        : emotion === "protective" ? 0.22
+          : emotion === "calm" ? clampUnit(warmth) * 0.16
+            : 0;
+    } else if (/sad|sorrow|cry/.test(normalized)) {
+      value = emotion === "sadness" || emotion === "anxiety" ? 0.62 : 0;
+    } else if (/angry|anger|frown/.test(normalized)) {
+      value = emotion === "anger" || emotion === "frustration" ? 0.7 : 0;
+    } else if (/blink|eyeclose/.test(normalized)) {
+      value = blink ? 0.92 : 0;
+    }
+
+    if (value !== null) result.push({ index, value });
   }
 
   return result;
