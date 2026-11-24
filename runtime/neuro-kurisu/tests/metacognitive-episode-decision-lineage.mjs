@@ -6,6 +6,19 @@ import { CognitiveEventFabric } from '../src/organism/system/CognitiveEventFabri
 import { OrganismRuntime } from '../src/organism/core/OrganismRuntime.ts';
 
 const stagePayload=(source,payload={})=>({source,confidence01:0.8,payload});
+const verifierIds=(ids)=>({
+  observation:ids.observation,
+  prediction:ids.prediction,
+  appraisal:ids.appraisal,
+  attention:ids.attention,
+  memory:ids.memory,
+  goal:ids.goal,
+  plan:ids.plan,
+  action:ids.action,
+  outcome:ids.outcome,
+  learning:ids.learning,
+  'self-update':ids.selfUpdate,
+});
 const cycleInput=(tick,decisionId,overrides={})=>({
   tick,
   ...(decisionId===undefined?{}:{decisionId}),
@@ -34,7 +47,7 @@ for(const name of names){
   assert.ok(event,`CEF must retain the ${name} stage`);
   assert.equal(event.payload.decisionId,decisionId,`the ${name} event must carry the exact Core decision ID`);
 }
-const lineage=fabric.verifyOperationalCycle(stageIds);
+const lineage=fabric.verifyOperationalCycle(verifierIds(stageIds));
 assert.equal(lineage.decisionId,decisionId);
 assert.equal(lineage.decisionLineageComplete,true);
 assert.deepEqual(lineage.decisionLineageIssues,[]);
@@ -45,7 +58,7 @@ const actionNode=tampered.recent.find(event=>event.id===stageIds.action);
 actionNode.payload.decisionId='decision:other';
 const restored=new CognitiveEventFabric(256);
 restored.restore(tampered);
-const broken=restored.verifyOperationalCycle(stageIds);
+const broken=restored.verifyOperationalCycle(verifierIds(stageIds));
 assert.equal(broken.decisionLineageComplete,false,'restore must not accept a cross-decision cycle');
 assert.ok(broken.decisionLineageIssues.includes('action:decision-id-mismatch'));
 assert.equal(broken.fullComplete,false,'decision identity is part of strict full-cycle completeness');
@@ -62,7 +75,7 @@ assert.equal(conflictFabric.snapshot().total,0,'invalid decision identity must f
 
 const legacyFabric=new CognitiveEventFabric(256);
 const legacyIds=legacyFabric.recordOperationalCycle(cycleInput(14,undefined));
-const legacy=legacyFabric.verifyOperationalCycle(legacyIds);
+const legacy=legacyFabric.verifyOperationalCycle(verifierIds(legacyIds));
 assert.equal(legacy.decisionLineageComplete,true,'unannotated historical cycles remain readable');
 assert.equal(legacy.decisionId,undefined);
 assert.equal(legacy.fullComplete,true,'legacy cycle completeness remains backward compatible');
@@ -97,7 +110,7 @@ try {
     action:cycleEvents.find(e=>e.stage==='action')?.id,
     outcome:cycleEvents.find(e=>e.stage==='outcome')?.id,
     learning:cycleEvents.find(e=>e.stage==='learning')?.id,
-    selfUpdate:cycleEvents.find(e=>e.stage==='self-update')?.id,
+    'self-update':cycleEvents.find(e=>e.stage==='self-update')?.id,
   };
   const runtimeVerifier=new CognitiveEventFabric(512);
   runtimeVerifier.restore(runtimeSnapshot);
