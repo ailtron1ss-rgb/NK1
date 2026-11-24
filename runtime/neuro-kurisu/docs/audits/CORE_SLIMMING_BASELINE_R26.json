@@ -1,7 +1,0 @@
-{
-  "version": 1,
-  "release": "35.40.0",
-  "coreLines": 10225,
-  "historicalTargetLines": 3482,
-  "maxGrowthBeforeRebaseline": 128
-}

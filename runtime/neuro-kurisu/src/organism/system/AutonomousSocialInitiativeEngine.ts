@@ -7,7 +7,7 @@ import { scoreSocialRepetition, socialRepetitionPenalty01 } from './SocialRepeti
 const clamp = (x: number) => Math.max(0, Math.min(1, Number.isFinite(x) ? x : 0));
 
 export type SocialInitiativeKind = 'check-in' | 'help' | 'collaborate' | 'follow-up' | 'share-thought' | 'start-topic' | 'ask-question' | 'continue-interest';
-export type SocialInitiativeStatus = 'planned' | 'ready' | 'executed' | 'deferred';
+export type SocialInitiativeStatus = 'planned' | 'ready' | 'executed' | 'deferred' | 'cancelled';
 export type SocialInitiativeTopicSource = 'active-goal' | 'curiosity' | 'reflection' | 'memory';
 export type SocialEmotionLabel = 'curiosity' | 'calm' | 'joy' | 'anxiety' | 'frustration' | 'sadness' | 'anger' | 'protective';
 export type SocialToneHint = 'curious' | 'playful' | 'direct' | 'reflective' | 'careful' | 'warm' | 'neutral';
@@ -48,6 +48,7 @@ export interface SocialInitiativeState {
   planned: number;
   executed: number;
   deferred: number;
+  cancelled: number;
   reciprocity01: number;
   initiative01: number;
   initiatives: SocialInitiative[];
@@ -65,7 +66,7 @@ export interface SocialInitiativeState {
 
 export interface SocialTopicCandidate { topic: string; source?: SocialInitiativeTopicSource; salience01?: number; freshness01?: number; interestFit01?: number; affectFit01?: number; interestDomain?: string; interestContext?: SocialInterestContext; }
 export const defaultAutonomousSocialInitiative = (): SocialInitiativeState => ({
-  version: 1, cycles: 0, planned: 0, executed: 0, deferred: 0,
+  version: 1, cycles: 0, planned: 0, executed: 0, deferred: 0, cancelled: 0,
   reciprocity01: .54, initiative01: .34, initiatives: [],
   startedAt: 0, lastExternalInputAt: 0, lastInitiativeAt: 0,
   consentGranted:true,quietHoursEnabled:false,quietStartHourUtc:22,quietEndHourUtc:8,
@@ -154,7 +155,7 @@ function safeRatio(value: unknown, fallback: number): number {
 function normalizeRestoredInitiative(raw: unknown, index: number): { item: SocialInitiative | null; privacyDeferred: boolean } {
   if (!isPlainRecord(raw) || Object.getOwnPropertySymbols(raw).length > 0) return { item: null, privacyDeferred: false };
   const rawStatus = ownData(raw, 'status');
-  let status: SocialInitiativeStatus = rawStatus === 'ready' || rawStatus === 'executed' || rawStatus === 'deferred' ? rawStatus : 'planned';
+  let status: SocialInitiativeStatus = rawStatus === 'ready' || rawStatus === 'executed' || rawStatus === 'deferred' || rawStatus === 'cancelled' ? rawStatus : 'planned';
   const kind = validKind(ownData(raw, 'kind'));
   const rawTopic = ownData(raw, 'topic') ?? (kind === 'collaborate' ? 'A possible shared idea worth exploring' : 'A thought worth exploring in conversation');
   const safeTopic = sanitizeAutonomousTopicText(rawTopic, 360);
@@ -262,6 +263,7 @@ export class AutonomousSocialInitiativeEngine {
         planned: safeCounter(ownData(raw, 'planned'), 0),
         executed: safeCounter(ownData(raw, 'executed'), 0),
         deferred: Math.min(MAX_SOCIAL_COUNTER, safeCounter(ownData(raw, 'deferred'), 0) + privacyDeferredCount),
+        cancelled: Math.min(MAX_SOCIAL_COUNTER, safeCounter(ownData(raw, 'cancelled'), initiatives.filter(item => item.status === 'cancelled').length)),
         reciprocity01: safeRatio(ownData(raw, 'reciprocity01'), defaults.reciprocity01),
         initiative01: safeRatio(ownData(raw, 'initiative01'), defaults.initiative01),
         startedAt: safeTime(ownData(raw, 'startedAt')) ?? 0,
@@ -288,7 +290,7 @@ export class AutonomousSocialInitiativeEngine {
     if(!this.state.consentGranted){
       const at=Date.now();
       for(const item of this.state.initiatives.filter(item=>item.status==='planned'||item.status==='ready'))
-        this.defer(item.id,Math.max(at,item.createdAt));
+        this.cancel(item.id,Math.max(at,item.createdAt));
     }
   }
   setQuietHours(input:{enabled:boolean;startHourUtc?:number;endHourUtc?:number}):void{
@@ -615,11 +617,25 @@ export class AutonomousSocialInitiativeEngine {
     return true;
   }
 
+  cancel(id: string, at = Date.now()): boolean {
+    const cancelledAt = safeTime(at);
+    if (cancelledAt === undefined) return false;
+    const item = this.state.initiatives.find(i => i.id === id);
+    if (!item || (item.status !== 'planned' && item.status !== 'ready') || cancelledAt < item.createdAt) return false;
+    item.status = 'cancelled';
+    item.resolvedAt = cancelledAt;
+    // Remove an unacknowledged draft from any accidental UI reuse path.
+    delete item.message;
+    delete item.stagedAt;
+    this.state.cancelled = Math.min(MAX_SOCIAL_COUNTER, this.state.cancelled + 1);
+    return true;
+  }
+
   defer(id: string, at = Date.now()): boolean {
     const deferredAt = safeTime(at);
     if (deferredAt === undefined) return false;
     const item = this.state.initiatives.find(i => i.id === id);
-    if (!item || item.status === 'executed' || item.status === 'deferred' || deferredAt < item.createdAt) return false;
+    if (!item || item.status === 'executed' || item.status === 'deferred' || item.status === 'cancelled' || deferredAt < item.createdAt) return false;
     item.status = 'deferred';
     item.resolvedAt = deferredAt;
     this.state.deferred = Math.min(MAX_SOCIAL_COUNTER, this.state.deferred + 1);
@@ -632,7 +648,7 @@ export class AutonomousSocialInitiativeEngine {
   summary() {
     return {
       cycles: this.state.cycles, planned: this.state.planned, executed: this.state.executed,
-      deferred: this.state.deferred, reciprocity01: this.state.reciprocity01,
+      deferred: this.state.deferred, cancelled: this.state.cancelled, reciprocity01: this.state.reciprocity01,
       initiative01: this.state.initiative01,
       active: this.state.initiatives.filter(i => i.status === 'planned' || i.status === 'ready').length,
       ready: this.state.initiatives.filter(i => i.status === 'ready').length,

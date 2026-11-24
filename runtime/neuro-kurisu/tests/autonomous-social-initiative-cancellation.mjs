@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
 import { AutonomousSocialInitiativeEngine } from '../src/organism/system/AutonomousSocialInitiativeEngine.ts';
+import { OrganismCore } from '../src/organism/core/OrganismCore.ts';
+import { MemoryStateStore } from '../src/organism/persistence/MemoryStateStore.ts';
 
 const at = Date.UTC(2026, 10, 24, 12, 0, 0);
 const input = {
@@ -78,5 +80,35 @@ assert.equal(restored.snapshot().initiatives[0].status, 'cancelled');
 assert.equal(restored.snapshot().cancelled, 1);
 assert.equal(restored.acknowledge(consentReady.id, at + 23), false,
   'cancelled delivery state must remain terminal after restart');
+
+
+const config = { performanceProfile: 'mobile', cycleResultMode: 'operational', checkpointMinIntervalMs: 0 };
+const coreStore = new MemoryStateStore();
+const core = new OrganismCore(coreStore, config);
+await core.init();
+try {
+  // Seed through the same canonical initiative owner used by OrganismCore.
+  const coreEngine = core.organismSystems.agency.autonomousSocialInitiative;
+  const coreInitiative = createInitiative(coreEngine, 30);
+  assert.equal(core.cancelAutonomousSocialInitiative(coreInitiative.id, at + 31), true,
+    'OrganismCore must expose explicit cancellation of a pending autonomous social initiative');
+  assert.equal(core.snapshot().system.autonomousSocialInitiative.initiatives[0].status, 'cancelled');
+  await core.flush();
+  const persisted = await coreStore.load();
+  assert.equal(persisted.system.autonomousSocialInitiative.initiatives[0].status, 'cancelled',
+    'Core cancellation must be included in the durable state snapshot');
+
+  const resumed = new OrganismCore(new MemoryStateStore({ initial: persisted }), config);
+  await resumed.init();
+  try {
+    assert.equal(resumed.snapshot().system.autonomousSocialInitiative.initiatives[0].status, 'cancelled',
+      'Core cancellation must survive a process restart');
+    assert.equal(resumed.acknowledgeAutonomousSocialInitiative(coreInitiative.id, at + 32), false);
+  } finally {
+    await resumed.flush();
+  }
+} finally {
+  await core.flush();
+}
 
 console.log('AUTONOMOUS_SOCIAL_INITIATIVE_CANCELLATION=PASS');

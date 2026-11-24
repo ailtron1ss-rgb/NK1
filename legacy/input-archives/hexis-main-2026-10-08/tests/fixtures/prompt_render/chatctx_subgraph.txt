@@ -1,8 +1,0 @@
-## Relevant Memories
-- m1 (score: 0.90)
-
-## Knowledge Subgraph
-How the recalled memories connect (typed links among + around them):
-- First memory label  —related→  missing
-- First memory label  —associated→  padded label
-- padded label  —supports→  c1

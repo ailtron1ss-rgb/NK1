@@ -1,2 +1,0 @@
-## Subconscious Signals
-- Emotional state: neutral (valence: 0, arousal: 0)

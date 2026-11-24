@@ -3003,8 +3003,20 @@ export class OrganismCore {
     }
     deferAutonomousSocialInitiative(id: string, at = Date.now()) {
         const deferred = this.organismSystems.agency.autonomousSocialInitiative.defer(id, at);
-        if (deferred) this.persisted.system.autonomousSocialInitiative = this.organismSystems.agency.autonomousSocialInitiative.snapshot();
+        if (deferred) {
+            this.persisted.system.autonomousSocialInitiative = this.organismSystems.agency.autonomousSocialInitiative.snapshot();
+            this.markPersistenceDirty();
+        }
         return deferred;
+    }
+    /** Cancel a pending proactive message. Cancellation is terminal and survives restart. */
+    cancelAutonomousSocialInitiative(id: string, at = Date.now()) {
+        const cancelled = this.organismSystems.agency.autonomousSocialInitiative.cancel(id, at);
+        if (cancelled) {
+            this.persisted.system.autonomousSocialInitiative = this.organismSystems.agency.autonomousSocialInitiative.snapshot();
+            this.markPersistenceDirty();
+        }
+        return cancelled;
     }
     /** Offline A/B benchmark against an isolated MemoryOS2 clone; never trains or mutates live memory. */
     memoryRetrievalBenchmark(examples: MemoryRetrievalBenchmarkExample[], options: MemoryRetrievalBenchmarkOptions = {}) {

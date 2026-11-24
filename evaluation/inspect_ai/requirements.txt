@@ -1,5 +1,0 @@
-# Pinned to the source archive reviewed for NK1 WorkPass72.
-inspect-ai==0.3.286
-
-# Inspect AI 0.3.286 imports acp.helpers; pin the compatible ACP release.
-agent-client-protocol==0.12.1
