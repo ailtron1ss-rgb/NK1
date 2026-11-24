@@ -533,18 +533,22 @@ function normalizeMemoryRevisionGraph(items:MemoryItem2[],onDuplicate?:(id:strin
  const forward=(parent:MemoryItem2,child:MemoryItem2)=>{
   const parentSequence=parent.revisionSequence;
   const childSequence=child.revisionSequence;
-  const parentRecordedFrom=Number(parent.recordedFromAt??parent.createdAt);
-  const childRecordedFrom=Number(child.recordedFromAt??child.createdAt);
+  const parentCreatedAt=Number(parent.createdAt);
+  const childCreatedAt=Number(child.createdAt);
   const parentValidFrom=Number(parent.validFromAt??parent.createdAt);
   const childValidFrom=Number(child.validFromAt??child.createdAt);
-  // Revisions are ordered by when NK1 learned them, not by world-valid time.
+  // Revision edges describe immutable record-creation order. recordedFromAt is
+  // the start of the current bitemporal state and can advance when metadata on a
+  // historical predecessor is corrected after its successor was recorded.
+  // Using it here would invalidate a sound revision edge on restore.
   return parent.id!==child.id&&sameLineage(parent,child)&&
    typeof parentSequence==='number'&&Number.isSafeInteger(parentSequence)&&
    typeof childSequence==='number'&&Number.isSafeInteger(childSequence)&&
    parentSequence>=1&&childSequence>parentSequence&&
-   Number.isFinite(parentRecordedFrom)&&Number.isFinite(childRecordedFrom)&&childRecordedFrom>=parentRecordedFrom&&
+   Number.isFinite(parentCreatedAt)&&Number.isFinite(childCreatedAt)&&childCreatedAt>=parentCreatedAt&&
    Number.isFinite(parentValidFrom)&&Number.isFinite(childValidFrom);
  };
+
  for(const child of unique){
   const parentId=child.supersedesId;
   if(parentId){
