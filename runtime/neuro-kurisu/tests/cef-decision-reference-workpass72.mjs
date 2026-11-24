@@ -43,4 +43,21 @@ assert.equal(replay.actionEventId, first.actionEventId);
 assert.equal(restored.snapshot().total, beforeTotal,
   'the correlation reference must retain the existing receipt idempotency projection across restore');
 
+// Simulate a receipt snapshot written by the pre-change CEF implementation:
+// the request hash knew the decision ID, but the action payload had discarded it.
+const legacySnapshot = structuredClone(snapshot);
+const legacyEvents = [
+  ...(legacySnapshot.recent ?? []),
+  ...(legacySnapshot.receiptEvents ?? []),
+];
+const legacyAction = legacyEvents.find(event => event.id === first.actionEventId);
+assert.ok(legacyAction);
+legacyAction.payload.decisionId = null;
+legacyAction.payload.decisionLinked = false;
+const legacyRestored = new CognitiveEventFabric();
+legacyRestored.restore(legacySnapshot);
+const legacyReplay = legacyRestored.appendToolReceiptTrace(input);
+assert.equal(legacyReplay.replayed, true,
+  'legacy null-decisionId projections must still replay when the immutable receipt request hash matches');
+
 console.log('CEF_DECISION_REFERENCE_WORKPASS72=PASS');
