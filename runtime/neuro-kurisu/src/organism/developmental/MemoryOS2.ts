@@ -2578,6 +2578,11 @@ export class MemoryOS2{
   const item=this.itemIndex.get(String(id));
   return item?structuredClone(item):null;
  }
+ /** Read-only canonical view: resolve a retained historical ID to its active revision tip. */
+ snapshotCurrentRevisionItem(id:string):MemoryItem2|null {
+  const item=this.resolveRevisionTip(String(id));
+  return item?structuredClone(item):null;
+ }
  snapshotPrefix(limit:number):MemoryItem2[] {
   const count=Math.max(0,Math.min(this.state.items.length,Math.floor(Number.isFinite(limit)?limit:0)));
   return this.state.items.slice(0,count).map(item=>structuredClone(item));
