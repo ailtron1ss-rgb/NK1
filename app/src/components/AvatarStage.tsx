@@ -25,7 +25,7 @@ import { cn } from "@/lib/utils";
 import { LegacySpriteDeck } from "@/legacy/avatar/LegacySpriteDeck";
 import { KurisuOriginalStage } from "./KurisuOriginalStage";
 import { Avatar3DStage } from "./Avatar3DStage";
-import { readAvatarPreference, writeAvatarPreference } from "@/legacy/avatar/safeLocalStorage";
+import { useKurisu, type AvatarViewMode } from "@/organism/store";
 import {
   appendVisemeClockAnchor,
   buildVisemeTimeline,
@@ -46,7 +46,7 @@ import {
   type SpeechLifecyclePhaseV1,
 } from "./avatar/embodimentTimeline";
 
-type ViewMode = "live2d" | "legacy" | "original" | "3d";
+type ViewMode = AvatarViewMode;
 const isRecord = (value: unknown): value is Record<string, unknown> => value !== null && typeof value === "object" && !Array.isArray(value);
 type Live2DActionStatus = "started" | "unavailable" | "error" | "not-requested";
 const isLive2DActionStatus = (value: unknown): value is Live2DActionStatus =>
@@ -123,18 +123,19 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
   const speechPhaseRef = useRef<SpeechPhase>("idle");
   const [live, setLive] = useState(false);
   const [viewerReadyRevision, setViewerReadyRevision] = useState(0);
-  // Native speech is opt-in. Opening the app never starts speaking historical chat.
-  const [voiceEnabled, setVoiceEnabled] = useState(() => readAvatarPreference("kurisu-avatar-voice-enabled") === "true");
-  const [voiceName, setVoiceName] = useState(() => readAvatarPreference("kurisu-avatar-voice-name") ?? "");
+  // Preferences are owned by the shared UI store so the Settings screen and avatar
+  // controls always edit the same values. Speech remains explicitly opt-in.
+  const mode = useKurisu((s) => s.avatarMode);
+  const setMode = useKurisu((s) => s.setAvatarMode);
+  const voiceEnabled = useKurisu((s) => s.voiceEnabled);
+  const setVoiceEnabled = useKurisu((s) => s.setVoiceEnabled);
+  const voiceName = useKurisu((s) => s.voiceName);
+  const setVoiceName = useKurisu((s) => s.setVoiceName);
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [voiceStatus, setVoiceStatus] = useState<"off" | "ready" | "unsupported" | "speaking" | "unknown">(() => typeof window !== "undefined" && "speechSynthesis" in window ? "off" : "unsupported");
   const [mouthPose, setMouthPose] = useState<MouthPose>(CLOSED_MOUTH);
   const [nativeSpeechProviderEvent, setNativeSpeechProviderEvent] = useState<NativeSpeechProviderEvent | null>(null);
   const [nativeSpeechConnection, setNativeSpeechConnection] = useState<NativeSpeechProviderConnection>("connecting");
-  const [mode, setMode] = useState<ViewMode>(() => {
-    const saved = readAvatarPreference("kurisu-avatar-mode");
-    return saved === "legacy" || saved === "original" || saved === "3d" ? saved : "live2d";
-  });
   // Aspect 11: the last planned renderer handoff, kept for truthful UI reporting.
   const [bodySwitch, setBodySwitch] = useState<{ from: ViewMode; to: ViewMode; plan: SwitchPlan } | null>(null);
   const [switchOpacity, setSwitchOpacity] = useState(1);
@@ -228,13 +229,6 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
     window.addEventListener("message", onMsg);
     return () => window.removeEventListener("message", onMsg);
   }, []);
-
-  useEffect(() => {
-    // Each preference is best-effort: a blocked storage write must not prevent avatar/voice controls.
-    writeAvatarPreference("kurisu-avatar-mode", mode);
-    writeAvatarPreference("kurisu-avatar-voice-enabled", String(voiceEnabled));
-    writeAvatarPreference("kurisu-avatar-voice-name", voiceName);
-  }, [mode, voiceEnabled, voiceName]);
 
   useEffect(() => { latestSnapRef.current = snap; mouthPoseRef.current = mouthPose; }, [snap, mouthPose]);
 
@@ -567,7 +561,7 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
         <button type="button" onClick={() => setMode("legacy")} className={cn("rounded px-2 py-1 text-[10px] font-mono", mode === "legacy" ? "bg-accent text-accent-fg" : "text-white/70")}>Legacy</button>
         <button type="button" onClick={() => setMode("original")} className={cn("rounded px-2 py-1 text-[10px] font-mono", mode === "original" ? "bg-accent text-accent-fg" : "text-white/70")}>NK1 Original</button>
         <button type="button" onClick={() => setMode("3d")} className={cn("rounded px-2 py-1 text-[10px] font-mono", mode === "3d" ? "bg-accent text-accent-fg" : "text-white/70")}>3D · preview</button>
-        <button type="button" aria-pressed={voiceEnabled} onClick={() => { if (voiceEnabled) stopSpeech(); setVoiceEnabled((value) => !value); }} disabled={voiceStatus === "unsupported"} className={cn("rounded px-2 py-1 text-[10px] font-mono", voiceEnabled ? "bg-accent text-accent-fg" : "text-white/70")}>{voiceEnabled ? "Голос: вкл." : "Голос: выкл."}</button>
+        <button type="button" aria-pressed={voiceEnabled} onClick={() => { if (voiceEnabled) stopSpeech(); setVoiceEnabled(!voiceEnabled); }} disabled={voiceStatus === "unsupported"} className={cn("rounded px-2 py-1 text-[10px] font-mono", voiceEnabled ? "bg-accent text-accent-fg" : "text-white/70")}>{voiceEnabled ? "Голос: вкл." : "Голос: выкл."}</button>
         {voiceEnabled && voices.length > 0 ? <select aria-label="Голос Курису" value={voiceName} onChange={(event) => { stopSpeech(); setVoiceName(event.target.value); }} className="max-w-32 rounded bg-black/70 px-1 py-1 text-[10px] text-white"><option value="">Авто</option>{voices.map((voice) => <option key={`${voice.name}:${voice.lang}`} value={voice.name}>{voice.name} · {voice.lang}</option>)}</select> : null}
       </div>
       <div className="transition-opacity duration-200 ease-out" style={{ opacity: switchOpacity }}>
