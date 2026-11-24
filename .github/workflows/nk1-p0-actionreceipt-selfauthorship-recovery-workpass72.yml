@@ -1,0 +1,67 @@
+name: NK1 P0 ActionGateway receipt to SelfAuthorship recovery
+
+on:
+  pull_request:
+    paths:
+      - "runtime/neuro-kurisu/src/organism/core/OrganismCore.ts"
+      - "runtime/neuro-kurisu/src/organism/cognition/SelfAuthorship.ts"
+      - "runtime/neuro-kurisu/src/organism/system/ActionGateway.ts"
+      - "runtime/neuro-kurisu/src/organism/persistence/FileActionExecutionLedgerArchive.ts"
+      - "runtime/neuro-kurisu/tests/action-receipt-selfauthorship-recovery-workpass72.mjs"
+      - "runtime/neuro-kurisu/tests/cef-decision-reference-workpass72.mjs"
+      - "runtime/neuro-kurisu/package.json"
+      - ".github/workflows/nk1-p0-actionreceipt-selfauthorship-recovery-workpass72.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  action-receipt-selfauthorship-recovery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          package-manager-cache: false
+      - name: Prove the regression fails before the Core finalization fix (TDD red)
+        env:
+          BASELINE_WITH_TEST_ONLY: 0070ed77c1cec99028164b8ac46f9c0529075c01
+        run: |
+          set -euo pipefail
+          RED_WORKTREE="$RUNNER_TEMP/nk1-workpass72-tdd-red"
+          git worktree add --detach "$RED_WORKTREE" "$BASELINE_WITH_TEST_ONLY"
+          cd "$RED_WORKTREE/runtime/neuro-kurisu"
+          output=""
+          if output=$(node --experimental-strip-types tests/action-receipt-selfauthorship-recovery-workpass72.mjs 2>&1); then
+            echo "Expected missing receipt-to-SelfAuthorship settlement, but the test passed."
+            exit 1
+          fi
+          printf '%s\n' "$output"
+          printf '%s\n' "$output" | grep -F "a verified ActionGateway receipt bound to a selected decision must settle SelfAuthorship without a separate manual feedback call" >/dev/null
+          cd "$GITHUB_WORKSPACE"
+          git worktree remove "$RED_WORKTREE"
+      - name: Real FileStateStore crash, restart, read-only reconciliation and SelfAuthorship settlement
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:action-receipt-selfauthorship-recovery-workpass72
+      - name: CEF keeps exact decision references without dangling parent edges
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:cef-decision-reference-workpass72
+      - name: Durable ActionGateway archive and Core restart integration
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:action-ledger-archive-workpass38
+      - name: Action executor crash reconciliation and idempotent replay
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/big-pass-380-action-crash-reconciliation.mjs
+      - name: Outcome verification hardening and causal accountability
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:outcome-verification-hardening
+      - name: Real process restart persistence
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:big-pass-155:restart
+      - name: Runtime syntax/typecheck
+        working-directory: runtime/neuro-kurisu
+        run: npm run typecheck
