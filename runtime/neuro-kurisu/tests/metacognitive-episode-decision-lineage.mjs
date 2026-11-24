@@ -134,16 +134,13 @@ try {
   assert.ok(storedEpisodeEvent,'the metacognitive episode must be stored in the canonical memory event log');
   assert.equal(storedEpisodeEvent.payload.episode.decisionId,runtimeDecisionId,
     'the persisted episode object must retain the same Core decision identity');
-  const canonicalMemoryState=runtime.core.snapshot().facets.advanced.memoryOS;
-  const canonicalMemory=canonicalMemoryState.items.find(item=>item.id===`metacognitive-cycle-${tick}`);
-  assert.ok(canonicalMemory,'the metacognitive episode must have a canonical MemoryOS2 item');
-  assert.equal(canonicalMemory.context?.decisionId,runtimeDecisionId,
-    'the persisted canonical MemoryOS2 item must retain the decision identity');
   const canonicalProjection=runtime.core.memorySubstrateCanonicalItems(64).find(item=>item.id===`metacognitive-cycle-${tick}`);
   assert.ok(canonicalProjection,'the lightweight canonical-memory view must expose the same episode ID');
   const diagnostics=runtime.core.metacognitiveEpisodeDiagnostics(4);
   assert.equal(diagnostics.episodes[0]?.decisionId,runtimeDecisionId,
-    'bounded metacognitive diagnostics must expose the canonical decision identity');
+    'bounded metacognitive diagnostics must expose the episode decision identity');
+  assert.equal(diagnostics.episodes[0]?.memoryDecisionId,runtimeDecisionId,
+    'bounded diagnostics must read the same identity from the live canonical MemoryOS2 owner');
   const legacyEpisode={...storedEpisodeEvent.payload.episode};
   delete legacyEpisode.decisionId;
   assert.ok(normalizeMetacognitiveEpisode(legacyEpisode),
@@ -166,8 +163,10 @@ try {
   assert.equal(restoredEpisodeEvent.payload.episode.decisionId,runtimeDecisionId,
     'restored episode lineage must preserve the exact decision identity');
   const restoredMemory=restoredRuntime.core.memorySubstrateCanonicalItems(64).find(item=>item.id===`metacognitive-cycle-${tick}`);
-  assert.equal(restoredMemory?.context?.decisionId,runtimeDecisionId,
-    'the restored canonical memory item must preserve the same decision identity');
+  assert.ok(restoredMemory,'the canonical episode must remain retrievable after restore');
+  const restoredDiagnostics=restoredRuntime.core.metacognitiveEpisodeDiagnostics(4);
+  assert.equal(restoredDiagnostics.episodes[0]?.memoryDecisionId,runtimeDecisionId,
+    'the restored canonical MemoryOS2 owner must retain the exact decision identity');
   console.log(JSON.stringify({
     decisionId:runtimeDecisionId,
     stages:cycleEvents.map(event=>event.stage),
