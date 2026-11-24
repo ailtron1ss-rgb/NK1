@@ -277,3 +277,17 @@ test("hosted model verifier pins the public v12 asset and all morph target names
  assert.match(verify,/explore_turn/);
  assert.match(verify,/HOSTED_KURISU_V12_MORPH_PREVIEW=PASS/);
 });
+
+
+test("avatar speech capability and saved preferences hydrate without SSR browser-state divergence",async()=>{
+ const stage=await readFile(path.join(root,"src/components/AvatarStage.tsx"),"utf8");
+ assert.match(stage,/const \[preferencesHydrated, setPreferencesHydrated\] = useState\(false\)/);
+ assert.match(stage,/const \[voiceEnabled, setVoiceEnabled\] = useState\(false\)/);
+ assert.match(stage,/const \[voiceName, setVoiceName\] = useState\(""/);
+ assert.match(stage,/const \[mode, setMode\] = useState<ViewMode>\("live2d"\)/);
+ assert.match(stage,/const \[voiceStatus, setVoiceStatus\] = useState<[^;]+>\("unknown"\)/);
+ assert.match(stage,/setPreferencesHydrated\(true\)/);
+ assert.match(stage,/if \(!preferencesHydrated\) return;/);
+ assert.doesNotMatch(stage,/useState\(\(\) => readAvatarPreference/);
+ assert.doesNotMatch(stage,/typeof window !== "undefined" && "speechSynthesis" in window/);
+});
