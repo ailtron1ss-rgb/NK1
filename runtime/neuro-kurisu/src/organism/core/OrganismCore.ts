@@ -4212,9 +4212,6 @@ export class OrganismCore {
             reason: active?.reason ?? 'spine-only-cycle',
         });
         this.persisted.facets.learning.selfAuthorship = this.selfSubsystem.selfAuthorship.snapshot();
-        if (observation.reward !== undefined || observation.success !== undefined) {
-            decision.outcome = { success: clamp(observation.success ?? (observation.reward == null ? .5 : .5 + observation.reward * .5)), reward: observation.reward, surprise: observation.surprise, notes: 'spine-only-inline-feedback', at: Date.now() };
-        }
         const workspace: WorkspaceFrame = { tick: state.tick, broadcastId: `spine:${state.tick}`, selected: selected ? [selected.action] : [], content: { mode: 'SPINE_ONLY', b299LearningUpdates: this.developmentalNeural.causalPersonalityDevelopmentB299.snapshot().learningUpdates, b269Cycles: b269Snapshot.cycles, b269Prediction01: b269Prediction01, b269FiringRate01: b269Frame.firingRate01, b269Plasticity01: b269Frame.plasticity01 }, recurrentCycles: 1 };
         this.markPersistenceDirty();
         const checkpointCadence = Math.max(64, Math.floor(Number(this.config.checkpointMaxDirtyCycles || 64)));
