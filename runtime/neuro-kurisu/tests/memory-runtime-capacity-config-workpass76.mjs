@@ -1,35 +1,91 @@
 import assert from 'node:assert/strict';
 import { MemorySubsystemRuntime } from '../src/organism/core/MemorySubsystemRuntime.ts';
+import { P75MemoryContinuumOS } from '../src/organism/developmental/P75MemoryContinuumOS.ts';
 
-const original = process.env.NEURO_MEMORY_ITEM_CAP;
-function configured(value) {
-  if (value === null) delete process.env.NEURO_MEMORY_ITEM_CAP;
-  else process.env.NEURO_MEMORY_ITEM_CAP = value;
-  return new MemorySubsystemRuntime().memoryOS.capacityDiagnostics().hardCap;
+const originalCap = process.env.NEURO_MEMORY_ITEM_CAP;
+const originalBytes = process.env.NEURO_MEMORY_BYTE_BUDGET;
+
+function configured(cap, bytes) {
+  if (cap === null) delete process.env.NEURO_MEMORY_ITEM_CAP;
+  else process.env.NEURO_MEMORY_ITEM_CAP = cap;
+  if (bytes === null) delete process.env.NEURO_MEMORY_BYTE_BUDGET;
+  else process.env.NEURO_MEMORY_BYTE_BUDGET = bytes;
+  const runtime = new MemorySubsystemRuntime();
+  return {
+    itemCap: runtime.memoryItemCap,
+    byteBudget: runtime.memoryByteBudget,
+    diagnosticCap: runtime.memoryOS.capacityDiagnostics().hardCap,
+  };
 }
 
 try {
-  assert.equal(configured(null), 1_600,
-    'the canonical organism memory owner must retain the 1,600-row default');
-  assert.equal(configured('10000'), 10_000,
-    'the canonical owner must honor the explicit 10k host profile');
-  assert.equal(configured('50000'), 10_000,
-    'host configuration must be clamped to the supported 10k maximum');
-  assert.equal(configured('64'), 128,
-    'host configuration must be clamped to the safe minimum');
-  assert.equal(configured('not-a-number'), 1_600,
-    'invalid host configuration must fail back to the safe default');
+  assert.deepEqual(configured(null, null), {
+    itemCap: 1_600, byteBudget: 1_048_576, diagnosticCap: 1_600,
+  }, 'the default organism profile must remain 1,600 rows / 1 MiB');
+
+  assert.deepEqual(configured('10000', null), {
+    itemCap: 10_000, byteBudget: 7_200_000, diagnosticCap: 10_000,
+  }, 'an explicit 10k profile must scale the canonical byte budget to 7.2 MB');
+
+  assert.deepEqual(configured('10000', '6000000'), {
+    itemCap: 10_000, byteBudget: 6_000_000, diagnosticCap: 10_000,
+  }, 'operators may explicitly choose a lower bounded byte budget');
+
+  assert.deepEqual(configured('50000', '99999999'), {
+    itemCap: 10_000, byteBudget: 8_388_608, diagnosticCap: 10_000,
+  }, 'both host limits must clamp to their documented maximums');
+
+  assert.deepEqual(configured('64', '1'), {
+    itemCap: 128, byteBudget: 262_144, diagnosticCap: 128,
+  }, 'both host limits must clamp to safe minimums');
+
+  assert.deepEqual(configured('not-a-number', 'not-a-number'), {
+    itemCap: 1_600, byteBudget: 1_048_576, diagnosticCap: 1_600,
+  }, 'invalid host values must fail back to the default profile');
+
+  const p75 = new P75MemoryContinuumOS();
+  const defaultPlan = p75.plan({
+    tick: 1, pressure01: 0, recentEpisodes: 32, semanticNodes: 10_000,
+    activeGoals: 100, energy01: 1, textPresent: true,
+    experienceHot: 96, experienceWarm: 320, experienceCold: 1_024,
+  });
+  assert.ok(defaultPlan.canonicalBudget <= 1_600,
+    'P75 must retain its historical default cap when no capacity profile is supplied');
+
+  const expandedPlan = p75.plan({
+    tick: 2, pressure01: 0, recentEpisodes: 32, semanticNodes: 10_000,
+    activeGoals: 100, energy01: 1, textPresent: true,
+    experienceHot: 96, experienceWarm: 320, experienceCold: 1_024,
+    canonicalCapacity: 10_000,
+  });
+  assert.ok(expandedPlan.canonicalBudget > 1_600,
+    'P75 must honor an explicit expanded canonical capacity');
+  assert.ok(expandedPlan.canonicalBudget <= 10_000,
+    'P75 canonical budget must never exceed the validated host cap');
+
+  const clampedPlan = p75.plan({
+    tick: 3, pressure01: 0, recentEpisodes: 32, semanticNodes: 10_000,
+    activeGoals: 100, energy01: 1, textPresent: true,
+    experienceHot: 96, experienceWarm: 320, experienceCold: 1_024,
+    canonicalCapacity: 50_000,
+  });
+  assert.ok(clampedPlan.canonicalBudget <= 10_000,
+    'P75 must clamp unsafe expanded capacities');
 } finally {
-  if (original === undefined) delete process.env.NEURO_MEMORY_ITEM_CAP;
-  else process.env.NEURO_MEMORY_ITEM_CAP = original;
+  if (originalCap === undefined) delete process.env.NEURO_MEMORY_ITEM_CAP;
+  else process.env.NEURO_MEMORY_ITEM_CAP = originalCap;
+  if (originalBytes === undefined) delete process.env.NEURO_MEMORY_BYTE_BUDGET;
+  else process.env.NEURO_MEMORY_BYTE_BUDGET = originalBytes;
 }
 
 console.log('MEMORY_RUNTIME_CAPACITY_CONFIG_WORKPASS76=PASS', JSON.stringify({
-  default: 1_600,
-  explicit: 10_000,
-  maximum: 10_000,
-  minimum: 128,
-  invalidFallback: 1_600,
-  env: 'NEURO_MEMORY_ITEM_CAP',
+  default: { itemCap: 1_600, byteBudget: 1_048_576 },
+  explicit10k: { itemCap: 10_000, derivedByteBudget: 7_200_000 },
+  explicitByteBudget: 6_000_000,
+  maximum: { itemCap: 10_000, byteBudget: 8_388_608 },
+  minimum: { itemCap: 128, byteBudget: 262_144 },
+  invalidFallback: { itemCap: 1_600, byteBudget: 1_048_576 },
+  env: ['NEURO_MEMORY_ITEM_CAP', 'NEURO_MEMORY_BYTE_BUDGET'],
   canonicalOwner: 'MemorySubsystemRuntime.memoryOS',
+  p75CapacityPropagation: true,
 }));
