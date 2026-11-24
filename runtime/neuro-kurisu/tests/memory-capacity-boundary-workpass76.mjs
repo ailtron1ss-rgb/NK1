@@ -69,6 +69,16 @@ assert.equal(result[0]?.id, targetId, 'retained target must be searchable after 
 const index = memory.indexDiagnostics();
 assert.equal(index.pass, true, 'indexes must remain consistent after bounded 10k-row restore');
 
+const defaultProfile = new MemoryOS2({ embeddingProvider: null });
+const lowClampProfile = new MemoryOS2({ embeddingProvider: null, itemCap: 1 });
+const highClampProfile = new MemoryOS2({ embeddingProvider: null, itemCap: 50_000 });
+assert.equal(defaultProfile.capacityDiagnostics().hardCap, ITEM_CAP,
+  'omitting itemCap must preserve the mobile/default 1,600 row cap');
+assert.equal(lowClampProfile.capacityDiagnostics().hardCap, 128,
+  'itemCap must be clamped to the documented minimum');
+assert.equal(highClampProfile.capacityDiagnostics().hardCap, SOURCE_ROWS,
+  'itemCap must be clamped to the documented 10k maximum');
+
 const extended = new MemoryOS2({ embeddingProvider: null, itemCap: SOURCE_ROWS });
 const extendedStarted = performance.now();
 extended.restore(restoreSnapshot);
@@ -100,6 +110,13 @@ const extendedPreviewMs = performance.now() - previewStarted;
 assert.equal(extendedPreview[0]?.id, targetId,
   'preview cloning must preserve the configured 10k capacity');
 
+const maintenance = extended.maintain({ maxItems: 9_000 });
+assert.equal(maintenance.hardCap, 9_000);
+assert.equal(maintenance.after, 9_000,
+  'maintenance maxItems must be bounded by, and operate below, the configured 10k capacity');
+assert.equal(extended.indexDiagnostics().pass, true,
+  'maintenance eviction must keep all secondary indexes consistent');
+
 const tooMany = { ...emptySnapshot, items: new Array(SCAN_LIMIT + 1) };
 assert.throws(
   () => new MemoryOS2({ embeddingProvider: null }).restore(tooMany),
@@ -129,5 +146,7 @@ console.log('MEMORY_CAPACITY_BOUNDARY_WORKPASS76=PASS', JSON.stringify({
     isolatedPreviewMs: Number(extendedPreviewMs.toFixed(2)),
     indexIntegrity: extendedIndex.pass,
     capacity: extended.capacityDiagnostics(),
+    maintenance: { before: maintenance.before, after: maintenance.after, removed: maintenance.removedIds.length },
+    capacityClamp: { default: ITEM_CAP, minimum: 128, maximum: highClampProfile.capacityDiagnostics().hardCap },
   },
 }));
