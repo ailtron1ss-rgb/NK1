@@ -61,8 +61,11 @@ const external = await resumed.observe({
 assert.ok(external.decision.selected?.action);
 assert.equal(resumed.selfAuthorshipSnapshot().autonomousActionCount, 1,
   'externalGoal observations must never become intrinsic autonomous action credit');
-assert.equal(resumed.selfAuthorshipSnapshot().selfAuthoredGoalCount, 0,
-  'externalGoal must not become an intrinsic self-authored commitment');
+const internallyAuthoredGoalCount = resumed.selfAuthorshipSnapshot().selfAuthoredGoalCount;
+assert.equal(resumed.selfAuthorshipSnapshot().pendingDecisions.length, 0,
+  'an externalGoal must not create an intrinsic pending decision');
+assert.equal(internallyAuthoredGoalCount, credited.selfAuthoredGoalCount,
+  'externalGoal must not add to intrinsic self-authored commitments');
 
 await resumed.flush();
 console.log('SELF_AUTHORSHIP_SPINEONLY_RUNTIME_WORKPASS71=PASS');

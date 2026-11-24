@@ -15,13 +15,50 @@ permissions:
 jobs:
   spineonly-selfauthorship:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           package-manager-cache: false
-      - name: Spine-only canonical authorship and restart regression
+      - name: Confirm regression fails on the test-only checkpoint (TDD red)
+        env:
+          BASELINE_WITH_REGRESSION: 51d4fddba9835455ed01aed4ef3c4375171729e0
+        run: |
+          set -euo pipefail
+          RED_WORKTREE="$RUNNER_TEMP/nk1-spineonly-tdd-red"
+          git worktree add --detach "$RED_WORKTREE" "$BASELINE_WITH_REGRESSION"
+          cd "$RED_WORKTREE/runtime/neuro-kurisu"
+          output=""
+          if output=$(node --experimental-strip-types tests/self-authorship-spineonly-runtime-workpass71.mjs 2>&1); then
+            echo "Expected pre-fix spine-only regression, but test passed."
+            exit 1
+          fi
+          printf '%s\n' "$output"
+          printf '%s\n' "$output" | grep -F "spine-only decisions must be registered with canonical SelfAuthorship" >/dev/null
+          cd "$GITHUB_WORKSPACE"
+          git worktree remove "$RED_WORKTREE"
+      - name: Spine-only pending, verified outcome and restart regression
         working-directory: runtime/neuro-kurisu
         run: npm run test:self-authorship-spineonly-runtime-workpass71
+      - name: Existing full cognitive-spine runtime integration
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:workpass637:cognitive-spine-runtime
+      - name: Existing neural developmental spine regression
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:big-pass-349:spine
+      - name: Existing Core recovery-watchdog restart regression
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/big-pass-324-core-watchdog.mjs
+      - name: Existing runtime restart persistence regression
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:big-pass-155:restart
+      - name: Existing canonical B306 outcome attribution
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:b306:outcome-attribution
+      - name: Runtime syntax/typecheck
+        working-directory: runtime/neuro-kurisu
+        run: npm run typecheck
