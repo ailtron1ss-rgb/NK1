@@ -3,7 +3,8 @@ import { AutonomousSocialInitiativeEngine } from '../src/organism/system/Autonom
 import { OrganismCore } from '../src/organism/core/OrganismCore.ts';
 import { MemoryStateStore } from '../src/organism/persistence/MemoryStateStore.ts';
 
-const at = Date.UTC(2026, 10, 24, 12, 0, 0);
+// Keep the synthetic clock ahead of OrganismCore's real-time initialization.
+const at = Date.now() + 60_000;
 const input = {
   at,
   externalInput: false,
