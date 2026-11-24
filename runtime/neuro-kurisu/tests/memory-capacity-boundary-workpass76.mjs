@@ -303,6 +303,14 @@ try {
     postRestartByteEvictions: postRestartMaintenance.byteBudget.evicted.length,
     exactOrderedIdsPreserved: true,
   };
+  canonicalFileBackedRoundTrip = {
+    serializedBytes: fileStoreMetrics.lastPayloadBytes,
+    saveMs: fileStoreMetrics.lastSaveMs,
+    fsyncs: fileStoreMetrics.fsyncs,
+    itemsAfterRestore: restartedRuntime.memoryOS.size(),
+    indexIntegrity: restartedRuntime.memoryOS.indexDiagnostics().pass,
+    accountingExact: restartedRuntime.memoryOS.memoryAccountingDiagnostics().exact,
+  };
 } finally {
   if (originalItemCapEnv === undefined) delete process.env.NEURO_MEMORY_ITEM_CAP;
   else process.env.NEURO_MEMORY_ITEM_CAP = originalItemCapEnv;
@@ -375,6 +383,6 @@ console.log('MEMORY_CAPACITY_BOUNDARY_WORKPASS76=PASS', JSON.stringify({
     canonicalFabric10k: { items: SOURCE_ROWS, byteBudget: canonicalMaintenance.byteBudget.budget, byteEvictions: canonicalMaintenance.byteBudget.evicted.length, indexIntegrity: canonicalIndex.pass, accountingExact: canonicalAccounting.exact },
     canonicalLifecycle10k: canonicalLifecycle,
     canonicalDurableRoundTrip10k: canonicalDurableRoundTrip,
-    canonicalFileBackedRoundTrip10k: { serializedBytes: fileStoreMetrics.lastPayloadBytes, saveMs: fileStoreMetrics.lastSaveMs, fsyncs: fileStoreMetrics.fsyncs, itemsAfterRestore: restartedRuntime.memoryOS.size(), indexIntegrity: restartedRuntime.memoryOS.indexDiagnostics().pass, accountingExact: restartedRuntime.memoryOS.memoryAccountingDiagnostics().exact },
+    canonicalFileBackedRoundTrip10k: canonicalFileBackedRoundTrip,
   },
 }));
