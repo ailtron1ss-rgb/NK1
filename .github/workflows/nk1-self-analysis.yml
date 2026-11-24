@@ -1,0 +1,88 @@
+name: NK1 self-analysis substrate
+
+# Guards the structural self-analysis index and the live self-agency admission gate.
+# Missing paired downstream evidence must fail closed; keep both authority and Core-live
+# regressions on the owning-file path so a future caller cannot silently bypass them.
+
+on:
+  push:
+    paths:
+      - "runtime/neuro-kurisu/src/organism/analysis/**"
+      - "runtime/neuro-kurisu/src/organism/system/CanonicalSelfAgencyAuthority.ts"
+      - "runtime/neuro-kurisu/tests/self-analysis-substrate.mjs"
+      - "runtime/neuro-kurisu/tests/patch-receipt-guard.mjs"
+      - "runtime/neuro-kurisu/tests/self-improvement-patch-admission.mjs"
+      - "runtime/neuro-kurisu/tests/self-improvement-admission-service.mjs"
+      - "runtime/neuro-kurisu/tests/canonical-self-agency-authority.mjs"
+      - "runtime/neuro-kurisu/package.json"
+      - "contracts/progress-workstreams.json"
+      - "docs/evidence/**"
+      - "docs/NK1_COMPLETION_AND_SELF_DEVELOPMENT_MASTER_PLAN_2026-11-03_RU.md"
+      - "docs/NK1_OSS_INTEGRATION_REGISTER_RU.md"
+      - "docs/engineering/NK1_HOST_OWNED_PATCH_RECEIPT_TRUST_2026-11-03.md"
+      - "tools/progress-report.mjs"
+      - "tools/progress-report.test.mjs"
+      - "tools/run-local-gate.mjs"
+      - ".nvmrc"
+      - ".github/workflows/nk1-self-analysis.yml"
+  pull_request:
+    paths:
+      - "runtime/neuro-kurisu/src/organism/analysis/**"
+      - "runtime/neuro-kurisu/src/organism/system/CanonicalSelfAgencyAuthority.ts"
+      - "runtime/neuro-kurisu/tests/self-analysis-substrate.mjs"
+      - "runtime/neuro-kurisu/tests/patch-receipt-guard.mjs"
+      - "runtime/neuro-kurisu/tests/self-improvement-patch-admission.mjs"
+      - "runtime/neuro-kurisu/tests/self-improvement-admission-service.mjs"
+      - "runtime/neuro-kurisu/tests/canonical-self-agency-authority.mjs"
+      - "runtime/neuro-kurisu/package.json"
+      - "contracts/progress-workstreams.json"
+      - "docs/evidence/**"
+      - "docs/NK1_COMPLETION_AND_SELF_DEVELOPMENT_MASTER_PLAN_2026-11-03_RU.md"
+      - "docs/NK1_OSS_INTEGRATION_REGISTER_RU.md"
+      - "docs/engineering/NK1_HOST_OWNED_PATCH_RECEIPT_TRUST_2026-11-03.md"
+      - "tools/progress-report.mjs"
+      - "tools/progress-report.test.mjs"
+      - "tools/run-local-gate.mjs"
+      - ".nvmrc"
+      - ".github/workflows/nk1-self-analysis.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nk1-self-analysis-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  self-analysis:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: runtime/neuro-kurisu/package-lock.json
+      - name: Install locked runtime dependencies
+        run: npm ci --prefix runtime/neuro-kurisu --ignore-scripts --no-audit --no-fund
+      - name: Structural index and self-modification guard
+        run: npm --prefix runtime/neuro-kurisu run test:self-analysis-substrate
+      - name: Verify signed patch receipts and changed-line containment
+        run: node --experimental-strip-types runtime/neuro-kurisu/tests/patch-receipt-guard.mjs
+      - name: Verify cryptographic candidate admission path
+        run: node --experimental-strip-types runtime/neuro-kurisu/tests/self-improvement-patch-admission.mjs
+      - name: Host-owned source snapshot and admission boundary
+        run: npm --prefix runtime/neuro-kurisu run test:self-improvement-admission-service
+      - name: Live self-agency authority contract
+        run: npm --prefix runtime/neuro-kurisu run test:self-agency:authority
+      - name: Live self-agency Core integration
+        run: npm --prefix runtime/neuro-kurisu run test:self-agency:live
+      - name: Test stale-evidence rejection and progress axes
+        run: node tools/progress-report.test.mjs
+      - name: Compute exact-SHA progress report
+        run: node tools/progress-report.mjs --json
+      - name: Self-modification adversarial regression
+        run: npm --prefix runtime/neuro-kurisu run test:self-modification-adversarial
+      - name: Runtime typecheck
+        run: npm --prefix runtime/neuro-kurisu run typecheck
