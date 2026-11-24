@@ -177,3 +177,21 @@ test("3D uses the same shared motor projection but preserves raw organism action
  assert.match(stage,/applyAvatarAnimationFrame\(\{mixer:rt\.mixer,clips:rt\.clips,action:p\.action/);
  assert.match(parent,/motorPlan=\{projection\.motorPlan\}/);
 });
+
+
+test("v7 NLA candidate is available for explicit visual preview but never promoted or persisted by default",async()=>{
+ const catalog=await readFile(path.join(root,"src/components/avatar/avatarModelCatalog.ts"),"utf8");
+ const stage=await readFile(stagePath,"utf8");
+ assert.match(catalog,/export const KURISU_HYBRID_MODEL_V7_CANDIDATE/);
+ assert.match(catalog,/canonical:\s*false/);
+ assert.match(catalog,/9eb90244a35db827334c65a2101e5e4640875b9a25f53836876f1ca20972f8a0/);
+ assert.match(stage,/loadCatalogModel/);
+ assert.match(stage,/loadModel\(blob,model\.filename,"preview"\)/);
+ assert.match(stage,/loadV7Candidate/);
+ assert.match(stage,/v7[^\n]{0,80}(?:preview|кандидат)|(?:preview|предпросмотр)[^\n]{0,80}v7/i);
+});
+
+test("avatar renderer mode controls expose the selected mode to assistive technology",async()=>{
+ const ui=await readFile(path.join(root,"src/components/AvatarStage.tsx"),"utf8");
+ for(const mode of ["live2d","legacy","original","3d"])assert.ok(ui.includes(`aria-pressed={mode === "${mode}"}`),`missing aria-pressed state for ${mode}`);
+});
