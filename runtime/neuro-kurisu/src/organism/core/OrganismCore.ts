@@ -9154,6 +9154,7 @@ export class OrganismCore {
                 {
                     tick: state.tick,
                     cycleId: 'nk1-cycle:' + state.tick + ':' + metacognitiveActionEventId,
+                    decisionId: trace?.id,
                     observationEventId: metacognitiveObservationEventId,
                     predictionEventId: metacognitivePredictionEventId,
                     actionEventId: metacognitiveActionEventId,
