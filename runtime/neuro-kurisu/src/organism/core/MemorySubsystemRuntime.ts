@@ -32,6 +32,14 @@ import { MemoryCausalEconomy, defaultMemoryCausalEconomy } from '../system/Memor
 import { CausalLifeGraph } from '../system/CausalLifeGraph.ts';
 import { MemoryWorldCausalBridge, defaultMemoryWorldCausalBridge } from '../system/MemoryWorldCausalBridge.ts';
 
+/** Host-only capacity selector. Invalid or absent values preserve the 1,600-row default. */
+function configuredMemoryItemCap():number{
+  const raw=process.env.NEURO_MEMORY_ITEM_CAP;
+  if(typeof raw!=='string'||!raw.trim())return 1600;
+  const parsed=Number(raw);
+  return Number.isSafeInteger(parsed)?parsed:1600;
+}
+
 /** BIG PASS 51: physical owner for persistent and working-memory machinery. */
 export class MemorySubsystemRuntime {
   readonly systemName='memory' as const;
@@ -47,7 +55,7 @@ export class MemorySubsystemRuntime {
   readonly valuePlasticity = new ValuePlasticity();
   readonly workspaceV2 = new RecurrentWorkspaceV2();
   readonly semanticMemory = new SemanticMemoryGraph();
-  readonly memoryOS = new MemoryOS2();
+  readonly memoryOS = new MemoryOS2({ itemCap: configuredMemoryItemCap() });
   readonly memorySubstrate = new MemorySubstrateCoordinator();
   readonly unifiedMemory = new UnifiedMemorySystem();
   readonly p47MemoryMind = new P47TemporalMemoryMind();
