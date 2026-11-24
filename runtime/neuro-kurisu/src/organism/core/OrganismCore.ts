@@ -8349,28 +8349,28 @@ export class OrganismCore {
             requestedAction: userRequestedAction,
         });
         decision.semanticEvidence = buildDecisionSemanticEvidence({ stateBefore: previous, candidates: governedCandidates.slice(0, 7), selected: selectedIntent, worldContextKey });
-        const retrievedMemoryIds = advancedRetrieved.map(memory => memory.id).slice(0, 8);
-        const memoryEvidence: DecisionMemoryEvidenceReceipt = {
+        const decisionMemoryIds = advancedRetrieved.map(memory => memory.id).slice(0, 8);
+        const decisionMemoryEvidence: DecisionMemoryEvidenceReceipt = {
             version: 1,
             receiptId: `memory-query:${state.tick}:${randomUUID()}`,
             tick: state.tick,
             queryHash: createHash('sha256').update(memoryQuery).digest('hex'),
             queryKind: memoryQueryKind,
-            status: !cognitiveExecutionPlan.run.memory ? 'skipped' : retrievedMemoryIds.length ? 'retrieved' : 'empty',
-            retrievedMemoryIds,
-            retrievedCount: retrievedMemoryIds.length,
+            status: !cognitiveExecutionPlan.run.memory ? 'skipped' : decisionMemoryIds.length ? 'retrieved' : 'empty',
+            decisionMemoryIds,
+            retrievedCount: decisionMemoryIds.length,
             appliedToWorldModel: Boolean(memoryWorldApplication?.applied),
             memoryWorldCausalLinkId,
             counterfactualDelta01: clamp(memoryWorldApplication?.delta01 ?? 0),
             counterfactualInfluence01: clamp(memoryWorldApplication?.strength01 ?? 0),
             influenceBasis: memoryWorldApplication?.applied
                 ? 'internal-counterfactual-world-model'
-                : retrievedMemoryIds.length ? 'retrieval-only' : 'not-applied',
+                : decisionMemoryIds.length ? 'retrieval-only' : 'not-applied',
         };
-        decision.memoryEvidence = memoryEvidence;
-        decision.reasoningSignals.memoryRetrievedCount = memoryEvidence.retrievedCount;
-        decision.reasoningSignals.memoryWorldApplied01 = memoryEvidence.appliedToWorldModel ? 1 : 0;
-        decision.reasoningSignals.memoryWorldCounterfactualInfluence01 = memoryEvidence.counterfactualInfluence01;
+        decision.decisionMemoryEvidence = decisionMemoryEvidence;
+        decision.reasoningSignals.memoryRetrievedCount = decisionMemoryEvidence.retrievedCount;
+        decision.reasoningSignals.memoryWorldApplied01 = decisionMemoryEvidence.appliedToWorldModel ? 1 : 0;
+        decision.reasoningSignals.memoryWorldCounterfactualInfluence01 = decisionMemoryEvidence.counterfactualInfluence01;
         if (memoryWorldCausalLinkId) {
             const boundLink = this.organismSystems.memory.memoryWorldCausalBridge.bindDecision(memoryWorldCausalLinkId, decision.id);
             if (!boundLink) throw new Error('memory-world-causal-decision-link-missing');
