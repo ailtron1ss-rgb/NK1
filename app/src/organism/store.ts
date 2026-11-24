@@ -5,6 +5,7 @@ import { neuroApi } from "@/neuro-kurisu/api";
 import { toOrganismSnapshot } from "@/neuro-kurisu/normalize";
 import { readAvatarPreference, writeAvatarPreference } from "@/legacy/avatar/safeLocalStorage";
 import { shouldApplyUiSnapshot, type UiSnapshotStamp } from "./snapshotSync";
+import { withChatDeliveryStatus } from "./chatDelivery";
 
 export type LabsTab = "mind" | "memory" | "lab" | "skills" | "evidence";
 export type AppSection = "home" | "memory" | "motivation" | "settings" | "more";
@@ -237,6 +238,7 @@ export const useKurisu = create<KurisuStore>((set, get) => {
         text: trimmed,
         at: now,
         tick: get().snap.tick,
+        delivery: "sending" as const,
       };
       const optimisticChat = [...get().snap.chat, userTurn].slice(-120);
       saveChat(optimisticChat);
@@ -259,15 +261,17 @@ export const useKurisu = create<KurisuStore>((set, get) => {
           option: (String(result.cycle?.decision?.selected?.action || result.worldAction || current.snap.lastOption) as OrganismSnapshot["lastOption"]),
           backend: String(result.language?.backend || "canonical"),
         };
-        const chat = [...current.snap.chat, kurisuTurn].slice(-120);
+        const deliveredChat = withChatDeliveryStatus(current.snap.chat, userTurn.id, "sent");
+        const chat = [...deliveredChat, kurisuTurn].slice(-120);
         saveChat(chat);
         set({ snap: { ...current.snap, chat }, busy: false });
         return true;
       } catch (error) {
         const message = errorMessage(error);
         const current = get();
-        saveChat(current.snap.chat);
-        set({ busy: false, error: message });
+        const uncertainChat = withChatDeliveryStatus(current.snap.chat, userTurn.id, "unknown");
+        saveChat(uncertainChat);
+        set({ snap: { ...current.snap, chat: uncertainChat }, busy: false, error: message });
         return false;
       }
     },
