@@ -2991,6 +2991,7 @@ export class OrganismCore {
         // stageMessage may reject an unsafe message while still changing it to deferred;
         // persist the resulting state even when no message is staged for delivery.
         this.persisted.system.autonomousSocialInitiative = this.organismSystems.agency.autonomousSocialInitiative.snapshot();
+        this.markPersistenceDirty();
         return staged;
     }
     pendingAutonomousSocialInitiativeMessage() {
@@ -2998,7 +2999,10 @@ export class OrganismCore {
     }
     acknowledgeAutonomousSocialInitiative(id: string, at = Date.now()) {
         const acknowledged = this.organismSystems.agency.autonomousSocialInitiative.acknowledge(id, at);
-        if (acknowledged) this.persisted.system.autonomousSocialInitiative = this.organismSystems.agency.autonomousSocialInitiative.snapshot();
+        if (acknowledged) {
+            this.persisted.system.autonomousSocialInitiative = this.organismSystems.agency.autonomousSocialInitiative.snapshot();
+            this.markPersistenceDirty();
+        }
         return acknowledged;
     }
     deferAutonomousSocialInitiative(id: string, at = Date.now()) {

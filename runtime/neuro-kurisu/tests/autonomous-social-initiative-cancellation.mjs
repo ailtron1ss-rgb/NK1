@@ -81,6 +81,16 @@ assert.equal(restored.snapshot().cancelled, 1);
 assert.equal(restored.acknowledge(consentReady.id, at + 23), false,
   'cancelled delivery state must remain terminal after restart');
 
+const unsafeCancelledSnapshot = structuredClone(consentSnapshot);
+unsafeCancelledSnapshot.initiatives[0].topic = { unsafe: true };
+const privacyRestored = new AutonomousSocialInitiativeEngine();
+privacyRestored.restore(unsafeCancelledSnapshot);
+assert.equal(privacyRestored.snapshot().initiatives[0].status, 'cancelled',
+  'privacy sanitization must not convert a terminal cancellation into a deferred active item');
+assert.equal(privacyRestored.snapshot().cancelled, 1);
+assert.equal(privacyRestored.snapshot().deferred, consentSnapshot.deferred,
+  'restoring cancelled content must not manufacture a deferred event');
+
 
 const config = { performanceProfile: 'mobile', cycleResultMode: 'operational', checkpointMinIntervalMs: 0 };
 const coreStore = new MemoryStateStore();
@@ -104,6 +114,17 @@ try {
     assert.equal(resumed.snapshot().system.autonomousSocialInitiative.initiatives[0].status, 'cancelled',
       'Core cancellation must survive a process restart');
     assert.equal(resumed.acknowledgeAutonomousSocialInitiative(coreInitiative.id, at + 32), false);
+
+  const deliveredInitiative = createInitiative(coreEngine, 40);
+  assert.equal(core.stageAutonomousSocialInitiativeMessage(deliveredInitiative.id,
+    'A short message acknowledged by the host UI.', at + 41), true);
+  assert.ok(core.pendingAutonomousSocialInitiativeMessage());
+  assert.equal(core.acknowledgeAutonomousSocialInitiative(deliveredInitiative.id, at + 42), true);
+  await core.flush();
+  const deliveredState = await coreStore.load();
+  assert.equal(deliveredState.system.autonomousSocialInitiative.initiatives
+    .find(row => row.id === deliveredInitiative.id)?.status, 'executed',
+    'staging and UI acknowledgement must be durable, not only an in-memory projection');
   } finally {
     await resumed.flush();
   }

@@ -168,7 +168,7 @@ function normalizeRestoredInitiative(raw: unknown, index: number): { item: Socia
   const rawResolvedAt = safeTime(ownData(raw, 'resolvedAt'));
   const readyStateInvalid = status === 'ready' && (!safeMessage || rawStagedAt === undefined || rawStagedAt < createdAt);
   let privacyDeferred = false;
-  if ((unsafeTopic || unsafeReadyMessage || readyStateInvalid) && status !== 'executed' && status !== 'deferred') {
+  if ((unsafeTopic || unsafeReadyMessage || readyStateInvalid) && status !== 'executed' && status !== 'deferred' && status !== 'cancelled') {
     status = 'deferred';
     privacyDeferred = true;
   }
