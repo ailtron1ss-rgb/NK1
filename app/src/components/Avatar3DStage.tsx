@@ -180,7 +180,7 @@ export function Avatar3DStage(props:Props){
   if(rt){rt.mixer?.stopAllAction();rt.mixer=null;rt.vrm=null;rt.clips=[];rt.clipName="";rt.activeClipAction=null;rt.bones=[];rt.body.root.visible=false;}
   setModelName("");setModelFingerprint("");setState(rt?"empty":"webgl-unavailable");
   if(returningFromCandidate){
-   setMessage("Возврат к сохранённой основной модели; кандидат v7 не затрагивал IndexedDB.");
+   setMessage("Возврат к сохранённой основной модели; preview-кандидат не затрагивал IndexedDB.");
    try{const saved=await loadStoredAvatarModel();if(saved){void loadModel(saved.blob,saved.name,"restore");return;}}catch{/* The pinned primary model remains the safe fallback. */}
    void loadBundledModel();return;
   }
