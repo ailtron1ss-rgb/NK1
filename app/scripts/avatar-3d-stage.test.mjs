@@ -259,3 +259,12 @@ test("morph-ready v12 is pinned as a safe preview-only candidate without changin
  assert.match(stage,/Кандидат v\$\{name\.includes\("_v12_"\)\?12:7\}: временный preview/);
  assert.match(stage,/KURISU_HYBRID_MODEL_V12_CANDIDATE\.filename\|\|previewPendingRef\.current/);
 });
+
+test("hosted model verifier pins the public v12 asset and all morph target names",async()=>{
+ const verify=await readFile(path.join(root,"scripts/verify-hosted-kurisu-model.mjs"),"utf8");
+ assert.match(verify,/KURISU_HYBRID_MODEL_V12_CANDIDATE/);
+ assert.match(verify,/candidate\.morphTargets, 11/);
+ assert.match(verify,/gltf\.skins\[0\]\.joints\.length, 19/);
+ for(const key of ["EYE_white_L","EYE_white_R","FACE_mouth","HEAD_face","viseme_aa","viseme_oh","viseme_ee","viseme_ih","viseme_ou","NK1_Jaw_Taper"])assert.ok(verify.includes(key),`missing hosted v12 morph contract: ${key}`);
+ assert.match(verify,/HOSTED_KURISU_V12_MORPH_PREVIEW=PASS/);
+});
