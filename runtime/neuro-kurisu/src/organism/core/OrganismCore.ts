@@ -8703,6 +8703,7 @@ export class OrganismCore {
         if (resultMode !== 'operational')
             this.syncHotPersistenceProjection();
         const experienceForRetention = this.memorySubsystem.experienceContinuum.summary();
+        // Keep P70 working-set pressure and MemoryFabric byte eviction aligned to the host's canonical capacity profile.
         const memoryLifecycleResult = this.memorySubsystem.memoryLifecycleAuthority.run({
             tick: state.tick,
             at: state.at,
