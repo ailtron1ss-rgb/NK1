@@ -9,6 +9,16 @@ function mesh(name, geometry, type = "static") {
     ? new THREE.SkinnedMesh(geometry, material)
     : new THREE.Mesh(geometry, material);
   result.name = name;
+  if (type === "skinned") {
+    const count = geometry.attributes.position.count;
+    const skinIndices = new Uint16Array(count * 4);
+    const skinWeights = new Float32Array(count * 4);
+    for (let index = 0; index < count; index += 1) skinWeights[index * 4] = 1;
+    geometry.setAttribute("skinIndex", new THREE.Uint16BufferAttribute(skinIndices, 4));
+    geometry.setAttribute("skinWeight", new THREE.Float32BufferAttribute(skinWeights, 4));
+    const bone = new THREE.Bone();
+    result.bind(new THREE.Skeleton([bone]));
+  }
   return result;
 }
 
