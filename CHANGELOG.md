@@ -3967,3 +3967,13 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Keep two-to-four clean pairs exploratory, require paired coverage across at least two holdout delays, and exclude duplicate arms from confirmatory means/effects.
 - Expand deterministic regression coverage for the five-pair boundary, negative holdout effect despite positive acquisition aggregate, duplicate-arm downgrade, unpaired delay exclusion and snapshot/restore parity.
 - This strengthens evidence quality; it does not claim positive recall uplift or independent real-world dataset results.
+
+
+## 2026-11-24 — Self-development P1: host-verified patch admission (preflight only)
+
+- Add structural source graph and symbol-aware protected-capability guard for self-modification candidates.
+- Bind patch receipts to the exact host-pinned base SHA, unified diff digest, changed file/line manifest and Ed25519 signer identity.
+- Require independently signed holdout observations bound to the exact candidate, patch, experiment protocol, task manifest and test fingerprint; reject mixed protocols, duplicate seeds and untrusted/reused evaluator keys.
+- Keep candidate self-reported observations in the metrics-only ranking path; verified patch admission consumes only host-signed evidence.
+- Add host-owned complete source-snapshot composition, bounded input validation, adversarial regressions and focused GitHub Actions.
+- This is a fail-closed admission/preflight capability only. It does not execute or apply source patches, activate autonomous code mutation, merge the branch or publish a Release. Production host signer/evaluator configuration and isolated apply/rollback remain future gates.
