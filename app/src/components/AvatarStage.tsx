@@ -21,6 +21,14 @@ import {
   type MotionArbitrationState,
 } from "./avatar/motionArbitration";
 import { resolveSemanticGestureIntent } from "./avatar/semanticGestureIntent";
+import {
+  avatarBrainBodyChannels,
+  avatarBrainExpressionForLive2D,
+  avatarBrainFrameForTick,
+  avatarBrainGaze,
+  avatarBrainHeadTilt,
+  avatarBrainMouthPose,
+} from "./avatar/avatarBrainUi";
 import type { SwitchPlan } from "./avatar/embodimentSwitch";
 import { cn } from "@/lib/utils";
 import { LegacySpriteDeck } from "@/legacy/avatar/LegacySpriteDeck";
@@ -157,6 +165,14 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
     respond: { x: 0.01, y: 0.01 }, wait: { x: -0.035, y: -0.005 }, rest: { x: -0.06, y: 0.075 },
   };
   const originalGaze = originalGazeByAction[snap.lastOption] ?? originalGazeByAction.wait;
+  const currentBrainFrame = avatarBrainFrameForTick(snap.avatarBrain, snap.tick);
+  const currentBrainChannels = currentBrainFrame?.channels ?? null;
+  const rendererGaze = avatarBrainGaze(currentBrainFrame, originalGaze);
+  const rendererMouthPose = avatarBrainMouthPose(mouthPose, currentBrainFrame, voiceStatus === "speaking");
+  const rendererBodyChannels: Record<string, number> = {
+    ...motionChannelsRef.current,
+    ...avatarBrainBodyChannels(currentBrainFrame),
+  };
   const turnKey = lastTurn?.role === "kurisu" ? `${String(lastTurn.id ?? lastTurn.at)}:${String(lastTurn.at)}:${lastTurn.text}` : "";
 
   const stopSpeech = () => {
@@ -269,20 +285,22 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
     const revision = ++bodyRevisionRef.current;
     const currentSnap = latestSnapRef.current;
     const active = activeSpeechSessionRef.current;
-    const gaze = originalGazeByAction[currentSnap.lastOption] ?? originalGazeByAction.wait;
+    const switchFrame = avatarBrainFrameForTick(currentSnap.avatarBrain, currentSnap.tick);
+    const switchFallbackGaze = originalGazeByAction[currentSnap.lastOption] ?? originalGazeByAction.wait;
+    const gaze = avatarBrainGaze(switchFrame, switchFallbackGaze);
     let plan: SwitchPlan;
     try {
       const state = projectSemanticBodyState({
         snapshot: currentSnap,
         revision,
         monotonicMs: performance.now(),
-        headTilt: 0,
+        headTilt: avatarBrainHeadTilt(switchFrame, 0),
         gaze,
         speechPhase: speechPhaseRef.current,
         speechEventId: active?.speechEventId ?? null,
         audioTimeMs: Number(active?.lastAudioElapsedMs ?? 0),
         mouth: mouthPoseRef.current,
-        pose: motionChannelsRef.current,
+        pose: { ...motionChannelsRef.current, ...avatarBrainBodyChannels(switchFrame) },
       });
       plan = beginBodySwitch(from, mode, state).plan;
     } catch {
@@ -498,12 +516,12 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
   useEffect(() => {
     const win = frame.current?.contentWindow;
     if (!win || !live || mode !== "live2d") return;
-    const expression = EXPRESSION_TEXT[snap.emotion.label] ?? "neutral";
+    const expression = currentBrainFrame ? avatarBrainExpressionForLive2D(currentBrainFrame) : (EXPRESSION_TEXT[snap.emotion.label] ?? "neutral");
     const gazeByAction: Record<OrganismSnapshot["lastOption"], { x: number; y: number }> = {
       explore: { x: 0.24, y: 0.04 }, verify: { x: 0.14, y: -0.10 }, reflect: { x: -0.19, y: -0.14 },
       respond: { x: 0.01, y: 0.01 }, wait: { x: -0.035, y: -0.005 }, rest: { x: -0.06, y: 0.075 },
     };
-    const gaze = gazeByAction[snap.lastOption] ?? gazeByAction.wait;
+    const gaze = avatarBrainGaze(currentBrainFrame, gazeByAction[snap.lastOption] ?? gazeByAction.wait);
     const valenceOffset = (snap.emotion.valence - 0.5) * 0.16;
     const activeSession = activeSpeechSessionRef.current;
     const session = activeSession ?? lastSpeechSessionRef.current;
@@ -556,11 +574,11 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
       priority: speechPhaseRef.current === "cancelled" ? 100 : activeUtterance ? 70 : thinking ? 45 : 30,
       cancellationToken: session ? `cancel:${session.speechEventId}` : null,
       expression,
-      expressionIntensity: snap.emotion.arousal,
-      mouth: activeUtterance ? mouthPose : CLOSED_MOUTH,
-      gaze: { x: Math.max(-0.4, Math.min(0.4, gaze.x + valenceOffset)), y: gaze.y, driven: true },
+      expressionIntensity: currentBrainFrame?.expressionWeight ?? snap.emotion.arousal,
+      mouth: avatarBrainMouthPose(activeUtterance ? mouthPose : CLOSED_MOUTH, currentBrainFrame, activeUtterance),
+      gaze: { x: currentBrainFrame ? gaze.x : Math.max(-0.4, Math.min(0.4, gaze.x + valenceOffset)), y: gaze.y, driven: true },
       body: {
-        headTilt: motorPlan.headTilt,
+        headTilt: avatarBrainHeadTilt(currentBrainFrame, motorPlan.headTilt),
         gesture: bodyGestureActive,
         motionGroup,
         motionIndex: motionGroup === "Special" ? motionIndex : 0,
@@ -570,7 +588,7 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
     };
     latestIntentStateVersionRef.current = intent.stateVersion;
     win.postMessage(intent, window.location.origin);
-  }, [snap.emotion, snap.lastOption, snap.chat, snap.tick, snap.awake, thinking, live, viewerReadyRevision, mode, voiceStatus, mouthPose, turnKey]);
+  }, [snap.emotion, snap.lastOption, snap.chat, snap.tick, snap.awake, currentBrainFrame, thinking, live, viewerReadyRevision, mode, voiceStatus, mouthPose, turnKey]);
 
   return (
     <div className="relative overflow-hidden rounded-xl bg-elevated">
@@ -588,10 +606,10 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
           action={snap.lastOption}
           valence={snap.emotion.valence}
           arousal={snap.emotion.arousal}
-          gazeX={originalGaze.x}
-          gazeY={originalGaze.y}
+          gazeX={rendererGaze.x}
+          gazeY={rendererGaze.y}
           speaking={voiceStatus === "speaking"}
-          mouthPose={mouthPose}
+          mouthPose={rendererMouthPose}
           thinking={thinking}
           motorSignals={{
             hasFreshTurn: speechPhaseRef.current !== "cancelled" && speechPhaseRef.current !== "unknown"
@@ -607,8 +625,9 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
             predictionError: snap.predictionError,
             traits: snap.identity.traits,
           }}
-          bodyChannels={motionChannelsRef.current}
-        /> : mode === "3d" ? <Avatar3DStage emotion={snap.emotion.label} action={snap.lastOption} arousal={snap.emotion.arousal} valence={snap.emotion.valence} dominance={snap.emotion.dominance} energy={snap.needs.energy} cognitiveLoad={snap.needs.cognitiveLoad} uncertainty={snap.needs.uncertainty} socialNeed={snap.needs.socialNeed} novelty={snap.needs.novelty} goalPressure={snap.needs.goalPressure} curiosity={snap.curiosity} predictionError={snap.predictionError} traits={snap.identity.traits} gazeX={originalGaze.x} gazeY={originalGaze.y} speaking={voiceStatus === "speaking"} mouthPose={mouthPose} thinking={thinking} awake={snap.awake} bodyChannels={motionChannelsRef.current} onReturnTo2D={() => setMode("live2d")} /> : <>
+          bodyChannels={rendererBodyChannels}
+          avatarBrainChannels={currentBrainChannels ?? undefined}
+        /> : mode === "3d" ? <Avatar3DStage emotion={snap.emotion.label} action={snap.lastOption} arousal={snap.emotion.arousal} valence={snap.emotion.valence} dominance={snap.emotion.dominance} energy={snap.needs.energy} cognitiveLoad={snap.needs.cognitiveLoad} uncertainty={snap.needs.uncertainty} socialNeed={snap.needs.socialNeed} novelty={snap.needs.novelty} goalPressure={snap.needs.goalPressure} curiosity={snap.curiosity} predictionError={snap.predictionError} traits={snap.identity.traits} gazeX={originalGaze.x} gazeY={originalGaze.y} speaking={voiceStatus === "speaking"} mouthPose={mouthPose} thinking={thinking} awake={snap.awake} bodyChannels={rendererBodyChannels} avatarBrainChannels={currentBrainChannels ?? undefined} onReturnTo2D={() => setMode("live2d")} /> : <>
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_30%,color-mix(in_oklab,var(--color-ember)_18%,transparent),transparent_62%)]" />
         <iframe ref={frame} title="Kurisu Live2D" src="/live2d/viewer.html?profile=auto" className={cn("relative z-10 h-[320px] w-full border-0 transition-opacity duration-300 md:h-[420px]", live ? "opacity-100" : "opacity-0")} allow="autoplay" />
         {!live ? <div className="absolute inset-0 z-[11] flex items-center justify-center p-6"><div className="max-w-sm rounded-xl border border-border bg-bg/85 p-4 text-center backdrop-blur"><p className="text-xs font-medium uppercase tracking-wider text-subtle">Live2D unavailable</p><p className="mt-1 text-sm text-fg">Переключитесь на Legacy — там используются реальные legacy sprite-ассеты.</p><button type="button" onClick={() => setMode("legacy")} className="mt-3 rounded-md border border-border px-3 py-1.5 text-xs text-fg hover:bg-elevated">Open Legacy</button></div></div> : null}
