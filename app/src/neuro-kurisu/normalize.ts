@@ -105,6 +105,12 @@ export function toOrganismSnapshot(remote: BackendUiSnapshot, chat: OrganismSnap
     tick: Number(remote.tick),
     at: Number(remote.at),
     awake: Boolean(remote.awake),
+    voice: {
+      speaking: Boolean(remote.voice?.speaking),
+      listening: Boolean(remote.voice?.listening),
+      ttsAvailable: Boolean(remote.voice?.ttsAvailable),
+      sttAvailable: Boolean(remote.voice?.sttAvailable),
+    },
     avatarBrain: normalizeAvatarBrain(remote.avatarBrain, Number(remote.tick)),
     needs: remote.state.needs,
     emotion: {
