@@ -8073,7 +8073,6 @@ export class OrganismCore {
         }
         const agencyRecord = this.config.enableAgencyModel ? this.agencySubsystem.deliberation.record({ requestedAction: userRequestedAction, chosenAction: selectedIntent?.action ?? 'wait', externalPressure: observation.text ? 0.62 : 0, intrinsicPressure: activeProject ? activeProjectScore : intrinsicState.overall, reason: activeProject ? `active-self-project:${activeProject.title}` : `intrinsic:${intrinsicState.dominant}`, autonomous: autonomousOverride || !Boolean(observation.text) }) : null;
         const governanceRecord = this.config.enableAgencyModel ? this.governanceSubsystem.selfGovernance.recordDecision({ requestedAction: userRequestedAction, chosenAction: selectedIntent?.action ?? 'wait', autonomous: autonomousOverride || !Boolean(observation.text), internalPressure: internalPressureForAgency, commitmentPressure: governedCandidates.filter(c => c.goalId && goals.some(g => g.id === c.goalId && g.status === 'active')).length / Math.max(1, governedCandidates.length), regretPressure: regretPressureForAgency, reason: activeProject ? `project:${activeProject.title}` : `goal:${active?.title ?? 'none'}` }) : null;
-        this.selfSubsystem.selfAuthorship.observeDecision({ action: selectedIntent?.action ?? 'wait', autonomous: autonomousOverride || !Boolean(observation.text), externalRequest: Boolean(observation.text), goalTitle: active?.title, reason: active?.reason });
         this.cognitiveRuntime.futureSelf.resolve(selectedIntent?.action ?? null);
         const futureForecast = this.cognitiveRuntime.futureSelf.forecast(state, goals, governedCandidates[0]?.action ?? selectedIntent?.action ?? 'wait', governedCandidates[0]?.confidence ?? 0.35, 4);
         if (selectedIntent) {
@@ -8350,6 +8349,15 @@ export class OrganismCore {
         }
         const previousTrace = this.persisted.traces[0];
         this.persisted.traces.unshift(decision);
+        this.selfSubsystem.selfAuthorship.observeDecision({
+            decisionId: decision.id,
+            action: selectedIntent?.action ?? 'wait',
+            autonomous: autonomousOverride || !Boolean(observation.text || observation.externalGoal),
+            externalRequest: Boolean(observation.text || observation.externalGoal),
+            goalTitle: active?.title,
+            reason: active?.reason,
+        });
+        this.persisted.facets.learning.selfAuthorship = this.selfSubsystem.selfAuthorship.snapshot();
         const receiptDrives={
             epistemic:clamp(state.needs.uncertainty),
             novelty:clamp(state.needs.novelty),
@@ -9368,7 +9376,14 @@ export class OrganismCore {
             if (person?.openCommitments.includes(goalId))
                 this.cognitiveRuntime.socialDevelopment.repairCommitment('user', goalId, 'low-outcome on a shared commitment', 're-evaluate plan and communicate the correction');
         }
-        this.selfSubsystem.selfAuthorship.observeOutcome({ success: gatedSuccess01, surprise: gatedSurprise01, selectedGoal: selectedGoalTitle });
+        this.selfSubsystem.selfAuthorship.observeOutcome({
+            decisionId: trace?.id ?? '',
+            executed: Boolean(outcome.worldTransition) || projectEvidenceExternal,
+            success: gatedSuccess01,
+            surprise: gatedSurprise01,
+            selectedGoal: selectedGoalTitle,
+        });
+        this.persisted.facets.learning.selfAuthorship = this.selfSubsystem.selfAuthorship.snapshot();
         if (trace?.selected) {
             const trajectoryTrust = projectEvidenceExternal ? 1 : outcome.worldTransition ? .78 : .55;
             this.cognitiveRuntime.identityTrajectory.observeOutcome({

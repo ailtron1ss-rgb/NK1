@@ -592,7 +592,7 @@ function normalizeMemoryRevisionGraph(items:MemoryItem2[],onDuplicate?:(id:strin
  return unique;
 }
 type MemoryEstimateShape=Pick<MemoryItem2,'content'|'tags'|'context'|'semanticLinks'|'temporalLinks'|'causalLinks'|'contradictionLinks'|'evidenceSources'|'evidenceLineageKeys'|'revisionIntegrityIssues'> & Partial<Pick<MemoryItem2,'revisionHistory'|'bitemporalHistory'|'recordedFromAt'|'recordedUntilAt'|'freshnessUntilAt'|'temporalKind'|'freshnessHalfLifeMs'>>;
-const estimateMemoryBytes=(m:MemoryEstimateShape)=>Math.max(96,new TextEncoder().encode(JSON.stringify({content:m.content,tags:m.tags,context:m.context,s:m.semanticLinks,t:m.temporalLinks,c:m.causalLinks,k:m.contradictionLinks,e:m.evidenceSources,ek:m.evidenceLineageKeys,ri:m.revisionIntegrityIssues,r:normalizeRevisionHistory(m.revisionHistory),bh:m.bitemporalHistory,rf:m.recordedFromAt,ru:m.recordedUntilAt,fu:m.freshnessUntilAt,fh:m.freshnessHalfLifeMs,tk:m.temporalKind})).byteLength);
+const estimateMemoryBytes=(m:MemoryEstimateShape)=>Math.max(96,new TextEncoder().encode(JSON.stringify({content:m.content,tags:m.tags,context:m.context,s:m.semanticLinks,t:m.temporalLinks,c:m.causalLinks,k:m.contradictionLinks,e:m.evidenceSources,ek:m.evidenceLineageKeys,ri:m.revisionIntegrityIssues??[],r:normalizeRevisionHistory(m.revisionHistory),bh:m.bitemporalHistory,rf:m.recordedFromAt,ru:m.recordedUntilAt,fu:m.freshnessUntilAt,fh:m.freshnessHalfLifeMs,tk:m.temporalKind})).byteLength);
 const MEMORY_OS2_ITEM_CAP=1600;
 const MEMORY_OS2_RESTORE_SCAN_LIMIT=100_000;
 export class MemoryCapacityExhaustedError extends Error {
@@ -1349,7 +1349,12 @@ export class MemoryOS2{
     const recordedAt=Math.max(at,Number(older.recordedFromAt??older.createdAt)+1);
     this.beginBitemporalRevision(older,recordedAt);
     older.validUntilAt=newerAt;older.supersededById=newer.id;
-    this.recordRevision(older,{at:recordedAt,from:older.epistemicStatus,to:older.epistemicStatus,reason:signal.contextConflict?'implicit-state-conflict-context':'implicit-state-conflict'});newer.supersedesId=older.id;older.contradictionLinks=[...new Set([...(older.contradictionLinks??[]),newer.id])].slice(0,6);newer.contradictionLinks=[...new Set([...(newer.contradictionLinks??[]),older.id])].slice(0,6);this.state.implicitConflictsResolved++;this.state.reconsolidations++;resolved++;
+    this.recordRevision(older,{at:recordedAt,from:older.epistemicStatus,to:older.epistemicStatus,reason:signal.contextConflict?'implicit-state-conflict-context':'implicit-state-conflict'});newer.supersedesId=older.id;
+   const olderLinkBytes=estimateMemoryBytes(older),newerLinkBytes=estimateMemoryBytes(newer);
+   older.contradictionLinks=[...new Set([...(older.contradictionLinks??[]),newer.id])].slice(0,6);
+   newer.contradictionLinks=[...new Set([...(newer.contradictionLinks??[]),older.id])].slice(0,6);
+   this.state.estimatedBytes=Math.max(0,this.state.estimatedBytes-olderLinkBytes-newerLinkBytes+estimateMemoryBytes(older)+estimateMemoryBytes(newer));
+   this.state.implicitConflictsResolved++;this.state.reconsolidations++;resolved++;
    }
   }
   this.state.implicitConflictCandidates+=candidates;this.state.lastConflictScanAt=at;return {candidates,resolved,at};
@@ -1365,7 +1370,7 @@ export class MemoryOS2{
     id:input.id??identity.stableId,
     contentHash:input.contentHash??identity.contentHash,
     entities,
-    createdAt:now,lastAccessAt:now,retrievalCount:0,revisionHistory:[],dormant:false,
+    createdAt:now,lastAccessAt:now,retrievalCount:0,revisionHistory:[],revisionIntegrityIssues:[...(input.revisionIntegrityIssues??[])].slice(-8),dormant:false,
     semanticVector,temperature01:0,residencyTier:'hot',
     validFromAt:Number.isFinite(Number(input.validFromAt))?Number(input.validFromAt):now,
     validUntilAt:input.validUntilAt==null?null:(Number.isFinite(Number(input.validUntilAt))?Number(input.validUntilAt):null),
@@ -1439,7 +1444,7 @@ export class MemoryOS2{
     existing.context=mergeMemoContext(existing.context,contextPatch);
     if(hasNewerObservation){
       existing.observedAt=incomingObservedAt;
-      if(Object.prototype.hasOwnProperty.call(input,'validFromAt')&&Number.isFinite(input.validFromAt))existing.validFromAt=Number(input.validFromAt);
+      if(Number(existing.revisionSequence??1)<=1&&Object.prototype.hasOwnProperty.call(input,'validFromAt')&&Number.isFinite(input.validFromAt))existing.validFromAt=Number(input.validFromAt);
       if(Object.prototype.hasOwnProperty.call(input,'validUntilAt')){
         if(input.validUntilAt===null)existing.validUntilAt=null;
         else if(Number.isFinite(input.validUntilAt))existing.validUntilAt=Number(input.validUntilAt);
@@ -1463,7 +1468,19 @@ export class MemoryOS2{
    // a fresh observation gets its own stable-in-process identity rather than
    // mutating history or overwriting the historical item's map entry.
    const collision=this.itemIndex.has(input.id??identity.stableId);
-   const materializedInput:MemoryEncodeInput=options.forceDistinct||input.id||!collision?input:{...input,id:stableMemoryId(`${canonicalContent}\0reobserved:${now}:${this.state.items.length}:${this.state.reconsolidations}`,input.kind,input.source)};
+   let materializedInput:MemoryEncodeInput=input;
+   if(collision){
+    const collisionSeed=input.id
+     ?`explicit-id-collision:${input.id}\0${canonicalContent}`
+     :`reobserved:${identity.stableId}\0${canonicalContent}`;
+    let attempt=0;
+    let distinctId=stableMemoryId(collisionSeed,input.kind,input.source);
+    while(this.itemIndex.has(distinctId)){
+     attempt++;
+     distinctId=stableMemoryId(`${collisionSeed}\0${attempt}`,input.kind,input.source);
+    }
+    materializedInput={...input,id:distinctId,revisionGroupId:input.revisionGroupId??distinctId};
+   }
    const item=this.buildMemoryItem(materializedInput,identity,entities,semanticVector,now);
    if(collision&&!input.id&&!options.forceDistinct&&!materializedInput.revisionGroupId)item.revisionGroupId=item.id;
    item.temperature01=memoryTemperature(item,now);
@@ -1495,7 +1512,17 @@ export class MemoryOS2{
    this.state.items.unshift(item as MemoryItem2);this.state.estimatedBytes+=estimateMemoryBytes(item as MemoryItem2);this.itemIndex.set(item.id,item as MemoryItem2);this.linkSupportCache=null;
    this.exactIndex.set(`${item.kind}|${item.source}|${canonicalizeMemoryContent(item.content)}`,item.id);
    this.contentIndex.set(`${item.kind}|${canonicalizeMemoryContent(item.content)}`,item.id);this.indexItem(item);this.lowerContentCache.delete(item.id);
-   for(const linkedId of item.contradictionLinks??[]){const linked=this.itemIndex.get(linkedId);if(linked){linked.contradictionLinks=[...new Set([...(linked.contradictionLinks??[]),item.id])].slice(0,6);this.state.linkUpdates++;}}
+   for(const linkedId of item.contradictionLinks??[]){
+    const linked=this.itemIndex.get(linkedId);
+    if(!linked)continue;
+    const previous=linked.contradictionLinks??[];
+    const next=[...new Set([...previous,item.id])].slice(0,6);
+    if(next.length===previous.length&&next.every((id,index)=>id===previous[index]))continue;
+    const previousBytes=estimateMemoryBytes(linked);
+    linked.contradictionLinks=next;
+    this.state.estimatedBytes+=estimateMemoryBytes(linked)-previousBytes;
+    this.state.linkUpdates++;
+   }
    this.state.linkUpdates+=item.semanticLinks.length+item.temporalLinks.length;
    if(item.epistemicStatus==='quarantined')this.state.quarantined++;return options.clone===false?(item as MemoryItem2):structuredClone(item as MemoryItem2);
  }
