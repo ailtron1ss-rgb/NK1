@@ -149,6 +149,38 @@ This first pass compares adjacent HEADs in each family and separately checks mer
 - PR #741 merge commit `57103c645336a22c0a38401c790f6290be2fda94` is an ancestor of current source (source is 1,417 commits ahead, 0 behind).
 - The donor history also touches emotion restore workflows, `OrganismCore.ts`, persistent personality dynamics, package metadata, and tests. The rebased merge is present in source; earlier versions remain preserved until their unique work is checked.
 
+### Cognitive spine runtime integration — current-source/v2/v3
+
+- current-source→v2 diverges (8 ahead / 3 behind, 24 changed files); v2→v3 diverges (7 / 6, 13 files).
+- The original current-source branch has no PR record; PR #1027 (v2) is closed unmerged. PR #1029 (v3) merged directly to `workpass70-source`.
+- PR #1029 merge commit `17b6ba7eebc4cee51a72557d605bfd4ceccd7d1a` is an ancestor of current source.
+- The family includes `EmbodiedRecoveryController.ts`, multimodal perception/situation models, P35/P37 embodied sensorium, Avatar3DStage and avatar-animation runtime code. v2's unmerged differences remain candidates for selective salvage, not deletion.
+
+### N.E.K.O. streaming source implementation — base/v2/v3
+
+- base→v2 is the one clearly nested step in this tranche: v2 is ahead by 3 commits, behind by 0, with 17 changed files. v2 contains the base branch's history plus additional commits.
+- v2→v3 then diverges (2 ahead / 2 behind, 14 files); this is not a clean linear progression after v2.
+- Base and v2 have no PR records; PR #994 (v3) merged into `workpass70-source`. Merge commit `83756412b21252d2427dade7af881d06801c2c30` is an ancestor of current source.
+- The branches contain N.E.K.O. audio-stream contracts, `AvatarBrainAffectBridge.ts`, renderer adapters, ASR transcript handling, `NekoAudioFrameBuffer.ts`, `NekoAudioStreamContract.ts`, voice-turn coordination and tests. Preserve base/v2 until their unique commits are compared with v3's merge.
+
+### VRM normalized motor — final/rebased/rebased2/source-sync
+
+- All three adjacent comparisons diverge: final→rebased (13 / 15, 9 files); rebased→rebased2 (10 / 13, 14 files); rebased2→source-sync (10 / 9, 9 files).
+- PR #527, #530 and #531 are closed unmerged. rebased2 has no PR record. No merged PR in this family was established.
+- The family contains `vrmRuntimeAdapter.ts`, normalized humanoid integration tests, runtime adapter tests, Avatar3DStage/AvatarStage changes and embodiment UI bridge tests. This is a high-risk avatar donor family; retain every ref until all unique assets, code and tests are checked against source.
+
+### UserModel evidence — current/final/rebased
+
+- current→final diverges (14 / 12, 23 files); final→rebased diverges (15 / 13, 10 files).
+- PR #522 and #526 are closed unmerged. PR #528 (final) merged directly into `workpass70-source`; merge commit `cf9973f677e5131afffe930dadc19a3e954e4ebf` is an ancestor of current source.
+- The rebased donor includes `UserModelEvidenceModel.ts`, user-model evidence tests, runtime persistence tests and related types/coordinator changes. The merged final is integrated by ancestry, but sibling branches still require unique-diff inspection before retirement.
+
+### Inspect Memory independent group gates — v1/v2
+
+- v1→v2 diverges (4 ahead / 6 behind, 5 changed files).
+- PR #744 (v1) is closed unmerged. PR #755 (v2) merged directly into `workpass70-source`; merge commit `fd513a6e1a83243c7c8242140de5f7f2af133a1e` is an ancestor of current source.
+- The diff includes `evaluation/inspect_ai/nk1_memory_evidence.py`, its tests, and `InteroceptivePrecisionAllocator.ts` plus runtime regression coverage. Keep v1 until its unique holdout/evaluation changes have been checked against the merged v2 result.
+
 ### Interpretation and limits
 
 - A merged PR whose base is an old intermediate branch does **not** prove integration into `workpass70-source`. Check the merge commit's ancestry against the canonical source.
