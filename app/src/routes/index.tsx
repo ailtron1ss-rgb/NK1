@@ -97,7 +97,7 @@ function Home() {
       {section === "settings" ? (
         <section className="mx-auto max-w-7xl space-y-3" aria-label="Settings">
           <div><h2 className="font-display text-2xl text-fg">Settings</h2><p className="text-sm text-muted">User-facing voice and embodiment preferences. These settings do not modify the organism's internal goals or personality.</p></div>
-          <SettingsPanel />
+          <SettingsPanel snap={snap} />
         </section>
       ) : null}
 
