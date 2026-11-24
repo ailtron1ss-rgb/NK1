@@ -64,7 +64,7 @@ export function ChatPanel() {
             <p>{m.text}</p>
             {m.role === "user" && m.delivery ? (
               <p className="mt-1 text-[10px] text-subtle" role="status">
-                {m.delivery === "sending" ? "Sending…" : m.delivery === "sent" ? "Sent" : "Outcome not confirmed · check the conversation before retrying"}
+                {m.delivery === "sending" ? "Sending…" : m.delivery === "sent" ? "Sent" : m.delivery === "rejected" ? "Not accepted · correct the request before resending" : "Outcome not confirmed · check the conversation before retrying"}
               </p>
             ) : null}
             {m.role === "kurisu" ? (
