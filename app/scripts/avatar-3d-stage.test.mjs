@@ -247,7 +247,7 @@ test("morph-ready v12 is pinned as a safe preview-only candidate without changin
  assert.match(catalog,/id: "neuro-kurisu-hybrid-v12-morph-ready-candidate"/);
  assert.match(catalog,/NeuroKurisu_3D_v12_morph_and_actions\.glb/);
  assert.match(catalog,/sizeBytes: 7_367_524/);
- assert.match(catalog,/sha256: "sha256:6c37e675f33009623f2671fce041a850c1d6dd871cf36252025a0b71374df509"/);
+ assert.match(catalog,/sha256: "sha256:9535d6edcbe85d79a7a5cae49aa75ec189b63a0ba7f54b2b9bc24e5488d6046a"/);
  assert.match(catalog,/canonical: false as const/);
  assert.match(catalog,/acceptance: "morph-ready-structural" as const/);
  assert.match(stage,/loadCatalogModel\(KURISU_HYBRID_MODEL_V12_CANDIDATE,"preview"\)/);
