@@ -44,6 +44,9 @@ jobs:
           printf '%s\n' "$output" | grep -F "a verified ActionGateway receipt bound to a selected decision must settle SelfAuthorship without a separate manual feedback call" >/dev/null
           cd "$GITHUB_WORKSPACE"
           git worktree remove "$RED_WORKTREE"
+      - name: SelfAuthorship pending-ledger and restore integrity
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:self-authorship-verified-execution-workpass70
       - name: Real FileStateStore crash, restart, read-only reconciliation and SelfAuthorship settlement
         working-directory: runtime/neuro-kurisu
         run: npm run test:action-receipt-selfauthorship-recovery-workpass72

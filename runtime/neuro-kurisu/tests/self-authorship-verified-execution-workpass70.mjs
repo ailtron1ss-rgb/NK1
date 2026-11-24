@@ -94,4 +94,23 @@ persistedPending.observeOutcome({
 assert.equal(persistedPending.snapshot().autonomousActionCount, 1, 'externally requested work must not be credited as intrinsic autonomy');
 assert.equal(persistedPending.snapshot().selfAuthoredGoalCount, 1, 'externally requested goals must not become intrinsic commitments');
 
+const duplicateId = 'decision-restored-duplicate';
+const now = Date.now();
+const duplicatePending = new SelfAuthorshipEngine();
+duplicatePending.restore({
+  ...defaultSelfAuthorship(),
+  pendingDecisions: [
+    { decisionId: duplicateId, action: 'verify-newest', autonomous: true, externalRequest: false, goalTitle: 'Newest decision record', reason: null, createdAt: now },
+    { decisionId: duplicateId, action: 'verify-duplicate', autonomous: true, externalRequest: false, goalTitle: 'Duplicate decision record', reason: null, createdAt: now - 1 },
+  ],
+});
+assert.equal(duplicatePending.snapshot().pendingDecisions.length, 1,
+  'restore must deduplicate pending decisions by exact decisionId');
+assert.equal(duplicatePending.snapshot().pendingDecisions[0].goalTitle, 'Newest decision record',
+  'restore must preserve the newest canonical pending record');
+duplicatePending.observeOutcome({ decisionId: duplicateId, executed: true, success: 1, surprise: 0, selectedGoal: null });
+duplicatePending.observeOutcome({ decisionId: duplicateId, executed: true, success: 1, surprise: 0, selectedGoal: null });
+assert.equal(duplicatePending.snapshot().autonomousActionCount, 1,
+  'duplicate restored decision rows must never award authorship twice');
+
 console.log('SELF_AUTHORSHIP_VERIFIED_EXECUTION_WORKPASS70=PASS');
