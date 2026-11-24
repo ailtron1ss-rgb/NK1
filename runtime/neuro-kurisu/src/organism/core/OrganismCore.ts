@@ -2471,10 +2471,12 @@ export class OrganismCore {
         const safeLimit = Math.max(1, Math.min(32, Math.floor(Number.isFinite(limit) ? limit : 12)));
         const episodes = rows.slice(-safeLimit).reverse().map(event => {
             const episode = (event.payload as any)?.episode ?? {};
+            const canonicalMemory = this.memorySubsystem.memoryOS.snapshot({ clone: false }).items.find(item => item.id === `metacognitive-cycle-${event.tick}`);
             return {
                 episodeId: event.id,
                 tick: event.tick,
                 decisionId: typeof episode.decisionId === 'string' ? episode.decisionId : null,
+                memoryDecisionId: typeof canonicalMemory?.context?.decisionId === 'string' ? canonicalMemory.context.decisionId : null,
                 action: episode.selection?.action ?? 'unknown',
                 goalPresent: Boolean(episode.selection?.goalId),
                 predictionConfidence01: Number(episode.prediction?.confidence01 ?? 0),
