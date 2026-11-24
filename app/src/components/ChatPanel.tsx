@@ -35,7 +35,7 @@ export function ChatPanel() {
           <Button variant="ghost" size="icon" aria-label={snap.awake ? "Sleep" : "Wake"} onClick={snap.awake ? sleep : wake} disabled={connection.status !== "connected" || busy}>
             {snap.awake ? <Moon className="size-4" /> : <Sun className="size-4" />}
           </Button>
-          <Button variant="ghost" size="icon" aria-label="Clear UI chat history" onClick={reset}>
+          <Button variant="ghost" size="icon" aria-label="Clear UI chat history" onClick={reset} disabled={busy}>
             <RotateCcw className="size-4" />
           </Button>
         </div>
@@ -62,6 +62,11 @@ export function ChatPanel() {
             )}
           >
             <p>{m.text}</p>
+            {m.role === "user" && m.delivery ? (
+              <p className="mt-1 text-[10px] text-subtle" role="status">
+                {m.delivery === "sending" ? "Sending…" : m.delivery === "sent" ? "Sent" : "Outcome not confirmed · check the conversation before retrying"}
+              </p>
+            ) : null}
             {m.role === "kurisu" ? (
               <p className="mt-1 text-xs uppercase tracking-wider text-subtle">
                 {m.backend ?? "local"} · {m.emotion} · {m.option}
