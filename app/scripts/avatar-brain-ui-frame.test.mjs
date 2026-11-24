@@ -45,7 +45,7 @@ test("bounds shared gaze and head channels for the renderer-specific contracts",
   assert.deepEqual(avatarBrainGaze(f,{x:0,y:0}),{x:.4,y:-.2});
   assert.deepEqual(avatarBrainGaze(null,{x:9,y:-9}),{x:.4,y:-.4});
   assert.equal(avatarBrainHeadTilt(f,0),.06);
-  assert.deepEqual(avatarBrainBodyChannels(f),{headRoll:.4,headYaw:-.2,gazeX:1,gazeY:-.5,breath:.3});
+  assert.deepEqual(avatarBrainBodyChannels(f),{headYaw:-.2,gazeX:1,gazeY:-.5,breath:.3});
 });
 
 test("preserves audio viseme shape while applying bounded brain lip-sync gain",()=>{

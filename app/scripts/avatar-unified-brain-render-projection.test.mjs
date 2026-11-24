@@ -102,13 +102,13 @@ test("all renderer components consume the same projection and Original2D owns no
     readFile(new URL("../src/components/Avatar3DStage.tsx", import.meta.url), "utf8"),
   ]);
 
-  assert.match(stage, /buildAvatarRenderProjection\(/);
-  assert.match(stage, /brainFrame=\{projection\.brainFrame \?\? undefined\}/);
-  assert.match(stage, /avatarBrainChannels=\{projection\.brainChannels \?\? undefined\}/);
-  assert.match(stage, /motorPlan=\{projection\.motorPlan\}/);
-  assert.match(original, /motorPlan: AvatarMotorIntentPlan/);
-  assert.match(original, /avatarBrainChannels\?: AvatarBrainChannelsV1/);
-  assert.doesNotMatch(original, /planAvatarMotorIntent\(/);
-  assert.match(three, /avatarBrainFrame\?: AvatarBrainProjectionV1/);
-  assert.match(three, /resolveVrmArmIntent\(p\.motorPlan/);
+  assert.ok(stage.includes("buildAvatarRenderProjection("));
+  assert.ok(stage.includes("avatarBrainFrame={projection.brainFrame ?? undefined}"));
+  assert.ok(stage.includes("avatarBrainChannels={projection.brainChannels ?? undefined}"));
+  assert.ok(stage.includes("motorPlan={projection.motorPlan}"));
+  assert.ok(original.includes("motorPlan: AvatarMotorIntentPlan"));
+  assert.ok(original.includes("avatarBrainChannels?: AvatarBrainChannelsV1"));
+  assert.equal(original.includes("planAvatarMotorIntent("), false);
+  assert.ok(three.includes("avatarBrainFrame?: AvatarBrainProjectionV1"));
+  assert.ok(three.includes("resolveVrmArmIntent(p.motorPlan"));
 });
