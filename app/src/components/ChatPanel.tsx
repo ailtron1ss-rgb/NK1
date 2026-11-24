@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ArrowUp, Moon, Sun, RotateCcw } from "lucide-react";
+import { ArrowUp, Moon, Sun, RotateCcw, Mic, MicOff, LoaderCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useKurisu } from "@/organism/store";
 import { emptySnapshot } from "@/organism/types";
@@ -14,6 +14,10 @@ export function ChatPanel() {
   const sleep = useKurisu((s) => s.sleep);
   const wake = useKurisu((s) => s.wake);
   const reset = useKurisu((s) => s.reset);
+  const listen = useKurisu((s) => s.listen);
+  const stopListening = useKurisu((s) => s.stopListening);
+  const voiceInputStatus = useKurisu((s) => s.voiceInputStatus);
+  const voiceInputError = useKurisu((s) => s.voiceInputError);
   const error = useKurisu((s) => s.error);
   const [text, setText] = useState("");
   const end = useRef<HTMLDivElement>(null);
@@ -96,10 +100,46 @@ export function ChatPanel() {
           maxLength={4000}
           className="h-11 flex-1 rounded-md border border-border bg-bg px-3 text-sm text-fg placeholder:text-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
         />
+        <Button
+          type="button"
+          size="icon"
+          variant="outline"
+          aria-label={voiceInputStatus === "listening" ? "Stop microphone capture" : "Start microphone input"}
+          title={voiceInputStatus === "listening" ? "Stop listening" : "Listen"}
+          disabled={voiceInputStatus === "stopping" || (voiceInputStatus !== "listening" && (busy || connection.status !== "connected" || !snap.voice.sttAvailable))}
+          onClick={() => {
+            if (voiceInputStatus === "listening") {
+              void stopListening();
+              return;
+            }
+            void listen().then((transcript) => {
+              if (!transcript) return;
+              setText((current) => [current.trim(), transcript].filter(Boolean).join(" ").slice(0, 4000));
+            });
+          }}
+        >
+          {voiceInputStatus === "listening" || voiceInputStatus === "stopping"
+            ? voiceInputStatus === "stopping" ? <LoaderCircle className="size-4 animate-spin" /> : <MicOff className="size-4" />
+            : <Mic className="size-4" />}
+        </Button>
         <Button type="submit" size="icon" disabled={busy || !text.trim()} aria-label="Send">
           <ArrowUp className="size-4" />
         </Button>
       </form>
+      {voiceInputStatus === "listening" ? (
+        <p className="border-t border-border px-3 py-2 text-xs text-muted" role="status" aria-live="polite">
+          Listening through the configured runtime. The transcript will be inserted for review; it will not be sent automatically.
+        </p>
+      ) : null}
+      {voiceInputStatus === "stopping" ? (
+        <p className="border-t border-border px-3 py-2 text-xs text-muted" role="status">Requesting microphone stop confirmation…</p>
+      ) : null}
+      {voiceInputStatus === "transcribed" ? (
+        <p className="border-t border-border px-3 py-2 text-xs text-muted" role="status">Transcript inserted into the draft. Review it before sending.</p>
+      ) : null}
+      {voiceInputError ? (
+        <p className="border-t border-border px-3 py-2 text-xs text-muted" role="alert">Microphone: {voiceInputError}</p>
+      ) : null}
     </section>
   );
 }
