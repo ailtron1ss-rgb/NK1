@@ -107,6 +107,16 @@ This result establishes a configurable in-process hot-memory test profile only. 
 - 100k live searchable rows;
 - production retrieval quality on an independent holdout.
 
-WorkPass76 capacity test: runtime/neuro-kurisu/tests/memory-capacity-boundary-workpass76.mjs.
+Runtime connection:
+- The canonical owner is MemorySubsystemRuntime.memoryOS; it now reads the host-only environment variable NEURO_MEMORY_ITEM_CAP when constructing that same MemoryOS2 instance.
+- Absent, blank, or invalid values fall back to 1,600.
+- The MemoryOS2 constructor clamps explicit values to 128–10,000.
+- No second memory store is created and no persisted snapshot schema is changed.
+
+WorkPass76 tests:
+- runtime/neuro-kurisu/tests/memory-capacity-boundary-workpass76.mjs
+- runtime/neuro-kurisu/tests/memory-runtime-capacity-config-workpass76.mjs
+
+The runtime configuration test covers the default, explicit 10k profile, upper/lower clamps, and invalid-value fallback.
 
 Status: IMPLEMENTED / CONNECTED / CI TESTED at 10k synthetic rows. Not Android/device verified, not cold-tier complete, not independently quality validated, and not released.
