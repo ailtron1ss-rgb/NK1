@@ -1368,6 +1368,11 @@ export class MemoryOS2{
    if(!isStandaloneRevisionRecord(newer))continue;
    const newerAt=Number(newer.observedAt??newer.createdAt);
    for(let oi=ni+1;oi<this.state.items.length&&pairs<pairBudget;oi++){
+    // A resolved or quarantined observation is no longer standalone. It may
+    // participate in at most one implicit lineage decision per scan; otherwise
+    // a second match would overwrite supersedesId while leaving the first
+    // predecessor's supersededById pointing at the same child.
+    if(!isStandaloneRevisionRecord(newer)||newer.epistemicStatus==='quarantined')break;
     const older=this.state.items[oi]!;
     if(older.id===newer.id||older.validUntilAt!=null||!isStandaloneRevisionRecord(older)||older.epistemicStatus==='quarantined')continue;
     const olderAt=Number(older.observedAt??older.createdAt);if(!(olderAt<newerAt))continue;if(newer.revisionGroupId&&older.revisionGroupId&&newer.revisionGroupId===older.revisionGroupId)continue;pairs++;const signal=this.implicitConflictSignals(newer,older);if(signal.score<.75)continue;candidates++;
@@ -1377,7 +1382,7 @@ export class MemoryOS2{
       this.beginBitemporalRevision(newer,recordedAt);
       this.recordRevision(newer,{at:recordedAt,from:newer.epistemicStatus,to:'quarantined',reason:'implicit-conflict-provenance-protection'});
       newer.epistemicStatus='quarantined';
-      this.state.implicitConflictsDeferred++; this.state.provenanceProtected++; this.state.quarantined++; continue;
+      this.state.implicitConflictsDeferred++; this.state.provenanceProtected++; this.state.quarantined++; break;
     }
     const group=older.revisionGroupId??older.id; const previousNewGroup=this.revisionGroupIndex.get(newer.revisionGroupId??newer.id); if(previousNewGroup)previousNewGroup.delete(newer.id); newer.revisionGroupId=group; newer.revisionSequence=Math.max(Number(older.revisionSequence??1)+1,Number(newer.revisionSequence??1)); let groupSet=this.revisionGroupIndex.get(group); if(!groupSet){groupSet=new Set<string>();this.revisionGroupIndex.set(group,groupSet);} groupSet.add(older.id);groupSet.add(newer.id);
     const recordedAt=Math.max(at,Number(older.recordedFromAt??older.createdAt)+1);
@@ -1403,6 +1408,7 @@ export class MemoryOS2{
     newer.contradictionLinks=[...new Set([...(newer.contradictionLinks??[]),older.id])].slice(0,6);
     this.state.estimatedBytes=Math.max(0,this.state.estimatedBytes-olderBytesBeforeLinks-newerBytesBeforeLinks+estimateMemoryBytes(older)+estimateMemoryBytes(newer));
     this.state.implicitConflictsResolved++;this.state.reconsolidations++;resolved++;
+    break;
    }
   }
   this.state.implicitConflictCandidates+=candidates;this.state.lastConflictScanAt=at;return {candidates,resolved,at};
