@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import { MemorySubsystemRuntime } from '../src/organism/core/MemorySubsystemRuntime.ts';
 import { P75MemoryContinuumOS } from '../src/organism/developmental/P75MemoryContinuumOS.ts';
+import { P70MemoryLifecycleGovernor } from '../src/organism/developmental/P70MemoryLifecycleGovernor.ts';
+import { CanonicalMemoryLifecycleAuthority } from '../src/organism/memory/CanonicalMemoryLifecycleAuthority.ts';
 
 const originalCap = process.env.NEURO_MEMORY_ITEM_CAP;
 const originalBytes = process.env.NEURO_MEMORY_BYTE_BUDGET;
@@ -42,6 +44,38 @@ try {
   assert.deepEqual(configured('not-a-number', 'not-a-number'), {
     itemCap: 1_600, byteBudget: 1_048_576, diagnosticCap: 1_600,
   }, 'invalid host values must fail back to the default profile');
+
+  const p70 = new P70MemoryLifecycleGovernor();
+  const lifecycleInput = {
+    tick: 1, at: 1, traces: 0, events: 0, goals: 0, memories: 0,
+    semanticItems: 0, workingSet01: 0, energy01: 1, pressure01: 0,
+  };
+  const p70Default = p70.plan(lifecycleInput);
+  assert.equal(p70Default.budgets.memories, 440,
+    'P70 must preserve its historical 440-row normal-pressure default');
+  const p70Expanded = p70.plan({ ...lifecycleInput, canonicalCapacity: 10_000 });
+  assert.ok(p70Expanded.budgets.memories > 640,
+    'P70 must scale the lifecycle memory budget instead of silently forcing 640 rows');
+  assert.ok(p70Expanded.budgets.memories <= 10_000,
+    'P70 must never exceed the validated 10k canonical cap');
+  const p70Clamped = p70.plan({ ...lifecycleInput, canonicalCapacity: 50_000 });
+  assert.ok(p70Clamped.budgets.memories <= 10_000,
+    'P70 must clamp unsafe capacity values');
+
+  let observedMaintenance;
+  const authority = new CanonicalMemoryLifecycleAuthority(
+    { maintain: (options) => { observedMaintenance = options; return { skipped: false, changed: 0 }; } },
+    p70,
+    {},
+  );
+  authority.run({
+    ...lifecycleInput,
+    canonicalCapacity: 10_000,
+    byteBudget: 7_200_000,
+  });
+  assert.equal(observedMaintenance.maxItems, p70Expanded.budgets.memories);
+  assert.equal(observedMaintenance.byteBudget, 7_200_000,
+    'the lifecycle authority must forward the configured byte budget to MemoryFabric');
 
   const p75 = new P75MemoryContinuumOS();
   const defaultPlan = p75.plan({
@@ -88,4 +122,6 @@ console.log('MEMORY_RUNTIME_CAPACITY_CONFIG_WORKPASS76=PASS', JSON.stringify({
   env: ['NEURO_MEMORY_ITEM_CAP', 'NEURO_MEMORY_BYTE_BUDGET'],
   canonicalOwner: 'MemorySubsystemRuntime.memoryOS',
   p75CapacityPropagation: true,
+  p70LifecycleCapacityPropagation: true,
+  canonicalLifecycleByteBudgetForwarding: true,
 }));
