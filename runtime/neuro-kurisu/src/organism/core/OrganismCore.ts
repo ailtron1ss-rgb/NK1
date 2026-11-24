@@ -12821,6 +12821,25 @@ export class OrganismCore {
             this.persisted.facets.embodiment.toolAudit = this.cognitiveRuntime.actionGateway.snapshot();
             return;
         }
+        // This attestation is process-local and binds the exact provider postcondition,
+        // full action input, execution identity and a real selected decision trace.
+        // Settle only after all causal projections have succeeded, alongside the
+        // completed ActionGateway receipt persistence boundary.
+        const settleVerifiedSelfAuthorship = (): void => {
+            if (!decisionLinkedExternalPostcondition || !matchingDecisionTrace ||
+                result.ok !== true || result.verified !== true || result.verification.verified !== true) return;
+            const selectedGoalTitle = matchingDecisionTrace.selected?.goalId
+                ? this.persisted.goals.find(goal => goal.id === matchingDecisionTrace.selected?.goalId)?.title ?? null
+                : null;
+            this.selfSubsystem.selfAuthorship.observeOutcome({
+                decisionId: suppliedDecisionId,
+                executed: true,
+                success: 1,
+                surprise: 0,
+                selectedGoal: selectedGoalTitle,
+            });
+            this.persisted.facets.learning.selfAuthorship = this.selfSubsystem.selfAuthorship.snapshot();
+        };
         // If an earlier terminal outcome was already projected, an authoritative
         // provider receipt is an append-only evidence revision for that same execution.
         // If the first attempt stayed pending because acceptance was ambiguous, there
@@ -12894,6 +12913,7 @@ export class OrganismCore {
             this.persisted.system.causalAccountability = outcomeSnapshot.causal;
             this.persisted.system.cognitiveEventFabric = this.cognitiveRuntime.cognitiveEventFabric.snapshot();
             this.persisted.facets.embodiment.toolAudit = this.cognitiveRuntime.actionGateway.snapshot();
+            settleVerifiedSelfAuthorship();
             return;
         }
         const projected = this.cognitiveRuntime.outcomeCognition.project({ tick: this.persisted.state.tick, tool: id, ok: result.ok, verification: result.verification, reason, inputKeys, predictedAction: this.persisted.state.predictedNextAction, predictionConfidence01: this.persisted.state.lastPredictionConfidence, executionId: result.executionId, outcomeClass: result.outcomeClass });
@@ -12953,6 +12973,7 @@ export class OrganismCore {
         }
         this.persisted.system.cognitiveEventFabric = this.cognitiveRuntime.cognitiveEventFabric.snapshot();
         this.persisted.facets.embodiment.toolAudit = this.cognitiveRuntime.actionGateway.snapshot();
+        settleVerifiedSelfAuthorship();
     }
 
     private async integrateVerifiedToolObservation(
