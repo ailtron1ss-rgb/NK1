@@ -85,3 +85,10 @@ test('keeps metrics-only candidates distinct from signed-patch candidates',()=>{
  assert.equal(verified.admissionClass,'signed-patch-receipt');
  assert.equal(verifiedPool.best().admissionClass,'signed-patch-receipt');
 });
+
+test('does not accept candidate-supplied paired observations as independent holdout evidence',()=>{
+ const pool=trustedPool();
+ const result=pool.submitVerified(candidate('self-reported-holdout'),graph,receiptProof());
+ assert.equal(result.accepted,false,'candidate metrics must not authorize a signed code patch');
+ assert.equal(result.reason,'paired-outcome:host-evidence-missing');
+});
