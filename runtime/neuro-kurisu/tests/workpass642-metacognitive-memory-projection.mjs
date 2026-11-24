@@ -50,6 +50,7 @@ assert.ok(expectedParentIds.every((id) => typeof id === 'string'));
 const input = {
   tick: 42,
   cycleId: 'cycle-42',
+  decisionId: 'decision:42:canonical',
   cycleStageIds,
   actionEventId: cycleStageIds.action,
   observationEventId: cycleStageIds.observation,
@@ -74,6 +75,8 @@ assert.ok(event);
 assert.deepEqual(event.parentIds, expectedParentIds,
   'the metacognitive event must link all eleven verified stages in canonical order');
 assert.equal(event.parentIds.length, 11);
+assert.equal(event.payload.decisionId, input.decisionId,
+  'the hash-only CEF projection must retain the canonical decision identity');
 const first = recorded.projection;
 assert.ok(first);
 assert.equal(first.stored, true);
@@ -83,7 +86,8 @@ assert.equal(first.memory.epistemicStatus, 'hypothesis');
 assert.equal(first.memory.provenanceClass, 'derived');
 assert.equal(first.memory.context?.sourceEventId, event.id);
 assert.equal(first.memory.context?.observationId, cycleStageIds.observation);
-assert.equal(first.memory.context?.decisionId, cycleStageIds.action);
+assert.equal(first.memory.context?.decisionId, input.decisionId,
+  'canonical MemoryOS2 decisionId must not be substituted with the action event ID');
 assert.deepEqual(JSON.parse(first.memory.context?.causalParentIds ?? 'null'), expectedParentIds,
   'canonical MemoryOS2 episode must retain the complete causal parent set');
 assert.equal(first.memory.context?.outcomeDirection, 'prediction-aligned');
@@ -202,6 +206,7 @@ const legacyCycleStageIds = {
 };
 const legacyBaseInput = { ...input };
 delete legacyBaseInput.cycleStageIds;
+delete legacyBaseInput.decisionId;
 const legacyInput = {
   ...legacyBaseInput,
   tick: 44,
@@ -217,6 +222,8 @@ assert.equal(legacyRecorded.resolved, true);
 const legacyEvent = legacyFabric.recent(16).find(row => row.id === legacyRecorded.eventId);
 assert.ok(legacyEvent);
 assert.equal(legacyEvent.parentIds.length, 4);
+assert.equal(legacyEvent.payload.decisionId, undefined,
+  'historical hash projections without decision identity must remain explicitly unannotated');
 const legacyUpgradeReplay = legacyFabric.recordMetacognitiveEpisode({
   ...legacyInput,
   cycleStageIds: legacyCycleStageIds,
