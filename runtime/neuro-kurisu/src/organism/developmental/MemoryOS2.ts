@@ -1574,7 +1574,7 @@ export class MemoryOS2{
     existing.context=mergeMemoContext(existing.context,contextPatch);
     if(hasNewerObservation){
       existing.observedAt=incomingObservedAt;
-      if(Object.prototype.hasOwnProperty.call(input,'validFromAt')&&Number.isFinite(input.validFromAt))existing.validFromAt=Number(input.validFromAt);
+      if(Number(existing.revisionSequence??1)<=1&&Object.prototype.hasOwnProperty.call(input,'validFromAt')&&Number.isFinite(input.validFromAt))existing.validFromAt=Number(input.validFromAt);
       if(Object.prototype.hasOwnProperty.call(input,'validUntilAt')){
         if(input.validUntilAt===null)existing.validUntilAt=null;
         else if(Number.isFinite(input.validUntilAt))existing.validUntilAt=Number(input.validUntilAt);
