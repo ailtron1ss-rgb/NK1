@@ -1,0 +1,69 @@
+name: NK1 P0 MemoryOS2 and verified SelfAuthorship integrity
+
+on:
+  pull_request:
+    paths:
+      - "runtime/neuro-kurisu/src/organism/developmental/MemoryOS2.ts"
+      - "runtime/neuro-kurisu/src/organism/cognition/SelfAuthorship.ts"
+      - "runtime/neuro-kurisu/src/organism/core/OrganismCore.ts"
+      - "runtime/neuro-kurisu/tests/memoryos2-explicit-id-collision-workpass70.mjs"
+      - "runtime/neuro-kurisu/tests/memoryos2-byte-accounting-workpass70.mjs"
+      - "runtime/neuro-kurisu/tests/memoryos2-byte-roundtrip-workpass70.mjs"
+      - "runtime/neuro-kurisu/tests/self-authorship-verified-execution-workpass70.mjs"
+      - "runtime/neuro-kurisu/tests/memory-source-integration-workpass29.mjs"
+      - "runtime/neuro-kurisu/tests/memory-provenance-lineage-workpass30.mjs"
+      - "runtime/neuro-kurisu/package.json"
+      - ".github/workflows/nk1-p0-memoryos2-selfauthorship-integrity.yml"
+  push:
+    branches:
+      - "workpass70-source"
+    paths:
+      - "runtime/neuro-kurisu/src/organism/developmental/MemoryOS2.ts"
+      - "runtime/neuro-kurisu/src/organism/cognition/SelfAuthorship.ts"
+      - "runtime/neuro-kurisu/src/organism/core/OrganismCore.ts"
+      - "runtime/neuro-kurisu/tests/memoryos2-explicit-id-collision-workpass70.mjs"
+      - "runtime/neuro-kurisu/tests/memoryos2-byte-accounting-workpass70.mjs"
+      - "runtime/neuro-kurisu/tests/memoryos2-byte-roundtrip-workpass70.mjs"
+      - "runtime/neuro-kurisu/tests/self-authorship-verified-execution-workpass70.mjs"
+      - "runtime/neuro-kurisu/tests/memory-source-integration-workpass29.mjs"
+      - "runtime/neuro-kurisu/tests/memory-provenance-lineage-workpass30.mjs"
+      - "runtime/neuro-kurisu/package.json"
+      - ".github/workflows/nk1-p0-memoryos2-selfauthorship-integrity.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  p0-integrity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          package-manager-cache: false
+      - name: Explicit ID collision regression
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:memoryos2-explicit-id-collision-workpass70
+      - name: Contradiction-link byte accounting regression
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:memoryos2-byte-accounting-workpass70
+      - name: Restore byte accounting regression
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:memoryos2-byte-roundtrip-workpass70
+      - name: Verified self-authorship execution regression
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:self-authorship-verified-execution-workpass70
+      - name: Canonical temporal and source lineage integration
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:memory-source-integration-workpass29
+      - name: Provenance lineage and restore integration
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:memory-provenance-lineage-workpass30
+      - name: Capacity lifecycle integrity
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:memoryos2-capacity-lifecycle-integrity
+      - name: Full workpass31 memory audit
+        working-directory: runtime/neuro-kurisu
+        run: npm run audit:workpass31
