@@ -161,3 +161,82 @@ Exact-head GitHub Actions run 45126160004 completed SUCCESS on this commit. All 
 - Runtime TypeScript check
 
 The current comparison workpass70-source (06e2deb6) → aspect branch (fd5010a5) is ahead_by=9 and behind_by=0. The eight-file diff is limited to the planned MemoryOS2, MemoryFabric, tests, scripts, workflow and documentation paths.
+
+
+## Capacity profile expansion and runtime persistence verification — 24 November 2026
+
+**Repository:** `ailtron1ss-rgb/NK1`  
+**PR:** #1168 — Draft, open, unmerged  
+**Verified code head:** `61d2f67482c1a2ff8b7ac344940cf0cce8b49068`  
+**Base / current `workpass70-source`:** `87c9ed9034e09ca9fb83fd676ac52bb46434c4fe`  
+**Exact-head CI:** 51/51 workflow runs SUCCESS; 0 failures; 0 active at the verification checkpoint.
+
+### Capacity profile and ownership
+
+MemoryOS2 remains the sole canonical writable owner. The host configuration is now propagated through `MemorySubsystemRuntime`, P70/P75 lifecycle planning, `OrganismCore`, `CanonicalMemoryLifecycleAuthority`, and `MemoryFabric`.
+
+| Profile | Canonical item cap | Canonical byte budget | Status |
+|---|---:|---:|---|
+| Default / mobile-safe | 1,600 | 1 MiB | Existing default preserved |
+| Explicit extended | 10,000 | 7.2 MB derived | Opt-in, verified in CI |
+| Explicit byte override | Up to 10,000 | 256 KiB–8 MiB | Bounded operator override |
+
+Host variables:
+- `NEURO_MEMORY_ITEM_CAP`: default 1,600; validated range 128–10,000.
+- `NEURO_MEMORY_BYTE_BUDGET`: default 1 MiB for the default profile; 7.2 MB derived for an explicit 10k profile; validated range 256 KiB–8 MiB.
+
+Invalid or absent item-cap values preserve the 1,600-row default. The extended profile is not enabled implicitly on phones.
+
+### Lifecycle pressure limits
+
+The ordinary count cap and the pressure-retention cap are separate. The old default-profile pressure limits remain unchanged: 720 rows at critical pressure and 960 rows at elevated pressure. These limits now scale by the same 45% / 60% ratios for expanded profiles, rather than silently reapplying absolute 720/960 limits to a 10k store. At lower pressure, maintenance uses the planned P70/P75 budget, bounded by the configured capacity.
+
+### Exact WorkPass75–76 evidence
+
+The exact-head capacity workflow on this code head passed:
+- Default 1,600-row restore remains unchanged; the 10k source fixture reports 8,400 rows truncated under the default profile.
+- Explicit 10k restore accepts all 10,000 rows with no truncation.
+- 64 warmed direct-retrieval samples at 10k: p50 **11.31 ms**, p95 **14.60 ms** on the CI runner.
+- Canonical MemoryFabric maintenance: 10,000 rows retained; 7.2 MB byte budget; zero byte evictions; indexes and byte accounting exact.
+- Actual P70 → CanonicalMemoryLifecycleAuthority → MemoryFabric cycle: target **8,840**, after-maintenance **8,840**; zero byte evictions; indexes and byte accounting exact.
+- Protected-overflow case: 130 protected identity/quarantined rows remain under a 128-row cap; an ordinary write fails closed without displacing them.
+- Pressure-cap assertions preserve the 720/960 default limits and verify the scaled 4,500/6,000 limits at 10k.
+
+### Snapshot / restore round-trip
+
+A complete `MemorySubsystemRuntime.snapshot()` was serialized with the V8-backed `MemoryStateStore`, loaded into a fresh `MemorySubsystemRuntime`, and restored through `restoreFromPersisted()`.
+
+Verified after restoration:
+- The canonical count remains **8,840**.
+- The complete ordered canonical ID set is identical.
+- Canonical estimated-byte accounting remains exact.
+- MemoryOS2 indexes are valid.
+- The first post-restore maintenance cycle retains all 8,840 rows with zero byte-budget evictions.
+
+The serialized full-runtime payload measured **13,241,575 bytes**. This is the entire `MemorySubsystemRuntime` snapshot, not the MemoryOS2 canonical byte-budget alone. The test uses the in-memory V8-backed `MemoryStateStore`; it is a real serialization/restore round-trip into a fresh runtime instance, but **not** proof of filesystem durability, Android process-death recovery, or an on-device soak.
+
+### Memory-to-action evidence — WorkPass77
+
+The paired Core test used five different novelty/salience scenarios. Within each pair, the initial snapshot, query, observation, and evidence timestamp were matched; only the content of four retrieved episodic memories changed between the respond-cued and explore-cued arms.
+
+- 5/5 scenarios showed the expected movement in the `respond - explore` candidate-score margin.
+- Mean paired margin shift: **+0.242222**.
+- Both arms retrieved four experiment memories in every pair.
+- The final selected action remained `respond` in both arms. This proves that retrieved memory shifts candidate scores under these matched conditions; it does **not** yet prove that memory alone flips the final selected action under stronger policy constraints.
+
+The WorkPass75 metadata ablation remains a synthetic bilingual diagnostic (80 paired queries over five seeds), not an independent licensed-data holdout or production uplift estimate. Metadata recall remains opt-in.
+
+### Remaining limits and release boundary
+
+- The 1,600-row / 1 MiB default profile is unchanged.
+- The 10k profile is opt-in and has only been benchmarked on CI runners so far; no Android/phone soak is claimed.
+- The round-trip test is not a file-backed or power-loss durability test.
+- This adds a bounded 10k canonical searchable profile and cold residency inside MemoryOS2; it does not add a separate durable cold-archive service.
+- PR #1168 remains Draft and unmerged. `workpass70-source`, `main`, and published Release ZIP artifacts were not changed.
+
+### Next verification wave
+
+1. Run the explicit 10k profile on a physical Android target: restore, recall, maintenance, sustained tick loop, memory pressure, thermal/battery and app restart.
+2. Add file-backed `FileStateStore` save/reload and interrupted-write/corruption tests for the same 10k snapshot.
+3. Extend the paired memory-to-action experiment to an internal-context/no-conversation condition and measure whether any scenario changes the final selected action, not just the candidate-score margin.
+4. Record heap/RSS and peak save/restore allocation alongside the 13.24 MB full-runtime serialized payload.
