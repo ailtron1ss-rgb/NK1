@@ -20,3 +20,7 @@ The new real-Core test first failed at the expected assertion: `spine-only decis
 ## Scope
 
 No second autonomy ledger, no new persistence file and no additional policy writer. Full-path behavior remains unchanged. This branch does not merge or publish a Release.
+
+## Decision-bound feedback attribution
+
+The spine-only observation path previously called `feedbackSpineOnly` for the previous trace, then copied the same success/reward/surprise values onto the newly created decision. The duplicate write has been removed. `feedbackSpineOnly` remains the sole owner of outcome mutation and writes only to the trace it matched before the next decision is created.

@@ -26,7 +26,7 @@ jobs:
           package-manager-cache: false
       - name: Confirm regression fails on the test-only checkpoint (TDD red)
         env:
-          BASELINE_WITH_REGRESSION: 51d4fddba9835455ed01aed4ef3c4375171729e0
+          BASELINE_WITH_REGRESSION: 1c1952848ef47b4a085d84a793b5dc4ab575627b
         run: |
           set -euo pipefail
           RED_WORKTREE="$RUNNER_TEMP/nk1-spineonly-tdd-red"
@@ -38,7 +38,7 @@ jobs:
             exit 1
           fi
           printf '%s\n' "$output"
-          printf '%s\n' "$output" | grep -F "spine-only decisions must be registered with canonical SelfAuthorship" >/dev/null
+          printf '%s\n' "$output" | grep -F "spine-only feedback observed at the start of a cycle must not be attached to the newly selected trace" >/dev/null
           cd "$GITHUB_WORKSPACE"
           git worktree remove "$RED_WORKTREE"
       - name: Spine-only pending, verified outcome and restart regression

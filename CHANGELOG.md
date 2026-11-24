@@ -3984,3 +3984,5 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Settle spine-only authorship only from the matching verified feedback outcome; duplicate outcomes remain no-ops.
 - Treat explicit externalGoal input as external for autonomy scoring, constitutional arbitration and SelfAuthorship attribution.
 - Persist the SelfAuthorship facet after pending registration and feedback settlement so a pending decision survives the normal organism snapshot/restart boundary.
+
+- Keep spine-only feedback attached only to the prior active decision trace; remove the duplicate assignment of that feedback to the newly selected trace.
