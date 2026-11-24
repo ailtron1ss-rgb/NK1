@@ -54,8 +54,8 @@ try {
   assert.equal(p70Default.budgets.memories, 440,
     'P70 must preserve its historical 440-row normal-pressure default');
   const p70Expanded = p70.plan({ ...lifecycleInput, canonicalCapacity: 10_000 });
-  assert.ok(p70Expanded.budgets.memories > 640,
-    'P70 must scale the lifecycle memory budget instead of silently forcing 640 rows');
+  assert.ok(p70Expanded.budgets.memories > 8_000,
+    'P70 must preserve expanded canonical memory instead of silently forcing the legacy 640-row budget');
   assert.ok(p70Expanded.budgets.memories <= 10_000,
     'P70 must never exceed the validated 10k canonical cap');
   const p70Clamped = p70.plan({ ...lifecycleInput, canonicalCapacity: 50_000 });
