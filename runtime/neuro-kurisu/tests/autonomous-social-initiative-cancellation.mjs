@@ -100,6 +100,8 @@ await core.init();
 try {
   // Seed through the same canonical initiative owner used by OrganismCore.
   const coreEngine = core.organismSystems.agency.autonomousSocialInitiative;
+  // Core initialization may create its own startup initiative; isolate this explicit Core API test.
+  coreEngine.restore(new AutonomousSocialInitiativeEngine().snapshot());
   const coreInitiative = createInitiative(coreEngine, 30);
   assert.equal(core.cancelAutonomousSocialInitiative(coreInitiative.id, at + 31), true,
     'OrganismCore must expose explicit cancellation of a pending autonomous social initiative');
@@ -112,7 +114,7 @@ try {
   const resumed = new OrganismCore(new MemoryStateStore({ initial: persisted }), config);
   await resumed.init();
   try {
-    assert.equal(resumed.snapshot().system.autonomousSocialInitiative.initiatives[0].status, 'cancelled',
+    assert.equal(resumed.snapshot().system.autonomousSocialInitiative.initiatives.find(row => row.id === coreInitiative.id)?.status, 'cancelled',
       'Core cancellation must survive a process restart');
     assert.equal(resumed.acknowledgeAutonomousSocialInitiative(coreInitiative.id, at + 32), false);
 
