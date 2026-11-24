@@ -150,9 +150,15 @@ try {
   assert.equal(completedReceipt?.status, 'completed');
   assert.equal(completedReceipt?.decisionId, decisionId);
   assert.equal(completedReceipt?.response?.verified, true);
-  assert.ok(settledSnapshot.system.cognitiveEventFabric.recent.some(row =>
-    row.payload?.executionId === lostAck.executionId && row.payload?.decisionId === decisionId),
-  'the causal receipt trace must preserve the same decision/execution binding');
+  const cognitiveEvents = [
+  ...(settledSnapshot.system.cognitiveEventFabric.recent ?? []),
+  ...(settledSnapshot.system.cognitiveEventFabric.receiptEvents ?? []),
+];
+assert.ok(cognitiveEvents.some(row =>
+    row.payload?.executionId === lostAck.executionId &&
+    row.payload?.decisionId === decisionId &&
+    row.stage === 'tool-action'),
+  'the retained causal receipt node must preserve the same decision/execution binding even outside the ordinary 96-event window');
 
   // An exact replay returns the completed receipt and must not award the same
   // internally authored action twice.
