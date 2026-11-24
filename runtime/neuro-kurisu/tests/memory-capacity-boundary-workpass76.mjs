@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { performance } from 'node:perf_hooks';
 import { MemoryOS2 } from '../src/organism/developmental/MemoryOS2.ts';
+import { MemorySubsystemRuntime } from '../src/organism/core/MemorySubsystemRuntime.ts';
 
 const SOURCE_ROWS = 10_000;
 const ITEM_CAP = 1_600;
@@ -122,6 +123,43 @@ assert.equal(maintenance.after, 9_000,
 assert.equal(extended.indexDiagnostics().pass, true,
   'maintenance eviction must keep all secondary indexes consistent');
 
+const originalItemCapEnv = process.env.NEURO_MEMORY_ITEM_CAP;
+const originalByteBudgetEnv = process.env.NEURO_MEMORY_BYTE_BUDGET;
+let canonicalRuntime;
+let canonicalMaintenance;
+let canonicalIndex;
+let canonicalAccounting;
+try {
+  process.env.NEURO_MEMORY_ITEM_CAP = String(SOURCE_ROWS);
+  process.env.NEURO_MEMORY_BYTE_BUDGET = String(7_200_000);
+  canonicalRuntime = new MemorySubsystemRuntime();
+  assert.equal(canonicalRuntime.memoryItemCap, SOURCE_ROWS);
+  assert.equal(canonicalRuntime.memoryByteBudget, 7_200_000);
+  canonicalRuntime.memoryOS.restore(restoreSnapshot);
+  assert.equal(canonicalRuntime.memoryOS.size(), SOURCE_ROWS);
+  canonicalMaintenance = canonicalRuntime.fabric.maintain({
+    tick: 76,
+    pressure01: .1,
+    maxItems: canonicalRuntime.memoryItemCap,
+    byteBudget: canonicalRuntime.memoryByteBudget,
+  });
+  assert.equal(canonicalRuntime.memoryOS.size(), SOURCE_ROWS,
+    'the canonical MemoryFabric maintenance path must preserve the explicit 10k profile under the paired byte budget');
+  assert.equal(canonicalMaintenance.byteBudget.budget, 7_200_000);
+  assert.equal(canonicalMaintenance.byteBudget.evicted.length, 0,
+    'no row should be byte-evicted when the derived 7.2 MB profile covers this 10k fixture');
+  canonicalIndex = canonicalRuntime.memoryOS.indexDiagnostics();
+  canonicalAccounting = canonicalRuntime.memoryOS.memoryAccountingDiagnostics();
+  assert.equal(canonicalIndex.pass, true);
+  assert.equal(canonicalAccounting.exact, true,
+    'canonical byte accounting must reconcile after 10k-row maintenance');
+} finally {
+  if (originalItemCapEnv === undefined) delete process.env.NEURO_MEMORY_ITEM_CAP;
+  else process.env.NEURO_MEMORY_ITEM_CAP = originalItemCapEnv;
+  if (originalByteBudgetEnv === undefined) delete process.env.NEURO_MEMORY_BYTE_BUDGET;
+  else process.env.NEURO_MEMORY_BYTE_BUDGET = originalByteBudgetEnv;
+}
+
 const protectedRows = rows.slice(0, 130).map((row, index) => ({
   ...row,
   kind: index < 65 ? 'identity' : 'semantic',
@@ -184,5 +222,6 @@ console.log('MEMORY_CAPACITY_BOUNDARY_WORKPASS76=PASS', JSON.stringify({
     maintenance: { before: maintenance.before, after: maintenance.after, removed: maintenance.removedIds.length },
     capacityClamp: { default: ITEM_CAP, minimum: 128, maximum: highClampProfile.capacityDiagnostics().hardCap },
     protectedOverflow: { retained: protectedBefore.length, overrunRows: protectedRestore.capacityOverrunRows, failedWritePreservedAll: true },
+    canonicalFabric10k: { items: canonicalRuntime.memoryOS.size(), byteBudget: canonicalMaintenance.byteBudget.budget, byteEvictions: canonicalMaintenance.byteBudget.evicted.length, indexIntegrity: canonicalIndex.pass, accountingExact: canonicalAccounting.exact },
   },
 }));
