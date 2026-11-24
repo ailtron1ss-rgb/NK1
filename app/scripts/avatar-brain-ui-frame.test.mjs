@@ -68,7 +68,7 @@ test("all continuous avatar renderers consume the same tick-matched brain frame"
  assert.match(stage, /avatarBrainFrameForTick\(snap\.avatarBrain, snap\.tick\)/);
  assert.match(stage, /avatarBrainLive2DExpression\(currentBrainFrame\)/);
  assert.match(stage, /avatarBrainChannels=\{currentBrainChannels \?\? undefined\}/);
- assert.match(original, /avatarBrainChannels\?\.eyeOpen/);
+ assert.match(original, /const eyeAperture = avatarBrainChannels \?/);
  assert.match(original, /avatarBrainChannels\.browRaise/);
  assert.match(original, /avatarBrainChannels\.mouthSmile/);
  assert.match(three, /avatarBrainChannels\?: AvatarBrainChannelsV1/);
