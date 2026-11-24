@@ -9,6 +9,8 @@ on:
       - "runtime/neuro-kurisu/src/organism/developmental/MemoryOS2.ts"
       - "runtime/neuro-kurisu/tests/memory-metadata-ablation-workpass75.mjs"
       - "runtime/neuro-kurisu/tests/memory-capacity-boundary-workpass76.mjs"
+      - "runtime/neuro-kurisu/src/organism/core/MemorySubsystemRuntime.ts"
+      - "runtime/neuro-kurisu/tests/memory-runtime-capacity-config-workpass76.mjs"
       - "runtime/neuro-kurisu/tests/memory-retrieval-candidate-coverage.mjs"
       - "runtime/neuro-kurisu/tests/memory-retrieval-numeric-terms.mjs"
       - "runtime/neuro-kurisu/tests/memory-decision-receipt-workpass74.mjs"
@@ -43,6 +45,7 @@ jobs:
         run: |
           node --experimental-strip-types tests/memory-metadata-ablation-workpass75.mjs
           node --experimental-strip-types tests/memory-capacity-boundary-workpass76.mjs
+          node --experimental-strip-types tests/memory-runtime-capacity-config-workpass76.mjs
           node --experimental-strip-types tests/memory-retrieval-candidate-coverage.mjs
           node --experimental-strip-types tests/memory-retrieval-numeric-terms.mjs
           node --experimental-strip-types tests/memory-decision-receipt-workpass74.mjs
