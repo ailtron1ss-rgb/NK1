@@ -438,3 +438,15 @@ test("2D channel mapping is bounded, zero-safe and keeps the breath term additiv
   assert.equal(nonFinite.headOffsetX, 0);
   assert.equal(nonFinite.breathScale, 1);
 });
+
+
+test("the default 3D asset is honestly marked remote and not production-ready",()=>{
+  const manifest=DEFAULT_RENDERER_MANIFESTS.find((entry)=>entry.rendererId==="nk1-three-vrm3d");
+  assert.ok(manifest);
+  assert.equal(manifest.assetKind,"gltf");
+  assert.equal(manifest.source,"remote");
+  assert.equal(manifest.productionReady,false);
+  const registry=createDefaultBodyRendererRegistry();
+  assert.equal(registry.selectable().some((entry)=>entry.rendererId==="nk1-three-vrm3d"),false,
+    "an externally hosted, visually unaccepted asset must not enter the production-ready selector");
+});

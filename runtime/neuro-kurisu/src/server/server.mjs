@@ -1031,6 +1031,34 @@ async function route(req, res) {
             const candidates = (snapshot.traces?.slice(-1)?.[0]?.candidates ?? []).slice(0, 7).map((c) => ({ action: String(c.action), score: Number(c.score ?? 0), confidence: Number(c.confidence ?? 0) }));
             const lastReward01 = Number(state.lastActionSuccess ?? 0.5);
             const voiceSnapshot = runtime.embodiment.voiceSnapshot();
+            const avatarNow = Date.now();
+            const rawTraits = snapshot.system?.neuralGerminalOrganismB270?.traitValues;
+            const personalityEntries = rawTraits && typeof rawTraits === 'object' && !Array.isArray(rawTraits)
+                ? Object.entries(rawTraits).filter((entry) => typeof entry[0] === 'string' && Number.isFinite(Number(entry[1]))).slice(0, 64)
+                : [];
+            let avatarBrain = null;
+            try {
+                const frame = runtime.embodiment.avatarProjection(state, {
+                    profile: '3d',
+                    now: avatarNow,
+                    affect: {
+                        valence01: Number(field.valence01 ?? .5),
+                        arousal01: Number(field.arousal01 ?? .2),
+                        dominance01: Number(field.coherence01 ?? .5),
+                        curiosity01: Number(state.needs?.novelty ?? .5),
+                        confidence01: Number(state.lastPredictionConfidence ?? .5),
+                        sampledAt: avatarNow,
+                    },
+                    personality: {
+                        adaptiveNames: personalityEntries.map(([name]) => name),
+                        adaptiveValues: personalityEntries.map(([, value]) => Number(value)),
+                    },
+                });
+                avatarBrain = { schemaVersion: 1, stateVersion: Number(state.tick), frame };
+            } catch {
+                // A projection failure must not take down the UI snapshot; clients keep their renderer-local fallback.
+                avatarBrain = null;
+            }
             return json(res, 200, { ok: true, version: RELEASE_CONTRACT.application, organismCore: RELEASE_CONTRACT.organismCore, schemaVersion: RELEASE_CONTRACT.stateSchema, at: state.at, tick: state.tick, awake: body.awake,
                 state: { needs: { ...state.needs, sleepPressure: Number(p48?.interoception?.sleepPressure01 ?? (body.awake ? .15 : .85)) }, predictionError: state.predictionError, selfPredictionError: state.selfPredictionError, attentionBudget: state.attentionBudget, lastAction: state.lastAction, lastReward01: lastReward01, autonomyScore: state.autonomyScore, predictedNextAction: state.predictedNextAction, lastPredictionConfidence: state.lastPredictionConfidence, worldContextVersion: state.worldContextVersion },
                 emotion: { label: scoreLabel, valence: Number(field.valence01 ?? .5), arousal: Number(field.arousal01 ?? .2), dominance: Number(field.coherence01 ?? .5), tendency: String(state.lastAction), cause: String(field.rationale ?? 'cognitive-field') },
@@ -1047,6 +1075,7 @@ async function route(req, res) {
                 body: { battery01: Number(body.telemetry?.battery01 ?? .0), cognitiveCapacity01: Number(body.cognitiveCapacity01 ?? 0), thermalStrain01: Number(body.thermalStrain01 ?? 0), cpuLoad01: Number(body.telemetry?.cpuLoad01 ?? 0), ramPressure01: Number(body.telemetry?.ramPressure01 ?? 0) },
                 language: { calls: languageCallCount, backend: lastLanguageBackend, degraded: lastLanguageBackend === 'deterministic-policy-fallback', lastFailure: lastLanguageFailure || undefined },
                 voice: { speaking: Boolean(voiceSnapshot?.state?.speaking), listening: Boolean(voiceSnapshot?.state?.listening), ttsAvailable: Boolean(body.ttsAvailable), sttAvailable: Boolean(body.sttAvailable) },
+                avatarBrain,
                 will: { schemaVersion: runtime.core.willIntegrationDiagnostics().schemaVersion, agency: runtime.core.willIntegrationDiagnostics().agency, vector: runtime.core.willIntegrationDiagnostics().vector, integrity: runtime.core.willIntegrationDiagnostics().recordChain.integrity }
             });
         }
