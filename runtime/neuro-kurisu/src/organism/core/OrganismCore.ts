@@ -8357,7 +8357,7 @@ export class OrganismCore {
             queryHash: createHash('sha256').update(memoryQuery).digest('hex'),
             queryKind: memoryQueryKind,
             status: !cognitiveExecutionPlan.run.memory ? 'skipped' : decisionMemoryIds.length ? 'retrieved' : 'empty',
-            decisionMemoryIds,
+            retrievedMemoryIds: decisionMemoryIds,
             retrievedCount: decisionMemoryIds.length,
             appliedToWorldModel: Boolean(memoryWorldApplication?.applied),
             memoryWorldCausalLinkId,
