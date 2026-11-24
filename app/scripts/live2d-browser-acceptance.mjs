@@ -18,6 +18,7 @@ const report = {
   disposal: {},
   pageErrors: [],
   failedRequests: [],
+  failedResponses: [],
   consoleErrors: [],
 };
 const harness = '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>html,body,#slot{margin:0;width:100%;height:100%;overflow:hidden;background:#040912}iframe{display:block;width:100%;height:100%;border:0}</style></head><body><div id="slot"></div><script>window.__nk1Live2dEvents=[];window.addEventListener("message",event=>{const data=event.data;if(data&&typeof data.type==="string"&&data.type.startsWith("live2d_"))window.__nk1Live2dEvents.push(data)});</script></body></html>';
@@ -211,6 +212,9 @@ try {
     url: request.url(),
     error: request.failure()?.errorText || "failed",
   }));
+  page.on("response", (response) => {
+    if (response.status() >= 400) report.failedResponses.push({ url: response.url(), status: response.status(), statusText: response.statusText() });
+  });
   await page.route("**/__nk1_live2d_acceptance_harness", (route) =>
     route.fulfill({ status: 200, contentType: "text/html; charset=utf-8", body: harness })
   );
@@ -218,7 +222,7 @@ try {
 
   const quality = await mountProfile(page, "quality", path.join(outputDir, "live2d-quality-desktop.png"));
   assert.ok(quality.ready.modelPath.includes("Kurisu/Kurisu.model3.json"), "quality profile must select the canonical 4096 model");
-  report.profiles.push({ profile: "quality", modelPath: quality.ready.modelPath, render: quality.render });
+  report.profiles.push({ profile: "quality", modelPath: quality.ready.modelPath, expressionManagerAvailable: quality.ready.expressionManagerAvailable, expressionNames: quality.ready.expressionNames || [], render: quality.render });
 
   const firstAck = await sendIntent(page, makeIntent(1, "speaking", "happy", 1));
   assert.ok(["parameters-observed", "accepted-unverified"].includes(firstAck.status));
