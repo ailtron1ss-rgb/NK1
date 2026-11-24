@@ -1,7 +1,7 @@
 # NK1 / NeuroCore — Git branch census and order baseline — 2026-11-24
 
 Repository: `ailtron1ss-rgb/NK1`  
-Snapshot: 2026-11-24, approximately 11:25 UTC.  
+Snapshot: 2026-11-24, approximately 11:45 UTC.  
 Purpose: inventory and safe triage only. This document is not a deletion authorization.
 
 ## 1. Canonical repository boundaries
@@ -11,24 +11,24 @@ Purpose: inventory and safe triage only. This document is not a deletion authori
 - Keep `main` as the public release/metadata line. Do not bulk-merge donor branches into it.
 - Latest published Release metadata remains the `Neuro` tag / `NeuroKurisu0.1` release from 2026-10-19. This inventory does not establish source/ZIP parity.
 - No repository rulesets were present in the latest `GET /repos/{owner}/{repo}/rulesets` response.
-- Current paginated branch listing returned 1,131 refs; every entry reported `protected: false`. No exact duplicate branch HEAD SHA groups were present.
+- Current paginated branch listing returned 1,132 refs; every entry reported `protected: false`. No exact duplicate branch HEAD SHA groups were present.
 - The source branch and `main` also report `protected: false`. Repository rulesets are empty. This is a confirmed absence of branch-level ruleset enforcement at this snapshot, not a conclusion about other GitHub account/org policies.
 
 ## 2. Exact branch census
 
-- Current branch refs: **1,131**.
-- Unique branch names: **1,131**.
-- Unique HEAD commit SHAs: **1,131**.
+- Current branch refs: **1,132**.
+- Unique branch names: **1,132**.
+- Unique HEAD commit SHAs: **1,132**.
 - Exact duplicate HEAD groups: **0**.
 - Protected branches in the paginated branch API response: **0**.
 - Branches are not automatically obsolete because they have no open PR, have an old date in their name, or contain words such as `final`, `current`, `rebased`, or `v2`.
-- A preceding list snapshot returned 1,130 refs; this later live snapshot returned 1,131. Use this latest count. The earlier count difference is recorded as a snapshot-boundary change, not interpreted as proof of a deletion or restoration.
+- A preceding list snapshot returned 1,131 refs; this later live snapshot returned 1,132. Use this latest count. The earlier count difference is recorded as a snapshot-boundary change, not interpreted as proof of a deletion or restoration.
 
 ### Namespace distribution
 
 | Namespace | Branches |
 |---|---:|
-| `aspect` | 303 |
+| `aspect` | 304 |
 | Unprefixed | 257 |
 | `fix` | 183 |
 | `work` | 159 |
@@ -53,15 +53,15 @@ The one-off namespaces are `automation`, `ci`, `compat`, `experiment`, `jules`, 
 
 Full all-state PR snapshot, joined to current branch refs by exact `head.ref`:
 
-- PR records: **1,155**.
-- Open PRs: **242** — **187 Draft**, **55 Ready for review**.
+- PR records: **1,157**.
+- Open PRs: **244** — **189 Draft**, **55 Ready for review**.
 - Merged PRs: **539**.
 - Closed without merge: **374**.
 - Open PRs not updated since before 2026-11-10: **197**.
-- Distinct PR head branch names: **1,121**.
-- Current branches with at least one PR record: **1,019**.
-- Current branches with no matching PR head record: **112**. This means “no PR found by head branch name”, not “unused”.
-- Current branches with at least one open PR: **242**.
+- Distinct PR head branch names: **1,123**.
+- Current branches with at least one PR record: **1,021**.
+- Current branches with no matching PR head record: **111**. This means “no PR found by head branch name”, not “unused”.
+- Current branches with at least one open PR: **244**.
 - PR head names absent from the current branch list: **102**. These are historical/deleted/renamed/external-ref candidates; the count does not prove loss or authorize recreation.
 - Current branches with mixed PR history (for example, a merged PR plus an unmerged/other PR on the same head name): **12**.
 - Current branch refs with more than one PR record: **27**; there are **30** such head names across the full historical PR set, including names no longer present as branches.
@@ -71,12 +71,12 @@ Full all-state PR snapshot, joined to current branch refs by exact `head.ref`:
 
 | Disposition | Branches | Meaning |
 |---|---:|---|
-| Open-PR-only history | 238 | No merged/closed-unmerged history found for that branch name |
+| Open-PR-only history | 240 | No merged/closed-unmerged history found for that branch name |
 | Merged-history-only | 429 | Has merged PR history, no open PR |
 | Closed-unmerged-only | 340 | Has closed, unmerged PR history, no open PR |
 | Mixed history | 12 | Multiple PR states on the same branch name |
-| No PR record by head name | 112 | No matching PR record found |
-| **Total** | **1,131** | |
+| No PR record by head name | 111 | No matching PR record found |
+| **Total** | **1,132** | |
 
 Do not use a merged PR status alone as proof that every change on its branch is integrated. Check the exact merge commit, target ancestry, changed files, test evidence, later reversions, and any unique follow-up commits.
 
@@ -198,8 +198,8 @@ Suggested long-lived domain tracks (as a registry/concept, not an instruction to
 
 ## 8. Scope and limitations of this snapshot
 
-- Exact branch names and HEAD SHAs are captured for all 1,131 refs; the paginated branch API verified `protected: false` for every ref.
-- Full all-state PR lineage is captured for all 1,155 returned PR records and joined by exact head branch name.
+- Exact branch names and HEAD SHAs are captured for all 1,132 refs; the paginated branch API verified `protected: false` for every ref.
+- Full all-state PR lineage is captured for all 1,157 returned PR records and joined by exact head branch name.
 - Commit dates/messages are not available from the branch-list response. They remain explicitly unavailable in the machine-readable census; fetch commit metadata for selected candidates before deciding anything.
 - The census branch contains this inventory and therefore its own head SHA advances when the document is committed. Treat that branch's own row as a self-referential publication record; it is not a donor candidate.
 - No branch refs were deleted, renamed, force-pushed, or recreated as part of this inventory.
