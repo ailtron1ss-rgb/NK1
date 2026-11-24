@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { performance } from 'node:perf_hooks';
 import { MemoryOS2 } from '../src/organism/developmental/MemoryOS2.ts';
 import { MemorySubsystemRuntime } from '../src/organism/core/MemorySubsystemRuntime.ts';
+import { MemoryStateStore } from '../src/organism/persistence/MemoryStateStore.ts';
 
 const SOURCE_ROWS = 10_000;
 const ITEM_CAP = 1_600;
@@ -130,6 +131,7 @@ let canonicalMaintenance;
 let canonicalIndex;
 let canonicalAccounting;
 let canonicalLifecycle;
+let canonicalDurableRoundTrip;
 try {
   process.env.NEURO_MEMORY_ITEM_CAP = String(SOURCE_ROWS);
   process.env.NEURO_MEMORY_BYTE_BUDGET = String(7_200_000);
@@ -186,6 +188,85 @@ try {
   };
   assert.equal(canonicalLifecycle.indexIntegrity, true);
   assert.equal(canonicalLifecycle.accountingExact, true);
+
+  // Serialize the entire MemorySubsystemRuntime snapshot through the same V8-backed
+  // state store used by embedded runtimes, then restore the canonical memory subsystem.
+  const persistedRuntimeSnapshot = canonicalRuntime.snapshot();
+  const durableStore = new MemoryStateStore();
+  await durableStore.save(persistedRuntimeSnapshot);
+  const reloadedRuntimeSnapshot = await durableStore.load();
+  assert.ok(reloadedRuntimeSnapshot, 'the 10k-profile runtime snapshot must survive a durable state-store round trip');
+  assert.deepEqual(
+    reloadedRuntimeSnapshot.memoryOS.items.map(item => item.id),
+    persistedRuntimeSnapshot.memoryOS.items.map(item => item.id),
+    'durable serialization must preserve the exact ordered canonical memory identity set',
+  );
+  assert.equal(
+    reloadedRuntimeSnapshot.memoryOS.estimatedBytes,
+    persistedRuntimeSnapshot.memoryOS.estimatedBytes,
+    'durable serialization must preserve canonical byte accounting metadata',
+  );
+
+  const restartedRuntime = new MemorySubsystemRuntime();
+  restartedRuntime.restoreFromPersisted({
+    memory: {
+      autobiographicalMemories: reloadedRuntimeSnapshot.memories,
+      semanticGraph: reloadedRuntimeSnapshot.semanticGraph,
+    },
+    advanced: {
+      memoryOS: reloadedRuntimeSnapshot.memoryOS,
+      memoryFabric: reloadedRuntimeSnapshot.fabric,
+      unifiedMemory: reloadedRuntimeSnapshot.unifiedMemory,
+      p47: reloadedRuntimeSnapshot.p47,
+      p59MemoryOperatingSystem: reloadedRuntimeSnapshot.p59,
+      p62MemoryFabric: reloadedRuntimeSnapshot.p62,
+      p65EpistemicLedger: reloadedRuntimeSnapshot.p65,
+      hexisSourceMonitor: reloadedRuntimeSnapshot.hexisSourceMonitor,
+      p70MemoryLifecycleGovernor: reloadedRuntimeSnapshot.p70,
+      p75MemoryContinuumOS: reloadedRuntimeSnapshot.p75,
+      experienceContinuum: reloadedRuntimeSnapshot.experienceContinuum,
+      hippocampal: reloadedRuntimeSnapshot.hippocampal,
+      hippocampalFormation: reloadedRuntimeSnapshot.hippocampalFormation,
+      consolidationController: reloadedRuntimeSnapshot.consolidationController,
+      memoryLifecycleAuthority: reloadedRuntimeSnapshot.memoryLifecycleAuthority,
+      memoryRetentionEconomy: reloadedRuntimeSnapshot.memoryRetentionEconomy,
+      memoryCausalEconomy: reloadedRuntimeSnapshot.memoryCausalEconomy,
+      causalLifeGraph: reloadedRuntimeSnapshot.causalLifeGraph,
+      memoryWorldCausalBridge: reloadedRuntimeSnapshot.memoryWorldCausalBridge,
+    },
+  });
+  assert.equal(restartedRuntime.memoryItemCap, SOURCE_ROWS);
+  assert.equal(restartedRuntime.memoryByteBudget, 7_200_000);
+  assert.equal(restartedRuntime.memoryOS.size(), canonicalLifecycle.targetItems,
+    'the canonical memory count must survive MemorySubsystemRuntime persistence and restore');
+  assert.deepEqual(
+    restartedRuntime.memoryOS.snapshot().items.map(item => item.id),
+    persistedRuntimeSnapshot.memoryOS.items.map(item => item.id),
+    'restart must preserve the exact canonical IDs and their deterministic order');
+  assert.equal(restartedRuntime.memoryOS.indexDiagnostics().pass, true,
+    'restored 10k profile indexes must be rebuilt consistently');
+  assert.equal(restartedRuntime.memoryOS.memoryAccountingDiagnostics().exact, true,
+    'restored 10k profile byte accounting must remain exact');
+
+  const postRestartMaintenance = restartedRuntime.fabric.maintain({
+    tick: 78,
+    pressure01: .1,
+    maxItems: restartedRuntime.memoryItemCap,
+    byteBudget: restartedRuntime.memoryByteBudget,
+  });
+  assert.equal(restartedRuntime.memoryOS.size(), canonicalLifecycle.targetItems,
+    'the first post-restart maintenance tick must not fall back to the legacy 1,600-row cap');
+  assert.equal(postRestartMaintenance.byteBudget.evicted.length, 0,
+    'post-restart byte-budget enforcement must not evict the 10k profile fixture');
+  canonicalDurableRoundTrip = {
+    serializedBytes: durableStore.metrics().lastPayloadBytes,
+    itemsAfterRestore: restartedRuntime.memoryOS.size(),
+    byteBudget: restartedRuntime.memoryByteBudget,
+    indexIntegrity: restartedRuntime.memoryOS.indexDiagnostics().pass,
+    accountingExact: restartedRuntime.memoryOS.memoryAccountingDiagnostics().exact,
+    postRestartByteEvictions: postRestartMaintenance.byteBudget.evicted.length,
+    exactOrderedIdsPreserved: true,
+  };
 } finally {
   if (originalItemCapEnv === undefined) delete process.env.NEURO_MEMORY_ITEM_CAP;
   else process.env.NEURO_MEMORY_ITEM_CAP = originalItemCapEnv;
@@ -257,5 +338,6 @@ console.log('MEMORY_CAPACITY_BOUNDARY_WORKPASS76=PASS', JSON.stringify({
     protectedOverflow: { retained: protectedBefore.length, overrunRows: protectedRestore.capacityOverrunRows, failedWritePreservedAll: true },
     canonicalFabric10k: { items: SOURCE_ROWS, byteBudget: canonicalMaintenance.byteBudget.budget, byteEvictions: canonicalMaintenance.byteBudget.evicted.length, indexIntegrity: canonicalIndex.pass, accountingExact: canonicalAccounting.exact },
     canonicalLifecycle10k: canonicalLifecycle,
+    canonicalDurableRoundTrip10k: canonicalDurableRoundTrip,
   },
 }));
