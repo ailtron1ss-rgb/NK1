@@ -208,3 +208,16 @@ test("v7 hybrid avatar keeps authored PBR materials while legacy GLB remains too
  assert.match(stage,/if\(!vrm\)\{if\(name===KURISU_HYBRID_MODEL_V7_CANDIDATE\.filename\)applyAvatarPbrMaterials\(root\);else applyAnimeToonMaterials\(root\);\}/);
  assert.match(toon,/export function applyAvatarPbrMaterials\(root: any\): void/);
 });
+
+test("avatar renderer and voice toolbar is mobile-touch friendly and screen-reader discoverable",async()=>{
+ const ui=await readFile(path.join(root,"src/components/AvatarStage.tsx"),"utf8");
+ assert.match(ui,/role="toolbar" aria-label="Управление аватаром"/);
+ assert.match(ui,/role="group" aria-label="Режим отображения персонажа"/);
+ assert.match(ui,/role="group" aria-label="Голосовой вывод"/);
+ for(const mode of ["Live2D","Legacy","NK1 Original","3D"]){
+  assert.ok(ui.includes(`Переключить на режим ${mode}`),`missing descriptive label for ${mode}`);
+ }
+ assert.match(ui,/aria-live="polite"/);
+ assert.match(ui,/min-h-9/);
+ assert.match(ui,/focus-visible:ring-2/);
+});
