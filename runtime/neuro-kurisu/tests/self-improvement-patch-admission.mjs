@@ -196,6 +196,30 @@ test('rejects invalid evaluator signatures and duplicate seed reuse', () => {
   assert.equal(duplicateResult.reason, 'paired-outcome:duplicate-evidence-id-or-seed');
 });
 
+test('rejects paired holdout rows mixed across different experiment protocols', () => {
+  const rows = makePairedOutcomes('mixed-protocol');
+  for (let index = 0; index < rows.length; index += 1) {
+    const payload = rows[index].payload;
+    payload.experimentId = 'experiment-mixed-protocol';
+    payload.protocolFingerprint = 'c'.repeat(64);
+    payload.taskManifestFingerprint = 'd'.repeat(64);
+    payload.testFingerprint = 'e'.repeat(64);
+    payload.attempt = 1;
+    if (index === 4) payload.protocolFingerprint = 'f'.repeat(64);
+    const keyPair = payload.verifierId === 'nk1-evaluator-a' ? evaluatorA : evaluatorB;
+    rows[index].signature = sign(
+      null,
+      Buffer.from(canonicalPairedHoldoutPayload(payload), 'utf8'),
+      keyPair.privateKey,
+    ).toString('base64');
+  }
+  const result = service().admitVerifiedPatch(candidate('mixed-protocol'), proof('mixed-protocol', {
+    pairedOutcomes: rows,
+  }));
+  assert.equal(result.accepted, false);
+  assert.equal(result.reason, 'paired-outcome:inconsistent-holdout-protocol');
+});
+
 test('snapshots the exact source inventory and both verifier registries at construction', () => {
   const mutableFiles = sourceFiles.map(row => ({ ...row }));
   const mutablePatchKeys = { ...trustedPublicKeys };

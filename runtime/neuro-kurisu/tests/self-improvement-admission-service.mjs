@@ -41,4 +41,18 @@ test('host composition rejects untrusted source SHA, digest and incomplete trust
     sourceSnapshot: { baseSha, files: sourceFiles },
     hostTrust: { ...trust, trustedOutcomePublicKeys: {} },
   }), /candidate-pool-patch-receipt-trust-invalid/);
+  assert.throws(() => new SelfImprovementPatchAdmissionService({
+    sourceSnapshot: { baseSha, files: sourceFiles },
+    hostTrust: {
+      ...trust,
+      trustedOutcomePublicKeys: { evaluatorA: evaluatorKey, evaluatorB: evaluatorKey },
+    },
+  }), /candidate-pool-patch-receipt-trust-invalid/);
+  assert.throws(() => new SelfImprovementPatchAdmissionService({
+    sourceSnapshot: { baseSha, files: sourceFiles },
+    hostTrust: {
+      ...trust,
+      trustedOutcomePublicKeys: { evaluatorA: patchKey },
+    },
+  }), /candidate-pool-patch-receipt-trust-invalid/);
 });
