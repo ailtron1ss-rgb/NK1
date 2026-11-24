@@ -32,10 +32,21 @@
 - Повторная отправка не запускается автоматически: запрос мог быть обработан сервером до потери ответа.
 - История локального чата сохраняется в прежнем ограниченном browser cache; reset очищает только UI-историю, а не каноническую память организма.
 
+### Голосовой ввод пользователя
+
+- Интерфейс использует существующий `POST /api/organism/voice/listen`, а не браузерную имитацию микрофона.
+- Каждый запуск проходит через существующий ActionGateway microphone-input approval challenge и ActionApprovalCenter.
+- Полученный transcript вставляется в поле сообщения как черновик; он не отправляется автоматически.
+- При остановке интерфейс вызывает `voice/interrupt` и проверяет текущее состояние через `voice/status`.
+- Если runtime не подтвердил завершение capture, UI удерживает состояние stop-unconfirmed и блокирует новый запуск до повторной проверки.
+- Неизвестный, пустой или недоступный ASR не превращается в пустой отправленный запрос.
+
 ### Разделы и параметры
 
 - Добавлена нижняя навигация: Home / Memory / Motivation / Settings / More.
 - Настройки аватара и browser TTS перешли в общий Zustand UI-store, поэтому экран Settings и AvatarStage работают с одним набором предпочтений.
+- Backend voice capabilities (STT/TTS, listening/speaking) передаются в UI snapshot; browser speech и runtime voice показываются как разные пути.
+- Начальные display preferences читаются после mount, чтобы пользовательский localStorage не вызывал SSR hydration mismatch.
 - 2.5D показан как выключенный до подтверждения production artwork/rig/visual gates.
 - 3D остаётся явно обозначенным Preview.
 - HUD и Motivation скрывают стартовые boot defaults до первого подтверждённого canonical snapshot.
@@ -45,6 +56,7 @@
 - `app/scripts/organism-snapshot-sync.test.mjs`: поздний ответ, timestamp regression, tick regression, перезапуск runtime, смена schema/version, malformed metadata.
 - `app/scripts/chat-draft.test.mjs`: восстановление неудачного черновика и сохранение нового ввода.
 - `app/scripts/chat-delivery.test.mjs`: sending/sent/rejected/unknown и неизменность посторонних реплик.
+- `app/scripts/voice-interaction.test.mjs`: валидный transcript, пустой/неверный ответ, ограничение размера, runtime listening status.
 
 ## Границы этого прохода
 
