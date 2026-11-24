@@ -134,10 +134,13 @@ try {
   assert.ok(storedEpisodeEvent,'the metacognitive episode must be stored in the canonical memory event log');
   assert.equal(storedEpisodeEvent.payload.episode.decisionId,runtimeDecisionId,
     'the persisted episode object must retain the same Core decision identity');
-  const canonicalMemory=runtime.core.memorySubstrateCanonicalItems(64).find(item=>item.id===`metacognitive-cycle-${tick}`);
+  const canonicalMemoryState=runtime.core.snapshot().facets.advanced.memoryOS;
+  const canonicalMemory=canonicalMemoryState.items.find(item=>item.id===`metacognitive-cycle-${tick}`);
   assert.ok(canonicalMemory,'the metacognitive episode must have a canonical MemoryOS2 item');
   assert.equal(canonicalMemory.context?.decisionId,runtimeDecisionId,
-    'the canonical MemoryOS2 projection must retain the decision identity');
+    'the persisted canonical MemoryOS2 item must retain the decision identity');
+  const canonicalProjection=runtime.core.memorySubstrateCanonicalItems(64).find(item=>item.id===`metacognitive-cycle-${tick}`);
+  assert.ok(canonicalProjection,'the lightweight canonical-memory view must expose the same episode ID');
   const diagnostics=runtime.core.metacognitiveEpisodeDiagnostics(4);
   assert.equal(diagnostics.episodes[0]?.decisionId,runtimeDecisionId,
     'bounded metacognitive diagnostics must expose the canonical decision identity');
