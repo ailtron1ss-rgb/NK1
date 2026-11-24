@@ -221,3 +221,20 @@ test("avatar renderer and voice toolbar is mobile-touch friendly and screen-read
  assert.match(ui,/min-h-9/);
  assert.match(ui,/focus-visible:ring-2/);
 });
+
+test("3D viewport exposes bounded zoom, pointer-wheel zoom and one-tap camera reset",async()=>{
+ const stage=await readFile(stagePath,"utf8");
+ const controls=await import("../src/components/avatar/avatarViewportControls.ts");
+ assert.equal(controls.resolveAvatarCameraDistance(6.65,-1),5.65);
+ assert.equal(controls.resolveAvatarCameraDistance(4.7,-5),4.5);
+ assert.equal(controls.resolveAvatarCameraDistance(8.8,5),9);
+ assert.equal(controls.resolveAvatarCameraDistance(Number.NaN,Number.NaN),6.65);
+ assert.match(stage,/aria-label="Управление масштабом 3D-модели"/);
+ assert.match(stage,/aria-label="Приблизить 3D-модель"/);
+ assert.match(stage,/aria-label="Отдалить 3D-модель"/);
+ assert.match(stage,/aria-label="Сбросить ракурс 3D-модели"/);
+ assert.match(stage,/addEventListener\("wheel",wheel/);
+ assert.match(stage,/removeEventListener\("wheel",wheel/);
+ assert.match(stage,/resetCameraView/);
+ assert.match(stage,/min-h-9/);
+});
