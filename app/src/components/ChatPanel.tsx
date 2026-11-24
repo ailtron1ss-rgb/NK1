@@ -104,11 +104,11 @@ export function ChatPanel() {
           type="button"
           size="icon"
           variant="outline"
-          aria-label={voiceInputStatus === "listening" ? "Stop microphone capture" : "Start microphone input"}
-          title={voiceInputStatus === "listening" ? "Stop listening" : "Listen"}
-          disabled={voiceInputStatus === "stopping" || (voiceInputStatus !== "listening" && (busy || connection.status !== "connected" || !snap.voice.sttAvailable))}
+          aria-label={voiceInputStatus === "listening" || voiceInputStatus === "stop-unconfirmed" ? "Stop microphone capture" : "Start microphone input"}
+          title={voiceInputStatus === "listening" ? "Stop listening" : voiceInputStatus === "stop-unconfirmed" ? "Retry stop confirmation" : "Listen"}
+          disabled={voiceInputStatus === "stopping" || (voiceInputStatus !== "listening" && voiceInputStatus !== "stop-unconfirmed" && (busy || connection.status !== "connected" || !snap.voice.sttAvailable))}
           onClick={() => {
-            if (voiceInputStatus === "listening") {
+            if (voiceInputStatus === "listening" || voiceInputStatus === "stop-unconfirmed") {
               void stopListening();
               return;
             }
@@ -118,7 +118,7 @@ export function ChatPanel() {
             });
           }}
         >
-          {voiceInputStatus === "listening" || voiceInputStatus === "stopping"
+          {voiceInputStatus === "listening" || voiceInputStatus === "stopping" || voiceInputStatus === "stop-unconfirmed"
             ? voiceInputStatus === "stopping" ? <LoaderCircle className="size-4 animate-spin" /> : <MicOff className="size-4" />
             : <Mic className="size-4" />}
         </Button>
@@ -133,6 +133,9 @@ export function ChatPanel() {
       ) : null}
       {voiceInputStatus === "stopping" ? (
         <p className="border-t border-border px-3 py-2 text-xs text-muted" role="status">Requesting microphone stop confirmation…</p>
+      ) : null}
+      {voiceInputStatus === "stop-unconfirmed" ? (
+        <p className="border-t border-border px-3 py-2 text-xs text-muted" role="alert">Microphone stop is not confirmed. Retry the stop request before starting another capture.</p>
       ) : null}
       {voiceInputStatus === "transcribed" ? (
         <p className="border-t border-border px-3 py-2 text-xs text-muted" role="status">Transcript inserted into the draft. Review it before sending.</p>
