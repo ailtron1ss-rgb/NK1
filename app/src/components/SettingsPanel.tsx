@@ -18,16 +18,17 @@ export function SettingsPanel() {
   const setVoiceName = useKurisu((s) => s.setVoiceName);
   const connection = useKurisu((s) => s.connection);
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
-  const speechAvailable = typeof window !== "undefined" && "speechSynthesis" in window;
+  const [speechAvailable, setSpeechAvailable] = useState(false);
 
   useEffect(() => {
-    if (!speechAvailable) return;
+    if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
     const synth = window.speechSynthesis;
     const update = () => setVoices(synth.getVoices());
+    setSpeechAvailable(true);
     update();
     synth.addEventListener?.("voiceschanged", update);
     return () => synth.removeEventListener?.("voiceschanged", update);
-  }, [speechAvailable]);
+  }, []);
 
   return (
     <div className="mx-auto grid max-w-4xl gap-4 lg:grid-cols-2">
@@ -74,6 +75,7 @@ export function SettingsPanel() {
         <div className="mt-4 rounded-lg border border-border bg-bg p-3">
           <p className="text-xs font-medium text-muted">Runtime connection</p>
           <p className="mt-1 text-sm text-fg">{connection.status} · {connection.version ?? "version unavailable"}</p>
+          {connection.serviceDegraded ? <p className="mt-1 text-xs text-amber-400">Language provider fallback is active.</p> : null}
           <p className="mt-1 text-xs text-subtle">{connection.lastError ?? (connection.lastSyncedAt ? "Last confirmed at " + new Date(connection.lastSyncedAt).toLocaleTimeString() : "No canonical snapshot has been confirmed in this session.")}</p>
         </div>
       </section>
