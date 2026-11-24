@@ -14,7 +14,7 @@ import { fingerprintAvatarModel } from "./avatar/avatarModelFingerprint";
 import { preflightAvatarModel } from "./avatar/avatarModelPreflight";
 import { disposeThreeObjectTree } from "./avatar/threeResourceDisposal";
 import { applyAnimeToonMaterials, createProceduralToonMaterial, getSharedAnimeGradientTexture } from "./avatar/threeToonMaterials";
-import { KURISU_HYBRID_MODEL } from "./avatar/avatarModelCatalog";
+import { KURISU_HYBRID_MODEL, KURISU_HYBRID_MODEL_V7_CANDIDATE } from "./avatar/avatarModelCatalog";
 import { resolveGlbMouthMorphWeights } from "./avatar/glbMouthMorphAdapter";
 import { fetchRemoteAvatarModel } from "./avatar/remoteAvatarSource";
 import { applyAvatarAnimationFrame } from "./avatar/avatarAnimationRuntime";
@@ -22,6 +22,7 @@ import { applyAvatarAnimationFrame } from "./avatar/avatarAnimationRuntime";
 type Props = { emotion: EmotionLabel; action: ActionKind; motorPlan: AvatarMotorIntentPlan; arousal: number; valence: number; dominance: number; energy: number; cognitiveLoad: number; uncertainty: number; socialNeed: number; novelty: number; goalPressure: number; curiosity: number; predictionError: number; traits: Record<string, number>; gazeX: number; gazeY: number; speaking: boolean; mouthPose: MouthPose; thinking: boolean; awake: boolean; bodyChannels?: Record<string, number>; avatarBrainFrame?: AvatarBrainProjectionV1; onReturnTo2D?: () => void };
 type Bone = { node: any; name: string; x: number; y: number; z: number };
 type Runtime = { scene:any; camera:any; renderer:any; body:any; loaded:any; vrm:any; mixer:any; clips:any[]; clipName:string; activeClipAction:any; bones:Bone[]; yaw:number; dragX:number|null; mood:any; last:number };
+type ModelPersistence = "persist" | "restore" | "preview";
 const clamp=(n:number,a:number,b:number)=>Math.max(a,Math.min(b,Number.isFinite(n)?n:0));
 const material = createProceduralToonMaterial;
 const BODY_PITCH_BY_MOTOR_ACTION: Record<AvatarMotorIntentPlan["action"], number> = {
@@ -63,7 +64,7 @@ export function Avatar3DStage(props:Props){
  const [remoteModelUrl,setRemoteModelUrl]=useState("");
  const [ready,setReady]=useState(false),[modelName,setModelName]=useState(""),[modelFingerprint,setModelFingerprint]=useState(""),[state,setState]=useState<"empty"|"loading"|"loaded"|"error"|"webgl-unavailable">("empty"),[message,setMessage]=useState(""),[storageMessage,setStorageMessage]=useState("3D-модель не загружена. Процедурная геометрия намеренно скрыта.");
  latest.current=props;
- const loadModel=useCallback(async(blob:Blob,name:string,persist:boolean)=>{
+ const loadModel=useCallback(async(blob:Blob,name:string,persistence:ModelPersistence)=>{
   if(!blob.size||blob.size>MAX_AVATAR_MODEL_BYTES){setState("error");setMessage("Файл должен быть непустым и не больше 90 МБ.");return;}
   const rt=runtime.current;if(!rt){setState("error");setMessage("3D-сцена ещё запускается; повторите загрузку.");return;}
   const token=++loadToken.current;setState("loading");setMessage("Проверка GLB/VRM и загрузка локальной модели…");
@@ -86,35 +87,38 @@ export function Avatar3DStage(props:Props){
     }
     if(vrm){configureVrmForNk1NormalizedMotorDrive(vrm);VRMUtils.rotateVRM0(vrm);VRMUtils.removeUnnecessaryVertices(gltf.scene);VRMUtils.combineSkeletons(gltf.scene);VRMUtils.combineMorphs(vrm);}if(!vrm)applyAnimeToonMaterials(root);const bounds=new THREE.Box3().setFromObject(root),size=new THREE.Vector3(),center=new THREE.Vector3();bounds.getSize(size);bounds.getCenter(center);const max=Math.max(size.x,size.y,size.z);if(!Number.isFinite(max)||max<.0001)throw new Error("У модели нет видимой геометрии.");const scale=3.15/max;root.scale.setScalar(scale);root.position.set(-center.x*scale,-bounds.min.y*scale+.04,-center.z*scale);root.traverse((n:any)=>{if(vrm)n.frustumCulled=false;if(n.isMesh){for(const m of(Array.isArray(n.material)?n.material:n.material?[n.material]:[])){if("roughness"in m)m.roughness=clamp(Number(m.roughness??.8),.18,1);}}});
     if(rt.loaded){rt.scene.remove(rt.loaded);if(rt.vrm)VRMUtils.deepDispose(rt.loaded);else disposeTree(rt.loaded);}rt.mixer?.stopAllAction();rt.activeClipAction=null;rt.loaded=root;rt.vrm=vrm;rt.scene.add(root);rt.body.root.visible=false;rt.bones=bonesOf(root);rt.clips=Array.isArray(gltf.animations)?gltf.animations:[];rt.mixer=!vrm&&rt.clips.length?new THREE.AnimationMixer(root):null;rt.clipName="";setModelName(name);setState("loaded");const caps=humanoidAudit.capabilities;const capabilitySummary=[caps.torso?"торс":"без торса",caps.head?"голова":"без головы",caps.bilateralArms?"две руки":"неполные руки",caps.bilateralHands?"две кисти":"без двух кистей",caps.bilateralLegs?"две ноги":"неполные ноги",caps.bilateralFeet?"две стопы":"неполные стопы",caps.fingerArticulation?"пальцы артикулируются":"артикуляция пальцев не подтверждена"];const leftArmAvailable=!!humanoidAudit.nodes.leftUpperArm&&!!humanoidAudit.nodes.leftLowerArm;const rightArmAvailable=!!humanoidAudit.nodes.rightUpperArm&&!!humanoidAudit.nodes.rightLowerArm;const hasAuditedRig=Object.keys(humanoidAudit.nodes).length>0||rt.bones.length>0;const mappingDescription=humanoidAudit.mappingMethod==="conservative-name-heuristic"?"по именам Bone (эвристика)":`по glTF node index (VRM ${vrmNodeMap.status==="valid"?vrmNodeMap.version:"metadata"})`;const completeness=caps.fullBodyHumanoid?(humanoidAudit.mappingMethod==="conservative-name-heuristic"?"полная иерархия по именам Bone; не подтверждает VRM runtime":`обязательная иерархия VRM ${vrmNodeMap.status==="valid"?vrmNodeMap.version:""} подтверждена по glTF node index и ancestry; IK/retargeting не подтверждены`):(vrmNodeMap.status==="invalid"?"VRM metadata отклонены; эвристический fallback заблокирован":"полный Humanoid Rig не подтверждён");setMessage(hasAuditedRig?`Модель загружена. Rig audit ${mappingDescription}: ${capabilitySummary.join(" · ")}. ${completeness}. Цепи рук: ${leftArmAvailable?"левая":""}${leftArmAvailable&&rightArmAvailable?" и ":""}${rightArmAvailable?"правая":""}${!leftArmAvailable&&!rightArmAvailable?"не распознаны":""}. IK не включается этим аудитом.`:"Геометрия загружена; humanoid-узлы и Bone-скелет не подтверждены, движения тела ограничены.");
-    if(persist)void saveAvatarModel(blob,name).then(()=>setStorageMessage("Модель сохранена в IndexedDB; следующие запуски используют локальную копию.")).catch(()=>setStorageMessage("Модель загружена, но браузер не разрешил сохранить её между сессиями."));else setStorageMessage("Восстановлена локальная модель из хранилища браузера.");
+    if(persistence==="persist")void saveAvatarModel(blob,name).then(()=>setStorageMessage("Модель сохранена в IndexedDB; следующие запуски используют локальную копию.")).catch(()=>setStorageMessage("Модель загружена, но браузер не разрешил сохранить её между сессиями."));
+    else if(persistence==="preview")setStorageMessage("Кандидат v7: временный preview, не записан в IndexedDB и не заменяет основную модель.");
+    else setStorageMessage("Восстановлена локальная модель из хранилища браузера.");
    }catch(e){const failedVrm=gltf.userData?.vrm??null;if(failedVrm)VRMUtils.deepDispose(failedVrm.scene);else disposeTree(gltf.scene);setState("error");setMessage(e instanceof Error?e.message:"Не удалось подготовить модель.");}
   },()=>{if(token!==loadToken.current)return;setState("error");setMessage("Не прочитан бинарный VRM/GLB. Нужен самодостаточный файл с геометрией и текстурами внутри.");});
   }catch(e){if(token!==loadToken.current)return;setState("error");setMessage(e instanceof Error?e.message:"Ошибка чтения модели.");}
  },[]);
- const loadBundledModel=useCallback(async()=>{
+ const loadCatalogModel=useCallback(async(asset:typeof KURISU_HYBRID_MODEL|typeof KURISU_HYBRID_MODEL_V7_CANDIDATE,persistence:ModelPersistence)=>{
   const token=++loadToken.current;
-  setState("loading");setMessage("Загрузка закреплённой онлайн-модели Курису v5 и проверка SHA-256…");
+  setState("loading");setMessage(`Загрузка ${asset.label}; проверка типа, размера и SHA-256…`);
   try{
-   const response=await fetch(KURISU_HYBRID_MODEL.url,{mode:"cors",credentials:"omit",cache:"force-cache",signal:AbortSignal.timeout(25_000)});
+   const response=await fetch(asset.url,{mode:"cors",credentials:"omit",cache:persistence==="preview"?"no-store":"force-cache",signal:AbortSignal.timeout(25_000)});
    if(token!==loadToken.current)return;
-   if(!response.ok)throw new Error(`Не удалось получить модель Курису (HTTP ${response.status}).`);
+   if(!response.ok)throw new Error(`Не удалось получить ${asset.label} (HTTP ${response.status}).`);
    const contentType=(response.headers.get("content-type")??"").split(";")[0].trim().toLowerCase();
    if(contentType!=="model/gltf-binary")throw new Error("CDN вернул неожиданный тип содержимого; GLB не будет передан парсеру.");
    const declaredLength=Number(response.headers.get("content-length"));
-   if(Number.isFinite(declaredLength)&&declaredLength>0&&declaredLength!==KURISU_HYBRID_MODEL.sizeBytes)throw new Error("Content-Length модели не совпадает с закреплённым манифестом.");
+   if(Number.isFinite(declaredLength)&&declaredLength>0&&declaredLength!==asset.sizeBytes)throw new Error("Content-Length модели не совпадает с закреплённым манифестом.");
    const blob=await response.blob();
    if(token!==loadToken.current)return;
-   if(blob.size!==KURISU_HYBRID_MODEL.sizeBytes)throw new Error("Размер онлайн-модели не совпадает с закреплённым манифестом.");
-   const data=await blob.arrayBuffer();
-   const fingerprint=await fingerprintAvatarModel(data);
+   if(blob.size!==asset.sizeBytes)throw new Error("Размер онлайн-модели не совпадает с закреплённым манифестом.");
+   const fingerprint=await fingerprintAvatarModel(await blob.arrayBuffer());
    if(token!==loadToken.current)return;
-   if(fingerprint!==KURISU_HYBRID_MODEL.sha256)throw new Error("SHA-256 модели не совпадает; загрузка заблокирована.");
-   await loadModel(blob,KURISU_HYBRID_MODEL.filename,true);
+   if(fingerprint!==asset.sha256)throw new Error("SHA-256 модели не совпадает; загрузка заблокирована.");
+   void loadModel(blob,asset.filename,persistence);
   }catch(error){
    if(token!==loadToken.current)return;
-   setState("error");setMessage(error instanceof Error?error.message:"Не удалось загрузить онлайн-модель Курису v5.");
+   setState("error");setMessage(error instanceof Error?error.message:"Не удалось загрузить онлайн-модель.");
   }
  },[loadModel]);
+ const loadBundledModel=useCallback(()=>loadCatalogModel(KURISU_HYBRID_MODEL,"persist"),[loadCatalogModel]);
+ const loadV7Candidate=useCallback(()=>loadCatalogModel(KURISU_HYBRID_MODEL_V7_CANDIDATE,"preview"),[loadCatalogModel]);
  useEffect(()=>{
   const el=host.current;if(!el)return;let renderer:any;let raf=0;let observer:ResizeObserver|null=null;let disposed=false;
   try{
@@ -139,7 +143,7 @@ export function Avatar3DStage(props:Props){
   let cancelled=false;
   void loadStoredAvatarModel().then((saved)=>{
    if(cancelled)return;
-   if(saved)void loadModel(saved.blob,saved.name,false);
+   if(saved)void loadModel(saved.blob,saved.name,"restore");
    else{setStorageMessage("Локальной модели ещё нет; загружается закреплённая онлайн-модель Курису v5.");void loadBundledModel();}
   }).catch(()=>{
    if(cancelled)return;
@@ -148,7 +152,7 @@ export function Avatar3DStage(props:Props){
   });
   return()=>{cancelled=true;loadToken.current++;};
  },[ready,loadModel,loadBundledModel]);
- const onFile=(event:ChangeEvent<HTMLInputElement>)=>{const file=event.currentTarget.files?.[0];event.currentTarget.value="";if(!file)return;const ext=file.name.toLowerCase().split(".").pop();if(ext!=="vrm"&&ext!=="glb"){setState("error");setMessage("Поддерживаются бинарные модели .vrm и .glb.");return;}void loadModel(file,file.name,true);};
+ const onFile=(event:ChangeEvent<HTMLInputElement>)=>{const file=event.currentTarget.files?.[0];event.currentTarget.value="";if(!file)return;const ext=file.name.toLowerCase().split(".").pop();if(ext!=="vrm"&&ext!=="glb"){setState("error");setMessage("Поддерживаются бинарные модели .vrm и .glb.");return;}void loadModel(file,file.name,"persist");};
  const onRemoteModel=async()=>{
   remoteLoadAbort.current?.abort();
   const controller=new AbortController();remoteLoadAbort.current=controller;
@@ -157,29 +161,45 @@ export function Avatar3DStage(props:Props){
   try{
    const downloaded=await fetchRemoteAvatarModel(remoteModelUrl,{signal:controller.signal});
    if(token!==loadToken.current||controller.signal.aborted)return;
-   await loadModel(downloaded.blob,downloaded.filename,true);
+   await loadModel(downloaded.blob,downloaded.filename,"persist");
    setRemoteModelUrl("");
   }catch(error){
    if(token!==loadToken.current||controller.signal.aborted)return;
    setState("error");setMessage(error instanceof Error?error.message:"Не удалось загрузить модель по HTTPS.");
   }finally{if(remoteLoadAbort.current===controller)remoteLoadAbort.current=null;}
  };
- const reset=async()=>{remoteLoadAbort.current?.abort();remoteLoadAbort.current=null;loadToken.current++;const rt=runtime.current;if(rt?.loaded){rt.scene.remove(rt.loaded);if(rt.vrm)VRMUtils.deepDispose(rt.loaded);else disposeTree(rt.loaded);rt.loaded=null;}if(rt){rt.mixer?.stopAllAction();rt.mixer=null;rt.vrm=null;rt.clips=[];rt.clipName="";rt.activeClipAction=null;rt.bones=[];rt.body.root.visible=false;}setModelName("");setModelFingerprint("");setState(rt?"empty":"webgl-unavailable");setMessage("Модель удалена. Выберите проверенный VRM/GLB или повторите загрузку онлайн-модели v5.");try{await clearStoredAvatarModel();setStorageMessage("Локальная модель удалена; процедурная заглушка скрыта.");}catch{setStorageMessage("Сцена очищена, но браузер не разрешил удалить сохранённый файл.");}};
+ const reset=async()=>{
+  const returningFromCandidate=modelName===KURISU_HYBRID_MODEL_V7_CANDIDATE.filename;
+  remoteLoadAbort.current?.abort();remoteLoadAbort.current=null;loadToken.current++;
+  const rt=runtime.current;
+  if(rt?.loaded){rt.scene.remove(rt.loaded);if(rt.vrm)VRMUtils.deepDispose(rt.loaded);else disposeTree(rt.loaded);rt.loaded=null;}
+  if(rt){rt.mixer?.stopAllAction();rt.mixer=null;rt.vrm=null;rt.clips=[];rt.clipName="";rt.activeClipAction=null;rt.bones=[];rt.body.root.visible=false;}
+  setModelName("");setModelFingerprint("");setState(rt?"empty":"webgl-unavailable");
+  if(returningFromCandidate){
+   setMessage("Возврат к сохранённой основной модели; кандидат v7 не затрагивал IndexedDB.");
+   try{const saved=await loadStoredAvatarModel();if(saved){void loadModel(saved.blob,saved.name,"restore");return;}}catch{/* The pinned primary model remains the safe fallback. */}
+   void loadBundledModel();return;
+  }
+  setMessage("Модель удалена. Выберите проверенный VRM/GLB или повторите загрузку онлайн-модели v5.");
+  try{await clearStoredAvatarModel();setStorageMessage("Локальная модель удалена; процедурная заглушка скрыта.");}
+  catch{setStorageMessage("Сцена очищена, но браузер не разрешил удалить сохранённый файл.");}
+ };
  return <section className="relative min-h-[320px] overflow-hidden bg-[radial-gradient(ellipse_at_50%_23%,rgba(68,126,158,.22),transparent_48%),radial-gradient(ellipse_at_50%_88%,rgba(114,78,157,.16),transparent_44%),#070d16] md:min-h-[420px]" aria-label="3D-тело Neuro-Kurisu">
   <div ref={host} className="absolute inset-0"/>
   {state==="webgl-unavailable"?<div className="absolute inset-0 z-10 grid place-items-center p-6"><div className="max-w-sm rounded-xl border border-white/15 bg-black/70 p-4 text-center text-white"><p className="text-sm font-semibold">3D-рендерер недоступен</p><p className="mt-2 text-xs text-white/70">{message}</p>{props.onReturnTo2D?<button type="button" onClick={props.onReturnTo2D} className="mt-3 rounded-md border border-white/20 px-3 py-2 text-xs">Открыть Live2D</button>:null}</div></div>:null}
-  {state!=="webgl-unavailable"&&!modelName&&(state==="empty"||state==="loading"||state==="error")?<div className="absolute inset-0 z-10 grid place-items-center p-5"><div className="w-full max-w-md rounded-2xl border border-cyan-100/20 bg-slate-950/90 p-5 text-center text-white shadow-2xl backdrop-blur" role="status" aria-live="polite"><p className="text-[10px] font-mono uppercase tracking-[.22em] text-cyan-200/80">NeuroCore · 3D embodiment</p><h3 className="mt-2 text-base font-semibold">{state==="loading"?"Загрузка 3D-модели":state==="error"?"Модель не прошла загрузку":"3D-модель не выбрана"}</h3><p className="mt-2 text-xs leading-relaxed text-white/70">{state==="loading"?"Проверяем контейнер, размер, отпечаток и совместимость модели…":state==="error"?message:"Пока нет проверенной модели VRM/GLB. Здесь не показывается грубая процедурная геометрия вместо Курису."}</p>{state!=="loading"?<div className="mt-4 flex flex-wrap justify-center gap-2"><button type="button" onClick={()=>void loadBundledModel()} disabled={!ready} className="rounded-lg border border-cyan-200/30 bg-cyan-950/80 px-3 py-2 text-xs text-cyan-50 disabled:opacity-40">Повторить загрузку модели v5 (онлайн)</button><button type="button" onClick={()=>void fileInput.current?.click()} disabled={!ready} className="rounded-lg border border-white/20 bg-white/5 px-3 py-2 text-xs text-white disabled:opacity-40">Выбрать VRM / GLB</button>{props.onReturnTo2D?<button type="button" onClick={props.onReturnTo2D} className="rounded-lg border border-white/10 px-3 py-2 text-xs text-white/75">Открыть Live2D</button>:null}</div>:null}<p className="mt-4 text-[10px] text-white/40">Показываем 3D-тело только после успешной загрузки и preflight.</p></div></div>:null}
+  {state!=="webgl-unavailable"&&!modelName&&(state==="empty"||state==="loading"||state==="error")?<div className="absolute inset-0 z-10 grid place-items-center p-5"><div className="w-full max-w-md rounded-2xl border border-cyan-100/20 bg-slate-950/90 p-5 text-center text-white shadow-2xl backdrop-blur" role="status" aria-live="polite"><p className="text-[10px] font-mono uppercase tracking-[.22em] text-cyan-200/80">NeuroCore · 3D embodiment</p><h3 className="mt-2 text-base font-semibold">{state==="loading"?"Загрузка 3D-модели":state==="error"?"Модель не прошла загрузку":"3D-модель не выбрана"}</h3><p className="mt-2 text-xs leading-relaxed text-white/70">{state==="loading"?"Проверяем контейнер, размер, отпечаток и совместимость модели…":state==="error"?message:"Пока нет проверенной модели VRM/GLB. Здесь не показывается грубая процедурная геометрия вместо Курису."}</p>{state!=="loading"?<div className="mt-4 flex flex-wrap justify-center gap-2"><button type="button" onClick={()=>void loadBundledModel()} disabled={!ready} className="rounded-lg border border-cyan-200/30 bg-cyan-950/80 px-3 py-2 text-xs text-cyan-50 disabled:opacity-40">Повторить загрузку модели v5 (онлайн)</button><button type="button" onClick={()=>void loadV7Candidate()} disabled={!ready} className="rounded-lg border border-violet-200/25 bg-violet-950/60 px-3 py-2 text-xs text-violet-50 disabled:opacity-40">Сравнить кандидата v7 · preview</button><button type="button" onClick={()=>void fileInput.current?.click()} disabled={!ready} className="rounded-lg border border-white/20 bg-white/5 px-3 py-2 text-xs text-white disabled:opacity-40">Выбрать VRM / GLB</button>{props.onReturnTo2D?<button type="button" onClick={props.onReturnTo2D} className="rounded-lg border border-white/10 px-3 py-2 text-xs text-white/75">Открыть Live2D</button>:null}</div>:null}<p className="mt-4 text-[10px] text-white/40">Показываем 3D-тело только после успешной загрузки и preflight.</p></div></div>:null}
   <div className="absolute right-3 top-3 z-20 flex max-w-[90%] flex-wrap justify-end gap-1.5">
    <button type="button" onClick={()=>void loadBundledModel()} disabled={!ready||state==="loading"} className="rounded-md border border-cyan-100/25 bg-slate-950/75 px-2.5 py-1.5 text-[10px] font-mono text-cyan-50 hover:border-cyan-100/55">Загрузить модель v5 (онлайн)</button>
+   <button type="button" onClick={()=>void loadV7Candidate()} disabled={!ready||state==="loading"} aria-label="Предпросмотр кандидата v7, неканоническая модель без сохранения" title="v7 — структурно проверенный кандидат; предпросмотр без сохранения и без продвижения в canonical" className="rounded-md border border-violet-100/25 bg-violet-950/65 px-2.5 py-1.5 text-[10px] font-mono text-violet-50 hover:border-violet-100/55">Сравнить v7 · preview</button>
    <button type="button" onClick={()=>void fileInput.current?.click()} disabled={!ready||state==="loading"} className="rounded-md border border-cyan-100/25 bg-slate-950/75 px-2.5 py-1.5 text-[10px] font-mono text-cyan-50 hover:border-cyan-100/55">Загрузить VRM/GLB</button>
-   {modelName?<button type="button" onClick={()=>void reset()} className="rounded-md border border-white/15 bg-slate-950/75 px-2.5 py-1.5 text-[10px] font-mono text-white/80">Сбросить</button>:null}
+   {modelName?<button type="button" onClick={()=>void reset()} className="rounded-md border border-white/15 bg-slate-950/75 px-2.5 py-1.5 text-[10px] font-mono text-white/80">{modelName===KURISU_HYBRID_MODEL_V7_CANDIDATE.filename?"Вернуться к основной модели":"Сбросить"}</button>:null}
    <input ref={fileInput} type="file" accept=".vrm,.glb,model/gltf-binary" onChange={onFile} className="hidden" aria-label="Выберите локальную VRM или GLB модель"/>
   </div>
   <div className="absolute right-3 top-14 z-20 flex w-[min(24rem,calc(100%-1.5rem))] items-center gap-1.5 rounded-lg border border-cyan-100/15 bg-slate-950/85 p-1.5 backdrop-blur">
    <input type="url" value={remoteModelUrl} onChange={(event)=>setRemoteModelUrl(event.currentTarget.value)} placeholder="https://…/kurisu.vrm" autoComplete="off" spellCheck={false} aria-label="HTTPS-ссылка на удалённую VRM или GLB модель" className="min-w-0 flex-1 bg-transparent px-2 py-1 text-[10px] text-white outline-none placeholder:text-white/40"/>
    <button type="button" onClick={()=>void onRemoteModel()} disabled={!ready||state==="loading"||!remoteModelUrl.trim()} className="shrink-0 rounded-md border border-cyan-100/25 bg-cyan-950/70 px-2.5 py-1.5 text-[10px] font-mono text-cyan-50 disabled:opacity-40">Импорт по HTTPS</button>
   </div>
-  <div className="pointer-events-none absolute inset-x-3 bottom-3 z-20 flex items-end justify-between gap-2"><div className="max-w-[80%] rounded-lg border border-white/10 bg-slate-950/70 px-2.5 py-2 backdrop-blur"><p className="text-[11px] font-semibold tracking-wide text-slate-100">{modelName||"NK1 · TRUE 3D BODY"}</p><p className="mt-0.5 text-[10px] leading-relaxed text-slate-300/80">{state==="loaded"?"3D-модель · эмоция, действие, взгляд и речь связаны с состоянием NK1":state==="loading"?"Подготовка модели…":state==="error"?(modelName?"Новая модель отклонена · предыдущая модель сохранена":"Модель не загружена · геометрическая заглушка скрыта"):state==="webgl-unavailable"?"Требуется WebGL":"Ожидается проверенный 3D-ресурс · геометрическая заглушка скрыта"}</p></div><div className="rounded-full border border-cyan-200/20 bg-slate-950/70 px-2 py-1 text-[9px] uppercase tracking-wider text-cyan-100/80">{props.awake?(props.thinking?"thinking":props.speaking?"speaking":props.emotion):"sleep"}</div></div>
+  <div className="pointer-events-none absolute inset-x-3 bottom-3 z-20 flex items-end justify-between gap-2"><div className="max-w-[80%] rounded-lg border border-white/10 bg-slate-950/70 px-2.5 py-2 backdrop-blur"><p className="text-[11px] font-semibold tracking-wide text-slate-100">{modelName||"NK1 · TRUE 3D BODY"}</p><p className="mt-0.5 text-[10px] leading-relaxed text-slate-300/80">{state==="loaded"?(modelName===KURISU_HYBRID_MODEL_V7_CANDIDATE.filename?"Кандидат v7 · preview-only; временная модель, без сохранения и без canonical promotion":"3D-модель · эмоция, действие, взгляд и речь связаны с состоянием NK1"):state==="loading"?"Подготовка модели…":state==="error"?(modelName?"Новая модель отклонена · предыдущая модель сохранена":"Модель не загружена · геометрическая заглушка скрыта"):state==="webgl-unavailable"?"Требуется WebGL":"Ожидается проверенный 3D-ресурс · геометрическая заглушка скрыта"}</p></div><div className="rounded-full border border-cyan-200/20 bg-slate-950/70 px-2 py-1 text-[9px] uppercase tracking-wider text-cyan-100/80">{props.awake?(props.thinking?"thinking":props.speaking?"speaking":props.emotion):"sleep"}</div></div>
   {message?<p role="status" className="absolute bottom-[4.6rem] left-3 z-20 max-w-[78%] rounded bg-slate-950/80 px-2 py-1.5 text-[10px] text-amber-100/90">{message}</p>:null}
   <p className="absolute right-3 bottom-[4.6rem] z-20 max-w-[42%] text-right text-[9px] text-white/45">Потяните тело, чтобы повернуть. {modelFingerprint ? `SHA-256 ${modelFingerprint.slice(7, 23)}… · идентичность модели зафиксирована` : state === "loaded" ? "SHA-256 недоступен · калибровка этой модели заблокирована" : ""} {storageMessage}</p>
  </section>;
