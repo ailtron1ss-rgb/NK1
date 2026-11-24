@@ -8,6 +8,7 @@ on:
       - "runtime/neuro-kurisu/src/organism/system/ActionGateway.ts"
       - "runtime/neuro-kurisu/src/organism/persistence/FileActionExecutionLedgerArchive.ts"
       - "runtime/neuro-kurisu/tests/action-receipt-selfauthorship-recovery-workpass72.mjs"
+      - "runtime/neuro-kurisu/tests/cef-decision-reference-workpass72.mjs"
       - "runtime/neuro-kurisu/package.json"
       - ".github/workflows/nk1-p0-actionreceipt-selfauthorship-recovery-workpass72.yml"
 
@@ -46,6 +47,9 @@ jobs:
       - name: Real FileStateStore crash, restart, read-only reconciliation and SelfAuthorship settlement
         working-directory: runtime/neuro-kurisu
         run: npm run test:action-receipt-selfauthorship-recovery-workpass72
+      - name: CEF keeps exact decision references without dangling parent edges
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:cef-decision-reference-workpass72
       - name: Durable ActionGateway archive and Core restart integration
         working-directory: runtime/neuro-kurisu
         run: npm run test:action-ledger-archive-workpass38
