@@ -166,7 +166,7 @@ async function runArm(baseSnapshot, arm, scenario) {
 const baseSnapshot = await buildBaseSnapshot();
 const rows = [];
 for (const scenario of SCENARIOS) {
-  // Both arms share one timestamp and the same scenario-specific observation.
+  // Both arms share one evidence-validity timestamp and the same scenario-specific observation.
   const pairedScenario = { ...scenario, memoryAt: Date.now() - 30_000 };
   const [respondArm, exploreArm] = await Promise.all([
     runArm(baseSnapshot, 'respond', pairedScenario),
@@ -209,7 +209,7 @@ console.log('MEMORY_TO_ACTION_PAIRED_ABLATION_WORKPASS77=PASS', JSON.stringify({
   pairedCoreRuns: SCENARIOS.length * 2,
   sameInitialSnapshot: true,
   sameObservationWithinEachPair: true,
-  sameTimestampWithinEachPair: true,
+  sameEvidenceTimestampWithinEachPair: true,
   variedNoveltyAndSalienceAcrossScenarios: true,
   sameTickAndRetrievedCount: true,
   armDifference: 'four retrieved episodic memories contain respond cues versus explore cues',
