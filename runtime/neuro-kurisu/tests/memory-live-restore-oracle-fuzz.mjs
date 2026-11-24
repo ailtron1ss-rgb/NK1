@@ -17,6 +17,77 @@ import { MemoryOS2 } from '../src/organism/developmental/MemoryOS2.ts';
 
 const KINDS = ['episodic', 'semantic', 'procedural', 'identity', 'autobiographical', 'working', 'social'];
 
+function assertSingleImplicitConflictParentPerObservation() {
+  const memory = new MemoryOS2({ embeddingProvider: null });
+  const now = Date.now();
+  const add = (content, value, offsetMs) => memory.encode({
+    content,
+    kind: 'semantic',
+    source: 'sensor',
+    confidence: .95,
+    epistemicStatus: 'fact',
+    observedAt: now + offsetMs,
+    validFromAt: now + offsetMs,
+    context: {
+      subject: 'reactor-coolant-pump-A',
+      attribute: 'pressure',
+      value,
+    },
+  }).id;
+
+  const olderA = add(
+    'Reactor coolant pump A pressure reading is normal during the latest sensor scan.',
+    'normal',
+    -3000,
+  );
+  const olderB = add(
+    'Reactor coolant pump A pressure reading is elevated during the latest sensor scan.',
+    'elevated',
+    -2000,
+  );
+  const newer = add(
+    'Reactor coolant pump A pressure reading is critical during the latest sensor scan.',
+    'critical',
+    -1000,
+  );
+
+  const result = memory.adjudicateImplicitConflicts({ at: now + 2000, limit: 32, pairBudget: 192 });
+  assert.equal(
+    result.resolved,
+    1,
+    'one incoming observation may supersede at most one standalone parent in a single adjudication pass',
+  );
+
+  const successor = memory.get(newer);
+  assert.ok(successor?.supersedesId, 'the accepted conflict must have exactly one selected predecessor');
+  const predecessor = memory.get(successor.supersedesId);
+  assert.equal(predecessor?.supersededById, newer, 'revision pointers must remain reciprocal');
+
+  const untouchedId = successor.supersedesId === olderA ? olderB : olderA;
+  const untouched = memory.get(untouchedId);
+  assert.equal(untouched?.supersededById ?? null, null, 'the second candidate must remain standalone');
+  assert.equal(untouched?.revisionGroupId, untouchedId, 'the second candidate must not be reparented');
+
+  const rows = memory.snapshot().items;
+  const byId = new Map(rows.map(row => [row.id, row]));
+  for (const row of rows) {
+    if (row.supersedesId) {
+      assert.equal(byId.get(row.supersedesId)?.supersededById, row.id, 'every predecessor edge must be reciprocal');
+    }
+    if (row.supersededById) {
+      assert.equal(byId.get(row.supersededById)?.supersedesId, row.id, 'every successor edge must be reciprocal');
+    }
+  }
+
+  const restored = new MemoryOS2({ embeddingProvider: null });
+  restored.restore(structuredClone(memory.snapshot()));
+  assert.equal(restored.doctor().pass, true, 'the repaired revision graph must remain valid after restore');
+  assert.equal(restored.snapshot().estimatedBytes, memory.budgetDiagnostics().estimatedBytes, 'restore must not introduce byte drift');
+}
+
+assertSingleImplicitConflictParentPerObservation();
+
+
 function runSeed(seed0, steps) {
   let seed = seed0;
   const rnd = () => { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff; };
