@@ -57,3 +57,4 @@ jobs:
           node --experimental-strip-types tests/big-pass-273-goal-outcome-attribution.mjs
           node --experimental-strip-types tests/big-pass-273-core-decision-link.mjs
           node --experimental-strip-types tests/autonomous-social-initiative-cancellation.mjs
+          node --experimental-strip-types tests/p68-goal-terminal-pruning.mjs
