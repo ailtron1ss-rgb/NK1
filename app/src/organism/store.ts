@@ -148,15 +148,23 @@ export const useKurisu = create<KurisuStore>((set, get) => {
     error: null,
     hydrated: false,
     connection: initialConnection,
-    avatarMode: readAvatarMode(),
-    voiceEnabled: readAvatarPreference("kurisu-avatar-voice-enabled") === "true",
-    voiceName: readAvatarPreference("kurisu-avatar-voice-name") ?? "",
+    // Keep server and browser initial state identical; local preferences hydrate after mount.
+    avatarMode: "live2d",
+    voiceEnabled: false,
+    voiceName: "",
     voiceInputStatus: "idle",
     voiceInputError: null,
 
     hydrate: async () => {
       if (get().hydrated) return;
-      set({ hydrated: true, error: null, connection: { ...get().connection, status: "connecting", lastError: null } });
+      set({
+        hydrated: true,
+        error: null,
+        connection: { ...get().connection, status: "connecting", lastError: null },
+        avatarMode: readAvatarMode(),
+        voiceEnabled: readAvatarPreference("kurisu-avatar-voice-enabled") === "true",
+        voiceName: readAvatarPreference("kurisu-avatar-voice-name") ?? "",
+      });
       await pullCanonicalSnapshot(true);
     },
 
@@ -186,6 +194,10 @@ export const useKurisu = create<KurisuStore>((set, get) => {
 
     listen: async () => {
       const current = get();
+      if (current.voiceInputStatus === "listening" || current.voiceInputStatus === "stopping" || current.voiceInputStatus === "stop-unconfirmed") {
+        set({ voiceInputError: "The previous microphone capture has not been confirmed stopped." });
+        return null;
+      }
       if (current.connection.status !== "connected") {
         set({ voiceInputStatus: "error", voiceInputError: "Connect to the canonical runtime before using microphone input." });
         return null;
@@ -217,7 +229,7 @@ export const useKurisu = create<KurisuStore>((set, get) => {
     },
 
     stopListening: async () => {
-      if (get().voiceInputStatus !== "listening") return false;
+      if (get().voiceInputStatus !== "listening" && get().voiceInputStatus !== "stop-unconfirmed") return false;
       // Invalidate the pending listen response so it cannot resurrect a cancelled UI state.
       ++voiceInputOperationId;
       set({ voiceInputStatus: "stopping", voiceInputError: null });
