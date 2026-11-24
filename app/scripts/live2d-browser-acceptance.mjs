@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { chromium } from "playwright";
+import { inflateSync } from "node:zlib";
 
 const origin = new URL(process.argv[2] || "http://127.0.0.1:8081/").origin;
 const outputDir = path.resolve(process.argv[3] || "artifacts/nk1-live2d");
@@ -49,7 +50,68 @@ function makeIntent(version, phase, expression, token) {
   };
 }
 
-async function mountProfile(page, profile) {
+function countBrightCenterPixels(png) {
+  assert.equal(png.subarray(0, 8).toString("hex"), "89504e470d0a1a0a", "screenshot must be a PNG");
+  let width = 0, height = 0, bitDepth = 0, colorType = 0;
+  const idat = [];
+  for (let offset = 8; offset + 12 <= png.length;) {
+    const length = png.readUInt32BE(offset);
+    const type = png.toString("ascii", offset + 4, offset + 8);
+    const data = png.subarray(offset + 8, offset + 8 + length);
+    if (type === "IHDR") {
+      width = data.readUInt32BE(0);
+      height = data.readUInt32BE(4);
+      bitDepth = data[8];
+      colorType = data[9];
+    } else if (type === "IDAT") {
+      idat.push(data);
+    } else if (type === "IEND") break;
+    offset += 12 + length;
+  }
+  assert.equal(bitDepth, 8, "browser screenshot must use 8-bit PNG");
+  assert.ok(colorType === 6 || colorType === 2, "browser screenshot must be RGB/RGBA");
+  const bytesPerPixel = colorType === 6 ? 4 : 3;
+  const rowBytes = width * bytesPerPixel;
+  const raw = inflateSync(Buffer.concat(idat));
+  const previous = new Uint8Array(rowBytes);
+  const row = new Uint8Array(rowBytes);
+  const leftBound = Math.floor(width * 0.2), rightBound = Math.ceil(width * 0.8);
+  const topBound = Math.floor(height * 0.08), bottomBound = Math.ceil(height * 0.96);
+  let brightPixels = 0;
+  let cursor = 0;
+  function paeth(a, b, c) {
+    const p = a + b - c, pa = Math.abs(p - a), pb = Math.abs(p - b), pc = Math.abs(p - c);
+    return pa <= pb && pa <= pc ? a : pb <= pc ? b : c;
+  }
+  for (let y = 0; y < height; y += 1) {
+    const filter = raw[cursor++];
+    for (let i = 0; i < rowBytes; i += 1) {
+      const value = raw[cursor++];
+      const left = i >= bytesPerPixel ? row[i - bytesPerPixel] : 0;
+      const up = previous[i];
+      const upperLeft = i >= bytesPerPixel ? previous[i - bytesPerPixel] : 0;
+      let predictor = 0;
+      if (filter === 1) predictor = left;
+      else if (filter === 2) predictor = up;
+      else if (filter === 3) predictor = Math.floor((left + up) / 2);
+      else if (filter === 4) predictor = paeth(left, up, upperLeft);
+      else if (filter !== 0) throw new Error("unsupported PNG filter " + filter);
+      row[i] = (value + predictor) & 255;
+    }
+    if (y >= topBound && y < bottomBound) {
+      for (let x = leftBound; x < rightBound; x += 1) {
+        const i = x * bytesPerPixel;
+        const alpha = colorType === 6 ? row[i + 3] : 255;
+        const luminance = row[i] * 0.2126 + row[i + 1] * 0.7152 + row[i + 2] * 0.0722;
+        if (alpha > 160 && luminance > 105) brightPixels += 1;
+      }
+    }
+    previous.set(row);
+  }
+  return { width, height, centerBrightPixels: brightPixels, bytes: png.length };
+}
+
+async function mountProfile(page, profile, screenshotPath) {
   await page.evaluate((selected) => {
     const iframe = document.createElement("iframe");
     iframe.id = "avatar";
@@ -74,6 +136,9 @@ async function mountProfile(page, profile) {
   const frame = page.frames().find((item) => item.url().includes("/live2d/viewer.html"));
   assert.ok(frame, "Live2D iframe must be present");
   await page.waitForTimeout(500);
+  const screenshot = await page.screenshot({ path: screenshotPath });
+  const screenshotPixels = countBrightCenterPixels(screenshot);
+  assert.ok(screenshotPixels.centerBrightPixels > 100, "captured frame has no visible character pixels: " + JSON.stringify(screenshotPixels));
 
   const render = await frame.evaluate(() => {
     const canvas = document.querySelector("#canvas");
@@ -93,12 +158,13 @@ async function mountProfile(page, profile) {
       hasWebGL: Boolean(gl),
       hasPixiLive2D: Boolean(window.PIXI?.live2d?.Live2DModel),
       visiblePixels,
+      screenshotPixels,
     };
   });
   assert.ok(render.status.startsWith("ок"), "model has not reached the loaded status: " + render.status);
   assert.ok(render.width > 0 && render.height > 0, "WebGL drawing buffer is empty");
   assert.ok(render.hasWebGL && render.hasPixiLive2D, "Pixi Live2D/WebGL did not initialize");
-  assert.ok(render.visiblePixels > 20, "Live2D WebGL frame appears blank: " + render.visiblePixels + " pixels");
+  // WebGL readPixels can be empty when preserveDrawingBuffer is false; the compositor PNG above is the authoritative visual sample.
   return { ready, frame, render };
 }
 
@@ -150,9 +216,8 @@ try {
   );
   await page.goto(origin + "/__nk1_live2d_acceptance_harness", { waitUntil: "domcontentloaded", timeout: timeoutMs });
 
-  const quality = await mountProfile(page, "quality");
+  const quality = await mountProfile(page, "quality", path.join(outputDir, "live2d-quality-desktop.png"));
   assert.ok(quality.ready.modelPath.includes("Kurisu/Kurisu.model3.json"), "quality profile must select the canonical 4096 model");
-  await page.screenshot({ path: path.join(outputDir, "live2d-quality-desktop.png") });
   report.profiles.push({ profile: "quality", modelPath: quality.ready.modelPath, render: quality.render });
 
   const firstAck = await sendIntent(page, makeIntent(1, "speaking", "happy", 1));
@@ -194,9 +259,8 @@ try {
   report.disposal.quality = disposed;
 
   await page.setViewportSize({ width: 390, height: 844 });
-  const mobile = await mountProfile(page, "mobile");
+  const mobile = await mountProfile(page, "mobile", path.join(outputDir, "live2d-mobile.png"));
   assert.ok(mobile.ready.modelPath.includes("Kurisu.mobile/Kurisu-mobile.model3.json"), "mobile profile must select the 2048 model");
-  await page.screenshot({ path: path.join(outputDir, "live2d-mobile.png") });
   report.profiles.push({ profile: "mobile", modelPath: mobile.ready.modelPath, render: mobile.render });
 
   const mobileAck = await sendIntent(page, makeIntent(1, "speaking", "happy", 1));
