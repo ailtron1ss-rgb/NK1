@@ -46,7 +46,7 @@ function makeIntent(version, phase, expression, token) {
     expression,
     expressionIntensity: 0.82,
     gaze: { x: 0.2, y: -0.1, driven: true },
-    body: { headTilt: 0.06, gesture: false, motionGroup: "Idle", motionIndex: 0, motionToken: token },
+    body: { headTilt: 0.06, gesture: false, motionGroup: "TapBody", motionIndex: 0, motionToken: token },
     voiceEmphasis: 0.35,
   };
 }
