@@ -44,6 +44,10 @@ export interface PairedOutcomeEvidenceSummary {
   verifierCount: number;
   environmentCount: number;
   fingerprint: string;
+  experimentId: string;
+  protocolFingerprint: string;
+  taskManifestFingerprint: string;
+  testFingerprint: string;
 }
 
 export const DEFAULT_POOL_POLICY: CandidatePoolPolicy = Object.freeze({ maxPoolSize: 32, minDownstreamGain: 0 });
@@ -207,18 +211,27 @@ function normalizeCandidate(input: unknown, includeCandidateObservations = true)
   };
   return { candidateId, candidate: freezeCandidate(normalized) };
 }
+function publicKeyFingerprint(pem: string): string {
+  const key = createPublicKey(pem);
+  return createHash('sha256').update(key.export({ type: 'spki', format: 'der' })).digest('hex');
+}
+
 function normalizeEd25519KeyMap(raw: unknown, refuse: () => never): Readonly<Record<string, string>> {
   if (!isPlainRecord(raw)) return refuse();
   let keyIds: string[];
   try { keyIds = Object.keys(raw); } catch { return refuse(); }
   if (keyIds.length < 1 || keyIds.length > 64) return refuse();
   const keys: Record<string, string> = Object.create(null);
+  const fingerprints = new Set<string>();
   for (const keyId of keyIds) {
     if (!/^[A-Za-z0-9][A-Za-z0-9._:-]{0,95}$/.test(keyId) || hasAccessor(raw, keyId)) return refuse();
     const pem = ownData(raw, keyId);
     if (typeof pem !== 'string' || pem.length < 64 || pem.length > 8192 || !pem.includes('BEGIN PUBLIC KEY')) return refuse();
     try {
       if (createPublicKey(pem).asymmetricKeyType !== 'ed25519') return refuse();
+      const fingerprint = publicKeyFingerprint(pem);
+      if (fingerprints.has(fingerprint)) return refuse();
+      fingerprints.add(fingerprint);
     } catch {
       return refuse();
     }
@@ -238,6 +251,8 @@ function normalizePatchReceiptTrust(input: unknown): Readonly<HostOwnedPatchRece
       typeof sourceSnapshotSha256 !== 'string' || !/^[a-f0-9]{64}$/i.test(sourceSnapshotSha256)) return refuse();
   const trustedPublicKeys = normalizeEd25519KeyMap(ownData(input, 'trustedPublicKeys'), refuse);
   const trustedOutcomePublicKeys = normalizeEd25519KeyMap(ownData(input, 'trustedOutcomePublicKeys'), refuse);
+  const patchKeyFingerprints = new Set(Object.values(trustedPublicKeys).map(publicKeyFingerprint));
+  if (Object.values(trustedOutcomePublicKeys).some(pem => patchKeyFingerprints.has(publicKeyFingerprint(pem)))) return refuse();
   return Object.freeze({
     baseSha: baseSha.toLowerCase(),
     sourceSnapshotSha256: sourceSnapshotSha256.toLowerCase(),
@@ -350,6 +365,10 @@ export class SelfImprovementCandidatePool {
       verifierCount: pairedEvidence.verifierCount,
       environmentCount: pairedEvidence.environmentCount,
       fingerprint: pairedEvidence.fingerprint,
+      experimentId: pairedEvidence.experimentId,
+      protocolFingerprint: pairedEvidence.protocolFingerprint,
+      taskManifestFingerprint: pairedEvidence.taskManifestFingerprint,
+      testFingerprint: pairedEvidence.testFingerprint,
     });
   }
 

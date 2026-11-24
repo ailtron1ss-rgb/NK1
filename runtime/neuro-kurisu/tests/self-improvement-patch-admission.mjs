@@ -178,6 +178,29 @@ test('requires at least five unique holdout seeds and independent verifiers/envi
   assert.equal(oneEnvironment.reason, 'paired-outcome:insufficient-independent-environments');
 });
 
+test('fails closed on proxy-backed outcome objects whose own-key trap throws', () => {
+  const admission = service();
+  const rows = makePairedOutcomes('proxy-artifact');
+  rows[0] = new Proxy(rows[0], {
+    ownKeys() { throw new Error('candidate-controlled ownKeys trap'); },
+  });
+  const artifactResult = admission.admitVerifiedPatch(candidate('proxy-artifact'), proof('proxy-artifact', {
+    pairedOutcomes: rows,
+  }));
+  assert.equal(artifactResult.accepted, false);
+  assert.equal(artifactResult.reason, 'paired-outcome:signed-outcome-artifact-malformed');
+
+  const payloadRows = makePairedOutcomes('proxy-payload');
+  payloadRows[0].payload = new Proxy(payloadRows[0].payload, {
+    ownKeys() { throw new Error('candidate-controlled payload ownKeys trap'); },
+  });
+  const payloadResult = admission.admitVerifiedPatch(candidate('proxy-payload'), proof('proxy-payload', {
+    pairedOutcomes: payloadRows,
+  }));
+  assert.equal(payloadResult.accepted, false);
+  assert.equal(payloadResult.reason, 'paired-outcome:signed-outcome-payload-malformed');
+});
+
 test('rejects invalid evaluator signatures and duplicate seed reuse', () => {
   const invalid = makePairedOutcomes('bad-signature');
   invalid[0].signature = 'A'.repeat(88);

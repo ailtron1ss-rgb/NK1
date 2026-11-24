@@ -61,6 +61,10 @@ function own(value: Record<string, unknown>, key: string): unknown {
   }
 }
 
+function ownKeys(value: Record<string, unknown>): string[] | null {
+  try { return Object.keys(value); } catch { return null; }
+}
+
 function dense(value: unknown, maximum: number): unknown[] | null {
   try {
     if (!Array.isArray(value)) return null;
