@@ -171,7 +171,7 @@ Use only the `Restrict creations` rule, with no bypass actors, and do not add `R
 
 This GitHub control only prevents matching new names; it cannot recognize semantic duplicates with unrelated names. The development preflight rule remains mandatory: search current branches and PRs, select one canonical branch per aspect/task, and continue it in place.
 
-## 6. Safe normalization policy
+## 7. Safe normalization policy
 
 1. Keep `workpass70-source` as the only current integration source; keep `main` on the release/metadata boundary.
 2. Reuse the current aspect branch when continuing the same task. Do not make `v2`, `r2`, `current`, `final`, `rebased`, or `refresh` copies merely to carry the previous branch forward.
@@ -196,7 +196,7 @@ Suggested long-lived domain tracks (as a registry/concept, not an instruction to
 11. Governance and release
 12. Research and source assimilation
 
-## 7. Scope and limitations of this snapshot
+## 8. Scope and limitations of this snapshot
 
 - Exact branch names and HEAD SHAs are captured for all 1,131 refs; the paginated branch API verified `protected: false` for every ref.
 - Full all-state PR lineage is captured for all 1,155 returned PR records and joined by exact head branch name.
