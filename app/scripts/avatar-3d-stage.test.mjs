@@ -111,7 +111,7 @@ test("3D mode restores the user's local model first and auto-loads the pinned Ku
  assert.match(stage,/void loadBundledModel\(\)/);
  assert.match(stage,/asset\.url/);
  assert.match(stage,/signal:AbortSignal\.timeout\(25_000\)/);
- assert.match(stage,/contentType!==\"model\/gltf-binary\"/);
+ assert.match(stage,/contentType!=="model\/gltf-binary"/);
  assert.match(stage,/declaredLength!==asset\.sizeBytes/);
  assert.match(stage,/loadToken\.current\+\+/);
 });
