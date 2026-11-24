@@ -76,5 +76,17 @@ assert.equal(resumed.selfAuthorshipSnapshot().pendingDecisions.length, 0,
 assert.equal(internallyAuthoredGoalCount, credited.selfAuthoredGoalCount,
   'externalGoal must not add to intrinsic self-authored commitments');
 
+const followup = await resumed.observe({
+  success: .73,
+  reward: .61,
+  surprise: .34,
+  novelty: .7,
+});
+assert.equal(followup.decision.outcome, undefined,
+  'spine-only feedback observed at the start of a cycle must not be attached to the newly selected trace');
+const priorExternalTrace = resumed.snapshot().traces.find(row => row.id === external.decision.id);
+assert.equal(priorExternalTrace?.outcome?.success, .73,
+  'feedback supplied with the next observation must remain attached to the prior decision trace');
+
 await resumed.flush();
 console.log('SELF_AUTHORSHIP_SPINEONLY_RUNTIME_WORKPASS71=PASS');
