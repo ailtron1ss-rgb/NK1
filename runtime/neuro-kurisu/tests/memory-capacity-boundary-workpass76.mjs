@@ -93,8 +93,13 @@ assert.equal(extended.capacityDiagnostics().hardCap, SOURCE_ROWS);
 assert.equal(extendedIndex.pass, true);
 assert.equal(extendedIndex.items, SOURCE_ROWS);
 
+// Warm the JIT and caches before measuring; keep warm-up samples out of percentiles.
+for (let iteration = 0; iteration < 12; iteration++) {
+  const warm = extended.retrieve('capacityprobe sentinelomega', 5);
+  assert.equal(warm[0]?.id, targetId);
+}
 const directRetrievalTimes = [];
-for (let iteration = 0; iteration < 16; iteration++) {
+for (let iteration = 0; iteration < 64; iteration++) {
   const directStarted = performance.now();
   const direct = extended.retrieve('capacityprobe sentinelomega', 5);
   directRetrievalTimes.push(performance.now() - directStarted);
@@ -116,6 +121,34 @@ assert.equal(maintenance.after, 9_000,
   'maintenance maxItems must be bounded by, and operate below, the configured 10k capacity');
 assert.equal(extended.indexDiagnostics().pass, true,
   'maintenance eviction must keep all secondary indexes consistent');
+
+const protectedRows = rows.slice(0, 130).map((row, index) => ({
+  ...row,
+  kind: index < 65 ? 'identity' : 'semantic',
+  epistemicStatus: index < 65 ? 'fact' : 'quarantined',
+}));
+const protectedProfile = new MemoryOS2({ embeddingProvider: null, itemCap: 128 });
+protectedProfile.restore({ ...emptySnapshot, items: protectedRows });
+const protectedBefore = protectedProfile.snapshot().items.map(item => item.id).sort();
+const protectedRestore = protectedProfile.restoreDiagnostics();
+assert.equal(protectedProfile.snapshot().items.length, 130,
+  'restore must never evict protected identity/quarantined rows to satisfy the ordinary count cap');
+assert.equal(protectedRestore.capacityOverrunRows, 2);
+assert.equal(protectedProfile.capacityDiagnostics().overCapacityRows, 2);
+assert.equal(protectedProfile.capacityDiagnostics().protectedRows, 130);
+const sourceItem = protectedProfile.snapshot().items[0];
+assert.throws(() => protectedProfile.encode({
+  ...sourceItem,
+  id: 'capacity-protected-overrun-new-write',
+  content: 'a new ordinary semantic row must not displace protected identity knowledge',
+  kind: 'semantic',
+  epistemicStatus: 'fact',
+  revisionHistory: [],
+}), /Memory capacity exhausted/,
+'ordinary writes must fail closed when every existing row is protected');
+assert.deepEqual(protectedProfile.snapshot().items.map(item => item.id).sort(), protectedBefore,
+  'a failed over-capacity write must leave all protected memories unchanged');
+assert.equal(protectedProfile.capacityDiagnostics().protectedRows, 130);
 
 const tooMany = { ...emptySnapshot, items: new Array(SCAN_LIMIT + 1) };
 assert.throws(
@@ -143,10 +176,13 @@ console.log('MEMORY_CAPACITY_BOUNDARY_WORKPASS76=PASS', JSON.stringify({
     restoreMs: Number(extendedRestoreMs.toFixed(2)),
     directRetrieveP50Ms: Number(directP50Ms.toFixed(2)),
     directRetrieveP95Ms: Number(directP95Ms.toFixed(2)),
+    directRetrieveSamples: directRetrievalTimes.length,
+    warmupSamples: 12,
     isolatedPreviewMs: Number(extendedPreviewMs.toFixed(2)),
     indexIntegrity: extendedIndex.pass,
     capacity: extended.capacityDiagnostics(),
     maintenance: { before: maintenance.before, after: maintenance.after, removed: maintenance.removedIds.length },
     capacityClamp: { default: ITEM_CAP, minimum: 128, maximum: highClampProfile.capacityDiagnostics().hardCap },
+    protectedOverflow: { retained: protectedBefore.length, overrunRows: protectedRestore.capacityOverrunRows, failedWritePreservedAll: true },
   },
 }));
