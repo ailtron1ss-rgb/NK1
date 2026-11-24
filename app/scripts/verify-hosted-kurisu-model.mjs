@@ -7,6 +7,7 @@ import {
 import { preflightAvatarModel } from "../src/components/avatar/avatarModelPreflight.ts";
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import { resolveAvatarModelFitBounds } from "../src/components/avatar/avatarModelFitBounds.ts";
 import {
   resolveGlbExpressionMorphWeights,
   resolveGlbMouthMorphWeights,
@@ -122,6 +123,14 @@ const loaded = await new Promise((resolve, reject) => {
   new GLTFLoader().parse(binary, "", resolve, reject);
 });
 assert.ok(loaded.scene, "Three.js GLTFLoader must create a real scene");
+loaded.scene.updateMatrixWorld(true);
+const fitBounds = resolveAvatarModelFitBounds(loaded.scene);
+const fitSize = new THREE.Vector3();
+fitBounds.bounds.getSize(fitSize);
+assert.equal(fitBounds.source, "skinned-meshes", "v12 fit must use character skin meshes, not environment meshes");
+assert.ok(fitSize.y > 1.7 && fitSize.y < 1.9, `v12 character height must remain near 1.77 scene units, got ${fitSize.y}`);
+assert.ok(fitSize.x < 0.8 && fitSize.z < 0.5, "v12 fit bounds must exclude its 200m floor");
+
 const loadedMeshes = new Map();
 const loadedBones = [];
 loaded.scene.traverse((node) => {
@@ -212,6 +221,7 @@ for (const name of ["idle_breathing", "talk_gesture", "thinking_pose", "explore_
   }
 }
 console.log("HOSTED_KURISU_V12_THREE_RUNTIME=PASS", JSON.stringify({
+  fitBounds: { source: fitBounds.source, includedMeshes: fitBounds.includedMeshes, height: fitSize.y, width: fitSize.x, depth: fitSize.z },
   bones: loadedBones.length,
   facialMeshes: [...loadedMeshes.keys()],
   morphTargets: candidate.morphTargets,
