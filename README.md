@@ -1,33 +1,50 @@
-## Актуальный live checkpoint — 21 ноября 2026 (после интеграционных проходов)
+## Актуальный live checkpoint — 24 ноября 2026
 
-**Каноническая исходная ветка:** `workpass70-source` @ `ef3564c519e9f39f6d6e95834a2fcde202cdc8fa`.  
+**Каноническая исходная ветка:** `workpass70-source` @ `87c9ed9034e09ca9fb83fd676ac52bb46434c4fe`.  
 **Текущий `main`:** `06e01cdd0a8e60ed70991f22e842887f544d1ebf`; release/metadata only.  
-**Последний merge в source:** PR #1076, synthetic RU/EN persistent-memory lifecycle E2E.
+**Последний observed merge в source:** PR #1161, merge SHA `87c9ed9034e09ca9fb83fd676ac52bb46434c4fe`, 2026-11-24T11:28:30Z. Merge был выполнен GitHub до текущего цикла, не этим циклом.  
+**Exact-SHA Actions на live source:** 11/11 SUCCESS. GitHub API сообщает `protected=false` для `workpass70-source`; зелёный CI не является branch-protection гарантией.
 
-### Последние интеграции и exact-head CI
+### Последние проверенные aspect PR (не merged этим циклом)
 
-- [PR #1075](https://github.com/ailtron1ss-rgb/NK1/pull/1075) — matched-baseline gate для B261 holdout deltas; squash merge `a9141a085431de7a5bda3873f913ea4b4c1efab2`; **9/9 exact-head checks SUCCESS** до merge.
-- [PR #1078](https://github.com/ailtron1ss-rgb/NK1/pull/1078) — startup health probe treats empty/malformed early responses as retryable not-ready; merge `331eb11ff9d12cdf470788a3464ccecef4412d48`; **3/3 exact-head workflows SUCCESS** до merge.
-- [PR #1081](https://github.com/ailtron1ss-rgb/NK1/pull/1081) — selective OmeStro #10 Mechanism Serendipity port into current research owner/Core; merge `2657da158e02988eed59ed5f174c736ba3152cf6`; **28/28 exact-head workflows SUCCESS** до merge. Discovery is read-only and bounded; candidates enter the ordinary experiment queue as verify-only hypotheses. Scientific evidence credit requires five distinct paired seeds plus independent holdout receipt, rollback availability, one variant and no auto-apply.
-- [PR #1076](https://github.com/ailtron1ss-rgb/NK1/pull/1076) — RU/EN persistent-memory lifecycle E2E; merge `ef3564c519e9f39f6d6e95834a2fcde202cdc8fa`; **16/16 exact-head workflows SUCCESS** до merge. It covers synthetic reciprocal cross-language retrieval, file-backed restart, bitemporal correction, explicit forget, provenance and grounded abstention.
-- Последний опубликованный source HEAD: `ef3564c519e9f39f6d6e95834a2fcde202cdc8fa`. У всех четырёх указанных PR проверки относились к их собственным exact HEAD перед слиянием; post-merge Actions на самом последнем merge SHA пока не зарегистрированы. Не приписывать pre-merge проверки merge SHA.
+| PR | Head SHA | Exact-head checks | Состояние |
+|---|---|---:|---|
+| [#1167](https://github.com/ailtron1ss-rgb/NK1/pull/1167) | `eccbb9238d9a97cc7389e9d04064ebd251218a6b` | 73/73 SUCCESS | Draft; 11-stage decision lineage |
+| [#1168](https://github.com/ailtron1ss-rgb/NK1/pull/1168) | `19e4089674067ba30bb8c30947c3ef261ba10940` | 35/35 SUCCESS | Draft; verified agency outcome / SelfAuthorship |
+| [#1169](https://github.com/ailtron1ss-rgb/NK1/pull/1169) | `91ce0af2629e2583ce6aa107d3e6c6ac2b4096fa` | 68/68 SUCCESS | Draft; plugin input quarantine through PluginMessageIngress |
+| [#1164](https://github.com/ailtron1ss-rgb/NK1/pull/1164) | `846519a5e1952bf790562cf2d35d9d43cee83099` | 15/15 SUCCESS | Draft; avatar v7 preview-only, visual/license gate open |
 
-### Доказательные границы и оставшаяся работа
+- PR #1152 merged; #1149 and #1153 remain open on older base `54f9ec7` and overlap MemoryOS2 identity/revision/restore work. Do not duplicate or merge them independently; prepare a hunk matrix first.
+- PR #1167 and #1164 are based on `8328336`, which is behind the current source. Compare/sync and rerun exact-head checks before any future merge.
+- PR #1133 contains the current branch census and the daily handoff for 2026-11-24; it remains a Draft documentation PR, not canonical source integration.
 
-- **Memory:** RU/EN synthetic E2E — TESTED; независимое bilingual holdout, пять paired seeds и положительный confidence-supported uplift — не заявляются.
-- **Mechanism Serendipity:** структурное discovery, persistence/dedupe, verify-only intake и receipt gate интегрированы и покрыты CI; реальное научное улучшение, причинная валидность внешней гипотезы и recall/decision uplift ещё не доказаны.
-- **Runtime/launch:** clean-install/startup и 30-tick organism smoke проходят CI; наличие настроенной реальной LLM, целевой-host soak и recovery под длительной нагрузкой не подтверждены.
-- **Speech/avatar/mobile:** CI-контракты не заменяют реальный Android/Termux audio test, browser/WebGL visual E2E, lip-sync измерения и device soak.
-- `workpass70-source` не имеет enforced required status checks; зелёный exact-head CI — наблюдаемое свидетельство только для проверенного commit, не гарантия защиты ветки.
+### Evidence boundaries
 
-### Release и юридический gate
+- Decision identity and plugin quarantine are IMPLEMENTED/CONNECTED/TESTED on their PR branches, not merged or released.
+- Agency outcome closure is TESTED on its PR branch; external provider postcondition and device soak remain open.
+- Avatar v7 is preview-only; v5 remains canonical. Software CI is not visual or legal acceptance.
+- Independent RU/EN holdout with at least five paired seeds and positive measured uplift remains unproven.
+- Android/Termux 10k-tick phone soak, speech interrupt and lip-sync measurements remain unverified.
+- Do not update overall readiness from CI counts alone; retain the user's caps until independent holdout and device soak pass.
 
-- Текущий latest GitHub Release: tag `Neuro`, asset `Neuro_Kurisu_WORKPASS70_2026-10-19.zip`, 135,290,615 bytes, metadata SHA-256 `c5cf6a63661e28b30f976d03c8839a231341d73a09489b9066f062e29b224286`.
-- ZIP bytes не скачивались и не хешировались независимо в этом проходе; extraction manifest и source/ZIP parity остаются **UNVERIFIED**. Ноябрьские source changes не считаются RELEASED.
-- `contracts/RELEASE_LICENSE_REVIEW.json` остаётся pending: root license `NOASSERTION`, runtime private/all-rights-reserved, components и source archives требуют human review; redistribution approval=false.
-- Перед release нужны human legal/asset review, independent archive hash, extraction manifest и точная source/ZIP parity.
+### Release and legal gate
 
-> Исторические checkpoint-и ниже — архивный контекст, не live truth. Перед каждым merge/release действием заново считывай source SHA, PR, exact-SHA Actions и Release metadata.
+- Latest GitHub Release: tag `Neuro`, name `NeuroKurisu0.1`, published 2026-10-19.
+- Asset: `Neuro_Kurisu_WORKPASS70_2026-10-19.zip`, 135,290,615 bytes. GitHub Release metadata reports digest `sha256:c5cf6a63661e28b30f976d03c8839a231341d73a09489b9066f062e29b224286`; ZIP bytes were not materialized or independently hashed in this cycle. Source/ZIP parity remains **UNVERIFIED**.
+- `contracts/RELEASE_LICENSE_REVIEW.json`: pending; root license `NOASSERTION`, runtime private/all-rights-reserved, 477 locked npm components and source archives still require human review; redistribution approval=false.
+- No November source change is RELEASED until the actual ZIP is inspected and parity is proven.
+
+### Next P0/P1
+
+1. Build a hunk matrix for #1149/#1153 against merged #1152 and current MemoryOS2 owners; preserve unique fixes without duplicate collision logic.
+2. Sync #1167 against live `87c9ed9` without history rewrite; rerun exact-head Actions before any merge review.
+3. Freeze independent RU/EN source-clustered holdout; run ≥5 paired seeds and report uplift, false recall, forgetting violations and P50/P95 latency.
+4. Complete actual PluginMessageIngress host wiring and reconnect/duplicate-delivery soak; complete Android/Termux 10k-tick and speech/avatar measurements.
+5. Materialize the 2026-10-19 Release ZIP through a supported path, independently hash/extract, compare source manifest and resolve human license review.
+
+**Current daily handoff:** [docs/NK1_DAILY_ENGINEERING_CYCLE_2026-11-24.md](docs/NK1_DAILY_ENGINEERING_CYCLE_2026-11-24.md).
+
+> Historical checkpoints below are archive context, not live truth. Before every code, merge or Release action, re-read the live source SHA, ancestry, PRs and exact-SHA Actions.
 
 ---
 
