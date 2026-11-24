@@ -55,3 +55,4 @@ jobs:
           node --experimental-strip-types tests/big-pass-273-autonomous-goal-lifecycle.mjs
           node --experimental-strip-types tests/big-pass-273-goal-lifecycle-terminal-immutability.mjs
           node --experimental-strip-types tests/big-pass-273-goal-outcome-attribution.mjs
+          node --experimental-strip-types tests/big-pass-273-core-decision-link.mjs
