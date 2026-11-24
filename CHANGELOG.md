@@ -3967,3 +3967,11 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Keep two-to-four clean pairs exploratory, require paired coverage across at least two holdout delays, and exclude duplicate arms from confirmatory means/effects.
 - Expand deterministic regression coverage for the five-pair boundary, negative holdout effect despite positive acquisition aggregate, duplicate-arm downgrade, unpaired delay exclusion and snapshot/restore parity.
 - This strengthens evidence quality; it does not claim positive recall uplift or independent real-world dataset results.
+
+
+## 2026-11-24 — MemoryOS2 integrity and verified SelfAuthorship
+
+- Resolve explicit caller-ID collisions with deterministic unique canonical IDs while preserving exact content replay.
+- Keep byte accounting aligned when encode-time and implicit-conflict contradiction links mutate existing canonical rows; normalize absent revision-integrity arrays across encode and restore.
+- Preserve explicit revision validity boundaries when the active revision is re-observed.
+- Defer intrinsic authorship, action counts and commitments until the matching autonomous decision has a verified execution outcome; persist a bounded pending-decision ledger and make outcomes idempotent.
