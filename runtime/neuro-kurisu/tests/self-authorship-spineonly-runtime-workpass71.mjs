@@ -14,11 +14,20 @@ const store = new MemoryStateStore();
 const core = new OrganismCore(store, config);
 await core.init();
 
-const first = await core.observe({ novelty: .91, surprise: .22 });
-assert.ok(first.decision.selected?.action, 'spine-only cycle must select an action');
+let first = null;
+for (let attempt = 0; attempt < 12; attempt += 1) {
+  const cycle = await core.observe({ novelty: 1, uncertainty: 1, surprise: .35 });
+  if (cycle.decision.selected?.action && !['wait', 'defer'].includes(cycle.decision.selected.action)) {
+    first = cycle;
+    break;
+  }
+}
+assert.ok(first, 'spine-only fixture must select a substantive autonomous action within 12 ticks');
+assert.notEqual(first.decision.selected.action, 'wait');
+assert.notEqual(first.decision.selected.action, 'defer');
 const planned = core.selfAuthorshipSnapshot();
 assert.equal(planned.autonomousActionCount, 0, 'spine-only selection must not be credited before an outcome');
-assert.equal(planned.pendingDecisions.length, 1, 'spine-only decisions must be registered with canonical SelfAuthorship');
+assert.equal(planned.pendingDecisions.length, 1, `spine-only ${first.decision.selected.action} decision must be registered with canonical SelfAuthorship`);
 assert.equal(planned.pendingDecisions[0].decisionId, first.decision.id,
   'pending authorship must use the exact decision trace ID');
 
