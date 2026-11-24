@@ -1,6 +1,6 @@
 import type { AvatarBrainEnvelopeV1, AvatarBrainProjectionV1 } from "@/organism/types";
-import type { BodyChannel } from "./embodimentSwitch";
-import { CLOSED_MOUTH, type MouthPose } from "./embodimentTimeline";
+import type { BodyChannel } from "./embodimentSwitch.ts";
+import { CLOSED_MOUTH, type MouthPose } from "./embodimentTimeline.ts";
 
 const clamp = (value: number, low: number, high: number): number =>
   Math.max(low, Math.min(high, Number.isFinite(value) ? value : low));
