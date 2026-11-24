@@ -6,11 +6,13 @@ import { toOrganismSnapshot } from "@/neuro-kurisu/normalize";
 import { readAvatarPreference, writeAvatarPreference } from "@/legacy/avatar/safeLocalStorage";
 import { shouldApplyUiSnapshot, type UiSnapshotStamp } from "./snapshotSync";
 import { withChatDeliveryStatus } from "./chatDelivery";
+import { parseVoiceListenResponse, readRuntimeListening } from "./voiceInteraction";
 
 export type LabsTab = "mind" | "memory" | "lab" | "skills" | "evidence";
 export type AppSection = "home" | "memory" | "motivation" | "settings" | "more";
 export type AvatarViewMode = "live2d" | "legacy" | "original" | "3d";
 export type UiConnectionStatus = "connecting" | "connected" | "degraded" | "disconnected";
+export type VoiceInputStatus = "idle" | "listening" | "stopping" | "transcribed" | "empty" | "error" | "stop-unconfirmed";
 
 export interface UiConnectionState {
   status: UiConnectionStatus;
@@ -28,6 +30,7 @@ const CHAT_KEY = "neuro-kurisu-chat-v2";
 let lastInitiativePollAt = 0;
 let latestSnapshotRequestId = 0;
 let chatSequence = 0;
+let voiceInputOperationId = 0;
 
 function loadChat(): OrganismSnapshot["chat"] {
   if (typeof window === "undefined") return [];
@@ -70,6 +73,8 @@ interface KurisuStore {
   avatarMode: AvatarViewMode;
   voiceEnabled: boolean;
   voiceName: string;
+  voiceInputStatus: VoiceInputStatus;
+  voiceInputError: string | null;
   hydrate: () => Promise<void>;
   refresh: () => Promise<void>;
   send: (text: string) => Promise<boolean>;
@@ -81,6 +86,8 @@ interface KurisuStore {
   setAvatarMode: (mode: AvatarViewMode) => void;
   setVoiceEnabled: (enabled: boolean) => void;
   setVoiceName: (name: string) => void;
+  listen: () => Promise<string | null>;
+  stopListening: () => Promise<boolean>;
   tickIdle: () => Promise<void>;
 }
 
@@ -144,6 +151,8 @@ export const useKurisu = create<KurisuStore>((set, get) => {
     avatarMode: readAvatarMode(),
     voiceEnabled: readAvatarPreference("kurisu-avatar-voice-enabled") === "true",
     voiceName: readAvatarPreference("kurisu-avatar-voice-name") ?? "",
+    voiceInputStatus: "idle",
+    voiceInputError: null,
 
     hydrate: async () => {
       if (get().hydrated) return;
@@ -173,6 +182,66 @@ export const useKurisu = create<KurisuStore>((set, get) => {
     setVoiceName: (voiceName) => {
       writeAvatarPreference("kurisu-avatar-voice-name", voiceName);
       set({ voiceName });
+    },
+
+    listen: async () => {
+      const current = get();
+      if (current.connection.status !== "connected") {
+        set({ voiceInputStatus: "error", voiceInputError: "Connect to the canonical runtime before using microphone input." });
+        return null;
+      }
+      if (!current.snap.voice.sttAvailable) {
+        set({ voiceInputStatus: "error", voiceInputError: "Microphone input is unavailable in the configured runtime." });
+        return null;
+      }
+      const operationId = ++voiceInputOperationId;
+      set({ voiceInputStatus: "listening", voiceInputError: null });
+      try {
+        // ActionGateway raises an explicit microphone-input approval challenge
+        // before capture. The API client resumes only after that approval.
+        const response = await neuroApi.voiceListen();
+        if (operationId !== voiceInputOperationId) return null;
+        const parsed = parseVoiceListenResponse(response);
+        if (parsed.text) {
+          set({ voiceInputStatus: "transcribed", voiceInputError: null });
+          return parsed.text;
+        }
+        set({ voiceInputStatus: "empty", voiceInputError: parsed.reason });
+        return null;
+      } catch (error) {
+        if (operationId === voiceInputOperationId) {
+          set({ voiceInputStatus: "error", voiceInputError: errorMessage(error) });
+        }
+        return null;
+      }
+    },
+
+    stopListening: async () => {
+      if (get().voiceInputStatus !== "listening") return false;
+      // Invalidate the pending listen response so it cannot resurrect a cancelled UI state.
+      ++voiceInputOperationId;
+      set({ voiceInputStatus: "stopping", voiceInputError: null });
+      try {
+        const interruption = await neuroApi.voiceInterrupt("ui-microphone-stop");
+        const snapshot = await neuroApi.voiceStatus().catch(() => null);
+        const listening = readRuntimeListening(snapshot);
+        if (listening === false) {
+          set({ voiceInputStatus: "idle", voiceInputError: null });
+          return true;
+        }
+        const requested = Boolean(interruption && typeof interruption === "object"
+          && (interruption as Record<string, unknown>).interruptionRequested === true);
+        set({
+          voiceInputStatus: "stop-unconfirmed",
+          voiceInputError: requested
+            ? "Stop requested; the runtime has not confirmed microphone capture release."
+            : "The runtime could not confirm that microphone capture stopped.",
+        });
+        return false;
+      } catch (error) {
+        set({ voiceInputStatus: "error", voiceInputError: errorMessage(error) });
+        return false;
+      }
     },
 
     sleep: async () => {
