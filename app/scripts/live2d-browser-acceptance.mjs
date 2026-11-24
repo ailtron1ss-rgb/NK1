@@ -225,6 +225,8 @@ try {
   report.profiles.push({ profile: "quality", modelPath: quality.ready.modelPath, expressionManagerAvailable: quality.ready.expressionManagerAvailable, expressionNames: quality.ready.expressionNames || [], render: quality.render });
 
   const firstAck = await sendIntent(page, makeIntent(1, "speaking", "happy", 1));
+  const modelAssetFailures = report.failedResponses.filter((item) => item.status >= 400 && /\/live2d\/Kurisu(?:\.mobile)?\//.test(new URL(item.url).pathname));
+  assert.deepEqual(modelAssetFailures, [], "Live2D model assets must not return HTTP errors: " + JSON.stringify(modelAssetFailures));
   assert.ok(["parameters-observed", "accepted-unverified"].includes(firstAck.status));
   assert.equal(firstAck.expressionStatus, "started", "Live2D expression did not resolve");
   assert.equal(firstAck.motionStatus, "started", "Live2D motion did not resolve");
