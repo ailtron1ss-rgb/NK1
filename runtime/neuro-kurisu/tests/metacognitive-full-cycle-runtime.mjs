@@ -16,7 +16,8 @@ let runtime;
 try {
   runtime = new OrganismRuntime(options);
   await runtime.init();
-  await runtime.step();
+  const stepResult = await runtime.step();
+  const decisionId = stepResult.cycle.decision.id;
 
   const snapshot = runtime.core.snapshot();
   const fabric = snapshot.system.cognitiveEventFabric;
@@ -24,6 +25,10 @@ try {
   assert.ok(episodeEvent, 'one canonical metacognitive CEF event must be recorded for the completed feedback cycle');
   assert.equal(episodeEvent.parentIds.length, 11,
     'the canonical metacognitive event must directly reference all eleven cycle stages');
+  assert.equal(episodeEvent.payload.decisionId, decisionId,
+    'the hash-only metacognitive event must carry the exact OrganismCore decision identity');
+  assert.notEqual(episodeEvent.payload.decisionId, episodeEvent.payload.actionEventId,
+    'a decision identity must never be confused with an action event ID');
 
   const byId = new Map(fabric.recent.map((event) => [event.id, event]));
   const parentStages = episodeEvent.parentIds.map((id) => byId.get(id)?.stage).sort();
@@ -33,9 +38,11 @@ try {
   ], 'the episode must be grounded in the exact eleven-stage causal cycle');
 
   const memoryId = `meta:${episodeEvent.id}`;
-  const memoryItem = runtime.core.memorySubstrateCanonicalItems(32).find((item) => item.id === memoryId);
+  const memoryItem = snapshot.facets.advanced.memoryOS.items.find((item) => item.id === memoryId);
   assert.ok(memoryItem, 'the full-cycle episode must be projected into canonical MemoryOS2');
   assert.equal(memoryItem.kind, 'episodic', 'runtime must project the causal episode as episodic memory');
+  assert.equal(memoryItem.context?.decisionId, decisionId,
+    'the hash-only canonical memory projection must persist the same decision identity');
 
   const secondSnapshot = runtime.core.snapshot();
   const matching = secondSnapshot.system.cognitiveEventFabric.recent.filter((event) => event.stage === 'metacognition');
