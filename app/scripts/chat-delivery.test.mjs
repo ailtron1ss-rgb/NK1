@@ -28,6 +28,11 @@ test("does not mutate the original chat array or turn objects", () => {
   assert.equal(next[0].delivery, "sending");
 });
 
+test("keeps deterministic request rejection distinct from uncertain transport outcomes", () => {
+  const next = withChatDeliveryStatus(turns, "user-2", "rejected");
+  assert.equal(next[2].delivery, "rejected");
+});
+
 test("a missing id and an assistant id are no-ops", () => {
   assert.deepEqual(withChatDeliveryStatus(turns, "missing", "unknown"), turns);
   assert.deepEqual(withChatDeliveryStatus(turns, "assistant-1", "unknown"), turns);
