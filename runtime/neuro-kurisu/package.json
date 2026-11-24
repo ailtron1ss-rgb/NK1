@@ -1929,6 +1929,7 @@
     "test:memoryos2-byte-accounting-workpass70": "node --experimental-strip-types tests/memoryos2-byte-accounting-workpass70.mjs",
     "test:memoryos2-byte-roundtrip-workpass70": "node --experimental-strip-types tests/memoryos2-byte-roundtrip-workpass70.mjs",
     "test:self-authorship-verified-execution-workpass70": "node --experimental-strip-types tests/self-authorship-verified-execution-workpass70.mjs",
-    "test:self-authorship-spineonly-runtime-workpass71": "node --experimental-strip-types tests/self-authorship-spineonly-runtime-workpass71.mjs"
+    "test:self-authorship-spineonly-runtime-workpass71": "node --experimental-strip-types tests/self-authorship-spineonly-runtime-workpass71.mjs",
+    "test:action-receipt-selfauthorship-recovery-workpass72": "node --experimental-strip-types tests/action-receipt-selfauthorship-recovery-workpass72.mjs"
   }
 }
