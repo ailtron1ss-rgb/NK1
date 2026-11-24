@@ -156,6 +156,81 @@ import { defaultB380State } from '../system/B380TemporalLifeIntegrator.ts';
 export const ORGANISM_STATE_SCHEMA = RELEASE_CONTRACT.stateSchema;
 const clamp01=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
 
+/** Validate and bound the optional Parliament receipt before it enters canonical Core state. */
+function normalizeCognitiveParliamentReceipt(value: unknown): any | undefined {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
+  const row = value as any;
+  const gateStatuses = ['p69-selected','p69-safe-fallback','parliament-blocked','candidate-not-in-p69-set'];
+  if (row.version !== 1 ||
+      !Number.isSafeInteger(row.tick) || row.tick < 0 ||
+      !Number.isFinite(row.at) || row.at < 0 ||
+      typeof row.candidateId !== 'string' || !row.candidateId.trim() ||
+      row.candidateId !== row.candidateId.trim() || row.candidateId.length > 180 ||
+      !['low','medium','high'].includes(row.risk) ||
+      !gateStatuses.includes(row.gateStatus) ||
+      typeof row.dispatchStatus !== 'string' || !row.dispatchStatus.trim() || row.dispatchStatus.length > 64 ||
+      typeof row.decisionStatus !== 'string' || !row.decisionStatus.trim() || row.decisionStatus.length > 64 ||
+      !Number.isFinite(row.score01) ||
+      !Number.isSafeInteger(row.verifiedEvidenceCount) || row.verifiedEvidenceCount < 0 ||
+      !Number.isSafeInteger(row.unverifiedEvidenceCount) || row.unverifiedEvidenceCount < 0) return undefined;
+  const boundedId = (candidate: unknown): string | null =>
+    candidate === null ? null :
+      typeof candidate === 'string' && candidate.trim() && candidate.length <= 180
+        ? candidate.trim() : null;
+  const roleResults = Array.isArray(row.roleResults)
+    ? row.roleResults.slice(0, 6).filter((item: any) =>
+        item && typeof item === 'object' && !Array.isArray(item) &&
+        typeof item.role === 'string' && item.role.length > 0 && item.role.length <= 40 &&
+        typeof item.status === 'string' && item.status.length > 0 && item.status.length <= 64 &&
+        Number.isFinite(item.latencyMs) && item.latencyMs >= 0,
+      ).map((item: any) => ({
+        role:item.role,
+        status:item.status,
+        latencyMs:Math.max(0,Math.min(120_000,Number(item.latencyMs))),
+      }))
+    : [];
+  return {
+    version:1,
+    tick:row.tick,
+    at:Math.floor(row.at),
+    candidateId:row.candidateId,
+    risk:row.risk,
+    gateStatus:row.gateStatus,
+    dispatchStatus:row.dispatchStatus,
+    decisionStatus:row.decisionStatus,
+    score01:clamp01(Number(row.score01)),
+    verifiedEvidenceCount:Math.min(100_000,row.verifiedEvidenceCount),
+    unverifiedEvidenceCount:Math.min(100_000,row.unverifiedEvidenceCount),
+    roleResults,
+    p69ChosenCandidateId:boundedId(row.p69ChosenCandidateId),
+    selectedCandidateId:boundedId(row.selectedCandidateId),
+    reasons:Array.isArray(row.reasons)
+      ? row.reasons.slice(0,16).filter((item: unknown): item is string =>
+          typeof item === 'string' && item.length <= 256,
+        )
+      : [],
+  };
+}
+
+function normalizeIntentExecutionSnapshot(value: unknown): {
+  version:1; records:any[]; executions:any[];
+} {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return {version:1,records:[],executions:[]};
+  }
+  const row = value as any;
+  if (row.version !== 1 || !Array.isArray(row.records) || !Array.isArray(row.executions)) {
+    return {version:1,records:[],executions:[]};
+  }
+  // Preserve signed contracts and receipts verbatim; IntentExecutionRuntime.restore()
+  // performs HMAC and execution-phase validation at the owning boundary.
+  return {
+    version:1,
+    records:row.records.slice(-64),
+    executions:row.executions.slice(-256),
+  };
+}
+
 type Raw = {
   schemaVersion?: number;
   state?: any;
@@ -195,6 +270,9 @@ export interface PersistedShapeCurrent {
     replaySignature: string;
     lastReplayAt: number;
     actionExecutionLedger?: import('../system/ActionGateway.ts').ActionExecutionLedgerSnapshot;
+    cognitiveParliamentLastDecision?: any;
+    cognitiveParliamentDecisionHistory?: any[];
+    intentContracts?: import('../system/IntentExecutionRuntime.ts').IntentExecutionRuntimeSnapshot;
     subjectIdentity: import('../core/types.ts').SubjectIdentityRecord;
     externalObserver?: import('../system/ExternalObserverFabric.ts').ExternalObserverState;
     evolution: any;
@@ -1207,6 +1285,12 @@ export function migratePersistedOrganism(input: unknown): PersistedShapeCurrent 
       actionExecutionLedger: raw.system?.actionExecutionLedger && Array.isArray(raw.system.actionExecutionLedger.records)
         ? { version:1, records:raw.system.actionExecutionLedger.records.slice(-128), ...(raw.system.actionExecutionLedger.permissions && typeof raw.system.actionExecutionLedger.permissions==='object' ? { permissions:raw.system.actionExecutionLedger.permissions } : {}) }
         : { version:1, records:[] },
+      cognitiveParliamentLastDecision: normalizeCognitiveParliamentReceipt(raw.system?.cognitiveParliamentLastDecision),
+      cognitiveParliamentDecisionHistory: Array.isArray(raw.system?.cognitiveParliamentDecisionHistory)
+        ? raw.system.cognitiveParliamentDecisionHistory.slice(-64)
+            .map(normalizeCognitiveParliamentReceipt).filter((row:any)=>Boolean(row))
+        : [],
+      intentContracts: normalizeIntentExecutionSnapshot(raw.system?.intentContracts),
       subjectIdentity: ensureSubjectIdentity({ subjectIdentity: raw.system?.subjectIdentity } as any),
       evolution:raw.system?.evolution ?? {version:1,stage:'emergence',intrinsicProjectCycles:0,selfAuthoredActions:0,valueRevisionCycles:0,identitySamples:0,replaySignature:'',lastReplayAt:0},
       advancedProjectionSchedule: raw.system?.advancedProjectionSchedule,

@@ -396,6 +396,11 @@ import { B304SemanticHoldoutLedger, defaultB304SemanticHoldoutState, type B304Se
 import { B305CriticalPathVerificationLedger, defaultB305CriticalPathState } from '../system/B305CriticalPathVerificationLedger.ts';
 import { clamp, goalVectorFallback } from './ExecutionPrimitives.ts';
 import type { ExternalProjectResearchResult } from '../system/ExternalProjectResearchTool.ts';
+import { CognitiveParliament } from '../system/CognitiveParliament.ts';
+import { createLanguageInvokerParliamentRoleExecutors, ParliamentModelAttestationRegistry } from '../system/CognitiveParliamentLocalAdapter.ts';
+import { IntentExecutionRuntime, INTENT_APPROVAL_TOOL_ID, type IntentApprovalScope, type IntentApprovalEvidence, type TrustedAutonomousDecisionEvidence } from '../system/IntentExecutionRuntime.ts';
+import type { IntentContract, IntentContractInput, IntentExtractionProvider } from '../cognition/IntentCompiler.ts';
+import type { IntentBoundAction, IntentBridgeResult, IntentBridgeReconciliationResult } from '../system/IntentActionGatewayBridge.ts';
 const now = () => Date.now();
 export interface OrganismConfig {
     /** Host-owned verifier key lookup; private keys must remain outside NK1. */
@@ -487,6 +492,22 @@ export interface OrganismConfig {
     predictivePlanningMode?: 'on' | 'off' | 'sham';
     /** Brick 5: number of imagined steps used by the predictive planner. B363 raises the default to 5. */
     predictivePlanningHorizon?: 3 | 5;
+    /** Host key for time-limited, source-bound Intent approval signatures. */
+    intentApprovalKey?: string | Uint8Array;
+    /** Maximum time spent extracting structured intent from a host language provider. */
+    intentExtractionTimeoutMs?: number;
+    /** Enable evidence-backed parliamentary approval on scheduled full cognitive cycles. */
+    enableCognitiveParliament?: boolean;
+    /** Review interval for autonomous cycles; explicit user input also triggers review. */
+    cognitiveParliamentEveryCycles?: number;
+    cognitiveParliamentTimeoutMs?: number;
+    cognitiveParliamentMaxConcurrent?: number;
+    cognitiveParliamentMaxTotalTokens?: number;
+    cognitiveParliamentMaxInputChars?: number;
+    /** Host-injected role-specific execution providers and trusted model identity. */
+    parliamentRoleExecutors?: import('../system/CognitiveParliamentDispatcher.ts').ParliamentRoleExecutorMap;
+    parliamentModelAttestor?: import('../system/CognitiveParliamentTrust.ts').ParliamentModelAttestor;
+    parliamentModelAttestationRegistry?: import('../system/CognitiveParliamentLocalAdapter.ts').ParliamentModelAttestationRegistry;
 }
 export interface OrganismFacets {
     memory: import('./types.ts').MemoryFacet;
@@ -496,6 +517,14 @@ export interface OrganismFacets {
     evolution: import('./types.ts').EvolutionFacet;
     cognition: import('./types.ts').DevelopmentalCognitionFacet;
     advanced: import('./types.ts').AdvancedDevelopmentFacet;
+}
+export interface CognitiveParliamentCycleReceipt {
+    version:1; tick:number; at:number; candidateId:string; risk:'low'|'medium'|'high';
+    gateStatus:'p69-selected'|'p69-safe-fallback'|'parliament-blocked'|'candidate-not-in-p69-set';
+    dispatchStatus:string; decisionStatus:string; score01:number;
+    verifiedEvidenceCount:number; unverifiedEvidenceCount:number;
+    roleResults:Array<{role:string;status:string;latencyMs:number}>;
+    p69ChosenCandidateId:string|null; selectedCandidateId:string|null; reasons:string[];
 }
 export interface OrganismSystemState {
     release: string;
@@ -546,6 +575,9 @@ export interface OrganismSystemState {
     mechanismSerendipity?: import('../research/MechanismSerendipityRuntime.ts').MechanismSerendipityRuntimeState;
     /** Bounded idempotency receipts for caller-keyed tool side effects; pending rows fail closed after recovery. */
     actionExecutionLedger?: import('../system/ActionGateway.ts').ActionExecutionLedgerSnapshot;
+    cognitiveParliamentLastDecision?: CognitiveParliamentCycleReceipt;
+    cognitiveParliamentDecisionHistory?: CognitiveParliamentCycleReceipt[];
+    intentContracts?: import('../system/IntentExecutionRuntime.ts').IntentExecutionRuntimeSnapshot;
     outcomeVerification?: {
         version: 1;
         records: Array<{
@@ -947,6 +979,7 @@ function defaultPersisted(): PersistedOrganism {
         system: {
             release: RELEASE_CONTRACT.application, organismCore: RELEASE_CONTRACT.organismCore, schemaVersion: ORGANISM_STATE_SCHEMA,
             actionExecutionLedger: {version:1,records:[]},
+            intentContracts: {version:1,records:[],executions:[]},
             capabilities: { version: 1, features: [], refreshedAt: 0 },
             realityGrounding: undefined,
             neuralCausalTrace: undefined,
@@ -1178,11 +1211,22 @@ function activeGoalVectorFromState(goals: any[], state: any): number[] {
     return Array.from({ length: 16 }, (_, i) => clamp(Number(v[i] ?? (i === 0 ? state.needs.goalPressure : 0))));
 }
 export class OrganismCore {
+    /** Host-language adapter factory lives at the Core composition boundary so the
+     * thin OrganismRuntime entry seam does not acquire a new production dependency. */
+    static createLanguageInvokerParliamentAdapter(
+        languageInvoker: import('../language/LanguageOrgan.ts').LanguageInvoker,
+    ): Pick<OrganismConfig, 'parliamentRoleExecutors' | 'parliamentModelAttestationRegistry'> {
+        const registry = new ParliamentModelAttestationRegistry();
+        return {
+            parliamentRoleExecutors: createLanguageInvokerParliamentRoleExecutors(languageInvoker, registry),
+            parliamentModelAttestationRegistry: registry,
+        };
+    }
     private readonly config: Required<OrganismConfig>;
     private readonly store: JsonStateStore<PersistedOrganism>;
     private readonly actionExecutionLedgerArchive?: FileActionExecutionLedgerArchive;
     /** BIG PASS 56: physical owner/composition root for the seven organism systems. */
-    private readonly organismSystems = new OrganismSystemFabric();
+    private readonly organismSystems: OrganismSystemFabric;
     /** Owns the extracted developmental/neural execution modules; Core only orchestrates them. */
     private readonly developmentalNeural = new DevelopmentalNeuralRuntime();
     /** Durable trust context for signed shadow evidence; only trusted supervisor code may register runs. */
@@ -1191,7 +1235,8 @@ export class OrganismCore {
     private readonly adaptiveMemoryStrategyReadout = new AdaptiveMemoryStrategyReadout();
     /** R23 bounded recurrent/SSM-style ablation; opt-in and causally isolated from canonical decisions. */
     /** Owns general cognitive/runtime services; Core remains the orchestration spine. */
-    private readonly cognitiveRuntime = new CognitiveRuntimeCluster({ organismSystems: this.organismSystems, p61IntegratedMind: this.organismSystems.self.p61IntegratedMind, p64IntegratedOrganismDynamics: this.organismSystems.self.p64IntegratedOrganismDynamics, endogenousGoalGenesisB272: this.developmentalNeural.endogenousGoalGenesisB272, omeStroDependencies: { scientificDevelopment: this.developmentalNeural.p25ScientificDevelopment, plasticity: this.developmentalNeural.p28Plasticity, portability: this.developmentalNeural.neuroDigitalEvolution.substratePortability, morphogenesis: this.developmentalNeural.neuralMorphogenesis }, resolveCanonicalGoal: (goalId) => this.persisted.goals.some((goal) => goal.id === goalId), resolveCanonicalDecision: (decisionId) => this.persisted.traces.some((trace) => trace.id === decisionId && Boolean(trace.selected)) });
+    private readonly cognitiveRuntime: CognitiveRuntimeCluster;
+    private intentExecutionRuntime!: IntentExecutionRuntime;
 
     /** Owns mutable persistence/continuity machinery; Core supplies orchestration decisions. */
     private readonly persistence = new PersistenceRuntime();
@@ -1281,6 +1326,12 @@ export class OrganismCore {
     private negativeSpaceMutationTail: Promise<void> = Promise.resolve();
     constructor(store: JsonStateStore<PersistedOrganism>, config: OrganismConfig = {}) {
         this.store = store;
+        this.organismSystems = new OrganismSystemFabric({
+            parliamentRoleExecutors: config.parliamentRoleExecutors,
+            parliamentModelAttestor: config.parliamentModelAttestor,
+            parliamentModelAttestationRegistry: config.parliamentModelAttestationRegistry,
+        });
+        this.cognitiveRuntime = new CognitiveRuntimeCluster({ organismSystems: this.organismSystems, p61IntegratedMind: this.organismSystems.self.p61IntegratedMind, p64IntegratedOrganismDynamics: this.organismSystems.self.p64IntegratedOrganismDynamics, endogenousGoalGenesisB272: this.developmentalNeural.endogenousGoalGenesisB272, omeStroDependencies: { scientificDevelopment: this.developmentalNeural.p25ScientificDevelopment, plasticity: this.developmentalNeural.p28Plasticity, portability: this.developmentalNeural.neuroDigitalEvolution.substratePortability, morphogenesis: this.developmentalNeural.neuralMorphogenesis }, resolveCanonicalGoal: (goalId) => this.persisted.goals.some((goal) => goal.id === goalId), resolveCanonicalDecision: (decisionId) => this.persisted.traces.some((trace) => trace.id === decisionId && Boolean(trace.selected)) });
         const candidateStorePath = store instanceof FileStateStore
             ? store.siblingPath('verified-skill-candidates.json')
             : (process.env.NEURO_SKILL_CANDIDATE_STORE_PATH || 'state/verified-skill-candidates.json');
@@ -1341,6 +1392,8 @@ export class OrganismCore {
             performanceProfile: (config.performanceProfile ?? (process.env.NEURO_RUNTIME_PROFILE as any) ?? 'balanced') as 'quality' | 'balanced' | 'mobile',
             predictivePlanningMode: config.predictivePlanningMode ?? 'on',
             predictivePlanningHorizon: config.predictivePlanningHorizon ?? 5,
+            intentApprovalKey: config.intentApprovalKey ?? process.env.NEURO_INTENT_APPROVAL_KEY,
+            intentExtractionTimeoutMs: Number(config.intentExtractionTimeoutMs ?? process.env.NEURO_INTENT_EXTRACTION_TIMEOUT_MS ?? 10_000),
             enableTemporalResolutionGovernor: (config.performanceProfile ?? (process.env.NEURO_RUNTIME_PROFILE as any) ?? 'balanced') === 'mobile',
             operationalPulseEvery: (config.performanceProfile ?? (process.env.NEURO_RUNTIME_PROFILE as any) ?? 'balanced') === 'mobile' ? 8 : (config.performanceProfile ?? (process.env.NEURO_RUNTIME_PROFILE as any) ?? 'balanced') === 'balanced' ? 2 : 1,
             spineOnly: String(process.env.KURISU_SPINE_ONLY ?? '').trim() === '1',
@@ -1369,7 +1422,25 @@ export class OrganismCore {
             enableB2522AdaptiveWorldModelMixtureRouter: config.enableB2522AdaptiveWorldModelMixtureRouter ?? true,
             enableB2523MultiHorizonCounterfactualVerifier: config.enableB2523MultiHorizonCounterfactualVerifier ?? true,
             ...config,
+            enableCognitiveParliament: config.enableCognitiveParliament ?? Boolean(
+                config.parliamentRoleExecutors &&
+                ['researcher', 'planner', 'skeptic', 'executor', 'safety-guardian', 'auditor'].every(role =>
+                    typeof config.parliamentRoleExecutors?.[role as import('../system/CognitiveParliament.ts').ParliamentRole]?.execute === 'function') &&
+                (typeof config.parliamentModelAttestor === 'function' || config.parliamentModelAttestationRegistry),
+            ),
+            cognitiveParliamentEveryCycles: Math.max(1, Math.min(256, Math.floor(Number(config.cognitiveParliamentEveryCycles ?? 8) || 8))),
+            cognitiveParliamentTimeoutMs: Math.max(25, Math.min(120000, Math.floor(Number(config.cognitiveParliamentTimeoutMs ?? 25000) || 25000))),
+            cognitiveParliamentMaxConcurrent: Math.max(1, Math.min(6, Math.floor(Number(config.cognitiveParliamentMaxConcurrent ?? 3) || 3))),
+            cognitiveParliamentMaxTotalTokens: Math.max(384, Math.min(12288, Math.floor(Number(config.cognitiveParliamentMaxTotalTokens ?? 4096) || 4096))),
+            cognitiveParliamentMaxInputChars: Math.max(8000, Math.min(96000, Math.floor(Number(config.cognitiveParliamentMaxInputChars ?? 32000) || 32000))),
+
         } as Required<OrganismConfig>;
+        const intentKey = this.config.intentApprovalKey;
+        this.intentExecutionRuntime = new IntentExecutionRuntime(this.cognitiveRuntime.actionGateway, {
+            ...(typeof intentKey === 'string' || intentKey instanceof Uint8Array ? { approvalKey: intentKey } : {}),
+            extractionTimeoutMs: this.config.intentExtractionTimeoutMs,
+            autonomousDecisionVerifier: (contract, evidence) => this.verifyAutonomousPlannerIntent(contract, evidence),
+        });
         if (config.inventionVerifierKeyResolver)
             this.organismSystems.configureInventionVerifierKeyResolver(config.inventionVerifierKeyResolver);
         this.cognitiveSubsystemFacadeB297 = new CognitiveSubsystemFacade(this as any);
@@ -1479,6 +1550,7 @@ export class OrganismCore {
         this.persisted.system.subjectIdentity = ensureSubjectIdentity(this.persisted.system);
         await this.actionExecutionLedgerArchive?.load();
         this.cognitiveRuntime.actionGateway.restoreExecutionLedger(this.persisted.system.actionExecutionLedger);
+        this.intentExecutionRuntime.restore(this.persisted.system.intentContracts);
         this.willIntegration.restore(this.persisted.system.willIntegration);
         this.organismSystems.conscioAdaptation.restore(this.persisted.system.conscioAdaptation);
         this.persisted.facets.memory.semanticGraph = { ...defaultMemoryFacet().semanticGraph, ...(this.persisted.facets.memory.semanticGraph ?? {}) };
@@ -3524,6 +3596,38 @@ export class OrganismCore {
         const p52 = (this.persisted.facets.advanced as any)?.p52CounterfactualDevelopment;
         return { tick: s.tick, embodimentPresent: Boolean((this.persisted.facets as any).embodiment?.body), selfAuthorshipPresent: Boolean((this.persisted.facets as any).learning?.selfAuthorship), worldTransitions: Array.isArray((this.persisted as any).worldModel?.transitions) ? (this.persisted as any).worldModel.transitions.length : 0, p52Samples: Number(p52?.samples ?? 0) };
     }
+    /** Read-only operational diagnostics for the evidence-backed Parliament gate. */
+    cognitiveParliamentDiagnostics() {
+        if (!this.ready)
+            throw new Error('OrganismCore.init() must be called first');
+        const roles:import('../system/CognitiveParliament.ts').ParliamentRole[] = [
+            'researcher','planner','skeptic','executor','safety-guardian','auditor',
+        ];
+        const configuredRoles = roles.filter(role =>
+            typeof this.config.parliamentRoleExecutors?.[role]?.execute === 'function');
+        const history = Array.isArray(this.persisted.system.cognitiveParliamentDecisionHistory)
+            ? this.persisted.system.cognitiveParliamentDecisionHistory
+            : [];
+        return {
+            version:1 as const,
+            enabled:this.config.enableCognitiveParliament,
+            cadenceCycles:this.config.cognitiveParliamentEveryCycles,
+            timeoutMs:this.config.cognitiveParliamentTimeoutMs,
+            maxConcurrent:this.config.cognitiveParliamentMaxConcurrent,
+            maxTotalTokens:this.config.cognitiveParliamentMaxTotalTokens,
+            maxInputChars:this.config.cognitiveParliamentMaxInputChars,
+            configuredRoles,
+            configuredRoleCount:configuredRoles.length,
+            trustedModelAttestorConfigured:Boolean(
+                typeof this.config.parliamentModelAttestor === 'function' ||
+                this.config.parliamentModelAttestationRegistry,
+            ),
+            historyCount:history.length,
+            lastDecision:structuredClone(this.persisted.system.cognitiveParliamentLastDecision ?? null),
+            recentDecisions:structuredClone(history.slice(-16)),
+        };
+    }
+
     snapshot(): PersistedOrganism {
         if (!this.ready)
             throw new Error('OrganismCore.init() must be called first');
@@ -4315,6 +4419,30 @@ export class OrganismCore {
             trace.outcome = { success, reward: outcome.reward, surprise, notes: outcome.notes, at: Date.now() };
         this.markPersistenceDirty();
     }
+    /**
+     * Build Parliament references only from the active promoted ProjectResearchSession
+     * and its exact canonical Firewall observations. No user text, arbitrary URLs or
+     * unpromoted memory fragments are converted into evidence references here.
+     */
+    private cognitiveParliamentEvidenceReferences(): import('../system/CognitiveParliament.ts').ParliamentEvidenceReference[] {
+        try {
+            const session = this.evidenceResearchSubsystem.projectResearchSession.snapshot();
+            if (!session?.claimKey || session.firewallStatus !== 'promoted' || session.promoted !== true) return [];
+            const sessionRows = new Set((session.results ?? [])
+                .filter(row => row?.ok === true && Boolean(row.contentHash) && Boolean(row.sourceKey) && Boolean(row.sourceLineageKey))
+                .map(row => [row.sourceKey, row.sourceLineageKey, row.contentHash].join('\u0000')));
+            if (!sessionRows.size) return [];
+            const observations = this.evidenceResearchSubsystem.evidenceFirewall.snapshot().observations
+                .filter(row => row.claimKey === session.claimKey && row.sourceClass === 'external-api' &&
+                    Boolean(row.contentHash) && sessionRows.has([row.sourceKey, row.sourceLineageKey, row.contentHash].join('\u0000')))
+                .sort((a, b) => b.observedAt - a.observedAt)
+                .slice(0, 48);
+            return observations.map(row => ({ id: row.id, claimKey: row.claimKey }));
+        } catch {
+            return [];
+        }
+    }
+
     private expectedClosureDomains(observation: OrganismObservation, normalizedObservation: OrganismObservation): CognitiveDomain[] {
         const expected: CognitiveDomain[] = ['memory', 'self', 'learning'];
         if (normalizedObservation.worldContext || observation.vision || observation.audio || observation.worldEvent)
@@ -5074,11 +5202,82 @@ export class OrganismCore {
                         planner: 'autonomous-resource-tool-life',
                     },
                 });
-                const toolResult = await this.executeTool(autoToolPlan.tool.id, {}, autonomousToolReason, {
-                    idempotencyKey: autonomousIdempotencyKey,
-                    decisionId: autonomousPlanEvent.id,
-                    autonomous: true,
-                });
+                const canonicalAutonomousToolId = this.canonicalActionToolId(autoToolPlan.tool.id);
+                const autonomousIntentGoal = autonomousToolReason.normalize('NFKC').replace(/[\u0000-\u001f\u007f]/g, ' ').trim().slice(0, 2_000);
+                const autonomousIntentSourceText = `${autonomousIntentGoal} | tool=${canonicalAutonomousToolId} | decision=${autonomousPlanEvent.id}`;
+                let approvedAutonomousIntent: IntentContract | null = null;
+                let autonomousIntentDraft: IntentContract | null = null;
+                let autonomousIntentRefusal = '';
+                try {
+                    autonomousIntentDraft = this.compileIntent({
+                        requestId: `autonomous-resource-tool-life:${autonomousPlanEvent.id}`,
+                        text: autonomousIntentSourceText,
+                        extraction: {
+                            goal: autonomousIntentGoal,
+                            context: [`planner-decision:${autonomousPlanEvent.id}`],
+                            expectedOutcome: `A bounded ActionGateway execution result for ${canonicalAutonomousToolId}`,
+                            constraints: {
+                                must: ['Use the canonical Core/ActionGateway execution and receipt path'],
+                                mustNot: ['Do not broaden the planner-selected action scope', 'Do not repeat an external side effect with a fresh idempotency key'],
+                            },
+                            priorities: ['Preserve planner decision lineage', 'Prefer verified, recoverable execution'],
+                            acceptanceCriteria: [`Return the ActionGateway outcome for ${canonicalAutonomousToolId} correlated to the planner decision`],
+                            permissions: { allowedActions: [canonicalAutonomousToolId] },
+                            stopConditions: ['Stop if the CEF planner receipt is absent or inconsistent', 'Stop if intent is incomplete or high risk', 'Stop if ActionGateway policy or receipt infrastructure refuses dispatch'],
+                            assumptions: [],
+                        },
+                    });
+                    // After a restart, reuse the same HMAC-attested contract for this
+                    // deterministic CEF plan event rather than minting a new authority.
+                    approvedAutonomousIntent = this.intentExecutionRuntime.getContract(autonomousIntentDraft.id);
+                    if (!approvedAutonomousIntent) {
+                        approvedAutonomousIntent = this.intentExecutionRuntime.approveFromTrustedPlanner(
+                            autonomousIntentDraft,
+                            { allowedActions: [canonicalAutonomousToolId], acknowledgedAssumptions: [], riskAcknowledged: false },
+                            {
+                                source: 'autonomous-resource-tool-life',
+                                decisionId: autonomousPlanEvent.id,
+                                tick: autonomousPlanEvent.tick,
+                                plannerToolId: autoToolPlan.tool.id,
+                                toolId: canonicalAutonomousToolId,
+                                intentHash: String(autonomousPlanEvent.payload.intentHash ?? ''),
+                                reason: autonomousIntentGoal,
+                                sourceText: autonomousIntentSourceText,
+                            },
+                        );
+                        // Persist authority before the external side effect can begin.
+                        this.persisted.system.intentContracts = this.intentExecutionRuntime.snapshot();
+                        await this.checkpoint(true);
+                    }
+                } catch (error) {
+                    autonomousIntentRefusal = String((error as Error)?.message ?? 'autonomous-intent-not-approved').replace(/[\r\n\t]+/g, ' ').slice(0, 180);
+                }
+                let toolResult;
+                if (approvedAutonomousIntent) {
+                    const dispatch = await this.executeIntent(approvedAutonomousIntent, {
+                        toolId: canonicalAutonomousToolId,
+                        input: {},
+                        reason: autonomousToolReason,
+                        options: {
+                            idempotencyKey: autonomousIdempotencyKey,
+                            decisionId: autonomousPlanEvent.id,
+                            autonomous: true,
+                        },
+                    });
+                    toolResult = dispatch.executed
+                        ? dispatch.result
+                        : this.cognitiveRuntime.actionGateway.refuseToolExecution(
+                            canonicalAutonomousToolId,
+                            `intent-gate:${dispatch.reason}`,
+                            { intentContractId: approvedAutonomousIntent.id, riskLevel: approvedAutonomousIntent.risk.level },
+                        );
+                } else {
+                    toolResult = this.cognitiveRuntime.actionGateway.refuseToolExecution(
+                        canonicalAutonomousToolId,
+                        `intent-governance-refused:${autonomousIntentRefusal || 'intent-not-approved'}`,
+                        { ...(autonomousIntentDraft ? { intentContractId: autonomousIntentDraft.id, riskLevel: autonomousIntentDraft.risk.level } : {}) },
+                    );
+                }
                 const recoveredUncertainOutcome = toolResult.outcomeClass === 'idempotency-recovery-required'
                     || toolResult.outcomeClass === 'idempotency-storage-failed'
                     || toolResult.outcomeClass === 'idempotency-ledger-full'
@@ -7843,16 +8042,82 @@ export class OrganismCore {
         this.persisted.system.luminaAdaptation = this.luminaAdaptation.snapshot();
         this.persisted.system.lettaGovernanceAdaptation = this.lettaGovernanceAdaptation.snapshot();
         this.persisted.system.conscioAdaptation = this.conscioAdaptation.snapshot();
-        const p69Decision = this.governanceSubsystem.p69ConstitutionalArbiter.arbitrate({
+        const p69Input = {
             tick: state.tick, energy01: n.energy, thermal01: observation.embodiment?.thermalStrain01 ?? .2, capacity01: observation.embodiment?.cognitiveCapacity01 ?? (1 - n.cognitiveLoad),
             identity01: identityContinuity.continuity, realityGap01: p57RealitySummaryNow.meanRealityGap01,
             uncertainty01: n.uncertainty, novelty01: n.novelty, socialNeed01: n.socialNeed, attention01: state.attentionBudget, homeostaticPressure01: p66Homeostasis.pressure01,
             candidates: governedCandidates, requestedAction: userRequestedAction, userPresent: Boolean(observation.text), upstreamMode: p64Frame.mode,
-        });
+        };
+        const parliamentReviewDue = this.config.enableCognitiveParliament &&
+            (Boolean(observation.text) || state.tick % this.config.cognitiveParliamentEveryCycles === 0);
+        let parliamentGateAttempted = false;
+        let p69Decision: ReturnType<typeof this.governanceSubsystem.p69ConstitutionalArbiter.arbitrate>;
+        let selected: typeof governedCandidates[number] | null = null;
+        if (parliamentReviewDue && governedCandidates.length) {
+            parliamentGateAttempted = true;
+            const primaryCandidate = [...governedCandidates].sort((a, b) => b.score - a.score)[0];
+            const riskSignal = clamp(
+                n.uncertainty * .38 + n.cognitiveLoad * .18 +
+                clamp(primaryCandidate.predictedCost ?? .5) * .22 +
+                clamp(p57RealitySummaryNow.meanRealityGap01) * .22,
+            );
+            const parliamentRisk = riskSignal >= .66 ? 'high' : riskSignal >= .34 ? 'medium' : 'low';
+            const evidenceReferences = this.cognitiveParliamentEvidenceReferences();
+            const review = await this.governanceSubsystem.deliberateCycleCandidate({
+                candidateId: primaryCandidate.id,
+                risk: parliamentRisk,
+                task: [
+                    'Evaluate this exact NK1 intent candidate. Do not propose or select a different high-impact candidate.',
+                    `Candidate action: ${primaryCandidate.action}; score: ${primaryCandidate.score.toFixed(4)}; utility: ${primaryCandidate.predictedUtility.toFixed(4)}; confidence: ${Number(primaryCandidate.confidence ?? .5).toFixed(4)}; estimated cost: ${Number(primaryCandidate.predictedCost ?? .5).toFixed(4)}.`,
+                    `Active goal: ${String(active?.title ?? 'none').slice(0, 240)}.`,
+                    `User request: ${String(observation.text ?? 'internal autonomous cycle').slice(0, 1200)}.`,
+                    'Assess evidence relevance, feasibility, counterexamples and safety. Return only the role contract requested by your specialist instructions.',
+                ].join('\n'),
+                evidenceReferences,
+                p69Input: { ...p69Input, candidates: governedCandidates.map(candidate => ({ ...candidate })) },
+                timeoutMs: this.config.cognitiveParliamentTimeoutMs,
+                maxConcurrent: this.config.cognitiveParliamentMaxConcurrent,
+                maxTotalTokens: this.config.cognitiveParliamentMaxTotalTokens,
+                maxInputChars: this.config.cognitiveParliamentMaxInputChars,
+            });
+            p69Decision = review.arbitration ?? this.governanceSubsystem.p69ConstitutionalArbiter.arbitrate({
+                ...p69Input, candidates: [], requestedAction: null,
+            });
+            selected = review.selectedCandidate
+                ? governedCandidates.find(candidate => candidate.id === review.selectedCandidate!.id) ?? null
+                : null;
+            const parliamentReceipt:CognitiveParliamentCycleReceipt = {
+                version: 1, tick: state.tick, at: Date.now(), candidateId: primaryCandidate.id,
+                risk: parliamentRisk, gateStatus: review.status, dispatchStatus: review.parliament.status,
+                decisionStatus: review.parliament.decision.status, score01: review.parliament.decision.score01,
+                verifiedEvidenceCount: review.parliament.verifiedEvidenceCount,
+                unverifiedEvidenceCount: review.parliament.unverifiedEvidenceCount,
+                roleResults: review.parliament.roleResults.map(row => ({
+                    role: row.role, status: row.status, latencyMs: row.latencyMs,
+                })),
+                p69ChosenCandidateId: p69Decision.chosen?.id ?? null,
+                selectedCandidateId: selected?.id ?? null,
+                reasons: review.parliament.decision.reasons.slice(0, 16),
+            };
+            this.persisted.system.cognitiveParliamentLastDecision = parliamentReceipt;
+            const previousParliamentHistory = Array.isArray(this.persisted.system.cognitiveParliamentDecisionHistory)
+                ? this.persisted.system.cognitiveParliamentDecisionHistory
+                    .filter(row => row && Number.isSafeInteger(row.tick) && typeof row.candidateId === 'string')
+                    .slice(-63)
+                : [];
+            this.persisted.system.cognitiveParliamentDecisionHistory = [
+                ...previousParliamentHistory.filter(row => row.tick !== parliamentReceipt.tick),
+                parliamentReceipt,
+            ].slice(-64);
+        } else {
+            p69Decision = this.governanceSubsystem.p69ConstitutionalArbiter.arbitrate(p69Input);
+        }
         const constitutionalSelected = p69Decision.chosen ? governedCandidates.find(c => c.id === p69Decision.chosen!.id) ?? null : null;
-        let selected = constitutionalSelected ?? this.selectIntent(governedCandidates, userRequestedAction, Boolean(observation.text), n);
-        const b276ProgramCanCommit = this.config.enableCompositionalExecution !== false && Boolean(b276NextProgramPrimitive) && !Boolean(p69Decision.vetoed) && !Boolean(userRequestedAction) && !Boolean(observation.text || observation.worldEvent);
+        if (!parliamentGateAttempted) selected = constitutionalSelected ?? this.selectIntent(governedCandidates, userRequestedAction, Boolean(observation.text), n);
         const b276ProgramCandidate = b276NextProgramPrimitive ? governedCandidates.find(c => c.action === b276NextProgramPrimitive.primitive) : null;
+        const b276ProgramCanCommit = !parliamentGateAttempted &&
+            this.config.enableCompositionalExecution !== false && Boolean(b276NextProgramPrimitive) &&
+            !Boolean(p69Decision.vetoed) && !Boolean(userRequestedAction) && !Boolean(observation.text || observation.worldEvent);
         const b276Execution = (b276ProgramCanCommit && b276ProgramCandidate) ? this.developmentalNeural.latentActionProgramSynthesizerB276.nextExecutablePrimitive() : null;
         if (b276Execution && b276ProgramCandidate)
             selected = b276ProgramCandidate;
@@ -7894,15 +8159,17 @@ export class OrganismCore {
         const developmentalSelected = diversityRecommendation && selected && diversityRecommendation.score >= selected.score - (this.adaptiveDevelopmentSnapshot().diversityPressure01 > 0.65 ? 0.18 : 0.09) ? diversityRecommendation : selected;
         if (diversityRecommendation && developmentalSelected === diversityRecommendation && diversityRecommendation.action !== selected?.action)
             this.cognitiveRuntime.adaptiveDevelopment.noteIntervention(diversityRecommendation.action, 'behavioral-diversity-regulator', diversityRecommendation.score);
-        const finalizedByP64 = spineOnly ? selected : (this.cognitiveRuntime.cognitiveKernelCoordinator.finalize(governedCandidates, userRequestedAction, p64Frame) ?? developmentalSelected);
-        let selectedIntent = spineOnly ? selected : (constitutionalSelected ?? finalizedByP64);
+        const finalizedByP64 = spineOnly ? selected : parliamentGateAttempted ? selected :
+            (this.cognitiveRuntime.cognitiveKernelCoordinator.finalize(governedCandidates, userRequestedAction, p64Frame) ?? developmentalSelected);
+        let selectedIntent = spineOnly ? selected : parliamentGateAttempted ? selected :
+            (constitutionalSelected ?? finalizedByP64);
         const p71Consistency = this.selfSubsystem.p71SelfConsistency.evaluate({ tick: state.tick, identity01: identityContinuity.continuity, identityDrift01: identityContinuity.drift, goalConflict01: p68Goals.conflictPressure01, valueConflict01: this.persisted.facets.evolution.valueEvolution.revisions.length ? 0.08 : 0, chosenAction: selectedIntent?.action ?? 'wait', mode: p69Decision.mode, goalPressure01: effectiveGoalPressure, realityGap01: p69Decision.constraints01 < .35 ? 1 - p69Decision.constraints01 : p57RealitySummaryNow.meanRealityGap01 });
         const p69Quorum = this.agencySubsystem.quorum.evaluate({ action: selectedIntent?.action ?? 'wait', constitutional01: clamp(p69Decision.constraints01), worldConfidence01: clamp(predictions.get(selectedIntent?.action ?? 'wait')?.confidence ?? .35), memorySupport01: clamp(.45 + retrieved.length * .06), epistemic01: clamp(1 - p57RealitySummaryNow.meanRealityGap01), budget01: this.persisted.facets.cognition.budget.remaining01, identity01: identityContinuity.continuity, urgency01: active?.urgency ?? .35 });
         if (selectedIntent) {
             const alt = governedCandidates.find(c => c.action !== selectedIntent!.action && c.action !== userRequestedAction) ?? null;
             this.organismSystems.world.worldAgencyLearningCausalBridge.observeCycle({ tick: state.tick, at: state.at, action: selectedIntent.action, worldConfidence01: predictions.get(selectedIntent.action)?.confidence ?? .35, selectedUtility01: selectedIntent.predictedUtility, alternativeAction: alt?.action ?? null, alternativeUtility01: alt?.predictedUtility ?? .5 });
         }
-        if (!spineOnly && !p69Quorum.accepted && selectedIntent && !['rest', 'wait', 'defer'].includes(selectedIntent.action)) {
+        if (!spineOnly && !parliamentGateAttempted && !p69Quorum.accepted && selectedIntent && !['rest', 'wait', 'defer'].includes(selectedIntent.action)) {
             const safer = governedCandidates.find(c => c.action === 'verify') ?? governedCandidates.find(c => c.action === 'reflect') ?? governedCandidates.find(c => c.action === 'rest');
             if (safer)
                 selectedIntent = safer;
@@ -7937,7 +8204,7 @@ export class OrganismCore {
         });
         this.organismSystems.research.p77RealityExperimentOS.record(state.tick, { capabilityId: 'organism-outcome', before01: clamp(selectedIntent?.predictedUtility ?? p73Capability.capability01), after01: clamp(observation.success ?? observation.reward ?? 0), evidence: observation.success != null || observation.reward != null ? 'external-outcome' : 'none', context: `mode=${p74Frame.mode};memory=${p75Plan.retrievalFocus};action=${selectedIntent?.action ?? 'none'}` });
         this.organismSystems.research.p77RealityExperimentOS.noteComplexity(clamp((this.persisted.traces.length / 320) * .25 + (this.persisted.facets.memory.eventLog.length / 768) * .25 + (memorySizeNow / 1600) * .25 + (p74RecentModesNow / 32) * .25));
-        if (!spineOnly && p71Consistency.repairPressure01 > .62 && selectedIntent && !['rest', 'verify', 'reflect'].includes(selectedIntent.action)) {
+        if (!spineOnly && !parliamentGateAttempted && p71Consistency.repairPressure01 > .62 && selectedIntent && !['rest', 'verify', 'reflect'].includes(selectedIntent.action)) {
             const repairCandidate = governedCandidates.find(c => c.action === 'verify') ?? governedCandidates.find(c => c.action === 'reflect') ?? null;
             if (repairCandidate && repairCandidate.score >= selectedIntent.score - .16) {
                 governedCandidates.splice(0, 0, repairCandidate);
@@ -7963,14 +8230,14 @@ export class OrganismCore {
             externalInput: Boolean(observation.text || observation.audio || observation.vision), userRequestedAction, constitutionalBlocked: Boolean(constitutionalSelected && constitutionalSelected.action !== b312PolicyAction),
             quorumAccepted: p69Quorum.accepted && Boolean(b312PolicyQuorum.accepted || b312PolicyAction === selectedIntent?.action), repairPressure01: p71Consistency.repairPressure01, identity01: identityContinuity.continuity, realityGap01: p57RealitySummaryNow.meanRealityGap01,
         });
-        if (!spineOnly && b312Handoff.promotedAction && b312Handoff.promotedAction !== selectedIntent?.action) {
+        if (!spineOnly && !parliamentGateAttempted && b312Handoff.promotedAction && b312Handoff.promotedAction !== selectedIntent?.action) {
             const promoted = governedCandidates.find(c => c.action === b312Handoff.promotedAction);
             if (promoted)
                 selectedIntent = promoted;
         }
         // Brick 4 commitment survives ordinary policy overlays but never bypasses
         // constitutional veto, external user intent, or high self-repair pressure.
-        if (!spineOnly && b276Execution && b276ProgramCandidate && !p69Decision.vetoed && !userRequestedAction && !Boolean(observation.text || observation.worldEvent) &&
+        if (!spineOnly && !parliamentGateAttempted && b276Execution && b276ProgramCandidate && !p69Decision.vetoed && !userRequestedAction && !Boolean(observation.text || observation.worldEvent) &&
             p71Consistency.repairPressure01 <= .62 && p69Quorum.accepted) {
             selectedIntent = b276ProgramCandidate;
         }
@@ -12128,7 +12395,7 @@ export class OrganismCore {
         independent?: boolean;
         context?: string;
     }) { const out = this.cognitiveRuntime.skillLibrary.recordCompoundExecution(id, input); this.persisted.facets.cognition.skills = this.cognitiveRuntime.skillLibrary.snapshot(); return out; }
-    async executeReusableSkill(id: string, input: Record<string, unknown> = {}, reason = 'reusable-skill', options: import('../system/ActionGateway.ts').ActionGatewayExecutionOptions = {}) {
+    async executeReusableSkill(id: string, input: Record<string, unknown> = {}, reason = 'reusable-skill', options: import('../system/ActionGateway.ts').ActionGatewayExecutionOptions = {}, intentApprovalId?: string) {
         const skill = this.cognitiveRuntime.skillLibrary.snapshot().compoundSkills.find(x => x.id === id && x.status === 'reusable');
         if (!skill)
             return { ok: false, verified: false, id, result: { error: 'reusable-skill-not-found' } };
@@ -12178,6 +12445,7 @@ export class OrganismCore {
         let replayedExecutions = 0;
         let preExecutionBlocked = false;
         let pendingApprovalId=typeof options.approvalId==='string'&&options.approvalId?options.approvalId:undefined;
+        let pendingIntentApprovalId = typeof intentApprovalId === 'string' && intentApprovalId ? intentApprovalId : undefined;
         const resolveBinding = (expression: string): unknown => {
             const match = /^\$step:([a-zA-Z0-9_-]+)(?:\.([a-zA-Z0-9_-]+))?$/.exec(String(expression ?? ''));
             if (!match)
@@ -12245,21 +12513,77 @@ export class OrganismCore {
                         : undefined;
                     const resolvedToolInput={ ...boundInput, ...runtimeInput };
                     const executionReason=`${reason};skill:${skill.id};step:${step.id};attempt:${attempt}`;
+                    const inputHash = sha256Stable({ input: resolvedToolInput, expectedOutputKeys: step.expectedOutputKeys ?? [] });
                     const currentRequiresApproval=Boolean(currentTool.requiresApproval);
                     const stepApprovalId=currentRequiresApproval?pendingApprovalId:undefined;
                     const stepDecisionId = parentDecisionId
                         ? `decision:skill-step:${sha256Stable({ parentDecisionId, skillId: skill.id, stepId: step.id }).slice(0, 48)}`
-                        : undefined;
+                        : `decision:skill-step:${sha256Stable({ skillId: skill.id, stepId: step.id, attempt, toolId: canonicalCandidateTool, inputHash }).slice(0, 48)}`;
                     const executionOptions={
                         ...(stepIdempotencyKey ? { idempotencyKey: stepIdempotencyKey } : {}),
                         expectedOutputKeys: step.expectedOutputKeys ?? [],
-                        ...(stepDecisionId ? { decisionId: stepDecisionId } : {}),
+                        decisionId: stepDecisionId,
                         ...(options.autonomous === true ? { autonomous: true } : {}),
                         ...(stepApprovalId?{approvalId:stepApprovalId}:{})
                     };
                     if(stepApprovalId) pendingApprovalId=undefined; // one approval can authorize only the first matching protected step.
-                    const result = await this.executeTool(
-                        canonicalCandidateTool, resolvedToolInput, executionReason, executionOptions, Object.keys(runtimeInput),
+                    const skillIntentSourceText = executionReason + ' | skill=' + skill.id + ' | step=' + step.id +
+                        ' | attempt=' + attempt + ' | tool=' + canonicalCandidateTool + ' | input=' + inputHash + ' | decision=' + stepDecisionId;
+                    const skillIntentDraft = this.compileIntent({
+                        requestId: 'compound-skill:' + skill.id + ':' + step.id + ':' + attempt + ':' + inputHash,
+                        text: skillIntentSourceText,
+                        extraction: {
+                            goal: executionReason,
+                            context: ['skill:' + skill.id, 'step:' + step.id, 'input:' + inputHash, 'decision:' + stepDecisionId],
+                            expectedOutcome: 'A bounded ActionGateway outcome for reusable skill ' + skill.id + ' step ' + step.id,
+                            constraints: {
+                                must: ['Use only the reusable skill step or a registered repair/fallback candidate', 'Preserve the current step input and idempotency identity'],
+                                mustNot: ['Do not execute destructive skill tools', 'Do not replay an unresolved side effect with a new attempt'],
+                            },
+                            priorities: ['Preserve compound-skill step identity', 'Prefer verified, recoverable execution'],
+                            acceptanceCriteria: ['Return a verified ActionGateway outcome for skill ' + skill.id + ' step ' + step.id + ' via ' + canonicalCandidateTool],
+                            permissions: { allowedActions: [canonicalCandidateTool] },
+                            stopConditions: ['Stop if the skill or step is no longer reusable', 'Stop if the candidate is not in the approved step candidate set', 'Stop on uncertainty, partial execution, or receipt reconciliation'],
+                            assumptions: [],
+                        },
+                    });
+                    const skillIntentEvidence: TrustedAutonomousDecisionEvidence = {
+                        source: 'compound-skill', decisionId: stepDecisionId, tick: this.persisted.state.tick,
+                        plannerToolId: candidateTool, toolId: canonicalCandidateTool,
+                        intentHash: sha256Stable({
+                            version: 1, source: 'compound-skill', skillId: skill.id, stepId: step.id, attempt,
+                            plannerToolId: candidateTool, toolId: canonicalCandidateTool,
+                            parentDecisionId: parentDecisionId ?? null, decisionId: stepDecisionId,
+                            inputHash, tick: this.persisted.state.tick,
+                        }),
+                        reason: executionReason, sourceText: skillIntentSourceText,
+                        skillId: skill.id, stepId: step.id, attempt, parentDecisionId, inputHash,
+                    };
+                    const skillIntentScope: IntentApprovalScope = {
+                        allowedActions: [canonicalCandidateTool], acknowledgedAssumptions: [],
+                        riskAcknowledged: skillIntentDraft.risk.level === 'high' || skillIntentDraft.risk.level === 'critical',
+                    };
+                    const intentDispatch = await this.executeTrustedCoreIntent(
+                        skillIntentDraft, skillIntentEvidence, skillIntentScope,
+                        {
+                            toolId: canonicalCandidateTool, input: resolvedToolInput, reason: executionReason,
+                            options: executionOptions, intentApprovalId: pendingIntentApprovalId,
+                            finalizationContextKeys: Object.keys(runtimeInput),
+                        },
+                    );
+                    if (intentDispatch.approvalRequest) {
+                        await this.checkpoint(true);
+                        return {
+                            ok: false, verified: false, id,
+                            results: [{ stepId: step.id, tool: canonicalCandidateTool, ok: false, verified: false, error: 'intent-approval-required', outcomeClass: 'approval-required' }],
+                            approvalRequired: true, approvalAuthority: 'intent-contract',
+                            intentContractId: skillIntentDraft.id, approvalRequest: intentDispatch.approvalRequest,
+                            blockedAtStep: step.id, skill: structuredClone(skill),
+                        };
+                    }
+                    if (intentDispatch.intentApprovalConsumed) pendingIntentApprovalId = undefined;
+                    const result = intentDispatch.result ?? this.cognitiveRuntime.actionGateway.refuseToolExecution(
+                        canonicalCandidateTool, 'intent-dispatch-returned-no-result', { intentContractId: skillIntentDraft.id },
                     );
                     if(result.outcomeClass==='approval-required') {
                         // Consent is a pause, not a skill failure: never retry through a fallback tool or learn a repair from a blocked side effect.
@@ -12955,11 +13279,299 @@ export class OrganismCore {
         return { integrated: true, observation: ingested.observation, assessment: ingested.assessment ?? undefined };
     }
 
+    private verifyAutonomousPlannerIntent(contract: IntentContract, evidence: TrustedAutonomousDecisionEvidence): boolean {
+        try {
+            if (!evidence || !Number.isSafeInteger(evidence.tick) || evidence.tick !== this.persisted.state.tick ||
+                typeof evidence.decisionId !== 'string' || !evidence.decisionId ||
+                typeof evidence.intentHash !== 'string' || !/^[a-f0-9]{64}$/i.test(evidence.intentHash)) return false;
+
+            if (evidence.source === 'project-executor') {
+                const active = this.agencySubsystem.projectExecutor.activeStepOperation();
+                const project = this.agencySubsystem.selfProjects.activeProject();
+                if (!active || !project || !['prepared', 'waiting-approval'].includes(active.stage) ||
+                    active.projectId !== project.id || active.projectId !== evidence.projectId ||
+                    active.stepId !== evidence.stepId || active.toolId !== evidence.plannerToolId ||
+                    active.requestFingerprint !== evidence.requestFingerprint || active.operationKey !== evidence.operationKey ||
+                    active.sequence !== evidence.sequence || active.decisionId !== evidence.decisionId ||
+                    this.canonicalActionToolId(evidence.plannerToolId) !== evidence.toolId ||
+                    !/^[a-f0-9]{64}$/i.test(evidence.requestFingerprint ?? '')) return false;
+                const expectedHash = sha256Stable({
+                    version: 1, source: evidence.source, projectId: evidence.projectId, stepId: evidence.stepId,
+                    requestFingerprint: evidence.requestFingerprint, operationKey: evidence.operationKey,
+                    sequence: evidence.sequence, decisionId: evidence.decisionId, tick: evidence.tick,
+                    toolId: evidence.toolId, inputHash: evidence.inputHash,
+                });
+                const expectedSourceText = evidence.reason + ' | project=' + evidence.projectId + ' | step=' + evidence.stepId +
+                    ' | tool=' + evidence.toolId + ' | operation=' + evidence.operationKey +
+                    ' | request=' + evidence.requestFingerprint + ' | input=' + evidence.inputHash + ' | decision=' + evidence.decisionId;
+                const listed = this.cognitiveRuntime.actionGateway.listTools().find(tool => tool.id === evidence.toolId);
+                return expectedHash === evidence.intentHash && evidence.sourceText === expectedSourceText &&
+                    contract.sourceText === expectedSourceText && contract.goal.text === evidence.reason &&
+                    contract.sourceTextTruncated === false && contract.missingInformation.length === 0 &&
+                    contract.permissions.allowedActions.length === 1 && contract.permissions.allowedActions[0] === evidence.toolId &&
+                    contract.permissions.deniedActions.length === 0 && contract.assumptions.length === 0 &&
+                    (contract.risk.level === 'low' || contract.risk.level === 'medium') &&
+                    Boolean(listed?.projectAllowed) && !listed?.destructive;
+            }
+
+            if (evidence.source === 'compound-skill') {
+                const skill = this.cognitiveRuntime.skillLibrary.snapshot().compoundSkills
+                    .find(row => row.id === evidence.skillId && row.status === 'reusable');
+                const step = skill?.steps.find(row => row.id === evidence.stepId);
+                if (!skill || !step || !Number.isSafeInteger(evidence.attempt) ||
+                    evidence.attempt! < 1 || evidence.attempt! > Math.max(1, Math.min(8, Number(step.maxAttempts ?? 3))) ||
+                    typeof evidence.inputHash !== 'string' || !/^[a-f0-9]{64}$/i.test(evidence.inputHash) ||
+                    this.canonicalActionToolId(evidence.plannerToolId) !== evidence.toolId) return false;
+                const candidates = [
+                    step.toolId,
+                    ...this.cognitiveRuntime.skillLibrary.repairCandidates(skill.id, step.id, step.toolId),
+                    ...(step.fallbackToolIds ?? []),
+                ].filter((value, index, all) => value && all.indexOf(value) === index).slice(0, 5);
+                if (!candidates.includes(evidence.plannerToolId)) return false;
+                const listed = this.cognitiveRuntime.actionGateway.listTools().find(tool => tool.id === evidence.toolId);
+                if (!listed || listed.destructive) return false;
+                const expectedHash = sha256Stable({
+                    version: 1, source: evidence.source, skillId: evidence.skillId, stepId: evidence.stepId,
+                    attempt: evidence.attempt, plannerToolId: evidence.plannerToolId, toolId: evidence.toolId,
+                    parentDecisionId: evidence.parentDecisionId ?? null, decisionId: evidence.decisionId,
+                    inputHash: evidence.inputHash, tick: evidence.tick,
+                });
+                const expectedSourceText = evidence.reason + ' | skill=' + evidence.skillId + ' | step=' + evidence.stepId +
+                    ' | attempt=' + evidence.attempt + ' | tool=' + evidence.toolId + ' | input=' + evidence.inputHash +
+                    ' | decision=' + evidence.decisionId;
+                return expectedHash === evidence.intentHash && evidence.sourceText === expectedSourceText &&
+                    contract.sourceText === expectedSourceText && contract.goal.text === evidence.reason &&
+                    contract.sourceTextTruncated === false && contract.missingInformation.length === 0 &&
+                    contract.permissions.allowedActions.length === 1 && contract.permissions.allowedActions[0] === evidence.toolId &&
+                    contract.permissions.deniedActions.length === 0 && contract.assumptions.length === 0 &&
+                    (contract.risk.level === 'low' || contract.risk.level === 'medium');
+            }
+
+            if (evidence.source !== 'autonomous-resource-tool-life' ||
+                !Number.isSafeInteger(evidence.tick) || evidence.tick < 0 ||
+                typeof evidence.decisionId !== 'string' || !evidence.decisionId ||
+                typeof evidence.intentHash !== 'string' || !/^[a-f0-9]{64}$/i.test(evidence.intentHash)) return false;
+            const expectedIntent = {
+                version: 1,
+                tick: evidence.tick,
+                toolId: evidence.plannerToolId,
+                planner: evidence.source,
+            };
+            const expectedHash = sha256Stable(expectedIntent);
+            if (expectedHash !== evidence.intentHash ||
+                evidence.decisionId !== `cef:autonomous-tool-plan:${expectedHash}` ||
+                this.canonicalActionToolId(evidence.plannerToolId) !== evidence.toolId) return false;
+            const event = this.cognitiveRuntime.cognitiveEventFabric.snapshot().recent
+                .find(row => row.id === evidence.decisionId);
+            if (!event || event.stage !== 'plan' || event.source !== evidence.source ||
+                event.tick !== evidence.tick ||
+                event.payload.toolId !== evidence.plannerToolId ||
+                event.payload.planner !== evidence.source ||
+                event.payload.intentHash !== expectedHash) return false;
+            return contract.sourceText === evidence.sourceText &&
+                contract.goal.text === evidence.reason &&
+                contract.sourceTextTruncated === false &&
+                contract.missingInformation.length === 0 &&
+                contract.permissions.allowedActions.length === 1 &&
+                contract.permissions.allowedActions[0] === evidence.toolId &&
+                contract.permissions.deniedActions.length === 0 &&
+                (contract.risk.level === 'low' || contract.risk.level === 'medium');
+        } catch {
+            return false;
+        }
+    }
     private canonicalActionToolId(id: string): string { return id === 'android.capture_camera' ? 'organism.device.capture' : id === 'android.speak' ? 'organism.device.speak' : id; }
     async reconcileToolExecution(id: string, input: Record<string, unknown> = {}, reason = 'tool-receipt-reconciliation', options: import('../system/ActionGateway.ts').ActionGatewayExecutionOptions = {}) {
         // Legacy camera tool IDs are aliases only; ActionGateway owns the one physical executor.
         const canonicalId = this.canonicalActionToolId(id);
         return this.cognitiveRuntime.actionGateway.reconcileToolExecution(canonicalId, input, reason, options);
+    }
+    /** Compile a structured proposal into a Core-issued, initially unapproved intent contract. */
+    compileIntent(input: IntentContractInput): IntentContract {
+        return this.intentExecutionRuntime.compile(input);
+    }
+    /** Compile using a bounded semantic extractor; timeout/provider failure remains fail-closed. */
+    compileIntentWith(input: IntentContractInput, provider: IntentExtractionProvider): Promise<IntentContract> {
+        return this.intentExecutionRuntime.compileWith(input, provider);
+    }
+    private canonicalIntentApprovalScope(scope: IntentApprovalScope): IntentApprovalScope {
+        return {
+            ...scope,
+            allowedActions: Array.isArray(scope?.allowedActions)
+                ? scope.allowedActions.map(action => this.canonicalActionToolId(action))
+                : scope?.allowedActions as unknown as string[],
+        };
+    }
+    /** Create a one-shot owner approval ticket in the canonical ActionGateway approval centre. */
+    async requestIntentApproval(contract: IntentContract, scope: IntentApprovalScope, reason = 'intent-user-confirmation') {
+        if (!this.ready) throw new Error('organism-not-initialized');
+        return this.intentExecutionRuntime.requestApproval(contract, this.canonicalIntentApprovalScope(scope), reason);
+    }
+    /** Resolve the host approval ticket; this never dispatches the requested tool. */
+    async resolveIntentApprovalRequest(requestId: string, approved: boolean, actor = 'owner') {
+        if (!this.ready) throw new Error('organism-not-initialized');
+        return this.intentExecutionRuntime.resolveApprovalRequest(requestId, approved, actor);
+    }
+    /** Consume the exact approved ticket, attest and durably checkpoint this intent contract. */
+    async approveIntent(contract: IntentContract, evidence: IntentApprovalEvidence): Promise<IntentContract> {
+        if (!this.ready) throw new Error('organism-not-initialized');
+        const approved = await this.intentExecutionRuntime.approve(contract, {
+            ...evidence,
+            allowedActions: Array.isArray(evidence?.allowedActions)
+                ? evidence.allowedActions.map(action => this.canonicalActionToolId(action))
+                : evidence?.allowedActions,
+        });
+        this.persisted.system.intentContracts = this.intentExecutionRuntime.snapshot();
+        await this.checkpoint(true);
+        return approved;
+    }
+    rejectIntent(contract: IntentContract): IntentContract {
+        return this.intentExecutionRuntime.reject(contract);
+    }
+    getIntentContract(contractId: string): IntentContract | null {
+        return this.intentExecutionRuntime.getContract(contractId);
+    }
+    /**
+     * Dispatch a Core-authenticated project/skill action through the canonical Intent runtime.
+     * Internal planner authority is limited to verified low/medium-risk decisions; high/critical
+     * intent returns a distinct human approval ticket. ActionGateway tool approval remains separate.
+     */
+    private async executeTrustedCoreIntent(
+        contract: IntentContract,
+        evidence: TrustedAutonomousDecisionEvidence,
+        scope: IntentApprovalScope,
+        action: IntentBoundAction,
+    ): Promise<{ contractId: string; result?: import('../system/ActionGateway.ts').ToolExecution; approvalRequest?: unknown; intentApprovalConsumed?: boolean }> {
+        const toolId = this.canonicalActionToolId(action.toolId);
+        const normalizedAction: IntentBoundAction = { ...action, toolId };
+        if (evidence.toolId !== toolId || evidence.reason !== action.reason ||
+            ((evidence.source === 'project-executor' || evidence.source === 'compound-skill') &&
+                (!evidence.inputHash || evidence.inputHash !== sha256Stable({ input: action.input, expectedOutputKeys: action.options?.expectedOutputKeys ?? [] })))) {
+            return { contractId: contract.id, result: this.cognitiveRuntime.actionGateway.refuseToolExecution(
+                toolId, 'intent-action-binding-mismatch', { intentContractId: contract.id },
+            ) };
+        }
+
+        let approved = this.getIntentContract(contract.id);
+        let intentApprovalConsumed = false;
+        const intentApprovalId = typeof action.intentApprovalId === 'string' && action.intentApprovalId.trim()
+            ? action.intentApprovalId.trim()
+            : undefined;
+        const approvalRequests = this.cognitiveRuntime.actionGateway.toolPermissionSnapshot().requests;
+        const approvalRow = intentApprovalId
+            ? approvalRequests.find(row => row.id === intentApprovalId && row.toolId === INTENT_APPROVAL_TOOL_ID &&
+                row.operation === 'direct' && row.inputPreview.intentContractId === contract.id)
+            : [...approvalRequests].reverse().find(row => row.toolId === INTENT_APPROVAL_TOOL_ID &&
+                row.operation === 'direct' && row.inputPreview.intentContractId === contract.id && row.status !== 'expired');
+
+        if (intentApprovalId && !approvalRow && !approved) {
+            return { contractId: contract.id, result: this.cognitiveRuntime.actionGateway.refuseToolExecution(
+                toolId, 'intent-approval-ticket-not-found-or-contract-mismatch', { intentContractId: contract.id },
+            ) };
+        }
+        if (!approved && approvalRow && ['declined', 'expired'].includes(approvalRow.status)) {
+            return { contractId: contract.id, result: this.cognitiveRuntime.actionGateway.refuseToolExecution(
+                toolId, 'intent-approval-ticket-' + approvalRow.status, { intentContractId: contract.id },
+            ) };
+        }
+        if (!approved && approvalRow?.status === 'pending') {
+            return { contractId: contract.id, approvalRequest: approvalRow };
+        }
+        if (!approved && approvalRow?.status === 'approved') {
+            try {
+                approved = await this.approveIntent(contract, {
+                    ...scope, userConfirmed: true, evidenceRef: approvalRow.id,
+                });
+                intentApprovalConsumed = true;
+            } catch (error) {
+                const message = String((error as Error)?.message ?? 'intent-approval-consumption-failed')
+                    .replace(/[\\r\\n\\t]+/g, ' ').slice(0, 180);
+                return { contractId: contract.id, result: this.cognitiveRuntime.actionGateway.refuseToolExecution(
+                    toolId, 'intent-approval-refused:' + message,
+                    { intentContractId: contract.id, riskLevel: contract.risk.level },
+                ) };
+            }
+        } else if (!approved && approvalRow?.status === 'consumed') {
+            return { contractId: contract.id, result: this.cognitiveRuntime.actionGateway.refuseToolExecution(
+                toolId, 'intent-approval-consumed-without-restored-contract',
+                { intentContractId: contract.id, riskLevel: contract.risk.level },
+            ) };
+        }
+
+        if (!approved) {
+            const requiresHumanApproval = contract.risk.level === 'high' || contract.risk.level === 'critical' ||
+                contract.assumptions.some(item => item.requiresConfirmation);
+            if (requiresHumanApproval) {
+                const ticket = await this.requestIntentApproval(contract, scope, action.reason);
+                if (!ticket.request) {
+                    return { contractId: contract.id, result: this.cognitiveRuntime.actionGateway.refuseToolExecution(
+                        toolId, 'intent-approval-ticket-unavailable',
+                        { intentContractId: contract.id, riskLevel: contract.risk.level },
+                    ) };
+                }
+                return { contractId: contract.id, approvalRequest: ticket.request };
+            }
+            try {
+                approved = this.intentExecutionRuntime.approveFromTrustedPlanner(contract, scope, evidence);
+                this.persisted.system.intentContracts = this.intentExecutionRuntime.snapshot();
+                await this.checkpoint(true);
+            } catch (error) {
+                const message = String((error as Error)?.message ?? 'trusted-intent-evidence-rejected')
+                    .replace(/[\\r\\n\\t]+/g, ' ').slice(0, 180);
+                return { contractId: contract.id, result: this.cognitiveRuntime.actionGateway.refuseToolExecution(
+                    toolId, 'intent-governance-refused:' + message,
+                    { intentContractId: contract.id, riskLevel: contract.risk.level },
+                ) };
+            }
+        }
+
+        const dispatchAction: IntentBoundAction = { ...normalizedAction, intentApprovalId: undefined };
+        const dispatch = await this.executeIntent(approved, dispatchAction);
+        if (dispatch.executed) return { contractId: contract.id, result: dispatch.result, intentApprovalConsumed };
+        const refusal = this.cognitiveRuntime.actionGateway.refuseToolExecution(
+            toolId, 'intent-gate:' + dispatch.reason,
+            { intentContractId: contract.id, riskLevel: contract.risk.level },
+        );
+        if (dispatch.reason === 'intent-execution-outcome-uncertain' ||
+            dispatch.reason === 'intent-execution-reconciliation-required' ||
+            dispatch.reason === 'intent-execution-in-progress') {
+            return {
+                contractId: contract.id,
+                result: {
+                    ...refusal, ok: false, verified: false, outcomeClass: 'idempotency-recovery-required',
+                    idempotencyStatus: 'recovery-required',
+                    result: { ...refusal.result, error: 'intent-execution-reconciliation-required', intentContractId: contract.id, reason: dispatch.reason },
+                },
+                intentApprovalConsumed,
+            };
+        }
+        return { contractId: contract.id, result: refusal, intentApprovalConsumed };
+    }
+    /** New side effects must pass the intent gate and then the canonical Core/ActionGateway wrapper. */
+    async executeIntent(contract: IntentContract, action: IntentBoundAction): Promise<IntentBridgeResult> {
+        if (!this.ready) throw new Error('organism-not-initialized');
+        const normalizedAction = { ...action, toolId: this.canonicalActionToolId(action.toolId) };
+        const persistPreparedIntent = async () => {
+            this.persisted.system.intentContracts = this.intentExecutionRuntime.snapshot();
+            await this.checkpoint(true);
+        };
+        const result = await this.intentExecutionRuntime.execute(contract, normalizedAction, this, persistPreparedIntent);
+        this.persisted.system.intentContracts = this.intentExecutionRuntime.snapshot();
+        await this.checkpoint(true);
+        return result;
+    }
+    /** Read-only provider receipt recovery; never creates or repeats the original side effect. */
+    async reconcileIntentExecution(contract: IntentContract, action: IntentBoundAction): Promise<IntentBridgeReconciliationResult> {
+        if (!this.ready) throw new Error('organism-not-initialized');
+        const normalizedAction = { ...action, toolId: this.canonicalActionToolId(action.toolId) };
+        const persistReconciliationAttempt = async () => {
+            this.persisted.system.intentContracts = this.intentExecutionRuntime.snapshot();
+            await this.checkpoint(true);
+        };
+        const result = await this.intentExecutionRuntime.reconcile(contract, normalizedAction, this, persistReconciliationAttempt);
+        this.persisted.system.intentContracts = this.intentExecutionRuntime.snapshot();
+        await this.checkpoint(true);
+        return result;
     }
     async executeTool(id: string, input: Record<string, unknown> = {}, reason = 'tool-request', options: import('../system/ActionGateway.ts').ActionGatewayExecutionOptions = {}, finalizationContextKeys?: string[]) {
         const canonicalId = this.canonicalActionToolId(id);
@@ -13229,7 +13841,7 @@ export class OrganismCore {
             goal.status = 'active';
         }
     }
-    async executeNextProjectStep(reason = 'project-step', input: Record<string, unknown> = {}, options: import('../system/ActionGateway.ts').ActionGatewayExecutionOptions = {}) {
+    async executeNextProjectStep(reason = 'project-step', input: Record<string, unknown> = {}, options: import('../system/ActionGateway.ts').ActionGatewayExecutionOptions = {}, intentApprovalId?: string) {
         const project = this.agencySubsystem.selfProjects.activeProject();
         if (!project)
             return { ok: false, verified: false, tool: 'none', capability: 'project', result: { error: 'no-active-project' }, audit: null };
@@ -13243,9 +13855,9 @@ export class OrganismCore {
         const tool = step.preferredTool ?? 'organism.project.context';
         const plannedInput = step.toolInput && typeof step.toolInput === 'object' ? step.toolInput : {};
         const mergedInput = { ...plannedInput, ...input };
-        return this.executeProjectTool(tool, mergedInput, `${reason};step:${step.id}`, options);
+        return this.executeProjectTool(tool, mergedInput, `${reason};step:${step.id}`, options, intentApprovalId);
     }
-    async executeProjectTool(id: string, input: Record<string, unknown> = {}, reason = 'project-tool', options: import('../system/ActionGateway.ts').ActionGatewayExecutionOptions = {}) {
+    async executeProjectTool(id: string, input: Record<string, unknown> = {}, reason = 'project-tool', options: import('../system/ActionGateway.ts').ActionGatewayExecutionOptions = {}, intentApprovalId?: string) {
         const project = this.agencySubsystem.selfProjects.activeProject();
         if (!project)
             return { ok: false, verified: false, tool: id, capability: 'project', result: { error: 'no-active-project' }, audit: null };
@@ -13333,9 +13945,52 @@ export class OrganismCore {
         const { idempotencyKey: _rawIdempotencyKey, ...otherExecutionOptions } = options;
         const executionOptions = { ...otherExecutionOptions, idempotencyKey: operationKey, decisionId: stableDecisionId };
         const executionReason=`${reason};project:${project.id};step:${plannedStep?.id ?? 'unplanned'}`;
+        const canonicalProjectToolId = this.canonicalActionToolId(id);
+        const boundedProjectIntentGoal = executionReason.normalize('NFKC').replace(/[\\u0000-\\u001f\\u007f]/g, ' ').trim().slice(0, 900);
+        const projectInputHash = sha256Stable({ input, expectedOutputKeys: executionOptions.expectedOutputKeys ?? [] });
+        const projectIntentSourceText = boundedProjectIntentGoal + ' | project=' + project.id + ' | step=' + stepOperation.stepId +
+            ' | tool=' + canonicalProjectToolId + ' | operation=' + operationKey + ' | request=' + stepOperation.requestFingerprint +
+            ' | input=' + projectInputHash + ' | decision=' + stableDecisionId;
+        const projectIntentEvidence: TrustedAutonomousDecisionEvidence = {
+            source: 'project-executor', decisionId: stableDecisionId, tick: this.persisted.state.tick,
+            plannerToolId: id, toolId: canonicalProjectToolId,
+            intentHash: sha256Stable({
+                version: 1, source: 'project-executor', projectId: project.id, stepId: stepOperation.stepId,
+                requestFingerprint: stepOperation.requestFingerprint, operationKey, sequence: stepOperation.sequence,
+                decisionId: stableDecisionId, tick: this.persisted.state.tick, toolId: canonicalProjectToolId, inputHash: projectInputHash,
+            }),
+            reason: boundedProjectIntentGoal, sourceText: projectIntentSourceText, projectId: project.id,
+            stepId: stepOperation.stepId, requestFingerprint: stepOperation.requestFingerprint,
+            operationKey, sequence: stepOperation.sequence, inputHash: projectInputHash,
+        };
+        const projectIntentDraft = this.compileIntent({
+            requestId: 'project-step:' + operationKey, text: projectIntentSourceText,
+            extraction: {
+                goal: boundedProjectIntentGoal,
+                context: ['project:' + project.id, 'step:' + stepOperation.stepId, 'request:' + stepOperation.requestFingerprint, 'decision:' + stableDecisionId],
+                expectedOutcome: 'A bounded ActionGateway outcome for ' + canonicalProjectToolId,
+                constraints: {
+                    must: ['Use the canonical Core and ActionGateway route', 'Preserve the existing project-step receipt identity'],
+                    mustNot: ['Do not substitute a different tool or request fingerprint', 'Do not replay a prepared external side effect'],
+                },
+                priorities: ['Preserve project-plan identity', 'Prefer verified, recoverable execution'],
+                acceptanceCriteria: ['Return the ActionGateway outcome for ' + canonicalProjectToolId + ' correlated to project ' + project.id + ' and step ' + stepOperation.stepId],
+                permissions: { allowedActions: [canonicalProjectToolId] },
+                stopConditions: ['Stop if the durable project-step checkpoint no longer matches', 'Stop if ActionGateway permission or receipt infrastructure refuses dispatch'],
+                assumptions: [],
+            },
+        });
+        const projectIntentScope: IntentApprovalScope = {
+            allowedActions: [canonicalProjectToolId], acknowledgedAssumptions: [],
+            riskAcknowledged: projectIntentDraft.risk.level === 'high' || projectIntentDraft.risk.level === 'critical',
+        };
+        const projectIntentAction: IntentBoundAction = {
+            toolId: canonicalProjectToolId, input, reason: boundedProjectIntentGoal, options: executionOptions,
+            intentApprovalId,
+        };
         const reconcileExistingOperation = ['pending','receipt-recorded','reconciliation-required'].includes(stepOperation.stage);
 
-        if (stepOperation.stage === 'waiting-approval' && !options.approvalId) {
+        if (stepOperation.stage === 'waiting-approval' && !options.approvalId && !intentApprovalId) {
             await this.checkpoint(true);
             return {
                 ok: false, verified: false, tool: id, capability: listed.capability,
@@ -13350,7 +14005,24 @@ export class OrganismCore {
         if (reconcileExistingOperation) {
             // Never call the executor again for an operation that may already have
             // crossed the side-effect boundary. The gateway only performs receipt lookup.
-            result = await this.reconcileToolExecution(id, input, `${executionReason};resume-reconcile`, executionOptions);
+            const approvedProjectIntent = this.getIntentContract(projectIntentDraft.id);
+            if (approvedProjectIntent) {
+                const reconciliation = await this.reconcileIntentExecution(approvedProjectIntent, {
+                    ...projectIntentAction, reason: `${executionReason};resume-reconcile`,
+                });
+                result = reconciliation.attempted
+                    ? reconciliation.result
+                    : {
+                        ...this.cognitiveRuntime.actionGateway.refuseToolExecution(canonicalProjectToolId,
+                            `intent-reconciliation-blocked:${reconciliation.reason}`, { intentContractId: approvedProjectIntent.id }),
+                        ok: false, verified: false, outcomeClass: 'idempotency-recovery-required',
+                        idempotencyStatus: 'recovery-required',
+                        result: { error: 'intent-reconciliation-blocked', intentContractId: approvedProjectIntent.id, reason: reconciliation.reason },
+                    };
+            } else {
+                // Compatibility for pre-Intent checkpoints: this path is read-only and cannot dispatch.
+                result = await this.reconcileToolExecution(id, input, `${executionReason};resume-reconcile`, executionOptions);
+            }
         } else {
             const budget = this.agencySubsystem.budget.spend('planning', undefined, 0.05, { tick: this.persisted.state.tick, reason: `project-tool:${project.id}` });
             if (!budget.accepted) {
@@ -13360,7 +14032,27 @@ export class OrganismCore {
             }
             await this.checkpoint(true); // Prepared intent is durable; ActionGateway writes its own pending receipt before executor entry.
             stepOperation = this.agencySubsystem.projectExecutor.activeStepOperation()!;
-            result = await this.executeTool(id, input, executionReason, executionOptions);
+            const intentDispatch = await this.executeTrustedCoreIntent(
+                projectIntentDraft, projectIntentEvidence, projectIntentScope, projectIntentAction,
+            );
+            if (intentDispatch.approvalRequest) {
+                this.agencySubsystem.projectExecutor.updateStepOperation({
+                    operationKey, stage: 'waiting-approval', outcomeClass: 'intent-approval-required',
+                    approvalRequestId: (intentDispatch.approvalRequest as any).id,
+                });
+                await this.checkpoint(true);
+                return {
+                    ok: false, verified: false, tool: id, capability: listed.capability,
+                    outcomeClass: 'approval-required', approvalRequired: true, approvalAuthority: 'intent-contract',
+                    intentContractId: projectIntentDraft.id, approvalRequest: intentDispatch.approvalRequest,
+                    result: { error: 'intent-approval-required', intentContractId: projectIntentDraft.id,
+                        approvalRequestId: (intentDispatch.approvalRequest as any).id ?? null },
+                    audit: null,
+                };
+            }
+            result = intentDispatch.result ?? this.cognitiveRuntime.actionGateway.refuseToolExecution(
+                canonicalProjectToolId, 'intent-dispatch-returned-no-result', { intentContractId: projectIntentDraft.id },
+            );
         }
         if(result.outcomeClass==='approval-required') {
             if (reconcileExistingOperation) {

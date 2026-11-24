@@ -844,6 +844,27 @@ export class ActionGateway {
     };
   }
 
+  /**
+   * Record a Core-owned pre-execution policy refusal without entering the tool
+   * executor. This keeps audit semantics and live/dry-run metadata canonical.
+   */
+  refuseToolExecution(
+    id:string,
+    reason='pre-execution-policy-refused',
+    context:{intentContractId?:string;riskLevel?:string}={},
+  ):ToolExecution {
+    const tool=this.tools.get(id);
+    const safeReason=String(reason||'pre-execution-policy-refused').replace(/[\r\n\t]+/g,' ').slice(0,240);
+    const details={
+      error:'pre-execution-policy-refused',
+      reason:safeReason,
+      ...(typeof context.intentContractId==='string'?{intentContractId:context.intentContractId.slice(0,80)}:{}),
+      ...(context.riskLevel==='low'||context.riskLevel==='medium'||context.riskLevel==='high'||context.riskLevel==='critical'?{riskLevel:context.riskLevel}:{}),
+    };
+    return this.result(id,tool?.capability??'unknown',safeReason,'policy-refused',`exec-${randomUUID()}`,details,
+      'intent governance refused dispatch before tool executor entry');
+  }
+
   async executeTool(id:string,input:Record<string,unknown>={},reason='tool-request',options:ActionGatewayExecutionOptions={}):Promise<ToolExecution> {
     const registeredTool=this.tools.get(id);
     const validation=validateToolInputContract(input,registeredTool?.inputContract??DEFAULT_TOOL_INPUT_ENVELOPE);

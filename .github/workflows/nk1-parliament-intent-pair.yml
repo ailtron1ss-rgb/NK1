@@ -1,0 +1,44 @@
+name: NK1 Cognitive Parliament and Intent Contract Pair
+
+on:
+  pull_request:
+    branches: [workpass70-source]
+    paths:
+      - 'runtime/neuro-kurisu/src/organism/core/GovernanceSubsystemRuntime.ts'
+      - 'runtime/neuro-kurisu/src/organism/core/OrganismCore.ts'
+      - 'runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts'
+      - 'runtime/neuro-kurisu/src/organism/core/OrganismSystemFabric.ts'
+      - 'runtime/neuro-kurisu/src/organism/cognition/IntentCompiler.ts'
+      - 'runtime/neuro-kurisu/src/organism/system/CognitiveParliament*.ts'
+      - 'runtime/neuro-kurisu/src/organism/system/Intent*.ts'
+      - 'runtime/neuro-kurisu/tests/cognitive-parliament*.mjs'
+      - 'runtime/neuro-kurisu/tests/intent-*.mjs'
+      - 'runtime/neuro-kurisu/package.json'
+      - '.github/workflows/nk1-parliament-intent-pair.yml'
+permissions:
+  contents: read
+concurrency:
+  group: nk1-parliament-intent-pair-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  parliament-intent:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: runtime/neuro-kurisu
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - name: Install locked runtime dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Cognitive Parliament trust and dispatch contracts
+        run: npm run test:cognitive-parliament && npm run test:cognitive-parliament-dispatcher
+      - name: Intent compiler and host approval/recovery contracts
+        run: npm run test:intent-compiler && npm run test:intent-core-integration
+      - name: Planner gateway route regression
+        run: npm run test:workpass97:autonomous-planner-gateway-route
+      - name: Runtime typecheck
+        run: npm run typecheck

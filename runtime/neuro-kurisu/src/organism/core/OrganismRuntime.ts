@@ -493,7 +493,23 @@ export class OrganismRuntime {
     this.phonePolicy.worldCheckpointMaxDirtyCycles = Math.max(1, Number(this.phonePolicy.worldCheckpointMaxDirtyCycles));
     this.stopping = false;
     const stateStore = config.stateStore ?? new FileStateStore<PersistedOrganism>(config.stateFile);
-    this.core = new OrganismCore(stateStore, { ...config, cycleResultMode:'operational' });
+    // Reuse the host language invoker as six specialist prompts only when the host
+    // explicitly enabled language and did not supply its own role/identity boundary.
+    // A single invoker is one independence family; changing backend labels cannot
+    // be used to manufacture independent-model evidence.
+    const autoParliament = this.config.enableLanguage === true &&
+      typeof this.config.languageInvoker === 'function' &&
+      config.enableCognitiveParliament !== false &&
+      !config.parliamentRoleExecutors &&
+      !config.parliamentModelAttestor &&
+      !config.parliamentModelAttestationRegistry;
+    const runtimeParliament = autoParliament
+      ? OrganismCore.createLanguageInvokerParliamentAdapter(this.config.languageInvoker!)
+      : undefined;
+    const runtimeCoreConfig: RuntimeConfig = runtimeParliament
+      ? { ...config, enableCognitiveParliament: true, ...runtimeParliament }
+      : config;
+    this.core = new OrganismCore(stateStore, { ...runtimeCoreConfig, cycleResultMode:'operational' });
     this.undoFirstWorkspaceRoot = stateStore instanceof FileStateStore ? stateStore.siblingPath('workspace') : null;
     const learningJournals = createDefaultLearningJournals(config.stateFile);
     this.core.configureP23LearningJournals(learningJournals);
