@@ -1,5 +1,6 @@
 import type { ActionKind, EmotionLabel, OrganismSnapshot, AvatarBrainProjectionV1, AvatarBrainChannelsV1 } from "@/organism/types";
 import type { AvatarMotorIntentPlan } from "./motorIntent.ts";
+import type { BodyChannel } from "./embodimentSwitch.ts";
 import { planAvatarMotorIntent } from "./motorIntent.ts";
 import { EXPRESSION_TEXT } from "./embodimentUiBridge.ts";
 import {
@@ -76,7 +77,7 @@ export interface AvatarRenderProjection {
   motorPlan: AvatarMotorIntentPlan;
   brainFrame: AvatarBrainProjectionV1 | null;
   brainChannels: AvatarBrainChannelsV1 | null;
-  bodyChannels: Partial<Record<string, number>>;
+  bodyChannels: Partial<Record<BodyChannel, number>>;
   expression: string;
   expressionIntensity: number;
   gaze: { x: number; y: number };

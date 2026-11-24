@@ -53,6 +53,7 @@ test("canonical same-tick brain frame is folded into the one shared render proje
   const snapshot = emptySnapshot();
   snapshot.tick = 42;
   snapshot.lastOption = "respond";
+  snapshot.emotion = { ...snapshot.emotion, label: "curiosity", valence: 0.7, arousal: 0.55 };
   snapshot.avatarBrain = { schemaVersion: 1, stateVersion: 42, frame: frame() };
 
   const projection = buildAvatarRenderProjection(input(snapshot));
@@ -80,6 +81,7 @@ test("stale brain frames fail closed and leave the existing renderer-neutral fal
   const snapshot = emptySnapshot();
   snapshot.tick = 42;
   snapshot.lastOption = "respond";
+  snapshot.emotion = { ...snapshot.emotion, label: "curiosity", valence: 0.7, arousal: 0.55 };
   snapshot.avatarBrain = { schemaVersion: 1, stateVersion: 41, frame: frame() };
 
   const projection = buildAvatarRenderProjection(input(snapshot));

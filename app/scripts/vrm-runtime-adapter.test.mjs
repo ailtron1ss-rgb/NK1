@@ -329,3 +329,25 @@ test("normalized VRM consumes shared motor head tilt and clamps it to the calibr
   assert.ok(Math.abs(vrm.bones.get("neck").rotation.z - 0.0525) < 1e-9);
   assert.ok(Math.abs(vrm.bones.get("head").rotation.z - 0.0975) < 1e-9);
 });
+
+
+test("canonical brain head yaw is bounded and shared across normalized neck/head ownership", () => {
+  const vrm = createFakeVrm();
+  const result = applyVrmNormalizedMotorFrame(vrm, {
+    action: "respond", emotion: "curiosity", gazeX: 0.5, gazeY: -0.25,
+    cognitiveLoad: 0.4, energy: 0.8, socialNeed: 0.2, uncertainty: 0.3,
+    speaking: false, headYaw: 0.2, headTilt: 0,
+  });
+  assert.equal(result.applied, true);
+  const headY = 0.5 * (0.22 - 0.2 * 0.05) + 0.3 * 0.025 + 0.2 * 0.055;
+  assert.ok(Math.abs(vrm.bones.get("head").rotation.y - headY * 0.65) < 1e-12);
+  assert.ok(Math.abs(vrm.bones.get("neck").rotation.y - headY * 0.35) < 1e-12);
+
+  applyVrmNormalizedMotorFrame(vrm, {
+    action: "respond", emotion: "curiosity", gazeX: 0, gazeY: 0,
+    cognitiveLoad: 0, energy: 1, socialNeed: 0, uncertainty: 0,
+    speaking: false, headYaw: 9, headTilt: 0,
+  });
+  assert.ok(Math.abs(vrm.bones.get("head").rotation.y - 0.055 * 0.65) < 1e-12,
+    "out-of-range yaw must be clamped before applying the normalized offset");
+});
