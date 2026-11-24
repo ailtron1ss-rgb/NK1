@@ -46,3 +46,4 @@ jobs:
           node --experimental-strip-types tests/workpass97-autonomous-planner-gateway-route.mjs
           node --experimental-strip-types tests/cognitive-runtime-planner-execution-gate-workpass603.mjs
           node --experimental-strip-types tests/big-pass-273-goal-lifecycle-terminal-immutability.mjs
+          node --experimental-strip-types tests/big-pass-273-autonomous-goal-state-machine.mjs
