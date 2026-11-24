@@ -1,0 +1,27 @@
+name: NK1 P0 spine-only verified SelfAuthorship runtime parity
+
+on:
+  pull_request:
+    paths:
+      - "runtime/neuro-kurisu/src/organism/core/OrganismCore.ts"
+      - "runtime/neuro-kurisu/src/organism/cognition/SelfAuthorship.ts"
+      - "runtime/neuro-kurisu/tests/self-authorship-spineonly-runtime-workpass71.mjs"
+      - "runtime/neuro-kurisu/package.json"
+      - ".github/workflows/nk1-p0-spineonly-selfauthorship-runtime.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  spineonly-selfauthorship:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          package-manager-cache: false
+      - name: Spine-only canonical authorship and restart regression
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:self-authorship-spineonly-runtime-workpass71
