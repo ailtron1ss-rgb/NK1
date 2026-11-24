@@ -4002,3 +4002,5 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Keep unverified, ambiguous, unselected, forged, external or failed outcomes from generating intrinsic authorship credit.
 - Commit the authorship update through the existing Core snapshot in the same persistence boundary as the completed action receipt, OutcomeCognition projections and CognitiveEventFabric trace.
 - Reconciliation after a process restart closes the original pending intent using the provider's read-only receipt lookup; the executor is not re-entered and idempotent replay does not credit twice.
+
+- Preserve the exact originating Core decision ID in CEF tool-action receipt payloads even when no matching CEF parent node exists; retain `decisionLinked=false` and no parent edge, and allow legacy null-reference receipt projections to replay without conflict.

@@ -30,3 +30,7 @@ No new receipt ledger, no parallel recovery engine, no changes to ActionGateway'
 7. Replay the idempotency key and assert no second effect or credit.
 
 The dedicated Actions workflow first requires the exact expected assertion failure on the test-only pre-fix commit, then runs the scenario and the existing archive, crash, verification, restart and runtime type/syntax regressions.
+
+## CEF decision reference hardening
+
+The CEF receipt projection now preserves the exact sanitized `decisionId` reference in the action payload even when the Core decision trace is not materialized as a same-ID CEF event. In that case `decisionLinked` remains false and `parentIds` stays empty, so no dangling causal edge is fabricated. Replay accepts legacy receipt projections whose payload had a null decisionId while the canonical request hash still binds the original ID.
