@@ -3,6 +3,7 @@ import { B273AutonomousGoalLifecycle } from '../src/organism/cognition/B273Auton
 
 const input = (tick) => ({
   tick,
+  autonomousAllowed: true,
   endogenousGoalVector: Array(8).fill(0),
   selfLatent: Array(16).fill(0),
   worldLatent: Array(16).fill(0),

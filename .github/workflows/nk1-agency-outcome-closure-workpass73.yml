@@ -9,13 +9,19 @@ on:
       - "runtime/neuro-kurisu/src/organism/cognition/SelfAuthorship.ts"
       - "runtime/neuro-kurisu/src/organism/core/OrganismCore.ts"
       - "runtime/neuro-kurisu/src/organism/system/CognitiveEventFabric.ts"
+      - "runtime/neuro-kurisu/src/organism/cognition/B273AutonomousGoalLifecycle.ts"
+      - "runtime/neuro-kurisu/src/organism/core/DevelopmentalNeuralRuntime.ts"
       - "runtime/neuro-kurisu/tests/**"
+      - "runtime/neuro-kurisu/src/organism/cognition/B273AutonomousGoalLifecycle.ts"
+      - "runtime/neuro-kurisu/src/organism/core/DevelopmentalNeuralRuntime.ts"
   pull_request:
     paths:
       - "runtime/neuro-kurisu/src/organism/cognition/SelfAuthorship.ts"
       - "runtime/neuro-kurisu/src/organism/core/OrganismCore.ts"
       - "runtime/neuro-kurisu/src/organism/system/CognitiveEventFabric.ts"
       - "runtime/neuro-kurisu/tests/**"
+      - "runtime/neuro-kurisu/src/organism/cognition/B273AutonomousGoalLifecycle.ts"
+      - "runtime/neuro-kurisu/src/organism/core/DevelopmentalNeuralRuntime.ts"
 
 permissions:
   contents: read
@@ -48,3 +54,4 @@ jobs:
           node --experimental-strip-types tests/big-pass-273-autonomous-goal-state-machine.mjs
           node --experimental-strip-types tests/big-pass-273-autonomous-goal-lifecycle.mjs
           node --experimental-strip-types tests/big-pass-273-goal-lifecycle-terminal-immutability.mjs
+          node --experimental-strip-types tests/big-pass-273-goal-outcome-attribution.mjs

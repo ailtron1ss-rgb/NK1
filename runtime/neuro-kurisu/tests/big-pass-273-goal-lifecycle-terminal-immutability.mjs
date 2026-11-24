@@ -4,6 +4,7 @@ import { B273AutonomousGoalLifecycle } from '../src/organism/cognition/B273Auton
 const engine = new B273AutonomousGoalLifecycle();
 const input = (tick) => ({
   tick,
+  autonomousAllowed: true,
   endogenousGoalVector: Array(8).fill(0),
   selfLatent: Array(16).fill(0),
   worldLatent: Array(16).fill(0),
@@ -30,6 +31,8 @@ assert.ok(completedGoalId, 'B273 must create an initial internal goal');
 let outcome;
 for (let tick = 1; tick <= 10; tick += 1) {
   outcome = engine.learnFromOutcome({
+    goalId: first.goalId,
+    decisionAutonomous: true,
     tick,
     action: first.action,
     plan: first.plan,
