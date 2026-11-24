@@ -64,7 +64,7 @@ test("procedural 3D fallback uses the extracted shared cel-shading material adap
 });
 test("non-VRM GLB imports use the extracted toon adapter while VRM materials remain native",async()=>{
  const stage=await readFile(stagePath,"utf8"),toon=await readFile(path.join(root,"src/components/avatar/threeToonMaterials.ts"),"utf8");
- assert.ok(stage.includes('if(!vrm){if(name===KURISU_HYBRID_MODEL_V7_CANDIDATE.filename)applyAvatarPbrMaterials(root);else applyAnimeToonMaterials(root);}'));
+ assert.ok(stage.includes('if(!vrm){if(name===KURISU_HYBRID_MODEL_V7_CANDIDATE.filename||name===KURISU_HYBRID_MODEL_V12_CANDIDATE.filename)applyAvatarPbrMaterials(root);else applyAnimeToonMaterials(root);}'));
  assert.ok(toon.includes("source.isMeshStandardMaterial"));
  assert.ok(toon.includes("source.isMeshPhysicalMaterial"));
  assert.ok(toon.includes("new THREE_TOON.MeshToonMaterial"));
@@ -77,7 +77,7 @@ test("non-VRM GLB imports use the extracted toon adapter while VRM materials rem
 test("avatar stage delegates material conversion and renderer-owned texture preservation",async()=>{
  const stage=await readFile(stagePath,"utf8"),toon=await readFile(path.join(root,"src/components/avatar/threeToonMaterials.ts"),"utf8");
  assert.match(stage,/import \{ applyAnimeToonMaterials, applyAvatarPbrMaterials, createProceduralToonMaterial, getSharedAnimeGradientTexture \}/);
- assert.match(stage,/if\(!vrm\)\{if\(name===KURISU_HYBRID_MODEL_V7_CANDIDATE\.filename\)applyAvatarPbrMaterials\(root\);else applyAnimeToonMaterials\(root\);\}/);
+ assert.match(stage,/if\(!vrm\)\{if\(name===KURISU_HYBRID_MODEL_V7_CANDIDATE\.filename\|\|name===KURISU_HYBRID_MODEL_V12_CANDIDATE\.filename\)applyAvatarPbrMaterials\(root\);else applyAnimeToonMaterials\(root\);\}/);
  assert.match(stage,/const gradient=getSharedAnimeGradientTexture\(\)/);
  assert.match(toon,/const replaced = new Set<any>\(\)/);
  assert.match(toon,/replaced\.add\(source\)/);
@@ -188,11 +188,11 @@ test("v7 NLA candidate is available for explicit visual preview but never promot
  assert.match(stage,/loadCatalogModel/);
  assert.match(stage,/loadCatalogModel\(KURISU_HYBRID_MODEL_V7_CANDIDATE,"preview"\)/);
  assert.match(stage,/loadModel\(blob,asset\.filename,persistence\)/);
- assert.match(stage,/persistence==="preview"\)setStorageMessage\("Кандидат v7: временный preview, не записан в IndexedDB/);
+ assert.match(stage,/persistence==="preview"\)setStorageMessage\(`Кандидат v\$\{name\.includes\("_v12_"\)\?12:7\}: временный preview, не записан в IndexedDB/);
  assert.match(stage,/returningFromCandidate/);
  assert.match(stage,/previewPendingRef=useRef\(false\)/);
  assert.match(stage,/previewPendingRef\.current=persistence==="preview"/);
- assert.match(stage,/modelName===KURISU_HYBRID_MODEL_V7_CANDIDATE\.filename\|\|previewPendingRef\.current/);
+ assert.match(stage,/modelName===KURISU_HYBRID_MODEL_V7_CANDIDATE\.filename\|\|modelName===KURISU_HYBRID_MODEL_V12_CANDIDATE\.filename\|\|previewPendingRef\.current/);
  assert.match(stage,/loadV7Candidate/);
  assert.match(stage,/v7[^\n]{0,80}(?:preview|кандидат)|(?:preview|предпросмотр)[^\n]{0,80}v7/i);
 });
@@ -205,7 +205,7 @@ test("avatar renderer mode controls expose the selected mode to assistive techno
 test("v7 hybrid avatar keeps authored PBR materials while legacy GLB remains toon-shaded",async()=>{
  const stage=await readFile(stagePath,"utf8"),toon=await readFile(path.join(root,"src/components/avatar/threeToonMaterials.ts"),"utf8");
  assert.match(stage,/applyAvatarPbrMaterials/);
- assert.match(stage,/if\(!vrm\)\{if\(name===KURISU_HYBRID_MODEL_V7_CANDIDATE\.filename\)applyAvatarPbrMaterials\(root\);else applyAnimeToonMaterials\(root\);\}/);
+ assert.match(stage,/if\(!vrm\)\{if\(name===KURISU_HYBRID_MODEL_V7_CANDIDATE\.filename\|\|name===KURISU_HYBRID_MODEL_V12_CANDIDATE\.filename\)applyAvatarPbrMaterials\(root\);else applyAnimeToonMaterials\(root\);\}/);
  assert.match(toon,/export function applyAvatarPbrMaterials\(root: any\): void/);
 });
 
@@ -237,4 +237,25 @@ test("3D viewport exposes bounded zoom, pointer-wheel zoom and one-tap camera re
  assert.match(stage,/removeEventListener\("wheel",wheel/);
  assert.match(stage,/resetCameraView/);
  assert.match(stage,/min-h-9/);
+});
+
+
+test("morph-ready v12 is pinned as a safe preview-only candidate without changing v5 canonical",async()=>{
+ const catalog=await readFile(path.join(root,"src/components/avatar/avatarModelCatalog.ts"),"utf8");
+ const stage=await readFile(stagePath,"utf8");
+ assert.match(catalog,/export const KURISU_HYBRID_MODEL_V12_CANDIDATE/);
+ assert.match(catalog,/id: "neuro-kurisu-hybrid-v12-morph-ready-candidate"/);
+ assert.match(catalog,/NeuroKurisu_3D_v12_morph_ready\.glb/);
+ assert.match(catalog,/sizeBytes: 7_330_996/);
+ assert.match(catalog,/sha256: "sha256:6c37e675f33009623f2671fce041a850c1d6dd871cf36252025a0b71374df509"/);
+ assert.match(catalog,/canonical: false as const/);
+ assert.match(catalog,/acceptance: "morph-ready-structural" as const/);
+ assert.match(stage,/loadCatalogModel\(KURISU_HYBRID_MODEL_V12_CANDIDATE,"preview"\)/);
+ assert.match(stage,/const loadV12Candidate/);
+ assert.match(stage,/modelName===KURISU_HYBRID_MODEL_V12_CANDIDATE\.filename/);
+ assert.match(stage,/Новый v12 · preview/);
+ assert.match(stage,/morph-ready preview/);
+ assert.match(stage,/KURISU_HYBRID_MODEL_V7_CANDIDATE\.filename\|\|name===KURISU_HYBRID_MODEL_V12_CANDIDATE\.filename/);
+ assert.match(stage,/Кандидат v\$\{name\.includes\("_v12_"\)\?12:7\}: временный preview/);
+ assert.match(stage,/KURISU_HYBRID_MODEL_V12_CANDIDATE\.filename\|\|previewPendingRef\.current/);
 });
