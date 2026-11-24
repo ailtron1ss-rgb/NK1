@@ -1,0 +1,119 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { CognitiveEventFabric } from '../src/organism/system/CognitiveEventFabric.ts';
+import { OrganismRuntime } from '../src/organism/core/OrganismRuntime.ts';
+
+const stagePayload=(source,payload={})=>({source,confidence01:0.8,payload});
+const cycleInput=(tick,decisionId,overrides={})=>({
+  tick,
+  ...(decisionId===undefined?{}:{decisionId}),
+  observation:stagePayload('runtime',{inputId:`input:${tick}`}),
+  prediction:stagePayload('reward-model',{predictionId:`prediction:${tick}`}),
+  appraisal:stagePayload('homeostatic-appraisal',{energy01:0.7}),
+  attention:stagePayload('global-workspace',{broadcastId:`workspace:${tick}`}),
+  memory:stagePayload('MemoryFabric.retrieveForCognition',{retrievedCount:1}),
+  goal:stagePayload('canonical-goal-selection',{goalId:`goal:${tick}`}),
+  plan:stagePayload('plan-engine',{stepCount:1}),
+  action:stagePayload('organism-action-gate',{action:'explore'}),
+  outcome:stagePayload('grounded-world',{verified:true}),
+  learning:stagePayload('core.feedback',{accepted:true}),
+  selfUpdate:stagePayload('core.lifecycle',{continuity01:0.9}),
+  ...overrides,
+});
+
+const fabric=new CognitiveEventFabric(256);
+const decisionId='decision:12:canonical';
+const stageIds=fabric.recordOperationalCycle(cycleInput(12,decisionId));
+const names=['observation','prediction','appraisal','attention','memory','goal','plan','action','outcome','learning','selfUpdate'];
+const snapshot=fabric.snapshot();
+const eventById=new Map(snapshot.recent.map(event=>[event.id,event]));
+for(const name of names){
+  const event=eventById.get(stageIds[name]);
+  assert.ok(event,`CEF must retain the ${name} stage`);
+  assert.equal(event.payload.decisionId,decisionId,`the ${name} event must carry the exact Core decision ID`);
+}
+const lineage=fabric.verifyOperationalCycle(stageIds);
+assert.equal(lineage.decisionId,decisionId);
+assert.equal(lineage.decisionLineageComplete,true);
+assert.deepEqual(lineage.decisionLineageIssues,[]);
+assert.equal(lineage.fullComplete,true,'the eleven-stage causal cycle must remain complete');
+
+const tampered=structuredClone(snapshot);
+const actionNode=tampered.recent.find(event=>event.id===stageIds.action);
+actionNode.payload.decisionId='decision:other';
+const restored=new CognitiveEventFabric(256);
+restored.restore(tampered);
+const broken=restored.verifyOperationalCycle(stageIds);
+assert.equal(broken.decisionLineageComplete,false,'restore must not accept a cross-decision cycle');
+assert.ok(broken.decisionLineageIssues.includes('action:decision-id-mismatch'));
+assert.equal(broken.fullComplete,false,'decision identity is part of strict full-cycle completeness');
+
+const conflictFabric=new CognitiveEventFabric(256);
+assert.throws(
+  ()=>conflictFabric.recordOperationalCycle(cycleInput(13,'decision:A',{
+    action:stagePayload('organism-action-gate',{decisionId:'decision:B',action:'explore'}),
+  })),
+  /cognitive-cycle-decision-id-conflict/,
+  'a caller cannot override the canonical decision ID inside one stage payload',
+);
+assert.equal(conflictFabric.snapshot().total,0,'invalid decision identity must fail before any partial cycle is appended');
+
+const legacyFabric=new CognitiveEventFabric(256);
+const legacyIds=legacyFabric.recordOperationalCycle(cycleInput(14,undefined));
+const legacy=legacyFabric.verifyOperationalCycle(legacyIds);
+assert.equal(legacy.decisionLineageComplete,true,'unannotated historical cycles remain readable');
+assert.equal(legacy.decisionId,undefined);
+assert.equal(legacy.fullComplete,true,'legacy cycle completeness remains backward compatible');
+
+const directory=fs.mkdtempSync(path.join(os.tmpdir(),'nk-decision-lineage-'));
+const runtime=new OrganismRuntime({
+  stateFile:path.join(directory,'organism.json'),
+  worldStateFile:path.join(directory,'world.json'),
+  enableLanguage:false,
+  autoRun:false,
+  intervalMs:100000,
+});
+try {
+  await runtime.init();
+  const result=await runtime.step('decision lineage integration check',{deliberate:true});
+  const runtimeDecisionId=result.cycle.decision.id;
+  assert.ok(typeof runtimeDecisionId==='string'&&runtimeDecisionId.length>0,'Core must expose the canonical decision trace ID');
+  const runtimeSnapshot=runtime.cognitiveEventFabricSnapshot();
+  const tick=result.cycle.state.tick;
+  const cycleEvents=runtimeSnapshot.recent.filter(event=>event.tick===tick&&names.some(name=>(name==='selfUpdate'?'self-update':name)===event.stage));
+  assert.equal(cycleEvents.length,11,'one runtime step must emit exactly eleven operational stages');
+  assert.ok(cycleEvents.every(event=>event.payload.decisionId===runtimeDecisionId),
+    'OrganismRuntime must bind every operational stage to the exact OrganismCore decision');
+  const runtimeIds={
+    observation:cycleEvents.find(e=>e.stage==='observation')?.id,
+    prediction:cycleEvents.find(e=>e.stage==='prediction')?.id,
+    appraisal:cycleEvents.find(e=>e.stage==='appraisal')?.id,
+    attention:cycleEvents.find(e=>e.stage==='attention')?.id,
+    memory:cycleEvents.find(e=>e.stage==='memory')?.id,
+    goal:cycleEvents.find(e=>e.stage==='goal')?.id,
+    plan:cycleEvents.find(e=>e.stage==='plan')?.id,
+    action:cycleEvents.find(e=>e.stage==='action')?.id,
+    outcome:cycleEvents.find(e=>e.stage==='outcome')?.id,
+    learning:cycleEvents.find(e=>e.stage==='learning')?.id,
+    selfUpdate:cycleEvents.find(e=>e.stage==='self-update')?.id,
+  };
+  const runtimeVerifier=new CognitiveEventFabric(512);
+  runtimeVerifier.restore(runtimeSnapshot);
+  const runtimeLineage=runtimeVerifier.verifyOperationalCycle(runtimeIds);
+  assert.equal(runtimeLineage.decisionId,runtimeDecisionId);
+  assert.equal(runtimeLineage.decisionLineageComplete,true);
+  assert.equal(runtimeLineage.fullComplete,true);
+  await runtime.flush();
+  console.log(JSON.stringify({
+    decisionId:runtimeDecisionId,
+    stages:cycleEvents.map(event=>event.stage),
+    decisionLineageComplete:runtimeLineage.decisionLineageComplete,
+    tamperRejected:!broken.decisionLineageComplete,
+    legacyCompatible:legacy.decisionLineageComplete,
+  },null,2));
+} finally {
+  await runtime.stop();
+  fs.rmSync(directory,{recursive:true,force:true});
+}
