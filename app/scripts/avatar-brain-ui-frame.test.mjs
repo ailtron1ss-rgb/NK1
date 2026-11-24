@@ -66,13 +66,13 @@ test("all renderers consume the one unified brain-and-speech projection", async 
   readFile(new URL("../src/components/KurisuOriginalStage.tsx", import.meta.url), "utf8"),
   readFile(new URL("../src/components/Avatar3DStage.tsx", import.meta.url), "utf8"),
  ]);
- assert.match(stage, /buildAvatarRenderProjection\\(/);
- assert.match(projection, /avatarBrainFrameForTick\\(snapshot\\.avatarBrain, snapshot\\.tick\\)/);
- assert.match(stage, /brainFrame=\\{projection\\.brainFrame \\?\\? undefined\\}/);
- assert.match(stage, /avatarBrainChannels=\\{projection\\.brainChannels \\?\\? undefined\\}/);
- assert.match(original, /motorPlan: AvatarMotorIntentPlan/);
- assert.match(original, /avatarBrainChannels\\?: AvatarBrainChannelsV1/);
- assert.doesNotMatch(original, /planAvatarMotorIntent\\(/);
- assert.match(three, /avatarBrainFrame\\?: AvatarBrainProjectionV1/);
- assert.match(three, /resolveVrmArmIntent\\(p\\.motorPlan/);
+ assert.ok(stage.includes("buildAvatarRenderProjection("));
+ assert.ok(projection.includes("avatarBrainFrameForTick(snapshot.avatarBrain, snapshot.tick)"));
+ assert.ok(stage.includes("avatarBrainFrame={projection.brainFrame ?? undefined}"));
+ assert.ok(stage.includes("avatarBrainChannels={projection.brainChannels ?? undefined}"));
+ assert.ok(original.includes("motorPlan: AvatarMotorIntentPlan"));
+ assert.ok(original.includes("avatarBrainChannels?: AvatarBrainChannelsV1"));
+ assert.equal(original.includes("planAvatarMotorIntent("), false);
+ assert.ok(three.includes("avatarBrainFrame?: AvatarBrainProjectionV1"));
+ assert.ok(three.includes("resolveVrmArmIntent(p.motorPlan"));
 });

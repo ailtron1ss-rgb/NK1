@@ -61,7 +61,8 @@ test("canonical same-tick brain frame is folded into the one shared render proje
   assert.deepEqual(projection.brainFrame, snapshot.avatarBrain.frame);
   assert.equal(projection.expression, "focused", "canonical brain expression should win over renderer-local emotion mapping");
   assert.equal(projection.expressionIntensity, 0.86);
-  assert.deepEqual(projection.gaze, { x: 0.36, y: -0.3 });
+  assert.ok(Math.abs(projection.gaze.x - 0.36) < 1e-12);
+  assert.ok(Math.abs(projection.gaze.y + 0.3) < 1e-12);
   assert.equal(projection.motorPlan.action, "explain", "the shared semantic motor plan remains the only action planner");
   assert.ok(Math.abs(projection.motorPlan.headTilt - 0.09) < 1e-12);
   assert.deepEqual(projection.mouthPose, { open: 0.32, form: -0.35, viseme: "round" });
