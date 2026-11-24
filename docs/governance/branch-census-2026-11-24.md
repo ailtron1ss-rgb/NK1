@@ -63,6 +63,24 @@ Snapshot boundary: live paginated GitHub REST list captured during this session 
 
 Family tags are lexical triage only, not source inspection or merge authorization. `cross-cutting-review` / `unclassified` require manual content and commit inspection.
 
+
+## All-state PR lineage crosswalk
+
+A separately paginated all-state PR query was joined by exact `head.ref` (branch name), preserving multiple PRs per branch and their exact head/base SHA, dates, merge SHA, diff-size fields and URL.
+
+- PR records returned: **1151** (open: 239; merged: 538; closed: 374).
+- Distinct PR head refs: **1117**.
+- Current branch refs with at least one PR record: **1014**.
+- Current branch refs with no PR found by head ref: **110**.
+- Branch heads with open-only history: **234**.
+- Merged history with no open PR: **436**.
+- Closed-unmerged only: **340**.
+- Mixed open/closed/merged history on the same branch name: **4**.
+- PR-head refs not present in the branch snapshot: **103**. This is a candidate list for deleted/renamed/external refs, not proof that the branch is lost.
+- PR #1163 and its new census branch were created after the branch-list snapshot and are intentionally outside this census join.
+
+**Important:** PR state is not the same as code integration. A merged PR may be based on a stale target, later reverted or superseded. Merge status alone does not authorize retiring the branch; verify current source ancestry and changed-path content independently.
+
 ## Canonical refs and release
 - Integration source at the snapshot boundary: `workpass70-source` @ `8328336c2156369875b21f0db06da71c3d83d6b9`.
 - `main` is the public release/metadata line; do not advance it with bulk donor merges.
