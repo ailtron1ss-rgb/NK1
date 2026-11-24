@@ -3,6 +3,10 @@ import { performance } from 'node:perf_hooks';
 import { MemoryOS2 } from '../src/organism/developmental/MemoryOS2.ts';
 import { MemorySubsystemRuntime } from '../src/organism/core/MemorySubsystemRuntime.ts';
 import { MemoryStateStore } from '../src/organism/persistence/MemoryStateStore.ts';
+import { FileStateStore } from '../src/organism/persistence/FileStateStore.ts';
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 const SOURCE_ROWS = 10_000;
 const ITEM_CAP = 1_600;
@@ -132,6 +136,7 @@ let canonicalIndex;
 let canonicalAccounting;
 let canonicalLifecycle;
 let canonicalDurableRoundTrip;
+let canonicalFileBackedRoundTrip;
 try {
   process.env.NEURO_MEMORY_ITEM_CAP = String(SOURCE_ROWS);
   process.env.NEURO_MEMORY_BYTE_BUDGET = String(7_200_000);
@@ -207,32 +212,63 @@ try {
     'durable serialization must preserve canonical byte accounting metadata',
   );
 
+  // Also exercise the production file-backed JSON path: temp write, file fsync,
+  // atomic rename, file read, and runtime restore from the decoded payload.
+  const fileStoreDirectory = await mkdtemp(join(tmpdir(), 'nk1-workpass76-capacity-'));
+  let fileReloadedRuntimeSnapshot;
+  let fileStoreMetrics;
+  try {
+    const fileStore = new FileStateStore(join(fileStoreDirectory, 'organism-state.json'), {
+      encoding: 'json',
+      backupEverySaves: 1,
+      directoryFsyncEverySaves: 1,
+    });
+    await fileStore.save(reloadedRuntimeSnapshot);
+    fileReloadedRuntimeSnapshot = await fileStore.load();
+    fileStoreMetrics = fileStore.metrics();
+    assert.ok(fileReloadedRuntimeSnapshot,
+      'the file-backed JSON state store must reload the explicit 10k runtime snapshot');
+    assert.deepEqual(
+      fileReloadedRuntimeSnapshot.memoryOS.items.map(item => item.id),
+      persistedRuntimeSnapshot.memoryOS.items.map(item => item.id),
+      'file-backed JSON persistence must preserve the exact ordered canonical ID set',
+    );
+    assert.equal(fileReloadedRuntimeSnapshot.memoryOS.estimatedBytes,
+      persistedRuntimeSnapshot.memoryOS.estimatedBytes);
+    assert.equal(fileStoreMetrics.saves, 1);
+    assert.ok(fileStoreMetrics.bytesWritten > 0);
+    assert.ok(fileStoreMetrics.fsyncs >= 1,
+      'file-backed state persistence must fsync the new state payload');
+  } finally {
+    await rm(fileStoreDirectory, { recursive: true, force: true });
+  }
+
   const restartedRuntime = new MemorySubsystemRuntime();
   restartedRuntime.restoreFromPersisted({
     memory: {
-      autobiographicalMemories: reloadedRuntimeSnapshot.memories,
-      semanticGraph: reloadedRuntimeSnapshot.semanticGraph,
+      autobiographicalMemories: fileReloadedRuntimeSnapshot.memories,
+      semanticGraph: fileReloadedRuntimeSnapshot.semanticGraph,
     },
     advanced: {
-      memoryOS: reloadedRuntimeSnapshot.memoryOS,
-      memoryFabric: reloadedRuntimeSnapshot.fabric,
-      unifiedMemory: reloadedRuntimeSnapshot.unifiedMemory,
-      p47: reloadedRuntimeSnapshot.p47,
-      p59MemoryOperatingSystem: reloadedRuntimeSnapshot.p59,
-      p62MemoryFabric: reloadedRuntimeSnapshot.p62,
-      p65EpistemicLedger: reloadedRuntimeSnapshot.p65,
-      hexisSourceMonitor: reloadedRuntimeSnapshot.hexisSourceMonitor,
-      p70MemoryLifecycleGovernor: reloadedRuntimeSnapshot.p70,
-      p75MemoryContinuumOS: reloadedRuntimeSnapshot.p75,
-      experienceContinuum: reloadedRuntimeSnapshot.experienceContinuum,
-      hippocampal: reloadedRuntimeSnapshot.hippocampal,
-      hippocampalFormation: reloadedRuntimeSnapshot.hippocampalFormation,
-      consolidationController: reloadedRuntimeSnapshot.consolidationController,
-      memoryLifecycleAuthority: reloadedRuntimeSnapshot.memoryLifecycleAuthority,
-      memoryRetentionEconomy: reloadedRuntimeSnapshot.memoryRetentionEconomy,
-      memoryCausalEconomy: reloadedRuntimeSnapshot.memoryCausalEconomy,
-      causalLifeGraph: reloadedRuntimeSnapshot.causalLifeGraph,
-      memoryWorldCausalBridge: reloadedRuntimeSnapshot.memoryWorldCausalBridge,
+      memoryOS: fileReloadedRuntimeSnapshot.memoryOS,
+      memoryFabric: fileReloadedRuntimeSnapshot.fabric,
+      unifiedMemory: fileReloadedRuntimeSnapshot.unifiedMemory,
+      p47: fileReloadedRuntimeSnapshot.p47,
+      p59MemoryOperatingSystem: fileReloadedRuntimeSnapshot.p59,
+      p62MemoryFabric: fileReloadedRuntimeSnapshot.p62,
+      p65EpistemicLedger: fileReloadedRuntimeSnapshot.p65,
+      hexisSourceMonitor: fileReloadedRuntimeSnapshot.hexisSourceMonitor,
+      p70MemoryLifecycleGovernor: fileReloadedRuntimeSnapshot.p70,
+      p75MemoryContinuumOS: fileReloadedRuntimeSnapshot.p75,
+      experienceContinuum: fileReloadedRuntimeSnapshot.experienceContinuum,
+      hippocampal: fileReloadedRuntimeSnapshot.hippocampal,
+      hippocampalFormation: fileReloadedRuntimeSnapshot.hippocampalFormation,
+      consolidationController: fileReloadedRuntimeSnapshot.consolidationController,
+      memoryLifecycleAuthority: fileReloadedRuntimeSnapshot.memoryLifecycleAuthority,
+      memoryRetentionEconomy: fileReloadedRuntimeSnapshot.memoryRetentionEconomy,
+      memoryCausalEconomy: fileReloadedRuntimeSnapshot.memoryCausalEconomy,
+      causalLifeGraph: fileReloadedRuntimeSnapshot.causalLifeGraph,
+      memoryWorldCausalBridge: fileReloadedRuntimeSnapshot.memoryWorldCausalBridge,
     },
   });
   assert.equal(restartedRuntime.memoryItemCap, SOURCE_ROWS);
@@ -339,5 +375,6 @@ console.log('MEMORY_CAPACITY_BOUNDARY_WORKPASS76=PASS', JSON.stringify({
     canonicalFabric10k: { items: SOURCE_ROWS, byteBudget: canonicalMaintenance.byteBudget.budget, byteEvictions: canonicalMaintenance.byteBudget.evicted.length, indexIntegrity: canonicalIndex.pass, accountingExact: canonicalAccounting.exact },
     canonicalLifecycle10k: canonicalLifecycle,
     canonicalDurableRoundTrip10k: canonicalDurableRoundTrip,
+    canonicalFileBackedRoundTrip10k: { serializedBytes: fileStoreMetrics.lastPayloadBytes, saveMs: fileStoreMetrics.lastSaveMs, fsyncs: fileStoreMetrics.fsyncs, itemsAfterRestore: restartedRuntime.memoryOS.size(), indexIntegrity: restartedRuntime.memoryOS.indexDiagnostics().pass, accountingExact: restartedRuntime.memoryOS.memoryAccountingDiagnostics().exact },
   },
 }));
