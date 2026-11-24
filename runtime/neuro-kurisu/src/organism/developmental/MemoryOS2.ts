@@ -595,6 +595,7 @@ function normalizeMemoryRevisionGraph(items:MemoryItem2[],onDuplicate?:(id:strin
 type MemoryEstimateShape=Pick<MemoryItem2,'content'|'tags'|'context'|'semanticLinks'|'temporalLinks'|'causalLinks'|'contradictionLinks'|'evidenceSources'|'evidenceLineageKeys'|'revisionIntegrityIssues'> & Partial<Pick<MemoryItem2,'revisionHistory'|'bitemporalHistory'|'recordedFromAt'|'recordedUntilAt'|'freshnessUntilAt'|'temporalKind'|'freshnessHalfLifeMs'>>;
 const estimateMemoryBytes=(m:MemoryEstimateShape)=>Math.max(96,new TextEncoder().encode(JSON.stringify({content:m.content,tags:(m.tags?.length?m.tags:undefined),context:m.context,s:m.semanticLinks,t:m.temporalLinks,c:m.causalLinks,k:m.contradictionLinks,e:m.evidenceSources,ek:m.evidenceLineageKeys,ri:(m.revisionIntegrityIssues?.length?m.revisionIntegrityIssues:undefined),r:normalizeRevisionHistory(m.revisionHistory),bh:m.bitemporalHistory,rf:m.recordedFromAt,ru:m.recordedUntilAt,fu:m.freshnessUntilAt,fh:m.freshnessHalfLifeMs,tk:m.temporalKind})).byteLength);
 const MEMORY_OS2_ITEM_CAP=1600;
+const MEMORY_OS2_MAX_ITEM_CAP=10_000;
 const MEMORY_OS2_RESTORE_SCAN_LIMIT=100_000;
 export class MemoryCapacityExhaustedError extends Error {
  constructor(required:number,available:number){super('Memory capacity exhausted: '+required+' eligible eviction(s) required, only '+available+' available.');this.name='MemoryCapacityExhaustedError';}
@@ -657,9 +658,18 @@ export class MemoryOS2{
  private readonly signalFusionProfile:MemoryFusionProfile;
  /** Candidate metadata recall stays opt-in until independent holdout uplift is demonstrated. */
  private readonly metadataRecallEnabled:boolean;
+ /** Per-instance hot-memory capacity. Mobile/default profile remains 1,600 until device soak. */
+ private readonly itemCap:number;
  private readonly adaptivePolicy=new AdaptiveMemoryPolicy();
  private activePolicy:MemoryPolicyName='balanced';
- constructor(options:{signalFusionProfile?:MemoryFusionProfile;embeddingProvider?:TextEmbeddingProvider|null;metadataRecallEnabled?:boolean}={}){ this.signalFusionProfile=options.signalFusionProfile??'balanced'; this.signalFusion=new MemorySignalFusion(this.signalFusionProfile); this.embeddingProvider=options.embeddingProvider===null?undefined:(options.embeddingProvider??LocalEmbeddingProvider.fromEnvironment()); this.metadataRecallEnabled=options.metadataRecallEnabled===true; }
+ constructor(options:{signalFusionProfile?:MemoryFusionProfile;embeddingProvider?:TextEmbeddingProvider|null;metadataRecallEnabled?:boolean;itemCap?:number}={}){
+  this.signalFusionProfile=options.signalFusionProfile??'balanced';
+  this.signalFusion=new MemorySignalFusion(this.signalFusionProfile);
+  this.embeddingProvider=options.embeddingProvider===null?undefined:(options.embeddingProvider??LocalEmbeddingProvider.fromEnvironment());
+  this.metadataRecallEnabled=options.metadataRecallEnabled===true;
+  const requestedItemCap=Number.isSafeInteger(options.itemCap)?Number(options.itemCap):MEMORY_OS2_ITEM_CAP;
+  this.itemCap=Math.max(128,Math.min(MEMORY_OS2_MAX_ITEM_CAP,Math.floor(requestedItemCap)));
+ }
  embeddingConfigured(){return Boolean(this.embeddingProvider); }
   restoreDiagnostics():MemoryRestoreDiagnostics{return {...this.lastRestoreDiagnosticsData};}
   private incrementRestoreDiagnostic(counter:'contentHashMismatchesRepaired'|'missingContentHashesRebuilt'|'invalidVectorsDiscarded'|'invalidExpiriesClosed'|'factsDowngraded'){
@@ -906,7 +916,7 @@ export class MemoryOS2{
   * memory temperature, stale counters, or retrieval diagnostics on this instance.
   */
  previewRetrieveWithDiagnostics(query:string,limit=8,goalRelevance=0,identityRelevance=0,temporalOptions:MemoryTemporalQueryOptions={}){
-   const isolated=new MemoryOS2({signalFusionProfile:this.signalFusionProfile,metadataRecallEnabled:this.metadataRecallEnabled});
+   const isolated=new MemoryOS2({signalFusionProfile:this.signalFusionProfile,metadataRecallEnabled:this.metadataRecallEnabled,itemCap:this.itemCap});
    isolated.restore(this.snapshot());
    const items=isolated.retrieve(query,limit,goalRelevance,identityRelevance,temporalOptions,true) as MemoryItem2[];
    return {items,diagnostics:isolated.retrievalDiagnostics(),policy:isolated.adaptivePolicyDiagnostics()};
@@ -924,7 +934,7 @@ export class MemoryOS2{
    if(!Number.isSafeInteger(limit)||limit<1||limit>64)throw new RangeError('memory-ranked-channel-preview-result-limit-invalid');
    const boundedChannelLimit=maxPerChannel;
    const boundedResultLimit=limit;
-   const isolated=new MemoryOS2({signalFusionProfile:this.signalFusionProfile,metadataRecallEnabled:this.metadataRecallEnabled,embeddingProvider:null});
+   const isolated=new MemoryOS2({signalFusionProfile:this.signalFusionProfile,metadataRecallEnabled:this.metadataRecallEnabled,embeddingProvider:null,itemCap:this.itemCap});
    isolated.restore(this.snapshot());
    isolated.captureRankedChannelIds=true;
    isolated.rankedChannelCaptureLimit=boundedChannelLimit;
@@ -1211,12 +1221,12 @@ export class MemoryOS2{
   }
   const normalizedRows=this.state.items;
    const protectedRows=normalizedRows.filter(item=>this.isProtectedMemoryItem(item));
-   const capacityOverrunRows=Math.max(0,protectedRows.length-MEMORY_OS2_ITEM_CAP);
+   const capacityOverrunRows=Math.max(0,protectedRows.length-this.itemCap);
    const retainedIds=new Set<string>();
    if(capacityOverrunRows>0){for(const item of protectedRows)retainedIds.add(item.id);}
    else{
     const protectedIds=new Set(protectedRows.map(item=>item.id));
-    const slots=MEMORY_OS2_ITEM_CAP-protectedRows.length;
+    const slots=this.itemCap-protectedRows.length;
     const selectedUnprotected=normalizedRows.filter(item=>!protectedIds.has(item.id)).sort((a,b)=>
      this.memoryRetentionScore(b)-this.memoryRetentionScore(a)||b.lastAccessAt-a.lastAccessAt||b.createdAt-a.createdAt||a.id.localeCompare(b.id)
     ).slice(0,slots);
@@ -1642,7 +1652,7 @@ export class MemoryOS2{
    }).slice(0,6).map(x=>x.id);
    item.causalLinks=this.state.items.slice(0,256).filter(x=>x.causalLinks.includes(item.id)).slice(0,3).map(x=>x.id);
    item.contradictionLinks=best.filter(x=>x.sim>=.64&&sharedEntityCount(entities,x.x.entities)>=2&&hasNegationPolarityDifference(item.content,x.x.content)).map(x=>x.x.id).slice(0,4);
-   const requiredEvictions=Math.max(0,this.state.items.length-MEMORY_OS2_ITEM_CAP+1);
+   const requiredEvictions=Math.max(0,this.state.items.length-this.itemCap+1);
    if(requiredEvictions>0){
     const victims=this.selectCapacityVictims(requiredEvictions);
     if(victims.length!==requiredEvictions)throw new MemoryCapacityExhaustedError(requiredEvictions,victims.length);
@@ -2388,7 +2398,7 @@ export class MemoryOS2{
    if(ageDays<7&&m.dormant&&durability>.42&&!invalidHistorical)m.dormant=false;
   }
   if(now-this.state.lastConflictScanAt>=1000)this.adjudicateImplicitConflicts({at:now,limit:32,pairBudget:192});
-  const hardCap=Math.max(128,Math.min(MEMORY_OS2_ITEM_CAP,Math.floor(options.maxItems??MEMORY_OS2_ITEM_CAP)));
+  const hardCap=Math.max(128,Math.min(this.itemCap,Math.floor(options.maxItems??this.itemCap)));
   const required=Math.max(0,this.state.items.length-hardCap);
   for(const victim of this.selectCapacityVictims(required))if(this.forgetById(victim.id,'capacity'))removedIds.push(victim.id);
   if(pressure>=.85){
@@ -2617,7 +2627,7 @@ export class MemoryOS2{
  capacityDiagnostics(){
   const protectedRows=this.state.items.filter(item=>this.isProtectedMemoryItem(item)).length;
   const items=this.state.items.length;
-  return {items,hardCap:MEMORY_OS2_ITEM_CAP,overCapacity:items>MEMORY_OS2_ITEM_CAP,overCapacityRows:Math.max(0,items-MEMORY_OS2_ITEM_CAP),protectedRows,evictableRows:items-protectedRows};
+  return {items,hardCap:this.itemCap,overCapacity:items>this.itemCap,overCapacityRows:Math.max(0,items-this.itemCap),protectedRows,evictableRows:items-protectedRows};
  }
  retrievalDiagnostics(){return {candidateCount:this.lastCandidateCount,totalItems:this.state.items.length,pruning01:this.state.items.length?Math.max(0,1-this.lastCandidateCount/this.state.items.length):0,signalFusion:true,hybridRetrieval:true,...this.lastHybridDiagnostics};}
  indexDiagnostics(){
