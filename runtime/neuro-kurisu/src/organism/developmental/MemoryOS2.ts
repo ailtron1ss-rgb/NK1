@@ -192,6 +192,7 @@ export interface MemoryEvictionWitness {
  id:string; kind:MemoryItem2['kind']; at:number; tick:number; bytes:number; value01:number; netValuePerByte01:number; reason:string; tokens:string[]; matchedQueries:number; realizedRegret01:number; counterfactualRegret01:number;
 }
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
+const normalizeMemorySignal=(value:unknown,fallback:number):number=>clamp(typeof value==='number'&&Number.isFinite(value)?value:fallback);
 // Keep single-digit numeric tokens: status codes, ratings, short versions and measured values are meaningful retrieval terms. Single-letter words remain excluded.
 const tokenize=(text:string)=>text.toLowerCase().normalize('NFKC').match(/[\p{L}\p{N}]{2,}|\p{N}/gu)??[];
 const characterGramCache=new Map<string,Set<string>>();
@@ -592,7 +593,7 @@ function normalizeMemoryRevisionGraph(items:MemoryItem2[],onDuplicate?:(id:strin
  return unique;
 }
 type MemoryEstimateShape=Pick<MemoryItem2,'content'|'tags'|'context'|'semanticLinks'|'temporalLinks'|'causalLinks'|'contradictionLinks'|'evidenceSources'|'evidenceLineageKeys'|'revisionIntegrityIssues'> & Partial<Pick<MemoryItem2,'revisionHistory'|'bitemporalHistory'|'recordedFromAt'|'recordedUntilAt'|'freshnessUntilAt'|'temporalKind'|'freshnessHalfLifeMs'>>;
-const estimateMemoryBytes=(m:MemoryEstimateShape)=>Math.max(96,new TextEncoder().encode(JSON.stringify({content:m.content,tags:m.tags,context:m.context,s:m.semanticLinks,t:m.temporalLinks,c:m.causalLinks,k:m.contradictionLinks,e:m.evidenceSources,ek:m.evidenceLineageKeys,ri:m.revisionIntegrityIssues,r:normalizeRevisionHistory(m.revisionHistory),bh:m.bitemporalHistory,rf:m.recordedFromAt,ru:m.recordedUntilAt,fu:m.freshnessUntilAt,fh:m.freshnessHalfLifeMs,tk:m.temporalKind})).byteLength);
+const estimateMemoryBytes=(m:MemoryEstimateShape)=>Math.max(96,new TextEncoder().encode(JSON.stringify({content:m.content,tags:(m.tags?.length?m.tags:undefined),context:m.context,s:m.semanticLinks,t:m.temporalLinks,c:m.causalLinks,k:m.contradictionLinks,e:m.evidenceSources,ek:m.evidenceLineageKeys,ri:(m.revisionIntegrityIssues?.length?m.revisionIntegrityIssues:undefined),r:normalizeRevisionHistory(m.revisionHistory),bh:m.bitemporalHistory,rf:m.recordedFromAt,ru:m.recordedUntilAt,fu:m.freshnessUntilAt,fh:m.freshnessHalfLifeMs,tk:m.temporalKind})).byteLength);
 const MEMORY_OS2_ITEM_CAP=1600;
 const MEMORY_OS2_RESTORE_SCAN_LIMIT=100_000;
 export class MemoryCapacityExhaustedError extends Error {
@@ -641,7 +642,7 @@ export class MemoryOS2{
  private captureRankedChannelIds=false;
  private rankedChannelCaptureLimit=64;
  private lastRankedChannelIds:Record<string,string[]>={};
- private lastHybridDiagnostics:{bm25Enabled:boolean;bm25CandidateCount:number;bm25Max:number;rrfEnabled:boolean;identifierBias:boolean;temporalMode:MemoryTemporalMode;asOfAt:number;queryIntentMode:MemoryQueryIntent;maxQueryIntentBoost01:number;candidateSelection:'idf-coverage-fuzzy-concept-rrf-stable-id'|'idf-coverage-fuzzy-concept-metadata-rrf-stable-id';candidateSelectionLimit:number;fuzzyEnabled:boolean;fuzzyCandidateCount:number;semanticVectorUsedForRanking:boolean;semanticEmbeddingProvider:string;rrfSignals:string[];answerabilityGate:'direct-evidence-or-typed-recall-v1';rankedBeforeGate:number;groundedAfterGate:number;abstained:boolean;abstentionReason:'no-grounded-evidence'|null;spatialRequested:boolean;spatialInvalidQuery:boolean;spatialFrameId:string|null;spatialCandidateCount:number}={bm25Enabled:true,bm25CandidateCount:0,bm25Max:0,rrfEnabled:true,identifierBias:false,temporalMode:'current',asOfAt:0,queryIntentMode:'general',maxQueryIntentBoost01:0,candidateSelection:'idf-coverage-fuzzy-concept-rrf-stable-id',candidateSelectionLimit:192,fuzzyEnabled:true,fuzzyCandidateCount:0,semanticVectorUsedForRanking:false,semanticEmbeddingProvider:'none',rrfSignals:['bm25','token-coverage','character-fuzzy','entity','graph-temporal'],answerabilityGate:'direct-evidence-or-typed-recall-v1',rankedBeforeGate:0,groundedAfterGate:0,abstained:false,abstentionReason:null,spatialRequested:false,spatialInvalidQuery:false,spatialFrameId:null,spatialCandidateCount:0};
+ private lastHybridDiagnostics:{bm25Enabled:boolean;bm25CandidateCount:number;bm25Max:number;rrfEnabled:boolean;identifierBias:boolean;temporalMode:MemoryTemporalMode;asOfAt:number;queryIntentMode:MemoryQueryIntent;maxQueryIntentBoost01:number;candidateSelection:'idf-coverage-fuzzy-concept-rrf-stable-id'|'idf-coverage-fuzzy-concept-metadata-rrf-stable-id';candidateSelectionLimit:number;fuzzyEnabled:boolean;fuzzyCandidateCount:number;semanticVectorUsedForRanking:boolean;semanticEmbeddingProvider:string;rrfSignals:string[];answerabilityGate:'direct-evidence-or-typed-recall-v1';rankedBeforeGate:number;groundedAfterGate:number;abstained:boolean;abstentionReason:'no-grounded-evidence'|null;partialActivations:Array<{conceptGroupIndex:number;queryTermMatches:string[];bestLexicalSupport01:number}>;spatialRequested:boolean;spatialInvalidQuery:boolean;spatialFrameId:string|null;spatialCandidateCount:number}={bm25Enabled:true,bm25CandidateCount:0,bm25Max:0,rrfEnabled:true,identifierBias:false,temporalMode:'current',asOfAt:0,queryIntentMode:'general',maxQueryIntentBoost01:0,candidateSelection:'idf-coverage-fuzzy-concept-rrf-stable-id',candidateSelectionLimit:192,fuzzyEnabled:true,fuzzyCandidateCount:0,semanticVectorUsedForRanking:false,semanticEmbeddingProvider:'none',rrfSignals:['bm25','token-coverage','character-fuzzy','entity','graph-temporal'],answerabilityGate:'direct-evidence-or-typed-recall-v1',rankedBeforeGate:0,groundedAfterGate:0,abstained:false,abstentionReason:null,partialActivations:[],spatialRequested:false,spatialInvalidQuery:false,spatialFrameId:null,spatialCandidateCount:0};
  private linkSupportCache:Map<string,number>|null=null;
  private linkSupportCacheVersion=-1;
  private readonly removalReceipts:MemoryRemovalReceipt[]=[];
@@ -681,9 +682,12 @@ export class MemoryOS2{
    const validFromAt=finite(row.validFromAt,createdAt);
    const validUntilProvided=row.validUntilAt!=null;
    const validUntilCandidate=validUntilProvided?finite(row.validUntilAt,Number.NaN):null;
-   // A malformed expiry must never turn an expiring memory into a timeless fact.
-   const validUntilAt=validUntilProvided&&!Number.isFinite(validUntilCandidate)?validFromAt:validUntilCandidate;
-   if(validUntilProvided&&!Number.isFinite(validUntilCandidate))this.incrementRestoreDiagnostic('invalidExpiriesClosed');
+   // A malformed or inverted expiry must never create an impossible valid-time window.
+   const invalidValidUntil=validUntilProvided&&(
+    !Number.isFinite(validUntilCandidate)||Number(validUntilCandidate)<validFromAt
+   );
+   const validUntilAt=invalidValidUntil?validFromAt:validUntilCandidate;
+   if(invalidValidUntil)this.incrementRestoreDiagnostic('invalidExpiriesClosed');
    const recordedFromAt=finite(row.recordedFromAt,createdAt);
    const recordedUntilProvided=row.recordedUntilAt!=null;
    const recordedUntilCandidate=recordedUntilProvided?finite(row.recordedUntilAt,Number.NaN):null;
@@ -858,6 +862,21 @@ export class MemoryOS2{
   item.recordedFromAt=recordedAt;
   item.recordedUntilAt=null;
   if(adjustBytes)this.state.estimatedBytes=Math.max(0,this.state.estimatedBytes-beforeBytes+estimateMemoryBytes(item));
+ }
+ /** Resolve ordinary writes against the active tip, even when callers retain a historical ID. */
+ private currentRevisionTip(requested:MemoryItem2):MemoryItem2{
+  const group=requested.revisionGroupId??requested.id;
+  const chain=[...(this.revisionGroupIndex.get(group)??new Set([requested.id]))]
+   .map(itemId=>this.itemIndex.get(itemId)).filter((item):item is MemoryItem2=>Boolean(item));
+  return chain.filter(item=>item.validUntilAt==null).sort((a,b)=>
+   Number(b.revisionSequence??1)-Number(a.revisionSequence??1)||
+   Number(b.observedAt??b.createdAt)-Number(a.observedAt??a.createdAt)||
+   a.id.localeCompare(b.id)
+  )[0]??requested;
+ }
+ private resolveRevisionTip(id:string):MemoryItem2|null{
+  const requested=this.itemIndex.get(String(id))??this.state.items.find(item=>item.id===String(id));
+  return requested?this.currentRevisionTip(requested):null;
  }
  private preferIndexRecord(candidate:MemoryItem2,incumbent:MemoryItem2,at:number){
   const currentDelta=Number(this.validAt(candidate,at))-Number(this.validAt(incumbent,at));if(currentDelta)return currentDelta>0;
@@ -1326,67 +1345,167 @@ export class MemoryOS2{
   if(newer.id===older.id||isUnverifiedHmxImportedMemory(newer)||isUnverifiedHmxImportedMemory(older))return {score:0,contextConflict:false,polarityConflict:false,entityOverlap:0,semantic:0};
   const semantic=cosine(newer.semanticVector.length?newer.semanticVector:vectorize(newer.content),older.semanticVector.length?older.semanticVector:vectorize(older.content));
   const entityOverlap=overlap(newer.entities,older.entities); const newCtx=newer.context??{}; const oldCtx=older.context??{};
-  let contextConflict=false; for(const key of Object.keys(newCtx)){if(!(key in oldCtx))continue;const nv=String(newCtx[key]??'').trim().toLowerCase();const ov=String(oldCtx[key]??'').trim().toLowerCase();if(nv&&ov&&nv!==ov){contextConflict=true;break;}}
+  const normalizedContextValue=(value:unknown)=>String(value??'').trim().toLowerCase();
+  const newSubject=normalizedContextValue(newCtx.subject),oldSubject=normalizedContextValue(oldCtx.subject);
+  const newAttribute=normalizedContextValue(newCtx.attribute),oldAttribute=normalizedContextValue(oldCtx.attribute);
+  // Generic context fields such as "value" are only comparable inside the
+  // same subject/attribute scope. Different entities must never become one
+  // revision chain merely because a shared key contains different values.
+  const sameSubjectScope=newSubject===oldSubject;
+  const sameAttributeScope=newAttribute===oldAttribute;
+  let contextConflict=false;
+  if(sameSubjectScope&&sameAttributeScope){
+   for(const key of Object.keys(newCtx)){
+    if(key==='subject'||key==='attribute'||!(key in oldCtx))continue;
+    const nv=normalizedContextValue(newCtx[key]),ov=normalizedContextValue(oldCtx[key]);
+    if(nv&&ov&&nv!==ov){contextConflict=true;break;}
+   }
+  }
   const polarityConflict=sharedEntityCount(newer.entities,older.entities)>=2&&hasNegationPolarityDifference(newer.content,older.content);
-  const identifierShift=identifierLike(newer.content)!==identifierLike(older.content)&&entityOverlap>=.18;
+  const identifierShift=sameSubjectScope&&identifierLike(newer.content)!==identifierLike(older.content)&&entityOverlap>=.18;
   const score=Math.max(contextConflict&&semantic>=.55?.90:0,polarityConflict&&semantic>=.64?.82:0,identifierShift&&semantic>=.70?.76:0);
   return {score,contextConflict,polarityConflict,entityOverlap,semantic};
  }
  adjudicateImplicitConflicts(input:{limit?:number;pairBudget?:number;at?:number}={}):{candidates:number;resolved:number;at:number}{
   const at=Number(input.at??Date.now()); const newerRows=this.state.items.slice().filter(m=>m.validUntilAt==null&&m.epistemicStatus!=='quarantined').sort((a,b)=>Number(b.observedAt??b.createdAt)-Number(a.observedAt??a.createdAt)).slice(0,Math.max(8,Math.min(64,Math.floor(input.limit??32))));
   let candidates=0,resolved=0,pairs=0; const pairBudget=Math.max(16,Math.min(512,Math.floor(input.pairBudget??192)));
-  for(let ni=0;ni<newerRows.length&&pairs<pairBudget;ni++){const newer=newerRows[ni]!;const newerAt=Number(newer.observedAt??newer.createdAt);
-   for(let oi=ni+1;oi<this.state.items.length&&pairs<pairBudget;oi++){const older=this.state.items[oi]!;if(older.id===newer.id||older.validUntilAt!=null||older.epistemicStatus==='quarantined')continue;const olderAt=Number(older.observedAt??older.createdAt);if(!(olderAt<newerAt))continue;if(newer.revisionGroupId&&older.revisionGroupId&&newer.revisionGroupId===older.revisionGroupId)continue;pairs++;const signal=this.implicitConflictSignals(newer,older);if(signal.score<.75)continue;candidates++;
+  const isStandaloneRevisionRecord=(item:MemoryItem2):boolean=>{
+   const group=item.revisionGroupId??item.id;
+   const groupSize=this.revisionGroupIndex.get(group)?.size??1;
+   return !item.supersedesId&&!item.supersededById&&Number(item.revisionSequence??1)<=1&&groupSize<=1;
+  };
+  for(let ni=0;ni<newerRows.length&&pairs<pairBudget;ni++){
+   const newer=newerRows[ni]!;
+   // Heuristic adjudication only connects standalone observations. Existing
+   // lineages require explicit, lineage-aware revision operations.
+   if(!isStandaloneRevisionRecord(newer))continue;
+   const newerAt=Number(newer.observedAt??newer.createdAt);
+   for(let oi=ni+1;oi<this.state.items.length&&pairs<pairBudget;oi++){
+    const older=this.state.items[oi]!;
+    if(older.id===newer.id||older.validUntilAt!=null||older.epistemicStatus==='quarantined'||!isStandaloneRevisionRecord(older))continue;
+    const olderAt=Number(older.observedAt??older.createdAt);
+    if(!(olderAt<newerAt))continue;
+    if(newer.revisionGroupId&&older.revisionGroupId&&newer.revisionGroupId===older.revisionGroupId)continue;
+    pairs++;
+    const signal=this.implicitConflictSignals(newer,older);
+    if(signal.score<.75)continue;
+    candidates++;
     const newerProv=this.provenanceStrength(newer),olderProv=this.provenanceStrength(older);
     if(olderProv-newerProv>.18){
       const recordedAt=Math.max(at,Number(newer.recordedFromAt??newer.createdAt)+1);
       this.beginBitemporalRevision(newer,recordedAt);
       this.recordRevision(newer,{at:recordedAt,from:newer.epistemicStatus,to:'quarantined',reason:'implicit-conflict-provenance-protection'});
       newer.epistemicStatus='quarantined';
-      this.state.implicitConflictsDeferred++; this.state.provenanceProtected++; this.state.quarantined++; continue;
+      this.state.implicitConflictsDeferred++; this.state.provenanceProtected++; this.state.quarantined++;
+      // One observation is adjudicated at most once per scan. Continuing here
+      // could quarantine it repeatedly against unrelated older candidates.
+      break;
     }
-    const group=older.revisionGroupId??older.id; const previousNewGroup=this.revisionGroupIndex.get(newer.revisionGroupId??newer.id); if(previousNewGroup)previousNewGroup.delete(newer.id); newer.revisionGroupId=group; newer.revisionSequence=Math.max(Number(older.revisionSequence??1)+1,Number(newer.revisionSequence??1)); let groupSet=this.revisionGroupIndex.get(group); if(!groupSet){groupSet=new Set<string>();this.revisionGroupIndex.set(group,groupSet);} groupSet.add(older.id);groupSet.add(newer.id);
-    const recordedAt=Math.max(at,Number(older.recordedFromAt??older.createdAt)+1);
+    const group=older.revisionGroupId??older.id;
+    const previousNewGroup=this.revisionGroupIndex.get(newer.revisionGroupId??newer.id);
+    // This adjudication is one recorded transaction that changes both ends of
+    // the revision edge. Advance both records beyond their prior transaction
+    // intervals; otherwise a fast pair of writes can leave the child recorded
+    // before its parent and restore will reject both sides of the live edge.
+    const recordedAt=Math.max(
+      at,
+      Number(older.recordedFromAt??older.createdAt)+1,
+      Number(newer.recordedFromAt??newer.createdAt)+1,
+    );
     this.beginBitemporalRevision(older,recordedAt);
-    older.validUntilAt=newerAt;older.supersededById=newer.id;
-    this.recordRevision(older,{at:recordedAt,from:older.epistemicStatus,to:older.epistemicStatus,reason:signal.contextConflict?'implicit-state-conflict-context':'implicit-state-conflict'});newer.supersedesId=older.id;older.contradictionLinks=[...new Set([...(older.contradictionLinks??[]),newer.id])].slice(0,6);newer.contradictionLinks=[...new Set([...(newer.contradictionLinks??[]),older.id])].slice(0,6);this.state.implicitConflictsResolved++;this.state.reconsolidations++;resolved++;
+    this.beginBitemporalRevision(newer,recordedAt);
+    if(previousNewGroup)previousNewGroup.delete(newer.id);
+    newer.revisionGroupId=group;
+    newer.revisionSequence=Math.max(Number(older.revisionSequence??1)+1,Number(newer.revisionSequence??1));
+    let groupSet=this.revisionGroupIndex.get(group);
+    if(!groupSet){groupSet=new Set<string>();this.revisionGroupIndex.set(group,groupSet);}
+    groupSet.add(older.id);groupSet.add(newer.id);
+    // A revision transition must have one half-open valid-time boundary. The
+    // old row closes exactly where the new row begins; otherwise a backdated
+    // child is silently repaired on restore and live/loaded state diverges.
+    const supersessionValidAt=Math.max(
+      newerAt,
+      Number(older.validFromAt??older.createdAt)+1,
+      Number(newer.validFromAt??newer.createdAt),
+    );
+    if(Number(newer.validFromAt??newer.createdAt)<supersessionValidAt){
+      const childStatus=newer.epistemicStatus;
+      newer.validFromAt=supersessionValidAt;
+      this.recordRevision(newer,{at:recordedAt,from:childStatus,to:childStatus,reason:'implicit-state-conflict-supersession'});
+    }
+    older.validUntilAt=supersessionValidAt;
+    older.supersededById=newer.id;
+    this.recordRevision(older,{at:recordedAt,from:older.epistemicStatus,to:older.epistemicStatus,reason:signal.contextConflict?'implicit-state-conflict-context':'implicit-state-conflict'});
+    newer.supersedesId=older.id;
+    const olderBytesBeforeLinks=estimateMemoryBytes(older),newerBytesBeforeLinks=estimateMemoryBytes(newer);
+    older.contradictionLinks=[...new Set([...(older.contradictionLinks??[]),newer.id])].slice(0,6);
+    newer.contradictionLinks=[...new Set([...(newer.contradictionLinks??[]),older.id])].slice(0,6);
+    this.state.estimatedBytes=Math.max(0,this.state.estimatedBytes-olderBytesBeforeLinks-newerBytesBeforeLinks+estimateMemoryBytes(older)+estimateMemoryBytes(newer));
+    this.state.implicitConflictsResolved++;this.state.reconsolidations++;resolved++;
+    // A child has exactly one predecessor in a linear revision lineage. Stop
+    // scanning older candidates after the first successful adjudication;
+    // otherwise the next match overwrites supersedesId and leaves an orphaned
+    // supersededById edge on the previously selected parent.
+    break;
    }
   }
   this.state.implicitConflictCandidates+=candidates;this.state.lastConflictScanAt=at;return {candidates,resolved,at};
  }
 
  private buildMemoryItem(input:MemoryEncodeInput,identity:{stableId:string;contentHash:string},entities:string[],semanticVector:number[],now:number):MemoryItem2{
-  const provenanceClass=this.provenanceClassFor(input.source,input.provenanceClass);
+  const sourceIsValid=typeof input.source==='string'&&Boolean(input.source.trim());
+  const source=sourceIsValid?input.source.trim().slice(0,240):'unknown';
+  const confidenceIsValid=typeof input.confidence==='number'&&Number.isFinite(input.confidence)&&input.confidence>=0&&input.confidence<=1;
+  const confidence=clamp(typeof input.confidence==='number'&&Number.isFinite(input.confidence)?input.confidence:.5);
+  const statusIsValid=EPISTEMIC_STATUSES.has(input.epistemicStatus);
+  const epistemicStatus=statusIsValid&&sourceIsValid&&(input.epistemicStatus!=='fact'||confidenceIsValid)
+    ?input.epistemicStatus:'unknown';
+  const validFromAt=Number.isFinite(Number(input.validFromAt))?Number(input.validFromAt):now;
+  const validUntilAt=input.validUntilAt==null?null:
+    (Number.isFinite(Number(input.validUntilAt))?Math.max(validFromAt,Number(input.validUntilAt)):validFromAt);
+  const normalizedInput:MemoryEncodeInput={
+    ...input,source,confidence,epistemicStatus,
+    salience:normalizeMemorySignal(input.salience,.5),
+    emotionalWeight:normalizeMemorySignal(input.emotionalWeight,0),
+    identityRelevance:normalizeMemorySignal(input.identityRelevance,0),
+    goalRelevance:normalizeMemorySignal(input.goalRelevance,0),
+    socialRelevance:normalizeMemorySignal(input.socialRelevance,0),
+    predictionError:normalizeMemorySignal(input.predictionError,0),
+  };
+  const provenanceClass=this.provenanceClassFor(source,input.provenanceClass);
   const defaults={device:.95,external:.9,user:.86,agent:.68,derived:.52,simulation:.28,unknown:.5} as Record<MemoryProvenanceClass,number>;
-  const evidenceSources=this.normalizeEvidenceSources({...input,sourceAuthority01:input.sourceAuthority01??defaults[provenanceClass],provenanceClass,observedAt:input.observedAt??now,evidenceFreshnessAt:input.evidenceFreshnessAt??input.observedAt??now});
+  const evidenceSources=this.normalizeEvidenceSources({...normalizedInput,sourceAuthority01:input.sourceAuthority01??defaults[provenanceClass],provenanceClass,observedAt:input.observedAt??now,evidenceFreshnessAt:input.evidenceFreshnessAt??input.observedAt??now});
   const evidenceLineageKeys=[...new Set([...(Array.isArray(input.evidenceLineageKeys)?input.evidenceLineageKeys:[]),...evidenceSources.map(row=>this.evidenceKey(row))])].slice(-32);
   return {
-    ...input,
+    ...normalizedInput,
     id:input.id??identity.stableId,
     contentHash:input.contentHash??identity.contentHash,
     entities,
     createdAt:now,lastAccessAt:now,retrievalCount:0,revisionHistory:[],dormant:false,
     semanticVector,temperature01:0,residencyTier:'hot',
-    validFromAt:Number.isFinite(Number(input.validFromAt))?Number(input.validFromAt):now,
-    validUntilAt:input.validUntilAt==null?null:(Number.isFinite(Number(input.validUntilAt))?Number(input.validUntilAt):null),
+    tags:mergeMemoTags([],normalizedInput.tags),
+    semanticLinks:Array.isArray(input.semanticLinks)?input.semanticLinks.slice():[],
+    temporalLinks:Array.isArray(input.temporalLinks)?input.temporalLinks.slice():[],
+    causalLinks:Array.isArray(input.causalLinks)?input.causalLinks.slice():[],
+    contradictionLinks:Array.isArray(input.contradictionLinks)?input.contradictionLinks.slice():[],
+    validFromAt,validUntilAt,
     observedAt:Number.isFinite(Number(input.observedAt))?Number(input.observedAt):now,
     recordedFromAt:Number.isFinite(Number(input.recordedFromAt))?Number(input.recordedFromAt):now,
     recordedUntilAt:input.recordedUntilAt==null?null:(Number.isFinite(Number(input.recordedUntilAt))?Number(input.recordedUntilAt):now),
     freshnessUntilAt:input.freshnessUntilAt==null?null:(Number.isFinite(Number(input.freshnessUntilAt))?Number(input.freshnessUntilAt):null),
-    temporalKind:input.temporalKind!==undefined&&MEMORY_TEMPORAL_KINDS.has(input.temporalKind)?input.temporalKind:(input.epistemicStatus==='fact'?'fact':'assessment'),
+    temporalKind:input.temporalKind!==undefined&&MEMORY_TEMPORAL_KINDS.has(input.temporalKind)?input.temporalKind:(epistemicStatus==='fact'?'fact':'assessment'),
     bitemporalHistory:normalizeBitemporalHistory(input.bitemporalHistory),
     supersedesId:input.supersedesId??null,supersededById:input.supersededById??null,
     revisionGroupId:String(input.revisionGroupId??(input.id??identity.stableId)),
-    revisionSequence:Math.max(1,Math.floor(Number(input.revisionSequence??1))),
+    revisionSequence:Number.isFinite(Number(input.revisionSequence))?Math.max(1,Math.floor(Number(input.revisionSequence))):1,
     provenanceClass,
     sourceAuthority01:clamp(Number(input.sourceAuthority01??defaults[provenanceClass]??.5)),
     independenceKey:input.independenceKey?.slice(0,96),
     evidenceFreshnessAt:Number.isFinite(Number(input.evidenceFreshnessAt))?Number(input.evidenceFreshnessAt):Number(input.observedAt??now),
     freshnessHalfLifeMs:normalizeFreshnessHalfLife(input.freshnessHalfLifeMs),
-    evidenceSources, evidenceLineageKeys,
+    evidenceSources,evidenceLineageKeys,
   };
  }
-
  encode(input:MemoryEncodeInput, options:{clone?:boolean;forceDistinct?:boolean}={}){
    const now=Date.now();
    const canonicalContent=canonicalizeMemoryContent(input.content);
@@ -1408,13 +1527,29 @@ export class MemoryOS2{
     const previousFreshnessAt=Number(existing.evidenceFreshnessAt??0);
     if(Number.isFinite(incomingFreshnessAt)&&incomingFreshnessAt>previousFreshnessAt)existing.evidenceFreshnessAt=incomingFreshnessAt;
     existing.lastAccessAt=now;
-    existing.salience=clamp(existing.salience*.8+input.salience*.2);
+    // Omitted reconsolidation signals are neutral: never convert undefined to NaN
+    // and never erase an existing salience/affect value just because a caller
+    // supplied only new context or provenance.
+    const incomingSalience=normalizeMemorySignal(input.salience,existing.salience);
+    const incomingConfidence=normalizeMemorySignal(input.confidence,existing.confidence);
+    const incomingPredictionError=normalizeMemorySignal(input.predictionError,existing.predictionError);
+    existing.salience=clamp(existing.salience*.8+incomingSalience*.2);
     // A repeated import from the same source/lineage is not independent evidence
     // and must not drive confidence towards 1 by replaying the same observation.
-    if(evidenceMerge.addedIndependentSource)existing.confidence=clamp(existing.confidence*.82+input.confidence*.18);
-    existing.predictionError=clamp(existing.predictionError*.75+input.predictionError*.25);
+    if(evidenceMerge.addedIndependentSource)existing.confidence=clamp(existing.confidence*.82+incomingConfidence*.18);
+    existing.predictionError=clamp(existing.predictionError*.75+incomingPredictionError*.25);
     existing.temperature01=memoryTemperature(existing);
-    existing.temperature01=clamp(existing.temperature01*.82+memoryTemperature({...existing,...input,lastAccessAt:now} as MemoryItem2,now)*.18);
+    const incomingTemperature=memoryTemperature({
+      ...existing,
+      salience:incomingSalience,
+      emotionalWeight:normalizeMemorySignal(input.emotionalWeight,existing.emotionalWeight),
+      identityRelevance:normalizeMemorySignal(input.identityRelevance,existing.identityRelevance),
+      goalRelevance:normalizeMemorySignal(input.goalRelevance,existing.goalRelevance),
+      socialRelevance:normalizeMemorySignal(input.socialRelevance,existing.socialRelevance),
+      predictionError:incomingPredictionError,
+      lastAccessAt:now,
+    },now);
+    existing.temperature01=clamp(existing.temperature01*.82+incomingTemperature*.18);
     existing.residencyTier='hot';
     existing.source=existing.source||input.source;
     existing.contentHash=existing.contentHash||memoContentHash(existing.content);
@@ -1439,7 +1574,7 @@ export class MemoryOS2{
     existing.context=mergeMemoContext(existing.context,contextPatch);
     if(hasNewerObservation){
       existing.observedAt=incomingObservedAt;
-      if(Object.prototype.hasOwnProperty.call(input,'validFromAt')&&Number.isFinite(input.validFromAt))existing.validFromAt=Number(input.validFromAt);
+      if(Number(existing.revisionSequence??1)<=1&&Object.prototype.hasOwnProperty.call(input,'validFromAt')&&Number.isFinite(input.validFromAt))existing.validFromAt=Number(input.validFromAt);
       if(Object.prototype.hasOwnProperty.call(input,'validUntilAt')){
         if(input.validUntilAt===null)existing.validUntilAt=null;
         else if(Number.isFinite(input.validUntilAt))existing.validUntilAt=Number(input.validUntilAt);
@@ -1462,8 +1597,31 @@ export class MemoryOS2{
    // If canonical content already exists only as an expired/quarantined record,
    // a fresh observation gets its own stable-in-process identity rather than
    // mutating history or overwriting the historical item's map entry.
-   const collision=this.itemIndex.has(input.id??identity.stableId);
-   const materializedInput:MemoryEncodeInput=options.forceDistinct||input.id||!collision?input:{...input,id:stableMemoryId(`${canonicalContent}\0reobserved:${now}:${this.state.items.length}:${this.state.reconsolidations}`,input.kind,input.source)};
+   const requestedId=String(input.id??identity.stableId);
+   const collision=this.itemIndex.has(requestedId);
+   let materializedInput:MemoryEncodeInput=input;
+   if(collision){
+     // An explicit caller ID cannot shadow a different canonical row. Derive a
+     // stable collision ID from the payload and requested ID so replay remains
+     // idempotent across restarts and preserves both observations.
+     if(input.id){
+       const collisionSeed=canonicalContent+'\0explicit-id-collision:'+String(input.id);
+       let candidate=stableMemoryId(collisionSeed,input.kind,input.source);
+       let suffix=0;
+       while(this.itemIndex.has(candidate)){
+         const occupied=this.itemIndex.get(candidate);
+         if(occupied&&canonicalizeMemoryContent(occupied.content)===canonicalContent){
+           return options.clone===false?occupied:structuredClone(occupied);
+         }
+         suffix++;
+         candidate=stableMemoryId(collisionSeed+'\0'+suffix,input.kind,input.source);
+         if(suffix>64)throw new Error('Unable to allocate a unique MemoryOS2 identity after explicit ID collision.');
+       }
+       materializedInput={...input,id:candidate};
+     }else{
+       materializedInput={...input,id:stableMemoryId(canonicalContent+'\0reobserved:'+now+':'+this.state.items.length+':'+this.state.reconsolidations,input.kind,input.source)};
+     }
+   }
    const item=this.buildMemoryItem(materializedInput,identity,entities,semanticVector,now);
    if(collision&&!input.id&&!options.forceDistinct&&!materializedInput.revisionGroupId)item.revisionGroupId=item.id;
    item.temperature01=memoryTemperature(item,now);
@@ -1495,7 +1653,18 @@ export class MemoryOS2{
    this.state.items.unshift(item as MemoryItem2);this.state.estimatedBytes+=estimateMemoryBytes(item as MemoryItem2);this.itemIndex.set(item.id,item as MemoryItem2);this.linkSupportCache=null;
    this.exactIndex.set(`${item.kind}|${item.source}|${canonicalizeMemoryContent(item.content)}`,item.id);
    this.contentIndex.set(`${item.kind}|${canonicalizeMemoryContent(item.content)}`,item.id);this.indexItem(item);this.lowerContentCache.delete(item.id);
-   for(const linkedId of item.contradictionLinks??[]){const linked=this.itemIndex.get(linkedId);if(linked){linked.contradictionLinks=[...new Set([...(linked.contradictionLinks??[]),item.id])].slice(0,6);this.state.linkUpdates++;}}
+   for(const linkedId of item.contradictionLinks??[]){
+     const linked=this.itemIndex.get(linkedId);if(!linked)continue;
+     const previousLinks=linked.contradictionLinks??[];
+     const nextLinks=[...new Set([...previousLinks,item.id])].slice(0,6);
+     const changed=nextLinks.length!==previousLinks.length||nextLinks.some((id,index)=>id!==previousLinks[index]);
+     if(changed){
+      const previousBytes=estimateMemoryBytes(linked);
+      linked.contradictionLinks=nextLinks;
+      this.state.estimatedBytes=Math.max(0,this.state.estimatedBytes-previousBytes+estimateMemoryBytes(linked));
+      this.state.linkUpdates++;
+     }
+    }
    this.state.linkUpdates+=item.semanticLinks.length+item.temporalLinks.length;
    if(item.epistemicStatus==='quarantined')this.state.quarantined++;return options.clone===false?(item as MemoryItem2):structuredClone(item as MemoryItem2);
  }
@@ -1799,7 +1968,28 @@ export class MemoryOS2{
      relationship:take(relationshipRank),
     };
    }
-   this.lastHybridDiagnostics={...this.lastHybridDiagnostics,spatialRequested,spatialInvalidQuery:spatialRequested&&!spatialQuery,spatialFrameId:spatialQuery?.frameId??null,spatialCandidateCount:spatialHits.length,bm25Enabled:true,bm25CandidateCount:rawRows.filter(x=>x.bm25>0).length,bm25Max:maxBm25,rrfEnabled:true,identifierBias,temporalMode,asOfAt:now,queryIntentMode,maxQueryIntentBoost01:Math.max(0,...groundedRows.map(x=>x.intentBoost01)),candidateSelection:this.metadataRecallEnabled?'idf-coverage-fuzzy-concept-metadata-rrf-stable-id':'idf-coverage-fuzzy-concept-rrf-stable-id',candidateSelectionLimit:192,fuzzyEnabled:true,fuzzyCandidateCount:fuzzyCandidateIds.size,semanticVectorUsedForRanking:false,semanticEmbeddingProvider:'none',rrfSignals:this.metadataRecallEnabled?['bm25','token-coverage','character-fuzzy','metadata-tags-entities-topic','bilingual-concept-bridge','entity','graph-temporal','intent-kind-fit']:['bm25','token-coverage','character-fuzzy','bilingual-concept-bridge','entity','graph-temporal','intent-kind-fit'],answerabilityGate:'direct-evidence-or-typed-recall-v1',rankedBeforeGate:topRows.length,groundedAfterGate:groundedRows.length,abstained:groundedRows.length===0,abstentionReason:groundedRows.length===0?'no-grounded-evidence':null};
+   // When the answerability gate abstains, report which curated concepts the
+   // query activated but the eligible corpus could not support. This is a
+   // retrieval diagnostic only: it never creates a candidate or bypasses the
+   // grounding gate.
+   const partialActivations=groundedRows.length?[]:conceptQuery.groups.flatMap(groupIndex=>{
+    const aliases=MEMORY_RETRIEVAL_CONCEPT_GROUPS[groupIndex]??[];
+    const queryTermMatches=[...qTokens].filter(token=>aliases.some(alias=>conceptAliasMatchScore(token,alias)>0));
+    if(!queryTermMatches.length)return [];
+    const supportIds=this.conceptGroupIndex.get(groupIndex)??new Set<string>();
+    let bestLexicalSupport01=0;
+    for(const id of supportIds){
+     const item=this.itemIndex.get(id);
+     if(!item||item.dormant||item.epistemicStatus==='quarantined'||(temporalMode!=='all'&&!isValidAt(item,now)))continue;
+     const memoryTokens=this.tokensFor(item.content);
+     const matched=queryTermMatches.filter(queryToken=>
+      memoryTokens.has(queryToken)||[...memoryTokens].some(memoryToken=>conceptStemPrefixMatches(queryToken,memoryToken))
+     ).length;
+     bestLexicalSupport01=Math.max(bestLexicalSupport01,clamp(matched/Math.max(1,queryTermMatches.length)));
+    }
+    return [{conceptGroupIndex:groupIndex,queryTermMatches,bestLexicalSupport01}];
+   });
+   this.lastHybridDiagnostics={...this.lastHybridDiagnostics,spatialRequested,spatialInvalidQuery:spatialRequested&&!spatialQuery,spatialFrameId:spatialQuery?.frameId??null,spatialCandidateCount:spatialHits.length,bm25Enabled:true,bm25CandidateCount:rawRows.filter(x=>x.bm25>0).length,bm25Max:maxBm25,rrfEnabled:true,identifierBias,temporalMode,asOfAt:now,queryIntentMode,maxQueryIntentBoost01:Math.max(0,...groundedRows.map(x=>x.intentBoost01)),candidateSelection:this.metadataRecallEnabled?'idf-coverage-fuzzy-concept-metadata-rrf-stable-id':'idf-coverage-fuzzy-concept-rrf-stable-id',candidateSelectionLimit:192,fuzzyEnabled:true,fuzzyCandidateCount:fuzzyCandidateIds.size,semanticVectorUsedForRanking:false,semanticEmbeddingProvider:'none',rrfSignals:this.metadataRecallEnabled?['bm25','token-coverage','character-fuzzy','metadata-tags-entities-topic','bilingual-concept-bridge','entity','graph-temporal','intent-kind-fit']:['bm25','token-coverage','character-fuzzy','bilingual-concept-bridge','entity','graph-temporal','intent-kind-fit'],answerabilityGate:'direct-evidence-or-typed-recall-v1',rankedBeforeGate:topRows.length,groundedAfterGate:groundedRows.length,abstained:groundedRows.length===0,abstentionReason:groundedRows.length===0?'no-grounded-evidence':null,partialActivations};
    // semanticHits is retained only for persisted-state compatibility. It is not
    // incremented by retrieval: the legacy hashed token projection is not a semantic
    // retrieval channel, and its previous calculation silently warmed cold memories.
@@ -1918,7 +2108,9 @@ export class MemoryOS2{
   if(tracked)this.state.estimatedBytes=Math.max(0,this.state.estimatedBytes-before+estimateMemoryBytes(m));
  }
  revise(id:string,to:EpistemicStatus,reason:string){
-  const m=this.state.items.find(x=>x.id===id);if(!m||m.epistemicStatus===to)return;
+  const requested=this.itemIndex.get(String(id))??this.state.items.find(x=>x.id===id);if(!requested)return;
+  const m=this.currentRevisionTip(requested);
+  if(m.epistemicStatus===to)return;
   const from=m.epistemicStatus;
   const recordedAt=Math.max(Date.now(),Number(m.recordedFromAt??m.createdAt)+1);
   this.beginBitemporalRevision(m,recordedAt);
@@ -1926,12 +2118,11 @@ export class MemoryOS2{
   m.epistemicStatus=to;m.lastAccessAt=Date.now();this.state.reconsolidations++;if(to==='quarantined')this.state.quarantined++;
  }
  reviseContent(id:string,newContent:string,options:{reason?:string;validAt?:number;recordedAt?:number;source?:string;epistemicStatus?:EpistemicStatus;salience?:number;confidence?:number;freshnessUntilAt?:number|null;temporalKind?:MemoryTemporalKind}={}){
-   const requested=this.itemIndex.get(id); if(!requested||!String(newContent).trim())return null;
+   const requested=this.itemIndex.get(String(id)); if(!requested||!String(newContent).trim())return null;
    const group=requested.revisionGroupId??requested.id;
-   // A correction against a historical ID revises the current tip of that same
-   // chain, avoiding a fork that would make point-in-time recall ambiguous.
+   // A correction against a historical ID revises the current tip of that same chain.
    const chain=[...(this.revisionGroupIndex.get(group)??new Set([requested.id]))].map(itemId=>this.itemIndex.get(itemId)).filter((x):x is MemoryItem2=>Boolean(x));
-   const parent=chain.filter(x=>x.validUntilAt==null).sort((a,b)=>Number(b.revisionSequence??1)-Number(a.revisionSequence??1)||Number(b.observedAt??b.createdAt)-Number(a.observedAt??a.createdAt))[0]??requested;
+   const parent=this.currentRevisionTip(requested);
    const canonicalContent=canonicalizeMemoryContent(newContent);
    if(canonicalizeMemoryContent(parent.content)===canonicalContent)return structuredClone(parent);
    const requestedAt=Number.isFinite(Number(options.validAt))?Number(options.validAt):Date.now();
@@ -1972,7 +2163,7 @@ export class MemoryOS2{
  }
 
  updateContext(id:string, patch:Record<string,string|undefined>) {
-   const m=this.itemIndex.get(String(id));if(!m)return null;
+   const m=this.resolveRevisionTip(id);if(!m)return null;
    const before=estimateMemoryBytes(m);
    const previousBitemporal=this.bitemporalIntervalFor(m);
    this.spatialIndex.remove(m.id);
@@ -2000,7 +2191,7 @@ export class MemoryOS2{
   * transaction-time history so a past knowledgeAtAt query cannot see future links.
   */
  addLinks(id:string, patch:Partial<Pick<MemoryItem2,'semanticLinks'|'temporalLinks'|'causalLinks'|'contradictionLinks'>>, reason='relationship-import'):MemoryItem2|null {
-   const item=this.itemIndex.get(String(id));
+   const item=this.resolveRevisionTip(id);
    if(!item)return null;
    const beforeBytes=estimateMemoryBytes(item);
    const previousBitemporal=this.bitemporalIntervalFor(item);
@@ -2033,7 +2224,7 @@ export class MemoryOS2{
  }
  /** Merge one independently attributed evidence source through the canonical MemoryOS2 owner. */
  attachEvidenceSource(id:string, source:MemoryEvidenceSource, reason='evidence-lineage'):MemoryItem2|null {
-   const item=this.state.items.find(x=>x.id===id);if(!item)return null;
+   const item=this.resolveRevisionTip(id);if(!item)return null;
    const beforeBytes=estimateMemoryBytes(item);
    const previousBitemporal=this.bitemporalIntervalFor(item);
    const beforeSources=JSON.stringify(item.evidenceSources??[]);
@@ -2063,7 +2254,7 @@ export class MemoryOS2{
  }
 
  updateSignals(id:string, patch:Partial<Pick<MemoryItem2,'salience'|'emotionalWeight'|'identityRelevance'|'goalRelevance'|'socialRelevance'|'predictionError'|'confidence'|'dormant'>>, reason='reconsolidation') {
-   const m=this.state.items.find(x=>x.id===id); if(!m) return null;
+   const m=this.resolveRevisionTip(id);if(!m)return null;
    const beforeBytes=estimateMemoryBytes(m);
    const fromStatus=m.epistemicStatus;
    const previousBitemporal=this.bitemporalIntervalFor(m);
@@ -2114,6 +2305,23 @@ export class MemoryOS2{
   this.lowerContentCache.delete(id);
   this.state.items.splice(index,1);
   this.itemIndex.delete(id);
+  const revisionGroup=String(item.revisionGroupId??item.id);
+  const groupMembers=this.revisionGroupIndex.get(revisionGroup);
+  if(groupMembers){groupMembers.delete(id);if(groupMembers.size===0)this.revisionGroupIndex.delete(revisionGroup);}
+  // Removing the final successor re-opens its predecessor as the active tip.
+  // Record this knowledge transition bitemporally so reloads agree with the
+  // live store and historical queries can still see the former supersession.
+  if(!item.supersededById&&item.supersedesId){
+   const predecessor=this.itemIndex.get(item.supersedesId);
+   if(predecessor?.supersededById===id){
+    const reopenedAt=Math.max(Date.now(),Number(predecessor.recordedFromAt??predecessor.createdAt)+1);
+    const status=predecessor.epistemicStatus;
+    this.beginBitemporalRevision(predecessor,reopenedAt);
+    predecessor.supersededById=null;
+    predecessor.validUntilAt=null;
+    this.recordRevision(predecessor,{at:reopenedAt,from:status,to:status,reason:'successor-'+String(reason||'memory-removal').slice(0,96)+'-removed'});
+   }
+  }
   this.rebuildDedupIndexesFor(item);
   for(const remaining of this.state.items){
    if(remaining.contradictionLinks?.includes(id))remaining.contradictionLinks=remaining.contradictionLinks.filter(value=>value!==id);
@@ -2368,6 +2576,11 @@ export class MemoryOS2{
  size(){return this.state.items.length;}
  snapshotItem(id:string):MemoryItem2|null {
   const item=this.itemIndex.get(String(id));
+  return item?structuredClone(item):null;
+ }
+ /** Read-only canonical view: resolve a retained historical ID to its active revision tip. */
+ snapshotCurrentRevisionItem(id:string):MemoryItem2|null {
+  const item=this.resolveRevisionTip(String(id));
   return item?structuredClone(item):null;
  }
  snapshotPrefix(limit:number):MemoryItem2[] {

@@ -24,8 +24,8 @@
     {
       "targetPath": "app/public/live2d/Kurisu/Kurisu.model3.json",
       "canonicalPath": "runtime/neuro-kurisu/public/live2d/Kurisu/Kurisu.model3.json",
-      "sizeBytes": 1846,
-      "sha256": "f7ae31d85349850a54dfc42999d03d7ac2cc428bf8292d1c7d0f033f65aea351"
+      "sizeBytes": 1852,
+      "sha256": "0b06b30c0301174f0ae85a688c03d7ac0615b8c6559cdaf290652fbb76a34f54"
     },
     {
       "targetPath": "app/public/live2d/Kurisu/Kurisu.physics3.json",
@@ -128,6 +128,60 @@
       "canonicalPath": "runtime/neuro-kurisu/public/live2d/PROVENANCE.json",
       "sizeBytes": 884,
       "sha256": "c09b01f86a03fdb05b1795a8136df7ce154c38a09adadd32d19977227b4976ee"
+    },
+    {
+      "targetPath": "app/public/live2d/Kurisu/exp/Arm_Change.exp3.json",
+      "canonicalPath": "runtime/neuro-kurisu/public/live2d/Kurisu/exp/Arm_Change.exp3.json",
+      "sizeBytes": 117,
+      "sha256": "0f63c57e0ad71de202f759d6fa3668919a6fe39cfb134a32a10a90204942a516"
+    },
+    {
+      "targetPath": "app/public/live2d/Kurisu/exp/Blush_1.exp3.json",
+      "canonicalPath": "runtime/neuro-kurisu/public/live2d/Kurisu/exp/Blush_1.exp3.json",
+      "sizeBytes": 119,
+      "sha256": "8c0e7b321b15d7525ad5934b07793539d0ae4e53350c33a3dcf264fda8f25d06"
+    },
+    {
+      "targetPath": "app/public/live2d/Kurisu/exp/Blush_2.exp3.json",
+      "canonicalPath": "runtime/neuro-kurisu/public/live2d/Kurisu/exp/Blush_2.exp3.json",
+      "sizeBytes": 117,
+      "sha256": "f80b9bc8239acc343aa98341ceb9b7fe302545e10c2ea22ec745bb018f1adf34"
+    },
+    {
+      "targetPath": "app/public/live2d/Kurisu/exp/Stanby_Angry.exp3.json",
+      "canonicalPath": "runtime/neuro-kurisu/public/live2d/Kurisu/exp/Stanby_Angry.exp3.json",
+      "sizeBytes": 112,
+      "sha256": "385605494d6ba8ff5aa5276c89b51ca36906cc08093970fd953dd31d8ebd0784"
+    },
+    {
+      "targetPath": "app/public/live2d/Kurisu/exp/Stanby_Sad.exp3.json",
+      "canonicalPath": "runtime/neuro-kurisu/public/live2d/Kurisu/exp/Stanby_Sad.exp3.json",
+      "sizeBytes": 110,
+      "sha256": "dea3bf8875b12c032fcd662afb82364e015c71a693025037a3b4e973755c33b2"
+    },
+    {
+      "targetPath": "app/public/live2d/Kurisu/exp/Stanby_Scared.exp3.json",
+      "canonicalPath": "runtime/neuro-kurisu/public/live2d/Kurisu/exp/Stanby_Scared.exp3.json",
+      "sizeBytes": 113,
+      "sha256": "6bb4c22998b8041c1fb00ccbf34d303d4ed012c7e78877426aeef43f651abbd5"
+    },
+    {
+      "targetPath": "app/public/live2d/Kurisu/exp/Stanby_Smile.exp3.json",
+      "canonicalPath": "runtime/neuro-kurisu/public/live2d/Kurisu/exp/Stanby_Smile.exp3.json",
+      "sizeBytes": 112,
+      "sha256": "ce3333bf411e643a0220aab1339a3039272636c9868c280d6937f0a6d2e6bf71"
+    },
+    {
+      "targetPath": "app/public/live2d/Kurisu/exp/Stanby_Surprised.exp3.json",
+      "canonicalPath": "runtime/neuro-kurisu/public/live2d/Kurisu/exp/Stanby_Surprised.exp3.json",
+      "sizeBytes": 117,
+      "sha256": "db7f7cdf837945fc73f6adb8bb43ac2df9cfef81b4d82da6bee295c2399a63f1"
+    },
+    {
+      "targetPath": "app/public/live2d/Kurisu/motions/Out_From_Camera.motion3.json",
+      "canonicalPath": "runtime/neuro-kurisu/public/live2d/Kurisu/motions/Out_From_Camera.motion3.json",
+      "sizeBytes": 5798,
+      "sha256": "955d0d344e3b7ac0139f3eabd3da1fdc9dce7f02c844ef3f2c9eead69da9b2a9"
     }
   ]
 }

@@ -153,7 +153,8 @@ test("AvatarStage publishes one versioned embodiment intent and rejects stale ut
   assert.match(source, /const rate = prosody.rate/);
   assert.match(source, /utterance.pitch = prosody.pitch/);
   assert.match(source, /utterance.volume = prosody.volume/);
-  assert.match(source, /voiceEmphasis: activeUtterance \? \(session\?\.voiceEmphasis \?\? 0\) : 0/);
+  assert.match(source, /voiceEmphasis: activeBrowserUtterance \? Number\(projectionSession\?\.voiceEmphasis \?\? 0\) : 0/);
+  assert.match(source, /voiceEmphasis: currentProjection\.voiceEmphasis/);
   assert.doesNotMatch(source, /type: "kurisu_lipsync"|type: "kurisu_embodiment"|type: "kurisu_expression"/, "the app must not split one state over legacy control messages");
   assert.match(viewer, /d\.type!=='kurisu_embodiment_intent'/);
   assert.match(viewer, /intent\.stateVersion/);

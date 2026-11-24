@@ -27,7 +27,11 @@ test("Live2D render ticker pauses while hidden and resumes when visible", () => 
 test("Live2D viewer wires visibility, page lifecycle and a bounded 30 FPS ticker", () => {
   assert.match(viewer, /if\(typeof app\.ticker\?\.maxFPS==='number'\)app\.ticker\.maxFPS=30;/);
   assert.match(viewer, /document\.addEventListener\('visibilitychange',syncRendererVisibility/);
-  assert.match(viewer, /window\.addEventListener\('pagehide',\(\)=>app\?\.ticker\?\.stop\(\)/);
+  assert.ok(viewer.includes("function disposeViewer()"));
+  assert.ok(viewer.includes("window.addEventListener(\x27pagehide\x27,disposeViewer,{once:true})"));
+  assert.ok(viewer.includes("model?.destroy?.({children:true,texture:true,baseTexture:true})"));
+  assert.ok(viewer.includes("app?.destroy?.(true,{children:false})"));
+  assert.ok(viewer.includes("send(\x27live2d_disposed\x27"));
   assert.match(viewer, /window\.addEventListener\('pageshow',syncRendererVisibility/);
   assert.match(viewer, /window\.addEventListener\('pageshow',syncRendererVisibility,\{passive:true\}\);\s*syncRendererVisibility\(\);/);
 });

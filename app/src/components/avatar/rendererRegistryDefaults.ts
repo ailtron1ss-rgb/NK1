@@ -81,9 +81,9 @@ export const DEFAULT_RENDERER_MANIFESTS: readonly BodyRendererCapabilityManifest
     rendererId: "nk1-three-vrm3d",
     label: "Three.js VRM / 3D",
     mode: "vrm3d",
-    assetKind: "vrm",
-    source: "bundled",
-    productionReady: true,
+    assetKind: "gltf",
+    source: "remote",
+    productionReady: false,
     channels: [...VRM3D_CHANNELS],
     expressions: [...EXPRESSION_CHANNELS],
     supportsSpeechVisemes: true,
@@ -91,7 +91,7 @@ export const DEFAULT_RENDERER_MANIFESTS: readonly BodyRendererCapabilityManifest
     supportsClothingLayers: false,
     supportsPhysics: true,
     joints: ["head", "neck", "leftUpperArm", "rightUpperArm", "spine", "leftLowerArm", "rightLowerArm", "leftUpperLeg", "rightUpperLeg", "leftLowerLeg", "rightLowerLeg"],
-    notes: "Normalized humanoid drive: head/neck, shoulders, elbows, spine, hips and knees; wrists, hands and ankles are not wired yet.",
+    notes: "The pinned v5 GLB is externally hosted and has not passed visual, Android-device or redistribution-license acceptance; user-imported VRM/GLB is available, but the default renderer is not production-ready. Normalized drive covers head/neck, shoulders, elbows, spine, hips and knees; wrists, hands and ankles are not wired yet.",
   },
 ];
 

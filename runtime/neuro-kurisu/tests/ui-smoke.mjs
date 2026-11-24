@@ -15,6 +15,15 @@ try{
   for (const id of requiredIds.filter((x)=>['refresh','speak','listen','voice-turn','viewer','sleep','wake','snapshot','avatar-expression','avatar-head-tap','avatar-body-tap','avatar-quality','form'].includes(x))) if (!appJs.includes(`$('${id}')`)) throw new Error(`ui-handler-missing:${id}`);
   await get('/app.js'); await get('/style.css'); await get('/avatar.html');
   await get('/api/organism/perception'); const status=await (await get('/api/organism/status')).json(); if(!status.ok) throw new Error('status'); if(!status.cognition?.cognitiveField || status.cognition?.budget == null || !status.advanced?.memoryOS || !status.advanced?.worldModel2 || !status.unifiedMemory || !status.socialDevelopment) throw new Error('cognition-status-missing');
+  const uiSnapshot = await (await get('/api/organism/ui-snapshot')).json();
+  const avatarBrain = uiSnapshot.avatarBrain;
+  if (!avatarBrain || avatarBrain.schemaVersion !== 1 || avatarBrain.stateVersion !== uiSnapshot.tick) throw new Error('avatar-brain-frame-missing-or-stale');
+  if (!avatarBrain.frame || avatarBrain.frame.source !== 'organism-state' || avatarBrain.frame.schemaVersion !== 1) throw new Error('avatar-brain-frame-source-invalid');
+  if (avatarBrain.frame.profile !== '3d' && avatarBrain.frame.profile !== '2d' && avatarBrain.frame.profile !== '2.5d') throw new Error('avatar-brain-frame-profile-invalid');
+  for (const [channel, value] of Object.entries(avatarBrain.frame.channels || {})) {
+    if (!Number.isFinite(value) || value < -1 || value > 1) throw new Error(`avatar-brain-channel-invalid:${channel}`);
+  }
+
   await get('/api/health'); await get('/api/metrics'); await get('/api/organism/inspect'); await get('/api/organism/avatar');
   for(const [p,body] of [['/api/organism/sleep',{}],['/api/organism/wake',{}],['/api/organism/voice/speak',{text:'test'}],['/api/organism/voice/listen',{}],['/api/organism/voice/interrupt',{reason:'ui-smoke-idle'}]]){
     const x=await fetch(`http://127.0.0.1:${port}${p}`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)}); const payload=await x.json(); if(!payload || payload.ok===undefined) throw new Error(`${p}:invalid-json`);
