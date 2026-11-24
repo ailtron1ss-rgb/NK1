@@ -1,3 +1,5 @@
+import type { AvatarBrainEnvelopeV1 } from "@/organism/types";
+
 export interface BackendMemory {
   id: string;
   kind: string;
@@ -114,6 +116,8 @@ export interface BackendUiSnapshot {
   body: { battery01: number; cognitiveCapacity01: number; thermalStrain01: number; cpuLoad01: number; ramPressure01: number };
   language?: { calls?: number; backend?: string; degraded?: boolean; lastFailure?: string };
   voice: { speaking: boolean; listening: boolean; ttsAvailable: boolean; sttAvailable: boolean };
+  /** Optional during rolling upgrades; stale frames are discarded by the normalizer. */
+  avatarBrain?: AvatarBrainEnvelopeV1 | null;
 }
 
 export interface ChatBackendResponse {

@@ -141,11 +141,50 @@ export interface CanonicalWorldSnap {
   evidenceCoverage01: number;
 }
 
+export type AvatarBrainExpressionV1 = "neutral" | "curious" | "focused" | "amused" | "concerned" | "tired" | "determined";
+export type AvatarRenderProfileV1 = "2d" | "2.5d" | "3d";
+
+export interface AvatarBrainAffectV1 {
+  valence01: number; arousal01: number; dominance01: number; curiosity01: number;
+  warmth01: number; stress01: number; confidence01: number; memoryRecall01: number;
+}
+
+export interface AvatarBrainChannelsV1 {
+  eyeOpen: number; browRaise: number; browFurrow: number; mouthSmile: number;
+  mouthOpen: number; cheekRaise: number; headTilt: number; headYaw: number;
+  gazeX: number; gazeY: number; idleMotion: number; lipSyncGain: number;
+}
+
+export interface AvatarBrainProjectionV1 {
+  schemaVersion: 1;
+  profile: AvatarRenderProfileV1;
+  expression: AvatarBrainExpressionV1;
+  expressionWeight: number;
+  affect: AvatarBrainAffectV1;
+  channels: AvatarBrainChannelsV1;
+  freshness01: number;
+  reducedMotion: boolean;
+  source: "organism-state";
+  rendererHints: {
+    live2d: Record<string, number>;
+    layered2d: { parallax01: number; depthBreath01: number; faceRig01: number };
+    spatial3d: { headPitch: number; headYaw: number; gazeDistance01: number; shoulderRelax01: number };
+  };
+  projectedAt: number;
+}
+
+export interface AvatarBrainEnvelopeV1 {
+  schemaVersion: 1;
+  stateVersion: number;
+  frame: AvatarBrainProjectionV1;
+}
+
 export interface OrganismSnapshot {
   version: number;
   tick: number;
   at: number;
   awake: boolean;
+  avatarBrain?: AvatarBrainEnvelopeV1 | null;
   needs: Needs;
   emotion: EmotionState;
   identity: IdentityPublic;
@@ -186,6 +225,7 @@ export function emptySnapshot(): OrganismSnapshot {
     tick: 0,
     at: 0,
     awake: true,
+    avatarBrain: null,
     needs: {
       energy: 0.72,
       cognitiveLoad: 0.22,

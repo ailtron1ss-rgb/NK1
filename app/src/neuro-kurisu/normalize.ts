@@ -1,4 +1,4 @@
-import type { OrganismSnapshot, ActionKind, EmotionLabel, MemoryRecord, Skill, Goal, Belief } from "@/organism/types";
+import type { OrganismSnapshot, ActionKind, EmotionLabel, MemoryRecord, Skill, Goal, Belief, AvatarBrainEnvelopeV1 } from "@/organism/types";
 import type { BackendUiSnapshot } from "./types";
 
 const clamp = (n: unknown, fallback = 0) => {
@@ -15,6 +15,43 @@ const emotion = (x: unknown): EmotionLabel => {
   const allowed = new Set<EmotionLabel>(["curiosity","calm","joy","anxiety","frustration","sadness","anger","protective"]);
   return allowed.has(String(x) as EmotionLabel) ? String(x) as EmotionLabel : "calm";
 };
+
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  Boolean(value) && typeof value === "object" && !Array.isArray(value);
+
+const AVATAR_BRAIN_EXPRESSIONS = new Set(["neutral", "curious", "focused", "amused", "concerned", "tired", "determined"]);
+const AVATAR_BRAIN_PROFILES = new Set(["2d", "2.5d", "3d"]);
+const AVATAR_BRAIN_CHANNELS = [
+  "eyeOpen", "browRaise", "browFurrow", "mouthSmile", "mouthOpen", "cheekRaise",
+  "headTilt", "headYaw", "gazeX", "gazeY", "idleMotion", "lipSyncGain",
+] as const;
+const AVATAR_BRAIN_AFFECT = [
+  "valence01", "arousal01", "dominance01", "curiosity01",
+  "warmth01", "stress01", "confidence01", "memoryRecall01",
+] as const;
+
+function normalizeAvatarBrain(value: unknown, tick: number): AvatarBrainEnvelopeV1 | null {
+  if (!isRecord(value) || value.schemaVersion !== 1 || !Number.isSafeInteger(value.stateVersion) || value.stateVersion !== tick) return null;
+  if (!isRecord(value.frame)) return null;
+  const frame = value.frame;
+  if (frame.schemaVersion !== 1 || frame.source !== "organism-state"
+    || typeof frame.profile !== "string" || !AVATAR_BRAIN_PROFILES.has(frame.profile)
+    || typeof frame.expression !== "string" || !AVATAR_BRAIN_EXPRESSIONS.has(frame.expression)
+    || !Number.isFinite(frame.expressionWeight) || Number(frame.expressionWeight) < 0 || Number(frame.expressionWeight) > 1
+    || !Number.isFinite(frame.freshness01) || Number(frame.freshness01) < 0 || Number(frame.freshness01) > 1
+    || typeof frame.reducedMotion !== "boolean" || !Number.isFinite(frame.projectedAt) || Number(frame.projectedAt) < 0) return null;
+  if (!isRecord(frame.channels) || AVATAR_BRAIN_CHANNELS.some((key) =>
+    !Number.isFinite(frame.channels?.[key]) || Number(frame.channels[key]) < -1 || Number(frame.channels[key]) > 1)) return null;
+  if (!isRecord(frame.affect) || AVATAR_BRAIN_AFFECT.some((key) =>
+    !Number.isFinite(frame.affect?.[key]) || Number(frame.affect[key]) < 0 || Number(frame.affect[key]) > 1)) return null;
+  if (!isRecord(frame.rendererHints) || !isRecord(frame.rendererHints.live2d)
+    || !isRecord(frame.rendererHints.layered2d) || !isRecord(frame.rendererHints.spatial3d)) return null;
+  if (Object.values(frame.rendererHints.live2d).some((v) => !Number.isFinite(v))
+    || Object.values(frame.rendererHints.layered2d).some((v) => !Number.isFinite(v))
+    || Object.values(frame.rendererHints.spatial3d).some((v) => !Number.isFinite(v))) return null;
+  return value as unknown as AvatarBrainEnvelopeV1;
+}
 
 export function toOrganismSnapshot(remote: BackendUiSnapshot, chat: OrganismSnapshot["chat"]): OrganismSnapshot {
   const last = remote.lastDecision;
@@ -65,6 +102,7 @@ export function toOrganismSnapshot(remote: BackendUiSnapshot, chat: OrganismSnap
     tick: Number(remote.tick),
     at: Number(remote.at),
     awake: Boolean(remote.awake),
+    avatarBrain: normalizeAvatarBrain(remote.avatarBrain, Number(remote.tick)),
     needs: remote.state.needs,
     emotion: {
       label: emotion(remote.emotion.label),
