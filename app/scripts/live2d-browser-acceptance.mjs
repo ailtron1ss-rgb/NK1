@@ -158,9 +158,9 @@ async function mountProfile(page, profile, screenshotPath) {
       hasWebGL: Boolean(gl),
       hasPixiLive2D: Boolean(window.PIXI?.live2d?.Live2DModel),
       visiblePixels,
-      screenshotPixels,
     };
   });
+  render.screenshotPixels = screenshotPixels;
   assert.ok(render.status.startsWith("ок"), "model has not reached the loaded status: " + render.status);
   assert.ok(render.width > 0 && render.height > 0, "WebGL drawing buffer is empty");
   assert.ok(render.hasWebGL && render.hasPixiLive2D, "Pixi Live2D/WebGL did not initialize");
