@@ -201,3 +201,10 @@ test("avatar renderer mode controls expose the selected mode to assistive techno
  const ui=await readFile(path.join(root,"src/components/AvatarStage.tsx"),"utf8");
  for(const mode of ["live2d","legacy","original","3d"])assert.ok(ui.includes(`aria-pressed={mode === "${mode}"}`),`missing aria-pressed state for ${mode}`);
 });
+
+test("v7 hybrid avatar keeps authored PBR materials while legacy GLB remains toon-shaded",async()=>{
+ const stage=await readFile(stagePath,"utf8"),toon=await readFile(path.join(root,"src/components/avatar/threeToonMaterials.ts"),"utf8");
+ assert.match(stage,/applyAvatarPbrMaterials/);
+ assert.match(stage,/if\(!vrm\)\{if\(name===KURISU_HYBRID_MODEL_V7_CANDIDATE\.filename\)applyAvatarPbrMaterials\(root\);else applyAnimeToonMaterials\(root\)\}/);
+ assert.match(toon,/export function applyAvatarPbrMaterials\(root: any\): void/);
+});
