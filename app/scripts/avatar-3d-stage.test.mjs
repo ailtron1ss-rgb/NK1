@@ -190,6 +190,9 @@ test("v7 NLA candidate is available for explicit visual preview but never promot
  assert.match(stage,/loadModel\(blob,asset\.filename,persistence\)/);
  assert.match(stage,/persistence==="preview"\)setStorageMessage\("Кандидат v7: временный preview, не записан в IndexedDB/);
  assert.match(stage,/returningFromCandidate/);
+ assert.match(stage,/previewPendingRef=useRef\(false\)/);
+ assert.match(stage,/previewPendingRef\.current=persistence==="preview"/);
+ assert.match(stage,/modelName===KURISU_HYBRID_MODEL_V7_CANDIDATE\.filename\|\|previewPendingRef\.current/);
  assert.match(stage,/loadV7Candidate/);
  assert.match(stage,/v7[^\n]{0,80}(?:preview|кандидат)|(?:preview|предпросмотр)[^\n]{0,80}v7/i);
 });
