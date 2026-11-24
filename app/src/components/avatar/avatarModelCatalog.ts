@@ -28,3 +28,21 @@ export const KURISU_HYBRID_MODEL_V7_CANDIDATE = Object.freeze({
   canonical: false as const,
   acceptance: "structural-only" as const,
 });
+
+/**
+ * Morph-ready v12 export. Explicit preview only; v5 remains canonical until
+ * visual/device, runtime-expression and provenance gates are accepted.
+ */
+export const KURISU_HYBRID_MODEL_V12_CANDIDATE = Object.freeze({
+  id: "neuro-kurisu-hybrid-v12-morph-ready-candidate",
+  label: "Neuro Kurisu · Hybrid 3D v12 morph-ready candidate",
+  filename: "NeuroKurisu_3D_v12_morph_ready.glb",
+  format: "glb" as const,
+  revision: 12,
+  sizeBytes: 7_330_996,
+  sha256: "sha256:6c37e675f33009623f2671fce041a850c1d6dd871cf36252025a0b71374df509",
+  url: "https://d2ol7oe51mr4n9.cloudfront.net/user_3LTKlQrHJFFxzAMNuCHI3842j5m/4fa929b7-eca1-4b14-831b-700416ab16db.glb",
+  source: "Higgsfield 3D Jutsu project 5cb8f13d-0f7d-4bf6-98cf-9b84503ce1ba, revision 12",
+  canonical: false as const,
+  acceptance: "morph-ready-structural" as const,
+});
