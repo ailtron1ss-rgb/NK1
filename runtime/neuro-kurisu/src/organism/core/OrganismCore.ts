@@ -8367,7 +8367,7 @@ export class OrganismCore {
                 ? 'internal-counterfactual-world-model'
                 : decisionMemoryIds.length ? 'retrieval-only' : 'not-applied',
         };
-        decision.decisionMemoryEvidence = decisionMemoryEvidence;
+        decision.memoryEvidence = decisionMemoryEvidence;
         decision.reasoningSignals.memoryRetrievedCount = decisionMemoryEvidence.retrievedCount;
         decision.reasoningSignals.memoryWorldApplied01 = decisionMemoryEvidence.appliedToWorldModel ? 1 : 0;
         decision.reasoningSignals.memoryWorldCounterfactualInfluence01 = decisionMemoryEvidence.counterfactualInfluence01;
