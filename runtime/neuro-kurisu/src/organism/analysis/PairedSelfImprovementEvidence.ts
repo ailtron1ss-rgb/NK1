@@ -250,7 +250,7 @@ export function verifySignedPairedHoldoutEvidence(
   if (environments.size < 2) return { accepted: false, reason: 'insufficient-independent-environments' };
 
   canonicalRows.sort();
-  const fingerprint = createHash('sha256').update(canonicalRows.join('\n'), 'utf8').digest('hex');
+  const fingerprint = createHash('sha256').update(canonicalRows.join('\n')).digest('hex');
   return {
     accepted: true,
     observations,

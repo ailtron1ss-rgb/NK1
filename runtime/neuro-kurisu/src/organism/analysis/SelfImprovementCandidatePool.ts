@@ -212,8 +212,12 @@ function normalizeCandidate(input: unknown, includeCandidateObservations = true)
   return { candidateId, candidate: freezeCandidate(normalized) };
 }
 function publicKeyFingerprint(pem: string): string {
-  const key = createPublicKey(pem);
-  return createHash('sha256').update(key.export({ type: 'spki', format: 'der' })).digest('hex');
+  // SPKI PEM base64 is the canonical public-key DER representation. Removing
+  // wrapping whitespace makes equivalent PEM formatting map to the same digest.
+  const canonicalBase64 = pem
+    .replace(/-----BEGIN PUBLIC KEY-----|-----END PUBLIC KEY-----/g, '')
+    .replace(/\s+/g, '');
+  return createHash('sha256').update(canonicalBase64).digest('hex');
 }
 
 function normalizeEd25519KeyMap(raw: unknown, refuse: () => never): Readonly<Record<string, string>> {
@@ -532,9 +536,9 @@ export function computeSourceSnapshotSha256(files: readonly SourceFileInput[]): 
   const rows = normalized.map(file => ({
     path: file.path,
     bytes: Buffer.byteLength(file.text, 'utf8'),
-    contentSha256: createHash('sha256').update(file.text, 'utf8').digest('hex'),
+    contentSha256: createHash('sha256').update(file.text).digest('hex'),
   }));
-  return createHash('sha256').update(JSON.stringify(rows), 'utf8').digest('hex');
+  return createHash('sha256').update(JSON.stringify(rows)).digest('hex');
 }
 
 /**
