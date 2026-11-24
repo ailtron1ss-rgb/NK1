@@ -249,6 +249,21 @@ assert.equal(
   'neutral in-graph target must be allowed',
 );
 
+// --- 5a. protected capability names inside a neutral source filename ---
+const embeddedProtectedGraph = buildSourceGraph([
+  { path: 'src/ordinary/SharedServices.ts', text: 'export class SelfImprovementPatchAdmissionService {}\\n' },
+  { path: 'src/ordinary/NeutralHelper.ts', text: 'export function helper() { return 1; }\\n' },
+]);
+assert.ok(findProtectedFiles(embeddedProtectedGraph).includes('src/ordinary/SharedServices.ts'),
+  'protected owner symbols must protect their containing source file even when its filename is neutral');
+const embeddedProtectedTarget = evaluateModification(
+  { candidateId: 'edit-embedded-admission-authority', targetFiles: ['src/ordinary/SharedServices.ts'] },
+  embeddedProtectedGraph,
+);
+assert.equal(embeddedProtectedTarget.decision, 'refused',
+  'a patch must not edit a file that contains a protected admission authority symbol');
+assert.ok(embeddedProtectedTarget.refusals.some(row => row.reason === 'protected-capability:SelfImprovementPatchAdmissionService'));
+
 // --- 6. run against the real organism source tree ---
 const files = collectTsFiles(ROOT);
 assert.ok(files.length > 100, `expected a real source tree, found ${files.length} files`);

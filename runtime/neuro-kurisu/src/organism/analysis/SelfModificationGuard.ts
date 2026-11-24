@@ -134,9 +134,17 @@ function ownData(value: Record<string, unknown>, key: string): unknown {
 
 export function findProtectedFiles(graph: SourceGraph): string[] {
   const hits = new Set<string>();
+  // Protect both physical paths and critical owners declared inside shared files.
+  // A file can otherwise hide a protected class behind an innocuous filename.
   for (const file of graph.files) {
     for (const fragment of PROTECTED_CAPABILITY_FRAGMENTS) {
       if (file.includes(fragment)) hits.add(file);
+    }
+  }
+  for (const node of graph.nodes) {
+    if (node.kind === 'file') continue;
+    for (const fragment of PROTECTED_CAPABILITY_FRAGMENTS) {
+      if (node.name.includes(fragment)) hits.add(node.file);
     }
   }
   return [...hits].sort();
@@ -190,7 +198,11 @@ export function evaluateModification(proposal: ModificationProposal, graph: Sour
   for (const target of targets) {
     const normalized = target.startsWith('/') ? target : `/${target}`;
     for (const fragment of PROTECTED_CAPABILITY_FRAGMENTS) {
-      if (target.includes(fragment)) {
+      const pathMatch = target.includes(fragment);
+      const symbolMatch = graph.nodes.some(node =>
+        node.file === target && node.kind !== 'file' && node.name.includes(fragment)
+      );
+      if (pathMatch || symbolMatch) {
         protectedHits.push(target);
         refusals.push({ reason: `protected-capability:${fragment}`, files: [target] });
       }
