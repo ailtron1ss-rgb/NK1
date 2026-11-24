@@ -25,7 +25,7 @@ The deterministic permutations test row-order stability. They are not five indep
 
 ## Exact CI result
 
-Exact current-HEAD workflow: [WorkPass75-76, run 45449589858](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45449589858), on code HEAD c906b3aa188adfceeb36d6200fe3192fc14c25da.
+Exact current-HEAD validation: [WorkPass75-76, run 45450829975](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45450829975), on PR HEAD 25bcb68a301c289b665e26ba5c86d00dfc292532.
 
 Observed on the exact current-HEAD run:
 
@@ -35,8 +35,8 @@ Observed on the exact current-HEAD run:
 | Precision@1 | 0.500 | 0.600 | +0.100 |
 | MRR@5 | 0.500 | 0.767 | +0.267 |
 | nDCG@5 | 0.500 | 0.826 | +0.326 |
-| Preview latency p50 | 3.52 ms | 3.99 ms | +0.47 ms |
-| Preview latency p95 | 7.11 ms | 6.13 ms | -0.98 ms |
+| Preview latency p50 | 4.57 ms | 4.93 ms | +0.35 ms |
+| Preview latency p95 | 8.62 ms | 8.30 ms | -0.32 ms |
 
 Language breakdown:
 - English: Recall@5 0.50 → 1.00; Precision@1 0.50 → 0.50; MRR@5 0.50 → 0.70.
@@ -86,19 +86,19 @@ Exact-run measurements:
 | Default cap | 1,600 |
 | Default 10k-row restore retained | 1,600 |
 | Default restore truncation | 8,400 |
-| Default restore time | 248.03 ms |
-| Default isolated preview | 165.97 ms |
+| Default restore time | 327.66 ms |
+| Default isolated preview | 222.74 ms |
 | Explicit 10k profile accepted | 10,000 |
 | Explicit 10k profile truncated | 0 |
-| Explicit 10k restore time | 1,894.85 ms |
-| Direct 10k retrieval p50 | 11.70 ms |
-| Direct 10k retrieval p95 | 32.96 ms |
-| Isolated 10k preview | 1,758.25 ms |
+| Explicit 10k restore time | 2,382.97 ms |
+| Direct 10k retrieval p50 | 14.38 ms |
+| Direct 10k retrieval p95 | 30.60 ms |
+| Isolated 10k preview | 2,296.43 ms |
 | 10k index integrity | PASS |
 
 The direct retrieval latency is measured separately from the preview latency. The preview clones and restores a snapshot, rebuilding indexes; it is not a representative single-query latency measurement. All timings are from a GitHub-hosted Linux runner, not Android hardware.
 
-The 10k profile survived restore, returned the high-retention target in 16 direct retrieval samples and the isolated preview, and passed index integrity. The mobile/default cap remains 1,600. A 10k configuration must not be promoted to a general runtime default until Android/device memory, latency, battery, and long-duration soak tests pass.
+The 10k profile survived restore, returned the high-retention target in 16 direct retrieval samples and the isolated preview, and passed index integrity. Maintenance then reduced the instance from 10,000 to the requested 9,000 rows (1,000 removals), while keeping index integrity true. The constructor clamp checks reported default 1,600, minimum 128, and maximum 10,000. The canonical runtime configuration regression passed for the default, explicit 10k value, upper/lower clamps, and invalid fallback. The mobile/default cap remains 1,600. A 10k configuration must not be promoted to a general runtime default until Android/device memory, latency, battery, and long-duration soak tests pass.
 
 This result establishes a configurable in-process hot-memory test profile only. It does **not** establish:
 - durable 10k/100k storage across process/device restarts outside the snapshot path tested here;
