@@ -25,7 +25,7 @@ import { cn } from "@/lib/utils";
 import { LegacySpriteDeck } from "@/legacy/avatar/LegacySpriteDeck";
 import { KurisuOriginalStage } from "./KurisuOriginalStage";
 import { Avatar3DStage } from "./Avatar3DStage";
-import { useKurisu, type AvatarViewMode } from "@/organism/store";
+import { useKurisu } from "@/organism/store";
 import {
   appendVisemeClockAnchor,
   buildVisemeTimeline,
@@ -46,7 +46,7 @@ import {
   type SpeechLifecyclePhaseV1,
 } from "./avatar/embodimentTimeline";
 
-type ViewMode = AvatarViewMode;
+type ViewMode = "live2d" | "legacy" | "original" | "3d";
 const isRecord = (value: unknown): value is Record<string, unknown> => value !== null && typeof value === "object" && !Array.isArray(value);
 type Live2DActionStatus = "started" | "unavailable" | "error" | "not-requested";
 const isLive2DActionStatus = (value: unknown): value is Live2DActionStatus =>
