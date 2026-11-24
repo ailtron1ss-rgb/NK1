@@ -74,8 +74,10 @@ test("canonical same-tick brain frame is folded into the one shared render proje
     clockSource: "speech-synthesis-boundary-anchored-monotonic",
   });
   assert.deepEqual(projection.brainChannels, snapshot.avatarBrain.frame.channels);
-  assert.equal(projection.bodyChannels.headRoll, 0.6);
+  assert.equal(projection.bodyChannels.headRoll, undefined, "head tilt is already owned by the single motor plan");
   assert.equal(projection.bodyChannels.headYaw, -0.35);
+  assert.equal(projection.bodyChannels.gazeX, 0.9);
+  assert.equal(projection.bodyChannels.breath, 0.3);
 });
 
 test("stale brain frames fail closed and leave the existing renderer-neutral fallback intact", () => {

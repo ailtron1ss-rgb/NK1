@@ -70,7 +70,6 @@ export function avatarBrainBodyChannels(
   if (!frame) return {};
   const channels = frame.channels;
   return {
-    headRoll: channels.headTilt,
     headYaw: channels.headYaw,
     gazeX: channels.gazeX,
     gazeY: channels.gazeY,
