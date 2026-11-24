@@ -1,0 +1,47 @@
+name: NK1 paired memory metadata ablation WorkPass75
+
+on:
+  push:
+    branches:
+      - aspect/autonomy-verified-agency-outcome-loop-20261124-r2
+    paths:
+      - ".github/workflows/nk1-memory-metadata-ablation-workpass75.yml"
+      - "runtime/neuro-kurisu/src/organism/developmental/MemoryOS2.ts"
+      - "runtime/neuro-kurisu/tests/memory-metadata-ablation-workpass75.mjs"
+      - "runtime/neuro-kurisu/tests/memory-retrieval-candidate-coverage.mjs"
+      - "runtime/neuro-kurisu/tests/memory-retrieval-numeric-terms.mjs"
+      - "runtime/neuro-kurisu/tests/memory-decision-receipt-workpass74.mjs"
+      - "runtime/neuro-kurisu/tests/big-pass-205-memory-world-causal.mjs"
+  pull_request:
+    paths:
+      - ".github/workflows/nk1-memory-metadata-ablation-workpass75.yml"
+      - "runtime/neuro-kurisu/src/organism/developmental/MemoryOS2.ts"
+      - "runtime/neuro-kurisu/tests/memory-metadata-ablation-workpass75.mjs"
+      - "runtime/neuro-kurisu/tests/memory-retrieval-candidate-coverage.mjs"
+      - "runtime/neuro-kurisu/tests/memory-retrieval-numeric-terms.mjs"
+      - "runtime/neuro-kurisu/tests/memory-decision-receipt-workpass74.mjs"
+      - "runtime/neuro-kurisu/tests/big-pass-205-memory-world-causal.mjs"
+
+permissions:
+  contents: read
+
+jobs:
+  paired-memory-ablation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          package-manager-cache: false
+      - name: Paired bilingual metadata-recall ablation
+        working-directory: runtime/neuro-kurisu
+        run: |
+          node --experimental-strip-types tests/memory-metadata-ablation-workpass75.mjs
+          node --experimental-strip-types tests/memory-retrieval-candidate-coverage.mjs
+          node --experimental-strip-types tests/memory-retrieval-numeric-terms.mjs
+          node --experimental-strip-types tests/memory-decision-receipt-workpass74.mjs
+          node --experimental-strip-types tests/big-pass-205-memory-world-causal.mjs
