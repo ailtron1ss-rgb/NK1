@@ -52,6 +52,51 @@ const repairedRow = repaired.snapshot().items.find(item => item.id === expiredId
 assert.equal(repairedRow.validUntilAt, repairedRow.validFromAt, 'restore must close an inverted window at the start');
 assert.ok(repaired.restoreDiagnostics().invalidExpiriesClosed >= 1, 'the inverted-window repair must be reported');
 
+
+// A newer observation may refresh a standalone memory's validFromAt, but it
+// must not move the start boundary of an already-versioned revision forward or
+// backward. That boundary is part of the revision lineage.
+const revisionMemory = new MemoryOS2({ embeddingProvider: null });
+const predecessor = revisionMemory.encode({
+  id: 'revision-validity-1',
+  content: 'The reactor operating envelope is the original verified range.',
+  kind: 'semantic',
+  source: 'revision-validity-fixture',
+  observedAt: now,
+  validFromAt: now,
+  validUntilAt: now + 1_000,
+  revisionGroupId: 'revision-validity-chain',
+  revisionSequence: 1,
+  supersededById: 'revision-validity-2',
+});
+const successor = revisionMemory.encode({
+  id: 'revision-validity-2',
+  content: 'The reactor operating envelope is the revised verified range.',
+  kind: 'semantic',
+  source: 'revision-validity-fixture',
+  observedAt: now + 1_000,
+  validFromAt: now + 1_000,
+  validUntilAt: now + 20_000,
+  revisionGroupId: 'revision-validity-chain',
+  revisionSequence: 2,
+  supersedesId: predecessor.id,
+});
+const successorStart = revisionMemory.get(successor.id).validFromAt;
+revisionMemory.encode({
+  id: successor.id,
+  content: 'The reactor operating envelope is the revised verified range.',
+  kind: 'semantic',
+  source: 'revision-validity-fixture',
+  observedAt: now + 2_000,
+  validFromAt: now + 1_500,
+  validUntilAt: now + 20_000,
+  revisionGroupId: 'revision-validity-chain',
+  revisionSequence: 2,
+  supersedesId: predecessor.id,
+});
+assert.equal(revisionMemory.get(successor.id).validFromAt, successorStart,
+  'a newer observation must not rewrite the valid-time start of revision sequence 2');
+
 console.log('MEMORY_TEMPORAL_VALIDITY_WRITE_GUARD=PASS', JSON.stringify({
   liveWindowClosed: expired.validUntilAt === expired.validFromAt,
   validBoundaryPreserved: bounded.validUntilAt === now + 9_000_000,
