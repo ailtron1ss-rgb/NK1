@@ -5647,7 +5647,7 @@ export class OrganismCore {
             interoceptiveError01: clamp(1 - (observation.embodiment?.cognitiveCapacity01 ?? 0.8)),
             uncertainty01: n.uncertainty,
             novelty01: n.novelty,
-            memoryPressure01: clamp(this.memorySubsystem.memoryOS.size() / 1600),
+            memoryPressure01: clamp(this.memorySubsystem.memoryOS.size() / this.memorySubsystem.memoryItemCap),
             developmentalReadiness01: clamp(0.4 + p54Summary.stability01 * 0.35 + (1 - p54Summary.currentError01) * 0.25),
             realityGap01: clamp(p57RealitySummary.meanRealityGap01),
         });
@@ -7011,7 +7011,7 @@ export class OrganismCore {
             perception: [...p42Central, semanticP41?.scene?.confidence01 ?? 0, p37Sensor.crossModalAgreement01 ?? 0, nativeP41.metrics.audioActivity01 ?? 0, nativeP41.metrics.visionChange01 ?? 0, socialNeuralFrame.higherOrderBelief01, socialNeuralFrame.predictionError01, socialNeuralFrame.confidence01],
             world: [...p27Central, normalizedObservation.worldContext?.uncertainty ?? n.uncertainty, p51Summary.groundingQuality01, p50Summary.selfWorldAlignment01, this.worldSubsystem.worldModelAgreement()],
             self: [p80Central.continuity01, p80Central.coherence01, p80Central.agency01, p80Central.realityAlignment01, identityContinuity.continuity, 1 - identityContinuity.drift, p31MetricsNow.agencyBinding01, n.identityCoherence],
-            memory: [...centralBrainMemoryFeatures, clamp(memorySizeNow / 1600), p59HealthNow, ...hippocampalFeatures],
+            memory: [...centralBrainMemoryFeatures, clamp(memorySizeNow / this.memorySubsystem.memoryItemCap), p59HealthNow, ...hippocampalFeatures],
             attention: [this.persisted.facets.memory.attention.confidence ?? 0.5, n.cognitiveLoad, fieldNow.attentionDebt01 ?? 0, n.novelty],
             body: [n.energy, observation.embodiment?.thermalStrain01 ?? .2, observation.embodiment?.cognitiveCapacity01 ?? (1 - n.cognitiveLoad), observation.embodiment?.awake === false ? 0 : 1],
             motivation: [n.goalPressure, n.socialNeed, n.uncertainty, n.novelty],
@@ -7051,7 +7051,7 @@ export class OrganismCore {
             metacognitive01: clamp(this.persisted.facets.consciousness.metacognition.metacognitiveAccuracy * .55 + metacognitiveNeuralFrame.predictionCalibration01 * .45), predictionError01: state.predictionError, uncertainty01: n.uncertainty, novelty01: n.novelty,
             grounding01: p51Summary.groundingQuality01, causal01: p50Summary.selfWorldAlignment01,
             bodyEnergy01: n.energy, thermal01: observation.embodiment?.thermalStrain01 ?? .2, cognitiveCapacity01: observation.embodiment?.cognitiveCapacity01 ?? (1 - n.cognitiveLoad),
-            memoryPressure01: clamp(memorySizeNow / 1600), socialNeed01: n.socialNeed, goalPressure01: n.goalPressure, realityGap01: p57RealitySummary.meanRealityGap01
+            memoryPressure01: clamp(memorySizeNow / this.memorySubsystem.memoryItemCap), socialNeed01: n.socialNeed, goalPressure01: n.goalPressure, realityGap01: p57RealitySummary.meanRealityGap01
         });
         const identityDecision = this.selfSubsystem.p60IdentityGuardian.evaluate({
             continuity01: identityContinuity.continuity, drift01: identityContinuity.drift,
@@ -7076,7 +7076,7 @@ export class OrganismCore {
             p58: { mode: p58Frame.mode, stability01: p58Frame.stability01, integrated01: p58Frame.integrated01, realityGap01: p58Frame.realityGap01 },
             p59: { mode: p59Plan.mode, priority01: p59Plan.priority01, retentionBias01: p59Plan.retentionBias01 }, p60: identityDecision,
             predictionError01: state.predictionError, uncertainty01: n.uncertainty, novelty01: n.novelty, identity01: identityContinuity.continuity,
-            bodyEnergy01: n.energy, thermal01: observation.embodiment?.thermalStrain01 ?? .2, memoryPressure01: clamp(memorySizeNow / 1600), realityGap01: p57RealitySummary.meanRealityGap01,
+            bodyEnergy01: n.energy, thermal01: observation.embodiment?.thermalStrain01 ?? .2, memoryPressure01: clamp(memorySizeNow / this.memorySubsystem.memoryItemCap), realityGap01: p57RealitySummary.meanRealityGap01,
         });
         const integrationSignals = {
             identity01: identityContinuity.continuity,
@@ -7085,7 +7085,7 @@ export class OrganismCore {
             predictionError01: state.predictionError, uncertainty01: n.uncertainty, novelty01: n.novelty,
             grounding01: p51Summary.groundingQuality01, causal01: p50Summary.selfWorldAlignment01,
             bodyEnergy01: n.energy, thermal01: observation.embodiment?.thermalStrain01 ?? .2, cognitiveCapacity01: observation.embodiment?.cognitiveCapacity01 ?? (1 - n.cognitiveLoad),
-            memoryPressure01: clamp(memorySizeNow / 1600), socialNeed01: n.socialNeed, goalPressure01: effectiveGoalPressure, realityGap01: p57RealitySummary.meanRealityGap01,
+            memoryPressure01: clamp(memorySizeNow / this.memorySubsystem.memoryItemCap), socialNeed01: n.socialNeed, goalPressure01: effectiveGoalPressure, realityGap01: p57RealitySummary.meanRealityGap01,
             memoryHealth01: p59HealthNow, agency01: p31MetricsNow.agencyBinding01,
             externalInput: Boolean(observation.text), identityDecision, p58Mode: p58Frame.mode, p58Stability01: p58Frame.stability01,
             p63Mode: p63Plan.mode, p63Priority01: p63Plan.priority01, retrievalQuality01: p62Frame.retrievalQuality01,
@@ -7127,7 +7127,7 @@ export class OrganismCore {
         const experienceBeforeTick = this.memorySubsystem.experienceContinuum.summary();
         const p75Plan = this.memorySubsystem.p75MemoryContinuumOS.plan({
             tick: state.tick,
-            pressure01: clamp((memorySizeNow / 1600) * .5 + n.cognitiveLoad * .25 + p66Homeostasis.pressure01 * .25),
+            pressure01: clamp((memorySizeNow / this.memorySubsystem.memoryItemCap) * .5 + n.cognitiveLoad * .25 + p66Homeostasis.pressure01 * .25),
             canonicalCapacity: this.memorySubsystem.memoryItemCap,
             recentEpisodes: this.persisted.traces.length,
             semanticNodes: this.persisted.facets.memory.semanticGraph.nodes.length,
@@ -7340,14 +7340,14 @@ export class OrganismCore {
                 causal: 0, neural: 0, kernel: 0, resource: 0, policy: canonicalPolicySignal,
             });
         }
-        const p82Progress = this.organismSystems.research.p82RealityProgress.observe({ tick: state.tick, capability01: this.governanceSubsystem.p73CapabilityLedger.summary().currentCapability01, complexity01: clamp((this.persisted.traces.length / 320) * .3 + (this.persisted.facets.memory.eventLog.length / 768) * .25 + (memorySizeNow / 1600) * .25 + (1 - p80Self.coherence01) * .2), externalEvidence: Boolean(observation.success != null || observation.reward != null), identity01: p76Identity.continuity01, continuity01: identityContinuity.continuity });
+        const p82Progress = this.organismSystems.research.p82RealityProgress.observe({ tick: state.tick, capability01: this.governanceSubsystem.p73CapabilityLedger.summary().currentCapability01, complexity01: clamp((this.persisted.traces.length / 320) * .3 + (this.persisted.facets.memory.eventLog.length / 768) * .25 + (memorySizeNow / this.memorySubsystem.memoryItemCap) * .25 + (1 - p80Self.coherence01) * .2), externalEvidence: Boolean(observation.success != null || observation.reward != null), identity01: p76Identity.continuity01, continuity01: identityContinuity.continuity });
         const p74Frame = this.organismSystems.self.p74IntegratedOrganismKernel.evaluate({
             tick: state.tick, at: state.at, identity01: p76Identity.continuity01, identityDrift01: p76Identity.drift01,
             grounding01: p51Summary.groundingQuality01, causal01: p50Summary.selfWorldAlignment01,
             predictionAccuracy01: 1 - state.predictionError, uncertainty01: n.uncertainty, novelty01: n.novelty, socialNeed01: n.socialNeed,
             goalPressure01: effectiveGoalPressure, energy01: n.energy, thermal01: observation.embodiment?.thermalStrain01 ?? .2,
             cognitiveCapacity01: observation.embodiment?.cognitiveCapacity01 ?? (1 - n.cognitiveLoad),
-            memoryHealth01: p59HealthNow, memoryPressure01: clamp(memorySizeNow / 1600),
+            memoryHealth01: p59HealthNow, memoryPressure01: clamp(memorySizeNow / this.memorySubsystem.memoryItemCap),
             homeostaticPressure01: p66Homeostasis.pressure01, workspace01: p61Frame.integration01,
             metacognitive01: clamp(this.persisted.facets.consciousness.metacognition.metacognitiveAccuracy * .55 + metacognitiveNeuralFrame.predictionCalibration01 * .45),
             realityGap01: p57RealitySummaryNow.meanRealityGap01,
@@ -7968,13 +7968,13 @@ export class OrganismCore {
             complexity01: clamp(
                 (this.persisted.traces.length / 320) * .35 +
                 (this.persisted.facets.memory.eventLog.length / 768) * .25 +
-                (memorySizeNow / 1600) * .40,
+                (memorySizeNow / this.memorySubsystem.memoryItemCap) * .40,
             ),
             externalEvidence: Boolean(observation.success != null || observation.reward != null),
             outcome01: observation.success ?? observation.reward ?? null,
         });
         this.organismSystems.research.p77RealityExperimentOS.record(state.tick, { capabilityId: 'organism-outcome', before01: clamp(selectedIntent?.predictedUtility ?? p73Capability.capability01), after01: clamp(observation.success ?? observation.reward ?? 0), evidence: observation.success != null || observation.reward != null ? 'external-outcome' : 'none', context: `mode=${p74Frame.mode};memory=${p75Plan.retrievalFocus};action=${selectedIntent?.action ?? 'none'}` });
-        this.organismSystems.research.p77RealityExperimentOS.noteComplexity(clamp((this.persisted.traces.length / 320) * .25 + (this.persisted.facets.memory.eventLog.length / 768) * .25 + (memorySizeNow / 1600) * .25 + (p74RecentModesNow / 32) * .25));
+        this.organismSystems.research.p77RealityExperimentOS.noteComplexity(clamp((this.persisted.traces.length / 320) * .25 + (this.persisted.facets.memory.eventLog.length / 768) * .25 + (memorySizeNow / this.memorySubsystem.memoryItemCap) * .25 + (p74RecentModesNow / 32) * .25));
         if (!spineOnly && p71Consistency.repairPressure01 > .62 && selectedIntent && !['rest', 'verify', 'reflect'].includes(selectedIntent.action)) {
             const repairCandidate = governedCandidates.find(c => c.action === 'verify') ?? governedCandidates.find(c => c.action === 'reflect') ?? null;
             if (repairCandidate && repairCandidate.score >= selectedIntent.score - .16) {
@@ -8577,7 +8577,7 @@ export class OrganismCore {
                 storageCost01: clamp(memItem.content.length / 1800),
                 estimatedBytes: Math.max(128, new TextEncoder().encode(JSON.stringify({ content: memItem.content, context: memItem.context, tags: memItem.tags, links: { s: memItem.semanticLinks, c: memItem.causalLinks, t: memItem.temporalLinks }, confidence: memItem.confidence })).byteLength),
                 memoryBytesUsed: Math.max(0, Number(this.memorySubsystem.memoryOS.residencyDiagnostics().estimatedBytes ?? 0)),
-                memoryByteBudget: Math.max(262144, Math.min(1048576, Math.floor((p75Plan.canonicalBudget || 768) * 720))),
+                memoryByteBudget: this.memorySubsystem.memoryByteBudget,
                 provenanceConfidence01: memoryConfidence,
                 pressure01: p66Homeostasis.pressure01,
             });
@@ -8714,7 +8714,9 @@ export class OrganismCore {
             workingSet01: clamp(
                 (this.persisted.traces.length / 320) * .25 +
                 (this.persisted.facets.memory.eventLog.length / 768) * .25 +
-                (memorySizeNow / 1600) * .5,
+                (memorySizeNow / this.memorySubsystem.memoryItemCap) * .5,
+            canonicalCapacity: this.memorySubsystem.memoryItemCap,
+            byteBudget: this.memorySubsystem.memoryByteBudget,
             ),
             energy01: n.energy,
             pressure01: clamp(p66Homeostasis.pressure01 + p71Consistency.repairPressure01 * .25),
