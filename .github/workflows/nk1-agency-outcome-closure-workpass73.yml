@@ -11,6 +11,7 @@ on:
       - "runtime/neuro-kurisu/src/organism/system/CognitiveEventFabric.ts"
       - "runtime/neuro-kurisu/src/organism/cognition/B273AutonomousGoalLifecycle.ts"
       - "runtime/neuro-kurisu/src/organism/core/DevelopmentalNeuralRuntime.ts"
+      - "runtime/neuro-kurisu/src/organism/developmental/P68GoalEcology.ts"
       - "runtime/neuro-kurisu/tests/**"
       - "runtime/neuro-kurisu/src/organism/cognition/B273AutonomousGoalLifecycle.ts"
       - "runtime/neuro-kurisu/src/organism/core/DevelopmentalNeuralRuntime.ts"
@@ -22,6 +23,7 @@ on:
       - "runtime/neuro-kurisu/tests/**"
       - "runtime/neuro-kurisu/src/organism/cognition/B273AutonomousGoalLifecycle.ts"
       - "runtime/neuro-kurisu/src/organism/core/DevelopmentalNeuralRuntime.ts"
+      - "runtime/neuro-kurisu/src/organism/developmental/P68GoalEcology.ts"
 
 permissions:
   contents: read
