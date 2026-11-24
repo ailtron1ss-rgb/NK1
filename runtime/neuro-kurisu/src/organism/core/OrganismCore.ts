@@ -1,4 +1,5 @@
 import { actionCost } from './ActionCostPolicy.ts';
+import { resolveCanonicalMaintenanceItemLimit } from '../developmental/P75MemoryContinuumOS.ts';
 import type { LearningFitnessJournalSink } from '../learning/LearningFitnessJournal.ts';
 import type { LearningLifecycleJournalSink } from '../learning/LearningLifecycleJournal.ts';
 import { sha256Stable } from './StableSerialization.ts';
@@ -8640,7 +8641,7 @@ export class OrganismCore {
         if (state.tick % 8 === 0)
             this.memorySubsystem.fabric.maintain({
                 tick: state.tick, pressure01: p66Homeostasis.pressure01,
-                maxItems: p66Homeostasis.pressure01 > .92 ? Math.min(720, p75Plan.canonicalBudget) : p66Homeostasis.pressure01 > .78 ? Math.min(960, p75Plan.canonicalBudget) : p75Plan.canonicalBudget,
+                maxItems: resolveCanonicalMaintenanceItemLimit(this.memorySubsystem.memoryItemCap, p66Homeostasis.pressure01, p75Plan.canonicalBudget),
                 byteBudget: this.memorySubsystem.memoryByteBudget,
                 ...(state.tick % 32 === 0 || p66Homeostasis.pressure01 > .82 ? {
                     hotBudget: p75Plan.hotBudget, warmBudget: p75Plan.warmBudget, coldBudget: p75Plan.coldBudget, identityTension01: p75Plan.retrievalFocus === 'identity-critical' ? .78 : experienceBeforeTick.identityGravity.tension01,

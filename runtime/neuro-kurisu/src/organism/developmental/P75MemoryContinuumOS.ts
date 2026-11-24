@@ -1,6 +1,14 @@
 export interface P75Input { tick:number; pressure01:number; recentEpisodes:number; semanticNodes:number; activeGoals:number; energy01:number; textPresent:boolean; experienceHot?:number; experienceWarm?:number; experienceCold?:number; identityTension01?:number; canonicalCapacity?:number; }
 export interface P75State { version:1; cycles:number; hotBudget:number; warmBudget:number; coldBudget:number; retrievalFocus:string; consolidationCount:number; forgottenCount:number; continuity01:number; health01:number; recentModes:string[]; }
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
+/** Preserve legacy pressure-retention ratios while scaling them to the selected canonical store. */
+export function resolveCanonicalMaintenanceItemLimit(itemCap:number,pressure01:number,plannedBudget:number):number{
+ const cap=Math.max(128,Math.min(10_000,Math.floor(Number.isSafeInteger(itemCap)?itemCap:1600)));
+ const pressure=clamp(pressure01);
+ const ratio=pressure>.92?.45:pressure>.78?.60:1;
+ const planned=Math.max(128,Math.floor(Number.isFinite(plannedBudget)?plannedBudget:cap));
+ return Math.max(128,Math.min(cap,planned,Math.floor(cap*ratio)));
+}
 export const defaultP75=():P75State=>({version:1,cycles:0,hotBudget:32,warmBudget:192,coldBudget:1024,retrievalFocus:'recent',consolidationCount:0,forgottenCount:0,continuity01:0.85,health01:0.85,recentModes:[]});
 export class P75MemoryContinuumOS{
  private state=JSON.parse(JSON.stringify(defaultP75())) as P75State;

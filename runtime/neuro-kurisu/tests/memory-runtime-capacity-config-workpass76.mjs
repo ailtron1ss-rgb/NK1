@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { MemorySubsystemRuntime } from '../src/organism/core/MemorySubsystemRuntime.ts';
-import { P75MemoryContinuumOS } from '../src/organism/developmental/P75MemoryContinuumOS.ts';
+import { P75MemoryContinuumOS, resolveCanonicalMaintenanceItemLimit } from '../src/organism/developmental/P75MemoryContinuumOS.ts';
 import { P70MemoryLifecycleGovernor } from '../src/organism/developmental/P70MemoryLifecycleGovernor.ts';
 import { CanonicalMemoryLifecycleAuthority } from '../src/organism/memory/CanonicalMemoryLifecycleAuthority.ts';
 
@@ -76,6 +76,19 @@ try {
   assert.equal(observedMaintenance.maxItems, p70Expanded.budgets.memories);
   assert.equal(observedMaintenance.byteBudget, 7_200_000,
     'the lifecycle authority must forward the configured byte budget to MemoryFabric');
+
+  assert.equal(resolveCanonicalMaintenanceItemLimit(1_600, .95, 1_600), 720,
+    'critical pressure must preserve the legacy 720-row cap on the default profile');
+  assert.equal(resolveCanonicalMaintenanceItemLimit(1_600, .80, 1_600), 960,
+    'elevated pressure must preserve the legacy 960-row cap on the default profile');
+  assert.equal(resolveCanonicalMaintenanceItemLimit(10_000, .95, 10_000), 4_500,
+    'critical-pressure retention must scale to 45% of an expanded 10k profile');
+  assert.equal(resolveCanonicalMaintenanceItemLimit(10_000, .80, 10_000), 6_000,
+    'elevated-pressure retention must scale to 60% of an expanded 10k profile');
+  assert.equal(resolveCanonicalMaintenanceItemLimit(10_000, .50, 8_840), 8_840,
+    'low-pressure maintenance must retain the planned P70/P75 canonical budget');
+  assert.equal(resolveCanonicalMaintenanceItemLimit(128, .99, 128), 128,
+    'the minimum host profile must never be clamped below its safe floor');
 
   const p75 = new P75MemoryContinuumOS();
   const defaultPlan = p75.plan({
