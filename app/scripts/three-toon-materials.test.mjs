@@ -11,6 +11,7 @@ import {
 } from "three";
 import {
   applyAnimeToonMaterials,
+  applyAvatarPbrMaterials,
   createProceduralToonMaterial,
   getSharedAnimeGradientTexture,
 } from "../src/components/avatar/threeToonMaterials.ts";
@@ -81,4 +82,32 @@ test("procedural and imported toon materials share one renderer-owned gradient",
   assert.equal(gradientDisposals(), 0, "model cleanup must not dispose renderer-owned gradient texture");
   procedural.dispose();
   gradient.dispose();
+});
+
+
+test("avatar PBR profile preserves authored maps and applies anime material response", () => {
+  const root = new Group();
+  const map = new Texture();
+  const normalMap = new Texture();
+  const source = new MeshStandardMaterial({ map, normalMap, color: 0xf2d2c0, roughness: 0.72 });
+  source.name = "MAT_skin_warm";
+  source.userData = { sourceTag: "glb" };
+  const sourceDisposals = disposalCount(source);
+  const mapDisposals = disposalCount(map);
+  const normalDisposals = disposalCount(normalMap);
+  root.add(new Mesh(new BoxGeometry(), source));
+
+  applyAvatarPbrMaterials(root);
+
+  const converted = root.children[0].material;
+  assert.equal(converted.isMeshPhysicalMaterial, true);
+  assert.equal(converted.map, map);
+  assert.equal(converted.normalMap, normalMap);
+  assert.equal(converted.roughness, 0.5);
+  assert.equal(converted.clearcoat, 0.1);
+  assert.equal(converted.name, "MAT_skin_warm_NK1_PBR");
+  assert.deepEqual(converted.userData, { sourceTag: "glb", nk1PbrEnhanced: true });
+  assert.equal(sourceDisposals(), 1);
+  assert.equal(mapDisposals(), 0);
+  assert.equal(normalDisposals(), 0);
 });
