@@ -3757,6 +3757,7 @@ export class OrganismCore {
             await this.feedbackSpineOnly(observation);
         }
         const state = this.persisted.state;
+        const externalRequest = Boolean(observation.text || observation.externalGoal);
         const previous: OrganismState = { ...state, needs: { ...state.needs } };
         const at = now();
         state.at = at;
@@ -4130,7 +4131,7 @@ export class OrganismCore {
             tick: state.tick, energy01: state.needs.energy, thermal01: thermal, capacity01: body?.cognitiveCapacity01 ?? (1 - state.needs.cognitiveLoad),
             identity01: this.persisted.facets.consciousness.identityContinuity.continuity, realityGap01: 0,
             uncertainty01: state.needs.uncertainty, novelty01: state.needs.novelty, socialNeed01: state.needs.socialNeed, attention01: state.attentionBudget,
-            homeostaticPressure01: clamp((1 - state.needs.energy) * .45 + state.needs.cognitiveLoad * .35 + thermal * .20), candidates, requestedAction: userRequestedAction, userPresent: Boolean(observation.text), upstreamMode: 'spine-only',
+            homeostaticPressure01: clamp((1 - state.needs.energy) * .45 + state.needs.cognitiveLoad * .35 + thermal * .20), candidates, requestedAction: userRequestedAction, userPresent: externalRequest, upstreamMode: 'spine-only',
         });
         // Distributional policy: B299 remains a policy writer, so selection is a deterministic
         // softmax sample rather than a pure argmax. The seed is the organism tick, making the
@@ -4159,7 +4160,7 @@ export class OrganismCore {
         }
         state.predictedNextAction = selected?.action ?? 'wait';
         state.lastPredictionConfidence = selected?.confidence ?? 0;
-        state.autonomyScore = observation.text ? clamp(state.autonomyScore * .9 + .1 * .25) : clamp(state.autonomyScore * .9 + .1 * .85);
+        state.autonomyScore = externalRequest ? clamp(state.autonomyScore * .9 + .1 * .25) : clamp(state.autonomyScore * .9 + .1 * .85);
         this.persisted.system.causalPersonalityDevelopmentB299 = this.developmentalNeural.causalPersonalityDevelopmentB299.snapshot();
         const predictedOutcomes: PredictedActionOutcome[] = candidates.map(c => {
             const world = this.config.enableWorldModel
@@ -4198,13 +4199,19 @@ export class OrganismCore {
                 b391IntegratedConfidence01: clamp(b391Decision.integratedConfidence01),
                 worldCalibrationUsed01: selected && this.organismSystems.world.worldCausalCalibration.calibratedConfidence(selected.action, selected.confidence, worldContextKey) !== selected.confidence ? 1 : 0,
             },
-            userRequestedAction: userRequestedAction ?? null, autonomousOverride: !Boolean(observation.text), predictedOutcomes, worldContextKey,
+            userRequestedAction: userRequestedAction ?? null, autonomousOverride: !externalRequest, predictedOutcomes, worldContextKey,
         };
         decision.semanticEvidence = buildDecisionSemanticEvidence({ stateBefore: previous, candidates, selected, worldContextKey });
         this.persisted.traces = [decision, ...this.persisted.traces].slice(0, 64);
-        if (observation.reward !== undefined || observation.success !== undefined) {
-            decision.outcome = { success: clamp(observation.success ?? (observation.reward == null ? .5 : .5 + observation.reward * .5)), reward: observation.reward, surprise: observation.surprise, notes: 'spine-only-inline-feedback', at: Date.now() };
-        }
+        this.selfSubsystem.selfAuthorship.observeDecision({
+            decisionId: decision.id,
+            action: selected?.action ?? 'wait',
+            autonomous: !externalRequest,
+            externalRequest,
+            goalTitle: active?.title,
+            reason: active?.reason ?? 'spine-only-cycle',
+        });
+        this.persisted.facets.learning.selfAuthorship = this.selfSubsystem.selfAuthorship.snapshot();
         const workspace: WorkspaceFrame = { tick: state.tick, broadcastId: `spine:${state.tick}`, selected: selected ? [selected.action] : [], content: { mode: 'SPINE_ONLY', b299LearningUpdates: this.developmentalNeural.causalPersonalityDevelopmentB299.snapshot().learningUpdates, b269Cycles: b269Snapshot.cycles, b269Prediction01: b269Prediction01, b269FiringRate01: b269Frame.firingRate01, b269Plasticity01: b269Frame.plasticity01 }, recurrentCycles: 1 };
         this.markPersistenceDirty();
         const checkpointCadence = Math.max(64, Math.floor(Number(this.config.checkpointMaxDirtyCycles || 64)));
@@ -4232,6 +4239,15 @@ export class OrganismCore {
         state.needs.uncertainty = clamp(state.needs.uncertainty * .82 + surprise * .18);
         const reward01 = clamp(outcome.reward ?? success);
         const verified = Boolean(outcome.worldTransition) || Boolean(outcome.evidenceSource && ['os', 'device', 'user', 'external-api'].includes(String(outcome.evidenceSource).toLowerCase()));
+        const selectedGoalTitle = this.persisted.goals.find(goal => goal.id === trace.selected?.goalId)?.title ?? null;
+        this.selfSubsystem.selfAuthorship.observeOutcome({
+            decisionId: trace.id,
+            executed: verified,
+            success,
+            surprise,
+            selectedGoal: selectedGoalTitle,
+        });
+        this.persisted.facets.learning.selfAuthorship = this.selfSubsystem.selfAuthorship.snapshot();
         const b269AfterPrediction = this.developmentalNeural.spikingPlasticNeuralB269.snapshot().lastPrediction01;
         const neuralPredictionError = clamp(Math.abs(reward01 - b269AfterPrediction));
         const b269Learning = this.developmentalNeural.spikingPlasticNeuralB269.learnFromOutcome({ reward01, predictionError01: neuralPredictionError, tick: state.tick, action: trace.selected.action });
