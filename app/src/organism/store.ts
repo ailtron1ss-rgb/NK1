@@ -273,9 +273,11 @@ export const useKurisu = create<KurisuStore>((set, get) => {
       } catch (error) {
         const message = errorMessage(error);
         const current = get();
-        const uncertainChat = withChatDeliveryStatus(current.snap.chat, userTurn.id, "unknown");
-        saveChat(uncertainChat);
-        set({ snap: { ...current.snap, chat: uncertainChat }, busy: false, error: message });
+        const status = Number((error as { status?: number } | null)?.status);
+        const delivery = Number.isInteger(status) && status >= 400 && status < 500 ? "rejected" : "unknown";
+        const resolvedChat = withChatDeliveryStatus(current.snap.chat, userTurn.id, delivery);
+        saveChat(resolvedChat);
+        set({ snap: { ...current.snap, chat: resolvedChat }, busy: false, error: message });
         return false;
       }
     },
