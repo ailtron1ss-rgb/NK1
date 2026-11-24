@@ -8715,9 +8715,9 @@ export class OrganismCore {
                 (this.persisted.traces.length / 320) * .25 +
                 (this.persisted.facets.memory.eventLog.length / 768) * .25 +
                 (memorySizeNow / this.memorySubsystem.memoryItemCap) * .5,
+            ),
             canonicalCapacity: this.memorySubsystem.memoryItemCap,
             byteBudget: this.memorySubsystem.memoryByteBudget,
-            ),
             energy01: n.energy,
             pressure01: clamp(p66Homeostasis.pressure01 + p71Consistency.repairPressure01 * .25),
             experienceHotCount: experienceForRetention.hotCount,
