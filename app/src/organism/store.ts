@@ -19,6 +19,7 @@ export interface UiConnectionState {
   at: number | null;
   lastSyncedAt: number | null;
   lastError: string | null;
+  serviceDegraded: boolean;
   stamp: UiSnapshotStamp | null;
 }
 
@@ -53,6 +54,7 @@ const initialConnection: UiConnectionState = {
   at: null,
   lastSyncedAt: null,
   lastError: null,
+  serviceDegraded: false,
   stamp: null,
 };
 
@@ -101,19 +103,21 @@ export const useKurisu = create<KurisuStore>((set, get) => {
       set({
         snap: nextSnapshot,
         connection: {
-          status: languageDegraded ? "degraded" : "connected",
+          status: "connected",
           version: remote.version,
           schemaVersion: remote.schemaVersion,
           tick: remote.tick,
           at: remote.at,
           lastSyncedAt: Date.now(),
           lastError: null,
+          serviceDegraded: languageDegraded,
           stamp,
         },
         error: null,
       });
       return true;
     } catch (error) {
+      if (requestId !== latestSnapshotRequestId) return false;
       const message = errorMessage(error);
       const current = get().connection;
       set({
