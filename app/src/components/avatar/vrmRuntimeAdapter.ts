@@ -117,6 +117,9 @@ export interface VrmNormalizedMotorFrame {
   speaking: boolean;
   leftArmIntent?: number;
   rightArmIntent?: number;
+  /** Optional canonical normalized offsets from the shared avatar brain frame. */
+  headTilt?: number;
+  headYaw?: number;
 }
 
 type NormalizedBoneNode = { rotation: { x: number; y: number; z: number; set(x: number, y: number, z: number): unknown } };
@@ -219,8 +222,8 @@ export function applyVrmNormalizedMotorFrame(
   const social = clamp01(frame.socialNeed);
   const uncertainty = clamp01(frame.uncertainty);
 
-  const headX = -gazeY * 0.12 - load * 0.035 + (1 - energy) * 0.04;
-  const headY = gazeX * (0.22 - social * 0.05) + uncertainty * 0.025;
+  const headX = -gazeY * 0.12 - load * 0.035 + (1 - energy) * 0.04 + clampSigned(frame.headTilt ?? 0) * 0.055;
+  const headY = gazeX * (0.22 - social * 0.05) + uncertainty * 0.025 + clampSigned(frame.headYaw ?? 0) * 0.055;
   const headZ = frame.emotion === "sadness"
     ? 0.055
     : frame.emotion === "anger" || frame.emotion === "frustration" ? -0.04 : 0;

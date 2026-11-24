@@ -309,3 +309,28 @@ test("VRM expression application preserves speech visemes while using affect int
   }).weight);
   assert.equal(vrm.values.get("oh"), 0.64);
 });
+
+
+test("normalized VRM motor applies canonical head tilt and yaw offsets with bounds", () => {
+  const vrm = createFakeVrm();
+  const base = {
+    action: "wait", emotion: "calm", gazeX: 0, gazeY: 0,
+    cognitiveLoad: 0, energy: 1, socialNeed: 0, uncertainty: 0, speaking: false,
+  };
+  applyVrmNormalizedMotorFrame(vrm, base);
+  const neutral = {
+    headX: vrm.bones.get("head").rotation.x,
+    headY: vrm.bones.get("head").rotation.y,
+    neckX: vrm.bones.get("neck").rotation.x,
+    neckY: vrm.bones.get("neck").rotation.y,
+  };
+  applyVrmNormalizedMotorFrame(vrm, { ...base, headTilt: 0.6, headYaw: -0.4 });
+  assert.ok(Math.abs(vrm.bones.get("head").rotation.x - (neutral.headX + 0.6 * 0.055 * 0.65)) < 1e-9);
+  assert.ok(Math.abs(vrm.bones.get("head").rotation.y - (neutral.headY - 0.4 * 0.055 * 0.65)) < 1e-9);
+  assert.ok(Math.abs(vrm.bones.get("neck").rotation.x - (neutral.neckX + 0.6 * 0.055 * 0.35)) < 1e-9);
+  assert.ok(Math.abs(vrm.bones.get("neck").rotation.y - (neutral.neckY - 0.4 * 0.055 * 0.35)) < 1e-9);
+
+  applyVrmNormalizedMotorFrame(vrm, { ...base, headTilt: 9, headYaw: -9 });
+  assert.ok(Math.abs(vrm.bones.get("head").rotation.x - (neutral.headX + 0.055 * 0.65)) < 1e-9);
+  assert.ok(Math.abs(vrm.bones.get("head").rotation.y - (neutral.headY - 0.055 * 0.65)) < 1e-9);
+});

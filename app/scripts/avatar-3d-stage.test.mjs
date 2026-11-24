@@ -178,3 +178,11 @@ test("3D stage consumes canonical avatar brain channels for head, face and VRM",
  assert.match(stage, /arousal:brainAffect\?\.arousal01/);
  assert.match(stage, /brain\?\.browRaise/);
 });
+
+
+test("3D VRM routes canonical head channels through the normalized head/neck motor, not the limb rig", async () => {
+ const stage = await readFile(stagePath, "utf8");
+ assert.match(stage, /headTilt:brain\?\.headTilt\?\?0,headYaw:brain\?\.headYaw\?\?0/);
+ assert.match(stage, /applyVrmFullBodyChannels\(rt\.vrm,p\.bodyChannels\?\?\{\}\)/);
+ assert.doesNotMatch(stage, /fullBodyChannels\.headPitch=brain\.headTilt/);
+});

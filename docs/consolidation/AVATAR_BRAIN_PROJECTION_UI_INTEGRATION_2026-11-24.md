@@ -52,3 +52,8 @@ Added tests:
 - clean runtime UI smoke checks frame schema, source, tick equality and bounded channels.
 
 The exact PR-head CI run is the evidence for source/test correctness. Browser-presented frame verification, actual hosted GLB visual acceptance, and Android/Termux device soak remain explicit follow-up acceptance gates.
+
+
+## VRM head-channel ownership
+
+The shared frame's normalized `headTilt` and `headYaw` are now explicit optional inputs to `VrmNormalizedMotorFrame`, the existing sole owner of normalized VRM head/neck proxy bones. Each offset is clamped to [-1, 1] and scaled to a bounded 0.055-radian contribution. They are no longer sent to `applyVrmFullBodyChannels`, whose documented ownership is spine and limb joints and which intentionally does not write head/neck. A focused adapter test verifies both split head/neck offsets and clamping.
