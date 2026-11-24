@@ -13945,7 +13945,7 @@ export class OrganismCore {
             intentHash: sha256Stable({
                 version: 1, source: 'project-executor', projectId: project.id, stepId: stepOperation.stepId,
                 requestFingerprint: stepOperation.requestFingerprint, operationKey, sequence: stepOperation.sequence,
-                decisionId: stableDecisionId, tick: this.persisted.state.tick, toolId: canonicalProjectToolId,
+                decisionId: stableDecisionId, tick: this.persisted.state.tick, toolId: canonicalProjectToolId, inputHash: projectInputHash,
             }),
             reason: boundedProjectIntentGoal, sourceText: projectIntentSourceText, projectId: project.id,
             stepId: stepOperation.stepId, requestFingerprint: stepOperation.requestFingerprint,

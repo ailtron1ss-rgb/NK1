@@ -57,7 +57,7 @@ safeExecutor.restore(safePlan);
 const safeTool=projectCore.actionToolsSnapshot().find(tool=>tool.id==='organism.project.context');
 assert.ok(safeTool?.projectAllowed && !safeTool.destructive,'canonical project step must use its safe context reader');
 const safeResult=await projectCore.executeProjectTool('organism.project.context',{request:'status'},'BIG_PASS_39');
-assert.equal(safeResult.ok,true,'the active project step must execute its exact canonical safe tool');
+assert.equal(safeResult.ok,true,JSON.stringify(safeResult));
 
 const dangerCore=new OrganismCore(new MemoryStateStore(),{cycleResultMode:'operational',enableWorldModel:true,enableLanguage:false,enableSelfProjects:true,includeAdvancedCycleSnapshot:false,checkpointMinIntervalMs:0,checkpointMaxDirtyCycles:64});
 await dangerCore.init();
