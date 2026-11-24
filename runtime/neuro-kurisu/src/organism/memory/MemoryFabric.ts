@@ -249,7 +249,7 @@ export class MemoryFabric {
         const before=this.findCanonical(command.id);
         if(before&&before.epistemicStatus!==command.to){
           this.memoryOS.revise(command.id,command.to,command.reason);
-          result=undefined; memoryId=command.id; outcome='applied';
+          result=undefined; memoryId=before.id; outcome='applied';
           eventPayload={action, memoryId, from:before.epistemicStatus,to:command.to,reason:String(command.reason).slice(0,240),commandId:commandId||undefined};
         }else{result=undefined;memoryId=before?.id;}
         break;
@@ -353,10 +353,17 @@ export class MemoryFabric {
 
   /** Keep the bounded secondary read model aligned with the current canonical revision. */
   private syncCompatibilityProjection(id:string):boolean {
-    const key=String(id??'').trim().slice(0,160);
-    if(!key)return false;
-    const item=this.memoryOS.snapshotItem(key);
-    if(!item){this.multiTimescale.removeCanonicalProjection(key);return false;}
+    const requestedKey=String(id??'').trim().slice(0,160);
+    if(!requestedKey)return false;
+    const item=this.memoryOS.snapshotCurrentRevisionItem(requestedKey);
+    if(!item){
+      this.multiTimescale.removeCanonicalProjection(requestedKey);
+      return false;
+    }
+    const key=item.id;
+    // A retained historical ID may still have an old compatibility row. Remove
+    // that stale copy before publishing the active revision under its own ID.
+    if(key!==requestedKey)this.multiTimescale.removeCanonicalProjection(requestedKey);
     const projected=this.substrate.projectCompatibilityRecords(this.memoryOS.compatibilityProjectionSnapshotForId(key),1)[0];
     if(!projected){this.multiTimescale.removeCanonicalProjection(key);return false;}
     this.multiTimescale.add(projected,false);
@@ -407,8 +414,11 @@ export class MemoryFabric {
 
   /** Incrementally sync one canonical row and any rows that link to it. */
   private syncSemanticGraphProjection(id:string):boolean {
-    const key=String(id??'').trim().slice(0,160);
-    if(!key)return false;
+    const requestedKey=String(id??'').trim().slice(0,160);
+    if(!requestedKey)return false;
+    const resolved=this.memoryOS.snapshotCurrentRevisionItem(requestedKey);
+    if(!resolved){this.semanticMemory.removeCanonicalProjection(requestedKey);return false;}
+    const key=resolved.id;
     const rows=this.activeSemanticProjectionItems();
     const availableIds=new Set(rows.map(row=>row.id));
     this.semanticMemory.retainCanonicalProjection(availableIds);
@@ -447,7 +457,7 @@ export class MemoryFabric {
   }
 
   private findCanonical(id:string):MemoryItem2|null {
-    return this.memoryOS.snapshotItem(String(id));
+    return this.memoryOS.snapshotCurrentRevisionItem(String(id));
   }
 
   private replayMutationReceipt(receipt:MemoryLifecycleReceipt):MemoryItem2|Record<string,string>|boolean|void|null {
