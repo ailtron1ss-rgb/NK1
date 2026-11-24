@@ -1,36 +1,67 @@
-# WorkPass72 — ActionGateway receipt to SelfAuthorship recovery
+name: NK1 P0 ActionGateway receipt to SelfAuthorship recovery
 
-**Base:** `2dae0a2fa897539d6592369d5b6fc0012392dfaa`  
-**Branch:** `aspect/p0-actionreceipt-selfauthorship-recovery-20261124`
+on:
+  pull_request:
+    paths:
+      - "runtime/neuro-kurisu/src/organism/core/OrganismCore.ts"
+      - "runtime/neuro-kurisu/src/organism/cognition/SelfAuthorship.ts"
+      - "runtime/neuro-kurisu/src/organism/system/ActionGateway.ts"
+      - "runtime/neuro-kurisu/src/organism/persistence/FileActionExecutionLedgerArchive.ts"
+      - "runtime/neuro-kurisu/tests/action-receipt-selfauthorship-recovery-workpass72.mjs"
+      - "runtime/neuro-kurisu/tests/cef-decision-reference-workpass72.mjs"
+      - "runtime/neuro-kurisu/package.json"
+      - ".github/workflows/nk1-p0-actionreceipt-selfauthorship-recovery-workpass72.yml"
 
-## Defect
+permissions:
+  contents: read
 
-ActionGateway already persisted a pending receipt before entering an external executor, kept ambiguous outcomes pending, prevented retrying the side effect and supported read-only provider reconciliation. Core finalization projected the verified outcome into OutcomeCognition and CognitiveEventFabric, but it did not close the pending SelfAuthorship intent linked to the selected decision. A real autonomous side effect could therefore be durably verified while the organism's authorship counter remained unresolved until a separate manual feedback call.
-
-## Implementation
-
-- `OrganismCore.finalizeToolOutcome` creates one local settlement closure after the non-executed reconciliation gate.
-- The closure runs only when the ActionGateway passed its ephemeral exact decision-linked external postcondition attestation, Core found the same real selected decision trace, and the final result is `ok`, `verified`, and externally postcondition-verified.
-- The exact original `decisionId` is passed to the existing SelfAuthorship pending ledger. Only that pending row can be consumed; its own autonomous/external-request guard remains authoritative.
-- The selected goal title is taken from the matching persisted decision trace.
-- The SelfAuthorship facet is saved with the normal Core snapshot at the same ActionGateway persistence boundary that commits the completed execution receipt and causal projections.
-- Both first verified completion and authoritative provider reconciliation call the closure; replay stays idempotent because ActionGateway does not rerun finalization for a completed receipt and SelfAuthorship consumes each pending decision once.
-
-No new receipt ledger, no parallel recovery engine, no changes to ActionGateway's fail-closed behavior.
-
-## Regression
-
-`action-receipt-selfauthorship-recovery-workpass72.mjs` uses a real temporary FileStateStore and the Core-owned FileActionExecutionLedgerArchive:
-1. Select a substantive autonomous decision.
-2. Persist the Gateway pending receipt with the same decision ID.
-3. Execute one external state change, then simulate loss of the provider acknowledgement.
-4. Restart a fresh Core against the same persisted state and archive.
-5. Reconcile with a read-only provider receipt lookup.
-6. Assert a single verified execution receipt and one SelfAuthorship credit tied to the original decision.
-7. Replay the idempotency key and assert no second effect or credit.
-
-The dedicated Actions workflow first requires the exact expected assertion failure on the test-only pre-fix commit, then runs the scenario and the existing archive, crash, verification, restart and runtime type/syntax regressions.
-
-## CEF decision reference hardening
-
-The CEF receipt projection now preserves the exact sanitized `decisionId` reference in the action payload even when the Core decision trace is not materialized as a same-ID CEF event. In that case `decisionLinked` remains false and `parentIds` stays empty, so no dangling causal edge is fabricated. Replay accepts legacy receipt projections whose payload had a null decisionId while the canonical request hash still binds the original ID.
+jobs:
+  action-receipt-selfauthorship-recovery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          package-manager-cache: false
+      - name: Prove the regression fails before the Core finalization fix (TDD red)
+        env:
+          BASELINE_WITH_TEST_ONLY: 0070ed77c1cec99028164b8ac46f9c0529075c01
+        run: |
+          set -euo pipefail
+          RED_WORKTREE="$RUNNER_TEMP/nk1-workpass72-tdd-red"
+          git worktree add --detach "$RED_WORKTREE" "$BASELINE_WITH_TEST_ONLY"
+          cd "$RED_WORKTREE/runtime/neuro-kurisu"
+          output=""
+          if output=$(node --experimental-strip-types tests/action-receipt-selfauthorship-recovery-workpass72.mjs 2>&1); then
+            echo "Expected missing receipt-to-SelfAuthorship settlement, but the test passed."
+            exit 1
+          fi
+          printf '%s\n' "$output"
+          printf '%s\n' "$output" | grep -F "a verified ActionGateway receipt bound to a selected decision must settle SelfAuthorship without a separate manual feedback call" >/dev/null
+          cd "$GITHUB_WORKSPACE"
+          git worktree remove "$RED_WORKTREE"
+      - name: Real FileStateStore crash, restart, read-only reconciliation and SelfAuthorship settlement
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:action-receipt-selfauthorship-recovery-workpass72
+      - name: CEF keeps exact decision references without dangling parent edges
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:cef-decision-reference-workpass72
+      - name: Durable ActionGateway archive and Core restart integration
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:action-ledger-archive-workpass38
+      - name: Action executor crash reconciliation and idempotent replay
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/big-pass-380-action-crash-reconciliation.mjs
+      - name: Outcome verification hardening and causal accountability
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:outcome-verification-hardening
+      - name: Real process restart persistence
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:big-pass-155:restart
+      - name: Runtime syntax/typecheck
+        working-directory: runtime/neuro-kurisu
+        run: npm run typecheck
