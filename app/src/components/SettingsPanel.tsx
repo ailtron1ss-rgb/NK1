@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Check, Mic, Volume2 } from "lucide-react";
 import { useKurisu, type AvatarViewMode } from "@/organism/store";
+import type { OrganismSnapshot } from "@/organism/types";
 
 const modes: Array<{ id: AvatarViewMode; label: string; description: string }> = [
   { id: "live2d", label: "Live2D", description: "Interactive 2D model and viewer readback." },
@@ -9,7 +10,7 @@ const modes: Array<{ id: AvatarViewMode; label: string; description: string }> =
   { id: "3d", label: "3D · Preview", description: "Experimental VRM/GLB preview; not a certified production asset." },
 ];
 
-export function SettingsPanel() {
+export function SettingsPanel({ snap }: { snap: OrganismSnapshot }) {
   const avatarMode = useKurisu((s) => s.avatarMode);
   const setAvatarMode = useKurisu((s) => s.setAvatarMode);
   const voiceEnabled = useKurisu((s) => s.voiceEnabled);
@@ -49,10 +50,14 @@ export function SettingsPanel() {
           {voices.map((voice) => <option key={voice.name + voice.lang} value={voice.name}>{voice.name} · {voice.lang}</option>)}
         </select>
         <p className="mt-2 text-xs text-subtle">{speechAvailable ? (voices.length ? "Voice availability is provided by the current browser or operating system." : "Waiting for browser voice profiles.") : "This browser does not expose SpeechSynthesis."}</p>
-        <div className="mt-4 flex items-center gap-2 rounded-md bg-elevated p-3 text-xs text-muted">
-          <Mic className="size-4 shrink-0" />
-          <span>Microphone / ASR is a separate input capability. It is not shown as active until a real listening session is connected.</span>
+        <div className="mt-4 flex items-start gap-2 rounded-md bg-elevated p-3 text-xs text-muted">
+          <Mic className="mt-0.5 size-4 shrink-0" />
+          <span>
+            <strong className="font-medium text-fg">Runtime microphone / ASR:</strong> {snap.voice.sttAvailable ? "available" : "unavailable"}.
+            {snap.voice.listening ? " A listening session is active." : " Each capture goes through the runtime's explicit microphone approval."}
+          </span>
         </div>
+        <p className="mt-2 text-xs text-subtle">Runtime TTS: {snap.voice.ttsAvailable ? "available" : "unavailable"}. Browser speech output above is a separate opt-in path.</p>
       </section>
 
       <section className="rounded-xl border border-border bg-surface p-4 md:p-5">
