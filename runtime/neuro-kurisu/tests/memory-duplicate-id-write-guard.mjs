@@ -30,6 +30,11 @@ assert.equal(restored.size(), 2, 'both records survive restore');
 assert.ok(restored.get(first.id), 'the original record survives');
 assert.ok(restored.get(second.id), 'the re-observed record survives');
 
+
+const replaySecond = memory.encode({ id: 'deployment-target', content: 'The deployment target is the production cluster.', kind: 'semantic', source: 'ops', confidence: .8, epistemicStatus: 'belief' });
+assert.equal(replaySecond.id, second.id, 'an exact replay of the collision-resolved content must reuse its stable collision ID');
+assert.equal(memory.size(), 2, 'replaying the second observation must not append another record');
+
 // Re-encoding identical content under the same id still merges rather than forks.
 const merged = memory.encode({ id: 'deployment-target', content: 'The deployment target is the staging cluster.', kind: 'semantic', source: 'ops', confidence: .8, epistemicStatus: 'belief' });
 assert.equal(merged.id, first.id, 'identical content under the same id must still merge');
