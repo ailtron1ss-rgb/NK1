@@ -8,7 +8,8 @@ export function withChatDeliveryStatus(
   turnId: string,
   delivery: ChatDeliveryStatus,
 ): ChatTurn[] {
-  return turns.map((turn) =>
-    turn.id === turnId && turn.role === "user" ? { ...turn, delivery } : turn
-  );
+  return turns.map((turn): ChatTurn => {
+    if (turn.id !== turnId || turn.role !== "user") return turn;
+    return { ...turn, delivery };
+  });
 }
