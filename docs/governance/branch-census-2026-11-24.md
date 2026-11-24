@@ -117,7 +117,46 @@ Examples of families needing detailed comparison include:
 
 Some similarly named refs contain legitimate newer ports, unique tests, or unique integration work. Their distinct HEAD SHAs mean the ref names cannot be treated as byte-identical copies. Every candidate requires merge-base, ahead/behind, changed-path/blob, PR, workflow, and source-tree checks before any retirement decision.
 
-## 5. Proposed GitHub creation guard — not yet enabled
+## 5. First deep content/ancestry triage — four large version families
+
+This first pass compares adjacent HEADs in each family and separately checks merged PR commits against the current `workpass70-source`. It is evidence for safe triage, not deletion approval.
+
+### Ed25519 approval encoding — r1 through r5
+
+- Adjacent comparisons all diverge: r1→r2 (9 ahead / 5 behind, 8 changed files); r2→r3 (17 / 6, 11 files); r3→r4 (5 / 16, 6 files); r4→r5 (11 / 4, 7 files).
+- PR #146, #147, #149 are closed unmerged. r4 has no PR record. PR #152 is marked merged, but its base was `fix/mega-cognitive-progress-tracking-2026-10-26-r3`, not `workpass70-source`.
+- PR #152 merge commit `a3226cbb817eb6fdfb1f54d27b7f158108070007` is **not an ancestor** of current source; source comparison reports diverged (source has 2,350 commits ahead and the merge ref has 291 commits not in source).
+- The shared implementation surface includes `AuthenticatedSkillPromotionApproval.ts`, versioned skill candidate-store tests, `SkillRevisionGate.ts`, and progress/approval documentation. These are distinct donor histories; preserve all five pending a file-level salvage pass.
+
+### Browser/Affect coherence — current/final/rebased/rebased2
+
+- Adjacent comparisons all diverge: current→final (8 / 6, 22 changed files); final→rebased (5 / 7, 5 files); rebased→rebased2 (8 / 5, 23 files).
+- PR #515, #518, #519 are closed unmerged. PR #525 is merged directly into `workpass70-source`.
+- PR #525 merge commit `88bf67cb359a92bb16ea084b80dd3265e3d0c44d` is an ancestor of current source (source is 1,528 commits ahead, 0 behind).
+- Shared change areas include `AvatarStage.tsx`, browser voice prosody, browser snapshot workflows, release-license review, and benchmark/evidence docs. The rebased2 merge is integrated by ancestry; the three closed-unmerged branches still need unique-diff review before retirement.
+
+### Unified substrate runtime integration — r1 through r4
+
+- Adjacent comparisons all diverge: r1→r2 (27 / 8, 10 files); r2→r3 (28 / 26, 15 files); r3→r4 (54 / 17, 46 files).
+- r1 has no PR record; PR #150 and #153 are closed unmerged. PR #154 is marked merged, but its base was the old `fix/mega-cognitive-progress-tracking-2026-10-26-r3` branch, not the canonical source.
+- PR #154 merge commit `39af7eb67c9ab05efd45d01cbd4b4d1d44751454` is **not an ancestor** of current source; source comparison reports diverged (2,350 source commits ahead and 346 commits present on the old merge ref but not current source).
+- This family touches `OrganismRuntime.ts`, `UnifiedCognitiveSubstrate.ts`, runtime package manifests, tests, and CI workflows. Do not classify the family as integrated or redundant; preserve and inspect it as a high-risk salvage family.
+
+### Affect restore integrity — original/v2/v3/rebased
+
+- Adjacent comparisons all diverge: original→v2 (12 / 2, 47 changed files); v2→v3 (5 / 6, 14 files); v3→rebased (6 / 3, 17 files).
+- PR #712, #713, #719 are closed unmerged. PR #741 is merged directly into `workpass70-source`.
+- PR #741 merge commit `57103c645336a22c0a38401c790f6290be2fda94` is an ancestor of current source (source is 1,417 commits ahead, 0 behind).
+- The donor history also touches emotion restore workflows, `OrganismCore.ts`, persistent personality dynamics, package metadata, and tests. The rebased merge is present in source; earlier versions remain preserved until their unique work is checked.
+
+### Interpretation and limits
+
+- A merged PR whose base is an old intermediate branch does **not** prove integration into `workpass70-source`. Check the merge commit's ancestry against the canonical source.
+- A merged PR into `workpass70-source` can still have sibling branches with unique unmerged commits. Check every sibling's diff before retirement.
+- GitHub compare responses for the very old family-to-source comparisons reached the 300-file response cap. The ancestry result is useful, but the truncated path list is not a complete content diff. Continue with PR file lists and targeted blob comparisons.
+- No refs in these four families were changed or deleted during this pass.
+
+## 6. Proposed GitHub creation guard — not yet enabled
 
 The repository currently has **no rulesets**. GitHub's native `Restrict creations` rule can block creation of refs whose names match patterns; it does not detect semantic duplication when a new branch uses a completely different name.
 
