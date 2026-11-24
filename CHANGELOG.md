@@ -3994,3 +3994,11 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Keep unverified, ambiguous, unselected, forged, external or failed outcomes from generating intrinsic authorship credit.
 - Commit the authorship update through the existing Core snapshot in the same persistence boundary as the completed action receipt, OutcomeCognition projections and CognitiveEventFabric trace.
 - Reconciliation after a process restart closes the original pending intent using the provider's read-only receipt lookup; the executor is not re-entered and idempotent replay does not credit twice.
+
+
+## 2026-11-24 — WorkPass72 ActionGateway receipt to SelfAuthorship recovery
+
+- Settle the canonical pending SelfAuthorship decision from the exact verified ActionGateway postcondition ticket at Core finalization, only when the ticket is bound to the same selected decision trace, full request and execution identity.
+- Keep unverified, ambiguous, unselected, forged, external or failed outcomes from generating intrinsic authorship credit.
+- Commit the authorship update through the existing Core snapshot in the same persistence boundary as the completed action receipt, OutcomeCognition projections and CognitiveEventFabric trace.
+- Reconciliation after a process restart closes the original pending intent using the provider's read-only receipt lookup; the executor is not re-entered and idempotent replay does not credit twice.
