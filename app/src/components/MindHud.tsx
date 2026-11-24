@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import type { Needs, OrganismSnapshot } from "@/organism/types";
+import type { UiConnectionState } from "@/organism/store";
 import { cn } from "@/lib/utils";
 
 const NEED_KEYS: Array<{ k: keyof Needs; label: string }> = [
@@ -13,9 +14,26 @@ const NEED_KEYS: Array<{ k: keyof Needs; label: string }> = [
   { k: "goalPressure", label: "goal" },
 ];
 
-export function MindHud({ snap }: { snap: OrganismSnapshot }) {
+export function MindHud({ snap, connection }: { snap: OrganismSnapshot; connection: UiConnectionState }) {
+  const hasCanonicalSnapshot = connection.lastSyncedAt !== null;
+  if (!hasCanonicalSnapshot) {
+    return (
+      <aside className="flex flex-col gap-3">
+        <Panel title="Canonical runtime">
+          <p className="text-sm text-fg">{connection.status === "connecting" ? "Connecting…" : "No canonical snapshot available"}</p>
+          <p className="mt-1 text-xs text-muted">{connection.lastError ?? "The HUD is waiting for a confirmed runtime snapshot. Boot defaults are not presented as live values."}</p>
+        </Panel>
+      </aside>
+    );
+  }
   return (
     <aside className="flex flex-col gap-3">
+      {connection.status !== "connected" ? (
+        <Panel title="Snapshot status">
+          <p className="text-xs text-muted">Showing the last confirmed snapshot. Connection: {connection.status}.</p>
+          {connection.lastError ? <p className="mt-1 break-words text-[10px] text-subtle">{connection.lastError}</p> : null}
+        </Panel>
+      ) : null}
       <Panel title="Needs">
         <div className="space-y-2">
           {NEED_KEYS.map(({ k, label }) => (
@@ -60,7 +78,10 @@ export function MindHud({ snap }: { snap: OrganismSnapshot }) {
   );
 }
 
-export function CompactStatus({ snap }: { snap: OrganismSnapshot }) {
+export function CompactStatus({ snap, connection }: { snap: OrganismSnapshot; connection: UiConnectionState }) {
+  if (connection.lastSyncedAt === null) {
+    return <div className="grid grid-cols-2 gap-2"><Chip k="runtime" v={connection.status} /><Chip k="state" v="unavailable" /></div>;
+  }
   return (
     <div className="grid grid-cols-2 gap-2">
       <Chip k="emotion" v={snap.emotion.label} />
