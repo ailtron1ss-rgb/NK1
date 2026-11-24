@@ -3976,3 +3976,11 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Preserve explicit revision validity boundaries when the active revision is re-observed.
 - Defer intrinsic authorship, action counts and commitments until the matching autonomous decision has a verified execution outcome; persist a bounded pending-decision ledger and make outcomes idempotent.
 - Treat explicit externalGoal payloads as external input for the SelfAuthorship gate; do not credit externally supplied goals when observation.text is absent.
+
+
+## 2026-11-24 — Spine-only SelfAuthorship runtime parity
+
+- Route spine-only decision traces through the same pending SelfAuthorship ledger as the full cognitive path, with exact decision-ID attribution.
+- Settle spine-only authorship only from the matching verified feedback outcome; duplicate outcomes remain no-ops.
+- Treat explicit externalGoal input as external for autonomy scoring, constitutional arbitration and SelfAuthorship attribution.
+- Persist the SelfAuthorship facet after pending registration and feedback settlement so a pending decision survives the normal organism snapshot/restart boundary.
