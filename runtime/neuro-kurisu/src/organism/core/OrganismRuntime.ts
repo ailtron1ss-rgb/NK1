@@ -1888,6 +1888,7 @@ export class OrganismRuntime {
       id: `meta-cycle:${cycle.state.tick}`,
       cycleId: `cycle:${cycle.state.tick}`,
       cognitiveEventId: `cef:metacognitive:${cycle.state.tick}`,
+      decisionId: cycle.decision.id,
       tick: cycle.state.tick,
       at: cycle.state.at,
       parentEventIds: episodeParentIds,
