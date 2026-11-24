@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { readFile } from "node:fs/promises";
 import {
   avatarBrainBodyChannels,
   avatarBrainFrameForTick,
@@ -50,14 +51,15 @@ test("bounds shared gaze and head channels for the renderer-specific contracts",
 test("preserves audio viseme shape while applying bounded brain lip-sync gain",()=>{
   const f=frame();
   const pose={open:.8,form:.4,viseme:"wide"};
-  assert.deepEqual(avatarBrainMouthPose(pose,f,true),{open:.6,form:.4,viseme:"wide"});
+  assert.ok(Math.abs(avatarBrainMouthPose(pose,f,true).open - .6) < 1e-12);
+  assert.equal(avatarBrainMouthPose(pose,f,true).form,.4);
+  assert.equal(avatarBrainMouthPose(pose,f,true).viseme,"wide");
   assert.deepEqual(avatarBrainMouthPose(pose,null,true),pose);
   assert.equal(avatarBrainMouthPose(pose,f,false).open,.015);
 });
 
 
 test("all continuous avatar renderers consume the same tick-matched brain frame", async () => {
- const root = process.cwd();
  const [stage, original, three] = await Promise.all([
   readFile(new URL("../src/components/AvatarStage.tsx", import.meta.url), "utf8"),
   readFile(new URL("../src/components/KurisuOriginalStage.tsx", import.meta.url), "utf8"),
@@ -70,5 +72,4 @@ test("all continuous avatar renderers consume the same tick-matched brain frame"
  assert.match(original, /avatarBrainChannels\.browRaise/);
  assert.match(original, /avatarBrainChannels\.mouthSmile/);
  assert.match(three, /avatarBrainChannels\?: AvatarBrainChannelsV1/);
- assert.ok(root.length > 0);
 });
