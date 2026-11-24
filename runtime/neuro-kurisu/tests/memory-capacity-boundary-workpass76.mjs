@@ -129,6 +129,7 @@ let canonicalRuntime;
 let canonicalMaintenance;
 let canonicalIndex;
 let canonicalAccounting;
+let canonicalLifecycle;
 try {
   process.env.NEURO_MEMORY_ITEM_CAP = String(SOURCE_ROWS);
   process.env.NEURO_MEMORY_BYTE_BUDGET = String(7_200_000);
@@ -153,6 +154,38 @@ try {
   assert.equal(canonicalIndex.pass, true);
   assert.equal(canonicalAccounting.exact, true,
     'canonical byte accounting must reconcile after 10k-row maintenance');
+
+  // Exercise the actual P70 -> CanonicalMemoryLifecycleAuthority -> MemoryFabric path.
+  const lifecycleResult = canonicalRuntime.memoryLifecycleAuthority.run({
+    tick: 77,
+    at: now + 77,
+    traces: 0,
+    events: 0,
+    goals: 0,
+    memories: SOURCE_ROWS,
+    semanticItems: 0,
+    workingSet01: 1,
+    energy01: 1,
+    pressure01: .1,
+    canonicalCapacity: canonicalRuntime.memoryItemCap,
+    byteBudget: canonicalRuntime.memoryByteBudget,
+  });
+  assert.ok(lifecycleResult.plan.budgets.memories > 8_000,
+    'P70 must scale lifecycle retention with an explicit expanded capacity');
+  assert.equal(canonicalRuntime.memoryOS.size(), lifecycleResult.plan.budgets.memories,
+    'the real lifecycle authority must retain the expanded count target rather than applying the legacy 640-row limit');
+  assert.equal(lifecycleResult.maintenance.byteBudget.budget, 7_200_000);
+  assert.equal(lifecycleResult.maintenance.byteBudget.evicted.length, 0);
+  canonicalLifecycle = {
+    targetItems: lifecycleResult.plan.budgets.memories,
+    afterItems: canonicalRuntime.memoryOS.size(),
+    byteBudget: lifecycleResult.maintenance.byteBudget.budget,
+    byteEvictions: lifecycleResult.maintenance.byteBudget.evicted.length,
+    indexIntegrity: canonicalRuntime.memoryOS.indexDiagnostics().pass,
+    accountingExact: canonicalRuntime.memoryOS.memoryAccountingDiagnostics().exact,
+  };
+  assert.equal(canonicalLifecycle.indexIntegrity, true);
+  assert.equal(canonicalLifecycle.accountingExact, true);
 } finally {
   if (originalItemCapEnv === undefined) delete process.env.NEURO_MEMORY_ITEM_CAP;
   else process.env.NEURO_MEMORY_ITEM_CAP = originalItemCapEnv;
@@ -222,6 +255,7 @@ console.log('MEMORY_CAPACITY_BOUNDARY_WORKPASS76=PASS', JSON.stringify({
     maintenance: { before: maintenance.before, after: maintenance.after, removed: maintenance.removedIds.length },
     capacityClamp: { default: ITEM_CAP, minimum: 128, maximum: highClampProfile.capacityDiagnostics().hardCap },
     protectedOverflow: { retained: protectedBefore.length, overrunRows: protectedRestore.capacityOverrunRows, failedWritePreservedAll: true },
-    canonicalFabric10k: { items: canonicalRuntime.memoryOS.size(), byteBudget: canonicalMaintenance.byteBudget.budget, byteEvictions: canonicalMaintenance.byteBudget.evicted.length, indexIntegrity: canonicalIndex.pass, accountingExact: canonicalAccounting.exact },
+    canonicalFabric10k: { items: SOURCE_ROWS, byteBudget: canonicalMaintenance.byteBudget.budget, byteEvictions: canonicalMaintenance.byteBudget.evicted.length, indexIntegrity: canonicalIndex.pass, accountingExact: canonicalAccounting.exact },
+    canonicalLifecycle10k: canonicalLifecycle,
   },
 }));
