@@ -6,7 +6,7 @@ const targetRef = process.env.GITHUB_REF;
 const targetSha = process.env.GITHUB_SHA;
 if (!repository || !token || !targetSha) throw new Error('missing GitHub workflow context');
 if (targetRef !== 'refs/heads/workpass70-source') {
-  console.log('SKIP: cleanup is restricted to workpass70-source; ref=' + targetRef);
+  console.log('SKIP: audit is restricted to workpass70-source; ref=' + targetRef);
   process.exit(0);
 }
 const apiRoot = 'https://api.github.com/repos/' + repository;
@@ -14,18 +14,16 @@ const headers = {
   authorization: 'Bearer ' + token,
   accept: 'application/vnd.github+json',
   'x-github-api-version': '2022-11-28',
-  'content-type': 'application/json',
 };
-async function api(path, method = 'GET') {
-  const response = await fetch(apiRoot + path, { method, headers });
+async function api(path) {
+  const response = await fetch(apiRoot + path, { method: 'GET', headers });
   if (response.status === 404) return { notFound: true };
   if (response.status === 204) return null;
   const body = await response.text();
-  if (!response.ok) throw new Error(method + ' ' + path + ' -> ' + response.status + ': ' + body.slice(0, 500));
+  if (!response.ok) throw new Error('GET ' + path + ' -> ' + response.status + ': ' + body.slice(0, 500));
   return body ? JSON.parse(body) : null;
 }
 const branchPath = name => '/branches/' + name.split('/').map(encodeURIComponent).join('/');
-const refPath = name => '/git/refs/heads/' + name.split('/').map(encodeURIComponent).join('/');
 const candidates = [
   { name: 'aspect/code-assimilation-contracts-20261102', sha: '10996769598a39e2fc5df69c46627a97777003f5', kind: 'duplicate', keeper: 'aspect/code-assimilation-archive-extraction-20261104' },
   { name: 'integrate/consequence-calibration-lineage-followup-20261120', sha: 'f9621bf3e4411ce17bc809922a5f90126001f4fd', kind: 'duplicate', keeper: 'aspect/consequence-ecology-20261117' },
@@ -67,47 +65,70 @@ for (let page = 1; page <= 10; page++) {
   }
   if (items.length < 100) break;
 }
-const deleted = [];
+const eligible = [];
 const skipped = [];
 for (const candidate of candidates) {
   try {
-    if (candidate.name === 'main' || candidate.name === 'workpass70-source') { skipped.push([candidate.name, 'canonical branch']); continue; }
-    if (openPullRefs.has(candidate.name)) { skipped.push([candidate.name, 'referenced by an open PR']); continue; }
+    if (candidate.name === 'main' || candidate.name === 'workpass70-source') {
+      skipped.push([candidate.name, 'canonical branch']);
+      continue;
+    }
+    if (openPullRefs.has(candidate.name)) {
+      skipped.push([candidate.name, 'referenced by an open PR']);
+      continue;
+    }
     const branch = await api(branchPath(candidate.name));
-    if (!branch || branch.notFound) { skipped.push([candidate.name, 'already absent']); continue; }
-    if (branch.protected !== false) { skipped.push([candidate.name, 'branch is protected or protection state is unknown']); continue; }
-    if (branch.commit?.sha !== candidate.sha) { skipped.push([candidate.name, 'tip SHA changed']); continue; }
+    if (!branch || branch.notFound) {
+      skipped.push([candidate.name, 'already absent']);
+      continue;
+    }
+    if (branch.protected !== false) {
+      skipped.push([candidate.name, 'branch is protected or protection state is unknown']);
+      continue;
+    }
+    if (branch.commit?.sha !== candidate.sha) {
+      skipped.push([candidate.name, 'tip SHA changed']);
+      continue;
+    }
     if (candidate.kind === 'duplicate') {
       const keeper = await api(branchPath(candidate.keeper));
-      if (!keeper || keeper.notFound || keeper.commit?.sha !== candidate.sha) { skipped.push([candidate.name, 'same-SHA keeper is absent or changed']); continue; }
+      if (!keeper || keeper.notFound || keeper.commit?.sha !== candidate.sha) {
+        skipped.push([candidate.name, 'same-SHA keeper is absent or changed']);
+        continue;
+      }
     } else if (candidate.kind === 'ancestor') {
       const comparison = await api('/compare/' + candidate.sha + '...' + targetSha);
-      if (!comparison || comparison.behind_by !== 0 || !['ahead', 'identical'].includes(comparison.status)) { skipped.push([candidate.name, 'donor tip is not an ancestor of this canonical commit']); continue; }
-    } else { skipped.push([candidate.name, 'unknown retirement class']); continue; }
-    await api(refPath(candidate.name), 'DELETE');
-    const after = await api(branchPath(candidate.name));
-    if (!after || !after.notFound) { skipped.push([candidate.name, 'delete call returned but branch still exists']); continue; }
-    deleted.push([candidate.name, candidate.kind]);
-    console.log('DELETED ' + candidate.name + ' (' + candidate.kind + ')');
+      if (!comparison || comparison.behind_by !== 0 || !['ahead', 'identical'].includes(comparison.status)) {
+        skipped.push([candidate.name, 'donor tip is not an ancestor of this canonical commit']);
+        continue;
+      }
+    } else {
+      skipped.push([candidate.name, 'unknown retirement class']);
+      continue;
+    }
+    eligible.push([candidate.name, candidate.kind]);
+    console.log('ELIGIBLE FOR HUMAN REVIEW (READ-ONLY) ' + candidate.name + ' (' + candidate.kind + ')');
   } catch (error) {
     skipped.push([candidate.name, 'API error: ' + String(error).slice(0, 220)]);
     console.error('SKIP ' + candidate.name + ': ' + String(error));
   }
 }
 const lines = [
-  '# NK1 cognitive branch retirement',
+  '# NK1 cognitive branch retirement candidate audit (READ-ONLY)',
   '',
   'Target canonical commit: ' + targetSha,
   'Candidate refs: ' + candidates.length,
-  'Successfully deleted: ' + deleted.length,
+  'Eligible for human review: ' + eligible.length,
   'Skipped: ' + skipped.length,
+  'Deleted: 0 — this utility has no branch-write path.',
   '',
-  '## Deleted refs',
-  ...(deleted.length ? deleted.map(([name, kind]) => '- `' + name + '` — ' + kind) : ['- None']),
+  '## Eligible candidates (no action taken)',
+  ...(eligible.length ? eligible.map(([name, kind]) => '- `' + name + '` — ' + kind) : ['- None']),
   '',
-  '## Skipped refs',
+  '## Skipped candidates',
   ...(skipped.length ? skipped.map(([name, reason]) => '- `' + name + '` — ' + reason) : ['- None']),
+  '',
+  'This report is advisory only. Branch deletion requires a separate explicit human action.',
 ].join('\n');
 if (process.env.GITHUB_STEP_SUMMARY) await writeFile(process.env.GITHUB_STEP_SUMMARY, lines + '\n', 'utf8');
 console.log(lines);
-if (deleted.length === 0) throw new Error('No branch refs were retired; inspect skip reasons before retrying.');
