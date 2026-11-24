@@ -45,7 +45,7 @@ Purpose: inventory and safe triage only. This document is not a deletion authori
 | `optimization` | 2 |
 | `rebase` | 2 |
 | `governance` | 2 |
-| Other one-off namespaces | 8 |
+| Other one-off namespaces | 13 |
 
 The one-off namespaces are `automation`, `ci`, `compat`, `experiment`, `jules`, `maintenance`, `nk1`, `perf`, `prototype`, `salvage`, `test`, `typescript`, and `verify` (13 names). This detailed list supersedes the aggregate “other one-off” shorthand above; count the individual namespaces, not the shorthand row.
 
