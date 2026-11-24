@@ -71,3 +71,39 @@ test("does not mutate expression/blink targets or accept malformed indices", () 
     0: 0, 1: 0, 2: 0, 3: 0, 4: 0,
   });
 });
+
+
+test("expression morphs follow organism emotion and return both blink targets to neutral", async () => {
+  const { resolveGlbExpressionMorphWeights } = await import("../src/components/avatar/glbMouthMorphAdapter.ts");
+  const face = { happy: 5, sad: 6, angry: 7, NK1_Jaw_Taper: 0 };
+  const leftEye = { blink: 0 };
+  const rightEye = { blink: 0 };
+
+  assert.deepEqual(resolveGlbExpressionMorphWeights(face, "joy", false, 0.5), [
+    { index: 5, value: 0.75 },
+    { index: 6, value: 0 },
+    { index: 7, value: 0 },
+  ]);
+  assert.deepEqual(resolveGlbExpressionMorphWeights(face, "anxiety", false, 0.5), [
+    { index: 5, value: 0 },
+    { index: 6, value: 0.62 },
+    { index: 7, value: 0 },
+  ]);
+  assert.deepEqual(resolveGlbExpressionMorphWeights(face, "frustration", false, 0.5), [
+    { index: 5, value: 0 },
+    { index: 6, value: 0 },
+    { index: 7, value: 0.7 },
+  ]);
+  assert.deepEqual(resolveGlbExpressionMorphWeights(leftEye, "calm", true, 0.5), [
+    { index: 0, value: 0.92 },
+  ]);
+  assert.deepEqual(resolveGlbExpressionMorphWeights(rightEye, "calm", false, 0.5), [
+    { index: 0, value: 0 },
+  ]);
+  assert.deepEqual(resolveGlbExpressionMorphWeights(face, "calm", false, 0.5), [
+    { index: 5, value: 0.08 },
+    { index: 6, value: 0 },
+    { index: 7, value: 0 },
+  ]);
+  assert.deepEqual(resolveGlbExpressionMorphWeights({ NK1_Jaw_Taper: 0 }, "joy", true, 0.5), []);
+});
