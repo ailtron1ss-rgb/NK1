@@ -2398,6 +2398,7 @@ export class OrganismCore {
             context: {
                 episodeId: episode.id,
                 cycleId: episode.cycleId,
+                ...(episode.decisionId ? { decisionId: episode.decisionId } : {}),
                 sourceTick: String(episode.tick),
                 selectedAction: episode.selection.action,
                 selectedGoalId: episode.selection.goalId ?? '',
@@ -2473,6 +2474,7 @@ export class OrganismCore {
             return {
                 episodeId: event.id,
                 tick: event.tick,
+                decisionId: typeof episode.decisionId === 'string' ? episode.decisionId : null,
                 action: episode.selection?.action ?? 'unknown',
                 goalPresent: Boolean(episode.selection?.goalId),
                 predictionConfidence01: Number(episode.prediction?.confidence01 ?? 0),
