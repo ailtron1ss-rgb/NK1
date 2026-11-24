@@ -24,8 +24,8 @@
     {
       "targetPath": "app/public/live2d/Kurisu/Kurisu.model3.json",
       "canonicalPath": "runtime/neuro-kurisu/public/live2d/Kurisu/Kurisu.model3.json",
-      "sizeBytes": 1846,
-      "sha256": "f7ae31d85349850a54dfc42999d03d7ac2cc428bf8292d1c7d0f033f65aea351"
+      "sizeBytes": 1852,
+      "sha256": "0b06b30c0301174f0ae85a688c03d7ac0615b8c6559cdaf290652fbb76a34f54"
     },
     {
       "targetPath": "app/public/live2d/Kurisu/Kurisu.physics3.json",
