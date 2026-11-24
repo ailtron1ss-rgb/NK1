@@ -491,6 +491,10 @@ export interface OrganismConfig {
     predictivePlanningMode?: 'on' | 'off' | 'sham';
     /** Brick 5: number of imagined steps used by the predictive planner. B363 raises the default to 5. */
     predictivePlanningHorizon?: 3 | 5;
+    /** Host key for time-limited, source-bound Intent approval signatures. */
+    intentApprovalKey?: string | Uint8Array;
+    /** Maximum time spent extracting structured intent from a host language provider. */
+    intentExtractionTimeoutMs?: number;
     /** Enable evidence-backed parliamentary approval on scheduled full cognitive cycles. */
     enableCognitiveParliament?: boolean;
     /** Review interval for autonomous cycles; explicit user input also triggers review. */
@@ -1417,8 +1421,6 @@ export class OrganismCore {
             cognitiveParliamentMaxConcurrent: Math.max(1, Math.min(6, Math.floor(Number(config.cognitiveParliamentMaxConcurrent ?? 3) || 3))),
             cognitiveParliamentMaxTotalTokens: Math.max(384, Math.min(12288, Math.floor(Number(config.cognitiveParliamentMaxTotalTokens ?? 4096) || 4096))),
             cognitiveParliamentMaxInputChars: Math.max(8000, Math.min(96000, Math.floor(Number(config.cognitiveParliamentMaxInputChars ?? 32000) || 32000))),
-            intentApprovalKey: config.intentApprovalKey ?? process.env.NEURO_INTENT_APPROVAL_KEY,
-            intentExtractionTimeoutMs: Number(config.intentExtractionTimeoutMs ?? process.env.NEURO_INTENT_EXTRACTION_TIMEOUT_MS ?? 10_000),
 
         } as Required<OrganismConfig>;
         const intentKey = this.config.intentApprovalKey;

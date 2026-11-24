@@ -226,11 +226,11 @@ const languageInvoker=async request=>{
 };
 const languageRoleExecutors=createLanguageInvokerParliamentRoleExecutors(languageInvoker,languageRegistry);
 const languageResearch=await languageRoleExecutors.researcher.execute({
-  role:'researcher',system:'You are one isolated specialist.',user:'test',maxTokens:120,temperature:.1,
+  role:'researcher',system:'You are one isolated specialist. RESEARCHER: identify evidence gaps and distinguish observations from assumptions.',user:'test',maxTokens:120,temperature:.1,
   signal:new AbortController().signal,
 });
 const languageAuditor=await languageRoleExecutors.auditor.execute({
-  role:'auditor',system:'You are one isolated specialist.',user:'test',maxTokens:120,temperature:.1,
+  role:'auditor',system:'You are one isolated specialist. AUDITOR: audit provenance and relevance of every evidence item.',user:'test',maxTokens:120,temperature:.1,
   signal:new AbortController().signal,
 });
 assert.equal(languageInvokerCalls,2);
