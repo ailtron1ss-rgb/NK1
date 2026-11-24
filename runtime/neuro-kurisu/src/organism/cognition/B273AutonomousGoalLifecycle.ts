@@ -93,11 +93,13 @@ export interface B273State {
   selfAlignment01:number;
   longHorizonValue01:number;
   intrinsicDrive01:number;
-  lifecycleMode:'incubating'|'pursuing'|'revising'|'completing'|'recovering'|'cooldown';
+  lifecycleMode:'incubating'|'pursuing'|'revising'|'completing'|'recovering'|'cooldown'|'blocked';
   outcomeHistory:Array<{tick:number;goalId:string|null;action:ActionKind;reward01:number;predictionError01:number;independentGain01:number}>;
 }
 export interface B273StepInput {
   tick:number;
+  /** Canonical self-agency authority must admit the goal before B273 may create or advance it. */
+  autonomousAllowed:boolean;
   endogenousGoalVector:number[];
   selfLatent:number[];
   worldLatent:number[];
@@ -208,6 +210,27 @@ export class B273AutonomousGoalLifecycle{
     return {transitioned:true,goal:structuredClone(goal)};
   }
 
+  private admissionBlockedResult():B273StepResult{
+    this.state.lastActionPlan=['defer'];
+    this.state.lastAction='defer';
+    this.state.lifecycleMode='blocked';
+    return {
+      goalId:null,
+      goalVector:this.state.lastGoalVector.slice(),
+      action:'defer',
+      plan:['defer'],
+      mode:'blocked',
+      autonomy01:this.state.autonomy01,
+      confidence01:clamp01(this.state.lastDecisionConfidence01*.9),
+      selfAlignment01:this.state.selfAlignment01,
+      longHorizonValue01:this.state.longHorizonValue01,
+      conflict01:this.state.goalConflict01,
+      created:false,
+      revised:false,
+      skillId:null,
+    };
+  }
+
   private cooldownResult(vector:number[],conflict01:number):B273StepResult{
     this.state.activeGoalId=null;
     this.state.lastActionPlan=['defer'];
@@ -314,6 +337,7 @@ export class B273AutonomousGoalLifecycle{
   }
   step(input:B273StepInput):B273StepResult{
     this.state.tick=input.tick;this.state.cycles++;
+    if(input.autonomousAllowed!==true)return this.admissionBlockedResult();
     const v=this.synthesizeGoalVector(input); const conflict=this.conflict(input,v); const utility=this.goalUtility(input,v,conflict); const drive=this.internalDrive(input);
     const fingerprint=hashVector(v);
     const current=this.state.activeGoalId?this.state.goals.find(g=>g.id===this.state.activeGoalId&&g.status==='active'):null;

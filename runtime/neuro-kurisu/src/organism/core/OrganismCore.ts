@@ -5538,6 +5538,7 @@ export class OrganismCore {
         });
         const b273Lifecycle = this.developmentalNeural.autonomousGoalLifecycleB273.step({
             tick: state.tick,
+            autonomousAllowed: canonicalGoalAdmission.admitted,
             endogenousGoalVector: canonicalGoalVector,
             selfLatent: b270PostGerminalState.selfLatent,
             worldLatent: p27Latent.vector,
