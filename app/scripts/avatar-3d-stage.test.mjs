@@ -96,23 +96,23 @@ test("a pinned hosted Kurisu hybrid GLB can be loaded without a manual file down
  assert.match(catalog,/NeuroKurisu_3D_v5\.glb/);
  assert.match(catalog,/sha256:4cc4c34a62f72122b34c1d896d42bf10eddcba6f10f66563e4fc5e213a37e743/);
  assert.match(catalog,/sizeBytes:\s*2_035_768/);
- assert.match(stage,/fetch\(KURISU_HYBRID_MODEL\.url/);
+ assert.match(stage,/fetch\(asset\.url/);
  assert.match(stage,/credentials:\s*"omit"/);
  assert.match(stage,/fingerprintAvatarModel\(data\)/);
- assert.match(stage,/KURISU_HYBRID_MODEL\.sha256/);
- assert.match(stage,/loadModel\(blob,KURISU_HYBRID_MODEL\.filename,true\)/);
+ assert.match(stage,/asset\.sha256/);
+ assert.match(stage,/loadModel\(blob,asset\.filename,persistence\)/);
  assert.match(stage,/Загрузить модель v5 \(онлайн\)/);
  assert.ok(animation.includes("rig[_-]?kurisu"),"semantic rig fallback must remain in the extracted resolver");
 });
 
 test("3D mode restores the user's local model first and auto-loads the pinned Kurisu model otherwise",async()=>{
  const stage=await readFile(stagePath,"utf8");
- assert.match(stage,/if\(saved\)void loadModel\(saved\.blob,saved\.name,false\)/);
+ assert.match(stage,/if\(saved\)void loadModel\(saved\.blob,saved\.name,"restore"\)/);
  assert.match(stage,/void loadBundledModel\(\)/);
- assert.match(stage,/KURISU_HYBRID_MODEL\.url/);
+ assert.match(stage,/asset\.url/);
  assert.match(stage,/signal:AbortSignal\.timeout\(25_000\)/);
  assert.match(stage,/contentType!==\"model\/gltf-binary\"/);
- assert.match(stage,/declaredLength!==KURISU_HYBRID_MODEL\.sizeBytes/);
+ assert.match(stage,/declaredLength!==asset\.sizeBytes/);
  assert.match(stage,/loadToken\.current\+\+/);
 });
 test("generic GLB speech drives all available Kurisu viseme morph targets",async()=>{
