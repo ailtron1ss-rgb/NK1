@@ -611,7 +611,8 @@ export class MemoryFabric {
     const beforeCanonicalIds=new Set(this.memoryOS.canonicalIdsSnapshot());
     const before=this.memoryOS.size();
     this.memoryOS.maintain({pressure01:options.pressure01,maxItems:options.maxItems});
-    const byteBudget=Math.max(262144,Math.min(1048576,Math.floor(options.byteBudget??Math.max(262144,Math.min(1048576,Math.floor((options.maxItems??768)*720))))));
+    const defaultByteBudget=Math.max(262144,Math.min(1048576,Math.floor((options.maxItems??768)*720)));
+    const byteBudget=Math.max(262144,Math.min(8_388_608,Math.floor(options.byteBudget??defaultByteBudget)));
     const byteBudgetResult=this.memoryOS.enforceByteBudget({maxBytes:byteBudget,tick,protectedIds:options.protectedIds,reason:'memory-fabric-byte-budget'});
     const afterCanonicalIds=new Set(this.memoryOS.canonicalIdsSnapshot());
     const reconciledIds=new Set(this.reconcileMemoryRemovalReceipts());

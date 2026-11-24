@@ -1,4 +1,4 @@
-export interface P75Input { tick:number; pressure01:number; recentEpisodes:number; semanticNodes:number; activeGoals:number; energy01:number; textPresent:boolean; experienceHot?:number; experienceWarm?:number; experienceCold?:number; identityTension01?:number; }
+export interface P75Input { tick:number; pressure01:number; recentEpisodes:number; semanticNodes:number; activeGoals:number; energy01:number; textPresent:boolean; experienceHot?:number; experienceWarm?:number; experienceCold?:number; identityTension01?:number; canonicalCapacity?:number; }
 export interface P75State { version:1; cycles:number; hotBudget:number; warmBudget:number; coldBudget:number; retrievalFocus:string; consolidationCount:number; forgottenCount:number; continuity01:number; health01:number; recentModes:string[]; }
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
 export const defaultP75=():P75State=>({version:1,cycles:0,hotBudget:32,warmBudget:192,coldBudget:1024,retrievalFocus:'recent',consolidationCount:0,forgottenCount:0,continuity01:0.85,health01:0.85,recentModes:[]});
@@ -22,7 +22,11 @@ export class P75MemoryContinuumOS{
   this.state.health01=clamp(.72+(i.textPresent?.1:0)+((1-pressure)*.12));
   this.state.continuity01=clamp(.82+(Math.min(i.recentEpisodes,32)/32)*.12-(pressure*.08));
   this.state.recentModes=[...this.state.recentModes,this.state.retrievalFocus].slice(-24);
-  const canonicalBudget=Math.max(128,Math.min(1600,Math.round(hot+warm+cold*(0.52-pressure*.22))));
+  const requestedCapacity=Number.isSafeInteger(i.canonicalCapacity)?Number(i.canonicalCapacity):1600;
+  const canonicalCapacity=Math.max(128,Math.min(10_000,Math.floor(requestedCapacity)));
+  const baseCanonicalBudget=Math.round(hot+warm+cold*(0.52-pressure*.22));
+  const profileScale=canonicalCapacity/1600;
+  const canonicalBudget=Math.max(128,Math.min(canonicalCapacity,Math.round(baseCanonicalBudget*profileScale)));
   return {hotBudget:hot,warmBudget:warm,coldBudget:cold,canonicalBudget,retrievalFocus:this.state.retrievalFocus,health01:this.state.health01,continuity01:this.state.continuity01,shouldConsolidate:pressure>.68};
  }
  recordForget(count:number){this.state.forgottenCount+=Math.max(0,Math.floor(count));}

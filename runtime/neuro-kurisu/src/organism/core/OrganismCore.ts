@@ -3700,7 +3700,7 @@ export class OrganismCore {
             const question = this.cognitiveRuntime.contradictions.open(1)[0]?.claim ?? 'unresolved question from recent experience';
             this.cognitiveRuntime.lifelong.dream(question, this.persisted.facets.embodiment.body.awake ? 'micro' : 'deep', this.persisted.facets.memory.lastRetrievedMemoryIds, budget);
             const beforeMemoryDormant = this.memorySubsystem.memoryOS.statsLight().dormant;
-            this.memorySubsystem.memoryLifecycleAuthority.maintainCanonical({ tick: this.persisted.state.tick, pressure01: .72, maxItems: 1480 });
+            this.memorySubsystem.memoryLifecycleAuthority.maintainCanonical({ tick: this.persisted.state.tick, pressure01: .72, maxItems: Math.max(128, Math.floor(this.memorySubsystem.memoryItemCap * .925)), byteBudget: this.memorySubsystem.memoryByteBudget });
             this.persisted.facets.advanced.memoryLifecycleAuthority = this.memorySubsystem.memoryLifecycleAuthority.snapshot();
             const afterMemoryDormant = this.memorySubsystem.memoryOS.statsLight().dormant;
             this.cognitiveRuntime.lifelong.markMemoryMaintenance(Math.max(0, afterMemoryDormant - beforeMemoryDormant), 0, this.memorySubsystem.memoryOS.statsLight().reconsolidations);
@@ -7128,6 +7128,7 @@ export class OrganismCore {
         const p75Plan = this.memorySubsystem.p75MemoryContinuumOS.plan({
             tick: state.tick,
             pressure01: clamp((memorySizeNow / 1600) * .5 + n.cognitiveLoad * .25 + p66Homeostasis.pressure01 * .25),
+            canonicalCapacity: this.memorySubsystem.memoryItemCap,
             recentEpisodes: this.persisted.traces.length,
             semanticNodes: this.persisted.facets.memory.semanticGraph.nodes.length,
             activeGoals: this.persisted.goals.filter(g => g.status === 'active').length,
@@ -8640,6 +8641,7 @@ export class OrganismCore {
             this.memorySubsystem.fabric.maintain({
                 tick: state.tick, pressure01: p66Homeostasis.pressure01,
                 maxItems: p66Homeostasis.pressure01 > .92 ? Math.min(720, p75Plan.canonicalBudget) : p66Homeostasis.pressure01 > .78 ? Math.min(960, p75Plan.canonicalBudget) : p75Plan.canonicalBudget,
+                byteBudget: this.memorySubsystem.memoryByteBudget,
                 ...(state.tick % 32 === 0 || p66Homeostasis.pressure01 > .82 ? {
                     hotBudget: p75Plan.hotBudget, warmBudget: p75Plan.warmBudget, coldBudget: p75Plan.coldBudget, identityTension01: p75Plan.retrievalFocus === 'identity-critical' ? .78 : experienceBeforeTick.identityGravity.tension01,
                 } : {}),
@@ -12113,7 +12115,7 @@ export class OrganismCore {
         const replayUpdatesP23 = this.developmentalNeural.p23Learning.replayPending(this.persisted.traces, this.cognitiveRuntime.adaptivePolicy);
         const replayUpdates = replayUpdatesP23;
         const memoryPromotions = this.cognitiveRuntime.longitudinal.consolidateMemory({ items: this.memorySubsystem.memoryOS.snapshot().items.map(i => ({ id: i.id, epistemicStatus: i.epistemicStatus, confidence: i.confidence, source: i.source, entities: i.entities, semanticLinks: i.semanticLinks, predictionError: i.predictionError })) });
-        this.memorySubsystem.memoryLifecycleAuthority.maintainCanonical({ tick: this.persisted.state.tick, pressure01: .5, maxItems: 1600 });
+        this.memorySubsystem.memoryLifecycleAuthority.maintainCanonical({ tick: this.persisted.state.tick, pressure01: .5, maxItems: this.memorySubsystem.memoryItemCap, byteBudget: this.memorySubsystem.memoryByteBudget });
         this.persisted.facets.learning.adaptivePolicy = this.cognitiveRuntime.adaptivePolicy.snapshot();
         this.persisted.facets.learning.p23 = this.developmentalNeural.p23Learning.snapshot();
         this.persisted.facets.cognition.contextualWorld = this.worldSubsystem.contextualWorld.snapshot();

@@ -143,7 +143,7 @@ export class CanonicalMemoryLifecycleAuthority {
     return decisions;
   }
 
-  maintainCanonical(input:{tick:number;pressure01?:number;maxItems?:number;hotBudget?:number;warmBudget?:number;coldBudget?:number;identityTension01?:number}){
+  maintainCanonical(input:{tick:number;pressure01?:number;maxItems?:number;hotBudget?:number;warmBudget?:number;coldBudget?:number;identityTension01?:number;byteBudget?:number}){
     const result=this.fabric.maintain(input);
     this.state.maintenanceRuns+=result.skipped?0:1;
     this.state.lastTick=input.tick;
