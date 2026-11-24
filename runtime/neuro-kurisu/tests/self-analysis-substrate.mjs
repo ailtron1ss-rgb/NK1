@@ -289,10 +289,12 @@ assert.ok(
   realProtected.some((f) => f.includes('PairedSelfImprovementEvidence')),
   'real tree must protect independent holdout outcome verification',
 );
-assert.ok(
-  realProtected.some((f) => f.includes('SelfImprovementPatchAdmissionService')),
-  'real tree must protect the host-owned admission composition root',
+const admissionServiceOwner = realGraph.nodes.find((node) =>
+  node.kind !== 'file' && node.name.includes('SelfImprovementPatchAdmissionService'),
 );
+assert.ok(admissionServiceOwner, 'real source graph must index the host-owned admission service symbol');
+assert.ok(realProtected.includes(admissionServiceOwner.file),
+  'the host-owned admission service symbol must protect its containing source file');
 for (const owner of [
   'ProxyDivergenceGuard',
   'SelfImprovementCandidatePool',
