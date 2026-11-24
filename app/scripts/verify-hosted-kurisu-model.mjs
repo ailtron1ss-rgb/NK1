@@ -94,5 +94,5 @@ console.log("HOSTED_KURISU_V12_MORPH_PREVIEW=PASS", JSON.stringify({
   joints: gltf.skins[0].joints.length,
   morphTargets: candidate.morphTargets,
   facialTargetCounts: Object.fromEntries(Object.entries(expectedTargets).map(([name, targets]) => [name, targets.length])),
-  animations: [...clipNames],
+  animations: [...clipByName.keys()],
 }));
