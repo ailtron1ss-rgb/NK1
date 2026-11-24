@@ -41,15 +41,18 @@ function normalizeAvatarBrain(value: unknown, tick: number): AvatarBrainEnvelope
     || !Number.isFinite(frame.expressionWeight) || Number(frame.expressionWeight) < 0 || Number(frame.expressionWeight) > 1
     || !Number.isFinite(frame.freshness01) || Number(frame.freshness01) < 0 || Number(frame.freshness01) > 1
     || typeof frame.reducedMotion !== "boolean" || !Number.isFinite(frame.projectedAt) || Number(frame.projectedAt) < 0) return null;
-  if (!isRecord(frame.channels) || AVATAR_BRAIN_CHANNELS.some((key) =>
-    !Number.isFinite(frame.channels?.[key]) || Number(frame.channels[key]) < -1 || Number(frame.channels[key]) > 1)) return null;
-  if (!isRecord(frame.affect) || AVATAR_BRAIN_AFFECT.some((key) =>
-    !Number.isFinite(frame.affect?.[key]) || Number(frame.affect[key]) < 0 || Number(frame.affect[key]) > 1)) return null;
-  if (!isRecord(frame.rendererHints) || !isRecord(frame.rendererHints.live2d)
-    || !isRecord(frame.rendererHints.layered2d) || !isRecord(frame.rendererHints.spatial3d)) return null;
-  if (Object.values(frame.rendererHints.live2d).some((v) => !Number.isFinite(v))
-    || Object.values(frame.rendererHints.layered2d).some((v) => !Number.isFinite(v))
-    || Object.values(frame.rendererHints.spatial3d).some((v) => !Number.isFinite(v))) return null;
+  const channels = frame.channels;
+  const affect = frame.affect;
+  const rendererHints = frame.rendererHints;
+  if (!isRecord(channels) || AVATAR_BRAIN_CHANNELS.some((key) =>
+    !Number.isFinite(channels[key]) || Number(channels[key]) < -1 || Number(channels[key]) > 1)) return null;
+  if (!isRecord(affect) || AVATAR_BRAIN_AFFECT.some((key) =>
+    !Number.isFinite(affect[key]) || Number(affect[key]) < 0 || Number(affect[key]) > 1)) return null;
+  if (!isRecord(rendererHints) || !isRecord(rendererHints.live2d)
+    || !isRecord(rendererHints.layered2d) || !isRecord(rendererHints.spatial3d)) return null;
+  if (Object.values(rendererHints.live2d).some((v) => !Number.isFinite(v))
+    || Object.values(rendererHints.layered2d).some((v) => !Number.isFinite(v))
+    || Object.values(rendererHints.spatial3d).some((v) => !Number.isFinite(v))) return null;
   return value as unknown as AvatarBrainEnvelopeV1;
 }
 
