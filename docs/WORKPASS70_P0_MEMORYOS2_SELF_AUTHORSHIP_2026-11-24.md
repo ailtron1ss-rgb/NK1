@@ -19,3 +19,4 @@ Branch: aspect/p0-memoryos2-selfauthorship-execution-20261124
 
 ## Verification
 The branch adds four focused regressions and retains the existing workpass31 temporal/provenance tests. Exact-head Actions results must be reviewed before this branch is merged. This change does not publish a Release.
+- Explicit external goals are treated as external requests in the Core-to-SelfAuthorship handoff, even when no text field is present.

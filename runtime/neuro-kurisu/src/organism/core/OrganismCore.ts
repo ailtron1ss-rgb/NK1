@@ -8352,8 +8352,8 @@ export class OrganismCore {
         this.selfSubsystem.selfAuthorship.observeDecision({
             decisionId: decision.id,
             action: selectedIntent?.action ?? 'wait',
-            autonomous: autonomousOverride || !Boolean(observation.text),
-            externalRequest: Boolean(observation.text),
+            autonomous: autonomousOverride || !Boolean(observation.text || observation.externalGoal),
+            externalRequest: Boolean(observation.text || observation.externalGoal),
             goalTitle: active?.title,
             reason: active?.reason,
         });

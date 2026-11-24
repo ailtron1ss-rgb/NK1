@@ -3975,3 +3975,4 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Keep byte accounting aligned when encode-time and implicit-conflict contradiction links mutate existing canonical rows; normalize absent revision-integrity arrays across encode and restore.
 - Preserve explicit revision validity boundaries when the active revision is re-observed.
 - Defer intrinsic authorship, action counts and commitments until the matching autonomous decision has a verified execution outcome; persist a bounded pending-decision ledger and make outcomes idempotent.
+- Treat explicit externalGoal payloads as external input for the SelfAuthorship gate; do not credit externally supplied goals when observation.text is absent.
