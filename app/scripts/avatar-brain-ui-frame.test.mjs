@@ -54,3 +54,21 @@ test("preserves audio viseme shape while applying bounded brain lip-sync gain",(
   assert.deepEqual(avatarBrainMouthPose(pose,null,true),pose);
   assert.equal(avatarBrainMouthPose(pose,f,false).open,.015);
 });
+
+
+test("all continuous avatar renderers consume the same tick-matched brain frame", async () => {
+ const root = process.cwd();
+ const [stage, original, three] = await Promise.all([
+  readFile(new URL("../src/components/AvatarStage.tsx", import.meta.url), "utf8"),
+  readFile(new URL("../src/components/KurisuOriginalStage.tsx", import.meta.url), "utf8"),
+  readFile(new URL("../src/components/Avatar3DStage.tsx", import.meta.url), "utf8"),
+ ]);
+ assert.match(stage, /avatarBrainFrameForTick\(snap\.avatarBrain, snap\.tick\)/);
+ assert.match(stage, /avatarBrainLive2DExpression\(currentBrainFrame\)/);
+ assert.match(stage, /avatarBrainChannels=\{currentBrainChannels \?\? undefined\}/);
+ assert.match(original, /avatarBrainChannels\?\.eyeOpen/);
+ assert.match(original, /avatarBrainChannels\.browRaise/);
+ assert.match(original, /avatarBrainChannels\.mouthSmile/);
+ assert.match(three, /avatarBrainChannels\?: AvatarBrainChannelsV1/);
+ assert.ok(root.length > 0);
+});

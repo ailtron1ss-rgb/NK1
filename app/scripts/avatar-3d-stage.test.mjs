@@ -167,3 +167,14 @@ test("hidden procedural fixture does not run its per-frame body animation",async
  const stage=await readFile(stagePath,"utf8");
  assert.match(stage,/if\(b\.root\.visible\)\{/);
 });
+
+
+test("3D stage consumes canonical avatar brain channels for head, face and VRM", async () => {
+ const stage = await readFile(stagePath, "utf8");
+ assert.match(stage, /avatarBrainChannels\?: AvatarBrainChannelsV1/);
+ assert.match(stage, /brainGazeX=brain\?\.gazeX\?\?p\.gazeX/);
+ assert.match(stage, /brain\?\.lipSyncGain\?\?1/);
+ assert.match(stage, /fullBodyChannels\.headPitch=brain\.headTilt/);
+ assert.match(stage, /arousal:brain\?\.affect\.arousal01/);
+ assert.match(stage, /brain\?\.browRaise/);
+});
