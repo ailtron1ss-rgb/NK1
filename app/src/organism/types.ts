@@ -93,7 +93,7 @@ export interface ChatTurn {
   emotion?: EmotionLabel;
   option?: OptionKind;
   backend?: string;
-  delivery?: "sending" | "sent" | "unknown";
+  delivery?: "sending" | "sent" | "unknown" | "rejected";
 }
 
 export interface CandidateScore {
