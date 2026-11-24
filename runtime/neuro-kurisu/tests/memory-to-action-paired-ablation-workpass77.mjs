@@ -166,8 +166,8 @@ for (const seed of SEEDS) {
     'paired decisions must start from the same tick');
   assert.equal(respondArm.memoryCount, exploreArm.memoryCount,
     'paired arms must retrieve the same number of memories');
-  assert.notEqual(respondArm.memoryQueryHash, exploreArm.memoryQueryHash,
-    'decision query receipts must be present for both matched arms');
+  assert.equal(respondArm.memoryQueryHash, exploreArm.memoryQueryHash,
+    'matched arms must use the exact same observation/query so the only treatment difference is memory content');
   const shift = respondArm.respondVsExploreMargin - exploreArm.respondVsExploreMargin;
   assert.ok(shift > .08,
     'respond-cued memory must increase respond-vs-explore decision margin relative to explore-cued memory');
