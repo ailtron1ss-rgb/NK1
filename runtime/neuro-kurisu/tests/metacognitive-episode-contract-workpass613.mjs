@@ -25,6 +25,13 @@ assert.equal(normalized.parentEventIds.length, 11);
 assert.equal(normalized.reflection.status, 'not-evaluated');
 assert.equal(normalized.outcome.provenance, 'simulated');
 
+const identified = normalizeMetacognitiveEpisode({ ...valid, decisionId: 'decision:organism-core:41' });
+assert.equal(identified?.decisionId, 'decision:organism-core:41', 'preserves the bounded canonical decision identity');
+assert.equal(normalizeMetacognitiveEpisode({ ...valid, decisionId: 'bad\u0000decision' }), null,
+  'rejects control characters in a decision identity');
+assert.equal(normalizeMetacognitiveEpisode({ ...valid, decisionId: 'x'.repeat(181) }), null,
+  'rejects overlong decision identities');
+
 let getterCalled = false;
 const accessor = { ...valid, belief: Object.defineProperty({}, 'summary', { enumerable: true, get() { getterCalled = true; return 'forged'; } }) };
 assert.equal(normalizeMetacognitiveEpisode(accessor), null, 'rejects accessor-backed nested episode fields');
