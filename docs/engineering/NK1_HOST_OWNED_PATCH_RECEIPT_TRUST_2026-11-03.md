@@ -1,47 +1,30 @@
-# NK1 — host-owned patch receipt trust boundary
+# NK1 — host-owned self-improvement admission boundary
+**Updated:** 2026-11-24  
+**Status:** signed patch + independently signed holdout preflight admission implemented in the aspect branch; live code mutation executor deliberately not enabled.
 
-**Status:** host-trust admission implemented in the candidate pool; runtime/Core bootstrap wiring and independent outcome evidence remain future gates.
+## Trusted host composition
+The host constructs `SelfImprovementPatchAdmissionService` with:
+- exact 40-character source commit SHA;
+- complete repo-relative source file snapshot at that SHA;
+- SHA-256 of the canonical path/content inventory;
+- Ed25519 public keys for patch receipts;
+- a separate Ed25519 public-key registry for independent outcome evaluators.
 
-## Contract
+Private signing keys must remain outside NK1 (for example in a protected CI signer or operator-controlled secret manager). Keys and source digest are copied and frozen during construction. Model output, candidate input, tool results and runtime-writable memory cannot update the trust root.
 
-`SelfImprovementCandidatePool` accepts an optional third constructor argument:
+## Admission sequence
+1. The host snapshot is normalized (unique repo-relative file paths, bounded file count and byte budget), fingerprinted and matched to the pinned source SHA/digest.
+2. The service builds a structural SourceGraph from the host snapshot. The graph and candidate pool remain private; the model cannot supply or replace them.
+3. The exact UTF-8 unified diff is verified against the host-pinned base SHA, patch digest, actual changed files/line ranges, candidate targets and declared evolve blocks.
+4. SelfModificationGuard refuses writes to protected evaluator, holdout, identity, action, approval, source-graph, receipt-verifier and workflow owners. DangerModel applies blast-radius, sensitivity, rollback and measurement gates.
+5. At least five Ed25519-signed holdout artifacts are independently verified. Every artifact is bound to exact candidate ID and patch SHA, has a unique evidence ID and seed, uses the `holdout` split, and is signed by a host-pinned evaluator key. At least two verifier IDs and two environment IDs are required.
+6. Only those verified observations are passed to ProxyDivergenceGuard and DangerModel. Candidate-supplied observations are not read on the verified path.
+7. The resulting ranked record is tagged `signed-patch-receipt` and carries patch/evidence fingerprints. Metrics-only ranking remains separately tagged `metrics-only`.
 
-```ts
-new SelfImprovementCandidatePool(policy, dangerThresholds, {
-  baseSha: '<40-character source commit SHA>',
-  trustedPublicKeys: {
-    'nk1-release-signer-v1': '<Ed25519 SubjectPublicKeyInfo PEM>',
-  },
-});
-```
+## Important limits
+This component is **preflight/admission only**. It does not write source files, create branches, run arbitrary patches, merge, or publish releases. A signed patch receipt proves source binding and signer provenance; independent signed holdout artifacts prove that configured evaluators produced the bound measurements. Neither is permission to execute.
 
-This argument belongs to the trusted deployment/composition root. It must come from operator-controlled, read-only deployment configuration or a host-owned authority bootstrap. It must never be populated from model output, candidate metadata, a tool result, ordinary runtime-writable memory, or the candidate proof.
+No production host signer/evaluator configuration is present in the NK1 runtime. No private keys are added. The current Core self-modification scalar call remains fail-closed without paired evidence. The new service does not open that gate and does not enable self-editing. A future execution stage still needs host-operated isolated apply, independent post-apply tests, rollback verification, review/approval and an exact base-SHA lease.
 
-The pool validates the full source SHA, key identifiers, key sizes and Ed25519 public-key type. It copies and freezes the key map at construction. The pinned SHA and key registry are therefore unaffected by later mutation of the caller's original config object.
-
-If trust is not configured, `submitVerified` refuses with `patch-receipt:host-trust-unconfigured`. Candidate proofs contain only `patchText` and `receipt`. Any accompanying `expectedBaseSha` or `trustedPublicKeys` fields are not read and cannot override the host-owned values.
-
-## Admission classes
-
-Every accepted pool entry exposes one explicit class:
-
-- `metrics-only`: candidate observations were evaluated for ranking. This is not patch authorization.
-- `signed-patch-receipt`: exact patch bytes, source SHA, changed files/line ranges and an Ed25519 receipt were verified against the host-pinned trust configuration.
-
-The ranked record preserves the receipt key ID, pinned base SHA and patch SHA-256 so downstream components can distinguish the two paths and correlate them to the exact artifact.
-
-Neither class is permission to stage or execute code. A signed patch receipt proves only the patch's integrity and trusted signer provenance. It does not prove that a change is useful, safe, or independently evaluated.
-
-## Remaining gates before any live self-rewrite
-
-1. A host-owned signer must issue receipts outside the NK1 model/runtime trust domain; the signing private key must never be stored in NK1.
-2. A host-owned evaluator must issue independent signed outcome artifacts bound to the exact candidate, task manifest, environment, seeds and holdout split. Candidate-supplied observations alone are not evidence.
-3. The independent holdout and evaluator must be immutable to candidate self-modification. The structural self-modification guard now protects `PatchReceiptGuard` as well as the candidate pool and other evaluator owners.
-4. Only a separate promotion authority may move an evaluated candidate into a staging lane. Staging must apply the exact receipt-bound patch in a clean sandbox and verify rollback before any operator-reviewed promotion.
-5. A new pool instance is required when the pinned source revision changes; receipts for a prior SHA cannot authorize a new tree.
-
-## Verification
-
-CI exercises candidate self-appointed keys, host-key snapshot immutability, attempts to override the base SHA/key registry, malformed trust configuration, invalid signatures, out-of-evolve-block edits, the metrics-only/signed-patch class distinction, self-protection of the verifier, live self-agency and runtime typechecking.
-
-No private key, dependency, database migration, or release artifact is introduced by this change.
+## Failure behavior
+Missing/too few outcomes, wrong candidate or patch digest, duplicate evidence ID/seed, invalid signature, unknown verifier, insufficient verifier/environment diversity, stale source SHA/digest, protected target, malformed diff, incomplete evolve blocks, excessive snapshot budget or missing rollback all refuse admission. There is no fallback to candidate-supplied metrics.

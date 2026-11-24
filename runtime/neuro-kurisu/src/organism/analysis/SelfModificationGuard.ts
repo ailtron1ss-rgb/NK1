@@ -74,6 +74,8 @@ export const PROTECTED_CAPABILITY_FRAGMENTS: readonly string[] = [
   // Receipt parsing and cryptographic trust verification must not be editable
   // by the same candidate whose patch is being verified.
   'PatchReceiptGuard',
+  'PairedSelfImprovementEvidence',
+  'SelfImprovementPatchAdmissionService',
   'HostOwnedPatchReceiptTrust',
   'DangerModel',
   'CanonicalSelfAgencyAuthority',
