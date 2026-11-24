@@ -249,7 +249,7 @@ test("morph-ready v12 is pinned as a safe preview-only candidate without changin
  assert.match(catalog,/sizeBytes: 7_367_524/);
  assert.match(catalog,/sha256: "sha256:9535d6edcbe85d79a7a5cae49aa75ec189b63a0ba7f54b2b9bc24e5488d6046a"/);
  assert.match(catalog,/canonical: false as const/);
- assert.match(catalog,/acceptance: "morph-ready-structural" as const/);
+ assert.match(catalog,/acceptance: "morph-and-semantic-clips-structural" as const/);
  assert.match(stage,/loadCatalogModel\(KURISU_HYBRID_MODEL_V12_CANDIDATE,"preview"\)/);
  assert.match(stage,/const loadV12Candidate/);
  assert.match(stage,/modelName===KURISU_HYBRID_MODEL_V12_CANDIDATE\.filename/);
