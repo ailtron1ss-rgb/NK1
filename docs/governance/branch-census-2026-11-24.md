@@ -1,15 +1,16 @@
 # NK1 Git branch census — 2026-11-24
 
-Snapshot: paginated GitHub REST API, 2026-11-24T09:00:00Z. Repository: `ailtron1ss-rgb/NK1`.
+Snapshot boundary: live paginated GitHub REST list captured during this session and finalized before PR creation at approximately **2026-11-24 11:09 UTC**. Exact per-request timestamps were not returned by the API. Repository: `ailtron1ss-rgb/NK1`.
 
 ## Exact census
 - Live branch refs: **1124**; unique names: **1124**.
-- Unique HEAD SHAs: **1124**.
+- Unique HEAD SHAs in this API snapshot: **1124**.
 - Refs with currently open PR as head: **238**.
 - Refs without currently open PR as head: **886**. This does not mean "no PR ever"; closed/merged lineage requires a separate all-state mapping.
-- Duplicate HEAD groups: **0** (0 refs).
+- Duplicate HEAD groups: **0** in this captured result.
 - Protected refs: **0**; unprotected: **1124**.
-- The source-embedded provenance file says 1,106 refs; live census finds 1124. Treat embedded totals as stale until regenerated from exact current HEAD.
+- The source-embedded provenance file says 1,106 refs; an earlier dated ledger records 1,124 refs / 1,106 unique heads; this fresh list returns 1124 refs and 1124 unique heads. The disagreement itself is a data-integrity issue; don't use any previous aggregate as current truth without regenerating it.
+- Important limitation: the paginated branches endpoint supplied exact ref names and HEAD SHAs, but not commit dates/messages in this response. The JSONL records this field as unavailable rather than inventing it. Commit metadata is a second-stage query for selected candidates.
 
 ## Namespace counts
 - `aspect`: 298
@@ -63,7 +64,7 @@ Snapshot: paginated GitHub REST API, 2026-11-24T09:00:00Z. Repository: `ailtron1
 Family tags are lexical triage only, not source inspection or merge authorization. `cross-cutting-review` / `unclassified` require manual content and commit inspection.
 
 ## Canonical refs and release
-- Integration source: `workpass70-source`; HEAD at snapshot: `1d2509e0c71b5e4142c0bedcfcb339337e727ec5`.
+- Integration source at the snapshot boundary: `workpass70-source` @ `8328336c2156369875b21f0db06da71c3d83d6b9`.
 - `main` is the public release/metadata line; do not advance it with bulk donor merges.
 - Latest published Release metadata is `NeuroKurisu0.1` / tag `Neuro` (2026-10-19). This census does not prove ZIP/source parity.
 - The branch retirement incident removed 29 refs on 2026-11-23. Do not recreate refs by guessed names/SHA.
@@ -87,4 +88,4 @@ Keep no more than 12 durable domain integration roots after contracts are agreed
 Existing feature branches cannot literally be nested beneath another Git branch: Git refs are flat names. The ledger is the hierarchy; integration roots are PR destinations. Preserve every existing ref during discovery. For each donor compare merge-base, unique commits, changed paths/hunks, PR lineage and tests; selectively port unique changes onto a fresh source head; re-run exact-head CI. No mass merge, rename, force-push or deletion by prefix/name/age. Ref retirement only after proven content transfer, PR closure, reachability receipt and separate explicit authorization.
 
 Machine-readable rows: `docs/governance/branch-census-2026-11-24.jsonl`.
-Each row includes exact name, HEAD SHA, protection, last commit metadata, namespace, provisional name signals and open-PR head references.
+Each row includes exact ref name, HEAD SHA, protection, current open-PR head relationships and provisional name-family signals; commit dates/messages are explicitly marked unavailable from the census response.
