@@ -8335,6 +8335,8 @@ export class OrganismCore {
             userRequestedAction,
             autonomousOverride,
             goalAuthorshipAdmitted: canonicalGoalAdmission.admitted,
+            autonomousGoalId: b273Lifecycle.goalId,
+            autonomousGoalPlan: b273Lifecycle.plan.slice(),
             worldContextKey,
             predictedOutcomes: governedCandidates.slice(0, 7).map(c => {
                 const p = predictions.get(c.action);
@@ -10259,8 +10261,18 @@ export class OrganismCore {
                         acceptedExternalGoal: gatedSuccess01 >= .58 || projectEvidenceExternal,
                     });
                 }
-                const b273Current = this.developmentalNeural.autonomousGoalLifecycleB273.current();
-                const b273Learning = this.developmentalNeural.autonomousGoalLifecycleB273.learnFromOutcome({ tick: state.tick, action: trace.selected.action, plan: b273Current.plan, reward01: gatedReward01, predictionError01: state.predictionError, independentGain01: b272IndependentGain, personalityAlignment01: clamp(.55 + this.cognitiveRuntime.multiHypothesisPersonality.actionBias(trace.selected.action) * 8), externalEvidence01: projectEvidenceExternal ? 1 : 0 });
+                const b273Learning = this.developmentalNeural.autonomousGoalLifecycleB273.learnFromOutcome({
+                    goalId: trace.autonomousGoalId ?? null,
+                    decisionAutonomous: trace.goalAuthorshipAdmitted === true,
+                    tick: state.tick,
+                    action: trace.selected.action,
+                    plan: trace.autonomousGoalPlan ?? [],
+                    reward01: gatedReward01,
+                    predictionError01: state.predictionError,
+                    independentGain01: b272IndependentGain,
+                    personalityAlignment01: clamp(.55 + this.cognitiveRuntime.multiHypothesisPersonality.actionBias(trace.selected.action) * 8),
+                    externalEvidence01: projectEvidenceExternal ? 1 : 0,
+                });
                 if(this.organismSystems.agency.decisionReceipts.recordLearning(trace.tick,{
                     accepted:b273Learning.accepted,gain01:b273Learning.gain01,
                     note:b273Learning.completed?'goal-completed':b273Learning.abandoned?'goal-abandoned':b273Learning.revised?'goal-revised':b273Learning.accepted?'goal-progress-accepted':'goal-progress-rejected',
@@ -10550,11 +10562,12 @@ export class OrganismCore {
                         acceptedExternalGoal: gatedSuccess01 >= .58 || projectEvidenceExternal,
                     });
                 }
-                const b338Lifecycle = this.developmentalNeural.autonomousGoalLifecycleB273.current();
                 this.developmentalNeural.autonomousGoalLifecycleB273.learnFromOutcome({
+                    goalId: trace.autonomousGoalId ?? null,
+                    decisionAutonomous: trace.goalAuthorshipAdmitted === true,
                     tick: state.tick,
                     action: trace.selected.action,
-                    plan: b338Lifecycle.plan,
+                    plan: trace.autonomousGoalPlan ?? [],
                     reward01: gatedReward01,
                     predictionError01: state.predictionError,
                     independentGain01: b338IndependentGain,

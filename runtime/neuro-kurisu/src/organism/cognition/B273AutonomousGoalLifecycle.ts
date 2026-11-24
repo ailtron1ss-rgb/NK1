@@ -376,8 +376,13 @@ export class B273AutonomousGoalLifecycle{
     const skill=this.state.skills.filter(s=>s.actions[0]===action&&s.success01>=.58).sort((a,b)=>(b.success01+b.support01)-(a.success01+a.support01))[0];if(skill){skill.uses++;skill.lastUsedTick=input.tick;this.state.skillUses++;}
     return {goalId:goal.id,goalVector:goal.vector.slice(),action,plan,mode,autonomy01:this.state.autonomy01,confidence01:confidence,selfAlignment01:selfAlignment,longHorizonValue01:longHorizon,conflict01:conflict,created,revised,skillId:skill?.id??null};
   }
-  learnFromOutcome(input:{tick:number;action:ActionKind;plan:ActionKind[];reward01:number;predictionError01:number;independentGain01:number;personalityAlignment01:number;externalEvidence01:number}):{accepted:boolean;revised:boolean;completed:boolean;abandoned:boolean;skillCreated:boolean;goalId:string|null;gain01:number}{
-    const goal=this.state.activeGoalId?this.state.goals.find(g=>g.id===this.state.activeGoalId&&g.status==='active'):null;
+  learnFromOutcome(input:{goalId:string|null;decisionAutonomous:boolean;tick:number;action:ActionKind;plan:ActionKind[];reward01:number;predictionError01:number;independentGain01:number;personalityAlignment01:number;externalEvidence01:number}):{accepted:boolean;revised:boolean;completed:boolean;abandoned:boolean;skillCreated:boolean;goalId:string|null;gain01:number}{
+    // Outcome credit is decision-bound: an external request, a missing goal ID or a
+    // stale/replaced goal cannot train whichever goal happens to be active now.
+    if(input.decisionAutonomous!==true||typeof input.goalId!=='string'||!input.goalId.trim()){
+      return {accepted:false,revised:false,completed:false,abandoned:false,skillCreated:false,goalId:null,gain01:0};
+    }
+    const goal=this.state.goals.find(g=>g.id===input.goalId&&g.id===this.state.activeGoalId&&g.status==='active');
     if(!goal){return {accepted:false,revised:false,completed:false,abandoned:false,skillCreated:false,goalId:null,gain01:0};}
     const gain=clamp11((input.reward01-.5)*.72+(input.independentGain01)*.62+(1-input.predictionError01)*.18+(input.personalityAlignment01-.5)*.14);
     const accepted=gain>.02 || input.externalEvidence01>.7;

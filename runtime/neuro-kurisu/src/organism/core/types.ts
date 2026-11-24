@@ -174,6 +174,10 @@ export interface OrganismDecisionTrace {
   autonomousOverride: boolean;
   /** Canonical self-agency admission for the endogenous goal authored in this cycle. */
   goalAuthorshipAdmitted?: boolean;
+  /** Exact B273 goal generation that was active when this decision was authored. */
+  autonomousGoalId?: string | null;
+  /** Decision-time B273 plan; feedback must not read a later goal's plan. */
+  autonomousGoalPlan?: ActionKind[];
   predictedOutcomes: PredictedActionOutcome[];
   outcome?: { success:number; reward?:number; surprise?:number; notes?:string; at:number };
 }
