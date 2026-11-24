@@ -121,3 +121,18 @@
 - В обоих jobs строка typecheck сообщает `TYPECHECK=PASS mode=node-strip-syntax-only files=746`, но также явно указывает: TypeScript compiler not installed; semantic `tsc` check unavailable.
 
 **Ограничение:** 68/68 и 73/73 exact checks остаются успешными, а целевые regression scripts действительно исполнялись. Однако эти jobs не дают доказательства semantic TypeScript typecheck; это отдельный tooling gap, который нужно закрыть без установки зависимостей наугад.
+
+
+---
+
+## Continuation pass — 2026-11-24: plugin quarantine sleep boundary
+
+This pass extends the existing work unit **NK1-D20261124-12**; it does not create a duplicate security task or a new PR.
+
+- Existing PR #1169 branch `aspect/p0-plugin-input-quarantine-20261124` advanced from `91ce0af2629e2583ce6aa107d3e6c6ac2b4096fa` to **`731788bd980a39742b70e869830e75122aa311f2`**.
+- Only `runtime/neuro-kurisu/tests/cognitive-immune-plugin-runtime-gate.mjs` changed in this continuation.
+- Added a real sleep-boundary regression: enter sleep before hostile plugin ingress; assert quarantined content does not wake the organism; then assert a safe host-authorized plugin message retains normal wake behavior.
+- The existing `test:workpass613:metacognitive-episodes` workflow executed the updated test successfully. Exact new-head Actions: **68/68 SUCCESS**, zero failures/cancellations/active runs. The dedicated test job was run 45409761556 / job 138500066082; `targeted-and-regression` run 45409761814 and `unified-organism` run 45409761563 also succeeded.
+- PR #1169 remains Draft/open and unmerged. `workpass70-source` remains `87c9ed9034e09ca9fb83fd676ac52bb46434c4fe`; no source-branch commit, merge, Release change or publication occurred.
+
+**Incremental counters for this continuation:** generated 0 new work units (reused the existing 18-domain package); attempted 1 existing work unit; completed 1 scoped regression extension; partially completed 0; blocked 0; deferred 0; verified 1 extension on the exact PR head. The cumulative domain-level counts remain two completed/verified PR work units; the same task is not counted twice.
