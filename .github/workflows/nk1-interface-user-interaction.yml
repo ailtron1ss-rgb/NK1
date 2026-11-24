@@ -19,6 +19,9 @@ on:
       - "app/package.json"
       - "app/package-lock.json"
       - ".github/workflows/nk1-interface-user-interaction.yml"
+  push:
+    branches:
+      - aspect/interface-user-interaction-reliability-20261124
   workflow_dispatch:
 
 permissions:
