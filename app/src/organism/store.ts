@@ -3,10 +3,29 @@ import type { OrganismSnapshot } from "./types";
 import { emptySnapshot } from "./types";
 import { neuroApi } from "@/neuro-kurisu/api";
 import { toOrganismSnapshot } from "@/neuro-kurisu/normalize";
+import { readAvatarPreference, writeAvatarPreference } from "@/legacy/avatar/safeLocalStorage";
+import { shouldApplyUiSnapshot, type UiSnapshotStamp } from "./snapshotSync";
 
-type Tab = "mind" | "memory" | "lab" | "skills" | "evidence";
+export type LabsTab = "mind" | "memory" | "lab" | "skills" | "evidence";
+export type AppSection = "home" | "memory" | "motivation" | "settings" | "more";
+export type AvatarViewMode = "live2d" | "legacy" | "original" | "3d";
+export type UiConnectionStatus = "connecting" | "connected" | "degraded" | "disconnected";
+
+export interface UiConnectionState {
+  status: UiConnectionStatus;
+  version: string | null;
+  schemaVersion: number | null;
+  tick: number | null;
+  at: number | null;
+  lastSyncedAt: number | null;
+  lastError: string | null;
+  stamp: UiSnapshotStamp | null;
+}
+
 const CHAT_KEY = "neuro-kurisu-chat-v2";
 let lastInitiativePollAt = 0;
+let latestSnapshotRequestId = 0;
+let chatSequence = 0;
 
 function loadChat(): OrganismSnapshot["chat"] {
   if (typeof window === "undefined") return [];
@@ -19,146 +38,234 @@ function saveChat(chat: OrganismSnapshot["chat"]) {
   if (typeof window === "undefined") return;
   try { localStorage.setItem(CHAT_KEY, JSON.stringify(chat.slice(-120))); } catch { /* quota-safe UI cache */ }
 }
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+function readAvatarMode(): AvatarViewMode {
+  const value = readAvatarPreference("kurisu-avatar-mode");
+  return value === "legacy" || value === "original" || value === "3d" ? value : "live2d";
+}
+const initialConnection: UiConnectionState = {
+  status: "connecting",
+  version: null,
+  schemaVersion: null,
+  tick: null,
+  at: null,
+  lastSyncedAt: null,
+  lastError: null,
+  stamp: null,
+};
 
 interface KurisuStore {
   snap: OrganismSnapshot;
   busy: boolean;
-  tab: Tab;
+  tab: LabsTab;
+  section: AppSection;
   error: string | null;
   hydrated: boolean;
+  connection: UiConnectionState;
+  avatarMode: AvatarViewMode;
+  voiceEnabled: boolean;
+  voiceName: string;
   hydrate: () => Promise<void>;
   refresh: () => Promise<void>;
-  send: (text: string) => Promise<void>;
+  send: (text: string) => Promise<boolean>;
   sleep: () => Promise<void>;
   wake: () => Promise<void>;
   reset: () => void;
-  setTab: (tab: Tab) => void;
+  setTab: (tab: LabsTab) => void;
+  setSection: (section: AppSection) => void;
+  setAvatarMode: (mode: AvatarViewMode) => void;
+  setVoiceEnabled: (enabled: boolean) => void;
+  setVoiceName: (name: string) => void;
   tickIdle: () => Promise<void>;
 }
 
-export const useKurisu = create<KurisuStore>((set, get) => ({
-  snap: emptySnapshot(),
-  busy: false,
-  tab: "mind",
-  error: null,
-  hydrated: false,
-
-  hydrate: async () => {
-    if (get().hydrated) return;
-    set({ hydrated: true, error: null });
+export const useKurisu = create<KurisuStore>((set, get) => {
+  const pullCanonicalSnapshot = async (useCachedChat = false): Promise<boolean> => {
+    const requestId = ++latestSnapshotRequestId;
     try {
       const remote = await neuroApi.uiSnapshot();
-      set({ snap: toOrganismSnapshot(remote, loadChat()), error: null });
+      const current = get();
+      const stamp: UiSnapshotStamp = {
+        version: remote.version,
+        schemaVersion: remote.schemaVersion,
+        tick: remote.tick,
+        at: remote.at,
+      };
+      if (!shouldApplyUiSnapshot(stamp, current.connection.stamp, requestId, latestSnapshotRequestId)) return false;
+
+      const chat = useCachedChat ? loadChat() : current.snap.chat;
+      const nextSnapshot = toOrganismSnapshot(remote, chat);
+      const languageDegraded = remote.language?.degraded === true;
+      set({
+        snap: nextSnapshot,
+        connection: {
+          status: languageDegraded ? "degraded" : "connected",
+          version: remote.version,
+          schemaVersion: remote.schemaVersion,
+          tick: remote.tick,
+          at: remote.at,
+          lastSyncedAt: Date.now(),
+          lastError: null,
+          stamp,
+        },
+        error: null,
+      });
+      return true;
     } catch (error) {
-      set({ snap: { ...emptySnapshot(), chat: loadChat() }, error: error instanceof Error ? error.message : String(error) });
+      const message = errorMessage(error);
+      const current = get().connection;
+      set({
+        connection: {
+          ...current,
+          status: current.lastSyncedAt === null ? "disconnected" : "degraded",
+          lastError: message,
+        },
+        error: message,
+      });
+      return false;
     }
-  },
+  };
 
-  refresh: async () => {
-    try {
-      const remote = await neuroApi.uiSnapshot();
-      set({ snap: toOrganismSnapshot(remote, get().snap.chat), error: null });
-    } catch (error) {
-      set({ error: error instanceof Error ? error.message : String(error) });
-    }
-  },
+  return {
+    snap: emptySnapshot(),
+    busy: false,
+    tab: "mind",
+    section: "home",
+    error: null,
+    hydrated: false,
+    connection: initialConnection,
+    avatarMode: readAvatarMode(),
+    voiceEnabled: readAvatarPreference("kurisu-avatar-voice-enabled") === "true",
+    voiceName: readAvatarPreference("kurisu-avatar-voice-name") ?? "",
 
-  setTab: (tab) => set({ tab }),
+    hydrate: async () => {
+      if (get().hydrated) return;
+      set({ hydrated: true, error: null, connection: { ...get().connection, status: "connecting", lastError: null } });
+      await pullCanonicalSnapshot(true);
+    },
 
-  sleep: async () => {
-    try {
-      await neuroApi.sleep();
-      await get().refresh();
-    } catch (error) { set({ error: error instanceof Error ? error.message : String(error) }); }
-  },
+    refresh: async () => {
+      await pullCanonicalSnapshot(false);
+    },
 
-  wake: async () => {
-    try {
-      await neuroApi.wake();
-      await get().refresh();
-    } catch (error) { set({ error: error instanceof Error ? error.message : String(error) }); }
-  },
+    setTab: (tab) => set({ tab }),
+    setSection: (section) => set({ section }),
 
-  reset: () => {
-    const chat: OrganismSnapshot["chat"] = [];
-    saveChat(chat);
-    set({ snap: { ...get().snap, chat }, error: null });
-  },
+    setAvatarMode: (avatarMode) => {
+      writeAvatarPreference("kurisu-avatar-mode", avatarMode);
+      set({ avatarMode });
+    },
+    setVoiceEnabled: (voiceEnabled) => {
+      writeAvatarPreference("kurisu-avatar-voice-enabled", String(voiceEnabled));
+      set({ voiceEnabled });
+    },
+    setVoiceName: (voiceName) => {
+      writeAvatarPreference("kurisu-avatar-voice-name", voiceName);
+      set({ voiceName });
+    },
 
-  tickIdle: async () => {
-    if (get().busy || !get().hydrated) return;
-    try {
-      const remote = await neuroApi.uiSnapshot();
-      set({ snap: toOrganismSnapshot(remote, get().snap.chat), error: null });
+    sleep: async () => {
+      try {
+        await neuroApi.sleep();
+        await get().refresh();
+      } catch (error) { set({ error: errorMessage(error) }); }
+    },
+
+    wake: async () => {
+      try {
+        await neuroApi.wake();
+        await get().refresh();
+      } catch (error) { set({ error: errorMessage(error) }); }
+    },
+
+    reset: () => {
+      const chat: OrganismSnapshot["chat"] = [];
+      saveChat(chat);
+      set({ snap: { ...get().snap, chat }, error: null });
+    },
+
+    tickIdle: async () => {
+      if (get().busy || !get().hydrated) return;
+      const synced = await pullCanonicalSnapshot(false);
+      if (!synced || get().connection.status === "disconnected") return;
+
       const now = Date.now();
       if (now - lastInitiativePollAt < 5_000) return;
       lastInitiativePollAt = now;
-      const pending = await neuroApi.proactiveMessage();
-      const initiative = pending.initiative;
-      if (!initiative?.id || !initiative.message?.trim()) return;
-      const existing = get().snap.chat;
-      const turnId = `ui-initiative-${initiative.id}`;
-      const chat = existing.some(turn => turn.id === turnId)
-        ? existing
-        : [...existing, {
-            id: turnId,
-            role: "kurisu" as const,
-            text: initiative.message.trim(),
-            at: Number(initiative.createdAt || now),
-            tick: Number(get().snap.tick || 0),
-            option: "reflect" as const,
-            backend: `autonomous-initiative:${initiative.kind}`,
-          }].slice(-120);
-      if (chat !== existing) {
-        saveChat(chat);
-        set({ snap: { ...get().snap, chat } });
-      }
-      // ACK only after the message is safely in the browser's durable chat cache.
-      // If ACK fails, the stable turn id makes the next poll idempotent.
-      await neuroApi.ackProactiveMessage(initiative.id).catch(() => null);
-    } catch (error) {
-      set({ error: error instanceof Error ? error.message : String(error) });
-    }
-  },
-
-  send: async (text) => {
-    const trimmed = text.trim();
-    if (!trimmed || get().busy) return;
-    const userTurn = { id: `ui-user-${Date.now()}`, role: "user" as const, text: trimmed, at: Date.now(), tick: get().snap.tick };
-    set({ busy: true, error: null, snap: { ...get().snap, chat: [...get().snap.chat, userTurn] } });
-    try {
-      const result = await neuroApi.chat(trimmed, true, false);
-      const reply = String(result.language?.text || "Я обработала запрос, но язык временно недоступен.");
-      // The reply can change the organism's appraisal. Read the post-response
-      // snapshot before binding an emotion to the chat turn, so AvatarStage and
-      // browser TTS don't inherit the pre-response emotion by accident.
-      let refreshedSnapshot: OrganismSnapshot = get().snap;
-      let refreshError: string | null = null;
       try {
-        const remote = await neuroApi.uiSnapshot();
-        refreshedSnapshot = toOrganismSnapshot(remote, get().snap.chat);
+        const pending = await neuroApi.proactiveMessage();
+        const initiative = pending.initiative;
+        if (!initiative?.id || !initiative.message?.trim()) return;
+        const existing = get().snap.chat;
+        const turnId = `ui-initiative-${initiative.id}`;
+        const chat = existing.some(turn => turn.id === turnId)
+          ? existing
+          : [...existing, {
+              id: turnId,
+              role: "kurisu" as const,
+              text: initiative.message.trim(),
+              at: Number(initiative.createdAt || now),
+              tick: Number(get().snap.tick || 0),
+              option: "reflect" as const,
+              backend: `autonomous-initiative:${initiative.kind}`,
+            }].slice(-120);
+        if (chat !== existing) {
+          saveChat(chat);
+          set({ snap: { ...get().snap, chat } });
+        }
+        // ACK only after the message is safely in the browser's durable chat cache.
+        // If ACK fails, the stable turn id makes the next poll idempotent.
+        await neuroApi.ackProactiveMessage(initiative.id).catch(() => null);
       } catch (error) {
-        // Preserve the reply and durable chat if the snapshot endpoint is temporarily unavailable.
-        refreshError = error instanceof Error ? error.message : String(error);
+        set({ error: errorMessage(error) });
       }
-      const responseAt = Date.now();
-      const kurisuTurn = {
-        id: `ui-kurisu-${responseAt}`,
-        role: "kurisu" as const,
-        text: reply,
-        at: responseAt,
-        tick: Number(result.cycle?.state?.tick ?? refreshedSnapshot.tick),
-        emotion: refreshedSnapshot.emotion.label,
-        option: (String(result.cycle?.decision?.selected?.action || result.worldAction || refreshedSnapshot.lastOption) as OrganismSnapshot["lastOption"]),
-        backend: String(result.language?.backend || "canonical"),
+    },
+
+    send: async (text) => {
+      const trimmed = text.trim();
+      if (!trimmed || get().busy) return false;
+      const now = Date.now();
+      const userTurn = {
+        id: `ui-user-${now}-${++chatSequence}`,
+        role: "user" as const,
+        text: trimmed,
+        at: now,
+        tick: get().snap.tick,
       };
-      const chat = [...get().snap.chat, kurisuTurn].slice(-120);
-      saveChat(chat);
-      set({ snap: { ...refreshedSnapshot, chat }, busy: false, error: refreshError });
-    } catch (error) {
-      const chat = get().snap.chat;
-      saveChat(chat);
-      set({ busy: false, error: error instanceof Error ? error.message : String(error) });
-    }
-  },
-}));
+      const optimisticChat = [...get().snap.chat, userTurn].slice(-120);
+      saveChat(optimisticChat);
+      set({ busy: true, error: null, snap: { ...get().snap, chat: optimisticChat } });
+      try {
+        const result = await neuroApi.chat(trimmed, true, false);
+        const reply = String(result.language?.text || "Я обработала запрос, но язык временно недоступен.");
+        // The message response may change appraisal. Refresh the canonical snapshot
+        // before binding the reply's visible emotion to the conversation turn.
+        await pullCanonicalSnapshot(false);
+        const current = get();
+        const responseAt = Date.now();
+        const kurisuTurn = {
+          id: `ui-kurisu-${responseAt}-${++chatSequence}`,
+          role: "kurisu" as const,
+          text: reply,
+          at: responseAt,
+          tick: Number(result.cycle?.state?.tick ?? current.snap.tick),
+          emotion: current.snap.emotion.label,
+          option: (String(result.cycle?.decision?.selected?.action || result.worldAction || current.snap.lastOption) as OrganismSnapshot["lastOption"]),
+          backend: String(result.language?.backend || "canonical"),
+        };
+        const chat = [...current.snap.chat, kurisuTurn].slice(-120);
+        saveChat(chat);
+        set({ snap: { ...current.snap, chat }, busy: false });
+        return true;
+      } catch (error) {
+        const message = errorMessage(error);
+        const current = get();
+        saveChat(current.snap.chat);
+        set({ busy: false, error: message });
+        return false;
+      }
+    },
+  };
+});
