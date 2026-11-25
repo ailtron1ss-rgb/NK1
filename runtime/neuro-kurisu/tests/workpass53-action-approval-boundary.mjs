@@ -78,4 +78,70 @@ families.setExecutionLedgerPersister(async () => {});
 assert.equal((await families.requestToolApproval('http.voice.listen',{},'mic',{},'direct')).request.permissionClass,'device');
 assert.equal((await families.requestToolApproval('http.integration.outbound',{channel:'telegram',target:'user',payload:{text:'hi'}},'send',{},'direct')).request.permissionClass,'web');
 assert.equal((await families.requestToolApproval('http.research.probe.nomega-registry',{kind:'nomega-registry'},'probe',{},'direct')).request.permissionClass,'web');
-console.log('WORKPASS53_ACTION_APPROVAL_BOUNDARY=PASS scenarios=22');
+
+{
+  const opaque = new ActionGateway({ live: true });
+  let persisted = null;
+  let executions = 0;
+  opaque.setExecutionLedgerPersister(async (snapshot) => { persisted = structuredClone(snapshot); });
+  opaque.registerTool({
+    id: 'fixture.provider.commit',
+    capability: 'provider.custom.operation',
+    destructive: false,
+    requiresIdempotencyKey: true,
+    projectAllowed: false,
+    execute: async (input) => {
+      executions += 1;
+      return { accepted: true, target: String(input.target) };
+    },
+  });
+  const listed = opaque.listTools().find((tool) => tool.id === 'fixture.provider.commit');
+  assert.equal(listed.permissionClass, 'system',
+    'an unclassified tool with an explicit side-effect/idempotency contract defaults to system permission');
+  assert.equal(listed.requiresApproval, true,
+    'the registration surface must not hide the approval requirement');
+  const governance = opaque.toolGovernanceReport().tools.find((tool) => tool.id === 'fixture.provider.commit');
+  assert.equal(governance.required.approval, true,
+    'governance reports must count the fail-closed approval requirement');
+  assert.equal(governance.permissionClass, 'system');
+
+  const request = await opaque.requestToolApproval(
+    'fixture.provider.commit', { target: 'archive-42' }, 'opaque provider mutation', {}, 'execute',
+  );
+  assert.equal(request.created, true);
+  assert.equal(request.request.permissionClass, 'system');
+  assert.equal(persisted.permissions.requests.at(-1).permissionClass, 'system');
+
+  const blocked = await opaque.executeTool(
+    'fixture.provider.commit', { target: 'archive-42' }, 'without approval',
+    { idempotencyKey: 'opaque-provider-commit-1' },
+  );
+  assert.equal(blocked.ok, false);
+  assert.equal(blocked.outcomeClass, 'approval-required');
+  assert.equal(executions, 0);
+
+  assert.equal((await opaque.resolveToolApproval(request.request.id, true)).ok, true);
+  const executed = await opaque.executeTool(
+    'fixture.provider.commit', { target: 'archive-42' }, 'approved exact operation',
+    { idempotencyKey: 'opaque-provider-commit-1', approvalId: request.request.id },
+  );
+  assert.equal(executions, 1);
+  assert.equal(executed.idempotencyStatus, 'recorded');
+  assert.equal(persisted.permissions.requests.find((row) => row.id === request.request.id).status, 'consumed');
+
+  const safe = new ActionGateway({ live: true });
+  safe.setExecutionLedgerPersister(async () => {});
+  safe.registerTool({
+    id: 'fixture.internal.preview',
+    capability: 'local.metadata.preview',
+    destructive: false,
+    projectAllowed: true,
+    execute: async () => ({ preview: true }),
+  });
+  const safeEntry = safe.listTools().find((tool) => tool.id === 'fixture.internal.preview');
+  assert.equal(safeEntry.permissionClass, 'none');
+  assert.equal(safeEntry.requiresApproval, false,
+    'ordinary unclassified read-only helpers remain usable without an approval prompt');
+}
+
+console.log('WORKPASS53_ACTION_APPROVAL_BOUNDARY=PASS scenarios=23');
