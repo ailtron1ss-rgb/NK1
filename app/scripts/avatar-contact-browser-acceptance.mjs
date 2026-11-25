@@ -27,7 +27,12 @@ try {
   page.on("request", (request) => {
     const requestUrl = new URL(request.url());
     if (requestUrl.pathname !== "/api/organism/event" || request.method() !== "POST") return;
-    try { observedEvents.push(request.postDataJSON()); } catch { /* malformed requests fail the event-count assertions */ }
+    try {
+      const payload = request.postDataJSON();
+      // The organism event route also carries unrelated UI/system events. Only
+      // canonical avatar-contact events belong in this renderer acceptance ledger.
+      if (payload?.interaction?.kind === "avatar-contact") observedEvents.push(payload);
+    } catch { /* malformed requests fail the event-count assertions */ }
   });
   await page.goto(origin, { waitUntil: "domcontentloaded", timeout: timeoutMs });
 
