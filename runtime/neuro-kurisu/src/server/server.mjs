@@ -1,5 +1,6 @@
 import http from 'node:http';
 import { randomUUID } from 'node:crypto';
+import { ProactiveDeliveryLeaseRegistry } from './proactive-delivery-lease-registry.mjs';
 import { URL } from 'node:url';
 import { mkdir, readFile, writeFile, rename, unlink, lstat } from 'node:fs/promises';
 import { existsSync as fsExistsSync, statSync as fsStatSync, readdirSync as fsReaddirSync, readFileSync as fsReadFileSync } from 'node:fs';
@@ -34,6 +35,7 @@ import { startNativeSpeechSseStream } from './native-speech-sse.mjs';
 import { parseTrustedConstitutionReviewKeys, createAuthenticatedConstitutionReviewVerifier, constitutionReviewAuthoritySnapshot } from '../organism/cognition/evolution/ConstitutionReviewAuthority.ts';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '../..');
+const PROACTIVE_DELIVERY_LEASES = new ProactiveDeliveryLeaseRegistry({ maxEntries: 64 });
 function loadNeuroPlasticTrustMap(raw, envName, approval = false) {
     try {
         return approval
@@ -1900,12 +1902,21 @@ async function route(req, res) {
             const input = await body(req);
             if (typeof input.consentGranted !== 'boolean') return json(res, 400, { ok: false, error: 'consent-granted-must-be-boolean' });
             const policy = await runtime.setAutonomousDialogueConsent(input.consentGranted);
+            if (!input.consentGranted) PROACTIVE_DELIVERY_LEASES.clear();
             return json(res, 200, { ok: true, policy });
         }
         if (req.method === 'GET' && url.pathname === '/api/organism/proactive-message') {
             if (!runtimeReady) return json(res, 503, { ok: false, error: 'organism-runtime-not-ready' });
             const initiative = await runtime.autonomousDialogueReady();
-            return json(res, 200, { ok: true, initiative });
+            if (!initiative) return json(res, 200, { ok: true, initiative: null });
+            const deliveryToken = PROACTIVE_DELIVERY_LEASES.issue(
+                initiative.id,
+                initiative.deliveryAttemptCount,
+                initiative.deliveryLeaseUntil,
+                randomUUID(),
+            );
+            if (!deliveryToken) return json(res, 503, { ok: false, error: 'proactive-delivery-lease-token-unavailable', initiative: null });
+            return json(res, 200, { ok: true, initiative: { ...initiative, deliveryToken } });
         }
         if (req.method === 'POST' && url.pathname === '/api/organism/proactive-message/ack') {
             if (!runtimeReady) return json(res, 503, { ok: false, error: 'organism-runtime-not-ready' });
@@ -1914,10 +1925,15 @@ async function route(req, res) {
             if (typeof rawId !== 'string') return json(res, 400, { ok: false, error: 'initiative-id-must-be-string' });
             const id = rawId.trim();
             if (!id || id.length > 160 || rawId !== id) return json(res, 400, { ok: false, error: 'invalid-initiative-id' });
+            const deliveryToken = input?.deliveryToken;
+            if (typeof deliveryToken !== 'string' || !PROACTIVE_DELIVERY_LEASES.matches(id, deliveryToken)) {
+                return json(res, 409, { ok: false, acknowledged: false, error: 'proactive-delivery-lease-token-invalid' });
+            }
             const acknowledged = await runtime.acknowledgeAutonomousDialogue(id);
             if (!acknowledged) {
                 return json(res, 409, { ok: false, acknowledged: false, error: 'proactive-delivery-ack-rejected' });
             }
+            PROACTIVE_DELIVERY_LEASES.consume(id, deliveryToken);
             return json(res, 200, { ok: true, acknowledged: true, id });
         }
         if (req.method === 'POST' && url.pathname === '/api/organism/chat') {
