@@ -3,6 +3,8 @@ import { readFile, stat } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
+import * as THREE from "three";
+import { refreshAvatarRaycastBounds } from "../src/components/avatar/avatarModelFitBounds.ts";
 const repoRoot=path.resolve(path.dirname(fileURLToPath(import.meta.url)),"../..");
 const root=path.join(repoRoot,"app");
 const stagePath=path.join(root,"src/components/Avatar3DStage.tsx");
@@ -384,4 +386,48 @@ test("3D avatar contact picking includes static head meshes and classifies again
    "meshes under an invisible parent must never become pointer contact targets");
  assert.ok(fit.contactBounds.max.y < hiddenAccessory.position.y,
    "invisible rig branches must not distort the contact envelope");
+});
+
+test("animated SkinnedMesh refreshes bone-deformed bounds before pointer raycasting", () => {
+ const geometry=new THREE.BoxGeometry(1,1,1);
+ const count=geometry.attributes.position.count;
+ const skinIndices=new Uint16Array(count*4);
+ const skinWeights=new Float32Array(count*4);
+ for(let index=0;index<count;index++)skinWeights[index*4]=1;
+ geometry.setAttribute("skinIndex",new THREE.Uint16BufferAttribute(skinIndices,4));
+ geometry.setAttribute("skinWeight",new THREE.Float32BufferAttribute(skinWeights,4));
+ const root=new THREE.Group();
+ const mesh=new THREE.SkinnedMesh(geometry,new THREE.MeshBasicMaterial({side:THREE.DoubleSide}));
+ const bone=new THREE.Bone();
+ mesh.add(bone);
+ root.add(mesh);
+ const skeleton=new THREE.Skeleton([bone]);
+ mesh.bind(skeleton);
+ root.updateMatrixWorld(true);
+ skeleton.update();
+ mesh.computeBoundingBox();
+ mesh.computeBoundingSphere();
+ const bindCenter=mesh.boundingSphere.center.clone();
+ bone.position.x=4;
+ root.updateMatrixWorld(true);
+ skeleton.update();
+ assert.ok(mesh.boundingSphere.center.distanceTo(bindCenter)<0.001,"the cached sphere is intentionally stale before refresh");
+ const camera=new THREE.PerspectiveCamera(50,1,0.1,100);
+ camera.position.set(4,0,10);
+ camera.lookAt(4,0,0);
+ camera.updateMatrixWorld(true);
+ const raycaster=new THREE.Raycaster();
+ raycaster.setFromCamera(new THREE.Vector2(0,0),camera);
+ assert.equal(raycaster.intersectObject(mesh,false).length,0,"a stale skin sphere must not be accepted as an animated hit");
+ assert.equal(refreshAvatarRaycastBounds(root),1,"one skinned mesh must be refreshed");
+ assert.ok(mesh.boundingSphere.center.x>3.9,"the updated sphere must follow the animated bone");
+ assert.ok(mesh.boundingBox.min.x>3.4,"the updated box must follow the animated bone");
+ assert.ok(raycaster.intersectObject(mesh,false).length>0,"the same camera ray must hit after the skin bounds are refreshed");
+});
+
+test("3D contact refreshes animated skin bounds before intersecting pick meshes",async()=>{
+ const stage=await readFile(stagePath,"utf8");
+ const refresh=stage.indexOf("refreshAvatarRaycastBounds(target)");
+ const intersect=stage.indexOf("raycaster.intersectObjects(fit.pickMeshes,true)");
+ assert.ok(refresh>=0&&intersect>refresh,"animated skin bounds must be refreshed before raycast");
 });
