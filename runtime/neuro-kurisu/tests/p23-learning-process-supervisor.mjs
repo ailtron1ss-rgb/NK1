@@ -263,6 +263,15 @@ try {
     assert.equal(allowed.receipt.status, 'completed');
     assert.equal(allowed.receipt.stdout, '[REDACTED]');
     assert.ok(!JSON.stringify(allowed.receipt).includes(sensitiveValue));
+    const allowedInherited = await runLearningProcess(run, 'b'.repeat(64), {
+      ...base,
+      inheritEnv: [sensitiveKey],
+      allowSensitiveEnv: [sensitiveKey],
+      args: ['-e', 'process.stdout.write(process.env.NK1_TEST_ACCESS_TOKEN || "missing")'],
+    });
+    assert.equal(allowedInherited.receipt.status, 'completed');
+    assert.equal(allowedInherited.receipt.stdout, '[REDACTED]',
+      'an explicitly approved inherited credential is still redacted from receipts');
     await assert.rejects(
       () => runLearningProcess(run, 'b'.repeat(64), {
         ...base,
