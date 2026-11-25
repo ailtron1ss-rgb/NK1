@@ -1928,6 +1928,8 @@
     "test:self-authorship-verified-execution-workpass70": "node --experimental-strip-types tests/self-authorship-verified-execution-workpass70.mjs",
     "test:self-authorship-spineonly-runtime-workpass71": "node --experimental-strip-types tests/self-authorship-spineonly-runtime-workpass71.mjs",
     "test:action-receipt-selfauthorship-recovery-workpass72": "node --experimental-strip-types tests/action-receipt-selfauthorship-recovery-workpass72.mjs",
-    "test:cef-decision-reference-workpass72": "node --experimental-strip-types tests/cef-decision-reference-workpass72.mjs"
+    "test:cef-decision-reference-workpass72": "node --experimental-strip-types tests/cef-decision-reference-workpass72.mjs",
+    "test:runtime-checkpoint-envelope": "node --experimental-strip-types tests/runtime-checkpoint-envelope-workpass73.mjs",
+    "test:runtime-checkpoint-projection-fault-matrix": "node --experimental-strip-types tests/runtime-checkpoint-projection-fault-matrix-workpass74.mjs"
   }
 }
