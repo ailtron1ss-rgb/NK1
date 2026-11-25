@@ -106,6 +106,10 @@ restored.restore({
     { id: 'old-host-verified-receipt', label: 'external-observation-receipt:explore',
       confidence01: .99, lastAt: 4_500, persistence01: .99, evidenceKind: 'observed' },
   ],
+  quarantinedOutcomes: [
+    { id: 'duplicate-quarantine-id', label: 'external-receipt:explore:executed:device-telemetry', at: 4_000 },
+    { id: 'duplicate-quarantine-id', label: 'external-receipt:explore:executed:device-telemetry', at: 4_500 },
+  ],
   facts: ['valid fact', 7, '', 'f'.repeat(5000)],
   provenanceIds: ['source-1', 7, ''],
   lastHash: 'attacker-controlled-hash',
@@ -142,6 +146,8 @@ assert.equal(safe.events.some(event => event.id === 'old-host-verified-receipt')
   'serialized host verifier receipts must lose in-process authority after restart');
 assert.ok(safe.quarantinedOutcomes?.some(event => event.id === 'old-host-verified-receipt'),
   'serialized verified receipts must remain diagnostic only until re-attested live');
+assert.equal(safe.quarantinedOutcomes?.filter(event => event.id === 'duplicate-quarantine-id').length, 1,
+  'duplicate persisted quarantine identities must collapse to one diagnostic receipt');
 assert.deepEqual(safe.facts, [], 'persisted free-form facts must not return as canonical grounded facts');
 assert.deepEqual(safe.quarantinedFacts, ['restored-unverified:valid fact'],
   'persisted fact text remains available in an explicitly unverified quarantine');
