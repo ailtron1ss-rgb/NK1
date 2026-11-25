@@ -144,4 +144,53 @@ assert.equal((await families.requestToolApproval('http.research.probe.nomega-reg
     'ordinary unclassified read-only helpers remain usable without an approval prompt');
 }
 
+{
+  const cases = [
+    { id: 'fixture.vendor.destructive', flags: { destructive: true } },
+    { id: 'fixture.vendor.undo-required', flags: { requiresUndoFirst: true } },
+    { id: 'fixture.vendor.undo-preparation', flags: { undoFirst: { prepare: () => ({}) } } },
+  ];
+  for (const item of cases) {
+    const gateway = new ActionGateway({ live: true });
+    gateway.setExecutionLedgerPersister(async () => {});
+    gateway.registerTool({
+      id: item.id,
+      capability: 'opaque.provider.operation',
+      projectAllowed: false,
+      execute: async () => ({ accepted: true }),
+      ...item.flags,
+    });
+    const listed = gateway.listTools().find((tool) => tool.id === item.id);
+    assert.equal(listed.permissionClass, 'system', item.id + ' must default to the system approval class');
+    assert.equal(listed.requiresApproval, true, item.id + ' must be marked as approval-required');
+    const report = gateway.toolGovernanceReport().tools.find((tool) => tool.id === item.id);
+    assert.equal(report.required.approval, true, item.id + ' must be visible as a governance approval requirement');
+    const ticket = await gateway.requestToolApproval(item.id, { target: 'resource-7' }, 'high-risk opaque tool', {}, 'execute');
+    assert.equal(ticket.created, true, item.id + ' must produce a persisted system-class ticket');
+    assert.equal(ticket.request.permissionClass, 'system');
+  }
+}
+
+{
+  const gateway = new ActionGateway({ live: true });
+  gateway.setExecutionLedgerPersister(async () => {});
+  gateway.registerTool({
+    id: 'fixture.web.search',
+    capability: 'external.web.search',
+    destructive: false,
+    permissionClass: 'web',
+    execute: async () => ({ results: [] }),
+  });
+  assert.equal(gateway.listTools().find((tool) => tool.id === 'fixture.web.search').permissionClass, 'web',
+    'an explicit canonical permission class must take precedence over the conservative fallback');
+  gateway.registerTool({
+    id: 'organism.device.speak',
+    capability: 'conversational.audio.output',
+    destructive: false,
+    execute: async () => ({ spoken: true }),
+  });
+  assert.equal(gateway.listTools().find((tool) => tool.id === 'organism.device.speak').requiresApproval, false,
+    'the intentionally safe synthesized-speech exception remains approval-free');
+}
+
 console.log('WORKPASS53_ACTION_APPROVAL_BOUNDARY=PASS scenarios=23');
