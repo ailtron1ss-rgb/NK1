@@ -3150,6 +3150,11 @@ export class OrganismRuntime {
     });
   }
 
+  /** Read proactive-delivery policy on the serialized runtime command queue. */
+  async autonomousDialogueDeliveryPolicy() {
+    return this.enqueue(async () => this.core.autonomousInitiativeDeliveryPolicy());
+  }
+
   /** Update proactive-delivery consent on the serialized runtime command queue. */
   async setAutonomousDialogueConsent(consentGranted: boolean) {
     return this.enqueue(async () => {
