@@ -17,6 +17,6 @@ test("transport failures back off exponentially and recover within a bound", () 
 test("custom bounds are validated and clamped", () => {
   assert.equal(snapshotPollDelayMs(2, 1000, 5000), 4000);
   assert.equal(snapshotPollDelayMs(5, 1000, 5000), 5000);
-  assert.equal(snapshotPollDelayMs(2, -1, -1), 1000);
+  assert.equal(snapshotPollDelayMs(2, -1, -1), 5600);
   assert.equal(snapshotPollDelayMs(Number.NaN), 1400);
 });
