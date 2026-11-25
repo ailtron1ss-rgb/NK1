@@ -34,7 +34,7 @@ export function ChatPanel() {
   }, [snap.chat.length, busy]);
 
   useEffect(() => {
-    setText((current) => current.trim() ? current : readPersistentChatDraft(chatDraftStorage()));
+    setText((current) => current.length ? current : readPersistentChatDraft(chatDraftStorage()));
     setDraftLoaded(true);
   }, []);
 
