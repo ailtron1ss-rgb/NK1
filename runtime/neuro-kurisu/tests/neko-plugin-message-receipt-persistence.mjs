@@ -37,6 +37,28 @@ function makeIngress(receiptStore, calls, authorize = async () => true) {
   });
 }
 
+  // Production ingress must not silently downgrade durable replay to process-local memory.
+  {
+    const previousNodeEnv = process.env.NODE_ENV;
+    try {
+      process.env.NODE_ENV = 'production';
+      assert.throws(() => new PluginMessageIngress({
+        allowedPlugins: ['notes'],
+        authorize: async () => true,
+        runtime: { step: async () => ({ accepted: true }) },
+      }), /neko-message-ingress-production-requires-durable-receipt-store/);
+      assert.doesNotThrow(() => new PluginMessageIngress({
+        allowedPlugins: ['notes'],
+        authorize: async () => true,
+        receiptStore: { load: async () => null, save: async () => {} },
+        runtime: { step: async () => ({ accepted: true }) },
+      }));
+    } finally {
+      if (previousNodeEnv === undefined) delete process.env.NODE_ENV;
+      else process.env.NODE_ENV = previousNodeEnv;
+    }
+  }
+
 try {
   const notReadyCalls = { steps: [] };
   const notReady = makeIngress(new FileStateStore(path.join(dir, 'not-ready.json')), notReadyCalls);
@@ -130,6 +152,74 @@ try {
   assert.equal(recoveredCalls.steps.length, 0,
     'a restored pending receipt must fail closed until the host reconciles the real outcome');
 
+  // If cognition completed but the final receipt write fails before commit, the durable
+  // pending marker prevents a restart from running the same side effect a second time.
+  {
+    const completedBacking = new FileStateStore(statePath + '.completed-write-failed');
+    let failCompletedBeforeCommit = true;
+    const storeWithFailedCompletion = {
+      load: () => completedBacking.load(),
+      save: async snapshot => {
+        if (failCompletedBeforeCommit && snapshot.receipts.some(row =>
+          row.messageId === 'uncertain-completed-before-commit' && row.status === 'completed')) {
+          failCompletedBeforeCommit = false;
+          throw new Error('simulated-completed-receipt-write-failed-before-commit');
+        }
+        await completedBacking.save(snapshot);
+      },
+    };
+    const sideEffectCalls = { steps: [] };
+    const ingress = makeIngress(storeWithFailedCompletion, sideEffectCalls);
+    await ingress.initialize();
+    const result = await ingress.handle(request('uncertain-completed-before-commit'));
+    assert.equal(result.errorCode, 'message-recovery-required');
+    assert.equal(sideEffectCalls.steps.length, 1,
+      'the first cognitive side effect may have happened before the final receipt write failed');
+    const durablePending = await completedBacking.load();
+    assert.equal(durablePending.receipts.find(row => row.messageId === 'uncertain-completed-before-commit')?.status, 'pending');
+
+    const restartedCalls = { steps: [] };
+    const restartedIngress = makeIngress(completedBacking, restartedCalls);
+    await restartedIngress.initialize();
+    const blockedRetry = await restartedIngress.handle(request('uncertain-completed-before-commit'));
+    assert.equal(blockedRetry.errorCode, 'message-recovery-required');
+    assert.equal(restartedCalls.steps.length, 0,
+      'a persisted pending marker must block duplicate cognition after an uncertain completed write');
+  }
+
+  // If the completed receipt reached durable storage but its acknowledgement was lost,
+  // a restart must replay the completed result without executing cognition again.
+  {
+    const completedBacking = new FileStateStore(statePath + '.completed-ack-lost');
+    let failCompletedAcknowledgement = true;
+    const storeWithLostAcknowledgement = {
+      load: () => completedBacking.load(),
+      save: async snapshot => {
+        await completedBacking.save(snapshot);
+        if (failCompletedAcknowledgement && snapshot.receipts.some(row =>
+          row.messageId === 'uncertain-completed-ack-lost' && row.status === 'completed')) {
+          failCompletedAcknowledgement = false;
+          throw new Error('simulated-completed-receipt-acknowledgement-lost');
+        }
+      },
+    };
+    const sideEffectCalls = { steps: [] };
+    const ingress = makeIngress(storeWithLostAcknowledgement, sideEffectCalls);
+    await ingress.initialize();
+    const result = await ingress.handle(request('uncertain-completed-ack-lost'));
+    assert.equal(result.errorCode, 'message-recovery-required');
+    assert.equal(sideEffectCalls.steps.length, 1);
+
+    const restartedCalls = { steps: [] };
+    const restartedIngress = makeIngress(completedBacking, restartedCalls);
+    await restartedIngress.initialize();
+    const replay = await restartedIngress.handle(request('uncertain-completed-ack-lost'));
+    assert.equal(replay.accepted, true);
+    assert.equal(replay.replayed, true);
+    assert.equal(restartedCalls.steps.length, 0,
+      'a completed durable receipt must replay after an uncertain write acknowledgement without a second side effect');
+  }
+
   const deniedCalls = { steps: [] };
   const denied = makeIngress(new FileStateStore(statePath), deniedCalls, async () => false);
   await denied.initialize();
@@ -167,7 +257,7 @@ try {
   assert.equal((await corruptIngress.handle(request('corrupt-1'))).errorCode, 'receipt-store-not-initialized',
     'corrupt receipt state must block ingress instead of silently clearing replay guards');
 
-  console.log('NEKO_PLUGIN_MESSAGE_RECEIPT_PERSISTENCE=PASS cases=10');
+  console.log('NEKO_PLUGIN_MESSAGE_RECEIPT_PERSISTENCE=PASS cases=13');
 } finally {
   await rm(dir, { recursive: true, force: true });
 }
