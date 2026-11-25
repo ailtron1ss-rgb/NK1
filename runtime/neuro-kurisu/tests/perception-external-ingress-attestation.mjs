@@ -221,5 +221,33 @@ assert.equal(newestTrust.snapshot().records[0].id, 'record-0',
   'external trust restore must retain the newest-first evidence window');
 assert.ok(!newestTrust.snapshot().records.some(record => record.id === 'record-256'));
 
+
+const forgedGraphAggregates = new PerceptualEpistemicGraph();
+forgedGraphAggregates.restore({
+  version: 1,
+  claims: [{
+    id: 'only-claim', at: 700, modality: 'sensor', claim: 'door is open',
+    source: 'derived', confidence01: .2, targetIds: [],
+  }],
+  contradictionPairs: 999,
+  resolvedPairs: 999,
+  corroboratedPairs: 999,
+  meanConfidence01: 1,
+  lastAt: 999_999,
+});
+assert.equal(forgedGraphAggregates.snapshot().contradictionPairs, 0);
+assert.equal(forgedGraphAggregates.snapshot().resolvedPairs, 0);
+assert.equal(forgedGraphAggregates.snapshot().corroboratedPairs, 0);
+assert.equal(forgedGraphAggregates.snapshot().meanConfidence01, .2,
+  'epistemic confidence summary must be recomputed from sanitized claims');
+assert.equal(forgedGraphAggregates.snapshot().lastAt, 700,
+  'epistemic recency must be derived from retained claims');
+
+const strictCounterGraph = new PerceptualEpistemicGraph();
+strictCounterGraph.restore({ version:1, claims:[], resolvedPairs:'999', corroboratedPairs:true });
+assert.equal(strictCounterGraph.snapshot().resolvedPairs, 0,
+  'string counters must not be numerically coerced during restore');
+assert.equal(strictCounterGraph.snapshot().corroboratedPairs, 0);
+
 console.log('PERCEPTION_EXTERNAL_INGRESS_ATTESTATION=PASS hostile=3');
 
