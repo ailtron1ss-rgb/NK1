@@ -42,6 +42,7 @@ try {
   const redacted = await runLearningProcess(run, 'b'.repeat(64), {
     ...base,
     env: { NK1_TEST_ACCESS_TOKEN: accessToken },
+    allowSensitiveEnv: ['NK1_TEST_ACCESS_TOKEN'],
     args: ['-e', "process.stdout.write(process.env.NK1_TEST_ACCESS_TOKEN); process.stderr.write('Authorization: Bearer '+process.env.NK1_TEST_ACCESS_TOKEN)"],
   });
   assert.equal(redacted.receipt.status, 'completed');
@@ -57,6 +58,7 @@ try {
     ...base,
     maxOutputBytes: 8,
     env: { NK1_TEST_ACCESS_TOKEN: accessToken },
+    allowSensitiveEnv: ['NK1_TEST_ACCESS_TOKEN'],
     args: ['-e', 'process.stdout.write(process.env.NK1_TEST_ACCESS_TOKEN)'],
   });
   assert.equal(truncatedSecret.receipt.status, 'output-limit');
@@ -87,6 +89,7 @@ try {
       SUPABASE_SERVICE_ROLE_KEY: serviceRoleKey,
       REDIS_URL: redisUrl,
     },
+    allowSensitiveEnv: ['DATABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY', 'REDIS_URL'],
     args: ['-e', "process.stdout.write(process.env.DATABASE_URL); process.stderr.write(process.env.SUPABASE_SERVICE_ROLE_KEY+' '+process.env.REDIS_URL)"],
   });
   assert.equal(connectionSecrets.receipt.stdout, '[REDACTED]');
@@ -266,7 +269,7 @@ try {
         env: { [sensitiveKey]: sensitiveValue },
         allowSensitiveEnv: ['DATABASE_URL'],
       }),
-      /sensitive-environment-key-not-authorized/,
+      /sensitive-environment-grant-not-bound-to-command/,
       'a grant for another variable must not authorize this credential',
     );
   } finally {
