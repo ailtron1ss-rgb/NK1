@@ -6,6 +6,8 @@ import { ProactiveDeliveryLeaseRegistry } from "../src/server/proactive-delivery
   const leases = new ProactiveDeliveryLeaseRegistry();
   assert.equal(leases.issue("soc:1", 1, 10_000, "token-0000000000001", 1), "token-0000000000001");
   assert.equal(leases.matches("soc:1", "token-0000000000001", 9_999), true);
+  assert.equal(leases.attemptCountFor("soc:1", "token-0000000000001", 9_999), 1);
+  assert.equal(leases.attemptCountFor("soc:1", "token-0000000000001", 10_000), null);
   assert.equal(leases.matches("soc:other", "token-0000000000001", 9_999), false);
   assert.equal(leases.matches("soc:1", "wrong-token-0000000000", 9_999), false);
   assert.equal(leases.matches("soc:1", "token-0000000000001", 10_000), false,
