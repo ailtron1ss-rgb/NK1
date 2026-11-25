@@ -5,7 +5,7 @@ import type { OutcomeVerification } from '../system/OutcomeVerificationService.t
 import { isTrustedEmbodiedOutcomeVerification } from '../system/ExternalPostconditionVerifier.ts';
 
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
-const safeUnit=(value:unknown,fallback=0):number=>typeof value==='number'&&Number.isFinite(value)?clamp(value):fallback;
+const safeUnit=(value:unknown,fallback=0):number=>typeof value==='number'&&Number.isFinite(value)&&value>=0&&value<=1?value:fallback;
 const safeInteger=(value:unknown,fallback=0,min=0,max=Number.MAX_SAFE_INTEGER):number=>
   typeof value==='number'&&Number.isSafeInteger(value)&&value>=min&&value<=max?value:fallback;
 const safeTimestamp=(value:unknown,fallback=0):number=>{
