@@ -556,7 +556,7 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
 
   return (
     <div className="relative overflow-hidden rounded-xl bg-elevated">
-      <div className="absolute left-3 top-3 z-30 flex max-w-[calc(100%-1.5rem)] flex-wrap gap-1 rounded-md border border-border bg-black/60 p-1 backdrop-blur">
+      <div role="toolbar" aria-label="Управление аватаром" className={cn(mode === "3d" || mode === "legacy" ? "relative z-30 flex w-full flex-wrap items-center gap-2 border-b border-border bg-black/70 p-2 backdrop-blur" : "absolute left-3 top-3 z-30 flex max-w-[calc(100%-1.5rem)] flex-wrap gap-1 rounded-md border border-border bg-black/60 p-1 backdrop-blur")}>
         <button type="button" onClick={() => setMode("live2d")} className={cn("rounded px-2 py-1 text-[10px] font-mono", mode === "live2d" ? "bg-accent text-accent-fg" : "text-white/70")}>Live2D</button>
         <button type="button" onClick={() => setMode("legacy")} className={cn("rounded px-2 py-1 text-[10px] font-mono", mode === "legacy" ? "bg-accent text-accent-fg" : "text-white/70")}>Legacy</button>
         <button type="button" onClick={() => setMode("original")} className={cn("rounded px-2 py-1 text-[10px] font-mono", mode === "original" ? "bg-accent text-accent-fg" : "text-white/70")}>NK1 Original</button>
