@@ -78,11 +78,12 @@ export class ProactiveDeliveryCoordinator {
     if (typeof token !== "string" || !this.leases.matches(id, token, this.now())) {
       return { status: 409, body: { ok: false, acknowledged: false, error: "proactive-delivery-lease-token-invalid" } };
     }
-    if (this.acknowledgementsInFlight.has(id)) {
+    const inFlightKey = JSON.stringify([id, token]);
+    if (this.acknowledgementsInFlight.has(inFlightKey)) {
       return { status: 409, body: { ok: false, acknowledged: false, error: "proactive-delivery-ack-in-flight" } };
     }
 
-    this.acknowledgementsInFlight.add(id);
+    this.acknowledgementsInFlight.add(inFlightKey);
     try {
       const acknowledged = await this.runtime.acknowledgeAutonomousDialogue(id);
       if (!acknowledged) {
@@ -95,7 +96,7 @@ export class ProactiveDeliveryCoordinator {
       // may retry after a transient checkpoint/store failure without a new claim.
       return { status: 503, body: { ok: false, acknowledged: false, error: "proactive-delivery-ack-unavailable" } };
     } finally {
-      this.acknowledgementsInFlight.delete(id);
+      this.acknowledgementsInFlight.delete(inFlightKey);
     }
   }
 }
