@@ -1329,6 +1329,70 @@ export class OrganismRuntime {
       },
       at: Date.now(),
     });
+    // Common admission boundary for non-text external observations. Direct user text
+    // keeps its established interaction policy; cached P41 items are model-derived
+    // internal context, not a fresh sensor event. Every live modality is screened
+    // before it can be recorded, fused, retrieved or used by appraisal.
+    const admittedModalityInputs = [] as typeof interpretation.modalityInputs;
+    const quarantinedModalityInputs: Array<{modality:string;reason:string;payloadHash:string;trust:number}> = [];
+    for (const modalityInput of interpretation.modalityInputs) {
+      if (modalityInput.modality === 'text' || modalityInput.evidence.includes('p41-cached-perceptual-evidence')) {
+        admittedModalityInputs.push(modalityInput);
+        continue;
+      }
+      let admission:ReturnType<NonNullable<RuntimeCognitiveHealthMonitor['inspect']>>|undefined;
+      try {
+        const inspect=this.cognitiveImmuneSystem?.inspect;
+        if (typeof inspect === 'function') {
+          admission=inspect.call(this.cognitiveImmuneSystem,'unknown',{
+            modality:modalityInput.modality,
+            summary:modalityInput.summary,
+            content:modalityInput.content,
+            evidence:modalityInput.evidence,
+          },'world');
+        }
+      } catch {
+        // Inspection failures never promote a sensor observation into cognition.
+      }
+      const admitted=admission?.accepted===true && Number.isFinite(admission.trust) &&
+        admission.trust>=0 && admission.trust<=1 && typeof admission.reason==='string';
+      if (admitted) {
+        admittedModalityInputs.push(modalityInput);
+        continue;
+      }
+      const boundedPayload={modality:modalityInput.modality,summary:modalityInput.summary,
+        content:modalityInput.content,evidence:modalityInput.evidence};
+      const payloadHash=admission?.record?.payloadHash ??
+        createHash('sha256').update(JSON.stringify(boundedPayload)).digest('hex');
+      quarantinedModalityInputs.push({
+        modality:modalityInput.modality,
+        reason:typeof admission?.reason==='string'?admission.reason.slice(0,96):
+          typeof this.cognitiveImmuneSystem?.inspect==='function'
+            ?'cognitive-input-inspection-failed':'cognitive-input-inspector-unavailable',
+        payloadHash:String(payloadHash).slice(0,64),
+        trust:clamp01(Number(admission?.trust??0)),
+      });
+    }
+    interpretation.modalityInputs.splice(0,interpretation.modalityInputs.length,...admittedModalityInputs);
+    interpretation.modalities=[...new Set(admittedModalityInputs.map(input=>input.modality))];
+    if (quarantinedModalityInputs.length) {
+      const quarantineTick=this.core.operationalStatusSnapshot().tick+1;
+      for (const row of quarantinedModalityInputs) {
+        this.cognitiveEventFabric.append({
+          id:'cef:modality-quarantine:'+randomUUID(),tick:quarantineTick,
+          stage:'external-evidence',source:'cognitive-immune-system',external:true,
+          confidence01:row.trust,
+          payload:{admission:'quarantined',modality:row.modality,reason:row.reason,payloadHash:row.payloadHash},
+        });
+      }
+      this.core.setRuntimeCognitiveEventFabric(this.cognitiveEventFabric.snapshot());
+      await this.cognitiveImmuneStore.save(this.cognitiveImmuneSystem?.snapshot()??{}).catch(async error=>{
+        await this.journal.write('error','runtime.sensor-input.quarantine-persist-failed',{
+          tick:quarantineTick,count:quarantinedModalityInputs.length,
+          message:String((error as any)?.message??error).slice(0,160),
+        }).catch(()=>{});
+      });
+    }
     // Keep existing plugin provenance while retaining the interpreter's untrusted-text labels.
     if (externalPluginSource) {
       const textInput = interpretation.modalityInputs.find(input => input.modality === 'text');
