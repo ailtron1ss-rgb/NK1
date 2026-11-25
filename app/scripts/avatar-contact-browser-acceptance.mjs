@@ -22,13 +22,12 @@ try {
       return drawImage.call(this, image, ...args);
     };
   });
-  await page.route("**/api/organism/event", async (route) => {
-    observedEvents.push(route.request().postDataJSON());
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({ ok: true, perception: { accepted: true } }),
-    });
+  // Do not mock the organism boundary: the Vite dev proxy must forward each
+  // browser contact to the real runtime on port 3310.
+  page.on("request", (request) => {
+    const requestUrl = new URL(request.url());
+    if (requestUrl.pathname !== "/api/organism/event" || request.method() !== "POST") return;
+    try { observedEvents.push(request.postDataJSON()); } catch { /* malformed requests fail the event-count assertions */ }
   });
   await page.goto(origin, { waitUntil: "domcontentloaded", timeout: timeoutMs });
 
@@ -171,7 +170,41 @@ try {
   ]);
 
   assert.equal(observedEvents.length, 10, "all Live2D, 3D and Legacy desktop/mobile contacts must reach the canonical event route");
-  console.log(JSON.stringify({ ok: true, origin, readiness: "recovered-without-synthetic-message", viewports: ["1280x900", "390x844"], contactEvents: observedEvents.length, events: observedEvents }, null, 2));
+
+  // Verify the real runtime consumed the interactions, rather than accepting
+  // only a browser-side HTTP payload.
+  const socialResponse = await page.request.get(`${origin}/api/organism/social-mind`);
+  assert.equal(socialResponse.status(), 200, "real runtime SocialMind endpoint must remain reachable");
+  const socialBody = await socialResponse.json();
+  const socialEvidence = socialBody.socialMind?.evidence ?? [];
+  for (const claim of ["user-action:avatar-contact-head", "user-action:avatar-contact-body"]) {
+    assert.ok(socialEvidence.some((row) => row.claim === claim && row.source === "interaction" && row.evidenceKind === "observed"),
+      `real SocialMind evidence ledger must contain ${claim}`);
+  }
+  assert.equal(socialBody.socialMind?.persons?.find((person) => person.id === "user")?.visible01, 0,
+    "avatar interaction must not fabricate visual-presence evidence");
+
+  const snapshotResponse = await page.request.get(`${origin}/api/organism/ui-snapshot`);
+  assert.equal(snapshotResponse.status(), 200, "real runtime UI snapshot endpoint must remain reachable");
+  const uiSnapshot = await snapshotResponse.json();
+  assert.equal(uiSnapshot.avatarInteraction?.schemaVersion, 1);
+  assert.equal(uiSnapshot.avatarInteraction?.kind, "avatar-contact");
+  assert.equal(uiSnapshot.avatarInteraction?.zone, "body", "latest browser contact must be projected to the canonical avatar frame");
+  assert.equal(uiSnapshot.avatarInteraction?.confidence01, 0.72);
+  assert.ok(socialEvidence.some((row) => row.id === uiSnapshot.avatarInteraction?.evidenceId),
+    "UI projection must reference the exact SocialMind evidence record");
+
+  console.log(JSON.stringify({
+    ok: true,
+    origin,
+    readiness: "recovered-without-synthetic-message",
+    backend: "real-organism-runtime",
+    viewports: ["1280x900", "390x844"],
+    contactEvents: observedEvents.length,
+    socialEvidence: socialEvidence.filter((row) => ["user-action:avatar-contact-head", "user-action:avatar-contact-body"].includes(row.claim)),
+    avatarInteraction: uiSnapshot.avatarInteraction,
+    events: observedEvents,
+  }, null, 2));
 } finally {
   await browser.close();
 }
