@@ -27,15 +27,22 @@ export function ChatPanel() {
 
   useEffect(() => {
     let cancelled = false;
-    void neuroApi.proactiveDeliveryPolicy().then((result) => {
-      if (!cancelled) {
-        setProactiveConsent(result.policy.consentGranted === true);
-        setProactiveOutbox(result.policy.outbox);
-      }
-    }).catch((error) => {
-      if (!cancelled) setProactiveConsentError(error instanceof Error ? error.message : String(error));
-    });
-    return () => { cancelled = true; };
+    const refreshPolicy = () => {
+      void neuroApi.proactiveDeliveryPolicy().then((result) => {
+        if (!cancelled) {
+          setProactiveConsent(result.policy.consentGranted === true);
+          setProactiveOutbox(result.policy.outbox);
+        }
+      }).catch((error) => {
+        if (!cancelled) setProactiveConsentError(error instanceof Error ? error.message : String(error));
+      });
+    };
+    refreshPolicy();
+    const timer = window.setInterval(refreshPolicy, 15_000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
   }, []);
 
   const toggleProactiveConsent = async () => {
