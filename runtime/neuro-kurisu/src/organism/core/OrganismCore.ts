@@ -374,7 +374,7 @@ import { CausalLifeGraph } from '../system/CausalLifeGraph.ts';
 import { CognitiveResourceEconomy } from '../system/CognitiveResourceEconomy.ts';
 import { RealityEvidenceLedger } from '../system/RealityEvidenceLedger.ts';
 import { UnifiedCognitiveCycle } from '../system/UnifiedCognitiveCycle.ts';
-import { EmotionAppraisalEngine, defaultEmotionAppraisalState } from '../system/EmotionAppraisalEngine.ts';
+import { EmotionAppraisalEngine, defaultEmotionAppraisalState, projectEmotionAffectFrame } from '../system/EmotionAppraisalEngine.ts';
 import { MemoryCausalEconomy, defaultMemoryCausalEconomy } from '../system/MemoryCausalEconomy.ts';
 import { ActivePerceptionExecutor, defaultActivePerceptionExecutor, type ActivePerceptionModality } from '../system/ActivePerceptionExecutor.ts';
 import { ActivePerceptionNeuralSubstrate } from '../cognition/ActivePerceptionNeuralSubstrate.ts';
@@ -2695,6 +2695,17 @@ export class OrganismCore {
     }
     behavioralInfluenceLedgerSnapshot() { return structuredClone(this.persisted.system.behavioralInfluenceLedger); }
     emotionAppraisalSnapshot() { return structuredClone(this.persisted.system.emotionAppraisal); }
+    /** One canonical, revision-bound affect frame for Runtime, API, voice and avatar consumers. */
+    emotionAffectFrameSnapshot(now=Date.now()) {
+        const snapshot = this.snapshot();
+        return projectEmotionAffectFrame({
+            stateVersion: snapshot.state.tick,
+            stateAt: snapshot.state.at,
+            now,
+            appraisal: this.emotionAppraisalSnapshot(),
+            cognitiveField: snapshot.facets.cognition.cognitiveField,
+        });
+    }
     worldModelEnsembleSnapshot() { return structuredClone(this.worldSubsystem.worldModelEnsemble.snapshot()); }
     setCognitiveResourceEconomy(snapshot: import('../system/CognitiveResourceEconomy.ts').CognitiveResourceEconomyState): void { this.persisted.system.cognitiveResourceEconomy = snapshot; }
     /** Merge projections into the canonical governance ledger; never replace one writer with another. */

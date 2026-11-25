@@ -1,10 +1,9 @@
 import assert from 'node:assert/strict';
 import { EmbodimentRuntime } from '../src/organism/body/EmbodimentRuntime.ts';
 import { OrganismRuntime } from '../src/organism/core/OrganismRuntime.ts';
-import { projectVoiceEmotionContext } from '../src/organism/core/OrganismRuntime.ts';
 import { buildVoicePlan } from '../src/organism/body/VoiceEmbodiment.ts';
 import { defaultBodyState } from '../src/organism/body/EmbodiedBody.ts';
-import { EmotionAppraisalEngine } from '../src/organism/system/EmotionAppraisalEngine.ts';
+import { EmotionAppraisalEngine, projectEmotionAffectFrame } from '../src/organism/system/EmotionAppraisalEngine.ts';
 
 const runtime = new EmbodimentRuntime();
 const state = {
@@ -69,7 +68,15 @@ appraisalEngine.inferFeeling(appraisalEpisode, {
 });
 const makeRuntimeContext = (snapshot, appraisal) => {
   const context = Object.create(OrganismRuntime.prototype);
-  context.core = { snapshot: () => snapshot, emotionAppraisalSnapshot: () => appraisal };
+  context.core = {
+    emotionAffectFrameSnapshot: (now) => projectEmotionAffectFrame({
+      stateVersion: snapshot?.state?.tick,
+      stateAt: snapshot?.state?.at,
+      now,
+      appraisal,
+      cognitiveField: snapshot?.facets?.cognition?.cognitiveField,
+    }),
+  };
   return context;
 };
 const resolveRuntimeEmotion = OrganismRuntime.prototype['voiceEmotionContext'];
@@ -114,11 +121,13 @@ const joyEpisode = joyEngine.appraise({
   tick: 20, at: projectionNow - 50, socialMeaning01: .9, goalCongruence01: .92,
   controllability01: .82, success01: .94, novelty01: .55, uncertainty01: .1,
 });
-const projected = projectVoiceEmotionContext(
-  {state:{tick:20,at:projectionNow},facets:{cognition:{cognitiveField:{dominantEmotion:'sadness',valence01:.1,arousal01:.9,dominance01:.12,coherence01:.99}}}},
-  joyEngine.snapshot(),
-  projectionNow,
-);
+const projected = projectEmotionAffectFrame({
+  stateVersion:20,
+  stateAt:projectionNow,
+  now:projectionNow,
+  appraisal:joyEngine.snapshot(),
+  cognitiveField:{dominantEmotion:'sadness',valence01:.1,arousal01:.9,dominance01:.12,coherence01:.99},
+});
 assert.equal(projected.label, joyEpisode.label, 'latest canonical episode must own the voice emotion projection');
 assert.equal(projected.episodeId, joyEpisode.id);
 assert.equal(projected.source, 'emotion-appraisal');
@@ -126,29 +135,26 @@ assert.equal(projected.stateVersion, 20);
 assert.ok(Math.abs(projected.dominance01 - joyEpisode.dominance01) < .01);
 
 const fieldNow = Date.now();
-const fieldFallback = projectVoiceEmotionContext({
-  state:{tick:21,at:fieldNow},
-  facets:{cognition:{cognitiveField:{dominantEmotion:'curiosity',valence01:.9,arousal01:.8,dominance01:.66,coherence01:.99}}},
-}, undefined, fieldNow);
+const fieldFallback = projectEmotionAffectFrame({ stateVersion:21, stateAt:fieldNow, now:fieldNow,
+  cognitiveField:{dominantEmotion:'curiosity',valence01:.9,arousal01:.8,dominance01:.66,coherence01:.99},
+});
 assert.equal(fieldFallback.source,'cognitive-field-fallback');
 assert.equal(fieldFallback.dominance01,.66,'use affect-specific dominance when no episode is available');
 
-const missingDominance = projectVoiceEmotionContext({
-  state:{tick:22,at:fieldNow},
-  facets:{cognition:{cognitiveField:{dominantEmotion:'curiosity',valence01:.9,arousal01:.8,coherence01:.99}}},
-}, undefined, fieldNow);
+const missingDominance = projectEmotionAffectFrame({ stateVersion:22, stateAt:fieldNow, now:fieldNow,
+  cognitiveField:{dominantEmotion:'curiosity',valence01:.9,arousal01:.8,coherence01:.99},
+});
 assert.equal(missingDominance.dominance01,.5,'never substitute cognitive coherence for missing affective dominance');
 
-const malformed = projectVoiceEmotionContext({
-  state:{tick:23,at:fieldNow},
-  facets:{cognition:{cognitiveField:{dominantEmotion:'not-an-emotion',valence01:Infinity,arousal01:'not-finite',dominance01:-4}}},
-}, undefined, fieldNow);
+const malformed = projectEmotionAffectFrame({ stateVersion:23, stateAt:fieldNow, now:fieldNow,
+  cognitiveField:{dominantEmotion:'not-an-emotion',valence01:Infinity,arousal01:'not-finite',dominance01:-4},
+});
 assert.equal(malformed.source,'default');
 assert.equal(malformed.label,'calm');
 assert.equal(malformed.valence01,.5);
 assert.equal(malformed.arousal01,.22);
 assert.equal(malformed.dominance01,.5);
-const emptyProjection = projectVoiceEmotionContext(null, undefined, fieldNow);
+const emptyProjection = projectEmotionAffectFrame({ stateVersion:0, now:fieldNow });
 assert.equal(emptyProjection.source,'default');
 assert.equal(emptyProjection.label,'calm');
 assert.equal(emptyProjection.dominance01,.5);

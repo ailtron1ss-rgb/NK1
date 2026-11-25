@@ -19,7 +19,7 @@ import { EmbodimentRuntime, type VoiceInputResult } from '../body/EmbodimentRunt
 import { Mem0PlatformAdapter, type Mem0Candidate } from '../integration/mem0/Mem0PlatformAdapter.ts';
 import { buildCognitiveProposalPrompt, parseCognitiveProposal } from '../language/LanguageOrgan.ts';
 import { OperationalJournal } from '../persistence/OperationalJournal.ts';
-import { projectEmotionAffectFrame, type EmotionAffectFrameV1 } from '../system/EmotionAppraisalEngine.ts';
+import type { EmotionAffectFrameV1 } from '../system/EmotionAppraisalEngine.ts';
 import type { JsonStateStore } from '../persistence/FileStateStore.ts';
 import { choosePhonePolicyDelay, type PhonePolicyConfig } from '../system/PhoneRuntimePolicy.ts';
 import { RuntimeClockScheduler, type RuntimeClockDecision } from '../system/RuntimeClockScheduler.ts';
@@ -289,12 +289,7 @@ export interface RuntimeStepOptions {
 }
 
 export type VoiceEmotionContext=EmotionAffectFrameV1;
-/** Canonical revision-bound affect frame shared by voice, UI and avatar. */
-export function projectVoiceEmotionContext(snapshot:unknown,appraisalSnapshot?:unknown,now=Date.now()):VoiceEmotionContext {
-  const record=(v:unknown):Record<string,unknown>=>v!==null&&typeof v==='object'&&!Array.isArray(v)?v as Record<string,unknown>:{};
-  const root=record(snapshot),state=record(root.state),facets=record(root.facets),cognition=record(facets.cognition);
-  return projectEmotionAffectFrame({stateVersion:state.tick,stateAt:state.at,now,appraisal:appraisalSnapshot,cognitiveField:cognition.cognitiveField});
-}
+/** Canonical revision-bound frame is owned and projected by OrganismCore. */
 
 export interface RuntimeStep { cycle: OrganismCycleResult; worldAction: EnvironmentAction; language?: LanguageResponse; embodiedAction?: EmbodiedActionResult; }
 
@@ -2598,7 +2593,7 @@ export class OrganismRuntime {
   }
   /** Read the current affective appraisal from the canonical cognition owner. */
   affectFrameSnapshot(now=Date.now()):VoiceEmotionContext {
-    return projectVoiceEmotionContext(this.core.snapshot(),this.core.emotionAppraisalSnapshot(),now);
+    return this.core.emotionAffectFrameSnapshot(now);
   }
   private voiceEmotionContext(): VoiceEmotionContext {
     return this.affectFrameSnapshot();
