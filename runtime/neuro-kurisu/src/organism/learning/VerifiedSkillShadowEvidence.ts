@@ -142,12 +142,13 @@ export function createContextBoundSkillShadowEvidenceVerifier(
     if (payload.runId !== context.runId || payload.taskId !== context.taskId ||
         payload.seed !== context.seed || payload.manifestFingerprint !== context.manifestFingerprint ||
         payload.runtimeVersion !== context.runtimeVersion) return false;
-    if (purpose !== 'persisted-active') {
-      let nowMs: number;
-      try { nowMs = now(); } catch { return false; }
-      if (!Number.isFinite(nowMs) || payload.observedAt > nowMs + maxFutureSkewMs ||
-          nowMs - payload.observedAt > maxAgeMs) return false;
-    }
+    let nowMs: number;
+    try { nowMs = now(); } catch { return false; }
+    // Future timestamps are suspicious for every lifecycle state. Only age expiry
+    // is exempted for already-active skills; a signed receipt from the future is
+    // never accepted as historical evidence.
+    if (!Number.isFinite(nowMs) || payload.observedAt > nowMs + maxFutureSkewMs) return false;
+    if (purpose !== 'persisted-active' && nowMs - payload.observedAt > maxAgeMs) return false;
     return true;
   };
 }
