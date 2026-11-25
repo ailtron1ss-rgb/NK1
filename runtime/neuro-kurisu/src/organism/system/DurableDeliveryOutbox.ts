@@ -394,6 +394,7 @@ export class DurableDeliveryOutbox {
     let attempts = 0;
     for (const record of this.state.records) {
       if (record.status === 'dead-letter') counts.deadLetter += 1;
+      else if (record.status === 'reconciliation-required') counts.reconciliationRequired += 1;
       else counts[record.status] += 1;
       attempts += record.attemptCount;
     }
