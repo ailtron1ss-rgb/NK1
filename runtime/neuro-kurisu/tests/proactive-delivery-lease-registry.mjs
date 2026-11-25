@@ -75,4 +75,12 @@ import { ProactiveDeliveryLeaseRegistry } from "../src/server/proactive-delivery
   assert.equal(leases.matches("soc:same-attempt", "retry-token-0000000001", 3), true);
 }
 
+
+{
+  const leases = new ProactiveDeliveryLeaseRegistry();
+  assert.equal(leases.issue("soc:bad-clock", 1, 10_000, "token-bad-clock-0001", Number.NaN), null);
+  assert.equal(leases.issue("soc:bad-deadline", 1, Number.POSITIVE_INFINITY, "token-bad-clock-0002", 1), null);
+  assert.equal(leases.matches("soc:bad-clock", "token-bad-clock-0001", Number.NaN), false);
+}
+
 console.log("PROACTIVE_DELIVERY_LEASE_REGISTRY=PASS");
