@@ -18,7 +18,7 @@ interface WorldEntityEvidence {
   presenceStatus?: unknown; absenceEvidence01?: unknown;
 }
 interface GroundedWorldSnapshotLike {
-  revision?: unknown; confidence01?: unknown; uncertainty01?: unknown; entities?: unknown;
+  revision?: unknown; confidence01?: unknown; uncertainty01?: unknown; entities?: unknown; quarantinedFacts?: unknown;
 }
 interface WorldLearningStatsLike {
   observations?: unknown; modelAgreement01?: unknown;
@@ -44,6 +44,16 @@ export function projectWorldCognitiveSignal(input: {
   const tauMs = Number.isFinite(input.freshnessTauMs) ? Math.max(1_000, Math.min(15 * 60_000, Number(input.freshnessTauMs))) : 60_000;
   const snapshot = isRecord(input.snapshot) ? input.snapshot : {};
   const entities = Array.isArray(snapshot.entities) ? snapshot.entities.slice(0, 128) as WorldEntityEvidence[] : [];
+  // Historical facts restored from persistence have no live verifier capability.
+  // They remain visible in quarantine and create bounded pressure to re-verify,
+  // but can never contribute positive evidence weight or confidence.
+  const quarantinedFacts = Array.isArray(snapshot.quarantinedFacts)
+    ? [...new Set(snapshot.quarantinedFacts.slice(0, 192).filter((fact): fact is string =>
+      typeof fact === 'string' && fact.trim().length > 0 && fact.length <= 512))]
+    : [];
+  const quarantinePressure01 = quarantinedFacts.length > 0
+    ? Math.min(0.45, 0.12 + 0.03 * Math.log2(quarantinedFacts.length))
+    : 0;
   let rawWeight = 0, freshWeight = 0, observedWeight = 0, inferredWeight = 0;
   let conflictWeight = 0, unresolvedWeight = 0, staleWeight = 0, fadingChange = 0;
   const independentSources = new Set<string>();
@@ -76,7 +86,7 @@ export function projectWorldCognitiveSignal(input: {
   const totalFresh = observedWeight + inferredWeight + conflictWeight + unresolvedWeight;
   const freshnessCoverage = rawWeight > 0 ? clamp01(freshWeight / rawWeight) : 0;
   const conflict01 = totalFresh > 0 ? clamp01(conflictWeight / totalFresh) : 0;
-  const unresolved01 = rawWeight > 0 ? clamp01((unresolvedWeight + staleWeight * 0.75) / rawWeight) : 1;
+  const unresolved01 = rawWeight > 0 ? clamp01(Math.max((unresolvedWeight + staleWeight * 0.75) / rawWeight, quarantinePressure01)) : 1;
   const observations = finite(input.learningStats?.observations);
   const modelAgreement = unit(input.learningStats?.modelAgreement01, 0.5);
   const modelDisagreement01 = observations > 0 ? clamp01(1 - modelAgreement) : 0;
@@ -94,6 +104,7 @@ export function projectWorldCognitiveSignal(input: {
   const uncertainty01 = clamp01(Math.max(
     unit(snapshot.uncertainty01, 0.5),
     conflict01 * 0.65 + unresolved01 * 0.5 + modelDisagreement01 * 0.25,
+    quarantinePressure01,
     freshnessCoverage < 0.1 ? 0.65 : 0,
   ));
   const revision = typeof snapshot.revision === 'number' && Number.isSafeInteger(snapshot.revision) && snapshot.revision >= 0 ? snapshot.revision : 0;
