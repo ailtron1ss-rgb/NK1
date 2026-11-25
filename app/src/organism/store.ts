@@ -8,6 +8,7 @@ import { shouldApplyUiSnapshot, type UiSnapshotStamp } from "./snapshotSync";
 import { withChatDeliveryStatus } from "./chatDelivery";
 import { parseVoiceListenResponse, readRuntimeListening } from "./voiceInteraction";
 import { snapshotPollDelayMs } from "./pollingSchedule";
+import { recoverPendingChatTurns } from "./chatRecovery";
 
 export type LabsTab = "mind" | "memory" | "lab" | "skills" | "evidence";
 export type AppSection = "home" | "memory" | "motivation" | "settings" | "more";
@@ -41,7 +42,7 @@ function loadChat(): OrganismSnapshot["chat"] {
   if (typeof window === "undefined") return [];
   try {
     const raw = JSON.parse(localStorage.getItem(CHAT_KEY) || "[]");
-    return Array.isArray(raw) ? raw.slice(-120) : [];
+    return Array.isArray(raw) ? recoverPendingChatTurns(raw.slice(-120)) : [];
   } catch { return []; }
 }
 function saveChat(chat: OrganismSnapshot["chat"]) {
