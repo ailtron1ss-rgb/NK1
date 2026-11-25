@@ -86,4 +86,4 @@
 
 ## Текущая проверка
 
-На проверенном exact HEAD `7ebc63c9edb812c0f7c4fd763e7baf5ef5b78ec5` GitHub Actions app workflow завершился успешно: 655/655 script tests, TypeScript typecheck и client/SSR/Nitro development bundle build. После этого добавлены fail-closed microphone-stop проверка и клавиатурная навигация command palette; они проходят отдельный exact-HEAD CI перед закрытием PR.
+На проверенном exact HEAD `424abf40ac9094fc1a01d55ce64d47c5f040b944` GitHub Actions app workflow завершился успешно: **659/659 script tests**, TypeScript typecheck, Vite client/SSR/Nitro development bundle build. На том же HEAD все 16 PR check-runs завершились `success`, включая Live2D browser visual acceptance, core regression, WorkPass79 speech/language resilience, runtime/embodiment contracts, clean-install startup smoke, Module Dependency Audit, HMX canonical memory bridge, explicit-forget integrity, Original 2D asset contract, avatar affect/motor coupling и browser affect coherence.
