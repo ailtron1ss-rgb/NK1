@@ -19,6 +19,12 @@ assert.equal(state.records.find(row=>row.id==='forged-unknown').status,'candidat
 assert.equal(state.records.find(row=>row.id==='forged-simulator').sourceClass,'simulator');
 assert.equal(state.records.find(row=>row.id==='forged-simulator').status,'candidate','simulator evidence cannot restore as corroborated');
 assert.ok(state.records.every(row=>row.trust01<1),'persisted trust scores must be recomputed');
+assert.ok(state.records.every(row=>row.corroborations===1),'persisted corroboration counters must be rebuilt from bounded event receipts, not trusted');
+assert.ok(state.records.every(row=>row.contradictions===0),'persisted contradiction counters without supporting receipts must not alter restored trust');
+const forgedDevice=new ExternalEvidenceTrustEngine();
+forgedDevice.restore({version:1,records:[{id:'forged-device',claimKey:'claim:device',source:'device',independenceKey:'camera-a',confidence01:1,trust01:1,corroborations:999,independentSources:99,contradictions:0,status:'corroborated',firstSeenAt:now,lastSeenAt:now,evidenceIds:['only-one-event']}]});
+assert.equal(forgedDevice.snapshot().records[0].corroborations,1);
+assert.ok(forgedDevice.snapshot().records[0].trust01<.75,'a forged aggregate counter must not inflate a single device event into corroborated-level trust');
 assert.equal(state.acceptedCount,0);
 assert.equal(state.meanTrust01,state.records.reduce((sum,row)=>sum+row.trust01,0)/2);
 
