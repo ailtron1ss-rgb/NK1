@@ -67,10 +67,10 @@ restored.restore(outbox.snapshot());
 assert.deepEqual(restored.snapshot(), outbox.snapshot(), 'state round-trips without losing delivery lineage');
 
 const malformed = outbox.snapshot();
-(malformed.records[0] as any).status = 'sent';
+malformed.records[0].status = 'sent';
 assert.throws(() => restored.restore(malformed), /delivery-outbox-enum-invalid/);
 
-const accessorRoot = { version: 1, sequence: 0, records: [] as any[] };
+const accessorRoot = { version: 1, sequence: 0, records: [] };
 Object.defineProperty(accessorRoot, 'records', { enumerable: true, get: () => [] });
 assert.throws(() => restored.restore(accessorRoot), /delivery-outbox-accessor-rejected/);
 
