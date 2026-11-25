@@ -34,18 +34,24 @@ export class P66InteroceptiveHomeostasis {
 
   restore(raw?:Partial<P66State>|null){
     const d=defaultP66(),r=raw??{};
-    const history=Array.isArray(r.history)?r.history.slice(0,128).filter(row=>row&&finiteAt(row.at)&&Number.isFinite(row.tick)):[];
+    const now=Date.now();
+    const validTimebase=finiteAt(r.lastAt)&&r.lastAt<=now+250;
+    const history=validTimebase&&Array.isArray(r.history)
+      ? r.history.slice(0,128).filter(row=>row&&finiteAt(row.at)&&row.at<=now+250&&Number.isSafeInteger(row.tick)&&row.tick>=0)
+      : [];
     this.state={
       ...d,...r,
-      cycles:counter(r.cycles),
+      // A corrupt/future clock starts a fresh temporal segment, but does not
+      // erase slow regulator state such as learned setpoints or recovery debt.
+      cycles:validTimebase?counter(r.cycles):0,
       modeCounts:{...d.modeCounts,...(r.modeCounts??{})},
       setpoints:{...d.setpoints,...(r.setpoints??{})},
       history,
-      lastAt:finiteAt(r.lastAt)&&r.lastAt<=Date.now()+250?Number(r.lastAt):0,
+      lastAt:validTimebase?Number(r.lastAt):0,
       lastPressure01:clamp(Number(r.lastPressure01??d.lastPressure01)),
       recoveryDebt01:clamp(Number(r.recoveryDebt01??d.recoveryDebt01)),
-      stableCycles:counter(r.stableCycles),
-      stableDurationMs:counter(r.stableDurationMs),
+      stableCycles:validTimebase?counter(r.stableCycles):0,
+      stableDurationMs:validTimebase?counter(r.stableDurationMs):0,
       bodyTelemetryObservations:counter(r.bodyTelemetryObservations),
       cognitiveObservations:counter(r.cognitiveObservations),
       duplicateObservations:counter(r.duplicateObservations),
