@@ -64,8 +64,12 @@ export function ChatPanel() {
   }, []);
 
   const saveQuietHours = async () => {
-    if (quietHoursBusy || proactiveConsentBusy || quietStartHourUtc < 0 || quietStartHourUtc > 23
-      || quietEndHourUtc < 0 || quietEndHourUtc > 23) return;
+    if (quietHoursBusy || proactiveConsentBusy) return;
+    if (!Number.isSafeInteger(quietStartHourUtc) || quietStartHourUtc < 0 || quietStartHourUtc > 23
+      || !Number.isSafeInteger(quietEndHourUtc) || quietEndHourUtc < 0 || quietEndHourUtc > 23) {
+      setProactiveConsentError("Quiet hours must use whole UTC hours from 0 to 23.");
+      return;
+    }
     proactiveConsentEpoch.current += 1;
     setQuietHoursBusy(true);
     setProactiveConsentError(null);
