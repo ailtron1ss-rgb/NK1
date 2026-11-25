@@ -48,13 +48,16 @@ import { ProactiveDeliveryLeaseRegistry } from "../src/server/proactive-delivery
 
 {
   const server = await readFile(new URL("../src/server/server.mjs", import.meta.url), "utf8");
-  assert.ok(server.includes("PROACTIVE_DELIVERY_LEASES.issue("),
-    "the GET delivery route must issue a per-attempt token");
-  assert.ok(server.includes("PROACTIVE_DELIVERY_LEASES.matches("),
-    "the ACK route must reject stale or unknown tokens");
-  assert.ok(server.includes("PROACTIVE_DELIVERY_LEASES.consume("),
-    "a successful ACK must consume the one-use token");
-  assert.ok(server.includes("PROACTIVE_DELIVERY_LEASES.clear()"),
+  const coordinator = await readFile(new URL("../src/server/proactive-delivery-coordinator.mjs", import.meta.url), "utf8");
+  assert.ok(server.includes("new ProactiveDeliveryCoordinator({ runtime })"),
+    "the HTTP server must use the lifecycle coordinator");
+  assert.ok(server.includes("proactiveDelivery.claim()"),
+    "the GET delivery route must delegate claiming to the coordinator");
+  assert.ok(server.includes("proactiveDelivery.acknowledge("),
+    "the ACK route must delegate receipt validation to the coordinator");
+  assert.ok(coordinator.includes("acknowledgementsInFlight"),
+    "concurrent ACKs must be fenced before reaching the runtime queue");
+  assert.ok(coordinator.includes("this.leases.clear()"),
     "revoking consent must invalidate in-flight delivery tokens");
 }
 
