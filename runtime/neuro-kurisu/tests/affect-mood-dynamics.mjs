@@ -79,25 +79,7 @@ for(let seed=1;seed<=5;seed++){
 }
 
 
-// Acute confidence/attention must only gate the acute episode. Old/weak
-// acute evidence must not erase independently supported slow mood/interoception.
-const lowAcuteGateSnapshot=verifiedCalibrationEngine.snapshot();
-const highAcuteGateSnapshot=verifiedCalibrationEngine.snapshot();
-lowAcuteGateSnapshot.history[0].confidence01=.45;
-lowAcuteGateSnapshot.history[0].interoceptiveDelta.attentionCapture01=0;
-highAcuteGateSnapshot.history[0].confidence01=.85;
-highAcuteGateSnapshot.history[0].interoceptiveDelta.attentionCapture01=1;
-const lowAcuteGateEngine=new EmotionAppraisalEngine();
-const highAcuteGateEngine=new EmotionAppraisalEngine();
-lowAcuteGateEngine.restore(lowAcuteGateSnapshot);
-highAcuteGateEngine.restore(highAcuteGateSnapshot);
-const slowOnlyNow=outcomeAt+30*60_000;
-assert.ok(Math.abs(lowAcuteGateEngine.actionBias('rest',slowOnlyNow)-highAcuteGateEngine.actionBias('rest',slowOnlyNow))<1e-6,
-  'low confidence/attention on a stale acute emotion must not suppress slow mood and verified outcome priors');
-assert.notEqual(lowAcuteGateEngine.actionBias('verify',outcomeAt+200),highAcuteGateEngine.actionBias('verify',outcomeAt+200),
-  'acute confidence/attention must continue to gate the immediate emotional episode');
 
-console.log('AFFECT_MOOD_ACTION_PRIOR_PAIRED=PASS',JSON.stringify(seedResults));
 
 // Interoceptive affect uses elapsed-time filters too: equal trajectories at
 // different publication rates must produce nearly equal posterior states.
@@ -189,6 +171,27 @@ verifiedCalibrationEngine.restore(verifiedCalibrationSnapshot);
 unverifiedCalibrationEngine.restore(unverifiedCalibrationSnapshot);
 assert.ok(verifiedCalibrationEngine.actionBias('verify',outcomeAt+200)<unverifiedCalibrationEngine.actionBias('verify',outcomeAt+200),
   'identical raw attempts with weaker unverified evidence must not earn the same learned action prior');
+
+// Acute confidence/attention must only gate the acute episode. Old/weak
+// acute evidence must not erase independently supported slow mood/interoception.
+const lowAcuteGateSnapshot=verifiedCalibrationEngine.snapshot();
+const highAcuteGateSnapshot=verifiedCalibrationEngine.snapshot();
+lowAcuteGateSnapshot.history[0].confidence01=.45;
+lowAcuteGateSnapshot.history[0].interoceptiveDelta.attentionCapture01=0;
+highAcuteGateSnapshot.history[0].confidence01=.85;
+highAcuteGateSnapshot.history[0].interoceptiveDelta.attentionCapture01=1;
+const lowAcuteGateEngine=new EmotionAppraisalEngine();
+const highAcuteGateEngine=new EmotionAppraisalEngine();
+lowAcuteGateEngine.restore(lowAcuteGateSnapshot);
+highAcuteGateEngine.restore(highAcuteGateSnapshot);
+const slowOnlyNow=outcomeAt+30*60_000;
+assert.ok(Math.abs(lowAcuteGateEngine.actionBias('rest',slowOnlyNow)-highAcuteGateEngine.actionBias('rest',slowOnlyNow))<1e-6,
+  'low confidence/attention on a stale acute emotion must not suppress slow mood and verified outcome priors');
+assert.notEqual(lowAcuteGateEngine.actionBias('verify',outcomeAt+200),highAcuteGateEngine.actionBias('verify',outcomeAt+200),
+  'acute confidence/attention must continue to gate the immediate emotional episode');
+
+console.log('AFFECT_MOOD_ACTION_PRIOR_PAIRED=PASS',JSON.stringify(seedResults));
+
 
 const beforeDuplicate=failedVerified.snapshot();
 const originalCalibration=failedVerified.outcomeCalibration('verify');
