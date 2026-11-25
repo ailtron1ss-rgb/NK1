@@ -65,7 +65,7 @@ export function projectWorldCognitiveSignal(input: {
     : 0;
   const quarantinedEvidenceCount = quarantinedFacts.length + quarantinedOutcomeFreshWeight;
   const quarantinePressure01 = quarantinedEvidenceCount > 0
-    ? Math.min(0.45, 0.12 + 0.03 * Math.log2(quarantinedEvidenceCount))
+    ? Math.max(0, Math.min(0.45, 0.12 + 0.03 * Math.log2(quarantinedEvidenceCount)))
     : 0;
   let rawWeight = 0, freshWeight = 0, observedWeight = 0, inferredWeight = 0;
   let conflictWeight = 0, unresolvedWeight = 0, staleWeight = 0, fadingChange = 0;
