@@ -29,6 +29,7 @@ on:
       - "app/scripts/chat-recovery.test.mjs"
       - "app/src/neuro-kurisu/action-approval-broker.ts"
       - "app/scripts/organism-snapshot-sync.test.mjs"
+      - "app/scripts/avatar-stage-layout.test.mjs"
       - "app/package.json"
       - "app/package-lock.json"
       - ".github/workflows/nk1-interface-user-interaction.yml"
