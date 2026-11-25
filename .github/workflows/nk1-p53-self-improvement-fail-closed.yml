@@ -2,7 +2,7 @@ name: NK1 P53 Self-Improvement Fail-Closed
 
 on:
   push:
-    branches: ["**"]
+    branches: ["workpass70-source"]
     paths:
       - ".github/workflows/nk1-p53-self-improvement-fail-closed.yml"
       - "runtime/neuro-kurisu/src/organism/developmental/P53DevelopmentalSelfModificationLab.ts"
