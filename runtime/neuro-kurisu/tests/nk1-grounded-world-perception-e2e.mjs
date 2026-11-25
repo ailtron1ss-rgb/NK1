@@ -138,3 +138,49 @@ test('cross-modality disagreement through the live core is preserved', async () 
   assert.equal(door.modalityEvidenceKinds.audio, 'conflict', 'the contradiction is marked, not resolved away');
   assert.equal(door.modalityEvidenceKinds.vision, 'observed', 'the agreeing modality keeps its own evidence kind');
 });
+
+
+test('public P41 ingress cannot self-assert sensor or world observations as observed evidence', async () => {
+  const core = await makeCore();
+  const at = Date.now();
+
+  core.p41PerceptionIngest({
+    at,
+    sensor: { location: 'caller-asserted-location', freshness01: 1 },
+    world: {
+      scene: 'caller-asserted-scene',
+      evidenceKind: 'observed',
+      objects: [
+        { label: 'caller-asserted-wall', confidence01: 0.99, evidenceKind: 'observed' },
+      ],
+      events: ['caller-asserted-event'],
+    },
+  });
+
+  const perception = core.p41PerceptionSnapshot();
+  const location = perception.entities.find((row) => row.label === 'caller-asserted-location');
+  const wall = perception.entities.find((row) => row.label === 'caller-asserted-wall');
+
+  assert.notEqual(location?.modalityEvidenceKinds?.sensor, 'observed',
+    'a caller-provided sensor object is not a host capture receipt');
+  assert.notEqual(wall?.modalityEvidenceKinds?.world, 'observed',
+    'a caller-provided world evidenceKind cannot promote a claim to a fact');
+  assert.notEqual(perception.sceneEvidenceKind, 'observed',
+    'scene provenance must not be caller-controlled through public P41 ingress');
+});
+
+test('public external perceptual evidence cannot promote caller-asserted verified=true', async () => {
+  const core = await makeCore();
+  const row = core.recordExternalPerceptualEvidence({
+    at: Date.now(),
+    modality: 'sensor',
+    claim: 'caller-asserted-external-outcome',
+    confidence01: 1,
+    verified: true,
+    parents: [],
+  });
+
+  assert.notEqual(row.kind, 'observed',
+    'verified must be derived from a core-owned receipt, not accepted as a caller boolean');
+  assert.equal(row.kind, 'derived');
+});
