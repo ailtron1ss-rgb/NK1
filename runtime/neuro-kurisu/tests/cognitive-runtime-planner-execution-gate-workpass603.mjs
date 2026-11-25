@@ -63,7 +63,7 @@ assert.match(runtimeSource,
   /const autonomousRecoveryAllowed = !externalText && cycle\.decision\.userRequestedAction == null;/,
   'autonomous recovery must never override external turns or explicit user-selected actions');
 assert.match(runtimeSource,
-  /const plan = riskRecoveryApplied\s*\?\s*this\.plans\.buildBudgetFallback\(selectedGoal, internalAction, 'risk-aware-recovery-override'\)\s*:\s*planningBudget\.accepted && projectAllowed\s*\?\s*this\.plans\.build\([\s\S]*?:\s*this\.plans\.buildBudgetFallback\(/,
+  /const plan = riskRecoveryApplied\\s*\\?\\s*this\\.plans\\.buildBudgetFallback\\(selectedGoal, internalAction, 'risk-aware-recovery-override', worldPlanningSignal\\)\\s*:\\s*planningBudget\\.accepted && projectAllowed\\s*\\?\\s*this\\.plans\\.build\\(selectedGoal, internalAction, 4, 4, worldPlanningSignal\\)\\s*:\\s*this\\.plans\\.buildBudgetFallback\\(/,
   'recovery overrides must use the one-step fallback and normal planning must remain budget-gated');
 assert.match(runtimeSource,
   /const worldRolloutAllowed = executionPlan\?\.run\?\.\['world-rollout'\] !== false && spineDecision\.run\['world-rollout'\];/,
