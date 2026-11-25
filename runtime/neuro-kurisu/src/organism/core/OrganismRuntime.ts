@@ -40,7 +40,7 @@ import { TemporalObjectTracker } from '../body/TemporalObjectTracker.ts';
 import { RealityGroundingController, type RealityGroundingMode } from '../system/RealityGroundingController.ts';
 import { NeuralCausalTraceLedger } from '../system/NeuralCausalTraceLedger.ts';
 import { OpenLoopRadar, type OpenLoopRadarState, type OpenLoopScanOptions } from '../cognition/evolution/OpenLoopRadar.ts';
-import { DurableDeliveryOutbox, type DurableDeliveryEnqueueInput, type DurableDeliveryOutboxState, type DurableDeliveryRecord } from '../system/DurableDeliveryOutbox.ts';
+import { DurableDeliveryOutbox, type DurableDeliveryEnqueueInput, type DurableDeliveryOutboxState, type DurableDeliveryRecord, type DurableDeliveryReconciliationOutcome } from '../system/DurableDeliveryOutbox.ts';
 import { sanitizeAutonomousTopicText } from '../system/AutonomousSocialInitiativeEngine.ts';
 import { RealityLearningGate } from '../system/RealityLearningGate.ts';
 import { RealityShadowBridge } from '../system/RealityShadowBridge.ts';
@@ -3097,6 +3097,21 @@ export class OrganismRuntime {
 
   cancelDeliveryObligation(id: string, reasonCode: string) {
     return this.enqueue(() => this.persistDeliveryOutboxMutation(() => this.deliveryOutbox.cancel(id, reasonCode)));
+  }
+
+  /**
+   * Resolve an expired ambiguous delivery only after the host has checked the
+   * authoritative provider/ActionGateway idempotency receipt or postcondition.
+   * Do not pass "confirmed-not-delivered" when the external result is unknown.
+   */
+  resolveDeliveryObligationReconciliation(
+    id: string,
+    outcome: DurableDeliveryReconciliationOutcome,
+    at = Date.now(),
+  ) {
+    return this.enqueue(() => this.persistDeliveryOutboxMutation(
+      () => this.deliveryOutbox.resolveReconciliation(id, outcome, at),
+    ));
   }
 
   deliveryOutboxSnapshot() {
