@@ -48,7 +48,7 @@ test("only an explicit runtime false confirms microphone stop", () => {
   assert.deepEqual(resolveVoiceStop(false, true), { confirmed: true, status: "idle", reason: null });
   assert.deepEqual(resolveVoiceStop(true, true), {
     confirmed: false, status: "stop-unconfirmed",
-    reason: "The runtime has not confirmed that microphone capture stopped.",
+    reason: "Stop requested, but microphone release is not confirmed by the runtime.",
   });
   assert.equal(resolveVoiceStop(null, true).status, "stop-unconfirmed");
 });
