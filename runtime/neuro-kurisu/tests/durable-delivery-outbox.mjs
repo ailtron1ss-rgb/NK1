@@ -168,10 +168,18 @@ try {
   await restarted.init();
   const restoredLease = (await restarted.deliveryOutboxSnapshot()).records.find(row => row.id === runtimeItem.record.id);
   assert.equal(restoredLease?.status, 'leased', 'delivery lease is persisted in the Runtime sidecar');
-  const recoveredLease = await restarted.prepareNextDeliveryObligation('runtime-sender-B', 1000, at + 1006);
-  assert.equal(recoveredLease?.id, runtimeItem.record.id, 'expired lease is reclaimed after restart');
+  const quarantined = await restarted.prepareNextDeliveryObligation('runtime-sender-B', 1000, at + 1006);
+  assert.equal(quarantined, null, 'Runtime must quarantine an expired ambiguous lease instead of automatically retrying it');
+  assert.equal((await restarted.deliveryOutboxSnapshot()).records.find(row => row.id === runtimeItem.record.id)?.status, 'reconciliation-required');
+  assert.equal(await restarted.resolveDeliveryObligationReconciliation(
+    runtimeItem.record.id, 'confirmed-not-delivered', at + 1006,
+  ), true, 'host must explicitly reconcile the external send before authorizing retry');
+  assert.equal(await restarted.prepareNextDeliveryObligation('runtime-sender-B', 1000, at + 2005), null,
+    'the reconciled retry still observes exponential backoff');
+  const recoveredLease = await restarted.prepareNextDeliveryObligation('runtime-sender-B', 1000, at + 2006);
+  assert.equal(recoveredLease?.id, runtimeItem.record.id, 'confirmed not-delivered lease is eligible after reconciliation');
   assert.equal(recoveredLease?.attemptCount, 2);
-  assert.equal(await restarted.acknowledgeDeliveryObligation(runtimeItem.record.id, 'runtime-sender-B', at + 1007), true);
+  assert.equal(await restarted.acknowledgeDeliveryObligation(runtimeItem.record.id, 'runtime-sender-B', at + 2007), true);
   assert.equal((await restarted.deliveryOutboxSnapshot()).records.find(row => row.id === runtimeItem.record.id)?.status, 'delivered');
   await restarted.stop();
   restarted = null;
