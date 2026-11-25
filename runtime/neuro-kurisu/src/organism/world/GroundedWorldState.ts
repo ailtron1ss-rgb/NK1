@@ -16,7 +16,7 @@ const safeTimestamp=(value:unknown,fallback=0):number=>{
 const safeText=(value:unknown,max:number):string|undefined=>{
   if(typeof value!=='string')return undefined;
   const text=value.normalize('NFKC').trim();
-  return text&&text.length<=max&&!/[\\u0000-\\u001f\\u007f-\\u009f]/u.test(text)?text:undefined;
+  return text&&text.length<=max&&!/[\x00-\x1f\x7f-\x9f]/u.test(text)?text:undefined;
 };
 const safeStringArray=(value:unknown,maxItems:number,maxLength:number):string[]=>{
   if(!Array.isArray(value))return [];
