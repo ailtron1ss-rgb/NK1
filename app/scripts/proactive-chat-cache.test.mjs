@@ -103,4 +103,16 @@ test('corrupt or non-array chat cache data restores as an empty transcript', () 
   assert.deepEqual(restoreChatCache(JSON.stringify({ turns: [] })), []);
 });
 
+
+test('chat restoration deduplicates stable proactive turn IDs', () => {
+  const restored = restoreChatCache(JSON.stringify([
+    { id: 'same-id', role: 'kurisu', text: 'first delivery copy', at: 10, tick: 1 },
+    { id: 'same-id', role: 'kurisu', text: 'duplicate retry copy', at: 10, tick: 1 },
+    { id: 'next-id', role: 'user', text: 'follow-up', at: 11, tick: 2 },
+  ]));
+  assert.deepEqual(restored.map((turn) => turn.id), ['same-id', 'next-id']);
+  assert.equal(restored[0].text, 'first delivery copy',
+    'the first committed turn remains canonical across duplicate retries');
+});
+
 console.log('PROACTIVE_CHAT_DURABLE_ACK=PASS');
