@@ -36,7 +36,8 @@ assert.equal(claim?.status, 'leased');
 assert.equal(claim?.attemptCount, 1);
 assert.equal(outbox.acknowledge(created.record.id, 'sender-B', at + 3), false, 'foreign lease owner cannot acknowledge');
 assert.equal(outbox.recordFailure(created.record.id, 'sender-A', 'transport-timeout', at + 4), true);
-const afterFailure = outbox.get(created.record.id)!;
+const afterFailure = outbox.get(created.record.id);
+assert.ok(afterFailure, 'failed delivery remains addressable by its stable outbox ID');
 assert.equal(afterFailure.status, 'pending');
 assert.equal(afterFailure.nextAttemptAt, at + 1004, 'first retry uses bounded exponential backoff');
 
