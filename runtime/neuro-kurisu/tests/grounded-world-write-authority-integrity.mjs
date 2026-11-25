@@ -116,7 +116,9 @@ assert.equal(safe.events[0].confidence01, 0);
 assert.equal(safe.events[0].lastAt, 0);
 assert.equal(safe.events[0].persistence01, 0,
   'out-of-range event persistence must fail closed');
-assert.deepEqual(safe.facts, ['valid fact']);
+assert.deepEqual(safe.facts, [], 'persisted free-form facts must not return as canonical grounded facts');
+assert.deepEqual(safe.quarantinedFacts, ['restored-unverified:valid fact'],
+  'persisted fact text remains available in an explicitly unverified quarantine');
 assert.deepEqual(safe.provenanceIds, ['source-1']);
 assert.notEqual(safe.lastHash, 'attacker-controlled-hash');
 
