@@ -2991,6 +2991,7 @@ export class OrganismCore {
         // stageMessage may reject an unsafe message while still changing it to deferred;
         // persist the resulting state even when no message is staged for delivery.
         this.persisted.system.autonomousSocialInitiative = this.organismSystems.agency.autonomousSocialInitiative.snapshot();
+        this.markPersistenceDirty();
         return staged;
     }
     claimAutonomousSocialInitiativeDelivery() {
@@ -3017,7 +3018,10 @@ export class OrganismCore {
     }
     deferAutonomousSocialInitiative(id: string, at = Date.now()) {
         const deferred = this.organismSystems.agency.autonomousSocialInitiative.defer(id, at);
-        if (deferred) this.persisted.system.autonomousSocialInitiative = this.organismSystems.agency.autonomousSocialInitiative.snapshot();
+        if (deferred) {
+            this.persisted.system.autonomousSocialInitiative = this.organismSystems.agency.autonomousSocialInitiative.snapshot();
+            this.markPersistenceDirty();
+        }
         return deferred;
     }
     /** Offline A/B benchmark against an isolated MemoryOS2 clone; never trains or mutates live memory. */
