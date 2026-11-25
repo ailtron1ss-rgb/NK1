@@ -17,7 +17,7 @@
 |---|---|---:|---|
 | [#1179](https://github.com/ailtron1ss-rgb/NK1/pull/1179) | `a33e889900a6575160cb8b5b96ab6b8d1cf61de1` | 11/11 SUCCESS | Independent review |
 | [#1180](https://github.com/ailtron1ss-rgb/NK1/pull/1180) | `9c13acd0287314992a0d8a421c50533d2798231a` | 74/74 SUCCESS | Independent review; host verifier remains a separate future capability |
-| [#1174](https://github.com/ailtron1ss-rgb/NK1/pull/1174) | `e1f83557bc8f5e7d9b304f943f8fce8d9c9b6192` | 74/76 SUCCESS at last poll, 0 failures | Two checks not complete; independent review; real device power-loss soak |
+| [#1174](https://github.com/ailtron1ss-rgb/NK1/pull/1174) | `e1f83557bc8f5e7d9b304f943f8fce8d9c9b6192` | 76/76 SUCCESS, 0 failures, 0 pending | Independent review, semantic runtime TSC and real device power-loss soak |
 | [#1170](https://github.com/ailtron1ss-rgb/NK1/pull/1170) | `bdcad2c34a5dd9ffa0443c4cca8b56d989cc43e6` | 83/83 Actions SUCCESS | Independent review; semantic TSC check and Android/Termux soak |
 
 ## Key outcomes
@@ -29,7 +29,7 @@
 
 ## Next P0/P1 execution queue
 
-1. Finish and inspect the exact-head #1174 checks; don't accept a partial 74/76 snapshot.
+1. Obtain independent review for #1174 and run semantic runtime TSC; the 76/76 CI matrix is green, but the focused continuity typecheck used Node strip-syntax mode.
 2. Obtain independent code review for #1170, #1174, #1179 and #1180; fix all Critical/Important findings and retain Draft until then.
 3. Verify P53's future host-owned promotion capability design against existing #743 admission; do not wire candidate-controlled booleans or self-produced holdout evidence.
 4. Continue MemoryOS2 integrity and independent RU/EN holdout: frozen corpus, source-cluster splits, at least five paired seeds, recall uplift and forgetting/revision metrics.
