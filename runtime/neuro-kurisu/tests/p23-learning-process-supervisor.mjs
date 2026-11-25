@@ -225,6 +225,55 @@ try {
   await assert.rejects(() => readLearningExecutionReceipt(tamperedPath), /receipt fields/);
   const stored = JSON.parse(await readFile(success.receiptPath, 'utf8'));
   assert.equal(stored.runId, run.runId);
+
+  // Lumina-derived least-privilege boundary: credential-shaped environment
+  // variables must not cross into a child unless the host grants each exact key.
+  const sensitiveKey = 'NK1_TEST_ACCESS_TOKEN';
+  const sensitiveValue = 'nk1-fixture-secret-value-2026';
+  const priorSensitive = process.env[sensitiveKey];
+  process.env[sensitiveKey] = sensitiveValue;
+  try {
+    await assert.rejects(
+      () => runLearningProcess(run, 'b'.repeat(64), {
+        ...base,
+        inheritEnv: [sensitiveKey],
+        args: ['-e', 'process.stdout.write(process.env.NK1_TEST_ACCESS_TOKEN || "missing")'],
+      }),
+      /sensitive-environment-key-not-authorized/,
+      'inherited credentials require an exact host-owned authorization',
+    );
+    await assert.rejects(
+      () => runLearningProcess(run, 'b'.repeat(64), {
+        ...base,
+        env: { [sensitiveKey]: sensitiveValue },
+        args: ['-e', 'process.stdout.write(process.env.NK1_TEST_ACCESS_TOKEN || "missing")'],
+      }),
+      /sensitive-environment-key-not-authorized/,
+      'explicit credentials require the same exact authorization as inherited credentials',
+    );
+    const allowed = await runLearningProcess(run, 'b'.repeat(64), {
+      ...base,
+      env: { [sensitiveKey]: sensitiveValue },
+      allowSensitiveEnv: [sensitiveKey],
+      args: ['-e', 'process.stdout.write(process.env.NK1_TEST_ACCESS_TOKEN || "missing")'],
+    });
+    assert.equal(allowed.receipt.status, 'completed');
+    assert.equal(allowed.receipt.stdout, '[REDACTED]');
+    assert.ok(!JSON.stringify(allowed.receipt).includes(sensitiveValue));
+    await assert.rejects(
+      () => runLearningProcess(run, 'b'.repeat(64), {
+        ...base,
+        env: { [sensitiveKey]: sensitiveValue },
+        allowSensitiveEnv: ['DATABASE_URL'],
+      }),
+      /sensitive-environment-key-not-authorized/,
+      'a grant for another variable must not authorize this credential',
+    );
+  } finally {
+    if (priorSensitive === undefined) delete process.env[sensitiveKey];
+    else process.env[sensitiveKey] = priorSensitive;
+  }
+
   console.log('P23_LEARNING_PROCESS_SUPERVISOR=PASS');
 } finally {
   await rm(root, { recursive: true, force: true });
