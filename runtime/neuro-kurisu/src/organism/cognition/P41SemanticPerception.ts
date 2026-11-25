@@ -32,6 +32,7 @@ function normalizedImageBox(value:unknown):P41ImageBox|undefined{
 function positionDistance(a:{x:number;y:number;z:number},b:{x:number;y:number;z:number}):number{
   return Math.sqrt((a.x-b.x)**2+(a.y-b.y)**2+(a.z-b.z)**2);
 }
+const P41_MODALITY_SOURCE_ALIASES=new Set(['text','speech','audio','vision','sensor','world','semantic']);
 const safeModalitySourceIds=(value:unknown):Partial<Record<P41Modality,string[]>>=>{
   if(!value||typeof value!=='object'||Array.isArray(value))return {};
   const row=value as Record<string,unknown>;
@@ -40,7 +41,7 @@ const safeModalitySourceIds=(value:unknown):Partial<Record<P41Modality,string[]>
   for(const modality of modalities){
     const raw=row[modality];
     const candidates=Array.isArray(raw)?raw:typeof raw==='string'?[raw]:[];
-    const ids=[...new Set(candidates.map(cleanTrackId).filter(id=>Boolean(id)&&!['text','vision','audio','sensor','world'].includes(id.toLowerCase())))].slice(-8);
+    const ids=[...new Set(candidates.map(cleanTrackId).filter(id=>Boolean(id)&&!P41_MODALITY_SOURCE_ALIASES.has(id.toLowerCase())))].slice(-8);
     if(ids.length)out[modality]=ids;
   }
   return out;
