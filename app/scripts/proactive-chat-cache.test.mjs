@@ -115,4 +115,16 @@ test('chat restoration deduplicates stable proactive turn IDs', () => {
     'the first committed turn remains canonical across duplicate retries');
 });
 
+
+test('chat restoration strips actual control characters from untrusted text', () => {
+  const restored = restoreChatCache(JSON.stringify([
+    { id: 'control-1', role: 'kurisu', text: 'left\\u0000middle\\u001Fright\\u007F', at: 20, tick: 3 },
+  ]));
+  assert.equal(restored[0].text, 'leftmiddleright');
+});
+
+test('chat restoration rejects an oversized serialized cache before parsing', () => {
+  assert.deepEqual(restoreChatCache(' '.repeat(1_750_001)), []);
+});
+
 console.log('PROACTIVE_CHAT_DURABLE_ACK=PASS');
