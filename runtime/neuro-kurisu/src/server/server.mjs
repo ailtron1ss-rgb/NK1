@@ -1902,7 +1902,10 @@ async function route(req, res) {
         if (req.method === 'POST' && url.pathname === '/api/organism/proactive-consent') {
             if (!runtimeReady) return json(res, 503, { ok: false, error: 'organism-runtime-not-ready' });
             const input = await body(req);
-            if (typeof input.consentGranted !== 'boolean') return json(res, 400, { ok: false, error: 'consent-granted-must-be-boolean' });
+            if (!input || typeof input !== 'object' || Array.isArray(input)
+                || typeof input.consentGranted !== 'boolean') {
+                return json(res, 400, { ok: false, error: 'consent-granted-must-be-boolean' });
+            }
             const policy = await proactiveDelivery.setConsent(input.consentGranted);
             return json(res, 200, { ok: true, policy });
         }
