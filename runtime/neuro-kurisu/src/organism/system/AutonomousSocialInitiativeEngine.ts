@@ -731,7 +731,28 @@ export class AutonomousSocialInitiativeEngine {
   /** Compatibility surface for older callers; replaying a completed item is idempotent. */
   record(id: string, ok: boolean, at: number): void { if (ok) this.acknowledge(id, at); else this.defer(id, at); }
 
-  summary() {
+  summary(at = Date.now()) {
+    const now = safeTime(at) ?? Date.now();
+    const readyItems = this.state.initiatives.filter(i => i.status === 'ready' && i.internalOnly !== true
+      && Boolean(i.message?.trim())
+      && typeof i.stagedAt === 'number'
+      && i.stagedAt >= i.createdAt
+      && i.stagedAt <= now
+      && now >= i.createdAt
+      && now - i.createdAt <= INITIATIVE_PENDING_TTL_MS);
+    const deliveryAttempts = readyItems.reduce(
+      (total, item) => total + safeCounter(item.deliveryAttemptCount, 0, MAX_SOCIAL_DELIVERY_ATTEMPTS),
+      0,
+    );
+    const claimable = this.mayDeliverUserVisible(now)
+      ? readyItems.filter(item => safeCounter(item.deliveryAttemptCount, 0, MAX_SOCIAL_DELIVERY_ATTEMPTS) < MAX_SOCIAL_DELIVERY_ATTEMPTS
+        && (item.deliveryLeaseUntil === undefined || item.deliveryLeaseUntil <= now)
+        && (item.deliveryNextAttemptAt === undefined || item.deliveryNextAttemptAt <= now)).length
+      : 0;
+    const lastDeliveryAttemptAt = readyItems.reduce(
+      (latest, item) => Math.max(latest, item.deliveryLastAttemptAt ?? 0),
+      0,
+    );
     return {
       cycles: this.state.cycles, planned: this.state.planned, executed: this.state.executed,
       deferred: this.state.deferred, reciprocity01: this.state.reciprocity01,
@@ -740,6 +761,18 @@ export class AutonomousSocialInitiativeEngine {
       internalPlans: this.state.initiatives.filter(i => i.status === 'planned' && i.internalOnly === true).length,
       deliveryEligiblePlans: this.state.initiatives.filter(i => i.status === 'planned' && i.internalOnly !== true).length,
       ready: this.state.initiatives.filter(i => i.status === 'ready' && i.internalOnly !== true).length,
+      deliveryPending: readyItems.length,
+      deliveryLeased: readyItems.filter(i => typeof i.deliveryLeaseUntil === 'number' && i.deliveryLeaseUntil > now).length,
+      deliveryBackoff: readyItems.filter(i => (i.deliveryLeaseUntil === undefined || i.deliveryLeaseUntil <= now)
+        && typeof i.deliveryNextAttemptAt === 'number' && i.deliveryNextAttemptAt > now).length,
+      deliveryClaimable: claimable,
+      deliveryExhausted: readyItems.filter(i => safeCounter(i.deliveryAttemptCount, 0, MAX_SOCIAL_DELIVERY_ATTEMPTS) >= MAX_SOCIAL_DELIVERY_ATTEMPTS).length,
+      deliveryAttempts,
+      deliveryAttemptsRemaining: readyItems.reduce(
+        (total, item) => total + Math.max(0, MAX_SOCIAL_DELIVERY_ATTEMPTS - safeCounter(item.deliveryAttemptCount, 0, MAX_SOCIAL_DELIVERY_ATTEMPTS)),
+        0,
+      ),
+      deliveryLastAttemptAt: lastDeliveryAttemptAt || null,
       positiveFeedback: this.state.initiatives.filter(i => i.feedbackSignal === 'positive').length,
       engagedFeedback: this.state.initiatives.filter(i => i.feedbackSignal === 'engaged').length,
       negativeFeedback: this.state.initiatives.filter(i => i.feedbackSignal === 'negative').length,
