@@ -48,6 +48,7 @@ on:
       - "runtime/neuro-kurisu/src/organism/core/OrganismCore.ts"
       - "runtime/neuro-kurisu/tests/p41-integration.mjs"
       - "runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts"
+      - "runtime/neuro-kurisu/src/organism/core/InertSnapshot.ts"
       - "runtime/neuro-kurisu/tests/grounded-world-write-authority-integrity.mjs"
       - "runtime/neuro-kurisu/tests/p2841-postcondition-grounded-world.mjs"
       - "runtime/neuro-kurisu/tests/p2841-runtime-external-grounding.mjs"
