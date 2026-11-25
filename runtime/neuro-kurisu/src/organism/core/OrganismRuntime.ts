@@ -3165,9 +3165,9 @@ export class OrganismRuntime {
   }
 
   /** Mark a proactive chat turn delivered exactly once after the UI has stored it. */
-  async acknowledgeAutonomousDialogue(id: string): Promise<boolean> {
+  async acknowledgeAutonomousDialogue(id: string, expectedAttemptCount?: number): Promise<boolean> {
     return this.enqueue(async () => {
-      const receipt = this.core.acknowledgeAutonomousSocialInitiativeWithState(id, Date.now());
+      const receipt = this.core.acknowledgeAutonomousSocialInitiativeWithState(id, Date.now(), expectedAttemptCount);
       if (receipt.stateChanged) await this.core.flush();
       if (receipt.acknowledged) {
         // The user's durable chat receipt belongs to the canonical Core snapshot.
