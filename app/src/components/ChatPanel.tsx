@@ -30,7 +30,6 @@ export function ChatPanel() {
     void neuroApi.proactiveDeliveryPolicy().then((result) => {
       if (!cancelled) {
         setProactiveConsent(result.policy.consentGranted === true);
-      setProactiveOutbox(result.policy.outbox);
         setProactiveOutbox(result.policy.outbox);
       }
     }).catch((error) => {
@@ -46,6 +45,7 @@ export function ChatPanel() {
     try {
       const result = await neuroApi.setProactiveConsent(!proactiveConsent);
       setProactiveConsent(result.policy.consentGranted === true);
+      setProactiveOutbox(result.policy.outbox);
     } catch (error) {
       setProactiveConsentError(error instanceof Error ? error.message : String(error));
     } finally {
