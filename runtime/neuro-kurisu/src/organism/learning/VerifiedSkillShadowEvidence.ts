@@ -61,7 +61,7 @@ export function verifySignedSkillShadowObservation(
   if (!payload.artifactId?.trim() || !payload.runId?.trim() || !payload.taskId?.trim() ||
       !payload.runtimeVersion?.trim() || !payload.verifierId?.trim() ||
       !Number.isSafeInteger(payload.candidateVersion) || !Number.isSafeInteger(payload.seed) || payload.seed < 0 ||
-      !Number.isFinite(payload.observedAt) || payload.observedAt <= 0 || typeof payload.passed !== 'boolean') return false;
+      !Number.isSafeInteger(payload.observedAt) || payload.observedAt <= 0 || typeof payload.passed !== 'boolean') return false;
   if (!/^[a-f0-9]{64}$/.test(payload.payloadFingerprint) ||
       !/^[a-f0-9]{64}$/.test(payload.proposalOutcomeFingerprint) ||
       !/^[a-f0-9]{64}$/.test(payload.manifestFingerprint)) return false;
