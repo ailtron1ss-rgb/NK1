@@ -32,10 +32,15 @@ function candidate(topic, source) {
 }
 
 function acknowledge(engine, at, topic, source) {
+  // User-visible delivery requires explicit consent and an exclusive host
+  // claim before the UI may ACK the stable initiative ID.
+  engine.setConsent(true);
   const result = engine.cycle(input(at, [candidate(topic, source)]));
   assert.ok(result.initiative, `expected initiative from ${source}: ${topic}`);
   assert.equal(engine.stageMessage(result.initiative.id, `A thought about ${topic}.`, at + 1), true);
-  assert.equal(engine.acknowledge(result.initiative.id, at + 2), true);
+  assert.equal(engine.claimReady(at + 2)?.id, result.initiative.id,
+    "the host must claim the ready initiative before acknowledging delivery");
+  assert.equal(engine.acknowledge(result.initiative.id, at + 3), true);
 }
 
 {
