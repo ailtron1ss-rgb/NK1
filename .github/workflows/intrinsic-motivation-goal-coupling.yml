@@ -5,6 +5,8 @@ on:
       - "runtime/neuro-kurisu/src/organism/cognition/IntrinsicMotivationGoalCoupling.ts"
       - "runtime/neuro-kurisu/src/organism/cognition/IntrinsicMotivationEngine.ts"
       - "runtime/neuro-kurisu/src/organism/cognition/B272EndogenousGoalGenesis.ts"
+      - "runtime/neuro-kurisu/src/organism/cognition/B273AutonomousGoalLifecycle.ts"
+      - "runtime/neuro-kurisu/tests/world-cognitive-signal-integration.test.mjs"
       - "runtime/neuro-kurisu/src/organism/core/OrganismCore.ts"
       - "runtime/neuro-kurisu/src/organism/core/CognitiveRuntimeCluster.ts"
       - "runtime/neuro-kurisu/tests/intrinsic-motivation-goal-coupling.mjs"
@@ -33,6 +35,8 @@ jobs:
           package-manager-cache: false
       - name: Run intrinsic motivation and endogenous goal coupling regressions
         run: node --experimental-strip-types runtime/neuro-kurisu/tests/intrinsic-motivation-goal-coupling.mjs
+      - name: World evidence to endogenous goal generation and lifecycle regressions
+        run: node --experimental-strip-types --test runtime/neuro-kurisu/tests/world-cognitive-signal-integration.test.mjs
       - name: Typecheck runtime
         working-directory: runtime/neuro-kurisu
         run: node scripts/typecheck-runtime.mjs
