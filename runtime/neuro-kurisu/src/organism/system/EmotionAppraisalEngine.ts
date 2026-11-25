@@ -445,12 +445,15 @@ export class EmotionAppraisalEngine {
     const moodPrior:Record<AffectAction,number>={respond:-.008*stress,explore:-.012*stress+.005*c((m.valence01-.5)/.5)*(1-stress),
       verify:.010*stress+.003*lowValence,rest:.014*stress,reflect:.008*stress+.003*lowValence,wait:.003*stress,defer:.003*stress};
     const acute=TENDENCY_PRIORS[e.actionTendency]?.[key]??0;
-    const prior=acute+pressure*REGULATION_PRIORS[key]+learned+moodPrior[key]*moodEvidence*moodFreshness;
     // Synthetic/test clocks (e.g. 1001) are valid within their own time domain.
-    // Only apply wall-clock decay when both timestamps are epoch milliseconds.
+    // The short half-life belongs to the acute episode only; applying it to mood,
+    // homeostatic pressure and learned outcome evidence would erase slow affect
+    // from action selection even though those sources retain their own freshness.
     const comparableEpochMs=now>=1e11&&e.at>=1e11;
-    const freshness=comparableEpochMs?Math.exp(-Math.max(0,now-e.at)/60_000):1;
-    return signedPrior(prior*confidenceGate*attentionGate*freshness);
+    const acuteFreshness=comparableEpochMs?Math.exp(-Math.max(0,now-e.at)/60_000):1;
+    const prior=acute*acuteFreshness+pressure*REGULATION_PRIORS[key]+learned+
+      moodPrior[key]*moodEvidence*moodFreshness;
+    return signedPrior(prior*confidenceGate*attentionGate);
   }
 
   summary(){return {episodes:this.state.episodes,lastLabel:this.state.lastLabel,meanArousal01:this.state.meanArousal01,meanValence01:this.state.meanValence01,meanStress01:this.state.meanStress01,meanAttentionCapture01:this.state.meanAttentionCapture01,interoception:structuredClone(this.state.interoception),mood:this.moodSnapshot(),outcomes:structuredClone(this.state.outcomes)};}
