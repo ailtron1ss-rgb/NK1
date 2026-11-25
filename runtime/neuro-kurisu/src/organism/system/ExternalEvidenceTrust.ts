@@ -1,4 +1,5 @@
 import { sha256Stable } from '../core/StableSerialization.ts';
+import { cloneInertSnapshot } from '../core/InertSnapshot.ts';
 
 /**
  * Evidence quality layer for reality-grounded cognition.
@@ -55,9 +56,16 @@ export class ExternalEvidenceTrustEngine{
  restore(raw?:Partial<ExternalEvidenceTrustState>|null){
     const d=defaultExternalEvidenceTrust();
     const now=Date.now();
+    const restored = raw === undefined || raw === null
+      ? {}
+      : cloneInertSnapshot<unknown>(raw, { maxDepth: 12, maxProperties: 32_768 });
+    if (!restored || typeof restored !== 'object' || Array.isArray(restored)) {
+      throw new Error('external-evidence-trust-snapshot-invalid');
+    }
+    const source = restored as Partial<ExternalEvidenceTrustState>;
     const finiteCount=(value:unknown,fallback=0)=>typeof value==='number'&&Number.isSafeInteger(value)&&value>=0?Math.min(value,1_000_000):fallback;
     const validStatus=(value:unknown):value is EvidenceStatus=>value==='candidate'||value==='corroborated'||value==='contested'||value==='expired';
-    const rows=Array.isArray(raw?.records)?raw!.records.slice(-256):[];
+    const rows=Array.isArray(source.records)?source.records.slice(-256):[];
     // An event receipt may belong to exactly one persisted source/claim row.
     // If a checkpoint reuses an ID across rows, remove that ID from every claimant.
     const evidenceIdUseCount=new Map<string,number>();
