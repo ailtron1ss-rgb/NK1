@@ -33,6 +33,14 @@ export interface SocialInitiative {
   message?: string;
   stagedAt?: number;
   resolvedAt?: number;
+  /** Number of host delivery claims; persisted to make retries bounded and replay-safe. */
+  deliveryAttemptCount?: number;
+  /** Exclusive host claim lease; this is not proof of delivery. */
+  deliveryLeaseUntil?: number;
+  /** Earliest time another host delivery attempt may be claimed. */
+  deliveryNextAttemptAt?: number;
+  /** Last host claim time, retained as bounded diagnostic lineage. */
+  deliveryLastAttemptAt?: number;
   /** Explicit user feedback is evidence about this conversational thread, not a global emotion label. */
   feedbackAt?: number;
   feedbackSignal?: 'positive' | 'engaged' | 'negative';
@@ -132,6 +140,13 @@ const validKind = (value: unknown): SocialInitiativeKind => {
 
 const INITIATIVE_PENDING_TTL_MS = 20 * 60_000;
 const MAX_SOCIAL_COUNTER = 1_000_000_000;
+const MAX_SOCIAL_DELIVERY_ATTEMPTS = 8;
+const DEFAULT_SOCIAL_DELIVERY_LEASE_MS = 15_000;
+const MIN_SOCIAL_DELIVERY_LEASE_MS = 1_000;
+const MAX_SOCIAL_DELIVERY_LEASE_MS = 60_000;
+const MAX_SOCIAL_DELIVERY_BACKOFF_MS = 60_000;
+const socialDeliveryBackoffMs = (attempt: number): number =>
+  Math.min(MAX_SOCIAL_DELIVERY_BACKOFF_MS, 1_000 * (2 ** Math.max(0, attempt - 1)));
 type SocialRecord = Record<string, unknown>;
 function isPlainRecord(value: unknown): value is SocialRecord {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
@@ -165,6 +180,20 @@ function normalizeRestoredInitiative(raw: unknown, index: number): { item: Socia
   const createdAt = safeTime(ownData(raw, 'createdAt')) ?? 0;
   const rawStagedAt = safeTime(ownData(raw, 'stagedAt'));
   const rawResolvedAt = safeTime(ownData(raw, 'resolvedAt'));
+  const deliveryAttemptCount = safeCounter(ownData(raw, 'deliveryAttemptCount'), 0, MAX_SOCIAL_DELIVERY_ATTEMPTS);
+  const rawDeliveryLeaseUntil = safeTime(ownData(raw, 'deliveryLeaseUntil'));
+  const rawDeliveryNextAttemptAt = safeTime(ownData(raw, 'deliveryNextAttemptAt'));
+  const rawDeliveryLastAttemptAt = safeTime(ownData(raw, 'deliveryLastAttemptAt'));
+  const deliveryTimeLimit = createdAt + INITIATIVE_PENDING_TTL_MS + MAX_SOCIAL_DELIVERY_LEASE_MS + MAX_SOCIAL_DELIVERY_BACKOFF_MS;
+  const deliveryLeaseUntil = status === 'ready' && rawDeliveryLeaseUntil !== undefined
+    && rawDeliveryLeaseUntil >= createdAt && rawDeliveryLeaseUntil <= deliveryTimeLimit
+    ? rawDeliveryLeaseUntil : undefined;
+  const deliveryNextAttemptAt = status === 'ready' && rawDeliveryNextAttemptAt !== undefined
+    && rawDeliveryNextAttemptAt >= createdAt && rawDeliveryNextAttemptAt <= deliveryTimeLimit
+    ? rawDeliveryNextAttemptAt : undefined;
+  const deliveryLastAttemptAt = rawDeliveryLastAttemptAt !== undefined
+    && rawDeliveryLastAttemptAt >= createdAt && rawDeliveryLastAttemptAt <= deliveryTimeLimit
+    ? rawDeliveryLastAttemptAt : undefined;
   const readyStateInvalid = status === 'ready' && (!safeMessage || rawStagedAt === undefined || rawStagedAt < createdAt);
   let privacyDeferred = false;
   if ((unsafeTopic || unsafeReadyMessage || readyStateInvalid) && status !== 'executed' && status !== 'deferred') {
@@ -220,6 +249,10 @@ function normalizeRestoredInitiative(raw: unknown, index: number): { item: Socia
       ...(safeMessage ? { message: safeMessage } : {}),
       ...(rawStagedAt !== undefined && rawStagedAt >= createdAt ? { stagedAt: rawStagedAt } : {}),
       ...(rawResolvedAt !== undefined && rawResolvedAt >= createdAt ? { resolvedAt: rawResolvedAt } : {}),
+      ...(deliveryAttemptCount > 0 ? { deliveryAttemptCount } : {}),
+      ...(deliveryLeaseUntil !== undefined ? { deliveryLeaseUntil } : {}),
+      ...(deliveryNextAttemptAt !== undefined ? { deliveryNextAttemptAt } : {}),
+      ...(deliveryLastAttemptAt !== undefined ? { deliveryLastAttemptAt } : {}),
       ...(rawFeedbackSignal ? { feedbackSignal: rawFeedbackSignal } : {}),
       ...(rawFeedbackAt !== undefined ? { feedbackAt: rawFeedbackAt } : {}),
       ...(Number.isFinite(ownData(raw, 'feedbackRelevance01')) ? { feedbackRelevance01: safeRatio(ownData(raw, 'feedbackRelevance01'), .5) } : {}),
@@ -585,18 +618,57 @@ export class AutonomousSocialInitiativeEngine {
     return true;
   }
 
+  /** Read-only compatibility view; it never acquires or extends a delivery lease. */
   latestReady(now = Date.now()): SocialInitiative | null {
     const at = safeTime(now) ?? Date.now();
     this.expirePending(at);
-    if(!this.mayDeliverUserVisible(at))return null;
+    if (!this.mayDeliverUserVisible(at)) return null;
     const item = this.state.initiatives.find(i => i.status === 'ready'
       && Boolean(i.message?.trim())
       && typeof i.stagedAt === 'number'
       && i.stagedAt >= i.createdAt
       && i.stagedAt <= at
       && at >= i.createdAt
-      && at - i.createdAt <= INITIATIVE_PENDING_TTL_MS);
+      && at - i.createdAt <= INITIATIVE_PENDING_TTL_MS
+      && safeCounter(i.deliveryAttemptCount, 0, MAX_SOCIAL_DELIVERY_ATTEMPTS) < MAX_SOCIAL_DELIVERY_ATTEMPTS
+      && (i.deliveryLeaseUntil === undefined || i.deliveryLeaseUntil <= at)
+      && (i.deliveryNextAttemptAt === undefined || i.deliveryNextAttemptAt <= at));
     return item ? structuredClone(item) : null;
+  }
+
+  /**
+   * Exclusively claim one ready initiative for a host delivery attempt.
+   * The claim and retry deadline are ordinary initiative state, so the
+   * canonical Core snapshot persists them with the rest of this owner.
+   *
+   * A claim is not a delivery receipt. The host must ACK only after the UI
+   * has durably recorded the stable initiative ID. Expired leases become
+   * eligible again after bounded backoff; repeated claims keep the same ID.
+   */
+  claimReady(now = Date.now(), requestedLeaseMs = DEFAULT_SOCIAL_DELIVERY_LEASE_MS): SocialInitiative | null {
+    const at = safeTime(now);
+    if (at === undefined || !this.mayDeliverUserVisible(at)) return null;
+    const leaseMs = Number.isSafeInteger(requestedLeaseMs)
+      ? Math.max(MIN_SOCIAL_DELIVERY_LEASE_MS, Math.min(MAX_SOCIAL_DELIVERY_LEASE_MS, requestedLeaseMs))
+      : DEFAULT_SOCIAL_DELIVERY_LEASE_MS;
+    const item = this.state.initiatives.find(i => i.status === 'ready'
+      && Boolean(i.message?.trim())
+      && typeof i.stagedAt === 'number'
+      && i.stagedAt >= i.createdAt
+      && i.stagedAt <= at
+      && at >= i.createdAt
+      && at - i.createdAt <= INITIATIVE_PENDING_TTL_MS
+      && safeCounter(i.deliveryAttemptCount, 0, MAX_SOCIAL_DELIVERY_ATTEMPTS) < MAX_SOCIAL_DELIVERY_ATTEMPTS
+      && (i.deliveryLeaseUntil === undefined || i.deliveryLeaseUntil <= at)
+      && (i.deliveryNextAttemptAt === undefined || i.deliveryNextAttemptAt <= at));
+    if (!item) return null;
+    const attempt = safeCounter(item.deliveryAttemptCount, 0, MAX_SOCIAL_DELIVERY_ATTEMPTS) + 1;
+    const leaseUntil = at + leaseMs;
+    item.deliveryAttemptCount = attempt;
+    item.deliveryLastAttemptAt = at;
+    item.deliveryLeaseUntil = leaseUntil;
+    item.deliveryNextAttemptAt = leaseUntil + socialDeliveryBackoffMs(attempt);
+    return structuredClone(item);
   }
 
   acknowledge(id: string, at = Date.now()): boolean {
@@ -609,6 +681,8 @@ export class AutonomousSocialInitiativeEngine {
       || acknowledgedAt - item.createdAt > INITIATIVE_PENDING_TTL_MS) return false;
     item.status = 'executed';
     item.resolvedAt = acknowledgedAt;
+    item.deliveryLeaseUntil = undefined;
+    item.deliveryNextAttemptAt = undefined;
     this.state.executed = Math.min(MAX_SOCIAL_COUNTER, this.state.executed + 1);
     // Delivery proves only that the UI received a message. It is not evidence of
     // reciprocity or a positive social outcome, so relationship learning stays unchanged.
@@ -622,6 +696,8 @@ export class AutonomousSocialInitiativeEngine {
     if (!item || item.status === 'executed' || item.status === 'deferred' || deferredAt < item.createdAt) return false;
     item.status = 'deferred';
     item.resolvedAt = deferredAt;
+    item.deliveryLeaseUntil = undefined;
+    item.deliveryNextAttemptAt = undefined;
     this.state.deferred = Math.min(MAX_SOCIAL_COUNTER, this.state.deferred + 1);
     return true;
   }

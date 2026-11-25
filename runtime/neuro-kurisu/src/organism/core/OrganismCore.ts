@@ -2994,7 +2994,11 @@ export class OrganismCore {
         return staged;
     }
     pendingAutonomousSocialInitiativeMessage() {
-        return this.organismSystems.agency.autonomousSocialInitiative.latestReady();
+        const initiative = this.organismSystems.agency.autonomousSocialInitiative.claimReady();
+        if (initiative) {
+            this.persisted.system.autonomousSocialInitiative = this.organismSystems.agency.autonomousSocialInitiative.snapshot();
+        }
+        return initiative;
     }
     acknowledgeAutonomousSocialInitiative(id: string, at = Date.now()) {
         const acknowledged = this.organismSystems.agency.autonomousSocialInitiative.acknowledge(id, at);

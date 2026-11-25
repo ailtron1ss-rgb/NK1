@@ -3143,7 +3143,11 @@ export class OrganismRuntime {
 
   /** Pending self-initiated chat turn for the UI; no tool/device side effects occur here. */
   async autonomousDialogueReady() {
-    return this.enqueue(async () => this.core.pendingAutonomousSocialInitiativeMessage());
+    return this.enqueue(async () => {
+      const initiative = this.core.pendingAutonomousSocialInitiativeMessage();
+      if (initiative) await this.core.flush();
+      return initiative;
+    });
   }
 
   /** Mark a proactive chat turn delivered exactly once after the UI has stored it. */
