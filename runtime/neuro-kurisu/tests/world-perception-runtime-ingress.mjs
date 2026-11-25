@@ -144,7 +144,7 @@ for (const override of [
 }
 
 runtime.core.setObservationConsent('device', true);
-const admittedAndroidSample = runtime.core.admitObservation(buildAndroidTelemetryObservation(androidInput()), { now: 2000 });
+const admittedAndroidSample = runtime.core.admitObservation(buildAndroidTelemetryObservation(androidInput({ telemetry: androidTelemetry({ battery01: 0.71, sampledAt: 3000 }) })), { now: 3000 });
 assert.equal(admittedAndroidSample.status, 'accepted');
 assert.equal(admittedAndroidSample.observation?.isRealCapture, true);
 const groundedAndroidDevice = runtime.core.groundedWorldSnapshot().entities.find(
