@@ -2,7 +2,8 @@ import { createHash, randomUUID } from 'node:crypto';
 import type { NekoPluginVoiceTranscriptBridge } from '../integration/neko/NekoPluginVoiceTranscriptBridge.ts';
 import type { NekoAsrProviderPort } from '../integration/neko/NekoAsrTranscriptAdapter.ts';
 import { assertCognitiveCycleBoundaryInput } from './CognitiveCycleBoundary.ts';
-import { buildUniversalInputInterpretation, formatUniversalInterpretationContext } from '../cognition/UniversalInputInterpreter.ts';
+import { buildUniversalInputInterpretation, createDefaultCognitiveImmuneSystem, formatUniversalInterpretationContext } from '../cognition/UniversalInputInterpreter.ts';
+
 import { externalGoalForRuntimeInput, normalizeRuntimeExternalPluginSource, shouldInvokeLanguageForRuntimeStep, type RuntimeExternalGoalPolicy, type RuntimeExternalPluginSource } from './RuntimeInputPolicy.ts';
 import { normalizeWorldContext } from './WorldContextNormalizer.ts';
 import { FileStateStore, registerFileWorkspaceUndoFirstTools } from '../persistence/FileStateStore.ts';
@@ -297,6 +298,10 @@ interface RuntimeCognitiveHealthMonitor {
   snapshot():any;
   healthSnapshot():any;
   inspectHealth(input:RuntimeCognitiveHealthInput):RuntimeCognitiveHealthInspectionResult;
+  /** Optional trusted ingress inspection; when absent, external plugins fail closed. */
+  inspect?(source:string,payload:unknown,kind:'input'|'claim'|'tool'|'memory'|'world',options?:{sourceAttested?:boolean;attestedSource?:string}):{
+    accepted:boolean;trust:number;reason:string;record?:{id:string;payloadHash:string};
+  };
   reviewHealthSignal(id:string,verdict:'confirmed'|'false-positive'|'recovered',reviewer:string,evidenceRef?:string):boolean;
 }
 
@@ -492,7 +497,7 @@ export class OrganismRuntime {
 
   constructor(config: RuntimeConfig) {
     this.config = { intervalMs: 30_000, enableLanguage: false, autoRun: false, ...config };
-    this.cognitiveImmuneSystem = this.config.cognitiveHealthSystem ?? null;
+    this.cognitiveImmuneSystem = this.config.cognitiveHealthSystem ?? createDefaultCognitiveImmuneSystem();
     this.embodiment.setNekoAsrProvider(config.nekoAsrProvider ?? null);
     this.mem0Adapter = config.mem0Adapter ?? Mem0PlatformAdapter.fromEnvironment();
     this.mem0CognitiveRecallEnabled = config.mem0CognitiveRecall === true;
@@ -1178,10 +1183,79 @@ export class OrganismRuntime {
     }
   }
 
-  private async stepInternal(externalText?: string, options: RuntimeStepOptions = {}): Promise<RuntimeStep> {
+  private async stepInternal(externalTextInput?: string, options: RuntimeStepOptions = {}): Promise<RuntimeStep> {
     if (!this.initialized) throw new Error('OrganismRuntime.init() must be called first');
+    let externalText = externalTextInput;
+    let externalPluginSource = normalizeRuntimeExternalPluginSource(options.externalSource);
+    const externalSourceProvided = options.externalSource !== undefined && options.externalSource !== null;
+    if (externalText && externalSourceProvided) {
+      let admission:ReturnType<NonNullable<RuntimeCognitiveHealthMonitor['inspect']>>|undefined;
+      if (externalPluginSource) {
+        try {
+          const inspect=this.cognitiveImmuneSystem?.inspect;
+          if (typeof inspect === 'function') {
+            admission=inspect.call(this.cognitiveImmuneSystem,'tool',externalText,'tool',{
+              sourceAttested:true,
+              attestedSource:'tool',
+            });
+          }
+        } catch {
+          // An inspector failure is an admission failure; untrusted plugin text never falls through.
+        }
+      }
+      const admitted=Boolean(externalPluginSource)&&admission?.accepted===true&&
+        Number.isFinite(admission.trust)&&admission.trust>=0&&admission.trust<=1&&
+        typeof admission.reason==='string';
+      if (!admitted) {
+        const pluginId=externalPluginSource?.pluginId??'unverified';
+        const messageId=externalPluginSource?.messageId??'unverified';
+        const reason=!externalPluginSource
+          ? 'invalid-plugin-source-metadata'
+          : typeof admission?.reason==='string'
+            ? admission.reason.slice(0,96)
+            : typeof this.cognitiveImmuneSystem?.inspect==='function'
+              ? 'cognitive-input-inspection-failed'
+              : 'cognitive-input-inspector-unavailable';
+        const quarantineRecord=admission?.record;
+        // Invalid source envelopes are not passed to the trust store; still retain a
+        // collision-resistant digest so the quarantine event is auditable without content.
+        const payloadHash=quarantineRecord?.payloadHash??
+          createHash('sha256').update(externalText).digest('hex');
+        const tick=this.core.operationalStatusSnapshot().tick+1;
+        this.cognitiveEventFabric.append({
+          id:'cef:input-quarantine:'+randomUUID(),
+          tick,
+          stage:'external-evidence',
+          source:'cognitive-immune-system',
+          external:true,
+          confidence01:clamp01(Number(admission?.trust??0)),
+          payload:{
+            admission:'quarantined',
+            reason,
+            pluginId,
+            messageId,
+            payloadHash:String(payloadHash).slice(0,64),
+            ...(quarantineRecord?.id?{quarantineId:String(quarantineRecord.id).slice(0,180)}:{}),
+          },
+        });
+        this.core.setRuntimeCognitiveEventFabric(this.cognitiveEventFabric.snapshot());
+        // Remove the content and source metadata before any perception, appraisal,
+        // memory retrieval, goal selection or language path can consume the message.
+        externalText=undefined;
+        externalPluginSource=undefined;
+        await this.cognitiveImmuneStore.save(this.cognitiveImmuneSystem?.snapshot()??{}).catch(async error=>{
+          await this.journal.write('error','runtime.plugin-input.quarantine-persist-failed',{
+            tick,pluginId,messageId,message:String((error as any)?.message??error).slice(0,160),
+          }).catch(()=>{});
+        });
+        await this.journal.write('warn','runtime.plugin-input.quarantined',{
+          tick,pluginId,messageId,reason,
+          quarantineId:quarantineRecord?.id??null,
+        }).catch(()=>{});
+      }
+    }
+    // Rejected external envelopes must not wake an idle/sleeping organism.
     if (externalText) this.embodiment.userActivity();
-    const externalPluginSource = normalizeRuntimeExternalPluginSource(options.externalSource);
     let body = await this.embodiment.sample();
     const resourceAllocation = this.resourceEconomy.allocate({
       tick: this.core.operationalStatusSnapshot().tick,

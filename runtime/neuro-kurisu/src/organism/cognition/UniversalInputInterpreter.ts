@@ -2,6 +2,13 @@ import type { OrganismObservation } from '../core/types.ts';
 import type { Modality, ModalityObservation } from '../body/MultimodalPerception.ts';
 import type { P41PerceptionState } from './P41SemanticPerception.ts';
 
+import { CognitiveImmuneSystem } from './CognitiveImmuneSystem.ts';
+
+/** Composition helper for the default policy owner used at runtime input boundaries. */
+export function createDefaultCognitiveImmuneSystem(): CognitiveImmuneSystem {
+  return new CognitiveImmuneSystem();
+}
+
 export type UniversalModalityInput =
   Pick<ModalityObservation, 'modality' | 'summary' | 'confidence' | 'salience' | 'evidence'> &
   { content?: string };

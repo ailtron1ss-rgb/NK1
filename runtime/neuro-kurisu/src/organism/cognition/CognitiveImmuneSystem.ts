@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 
 export interface QuarantineRecord { id:string; source:string; reason:string; payloadHash:string; at:number; }
 export interface CognitiveReviewRecord {
@@ -82,11 +82,8 @@ export interface CognitiveImmuneState {
 }
 
 const clamp=(x:unknown)=>Math.max(0,Math.min(1,Number.isFinite(Number(x))?Number(x):0));
-const hash=(value:string)=>{
-  let h=2166136261;
-  for(let i=0;i<value.length;i++){h^=value.charCodeAt(i);h=Math.imul(h,16777619);}
-  return (h>>>0).toString(16);
-};
+// Quarantine evidence is security/audit material: use a collision-resistant digest.
+const hash=(value:string)=>createHash('sha256').update(value).digest('hex');
 const safeText=(value:unknown)=>{
   if(typeof value==='string')return value;
   try{return JSON.stringify(value??null)??'null';}

@@ -12,6 +12,7 @@ on:
       - 'runtime/neuro-kurisu/src/organism/memory/EventSourcing.ts'
       - 'runtime/neuro-kurisu/src/organism/system/CognitiveEventFabric.ts'
       - 'runtime/neuro-kurisu/tests/metacognitive-episode-*.mjs'
+      - 'runtime/neuro-kurisu/tests/cognitive-immune-plugin-runtime-gate.mjs'
       - 'runtime/neuro-kurisu/tests/runtime-checkpoint-envelope-*.mjs'
       - 'runtime/neuro-kurisu/tests/runtime-checkpoint-projection-fault-matrix-*.mjs'
       - 'runtime/neuro-kurisu/src/organism/system/RuntimeCheckpointEnvelope.ts'

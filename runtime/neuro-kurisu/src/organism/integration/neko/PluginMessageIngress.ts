@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { createAuthenticatedRuntimeExternalPluginSource } from '../../core/RuntimeInputPolicy.ts';
 import { types as nodeUtilTypes } from 'node:util';
 
 export type NekoMessageAiBehavior = 'respond' | 'read' | 'blind';
@@ -329,11 +330,7 @@ export class PluginMessageIngress {
           spontaneous: false,
           suppressResponse: message.aiBehavior === 'read',
           externalGoalPolicy: 'evidence-only',
-          externalSource: {
-            kind: 'neko-plugin',
-            pluginId: message.pluginId,
-            messageId: message.messageId,
-          },
+          externalSource: createAuthenticatedRuntimeExternalPluginSource(message.pluginId, message.messageId),
         });
         cognitiveProcessed = true;
       } catch {
