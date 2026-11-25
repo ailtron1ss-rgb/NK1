@@ -100,7 +100,8 @@ assert.equal(safe.uncertainty01, 0.5);
 assert.equal(safe.confidence01, 0);
 assert.equal(safe.entities.length, 1);
 assert.equal(safe.entities[0].confidence01, 0);
-assert.equal(safe.entities[0].present01, 1);
+assert.equal(safe.entities[0].present01, 0,
+  'out-of-range restored scores must fall back rather than saturate into maximum confidence');
 assert.equal(safe.entities[0].firstSeenAt, 0);
 assert.equal(safe.entities[0].lastSeenAt, 0);
 assert.deepEqual(safe.entities[0].modalities, ['vision']);
@@ -108,10 +109,13 @@ assert.equal(safe.entities[0].position, null);
 assert.equal(safe.entities[0].velocity, null);
 assert.deepEqual(safe.entities[0].sourceIds, ['camera-1']);
 assert.equal(safe.entities[0].observationCount, 1);
+assert.equal(safe.entities[0].persistence01, 0,
+  'out-of-range persisted persistence must not be upgraded to full permanence');
 assert.equal(safe.events[0].evidenceKind, 'model-output');
 assert.equal(safe.events[0].confidence01, 0);
 assert.equal(safe.events[0].lastAt, 0);
-assert.equal(safe.events[0].persistence01, 1);
+assert.equal(safe.events[0].persistence01, 0,
+  'out-of-range event persistence must fail closed');
 assert.deepEqual(safe.facts, ['valid fact']);
 assert.deepEqual(safe.provenanceIds, ['source-1']);
 assert.notEqual(safe.lastHash, 'attacker-controlled-hash');
