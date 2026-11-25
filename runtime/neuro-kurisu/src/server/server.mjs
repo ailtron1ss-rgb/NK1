@@ -1891,6 +1891,18 @@ async function route(req, res) {
                 return json(res, 503, { ok: false, error: String(error?.message || error) });
             }
         }
+        if (req.method === 'GET' && url.pathname === '/api/organism/proactive-consent') {
+            if (!runtimeReady) return json(res, 503, { ok: false, error: 'organism-runtime-not-ready' });
+            return json(res, 200, { ok: true, policy: runtime.core.autonomousInitiativeDeliveryPolicy() });
+        }
+        if (req.method === 'POST' && url.pathname === '/api/organism/proactive-consent') {
+            if (!runtimeReady) return json(res, 503, { ok: false, error: 'organism-runtime-not-ready' });
+            const input = await body(req);
+            if (typeof input.consentGranted !== 'boolean') return json(res, 400, { ok: false, error: 'consent-granted-must-be-boolean' });
+            const policy = runtime.core.setAutonomousInitiativeConsent(input.consentGranted);
+            await runtime.core.flush();
+            return json(res, 200, { ok: true, policy });
+        }
         if (req.method === 'GET' && url.pathname === '/api/organism/proactive-message') {
             const initiative = await runtime.autonomousDialogueReady();
             return json(res, 200, { ok: true, initiative });
