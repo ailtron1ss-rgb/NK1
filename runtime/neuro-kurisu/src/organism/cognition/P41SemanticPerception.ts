@@ -268,7 +268,7 @@ export interface P41SemanticInput {
     semantic:boolean;
   };
   audio?:{events?:Array<{label:string;confidence01?:number}>;relations?:Array<{from:string;relation:string;to:string;confidence01?:number}>;latencyMs?:number;semantic:boolean};
-  sensor?:{location?:string;orientationDeg?:number;energy01?:number;thermal01?:number;capacity01?:number;motion01?:number;freshness01?:number};
+  sensor?:{location?:string;sourceId?:string;orientationDeg?:number;energy01?:number;thermal01?:number;capacity01?:number;motion01?:number;freshness01?:number};
   world?:{scene?:string;evidenceKind?:P41EvidenceKind;objects?:Array<{label:string;kind?:P41EntityKind;confidence01?:number;trackId?:string;sourceId?:string;coordinateFrameId?:string;x?:number;y?:number;z?:number;bbox2D?:P41ImageBox;bboxCameraId?:number;bboxAt?:number;bboxConfidence01?:number;evidenceKind?:P41EvidenceKind}>;events?:string[]};
   at?:number;
 }
@@ -539,8 +539,9 @@ export class P41SemanticPerceptionEngine {
 
   ingestSensor(s:NonNullable<P41SemanticInput['sensor']>,at:number){
     const label=String(s.location??'host-local');
-    this.upsertEntity(label,'place',.82,.35,'sensor',at,null,'observed');
-    this.upsertEntity(`body@${label}`,'body',.92,.42,'sensor',at,null,'observed');
+    const sourceId=cleanTrackId(s.sourceId)||undefined;
+    this.upsertEntity(label,'place',.82,.35,'sensor',at,null,'observed',undefined,undefined,sourceId);
+    this.upsertEntity(`body@${label}`,'body',.92,.42,'sensor',at,null,'observed',undefined,undefined,sourceId);
     this.recordModality('sensor',clamp(s.freshness01??.85),0);
   }
 
