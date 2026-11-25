@@ -151,5 +151,20 @@ const proxyTrustSnapshot = new Proxy({ version:1, records:[] }, {
 assert.throws(() => hostileTrust.restore(proxyTrustSnapshot), /inert-snapshot-invalid/);
 assert.equal(trustProxyTrapCalls, 0, 'proxy-backed evidence snapshots must be rejected without invoking traps');
 
+
+const liveInvalidNumbers = new ExternalEvidenceTrustEngine();
+const invalidConfidence = liveInvalidNumbers.observe({
+  claimKey:'claim:live-invalid-confidence',source:'device',independenceKey:'camera-invalid-confidence',
+  confidence01:9,at:now,evidenceId:'invalid-confidence-event',
+});
+assert.equal(invalidConfidence.confidence01, .5,
+  'out-of-range live confidence must fall back conservatively rather than saturating at one');
+const invalidContradiction = liveInvalidNumbers.observe({
+  claimKey:'claim:live-invalid-contradiction',source:'device',independenceKey:'camera-invalid-contradiction',
+  confidence01:.7,contradiction01:9,at:now,evidenceId:'invalid-contradiction-event',
+});
+assert.equal(invalidContradiction.contradictions, 0,
+  'out-of-range contradiction input must not manufacture conflict evidence');
+
 console.log('EXTERNAL_EVIDENCE_TRUST_RESTORE_INTEGRITY=PASS hostile=3');
 
