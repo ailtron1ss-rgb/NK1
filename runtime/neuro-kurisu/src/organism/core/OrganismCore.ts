@@ -2997,6 +2997,7 @@ export class OrganismCore {
         const result = this.organismSystems.agency.autonomousSocialInitiative.claimReadyWithState();
         if (result.stateChanged) {
             this.persisted.system.autonomousSocialInitiative = this.organismSystems.agency.autonomousSocialInitiative.snapshot();
+            this.markPersistenceDirty();
         }
         return result;
     }
@@ -3007,6 +3008,7 @@ export class OrganismCore {
         const result = this.organismSystems.agency.autonomousSocialInitiative.acknowledgeWithState(id, at, expectedAttemptCount);
         if (result.stateChanged) {
             this.persisted.system.autonomousSocialInitiative = this.organismSystems.agency.autonomousSocialInitiative.snapshot();
+            this.markPersistenceDirty();
         }
         return result;
     }
