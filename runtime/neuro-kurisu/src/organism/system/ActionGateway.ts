@@ -98,6 +98,8 @@ export interface ActionGatewayExecutionOptions {
   expectedOutputKeys?: string[];
   /** One-shot, time-limited user approval bound to the exact tool and canonical request. */
   approvalId?: string;
+  /** Host-authenticated session scope for a temporary category grant; never sourced from tool input. */
+  permissionSessionId?: string;
   /** Expected resource fingerprint for an adapter-enforced atomic compare-and-set. */
   expectedPreconditionHash?: string;
 }
@@ -133,6 +135,8 @@ export interface ToolExecutionContext {
   expectedPreconditionHash?:string;
 }
 export type ActionToolPermissionClass = 'web'|'device'|'filesystem'|'code'|'system'|'self-modification';
+export type ActionToolPermissionMode = 'auto'|'first_ask'|'always_ask'|'allow'|'deny';
+export type ActionToolPermissionChoice = 'always'|'session'|'once'|'deny';
 export type ActionToolApprovalOperation = 'execute'|'reconcile'|'direct';
 export type ActionToolApprovalStatus = 'pending'|'approved'|'declined'|'consumed'|'expired';
 export interface ActionToolApprovalRecord {
@@ -140,8 +144,13 @@ export interface ActionToolApprovalRecord {
   requestHash:string; status:ActionToolApprovalStatus; createdAt:number; expiresAt:number;
   resolvedAt?:number; consumedAt?:number; actor?:string; reasonCode:string;
   inputKeys:string[]; inputPreview:Record<string,unknown>; decisionId?:string; autonomous:boolean;
+  policyRevision?:number;
 }
-export interface ActionToolPermissionSnapshot {version:1; requests:ActionToolApprovalRecord[]; created:number; approved:number; declined:number; consumed:number; expired:number; lastChangeAt:number;}
+export interface ActionToolPermissionSnapshot {
+  version:1; requests:ActionToolApprovalRecord[]; created:number; approved:number; declined:number; consumed:number; expired:number; lastChangeAt:number;
+  categoryModes?:Partial<Record<ActionToolPermissionClass,ActionToolPermissionMode>>;
+  policyRevisions?:Partial<Record<ActionToolPermissionClass,number>>;
+}
 export interface ActionExecutionLedgerSnapshot { version:1; records:ActionExecutionLedgerEntry[]; permissions?:ActionToolPermissionSnapshot; }
 export interface ActionExecutionLedgerArchiveMetadata {
   keyHash:string; requestHash:string; status:'completed'; executionId?:string; toolId?:string; decisionId?:string;
@@ -318,7 +327,30 @@ function classifyVerifiedExecution(toolOk:boolean, verification:OutcomeVerificat
   const outcomeClass:ActionOutcomeClass=!toolOk?'execution-failed':contradicted?'executed-contradicted':verified?'executed-verified':'executed-unverified';
   return {ok,verified,outcomeClass,contradicted};
 }
-const defaultActionToolPermissions=():ActionToolPermissionSnapshot=>({version:1,requests:[],created:0,approved:0,declined:0,consumed:0,expired:0,lastChangeAt:0});
+const defaultActionToolPermissions=():ActionToolPermissionSnapshot=>({version:1,requests:[],created:0,approved:0,declined:0,consumed:0,expired:0,lastChangeAt:0,categoryModes:{},policyRevisions:{}});
+
+const ACTION_TOOL_PERMISSION_CLASSES:readonly ActionToolPermissionClass[]=['web','device','filesystem','code','system','self-modification'];
+const ACTION_TOOL_PERMISSION_MODES:ReadonlySet<string>=new Set(['auto','first_ask','always_ask','allow','deny']);
+const ACTION_TOOL_PERMISSION_CHOICES:ReadonlySet<string>=new Set(['always','session','once','deny']);
+const MAX_PERMISSION_SESSION_GRANTS=512;
+function normalizePermissionSessionId(value:unknown):string|null|undefined {
+  if(value===undefined)return undefined;
+  if(typeof value!=='string')return null;
+  const normalized=value.normalize('NFKC').trim();
+  if(!normalized||normalized.length>160||/[\u0000-\u001f\u007f]/.test(normalized))return null;
+  return normalized;
+}
+function defaultEffectivePermissionMode(permissionClass:ActionToolPermissionClass):Exclude<ActionToolPermissionMode,'auto'> {
+  return permissionClass==='web'||permissionClass==='device'?'first_ask':'always_ask';
+}
+function effectiveActionToolPermissionMode(
+  permissionClass:ActionToolPermissionClass,
+  configured:Partial<Record<ActionToolPermissionClass,ActionToolPermissionMode>>|undefined
+):Exclude<ActionToolPermissionMode,'auto'> {
+  const mode=configured?.[permissionClass]??'auto';
+  return mode==='auto'?defaultEffectivePermissionMode(permissionClass):mode;
+}
+
 
 const MAX_ACTION_GATEWAY_SNAPSHOT_DEPTH = 12;
 const MAX_ACTION_GATEWAY_SNAPSHOT_NODES = 100_000;
@@ -488,6 +520,8 @@ export class ActionGateway {
   private readonly maxIdempotencyRecords:number;
   private readonly executionLedger=new Map<string,ActionExecutionLedgerEntry>();
   private permissionState:ActionToolPermissionSnapshot=defaultActionToolPermissions();
+  private readonly pendingPermissionSessionIds=new Map<string,string>();
+  private readonly permissionSessionGrants=new Map<string,Map<ActionToolPermissionClass,number>>();
   private permissionAdmissionTail:Promise<void>=Promise.resolve();
   private readonly inFlight=new Map<string,{requestHash:string;kind:'execute'|'reconcile';promise:Promise<ToolExecution>}>();
   private ledgerAdmissionTail:Promise<void>=Promise.resolve();
@@ -591,10 +625,25 @@ export class ActionGateway {
     return {version:1,records:[...this.executionLedger.values()].sort((a,b)=>b.recordedAt-a.recordedAt).map(row=>structuredClone(row)),permissions:structuredClone(this.permissionState)};
   }
 
-  /** User review queue; public rows omit full request hashes, actors and any raw input. */
   toolPermissionSnapshot(at=Date.now()) {
     this.expirePermissionRequests(at);
-    return { version:1 as const, requests:this.permissionState.requests.slice(-64).map(row=>this.publicApproval(row)), created:this.permissionState.created, approved:this.permissionState.approved, declined:this.permissionState.declined, consumed:this.permissionState.consumed, expired:this.permissionState.expired, lastChangeAt:this.permissionState.lastChangeAt, requiredClasses:['web','device','filesystem','code','system','self-modification'], pending:this.permissionState.requests.filter(x=>x.status==='pending'||x.status==='approved').length };
+    const categoryModes=Object.fromEntries(ACTION_TOOL_PERMISSION_CLASSES.map(permissionClass=>[
+      permissionClass,this.permissionState.categoryModes?.[permissionClass]??'auto',
+    ])) as Record<ActionToolPermissionClass,ActionToolPermissionMode>;
+    const effectiveModes=Object.fromEntries(ACTION_TOOL_PERMISSION_CLASSES.map(permissionClass=>[
+      permissionClass,this.effectivePermissionMode(permissionClass),
+    ])) as Record<ActionToolPermissionClass,Exclude<ActionToolPermissionMode,'auto'>>;
+    const policyRevisions=Object.fromEntries(ACTION_TOOL_PERMISSION_CLASSES.map(permissionClass=>[
+      permissionClass,this.permissionRevision(permissionClass),
+    ])) as Record<ActionToolPermissionClass,number>;
+    return {
+      version:1 as const,requests:this.permissionState.requests.slice(-64).map(row=>this.publicApproval(row)),
+      created:this.permissionState.created,approved:this.permissionState.approved,declined:this.permissionState.declined,
+      consumed:this.permissionState.consumed,expired:this.permissionState.expired,lastChangeAt:this.permissionState.lastChangeAt,
+      requiredClasses:[...ACTION_TOOL_PERMISSION_CLASSES],categoryModes,effectiveModes,policyRevisions,
+      sessionGrantCount:[...this.permissionSessionGrants.values()].reduce((sum,grants)=>sum+grants.size,0),
+      pending:this.permissionState.requests.filter(x=>x.status==='pending'||x.status==='approved').length,
+    };
   }
 
   private withPermissionAdmission<T>(operation:()=>Promise<T>):Promise<T> {
@@ -607,8 +656,77 @@ export class ActionGateway {
     return this.tools.get(id)?.permissionClass ?? inferPermissionClass(id,this.tools.get(id)?.capability ?? '');
   }
 
+  private effectivePermissionMode(permissionClass:ActionToolPermissionClass):Exclude<ActionToolPermissionMode,'auto'> {
+    return effectiveActionToolPermissionMode(permissionClass,this.permissionState.categoryModes);
+  }
+
+  private permissionRevision(permissionClass:ActionToolPermissionClass):number {
+    const value=this.permissionState.policyRevisions?.[permissionClass];
+    return typeof value==='number'&&Number.isSafeInteger(value)&&value>=0?value:0;
+  }
+
+  private hasPermissionSessionGrant(sessionId:string,permissionClass:ActionToolPermissionClass):boolean {
+    return this.permissionSessionGrants.get(sessionId)?.get(permissionClass)===this.permissionRevision(permissionClass);
+  }
+
+  private rememberPermissionSessionGrant(sessionId:string,permissionClass:ActionToolPermissionClass):void {
+    if(!this.permissionSessionGrants.has(sessionId)&&this.permissionSessionGrants.size>=MAX_PERMISSION_SESSION_GRANTS){
+      const oldest=this.permissionSessionGrants.keys().next().value;
+      if(oldest!==undefined)this.permissionSessionGrants.delete(oldest);
+    }
+    let grants=this.permissionSessionGrants.get(sessionId);
+    if(!grants){grants=new Map();this.permissionSessionGrants.set(sessionId,grants);}
+    grants.set(permissionClass,this.permissionRevision(permissionClass));
+  }
+
+  private clearPermissionSessionClass(permissionClass:ActionToolPermissionClass):void {
+    for(const [sessionId,grants] of this.permissionSessionGrants){
+      grants.delete(permissionClass);
+      if(!grants.size)this.permissionSessionGrants.delete(sessionId);
+    }
+  }
+
+  clearToolPermissionSession(rawSessionId:string):boolean {
+    const sessionId=normalizePermissionSessionId(rawSessionId);
+    if(!sessionId)return false;
+    return this.permissionSessionGrants.delete(sessionId);
+  }
+
+  private invalidatePermissionRequests(permissionClass:ActionToolPermissionClass,preserveRequestId?:string):void {
+    for(const row of this.permissionState.requests){
+      if(row.permissionClass!==permissionClass||row.id===preserveRequestId)continue;
+      if(row.status==='pending'||row.status==='approved'){
+        row.status='expired';
+        this.permissionState.expired=Math.min(1_000_000_000,this.permissionState.expired+1);
+      }
+    }
+  }
+
+  async setToolPermissionMode(permissionClass:ActionToolPermissionClass,mode:ActionToolPermissionMode,expectedRevision?:number) {
+    return this.withPermissionAdmission(async()=>{
+      if(!ACTION_TOOL_PERMISSION_CLASSES.includes(permissionClass))return {ok:false,error:'permission-class-invalid'};
+      if(!ACTION_TOOL_PERMISSION_MODES.has(mode))throw new Error('invalid-action-tool-permission-mode');
+      const revision=this.permissionRevision(permissionClass);
+      if(expectedRevision!==undefined&&expectedRevision!==revision)return {ok:false,error:'permission-policy-revision-conflict',revision};
+      const priorMode=this.permissionState.categoryModes?.[permissionClass]??'auto';
+      if(priorMode===mode)return {ok:true,mode,effectiveMode:this.effectivePermissionMode(permissionClass),revision};
+      const prior=structuredClone(this.permissionState);
+      this.permissionState.categoryModes={...(this.permissionState.categoryModes??{}),[permissionClass]:mode};
+      this.permissionState.policyRevisions={...(this.permissionState.policyRevisions??{}),[permissionClass]:revision+1};
+      this.permissionState.lastChangeAt=Date.now();
+      this.invalidatePermissionRequests(permissionClass);
+      try{await this.persistExecutionLedger();}
+      catch{this.permissionState=prior;return {ok:false,error:'permission-policy-storage-failed',revision};}
+      this.clearPermissionSessionClass(permissionClass);
+      for(const row of this.permissionState.requests)if(row.permissionClass===permissionClass&&row.status==='expired')this.pendingPermissionSessionIds.delete(row.id);
+      return {ok:true,mode,effectiveMode:this.effectivePermissionMode(permissionClass),revision:revision+1};
+    });
+  }
+
   private approvalFingerprint(toolId:string,input:Record<string,unknown>,options:ActionGatewayExecutionOptions,operation:ActionToolApprovalOperation):string {
-    return sha256Stable({toolId,input,operation,decisionId:typeof options.decisionId==='string'?options.decisionId.trim()||null:null,autonomous:Boolean(options.autonomous),expectedOutputKeys:canonicalExpectedOutputKeys(options.expectedOutputKeys),...(options.expectedPreconditionHash?{expectedPreconditionHash:options.expectedPreconditionHash}:{})});
+    const permissionSessionId=normalizePermissionSessionId(options.permissionSessionId);
+    if(permissionSessionId===null)throw new Error('approval-session-id-invalid');
+    return sha256Stable({toolId,input,operation,decisionId:typeof options.decisionId==='string'?options.decisionId.trim()||null:null,autonomous:Boolean(options.autonomous),permissionSessionId:permissionSessionId??null,expectedOutputKeys:canonicalExpectedOutputKeys(options.expectedOutputKeys),...(options.expectedPreconditionHash?{expectedPreconditionHash:options.expectedPreconditionHash}:{})});
   }
 
   async requestToolApproval(toolId:string,input:Record<string,unknown>={},reason='user-request',options:ActionGatewayExecutionOptions={},operation:ActionToolApprovalOperation='execute') {
