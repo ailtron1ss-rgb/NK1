@@ -106,7 +106,8 @@ const sparseMood=sparseIntero.moodSnapshot(interoStart+60_000);
 for(const key of ['valence01','arousal01','stress01','socialSafety01'])
   assert.ok(Math.abs(denseMood[key]-sparseMood[key])<.025,
     `slow mood ${key} must not become stronger just because the sensor publishes more frequently`);
-assert.equal(denseInteroState.recentSampleIds.length,64);
+assert.equal(denseInteroState.recentSampleIds.length,61,
+  'the 61 distinct timestamps in the inclusive one-minute trajectory must be retained inside the 64-sample replay window');
 assert.equal(denseInteroState.lastAt,sparseInteroState.lastAt);
 assert.equal(denseIntero.snapshot().mood.interoceptiveDurationMs,sparseIntero.snapshot().mood.interoceptiveDurationMs);
 
