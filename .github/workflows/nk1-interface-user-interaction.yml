@@ -25,6 +25,8 @@ on:
       - "app/scripts/command-palette.test.mjs"
       - "app/scripts/action-approval-decline.test.mjs"
       - "app/scripts/polling-schedule.test.mjs"
+      - "app/scripts/chat-draft-storage.test.mjs"
+      - "app/scripts/chat-recovery.test.mjs"
       - "app/src/neuro-kurisu/action-approval-broker.ts"
       - "app/scripts/organism-snapshot-sync.test.mjs"
       - "app/package.json"
