@@ -1,7 +1,8 @@
 import * as THREE from "three";
+import type { Box3 } from "three";
 
 export interface AvatarModelFitBounds {
-  bounds: THREE.Box3;
+  bounds: Box3;
   source: "skinned-meshes" | "character-meshes";
   includedMeshes: number;
   excludedEnvironmentMeshes: number;
@@ -9,7 +10,7 @@ export interface AvatarModelFitBounds {
 
 const ENVIRONMENT_NAME = /(^|_)(?:env_)?(?:floor|ground|background|backdrop|stagefloor)(?:_|$)/;
 
-function isFiniteBox(bounds: THREE.Box3): boolean {
+function isFiniteBox(bounds: Box3): boolean {
   if (bounds.isEmpty()) return false;
   return [
     bounds.min.x, bounds.min.y, bounds.min.z,
@@ -17,7 +18,7 @@ function isFiniteBox(bounds: THREE.Box3): boolean {
   ].every(Number.isFinite);
 }
 
-function isEnvironmentMesh(node: any, bounds: THREE.Box3): boolean {
+function isEnvironmentMesh(node: any, bounds: Box3): boolean {
   const normalizedName = String(node.name ?? "")
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "_");
