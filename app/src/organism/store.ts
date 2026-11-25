@@ -10,7 +10,8 @@ let lastInitiativePollAt = 0;
 
 function loadChat(): OrganismSnapshot["chat"] {
   if (typeof window === "undefined") return [];
-  return restoreChatCache(localStorage.getItem(CHAT_CACHE_KEY));
+  try { return restoreChatCache(localStorage.getItem(CHAT_CACHE_KEY)); }
+  catch { return []; }
 }
 function saveChat(chat: OrganismSnapshot["chat"]): boolean {
   if (typeof window === "undefined") return false;
