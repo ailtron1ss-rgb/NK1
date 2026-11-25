@@ -1,4 +1,48 @@
-# CURRENT HANDOFF — 2026-11-24
+# CURRENT HANDOFF — 2026-11-25
+
+**Canonical source:** `workpass70-source` @ `9008a8982a5173304456bee2c604bd0bc8665964`.  
+**main:** `06e01cdd0a8e60ed70991f22e842887f544d1ebf` (release/metadata only).  
+**Branch protection:** `workpass70-source` ранее наблюдался как `protected=false`; точные checks обязательны перед каждым merge.
+
+## Точный source и границы изменений
+
+- Current source после PR #1157: `9008a8982a5173304456bee2c604bd0bc8665964`.
+- PR #1157 был объединён до текущего инженерного прохода; merge SHA равен source HEAD. Его 72/72 exact-head checks и 31/31 post-merge checks записаны в реестре консолидации.
+- В ходе текущей работы canonical `workpass70-source`, `main`, Release tag и Release assets не изменялись.
+- Кодовые изменения сделаны в отдельных aspect-ветках и остаются Draft PR; никаких новых merge в source в этом проходе не выполнялось.
+
+## Verified aspect work
+
+| PR | Branch HEAD | Verification | Remaining gate |
+|---|---|---:|---|
+| [#1179](https://github.com/ailtron1ss-rgb/NK1/pull/1179) | `a33e889900a6575160cb8b5b96ab6b8d1cf61de1` | 11/11 SUCCESS | Independent review |
+| [#1180](https://github.com/ailtron1ss-rgb/NK1/pull/1180) | `9c13acd0287314992a0d8a421c50533d2798231a` | 74/74 SUCCESS | Independent review; host verifier remains a separate future capability |
+| [#1174](https://github.com/ailtron1ss-rgb/NK1/pull/1174) | `e1f83557bc8f5e7d9b304f943f8fce8d9c9b6192` | 74/76 SUCCESS at last poll, 0 failures | Two checks not complete; independent review; real device power-loss soak |
+| [#1170](https://github.com/ailtron1ss-rgb/NK1/pull/1170) | `bdcad2c34a5dd9ffa0443c4cca8b56d989cc43e6` | 83/83 Actions SUCCESS | Independent review; semantic TSC check and Android/Termux soak |
+
+## Key outcomes
+
+- **Metacognitive neural integrity (#1179):** correct 24→27 feature contract, v1→v2 state migration preserving old learned weights, paired prediction targets, and gradient attribution to the current sample.
+- **P53 self-improvement guard (#1180):** P53 v3 cannot generate its own holdout/transfer/progress evidence or promote its own candidate. Legacy unverified active profiles are neutralized during restore/migration.
+- **Continuity durability (#1174):** append-only journal is bounded, concurrent flush does not drop later records, torn tail recovery and rollback boundaries are explicit; watchdog checkpoint timestamp only advances inside a successful Core save callback.
+- **Runtime checkpoint envelope (#1170):** five critical sidecar owners are committed/restored as one bounded generation; invalid present envelopes fail closed rather than combining mixed legacy sidecars.
+
+## Next P0/P1 execution queue
+
+1. Finish and inspect the exact-head #1174 checks; don't accept a partial 74/76 snapshot.
+2. Obtain independent code review for #1170, #1174, #1179 and #1180; fix all Critical/Important findings and retain Draft until then.
+3. Verify P53's future host-owned promotion capability design against existing #743 admission; do not wire candidate-controlled booleans or self-produced holdout evidence.
+4. Continue MemoryOS2 integrity and independent RU/EN holdout: frozen corpus, source-cluster splits, at least five paired seeds, recall uplift and forgetting/revision metrics.
+5. Run actual local-model inference on the intended host, ActionGateway lost-ACK/restart reconciliation and Android/Termux/browser/audio/embodiment soak.
+6. Inspect the October 19 Release ZIP bytes, independently hash/extract, compare file manifest and resolve human license review before any new Release.
+
+## Release truth
+
+The latest October 19 ZIP remains the only verified published artifact by metadata. ZIP bytes, extraction manifest and source parity remain UNVERIFIED; human license review and redistribution approval remain blocking. November source/PR changes are not RELEASED.
+
+**Current cycle note:** this handoff was refreshed on 2026-11-25. The prior 2026-11-24 checkpoint remains below as historical context.
+---
+# ARCHIVED HANDOFF — 2026-11-24
 
 **Canonical source:** `workpass70-source` @ `87c9ed9034e09ca9fb83fd676ac52bb46434c4fe`.  
 **main:** `06e01cdd0a8e60ed70991f22e842887f544d1ebf` (release/metadata only).  

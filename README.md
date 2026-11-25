@@ -1,4 +1,45 @@
-## Актуальный live checkpoint — 24 ноября 2026
+## Актуальный live checkpoint — 25 ноября 2026
+
+**Каноническая исходная ветка:** `workpass70-source` @ `9008a8982a5173304456bee2c604bd0bc8665964`.  
+**Tree:** `864841c05b5810e9c218dcf973d1e8b7307cb75e`.  
+**main:** `06e01cdd0a8e60ed70991f22e842887f544d1ebf` (release/metadata only).
+
+### Последние проверенные работы на aspect-ветках
+
+| PR | Изменение | Точный HEAD | CI на точном HEAD | Статус |
+|---|---|---|---:|---|
+| [#1179](https://github.com/ailtron1ss-rgb/NK1/pull/1179) | Исправлена целостность Metacognitive Neural Substrate: 27 входных признаков, миграция v1→v2, градиент текущего наблюдения и парные targets | `a33e889900a6575160cb8b5b96ab6b8d1cf61de1` | **11/11 SUCCESS** | Draft, unmerged |
+| [#1180](https://github.com/ailtron1ss-rgb/NK1/pull/1180) | P53 self-improvement fail-closed: preview-only, без самостоятельного promotion, legacy quarantine v2→v3 | `9c13acd0287314992a0d8a421c50533d2798231a` | **74/74 SUCCESS** | Draft, unmerged |
+| [#1174](https://github.com/ailtron1ss-rgb/NK1/pull/1174) | Crash-safe ContinuityLedger и RecoveryWatchdog; durability marker записывается внутри успешного Core checkpoint | `e1f83557bc8f5e7d9b304f943f8fce8d9c9b6192` | **74/76 SUCCESS; 0 failures, 2 incomplete** | Draft, unmerged |
+| [#1170](https://github.com/ailtron1ss-rgb/NK1/pull/1170) | Единая проверяемая checkpoint generation для World, OpenLoop, CognitiveSpine, RiskRecovery и CognitiveHealth | `bdcad2c34a5dd9ffa0443c4cca8b56d989cc43e6` | **83/83 Actions SUCCESS** | Draft; independent review/device soak open |
+
+### Что именно доказали эти проверки
+
+- **#1179:** тестовый RED подтвердил старую размерность 24 против 27; после исправления все 11 exact-head checks прошли, включая TypeScript `tsc`, unified organism, Core regression и чистый startup.
+- **#1180:** тестовый RED подтвердил, что P53 самостоятельно выставлял `promotable`; после исправления 74/74 exact-head checks прошли, включая тесты прямого promotion, periodic auto-promotion, restore/migration quarantine и общие runtime suites.
+- **#1174:** отдельный durability workflow завершил все 11 шагов: formal gate, durable process restart, FileStateStore crash recovery, kill/resume, longitudinal continuity и persistent continuity integration. В общей 76-check матрице при последней сверке оставались 2 незавершённых checks; полный PASS пока не заявляется.
+- **#1170:** предыдущий exact head прошёл 83/83 Actions. Это не заменяет независимый review и Android/Termux soak; в PR отдельно отмечено, что его focused typecheck не доказывает semantic `tsc`.
+
+Все четыре PR остаются Draft и не объединены в canonical source. Это изменения на aspect-ветках, а не RELEASED-изменения.
+
+### Текущие приоритеты и ограничения
+
+1. Дождаться точного завершения оставшихся checks #1174; затем независимый review #1174 и #1170.
+2. Проверить P53 host-owned verifier admission; пока P53 намеренно только предлагает shadow-кандидатов и не меняет live policy.
+3. Получить независимое RU/EN memory holdout минимум на пяти paired seeds с положительным измеренным uplift; синтетические тесты этого не доказывают.
+4. Проверить реальный local inference, external-action recovery после потерянного ACK/restart и Android/Termux/browser/audio/avatar soak.
+5. Сохранить single-source ownership: не добавлять второй memory owner, второй ActionGateway, второй self-model или второй checkpoint authority.
+
+### Release truth
+
+- Последний published Release: tag `Neuro`, ZIP `Neuro_Kurisu_WORKPASS70_2026-10-19.zip`, 135,290,615 bytes; GitHub metadata digest `sha256:c5cf6a63661e28b30f976d03c8839a231341d73a09489b9066f062e29b224286`.
+- ZIP bytes не были materialized и независимо не пересчитывались; extraction manifest и source/ZIP parity остаются **UNVERIFIED**.
+- Human license review остаётся pending; redistribution approval=false.
+- Никакая из ноябрьских aspect-веток не объявляется частью `main` или Release.
+
+---
+
+## Исторический live checkpoint — 24 ноября 2026
 
 **Каноническая исходная ветка:** `workpass70-source` @ `87c9ed9034e09ca9fb83fd676ac52bb46434c4fe`.  
 **Текущий `main`:** `06e01cdd0a8e60ed70991f22e842887f544d1ebf`; release/metadata only.  
