@@ -1,0 +1,39 @@
+name: NK1 P53 Self-Improvement Fail-Closed
+
+on:
+  push:
+    branches: ["**"]
+    paths:
+      - ".github/workflows/nk1-p53-self-improvement-fail-closed.yml"
+      - "runtime/neuro-kurisu/src/organism/developmental/P53DevelopmentalSelfModificationLab.ts"
+      - "runtime/neuro-kurisu/src/organism/persistence/StateMigrations.ts"
+      - "runtime/neuro-kurisu/src/organism/core/OrganismCore.ts"
+      - "runtime/neuro-kurisu/tests/p53-*.mjs"
+      - "runtime/neuro-kurisu/package.json"
+  pull_request:
+    paths:
+      - ".github/workflows/nk1-p53-self-improvement-fail-closed.yml"
+      - "runtime/neuro-kurisu/src/organism/developmental/P53DevelopmentalSelfModificationLab.ts"
+      - "runtime/neuro-kurisu/src/organism/persistence/StateMigrations.ts"
+      - "runtime/neuro-kurisu/src/organism/core/OrganismCore.ts"
+      - "runtime/neuro-kurisu/tests/p53-*.mjs"
+      - "runtime/neuro-kurisu/package.json"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  p53-fail-closed:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          package-manager-cache: false
+      - name: Verify P53 cannot self-certify shadow metrics
+        run: node --experimental-strip-types runtime/neuro-kurisu/tests/p53-developmental-self-modification.mjs
+      - name: Verify promotion quarantine and restore migration
+        if: always()
+        run: node --experimental-strip-types runtime/neuro-kurisu/tests/p53-self-improvement-fail-closed.mjs

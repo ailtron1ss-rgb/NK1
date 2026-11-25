@@ -303,7 +303,7 @@
     "test:p42:persistence": "node --experimental-strip-types tests/p42-p44-persistence.mjs",
     "test:p42-44": "npm run test:p42:experience && npm run test:p43:imagery && npm run test:p44:predictive && npm run test:p42:integration && npm run test:p42:migration && npm run test:p42:truthfulness && npm run test:p42:persistence && npm run test:p42:performance",
     "test:runtime-clocks": "node --experimental-strip-types tests/runtime-clocks.mjs",
-    "test:p53": "node --experimental-strip-types tests/p53-developmental-self-modification.mjs",
+    "test:p53": "node --experimental-strip-types tests/p53-developmental-self-modification.mjs && node --experimental-strip-types tests/p53-self-improvement-fail-closed.mjs",
     "test:p54": "node --experimental-strip-types tests/p54-long-horizon-evidence.mjs",
     "test:p52": "node --experimental-strip-types tests/p52-counterfactual-development.mjs",
     "test:p50": "node --experimental-strip-types tests/p50-causal-self-world.mjs",
