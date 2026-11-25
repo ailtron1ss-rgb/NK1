@@ -117,8 +117,12 @@ test('chat restoration deduplicates stable proactive turn IDs', () => {
 
 
 test('chat restoration strips actual control characters from untrusted text', () => {
+  const untrustedText = [
+    'left', String.fromCharCode(0), 'middle',
+    String.fromCharCode(31), 'right', String.fromCharCode(127),
+  ].join('');
   const restored = restoreChatCache(JSON.stringify([
-    { id: 'control-1', role: 'kurisu', text: 'left\\u0000middle\\u001Fright\\u007F', at: 20, tick: 3 },
+    { id: 'control-1', role: 'kurisu', text: untrustedText, at: 20, tick: 3 },
   ]));
   assert.equal(restored[0].text, 'leftmiddleright');
 });
