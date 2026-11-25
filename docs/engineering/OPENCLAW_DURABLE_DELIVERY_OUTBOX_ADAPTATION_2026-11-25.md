@@ -1,58 +1,46 @@
 # NK1 — OpenClaw durable delivery outbox adaptation
 
 Date: 2026-11-25
-Target: ailtron1ss-rgb/NK1
-Base: workpass70-source @ 9008a8982a5173304456bee2c604bd0bc8665964
-Donor: OpenClaw source archive supplied as three.7z (inspected locally)
-Status: isolated implementation candidate; Draft PR only; no merge or Release mutation.
+Repository: ailtron1ss-rgb/NK1
+Base branch: workpass70-source
+Base SHA: 9008a8982a5173304456bee2c604bd0bc8665964
+Donor archive: three.7z (OpenClaw, llama.cpp, Mem0, OpenAI Agents SDK, Letta snapshots)
+Status: Draft PR #1182; no merge, main change, or Release mutation.
 
-## Adapted mechanism
-The donor's durable outbox lifecycle is adapted as a TypeScript sidecar using NK1's existing JsonStateStore and OrganismRuntime serial queue. No OpenClaw implementation files are copied and no second agent runner is introduced.
+## Adaptation
 
-## Contract
-- A row stores only an opaque payloadRef, stable dedupeKey, sourceTaskId/initiativeId/decisionId, consent-scope revision, expiry and retry/lease metadata. Raw prompts, credentials, message bodies and file contents are not stored in the outbox.
-- Lifecycle: pending -> leased -> delivered, cancelled or dead-letter. If a lease expires or the obligation expires while leased, the record moves to `reconciliation-required`; it is not automatically re-queued.
-- Leases recover after process interruption into a persisted quarantine state. Claim increments a bounded attempt counter; an expired lease alone is not proof that the external operation did not happen.
-- Retry uses bounded exponential backoff; exhausted attempts remain visible in dead-letter.
-- Acknowledgement requires the current lease owner and is one-shot.
-- Recipient idempotency uses the stable dedupeKey; transport delivery is at-least-once, never described as exactly-once.
-- Expiry and cancellation are explicit. A leased item cannot be cancelled without reconciliation because the external effect may already have occurred.
-- Restore rejects malformed versions, accessors, duplicate IDs/dedupe keys, invalid leases and inconsistent delivery receipts.
-- Capacity is bounded; only terminal history can be pruned to make room.
+The OpenClaw durable outbox lifecycle is adapted as a TypeScript sidecar using NK1's existing JsonStateStore and serialized OrganismRuntime. No OpenClaw agent runner or messaging implementation is copied.
 
-## NK1 integration boundary
-- Canonical social initiative owner and OpenLoopRadar remain unchanged.
-- Existing consent and quiet-hours policy remains host/social-owner responsibility.
-- Runtime does not start a sender and gains no network permissions. prepareNextDeliveryObligation() returns a leased item only when a host-injected deliveryAdmission callback explicitly accepts it; absent callback means no claim.
-- The host sender must re-check current consent/quiet-hours and execute the actual outbound operation through the existing ActionGateway with the outbox dedupeKey as its provider idempotency token.
-- An ambiguous ActionGateway result must be reconciled before the sender acknowledges or retries the outbox item. `resolveReconciliation()` only accepts an explicit host outcome (`confirmed-delivered`, `confirmed-not-delivered`, or `cancelled`); unknown remains quarantined. A retry is only possible after confirmed-not-delivered, observes bounded backoff, and respects the attempt ceiling. Confirmed delivery settles the row without a duplicate send.
-- This is a durable obligation/transport lifecycle, not a new executor and not a claim that a production channel transport is connected.
+The outbox stores bounded delivery metadata, stable deduplication keys, opaque payload references, expiry, attempt counters, and lease/reconciliation state. It does not store raw chat messages, prompts, credentials, or file contents.
 
+## Integrated proactive-chat path
 
-## Exclusive ownership boundary (2026-11-25)
+1. AutonomousSocialInitiativeEngine remains the only owner of initiative generation, content, consent, and quiet-hours policy.
+2. OrganismRuntime.autonomousDialogueReady() writes a stable social-initiative obligation to DurableDeliveryOutbox before returning the existing API response shape.
+3. The trusted server deliveryAdmission callback re-checks the exact Core initiative ID and mayDeliverUserVisible at claim time. This host admits only social-initiative; other outbox kinds remain closed.
+4. DurableDeliveryOutbox is the single owner of delivery leases and attempt lifecycle. No competing retry/lease state is added to the social engine.
+5. The browser persists its stable ui-initiative-ID transcript before calling the existing ACK API. It records positive ACK IDs in a bounded local marker and retries lost ACK responses from the persisted transcript on later idle polls.
+6. An active lease suppresses another poll. After expiry, the same stable initiative ID can be re-exposed to the idempotent browser transcript; the transcript deduplicates the turn and its ACK resolves the ambiguous outbox record as delivered.
+7. Repeated ACKs are idempotent. If Core committed but a later persistence step or HTTP response failed, a repeat ACK repairs the Core/OpenLoop sidecar and settles the outbox row.
 
-The generic outbox deliberately supports only `task-completion`, `reminder`, `notification`, and `custom` obligations. It explicitly rejects `initiative-message`.
+## Failure and safety boundaries
 
-User-visible proactive social initiative delivery remains exclusively owned by the existing `AutonomousSocialInitiativeEngine` lifecycle in [PR #1181](https://github.com/ailtron1ss-rgb/NK1/pull/1181): its stable initiative identity, claim lease, bounded retry, consent/quiet-hours re-check, and browser durable-chat-before-ACK gate form one domain-specific state machine.
+- An expired lease becomes reconciliation-required, never directly pending.
+- Only the browser ACK for the stable initiative ID resolves this UI recipient's ambiguous lease as delivered.
+- Consent and quiet-hours are checked by the canonical social owner and again by host admission. Revoked consent suppresses future exposure.
+- Browser storage failure prevents ACK. The unacknowledged initiative remains eligible for same-ID replay after its lease expires; a repeat transcript write does not create a duplicate chat turn.
+- The outbox does not execute tools, contact third parties, send desktop notifications, or start voice delivery. This is a browser/API recipient integration only.
+- Generic task/reminder/notification delivery remains host-gated and fail-closed until a real consumer explicitly owns it.
 
-Do not enqueue the same social initiative into this generic outbox. Doing so would create two competing lease/attempt clocks and ambiguous ACK ownership for one logical user-visible message. If a future architecture consolidates the two paths, it must use one canonical lease owner and one authoritative acknowledgement boundary; that consolidation is outside this PR.
+## Donor boundaries
 
-Regression coverage explicitly asserts that enqueueing `initiative-message` fails with `delivery-outbox-kind-invalid`. The generic outbox still carries optional `initiativeId` metadata only as correlation metadata for a generic obligation; it does not make the social initiative engine's ready-message stream eligible for this queue.
+- llama.cpp: NK1 already has OpenAI-compatible local chat and embedding paths. Its reranking endpoint remains a possible future optional shadow experiment, not part of this delivery change.
+- Mem0: NK1 already has a Mem0 adapter and canonical MemoryOS2 retrieval; no second memory owner is introduced.
+- OpenAI Agents SDK: NK1 already has ActionGateway, CognitiveEventFabric, continuity/receipt, and recovery seams; no second runner is introduced.
+- Letta: the supplied archive was a small landing/docs snapshot, not a usable runtime source tree.
 
 ## Verification
-- Added focused contract tests for deduplication, lease ownership, expiry recovery, retry backoff, dead-letter retention, cancellation, restore integrity and bounded capacity.
-- PR workflow runs the new contract, existing consent/OpenLoop regressions and runtime typecheck.
-- No local checkout was available in this session; local execution is not claimed. CI evidence must be read from this exact PR head before calling the change verified.
 
+The PR workflow runs the generic outbox contract, a real OrganismRuntime proactive handoff contract, browser transcript-before-ACK/lost-ACK retry tests, existing proactive-consent and OpenLoop regressions, and runtime typecheck.
 
-## Exact-head CI and architecture correction — 2026-11-25
-
-Current inspected PR head: `46c5b4aceda81585ebdd07c80d09a7abf0c3e176`, base `workpass70-source@9008a8982a5173304456bee2c604bd0bc8665964`; compare is **26 commits ahead / 0 behind**, seven intended paths.
-
-- [NK1 Module Dependency Audit — run 45610617629](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45610617629): **SUCCESS**. Exact output: `DEPENDENCY_BUDGET=PASS checks=65 violations=0`; `CLEAN_ARCHITECTURE=PASS sourceFiles=2701 canonicalFiles=747 dependencyEdges=5732 runtimeEdges=4916 typeOnlyEdges=816 missing=0 cycles=0 legacyLeakage=0 boundaryViolations=0 dependencyBudgetViolations=0`.
-- The same current-head run completed semantic TypeScript validation: `TYPECHECK=PASS mode=tsc compiler=PATH`.
-- [NK1 Transitive Module Import Audit — run 45610616775](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45610616775): **SUCCESS**.
-- Earlier architecture audit on an intermediate head failed because `OrganismRuntime.ts` had runtime outdegree 46 against max 45. The separate direct Outbox import was removed: the implementation now lives in `organism/persistence/DurableDeliveryOutbox.ts`, and class/types are re-exported by the already-imported `persistence/FileStateStore.ts` facade. No dependency budget was raised. The exact current-head architecture run proves the corrected graph is within budget.
-- An earlier focused run failed because the `.mjs` test used a TypeScript non-null assertion. The assertion has been replaced by valid JavaScript and an explicit `assert.ok`; current exact-head focused run [45610617751](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45610617751) is still **pending** with no job assigned, so the outbox contract, consent regression and OpenLoop runtime regression are not yet claimed as passing.
-- The broad PR check matrix is still processing (73 exact-head workflows in the last snapshot). Only explicitly listed completed runs above are counted as passed.
-
+No local NK1 checkout was available in this session; local test execution is not claimed. GitHub Actions on the exact final PR head is the verification source. Draft status is retained pending exact-head checks.

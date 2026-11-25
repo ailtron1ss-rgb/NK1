@@ -6,6 +6,7 @@ on:
       - 'runtime/neuro-kurisu/src/organism/persistence/DurableDeliveryOutbox.ts'
       - 'runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts'
       - 'app/src/organism/chatCache.ts'
+      - 'runtime/neuro-kurisu/src/server/server.mjs'
       - 'app/src/organism/store.ts'
       - 'app/scripts/proactive-chat-cache.test.mjs'
       - 'runtime/neuro-kurisu/tests/durable-delivery-outbox.mjs'
@@ -18,10 +19,12 @@ on:
     paths:
       - 'runtime/neuro-kurisu/src/organism/persistence/DurableDeliveryOutbox.ts'
       - 'runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts'
+      - 'runtime/neuro-kurisu/src/server/server.mjs'
       - 'app/src/organism/chatCache.ts'
       - 'app/src/organism/store.ts'
       - 'app/scripts/proactive-chat-cache.test.mjs'
       - 'runtime/neuro-kurisu/tests/durable-delivery-outbox.mjs'
+      - 'runtime/neuro-kurisu/tests/autonomous-social-delivery-runtime.mjs'
       - 'runtime/neuro-kurisu/package.json'
       - '.github/workflows/nk1-durable-delivery-outbox.yml'
 permissions:
