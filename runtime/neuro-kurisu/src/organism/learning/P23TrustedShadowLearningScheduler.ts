@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { lstat, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { SkillShadowObservation } from './VersionedSkillCandidateStore.ts';
+import { isSensitiveLearningEnvironmentKey } from './LearningProcessSupervisor.ts';
 import type { LearningProcessCommand, LearningProcessResult, LearningProcessRun } from './LearningProcessSupervisor.ts';
 
 export interface TrustedShadowLearningScheduleConfig {
@@ -110,9 +111,10 @@ export function parseTrustedShadowLearningScheduleConfig(
   }
   if (cmd.allowSensitiveEnv !== undefined) {
     if (!Array.isArray(cmd.allowSensitiveEnv) ||
-        cmd.allowSensitiveEnv.some(key => typeof key !== 'string' || !/^[A-Z_][A-Z0-9_]*$/i.test(key)) ||
+        cmd.allowSensitiveEnv.some(key => typeof key !== 'string' || !/^[A-Z_][A-Z0-9_]*$/i.test(key) ||
+          !isSensitiveLearningEnvironmentKey(key)) ||
         new Set(cmd.allowSensitiveEnv).size !== cmd.allowSensitiveEnv.length) {
-      throw new Error('trusted shadow allowSensitiveEnv must contain unique environment variable names');
+      throw new Error('trusted shadow allowSensitiveEnv must contain unique sensitive environment variable names');
     }
     const suppliedKeys = new Set([
       ...Object.keys(cmd.env ?? {}),
