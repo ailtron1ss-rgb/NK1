@@ -15,7 +15,7 @@ import { buildAutonomousDialoguePrompt, buildCognitivePrompt, type LanguageInvok
 import { AdaptiveSynapticMatrixEngine, type AdaptiveSynapticMatrixState, type SynapticAdapterActivationManifest, type SynapticAdapterCandidate, type SynapticAdapterManifestVerifier, type SynapticAdapterRoutingInput, type SynapticAdapterTask, type SynapticReplayAnchorState, type SynapticReplayAnchorStore } from '../learning/AdaptiveSynapticMatrix.ts';
 import type { ContextBudgetLedgerReport } from '../language/ContextBudgetLedger.ts';
 import { CounterfactualEngine } from '../world/CounterfactualEngine.ts';
-import { EmbodimentRuntime, type VoiceInputResult } from '../body/EmbodimentRuntime.ts';
+import { EmbodimentRuntime, buildAndroidTelemetryObservation, type VoiceInputResult } from '../body/EmbodimentRuntime.ts';
 import { Mem0PlatformAdapter, type Mem0Candidate } from '../integration/mem0/Mem0PlatformAdapter.ts';
 import { buildCognitiveProposalPrompt, parseCognitiveProposal } from '../language/LanguageOrgan.ts';
 import { OperationalJournal } from '../persistence/OperationalJournal.ts';
@@ -33,7 +33,6 @@ import { RuntimeClosureLedger } from '../system/RuntimeClosureLedger.ts';
 import { CausalDomainClosureLedger, type CausalDomainEvidence } from '../system/CausalDomainClosureLedger.ts';
 import { AdaptiveConsolidationGate } from '../system/AdaptiveConsolidationGate.ts';
 import { cameraEvidenceFromResult, inspectCameraFile, type CameraEvidence } from '../body/CameraEvidenceProcessor.ts';
-import { buildAndroidTelemetryObservation } from '../body/AndroidTelemetryObservationAdapter.ts';
 import { EmbodiedActionExecutor, type EmbodiedActionResult } from '../body/EmbodiedActionExecutor.ts';
 import { EmbodiedRecoveryController } from '../body/EmbodiedRecoveryController.ts';
 import type { VisionSemanticBackend } from '../body/VisionSemanticBackend.ts';
