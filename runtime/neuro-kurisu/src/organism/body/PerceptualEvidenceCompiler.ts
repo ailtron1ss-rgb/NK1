@@ -81,7 +81,6 @@ export class PerceptualEvidenceCompiler{
     const evidence=isPlainDataArray(rawEvidence,512)
       ? rawEvidence.slice(0,96).map(restoreEvidenceRow).filter((row):row is PerceptualEvidenceRecord=>row!==null)
       : [];
-    const rawMetrics=ownDataValue(r,'metrics');
     // Persisted aggregate metrics are not verifier receipts. Rebuild them from
     // sanitized evidence, with the restored observed ratio forced to zero because
     // in-process observation authority cannot survive serialization.
