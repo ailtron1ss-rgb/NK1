@@ -88,7 +88,7 @@ const lerp=(from:number,to:number,weight:number)=>from+(to-from)*weight;
 type Affect=AvatarBrainProjection['affect'];
 function currentAffect(input:AvatarBrainProjectionInput,now:number):boolean{
   const raw=input.affect,age=typeof raw?.sampledAt==='number'?now-raw.sampledAt:Infinity;
-  const revision=Number.isSafeInteger(raw?.stateVersion)&&Number(raw.stateVersion)===input.state.tick;
+  const revision=Number.isSafeInteger(raw?.stateVersion)&&Number(raw?.stateVersion)===input.state.tick;
   const freshness=typeof raw?.freshness01==='number'&&Number.isFinite(raw.freshness01)&&raw.freshness01>=0&&raw.freshness01<=1;
   const expected=Number.isFinite(age)?Math.max(0,1-Math.max(0,age)/30_000):0;
   return Boolean(revision&&freshness&&Math.abs(Number(raw?.freshness01)-expected)<=.1&&age>=-250&&age<=30_000);
