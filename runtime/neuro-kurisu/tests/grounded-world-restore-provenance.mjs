@@ -20,6 +20,13 @@ assert.equal(snapshot.entities[0].modalityEvidenceKinds?.text,'unresolved');
 assert.equal(snapshot.events[0].evidenceKind,'model-output');
 assert.equal(snapshot.events[0].lastAt,5_000,
   'restored event timestamps must never advance beyond the containing world snapshot');
+assert.deepEqual(snapshot.facts,[],
+  'persisted free-form facts are quarantined rather than promoted after restart');
+assert.deepEqual(snapshot.quarantinedFacts,['restored-unverified:observed:camera-object']);
+assert.equal(snapshot.confidence01,0,
+  'persisted world aggregate confidence must be recomputed from fresh inputs');
+assert.equal(snapshot.events[0].lastAt,5_000,
+  'restored event timestamps must never advance beyond the containing world snapshot');
 assert.equal(snapshot.events[0].modalityEvidenceKinds?.vision,'model-output');
 assert.equal(snapshot.events[0].modalityEvidenceKinds?.sensor,'derived');
 console.log('GROUNDED_WORLD_RESTORE_PROVENANCE=PASS');
