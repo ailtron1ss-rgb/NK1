@@ -152,6 +152,14 @@ function fixture({ acknowledge = async () => true } = {}) {
 
 {
   const runtimeSource = await readFile(new URL("../src/organism/core/OrganismRuntime.ts", import.meta.url), "utf8");
+  const coreSource = await readFile(new URL("../src/organism/core/OrganismCore.ts", import.meta.url), "utf8");
+  const engineSource = await readFile(new URL("../src/organism/system/AutonomousSocialInitiativeEngine.ts", import.meta.url), "utf8");
+  assert.ok(runtimeSource.includes("acknowledgeAutonomousSocialInitiativeWithState(id, Date.now(), expectedAttemptCount)"),
+    "Runtime must forward the attempt fence into the Core command");
+  assert.ok(coreSource.includes("acknowledgeWithState(id, at, expectedAttemptCount)"),
+    "Core must forward the expected attempt to the canonical initiative owner");
+  assert.ok(engineSource.includes("expectedAttemptCount !== item.deliveryAttemptCount"),
+    "the engine must validate the attempt count at command execution time");
   const methodStart = runtimeSource.indexOf("async acknowledgeAutonomousDialogue");
   const coreCommit = runtimeSource.indexOf("await this.core.flush()", methodStart);
   const optionalProjection = runtimeSource.indexOf("persistOpenLoopMutation", methodStart);
