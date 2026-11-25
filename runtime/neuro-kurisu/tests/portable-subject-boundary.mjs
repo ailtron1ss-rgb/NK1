@@ -55,4 +55,52 @@ const destinationFidelity = evaluatePortableSubjectFidelity(destination, bundle)
 assert.equal(destinationFidelity.status, 'verified');
 assert.equal(destinationFidelity.hostBoundaryPreserved, true, 'host-only embodiment/capabilities must survive transfer simulation');
 
+
+{
+  const staleSchema = structuredClone(bundle);
+  staleSchema.sourceSchema = 1;
+  assert.equal(subjectFingerprint(staleSchema.projection), staleSchema.subjectFingerprint,
+    'schema metadata is deliberately outside the content fingerprint');
+  assert.throws(
+    () => applyPortableSubjectBundle(destination, staleSchema, { adoptSubjectIdentity: true }),
+    /portable-subject-schema-mismatch/,
+    'a structurally valid older-schema bundle must not be stamped as the current schema without migration',
+  );
+  const staleFidelity = evaluatePortableSubjectFidelity(destination, staleSchema);
+  assert.equal(staleFidelity.schemaCompatible, false);
+  assert.equal(staleFidelity.status, 'partial',
+    'projection integrity alone cannot mark a schema-incompatible transfer as verified');
+  assert.equal(staleFidelity.roundTrip.matched, false);
+  assert.ok(staleFidelity.warnings.includes('schema-migration-required-before-production-import'));
+}
+
+{
+  const incomplete = structuredClone(bundle);
+  delete incomplete.projection.memories;
+  incomplete.subjectFingerprint = subjectFingerprint(incomplete.projection);
+  assert.throws(
+    () => validatePortableSubjectBundle(incomplete),
+    /projection\.memories/,
+    'a valid hash cannot make a structurally incomplete projection importable',
+  );
+}
+
+{
+  const getterBundle = structuredClone(bundle);
+  let getterRan = false;
+  Object.defineProperty(getterBundle, 'subjectId', {
+    enumerable: true,
+    configurable: true,
+    get() { getterRan = true; return bundle.subjectId; },
+  });
+  assert.throws(() => validatePortableSubjectBundle(getterBundle), /accessor|data-only|invalid/i);
+  assert.equal(getterRan, false, 'untrusted bundle accessors must never execute during validation');
+}
+
+{
+  const cyclic = structuredClone(bundle);
+  cyclic.projection.worldModel.cycle = cyclic.projection;
+  assert.throws(() => validatePortableSubjectBundle(cyclic), /cyclic|invalid/i);
+}
+
 console.log('PORTABLE_SUBJECT_BOUNDARY=PASS', JSON.stringify({subjectId:bundle.subjectId, fingerprint:bundle.subjectFingerprint, transferCount:imported.system.subjectIdentity.transferCount, fidelity:fidelity.status, tamper:tamperedFidelity.status}));
