@@ -1,7 +1,6 @@
 import type { WorldContext } from '../core/types.ts';
 import type { P41PerceptionState } from '../cognition/P41SemanticPerception.ts';
 import type { PerceptualEvidenceState } from '../body/PerceptualEvidenceCompiler.ts';
-import type { EmbodiedActionResult } from '../body/EmbodiedActionExecutor.ts';
 import type { OutcomeVerification } from '../system/OutcomeVerificationService.ts';
 import { isTrustedEmbodiedOutcomeVerification } from '../system/ExternalPostconditionVerifier.ts';
 
@@ -129,13 +128,13 @@ export class GroundedWorldState {
         const e=rawEntity as Record<string,unknown>;
         const id=safeText(e.id,128),label=safeText(e.label,120),kind=safeText(e.kind,64);
         if(!id||!label||!kind)continue;
-        const lastSeenAt=safeTimestamp(e.lastSeenAt,lastAt);
+        const lastSeenAt=Math.min(safeTimestamp(e.lastSeenAt,lastAt),lastAt);
         const firstSeenAt=Math.min(safeTimestamp(e.firstSeenAt,lastSeenAt),lastSeenAt);
         const imageBox=normalizeImageBox(e.imageBox);
         const imageBoxCameraId=safeInteger(e.imageBoxCameraId,-1,0,1_000_000);
         const imageBoxAt=safeTimestamp(e.imageBoxAt,-1);
         const imageBoxConfidence01=safeUnit(e.imageBoxConfidence01,-1);
-        const validImageEvidence=Boolean(imageBox&&imageBoxCameraId>=0&&imageBoxAt>=0&&imageBoxConfidence01>=.42);
+        const validImageEvidence=Boolean(imageBox&&imageBoxCameraId>=0&&imageBoxAt>=0&&imageBoxAt<=lastAt&&imageBoxConfidence01>=.42);
         const value=typeof e.value==='number'&&Number.isFinite(e.value)&&Math.abs(e.value)<=1_000_000_000?e.value:undefined;
         const trackId=safeText(e.trackId,180);
         const positionFrameId=safeText(e.positionFrameId,120);
@@ -217,15 +216,16 @@ export class GroundedWorldState {
     const rawResult=input?.result&&typeof input.result==='object'&&!Array.isArray(input.result)
       ?input.result as Record<string,unknown>:{};
     const trusted=isTrustedEmbodiedOutcomeVerification(input?.verification,input?.result);
-    const result=trusted?input.result as EmbodiedActionResult:null;
-    const verification=trusted?input.verification as OutcomeVerification:null;
+        const verification=trusted?input.verification as OutcomeVerification:null;
     const action=safeText(rawResult.action,64)??'unknown';
     const status=safeText(rawResult.status,32)??'unverified';
     const realityClass=safeText(rawResult.realityClass,48)??'untrusted';
     const eventAt=safeTimestamp(rawResult.at,this.state.lastAt);
     const executionId=safeText(rawResult.executionId,100);
     const observationId=trusted?safeText(verification?.observationId,180):undefined;
-    const eventIdentity=executionId??`${eventAt}:${action}:${status}:${realityClass}`;
+    const eventIdentity=trusted
+      ? `trusted:${observationId??executionId??`${eventAt}:${action}`}`
+      : `untrusted:${executionId??`${eventAt}:${action}:${status}:${realityClass}`}`;
     const eventId=`gw-external-${stableHash(eventIdentity)}`;
     if(trusted&&input.verification&&typeof input.verification==='object'&&consumedWorldOutcomeVerifications.has(input.verification as object)){
       return {revision:this.state.revision,eventId,confidence01:0,verified01:0,independent01:0,lastHash:this.state.lastHash,duplicate:true};
