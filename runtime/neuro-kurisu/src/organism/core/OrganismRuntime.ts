@@ -1429,7 +1429,7 @@ export class OrganismRuntime {
       ? this.core.cognitiveBudgetSpend('simulation',undefined,cycle.state.needs.uncertainty,'counterfactual-rollout')
       : { accepted: false };
     const branches = simBudget.accepted && worldRolloutAllowed && shadowPassAllowed
-      ? this.counterfactuals.imagine(plan.steps[0]?.environmentAction, resourceAllocation.maxCounterfactualBranches, 4)
+      ? this.counterfactuals.imagine(plan.steps[0]?.environmentAction, Math.max(1, Math.min(4, plan.searchDepth)), resourceAllocation.maxCounterfactualBranches)
       : [];
     await this.core.recordCounterfactuals(branches);
     const worldAction = plan.steps[0]?.environmentAction ?? 'observe';
