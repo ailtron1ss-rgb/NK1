@@ -17,6 +17,8 @@ The branch's P66 path already provides elapsed-time EMA and recovery debt, stabl
 - Mood changes are bounded and time-decayed. Body/interoceptive observations update the slow channels; recovery is measured from the change in normalized mood deviation. The resilience score is an internal estimate with explicit evidence confidence, not a medical or empirical psychometric measure.
 - `projectEmotionAffectFrame()` produces a single revision-bound `EmotionAffectFrameV1` used by runtime, API, voice and avatar.
 - Action-outcome aliases are migrated into one canonical action vocabulary; calibration merges are attempt-weighted and counters bounded.
+- Acute episode decay and slow mood decay are now independent in `actionBias()`: the 60-second freshness horizon scales only the acute tendency; P66 pressure, admitted outcome calibration and the evidence-gated mood prior retain their own context/freshness horizons. The final signed prior remains confidence/attention gated and capped at ±0.045.
+- Added five paired mood-vs-neutral scenarios with identical acute episode and calibration. The test requires a small persistent rest increase and exploration decrease after 15 minutes, reduced mood contribution after 24 hours, and no mood effect when event/interoceptive evidence is zero. This is a deterministic causal contract test, not measured behavioral uplift.
 - OrganismCore passes the cognitive observation timestamp into the affect engine while retaining the P66 provenance work already on the branch.
 - Runtime and server compute the affect frame once. Legacy emotion fields are projected from the same frame.
 - AvatarBrain validates state revision, time and freshness, applies only a low-weight mood contribution, avoids double decay and fails stale revisions closed.
@@ -40,7 +42,8 @@ These local runs were on a separate archive-derived checkout whose original base
 
 ### Required remote confirmation
 
-The added Actions workflow runs the runtime typecheck and mood/P66 regressions, plus the app targeted typecheck and integration suite on the exact PR head. Until those exact-head jobs are green, the integration remains a draft and is not considered verified on the current source line.
+- At PR head `6efe9624edd86d398d75b53010bb790f64f04b5f`, exact-head Actions passed: P66 temporal regulation, Core provenance, emotion/interoception, P66→P68, runtime voice-context, app affect-frame integration, and Emotion Restore Integrity. WorkPass79 cognitive runtime regression also completed successfully.
+- The mood/acute-prior separation and five-seed paired regression were added afterward at `769afdaf0b3c31eba6baa8b47faaf0ab172c540e`. Its exact-head reruns are pending/queued at report time; therefore the new paired result is not yet claimed as remotely verified.
 
 ## Explicit boundaries
 
