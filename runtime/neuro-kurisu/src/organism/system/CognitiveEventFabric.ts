@@ -212,6 +212,9 @@ export class CognitiveEventFabric {
       });
       if(restored.length>=this.capacity)break;
     }
+    // Persisted sequence is the canonical order. Snapshot array order is only a
+    // serialization detail and may differ after transport, compaction or merge.
+    restored.sort((a,b)=>(b.sequence??0)-(a.sequence??0));
     this.events=restored;
     this.receiptProjectionIndex.clear();
     const restoredById=new Map(this.events.map(event=>[event.id,event] as const));
