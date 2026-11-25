@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import type { Box3 } from "three";
+type Box3 = InstanceType<typeof THREE.Box3>;
 
 export interface AvatarModelFitBounds {
   bounds: Box3;
