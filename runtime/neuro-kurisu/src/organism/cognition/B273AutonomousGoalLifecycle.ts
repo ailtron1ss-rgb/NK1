@@ -1,5 +1,6 @@
 import { cosineSimilarity } from '../core/NumericPrimitives.ts';
 import type { ActionKind, OrganismGoalStatus } from '../core/types.ts';
+import { isGoalWorldEvidenceSignalV1, type GoalWorldEvidenceSignalV1 } from './B272EndogenousGoalGenesis.ts';
 
 const ACTIONS:ActionKind[]=['respond','explore','verify','rest','reflect','wait','defer'];
 const GOAL_SOURCES=['intrinsic','self-generated','revised','homeostatic','learned'] as const;
@@ -85,6 +86,8 @@ export interface B273StepInput {
   autobiographicalContinuity01:number;
   independentEvaluatorGain01?:number;
   availableActions?:ActionKind[];
+  /** Same immutable world evidence projection used by B272. */
+  worldEvidence?:GoalWorldEvidenceSignalV1;
 }
 export interface B273StepResult {
   goalId:string;
@@ -141,11 +144,18 @@ export class B273AutonomousGoalLifecycle{
       return clamp11((e[i]??0)*.58+s*.08+w*.08+a*.06+recurrent+.12*clamp11(input.needs.goalPressure01-.5)+.08*clamp11(input.predictionError01-.2));
     });
   }
+  private worldVerificationPressure(input:B273StepInput){
+    const world=input.worldEvidence;
+    return world ? clamp01(Math.max(world.conflict01,world.modelDisagreement01*.9,world.unresolved01*.8,world.uncertainty01*.75,world.predictionError01*.65)) : 0;
+  }
   private conflict(input:B273StepInput,v:number[]){
     const selfFit=clamp01(.5+.5*cosine(v,input.selfLatent));
     const worldFit=clamp01(.5+.5*cosine(v,input.worldLatent));
     const energy=input.needs.energy01;
-    return clamp01(.36*input.predictionError01+.24*input.needs.uncertainty01+.16*(1-input.identityContinuity01)+.10*(1-input.autobiographicalContinuity01)+.08*(1-selfFit)+.06*(1-worldFit)+.08*(1-energy));
+    const baseline=clamp01(.36*input.predictionError01+.24*input.needs.uncertainty01+.16*(1-input.identityContinuity01)+.10*(1-input.autobiographicalContinuity01)+.08*(1-selfFit)+.06*(1-worldFit)+.08*(1-energy));
+    if(!input.worldEvidence)return baseline;
+    const worldPressure=this.worldVerificationPressure(input);
+    return clamp01(baseline*.78+worldPressure*.22);
   }
   private goalUtility(input:B273StepInput,v:number[],conflict:number){
     const n=input.needs; const drive=this.internalDrive(input); const selfFit=clamp01(.5+.5*cosine(v,input.selfLatent)); const worldFit=clamp01(.5+.5*cosine(v,input.worldLatent));
@@ -154,6 +164,7 @@ export class B273AutonomousGoalLifecycle{
   }
   private choosePlan(input:B273StepInput,goal:B273GoalNode){
     const actions=this.available(input); const trait=input.traits;
+    const worldVerificationPressure=this.worldVerificationPressure(input);
     const weights:Record<ActionKind,number>={respond:.0,explore:0,verify:0,rest:0,reflect:0,wait:0,defer:0};
     for(const a of actions){
       let s=.4;
@@ -164,12 +175,14 @@ export class B273AutonomousGoalLifecycle{
       if(a==='rest') s+=.18*(1-input.needs.energy01+.22*Number(trait['self-preservation']??.5));
       if(a==='wait') s+=.08*input.needs.uncertainty01;
       if(a==='defer') s+=.07*input.predictionError01;
+      if(a==='verify') s+=.18*worldVerificationPressure;
+      if(a==='reflect') s+=.08*worldVerificationPressure;
       s+=.05*goal.importance01+.04*goal.urgency01-.07*goal.conflict01;
       weights[a]=s;
     }
     const ordered=actions.slice().sort((a,b)=>weights[b]-weights[a]);
     const first=ordered[0]??'reflect'; const second=ordered[1]??'reflect';
-    const third=goal.conflict01>.62?(actions.includes('verify')?'verify':'reflect'):(actions.includes('respond')?'respond':second);
+    const third=Math.max(goal.conflict01,worldVerificationPressure)>.62?(actions.includes('verify')?'verify':'reflect'):(actions.includes('respond')?'respond':second);
     return [first,second,third].filter((a,i,arr)=>arr.indexOf(a)===i).slice(0,4);
   }
   private makeGoal(input:B273StepInput,v:number[],utility:number,parentId:string|null,source:GoalSource):B273GoalNode{
@@ -208,6 +221,7 @@ export class B273AutonomousGoalLifecycle{
     return active;
   }
   step(input:B273StepInput):B273StepResult{
+    if(input.worldEvidence!==undefined&&!isGoalWorldEvidenceSignalV1(input.worldEvidence))throw new RangeError('B273 worldEvidence must be a valid version 1 signal');
     this.state.tick=input.tick;this.state.cycles++;
     const v=this.synthesizeGoalVector(input); const conflict=this.conflict(input,v); const utility=this.goalUtility(input,v,conflict); const drive=this.internalDrive(input);
     let goal=this.ensureHierarchy(input,v,utility);

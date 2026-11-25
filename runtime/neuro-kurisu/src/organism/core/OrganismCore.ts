@@ -5491,6 +5491,7 @@ export class OrganismCore {
                 tick: state.tick,
                 selfLatent: b270PostGerminalState.selfLatent,
                 worldLatent: p27Latent.vector,
+                worldEvidence: earlyWorldCognitiveSignal,
                 needs: { energy01: state.needs.energy, uncertainty01: state.needs.uncertainty, novelty01: state.needs.novelty, goalPressure01: state.needs.goalPressure, socialNeed01: state.needs.socialNeed },
                 traits: b270PostAutonomousState.traitValues,
                 predictionError01: state.predictionError,
@@ -5546,6 +5547,7 @@ export class OrganismCore {
             traits: b270PostAutonomousState.traitValues,
             predictionError01: state.predictionError, identityContinuity01: p80Now.continuity01, autobiographicalContinuity01: b271NeuralAuto.autobiographicalContinuity01,
             independentEvaluatorGain01: clamp((state.lastActionSuccess ?? .5) - .5),
+            worldEvidence: earlyWorldCognitiveSignal,
         });
         this.persisted.system.autonomousGoalLifecycleB273 = this.developmentalNeural.autonomousGoalLifecycleB273.snapshot();
         const b262Plans = state.tick % 64 === 0 ? this.developmentalNeural.multiTimescaleWorldModelB262.planHierarchical(p27Latent.vector, 8, 4) : this.developmentalNeural.multiTimescaleWorldModelB262.plan(p27Latent.vector, 3);

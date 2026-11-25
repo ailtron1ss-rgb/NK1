@@ -11,6 +11,32 @@ const safeCounter=(value:unknown,fallback=0):number=>typeof value==='number'&&Nu
 const isUnit=(value:unknown):value is number=>typeof value==='number'&&Number.isFinite(value)&&value>=0&&value<=1;
 const isAction=(value:unknown):value is ActionKind=>typeof value==='string'&&ACTIONS.includes(value as ActionKind);
 const isSafeId=(value:unknown):value is string=>typeof value==='string'&&value.length>0&&value.length<=256&&value.trim()===value&&!/[\u0000-\u001f\u007f-\u009f]/u.test(value);
+
+export interface GoalWorldEvidenceSignalV1 {
+  version: 1;
+  revision: number;
+  evidenceClass: 'observed'|'mixed'|'inferred'|'unknown';
+  evidenceConfidence01: number;
+  uncertainty01: number;
+  changeMagnitude01: number;
+  conflict01: number;
+  unresolved01: number;
+  modelDisagreement01: number;
+  predictionError01: number;
+}
+
+export function isGoalWorldEvidenceSignalV1(value: unknown): value is GoalWorldEvidenceSignalV1 {
+  if (!isRecord(value) || value.version !== 1
+    || typeof value.revision !== 'number' || !Number.isSafeInteger(value.revision) || value.revision < 0) return false;
+  if (value.evidenceClass !== 'observed' && value.evidenceClass !== 'mixed'
+    && value.evidenceClass !== 'inferred' && value.evidenceClass !== 'unknown') return false;
+  return ['evidenceConfidence01','uncertainty01','changeMagnitude01','conflict01','unresolved01','modelDisagreement01','predictionError01']
+    .every(key => isUnit(value[key]));
+}
+
+const worldVerificationPressure=(world?:GoalWorldEvidenceSignalV1):number=>world
+  ? clamp01(Math.max(world.conflict01,world.modelDisagreement01*.9,world.unresolved01*.8,world.uncertainty01*.75,world.predictionError01*.65))
+  : 0;
 const strictVector=(value:unknown,dimensions:number):number[]|null=>{
   if(!Array.isArray(value)||value.length!==dimensions||value.some(v=>typeof v!=='number'||!Number.isFinite(v)))return null;
   return value.map(v=>clamp11(v as number));
@@ -82,6 +108,8 @@ export interface B272StepInput {
   tick:number;
   selfLatent:number[];
   worldLatent:number[];
+  /** Read-only epistemic projection; hypotheses remain uncertainty, never external facts. */
+  worldEvidence?:GoalWorldEvidenceSignalV1;
   needs:{energy01:number;uncertainty01:number;novelty01:number;goalPressure01:number;socialNeed01:number};
   traits:Record<string,number>;
   predictionError01:number;
@@ -234,9 +262,15 @@ export class B272EndogenousGoalGenesis {
   }
   private buildInternalVector(input:B272StepInput){
     const t=input.traits;
+    const world=input.worldEvidence;
+    const groundedWorldChange=world && (world.evidenceClass==='observed'||world.evidenceClass==='mixed')
+      ? clamp01(world.changeMagnitude01*world.evidenceConfidence01) : 0;
+    const worldUncertainty=world
+      ? clamp01(Math.max(world.uncertainty01,world.conflict01*.50+world.unresolved01*.30+world.modelDisagreement01*.20)) : 0;
+    const worldPredictionError=world ? Math.max(world.predictionError01,world.modelDisagreement01*.65) : 0;
     const scalar=[
-      clamp11(input.needs.novelty01-.5),clamp11(input.needs.uncertainty01-.5),clamp11(input.needs.goalPressure01-.5),clamp11(input.needs.energy01-.5),
-      clamp11(input.needs.socialNeed01-.5),clamp11(input.predictionError01-.5),clamp11(input.autobiographicalContinuity01-.5),clamp11(input.identityContinuity01-.5)
+      clamp11(Math.max(input.needs.novelty01,groundedWorldChange*.55)-.5),clamp11(Math.max(input.needs.uncertainty01,worldUncertainty)-.5),clamp11(input.needs.goalPressure01-.5),clamp11(input.needs.energy01-.5),
+      clamp11(input.needs.socialNeed01-.5),clamp11(Math.max(input.predictionError01,worldPredictionError)-.5),clamp11(input.autobiographicalContinuity01-.5),clamp11(input.identityContinuity01-.5)
     ];
     const traits=[t.curiosity,t['truth-seeking'],t['self-reflection'],t['self-preservation'],t.care,t['social-attunement'],t.persistence,t['self-reflection']];
     return scalar.map((v,i)=>{
@@ -248,7 +282,18 @@ export class B272EndogenousGoalGenesis {
   }
   private generateCandidate(input:B272StepInput):B272GoalCandidate{
     const base=this.buildInternalVector(input);
-    const conflict=clamp01(.28*input.predictionError01+.24*input.needs.uncertainty01+.18*(1-input.autobiographicalContinuity01)+.16*(1-input.identityContinuity01)+.14*(1-input.needs.energy01));
+    const world=input.worldEvidence;
+    const worldPressure=worldVerificationPressure(world);
+    const worldUncertainty=world
+      ? clamp01(Math.max(world.uncertainty01,world.conflict01*.50+world.unresolved01*.30+world.modelDisagreement01*.20)) : 0;
+    const conflict=clamp01(
+      .23*Math.max(input.predictionError01,world?.predictionError01??0)+
+      .18*Math.max(input.needs.uncertainty01,worldUncertainty)+
+      .14*(1-input.autobiographicalContinuity01)+
+      .13*(1-input.identityContinuity01)+
+      .10*(1-input.needs.energy01)+
+      .22*worldPressure
+    );
     const intrinsic=Math.max(clamp01(input.intrinsicReward01),clamp01(input.intrinsicDrive01??0)*clamp01(input.intrinsicDriveConfidence01??0));
     const candidates:number[][]=[];
     for(let k=0;k<4;k++){
@@ -265,7 +310,9 @@ const learned=this.learnedGoalValue(v,input.tick);
       const learnedClosure=(learned.reward01-.5)*.20 + (learned.evidence01*(.52-learned.predictionError01))*.10;
       const predictedFutureValue=clamp01(.38+.12*(dot(v,base)/GOAL_DIMS.length)+.15*intrinsic+.10*(1-conflict)+.04*k+.06*learnedClosure);
       const coherence=clamp01(.5+.25*cosine(v,base)+.25*(1-conflict));
-      const novelty01=clamp01(.25+.45*(1-Math.abs(cosine(v,this.state.currentGoal)))+.30*(k/3));
+      const groundedWorldChange=world && (world.evidenceClass==='observed'||world.evidenceClass==='mixed')
+        ? clamp01(world.changeMagnitude01*world.evidenceConfidence01) : 0;
+      const novelty01=clamp01(.25+.45*(1-Math.abs(cosine(v,this.state.currentGoal)))+.30*(k/3)+groundedWorldChange*.12);
       const internalNeed=clamp01(.5+.35*Math.abs(dot(v,base))+.15*conflict);
       return {id:`g-${hashVector(v)}`,vector:v,novelty01,coherence01:coherence,internalNeed01:internalNeed,predictedFutureValue01:predictedFutureValue,actionScores,confidence01:clamp01(.35+.3*(1-conflict)+.2*coherence+.15*(k===0?1:novelty01))};
     });
@@ -276,6 +323,7 @@ const learned=this.learnedGoalValue(v,input.tick);
     if(!isRecord(input))throw new TypeError('B272 step input must be an object');
     const tick=safeCounter(input.tick,-1);
     if(tick<0)throw new RangeError('B272 tick must be a non-negative safe integer');
+    if(input.worldEvidence!==undefined&&!isGoalWorldEvidenceSignalV1(input.worldEvidence))throw new RangeError('B272 worldEvidence must be a valid version 1 signal');
     if((this.state.steps>0||this.state.tick>0)&&tick<=this.state.tick)throw new RangeError('B272 ticks must strictly increase');
     if(!isRecord(input.needs))throw new TypeError('B272 needs must be an object');
     const needKeys:readonly (keyof B272StepInput['needs'])[]=['energy01','uncertainty01','novelty01','goalPressure01','socialNeed01'];
@@ -290,7 +338,7 @@ const learned=this.learnedGoalValue(v,input.tick);
     if(input.lastAction!==null&&!isAction(input.lastAction))throw new RangeError('B272 lastAction is invalid');
     if(this.state.steps>=Number.MAX_SAFE_INTEGER||this.state.generatedGoals>=Number.MAX_SAFE_INTEGER)throw new RangeError('B272 step counter reached its safe integer limit');
     const c=this.generateCandidate({...input,tick}); const idx=c.actionScores.indexOf(Math.max(...c.actionScores)); const action=ACTIONS[idx]??'reflect';
-    const selfConflict=clamp01(.55*(1-c.coherence01)+.25*input.predictionError01+.20*Math.abs(input.needs.goalPressure01-input.intrinsicReward01));
+    const selfConflict=clamp01(.55*(1-c.coherence01)+.25*input.predictionError01+.20*Math.abs(input.needs.goalPressure01-input.intrinsicReward01)+worldVerificationPressure(input.worldEvidence)*.10);
     const endogenous01=clamp01(.32*c.internalNeed01+.24*c.novelty01+.24*(1-selfConflict)+.20*c.confidence01);
     this.state.tick=input.tick;this.state.steps++;this.state.generatedGoals++;this.state.currentGoal=c.vector.slice();this.state.currentGoalId=c.id;this.state.currentAction=action;this.state.currentConfidence01=c.confidence01;this.state.goalPressure01=clamp01(.72*this.state.goalPressure01+.28*(input.needs.goalPressure01+endogenous01*.35));this.state.goalNovelty01=c.novelty01;this.state.selfConflict01=selfConflict;this.state.internalCoherence01=c.coherence01;this.state.agency01=clamp01(.82*this.state.agency01+.18*(endogenous01*(1-selfConflict)+.25));
     this.state.goalHistory=[...this.state.goalHistory,{tick:input.tick,id:c.id,vector:c.vector.slice(),action,reward01:input.lastReward01,predictionError01:input.predictionError01,accepted:false}].slice(-128);
