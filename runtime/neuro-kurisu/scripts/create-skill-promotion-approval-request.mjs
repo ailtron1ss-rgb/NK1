@@ -67,7 +67,7 @@ export async function createSkillPromotionApprovalRequest({ storePath, registryP
     registry.resolve(observation, observedCandidate));
   for (const observation of candidate.shadowObservations) {
     let valid = false;
-    try { valid = verifyEvidence(observation, candidate); } catch { valid = false; }
+    try { valid = verifyEvidence(observation, candidate, 'promotion'); } catch { valid = false; }
     if (valid !== true) throw new Error('candidate contains shadow evidence that fails signature or trusted-run context verification');
   }
   const active = snapshot.active.find(item => item?.skillId === candidate.skillId) ?? null;
