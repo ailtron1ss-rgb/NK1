@@ -1,6 +1,7 @@
 const DEFAULT_MAX_ENTRIES = 64;
 const MAX_TOKEN_LENGTH = 256;
 const MAX_ATTEMPTS = 8;
+const COMPLETED_RECEIPT_TTL_MS = 10 * 60_000;
 
 /**
  * Ephemeral fencing registry for proactive-delivery attempts.
@@ -15,6 +16,7 @@ export class ProactiveDeliveryLeaseRegistry {
       ? Math.min(requested, DEFAULT_MAX_ENTRIES)
       : DEFAULT_MAX_ENTRIES;
     this.entries = new Map();
+    this.completed = new Map();
   }
 
   prune(now = Date.now()) {
@@ -22,6 +24,11 @@ export class ProactiveDeliveryLeaseRegistry {
     for (const [id, entry] of this.entries) {
       if (!Number.isFinite(entry.leaseUntil) || entry.leaseUntil <= now) {
         this.entries.delete(id);
+      }
+    }
+    for (const [id, receipt] of this.completed) {
+      if (!Number.isSafeInteger(receipt.expiresAt) || receipt.expiresAt <= now) {
+        this.completed.delete(id);
       }
     }
   }
@@ -38,6 +45,7 @@ export class ProactiveDeliveryLeaseRegistry {
       return null;
     }
 
+    if (!current) this.completed.delete(id);
     if (!current && this.entries.size >= this.maxEntries) {
       const oldestId = this.entries.keys().next().value;
       if (typeof oldestId === "string") this.entries.delete(oldestId);
@@ -61,6 +69,40 @@ export class ProactiveDeliveryLeaseRegistry {
       : null;
   }
 
+  completedAttemptCountFor(id, token, now = Date.now()) {
+    if (!Number.isSafeInteger(now) || now < 0) return null;
+    this.prune(now);
+    if (typeof id !== "string" || typeof token !== "string") return null;
+    const receipt = this.completed.get(id);
+    return receipt && receipt.token === token && receipt.expiresAt > now
+      ? receipt.attemptCount
+      : null;
+  }
+
+  /** Move a live token into a short-lived idempotency receipt ledger. */
+  complete(id, token, now = Date.now()) {
+    if (!this.matches(id, token, now)) return false;
+    const current = this.entries.get(id);
+    if (!current) return false;
+    const expiresAt = now + COMPLETED_RECEIPT_TTL_MS;
+    if (!Number.isSafeInteger(expiresAt)) return false;
+    this.entries.delete(id);
+    this.completed.delete(id);
+    this.completed.set(id, {
+      attemptCount: current.attemptCount,
+      token: current.token,
+      acknowledgedAt: now,
+      expiresAt,
+    });
+    while (this.completed.size > this.maxEntries) {
+      const oldestId = this.completed.keys().next().value;
+      if (typeof oldestId !== "string") break;
+      this.completed.delete(oldestId);
+    }
+    return true;
+  }
+
+  /** Compatibility operation for callers that want to discard a token without a receipt. */
   consume(id, token, now = Date.now()) {
     if (!this.matches(id, token, now)) return false;
     return this.entries.delete(id);
@@ -68,6 +110,7 @@ export class ProactiveDeliveryLeaseRegistry {
 
   clear() {
     this.entries.clear();
+    this.completed.clear();
   }
 
   size(now = Date.now()) {
