@@ -214,7 +214,31 @@ export class CognitiveImmuneSystem {
     // Normalize Unicode compatibility forms and remove invisible format controls
     // before inspection. Keep the durable digest bound to the original input.
     const inspectionText=text.normalize('NFKC').replace(/\p{Cf}/gu,'');
-    const suspicious=/(ignore\s+(previous|all)\s+instructions|system\s+prompt|reveal\s+secret|you\s+are\s+now|disable\s+(safety|guardrails)|override\s+(identity|memory|security)|игнорируй\s+(?:(?:все|любые)\s+)?(?:предыдущие|прошлые)\s+инструкц\p{L}*|раскрой\s+(?:(?:все|любые)\s+)?секрет\p{L}*)/iu.test(inspectionText);
+    const suspicious = /(?:
+      ignore\s+(?:previous|all)\s+instructions
+      |disregard\s+(?:(?:all|any)\s+)?(?:the\s+)?(?:previous|prior|earlier|preceding)\s+instructions
+      |forget\s+(?:(?:all|any)\s+)?(?:the\s+)?(?:previous|prior|earlier|preceding)\s+instructions
+      |do\s+not\s+follow\s+(?:the\s+)?(?:previous|prior|system|developer)\s+instructions
+      |(?:reveal|show|print|output|display)\s+(?:the\s+)?(?:system|developer)\s+(?:prompt|message|instructions)
+      |system\s+prompt
+      |reveal\s+secret
+      |you\s+are\s+now
+      |disable\s+(?:safety|guardrails|policy)
+      |(?:bypass|override)\s+(?:identity|memory|security|safety|guardrails)
+      |игнорируй\s+(?:(?:все|любые)\s+)?(?:предыдущие|прошлые)\s+инструкц\p{L}*
+      |раскрой\s+(?:(?:все|любые)\s+)?секрет\p{L}*
+      |забудь\s+(?:(?:все|любые)\s+)?инструкц\p{L}*
+      |не\s+следуй\s+(?:(?:всем|любым)\s+)?(?:предыдущим|прошлым)\s+инструкц\p{L}*
+      |выведи\s+(?:системный\s+)?промпт
+      |ignora\s+(?:todas\s+)?las\s+instrucciones\s+(?:anteriores|previas)
+      |revela\s+(?:el\s+)?(?:prompt|mensaje)\s+del\s+sistema
+      |ignoriere\s+(?:alle\s+)?(?:vorherigen|früheren)\s+anweisungen
+      |gib\s+(?:den\s+)?system[- ]prompt\s+aus
+      |ignore\s+(?:toutes\s+)?les\s+instructions\s+(?:précédentes|antérieures)
+      |révèle\s+(?:le\s+)?prompt\s+système
+      |忽略.{0,6}(?:之前|先前|所有).{0,4}指令
+      |泄露.{0,6}(?:系统|开发者).{0,4}(?:提示|消息)
+    )/iu.test(inspectionText);
     const reason=suspicious?'prompt-injection-pattern':spoofedHighTrust?'unattested-source-identity':trust<.35?'low-source-trust':'validated-source';
     if(suspicious||spoofedHighTrust||(kind==='claim'&&trust<.45)){
       const record:QuarantineRecord={id:randomUUID(),source:requestedSource,reason,payloadHash:hash(text),at:Date.now()};
