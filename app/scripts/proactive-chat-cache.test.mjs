@@ -1,11 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFile } from 'node:fs/promises';
-import { persistChatBeforeAcknowledge } from '../src/organism/chatCache.ts';
+import { persistChatBeforeAcknowledge, restoreChatCache } from '../src/organism/chatCache.ts';
 
 const chat = [
-  { id: 'u-1', role: 'user', text: 'hello' },
-  { id: 'ui-initiative-soc-1', role: 'kurisu', text: 'a proactive thought' },
+  { id: 'u-1', role: 'user', text: 'hello', at: 1_000, tick: 1 },
+  { id: 'ui-initiative-soc-1', role: 'kurisu', text: 'a proactive thought', at: 1_001, tick: 1, option: 'reflect' },
 ];
 
 function storage(write) {
@@ -80,6 +80,25 @@ test('an incomplete ACK response is not treated as a delivery receipt', async ()
   const result = await persistChatBeforeAcknowledge(target, chat, async () => ({ ok: true }));
   assert.equal(result, false,
     'only an explicit positive server receipt may complete the delivery transaction');
+});
+
+
+test('chat restoration drops malformed or unsafe local-cache records', () => {
+  const restored = restoreChatCache(JSON.stringify([
+    { id: 'valid-1', role: 'user', text: 'hello', at: 10, tick: 2 },
+    { id: 'bad-role', role: 'system', text: 'not a chat turn', at: 11, tick: 2 },
+    { id: 'bad-text', role: 'kurisu', text: { html: '<script>' }, at: 12, tick: 2 },
+    { id: 'bad-clock', role: 'kurisu', text: 'invalid time', at: 'now', tick: 2 },
+    null,
+  ]));
+  assert.deepEqual(restored, [
+    { id: 'valid-1', role: 'user', text: 'hello', at: 10, tick: 2 },
+  ]);
+});
+
+test('corrupt or non-array chat cache data restores as an empty transcript', () => {
+  assert.deepEqual(restoreChatCache('{broken'), []);
+  assert.deepEqual(restoreChatCache(JSON.stringify({ turns: [] })), []);
 });
 
 console.log('PROACTIVE_CHAT_DURABLE_ACK=PASS');
