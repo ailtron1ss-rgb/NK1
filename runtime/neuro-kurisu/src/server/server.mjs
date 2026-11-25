@@ -22,6 +22,7 @@ import { LocalLanguageBackendPolicy } from './local-language-backend-policy.mjs'
 import { RELEASE_CONTRACT } from '../organism/system/ReleaseContract.ts';
 import { resolvePhonePolicyConfig } from '../organism/system/PhoneRuntimePolicy.ts';
 import { authorizeApiRequest } from '../organism/system/ApiSecurityPolicy.ts';
+import { BoundedRateLimiter } from './bounded-rate-limiter.mjs';
 import { GeminiVisionSemanticBackend } from '../organism/body/GeminiVisionSemanticBackend.ts';
 import { OpenAICompatibleLocalChatProvider } from '../organism/integration/local/OpenAICompatibleLocalChatProvider.ts';
 import { NeuroPlasticInferenceAdapter } from '../organism/integration/local/NeuroPlasticInferenceAdapter.ts';
@@ -124,22 +125,11 @@ let lastLanguageBackend = 'none';
 let lastLanguageFailure = '';
 const RATE_WINDOW_MS = Math.max(10000, Number(process.env.NEURO_RATE_WINDOW_MS || 60000));
 const RATE_LIMIT = Math.max(30, Number(process.env.NEURO_RATE_LIMIT || 240));
-const rateBuckets = new Map();
+const API_RATE_LIMITER = new BoundedRateLimiter({ windowMs: RATE_WINDOW_MS, limit: RATE_LIMIT, maxKeys: 512 });
 function consumeRateLimit(req, pathName) {
     if (pathName === '/health' || pathName === '/api/health')
         return { allowed: true };
-    const now = Date.now();
-    // The socket peer is transport-owned. Do not let an untrusted caller rotate
-    // its own bucket with a spoofed X-Forwarded-For header.
-    const current = rateBuckets.get(key);
-    const bucket = !current || now - current.startedAt >= RATE_WINDOW_MS ? { startedAt: now, count: 0 } : current;
-    bucket.count++;
-    rateBuckets.set(key, bucket);
-    if (rateBuckets.size > 512)
-        for (const [k, v] of rateBuckets)
-            if (now - v.startedAt >= RATE_WINDOW_MS)
-                rateBuckets.delete(k);
-    return bucket.count <= RATE_LIMIT ? { allowed: true, remaining: RATE_LIMIT - bucket.count } : { allowed: false, retryAfterSec: Math.ceil((bucket.startedAt + RATE_WINDOW_MS - now) / 1000) };
+    return API_RATE_LIMITER.consume(String(req.socket?.remoteAddress || 'unknown'));
 }
 const VISION_BACKEND = VISION_ENABLED && process.env.GEMINI_API_KEY ? new GeminiVisionSemanticBackend({ apiKey: process.env.GEMINI_API_KEY, model: process.env.GEMINI_VISION_MODEL || process.env.GEMINI_MODEL || 'gemini-3.8-flash', timeoutMs: Number(process.env.GEMINI_VISION_TIMEOUT_MS || 12000), maxImageBytes: Number(process.env.GEMINI_VISION_MAX_IMAGE_BYTES || 8000000) }) : undefined;
 await mkdir(STATE, { recursive: true });
