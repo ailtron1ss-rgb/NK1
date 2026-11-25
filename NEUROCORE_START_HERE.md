@@ -561,3 +561,15 @@ When the user says “работай над проектом”, “продол
 - Dedicated current-head workflow [45607764358](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45607764358) completed **SUCCESS**; focused P23 freshness, signature, candidate-store and approval-request tests all passed. Runtime syntax validation covered 746 files; semantic `tsc` remains unavailable. Do not infer typecheck coverage beyond the reported syntax-only validation.
 - PR #1177 remains Draft/open/unmerged. No source, main or Release artifact was modified.
 - Full record: [P23 signed Skill Shadow evidence freshness](docs/engineering/NK1_P23_SKILL_SHADOW_EVIDENCE_FRESHNESS_2026-11-25.md).
+
+
+## Live engineering checkpoint — durable delivery ownership (2026-11-25)
+
+- PR #1181 [social initiative lease and UI ACK](https://github.com/ailtron1ss-rgb/NK1/pull/1181): exact head `c92c734cc785fc4d36ba1cc9e9d471d0cf7c0436`, **46/46 Actions SUCCESS**. It exclusively owns user-visible proactive social initiative delivery, consent/quiet-hours checks, retry and durable chat-before-ACK.
+- PR #1182 [generic durable delivery outbox](https://github.com/ailtron1ss-rgb/NK1/pull/1182): current head `b65bc0bbcb8596d9fc30922960b94f4703d923a9`, 27 ahead / 0 behind, seven paths; remains Draft. It is restricted to task-completion/reminder/notification/custom, and rejects `initiative-message` to prevent duplicate lease ownership.
+- Generic outbox now quarantines expired leases as `reconciliation-required`; only an authoritative host outcome can confirm delivery, confirm non-delivery and authorize retry with backoff, or cancel. Unknown outcomes stay quarantined.
+- Architecture correction: code head `46c5b4a...` passed dependency audit [45610617629](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45610617629): dependency budget 65/65, zero violations/cycles/missing imports, semantic `tsc` PASS. Transitive import audit [45610616775](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45610616775) also passed.
+- Dedicated outbox contract workflow for current PR head [45611057409](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45611057409) is queued; focused contract, existing consent regression and OpenLoop tests are not yet claimed as passing.
+- PR #1177 P23 exact-head CI matrix: **65/65 SUCCESS**; freshness/signed-evidence/candidate-store/approval-request tests passed. Semantic `tsc` was unavailable in that particular P23 workflow.
+- All three aspect PRs remain Draft/unmerged; canonical `workpass70-source@9008a898...`, `main` and published Release remain unchanged.
+- Full record for the generic queue: [OPENCLAW_DURABLE_DELIVERY_OUTBOX_ADAPTATION_2026-11-25.md](docs/engineering/OPENCLAW_DURABLE_DELIVERY_OUTBOX_ADAPTATION_2026-11-25.md).
