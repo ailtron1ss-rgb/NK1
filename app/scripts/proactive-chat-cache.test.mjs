@@ -59,9 +59,11 @@ test('the production store routes proactive ACK through the durable persistence 
   const source = await readFile(new URL('../src/organism/store.ts', import.meta.url), 'utf8');
   assert.ok(source.includes('persistChatBeforeAcknowledge'));
   const gate = source.lastIndexOf('persistChatBeforeAcknowledge(');
-  const acknowledgement = source.indexOf('ackProactiveMessage(initiative.id)', gate);
+  const acknowledgement = source.indexOf('ackProactiveMessage(initiative.id, initiative.deliveryToken)', gate);
   assert.ok(gate >= 0 && acknowledgement > gate,
-    'the proactive ACK call must happen inside the storage-before-ACK gate');
+    'the proactive ACK call must use the current attempt token inside the storage-before-ACK gate');
+  assert.ok(source.includes('!initiative.deliveryToken'),
+    'the client must not surface a claimed initiative without its lease token');
 });
 
 
