@@ -60,7 +60,15 @@ export class P81PredictiveAttention {
   const uncertainty=clamp(i.uncertainty01); const novelty=clamp(i.noveltyPressure01); const attention=clamp(i.attentionBudget01);
   // Never let a delayed or malformed observation roll the attention system back to an older world.
   const incomingWorld=isValidWorldSignal(i.worldState)?i.worldState:undefined;
-  const world=incomingWorld&&incomingWorld.revision>=this.state.worldRevision?incomingWorld:undefined;
+  const world=incomingWorld&&incomingWorld.revision>=this.state.worldRevision
+   ? incomingWorld
+   : {
+      revision:this.state.worldRevision,evidenceClass:this.state.worldEvidenceClass,
+      evidenceConfidence01:0,uncertainty01:this.state.uncertainty01,
+      changeMagnitude01:this.state.worldChange01,conflict01:this.state.worldConflict01,
+      unresolved01:this.state.worldUnresolved01,modelDisagreement01:this.state.worldDisagreement01,
+      predictionError01:0,
+     };
   const worldConflict=clamp(world?.conflict01??0);
   const worldDisagreement=clamp(world?.modelDisagreement01??0);
   const worldUnresolved=clamp(world?.unresolved01??0);
