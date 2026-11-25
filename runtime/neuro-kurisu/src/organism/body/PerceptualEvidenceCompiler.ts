@@ -92,15 +92,17 @@ export class PerceptualEvidenceCompiler{
     const record:PerceptualEvidenceRecord={
       id:`pe-external-${stableHash(`${input.at}:${input.claim}:${confidence.toFixed(3)}`)}`,
       at:input.at, modality:input.modality??'sensor', claim:String(input.claim).slice(0,240),
-      confidence01:confidence, uncertainty01:1-confidence, kind:input.verified?'observed':'derived', parents:[...(input.parents??[])].slice(0,8),
+      confidence01:confidence, uncertainty01:1-confidence, kind:'derived', parents:[...(input.parents??[])].slice(0,8),
     };
     const existing=this.state.evidence.findIndex(x=>x.id===record.id);
     if(existing<0) this.state.evidence=[record,...this.state.evidence].slice(0,96);
     this.state.lastAt=input.at; this.state.updates++;
-    const observedBoost=input.verified?1:.45;
+    // A caller-provided boolean is not a provenance credential. External records remain derived
+    // until a host-owned verifier writes an independently attested observation.
+    const observedBoost=.45;
     this.state.metrics.groundedSignalRatio01=clamp(this.state.metrics.groundedSignalRatio01*.92+.08*observedBoost);
     this.state.metrics.grounding01=clamp(this.state.metrics.grounding01*.94+.06*confidence*observedBoost);
-    this.state.metrics.temporalBinding01=clamp(this.state.metrics.temporalBinding01*.94+.06*(input.verified?1:.55));
+    this.state.metrics.temporalBinding01=clamp(this.state.metrics.temporalBinding01*.94+.06*.55);
     const digest=`${this.state.scene}|${this.state.evidence.slice(0,24).map(e=>`${e.modality}:${e.claim}:${e.confidence01.toFixed(2)}`).join('|')}|${JSON.stringify(this.state.metrics)}`;
     this.state.lastHash=stableHash(digest);
     return structuredClone(record);
