@@ -127,4 +127,11 @@ test('chat restoration rejects an oversized serialized cache before parsing', ()
   assert.deepEqual(restoreChatCache(' '.repeat(1_750_001)), []);
 });
 
+
+test('the production client uses POST for the state-changing claim operation', async () => {
+  const source = await readFile(new URL('../src/neuro-kurisu/api.ts', import.meta.url), 'utf8');
+  assert.ok(source.includes('/api/organism/proactive-message/claim'));
+  assert.ok(source.includes('method: "POST", body: "{}"'));
+});
+
 console.log('PROACTIVE_CHAT_DURABLE_ACK=PASS');
