@@ -53,6 +53,8 @@ const selfKnowledgeMetricsSafe=(m:any,ctx:number)=>clamp(Number(m?.teacherConfid
 
 export interface NeuralExperienceToken {
   tick:number;
+  /** Exact Active Information Gain decision identity carried with this experience across snapshots. */
+  activeInformationGainDecision?:Readonly<{tick:number;selectedAction:ActionKind|null;selectedHypothesis:string|null}>;
   contextId?:number;
   input:number[];
   neuralBefore:number[];
@@ -927,7 +929,9 @@ export class NeuralExperienceBranch {
     for(const a of ACTIONS) bias[a]=clamp(bias[a]!+stabilityPlasticity.actionBias[a]!, -.215, .215);
     const coherence=clamp(.45+Math.abs(mean-.10)*-.7+(1-i.predictionError01)*.25+pressure*.10+.05*this.state.longMemoryStability01);
     const token:NeuralExperienceToken={
-      tick:i.tick,contextId:unifiedWorld.contextId,input:temporalInput,neuralBefore:before,neuralAfter:this.state.state.slice(),
+      tick:i.tick,
+      activeInformationGainDecision:Object.freeze({tick:i.tick,selectedAction:infoGain.selectedAction,selectedHypothesis:infoGain.selectedHypothesis}),
+      contextId:unifiedWorld.contextId,input:temporalInput,neuralBefore:before,neuralAfter:this.state.state.slice(),
       prediction01:prediction,actual01:i.reward01??.5,predictionError01:i.predictionError01,pressure01:pressure,
       novelty01:i.novelty01,uncertainty01:i.uncertainty01,reward01:i.reward01??.5,action:null,actionUtilities:{...i.baseUtilities},
       selectedAssembly:spikes,replayEligible:true,verified:false,
@@ -1188,7 +1192,11 @@ export class NeuralExperienceBranch {
     this.developmentalController.commitAction(i.action);
     if(this.lastArbiterBiases)this.crossLayerArbiter.learn({action:i.action,reward01:reward,verified01:verified,predictionError01:error,biases:this.lastArbiterBiases,weights:this.crossLayerArbiter.metrics().sourceWeights});
     this.externalGrounding.afterOutcome({tick:i.tick,action:i.action,reward01:reward,verified01:verified,predictionError01:error,sensors:i.embodied?.sensors,observedContradiction01:clamp(error*.45+(1-verified)*.35)});
-    this.activeInformationGain.afterOutcome({tick:i.tick,action:i.action,reward01:reward,verified01:verified,predictionError01:error,observedChange01:clamp(Math.abs((i.nextInput[0]??0)-(token.neuralBefore[0]??0))*1.5),contradiction01:clamp(error*.45+(1-verified)*.35),hypothesisId:this.state.activeInformationGain.selectedHypothesis});
+    // Attribute this result to the exact information-gain decision carried by the
+    // same persisted NeuralExperienceToken. The state mirror is only synchronized at
+    // snapshot boundaries and may still name the previous decision's hypothesis.
+    const activeInformationDecision=token.activeInformationGainDecision;
+    this.activeInformationGain.afterOutcome({tick:i.tick,action:i.action,reward01:reward,verified01:verified,predictionError01:error,observedChange01:clamp(Math.abs((i.nextInput[0]??0)-(token.neuralBefore[0]??0))*1.5),contradiction01:clamp(error*.45+(1-verified)*.35),hypothesisId:activeInformationDecision?.tick===i.tick?activeInformationDecision.selectedHypothesis:undefined});
     this.evidenceLedger.record({tick:i.tick,action:i.action,predicted01:token.prediction01,observed01:reward,reward01:reward,verified01:verified,predictionError01:error,contradiction01:clamp(error*.45+(1-verified)*.35),grounding01:this.externalGrounding.metrics().grounding01,informationGain01:this.activeInformationGain.metrics().informationGain01,causalCredit01:clamp(causalOutcome.causalGain01),sourceIds:[this.externalGrounding.metrics().selectedChannel??'internal']});
     const regimeMetrics=this.causalRegimeGraph.metrics();
     this.learnedTransition.afterOutcome({tick:i.tick,preContext:[...token.neuralBefore.slice(0,16),token.novelty01,token.uncertainty01],postContext:[...sharedNext24,i.goalPressure01??.5,i.identityGap01??.5],action:i.action,reward01:reward,predictionError01:error});

@@ -3978,3 +3978,10 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - This is an aspect-branch implementation milestone; it is not a merged change or a published Release.
 
 - Deduplicate restored pending SelfAuthorship rows by exact decision ID, retaining the newest ledger entry so a malformed snapshot cannot award the same decision twice.
+
+
+## 2026-11-25 — Active Information Gain decision attribution
+
+- Carry the exact Active Information Gain selection (`tick`, `selectedAction`, `selectedHypothesis`) inside the originating `NeuralExperienceToken`, which already crosses the durable NeuralExperienceBranch snapshot/restore boundary.
+- Bind `afterOutcome()` to that token receipt rather than `state.activeInformationGain`, whose mirrored selection may still refer to the previous decision after the live controller has selected a new hypothesis.
+- Preserve the controller's existing tick/action/hypothesis validation, single-pending-decision semantics, and compatibility with older snapshots that lack the optional receipt.
