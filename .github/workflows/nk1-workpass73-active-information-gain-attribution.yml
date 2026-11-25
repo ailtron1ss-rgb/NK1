@@ -44,7 +44,7 @@ jobs:
           printf '%s\n' "$output"
           printf '%s\n' "$output" | grep -F "the motion experiment must learn from its own completed outcome" >/dev/null
           cd "$GITHUB_WORKSPACE"
-          git worktree remove "$RED_WORKTREE"
+          git worktree remove --force "$RED_WORKTREE"
       - name: NeuralExperienceBranch A-to-B attribution after snapshot restore
         working-directory: runtime/neuro-kurisu
         run: npm run test:active-information-gain-neural-attribution-workpass73
