@@ -158,18 +158,19 @@ try {
   const [spriteX, spriteY, spriteWidth, spriteHeight] = spriteDraw.args;
   await legacyCanvas.click({ position: { x: spriteX + spriteWidth * 0.5, y: spriteY + spriteHeight * 0.22 } });
   const legacyHeadDeadline = Date.now() + timeoutMs;
-  while (observedEvents.length < 5 && Date.now() < legacyHeadDeadline) await page.waitForTimeout(50);
-  assert.equal(observedEvents[4]?.interaction?.zone, "head", "Legacy sprite head hit must use the canonical social contact protocol");
+  while (observedEvents.length < 9 && Date.now() < legacyHeadDeadline) await page.waitForTimeout(50);
+  assert.equal(observedEvents[8]?.interaction?.zone, "head", "Legacy sprite head hit must use the canonical social contact protocol");
   await page.waitForTimeout(1_600);
   await legacyCanvas.click({ position: { x: spriteX + spriteWidth * 0.5, y: spriteY + spriteHeight * 0.64 } });
   const legacyBodyDeadline = Date.now() + timeoutMs;
-  while (observedEvents.length < 6 && Date.now() < legacyBodyDeadline) await page.waitForTimeout(50);
-  assert.equal(observedEvents[5]?.interaction?.zone, "body", "Legacy sprite body hit must use the canonical social contact protocol");
-  assert.deepEqual(observedEvents.slice(4).map((event) => event.interaction), [
+  while (observedEvents.length < 10 && Date.now() < legacyBodyDeadline) await page.waitForTimeout(50);
+  assert.equal(observedEvents[9]?.interaction?.zone, "body", "Legacy sprite body hit must use the canonical social contact protocol");
+  assert.deepEqual(observedEvents.slice(8).map((event) => event.interaction), [
     { protocolVersion: 1, kind: "avatar-contact", zone: "head" },
     { protocolVersion: 1, kind: "avatar-contact", zone: "body" },
   ]);
 
+  assert.equal(observedEvents.length, 10, "all Live2D, 3D and Legacy desktop/mobile contacts must reach the canonical event route");
   console.log(JSON.stringify({ ok: true, origin, readiness: "recovered-without-synthetic-message", viewports: ["1280x900", "390x844"], contactEvents: observedEvents.length, events: observedEvents }, null, 2));
 } finally {
   await browser.close();
