@@ -69,4 +69,21 @@ assert.throws(() => createContextBoundSkillShadowEvidenceVerifier(keys, context,
 assert.throws(() => createContextBoundSkillShadowEvidenceVerifier(keys, context, {
   maxFutureSkewMs: 24 * 60 * 60 * 1000 + 1, now: () => now,
 }), /invalid skill shadow evidence freshness policy/);
+
+const invalidClockVerify = createContextBoundSkillShadowEvidenceVerifier(keys, context, {
+  maxAgeMs: 1_000,
+  maxFutureSkewMs: 100,
+  now: () => Number.MAX_SAFE_INTEGER + 1,
+});
+assert.equal(invalidClockVerify(staleObservation, candidate, 'persisted-active'), false,
+  'a non-safe-integer verifier clock must fail closed even for persisted-active restore');
+
+const fractionalClockVerify = createContextBoundSkillShadowEvidenceVerifier(keys, context, {
+  maxAgeMs: 1_000,
+  maxFutureSkewMs: 100,
+  now: () => now + 0.5,
+});
+assert.equal(fractionalClockVerify(staleObservation, candidate, 'persisted-active'), false,
+  'a fractional verifier clock must not bypass the persisted-active evidence-age exemption');
+
 console.log('P23_SKILL_SHADOW_EVIDENCE_FRESHNESS=PASS');
