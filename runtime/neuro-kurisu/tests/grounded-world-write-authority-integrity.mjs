@@ -202,7 +202,7 @@ assert.deepEqual(p41HostileRestore.snapshot().entities.find(entity => entity.lab
   ['camera-front'], 'P41 checkpoint restore must strip modality names from source identity');
 
 const contextWithoutSource = new GroundedWorldState();
-contextWithoutSource.integrate({
+const contextWithoutSourceResult = contextWithoutSource.integrate({
   at: perceptionAt,
   base: {
     tick: 1, location: 'lab', energy: .8, attention: .7, uncertainty: .2,
@@ -217,6 +217,10 @@ const baseChair = contextWithoutSource.snapshot().entities.find(entity => entity
 assert.ok(baseChair);
 assert.deepEqual(baseChair.sourceIds, [],
   'a synthetic world-context identity used for tracking must not be promoted into source provenance');
+const baseChairContextObject = contextWithoutSourceResult.objects.find(object => object.label === 'base-chair');
+assert.ok(baseChairContextObject);
+assert.equal('sourceId' in baseChairContextObject, false,
+  'outgoing context must not substitute an entity ID when source provenance is unknown');
 
 
 const mixedEntity = semantic.entities.find(entity => entity.label === 'tracked-chair');
