@@ -40,6 +40,18 @@ const restoredEvidenceKind=(value:unknown):GroundedEvidenceKind=>{
   if(value==='observed')return 'model-output';
   return value==='model-output'||value==='derived'||value==='conflict'||value==='unresolved'?value:'unresolved';
 };
+const MODALITY_SOURCE_ALIASES=new Set(['text','speech','audio','vision','sensor','world','semantic']);
+const restoredModalitySourceIds=(value:unknown):Partial<Record<string,string[]>>=>{
+  if(!value||typeof value!=='object'||Array.isArray(value))return {};
+  const out:Partial<Record<string,string[]>>={};
+  for(const [modality,raw] of Object.entries(value as Record<string,unknown>)){
+    if(!/^(text|speech|audio|vision|sensor|world|semantic)$/.test(modality)||!Array.isArray(raw))continue;
+    const ids=[...new Set(raw.map(item=>safeText(item,180))
+      .filter((id):id is string=>Boolean(id)&&!MODALITY_SOURCE_ALIASES.has(id.toLowerCase())))].slice(-8);
+    if(ids.length)out[modality]=ids;
+  }
+  return out;
+};
 const restoredModalityEvidence=(value:unknown):Partial<Record<string,GroundedEvidenceKind>>=>{
   if(!value||typeof value!=='object'||Array.isArray(value))return {};
   return Object.fromEntries(Object.entries(value as Record<string,unknown>)
@@ -85,6 +97,8 @@ export interface GroundedEntity {
   imageBoxConfidence01?:number;
   /** Per-modality provenance is retained across world-model consolidation. */
   modalityEvidenceKinds?:Partial<Record<string,'observed'|'model-output'|'derived'|'conflict'|'unresolved'>>;
+  /** Source identity is retained per modality; modality names are never sources. */
+  modalitySourceIds?:Partial<Record<string,string[]>>;
   sourceIds?:string[];
   value?:number;
   valueKnown?:boolean;
@@ -158,7 +172,8 @@ export class GroundedWorldState {
           position,velocity,
           ...(validImageEvidence?{imageBox,imageBoxCameraId,imageBoxAt,imageBoxConfidence01}:{}),
           modalityEvidenceKinds:restoredModalityEvidence(e.modalityEvidenceKinds),
-          sourceIds:safeStringArray(e.sourceIds,16,180).filter(sourceId=>!['text','vision','audio','sensor','world'].includes(sourceId.trim().toLowerCase())),
+          modalitySourceIds:restoredModalitySourceIds(e.modalitySourceIds),
+          sourceIds:safeStringArray(e.sourceIds,16,180).filter(sourceId=>!MODALITY_SOURCE_ALIASES.has(sourceId.trim().toLowerCase())),
           ...(value!==undefined?{value}:{}),
           valueKnown:e.valueKnown===true&&value!==undefined,
           visibilityKnown:e.visibilityKnown===true,
@@ -339,7 +354,7 @@ export class GroundedWorldState {
     };
     const mergeEntity=(incoming:GroundedEntity)=>{
       const old=findMatch(incoming);
-      if(!old){rows.push({...incoming,modalities:[...incoming.modalities],trackAliases:[...(incoming.trackAliases??[])],sourceIds:[...(incoming.sourceIds??[])],modalityEvidenceKinds:{...(incoming.modalityEvidenceKinds??{})}});return;}
+      if(!old){rows.push({...incoming,modalities:[...incoming.modalities],trackAliases:[...(incoming.trackAliases??[])],sourceIds:[...(incoming.sourceIds??[])],modalityEvidenceKinds:{...(incoming.modalityEvidenceKinds??{})},modalitySourceIds:Object.fromEntries(Object.entries(incoming.modalitySourceIds??{}).map(([key,ids])=>[key,[...(ids??[])]]))});return;}
       const previousLastSeenAt=old.lastSeenAt;
       const previousFrame=old.positionFrameId;
       const nextFrame=incoming.positionFrameId;
@@ -353,6 +368,13 @@ export class GroundedWorldState {
       old.trackAliases=[...new Set([...(old.trackAliases??[]),...(incoming.trackAliases??[]),...(incoming.trackId&&old.trackId!==incoming.trackId?[incoming.trackId]:[])])].filter(Boolean).slice(-16);
       old.sourceIds=[...new Set([...(old.sourceIds??[]),...(incoming.sourceIds??[])])].slice(-16);
       old.modalityEvidenceKinds={...(old.modalityEvidenceKinds??{}),...(incoming.modalityEvidenceKinds??{})};
+      const mergedModalitySources={...(old.modalitySourceIds??{})};
+      for(const [modality,ids] of Object.entries(incoming.modalitySourceIds??{})){
+        const cleanIds=(ids??[]).filter(sourceId=>typeof sourceId==='string'&&sourceId.trim().length>0
+          &&sourceId.length<=180&&!MODALITY_SOURCE_ALIASES.has(sourceId.trim().toLowerCase()));
+        if(cleanIds.length)mergedModalitySources[modality]=[...new Set([...(mergedModalitySources[modality]??[]),...cleanIds])].slice(-8);
+      }
+      old.modalitySourceIds=mergedModalitySources;
       if(incoming.imageBox&&Number.isFinite(incoming.imageBoxAt)&&(incoming.imageBoxAt??-1)>=(old.imageBoxAt??-1)){
         old.imageBox={...incoming.imageBox};
         old.imageBoxCameraId=incoming.imageBoxCameraId;
@@ -409,6 +431,7 @@ export class GroundedWorldState {
         modalities:['world'],
         ...(trackId?{trackId}:{}),
         modalityEvidenceKinds:{world:evidenceKind},
+        ...(suppliedSourceId?{modalitySourceIds:{world:[suppliedSourceId]}}:{}),
         sourceIds:suppliedSourceId?[suppliedSourceId]:[],
         ...(hasPosition?{position:{x:Number(o.x),y:Number(o.y),z:Number(o.z)},positionFrameId:coordinateFrameId}:{position:null}),
         ...(hasImageBox?{imageBox:{x:Number(imageBox!.x),y:Number(imageBox!.y),width:Number(imageBox!.width),height:Number(imageBox!.height)},imageBoxCameraId,imageBoxAt,imageBoxConfidence01}:{}),
@@ -441,6 +464,7 @@ export class GroundedWorldState {
         velocity:x.velocity?{...x.velocity}:null,
         ...(x.imageBox?{imageBox:{...x.imageBox},imageBoxCameraId:x.imageBoxCameraId,imageBoxAt:x.imageBoxAt,imageBoxConfidence01:x.imageBoxConfidence01}:{}),
         modalityEvidenceKinds:evidenceKinds,
+        modalitySourceIds:restoredModalitySourceIds(x.modalitySourceIds),
         // Modality names describe channels, not source identity. Preserve only
         // provider/source IDs explicitly carried by the corresponding modality.
         sourceIds:[...new Set(Object.values(x.modalitySourceIds??{}).flatMap(ids=>Array.isArray(ids)?ids:[])
