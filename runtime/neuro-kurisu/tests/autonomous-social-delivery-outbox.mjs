@@ -187,4 +187,13 @@ function readyEngine(at = 1_000) {
   assert.equal(during.outbox.claimable, 0);
 }
 
+
+{
+  const { engine, initiative } = readyEngine(400_000);
+  const claim = engine.claimReady(400_002, 1_000);
+  assert.ok(claim?.deliveryLeaseUntil);
+  assert.equal(engine.acknowledge(initiative.id, claim.deliveryLeaseUntil), false,
+    'the delivery lease is exclusive and must be invalid exactly at its expiry timestamp');
+}
+
 console.log('AUTONOMOUS_SOCIAL_DELIVERY_OUTBOX=PASS');
