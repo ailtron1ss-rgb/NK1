@@ -277,6 +277,7 @@ import { defaultP41SemanticPerception } from '../cognition/P41SemanticPerception
 import { defaultP41NativePerception } from '../cognition/P41NativePerception.ts';
 import { P41TemporalPerceptionModel, defaultP41TemporalPerception } from '../cognition/P41TemporalPerceptionModel.ts';
 import { PerceptualEvidenceCompiler, defaultPerceptualEvidence } from '../body/PerceptualEvidenceCompiler.ts';
+import { defaultObservationIntakeState } from '../body/ObservationIntakeGate.ts';
 import { GroundedWorldState, defaultGroundedWorldState } from '../world/GroundedWorldState.ts';
 import { synchronizeGroundedSpatialMemories } from '../memory/GroundedSpatialMemoryBridge.ts';
 import { defaultUnifiedLatentWorldState } from '../world/UnifiedLatentWorldState.ts';
