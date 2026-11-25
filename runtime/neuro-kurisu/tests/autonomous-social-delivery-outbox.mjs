@@ -174,8 +174,11 @@ function readyEngine(at = 1_000) {
     'exhausted deliveries must be observable during their final backoff');
   assert.equal(diagnostics.deliveryAttempts, 8);
   assert.equal(diagnostics.deliveryClaimable, 0);
-  assert.equal(engine.claimReady(at, 1_000), null,
+  const terminalClaim = engine.claimReadyWithState(at, 1_000);
+  assert.equal(terminalClaim.initiative, null,
     'the delivery attempt budget must remain bounded');
+  assert.equal(terminalClaim.stateChanged, true,
+    'dead-lettering on a null claim must report a state transition for persistence');
   const deadLetter = engine.snapshot().initiatives[0];
   assert.equal(deadLetter.status, 'deferred',
     'an exhausted outbox item must reach a terminal state after its final backoff');
@@ -209,6 +212,27 @@ function readyEngine(at = 1_000) {
   assert.ok(claim?.deliveryLeaseUntil);
   assert.equal(engine.acknowledge(initiative.id, claim.deliveryLeaseUntil), false,
     'the delivery lease is exclusive and must be invalid exactly at its expiry timestamp');
+}
+
+
+{
+  const { engine, initiative } = readyEngine(500_000);
+  const claim = engine.claimReady(500_002, 1_000);
+  assert.ok(claim);
+  const receipt = engine.acknowledgeWithState(initiative.id, 500_000 + 20 * 60_000 + 1);
+  assert.equal(receipt.acknowledged, false);
+  assert.equal(receipt.stateChanged, true,
+    'a rejected expired ACK must report its TTL-driven deferred transition');
+  assert.equal(engine.snapshot().initiatives[0].status, 'deferred');
+}
+
+{
+  const engine = new AutonomousSocialInitiativeEngine();
+  engine.setConsent(true);
+  const empty = engine.claimReadyWithState(600_000);
+  assert.equal(empty.initiative, null);
+  assert.equal(empty.stateChanged, false,
+    'a truly empty poll must not require a durable checkpoint');
 }
 
 console.log('AUTONOMOUS_SOCIAL_DELIVERY_OUTBOX=PASS');
