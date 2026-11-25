@@ -104,7 +104,8 @@ export class ExternalEvidenceTrustEngine{
   }
  snapshot(){return structuredClone(this.state);}
  observe(input:{claimKey:string;source:string;independenceKey?:string;confidence01?:number;contradiction01?:number;at?:number;evidenceId?:string}):ExternalEvidenceRecord{
-   const at=Number.isFinite(input.at)?Number(input.at):Date.now();
+   const now=Date.now();
+   const at=typeof input.at==='number'&&Number.isSafeInteger(input.at)&&input.at>=0?Math.min(input.at,now+5*60*1000):now;
    const claimKey=String(input.claimKey??'').trim().slice(0,180);
    const source=String(input.source||'unknown').trim().toLowerCase().slice(0,120)||'unknown';
    const sourceClass=sourceClassOf(source); const confidence=clamp(input.confidence01??.5); const contradiction=clamp(input.contradiction01??0);
@@ -125,7 +126,7 @@ export class ExternalEvidenceTrustEngine{
    const record:ExternalEvidenceRecord={
      id:prior?.id??stableId(claimKey,source,at), claimKey, source, sourceClass, independenceKey,
      confidence01:confidence, trust01:0, corroborations:(prior?.corroborations??0)+1, independentSources:distinct.length+1,
-     contradictions:(prior?.contradictions??0)+(contradiction>.5?1:0), status:'candidate', firstSeenAt:prior?.firstSeenAt??at, lastSeenAt:at,
+     contradictions:(prior?.contradictions??0)+(contradiction>.5?1:0), status:'candidate', firstSeenAt:prior?.firstSeenAt??at, lastSeenAt:Math.max(prior?.lastSeenAt??0,at),
      ...(evidenceId?{evidenceIds:[...evidenceIds.filter(id=>id!==evidenceId),evidenceId].slice(-64)}:prior?.evidenceIds?{evidenceIds:evidenceIds.slice(-64)}:{}),
    };
    const trust=clamp(baseTrust(sourceClass)*.55+confidence*.2+Math.min(1,record.corroborations/4)*.10+Math.min(1,record.independentSources/3)*.18-record.contradictions*.12);
