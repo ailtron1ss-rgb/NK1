@@ -23,7 +23,7 @@
 | blocked | 4 | Независимый RU/EN holdout, avatar license/visual gate, speech hardware soak, Android/Termux soak |
 | deferred | 11 | Остальные направления отложены или имеют уже существующий зелёный PR без нового дефекта |
 | verified | 1 | PR #1185: 14/14 exact-head checks и scoped acceptance |
-| no_new_work | 6 | Нет нового независимого дефекта сверх уже проверенных/открытых work units |
+| no_new_work | 7 | Нет нового независимого дефекта сверх уже проверенных/открытых work units |
 
 `completed` означает завершение конкретного work unit на PR-ветке, не merge и не Release. `verified` учитывает только exact-head acceptance. Частично проверенные и human-only gates не получают verification credit.
 
