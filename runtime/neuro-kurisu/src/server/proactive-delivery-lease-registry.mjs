@@ -27,10 +27,10 @@ export class ProactiveDeliveryLeaseRegistry {
   }
 
   issue(id, attemptCount, leaseUntil, token, now = Date.now()) {
+    if (!Number.isSafeInteger(now) || now < 0 || !Number.isSafeInteger(leaseUntil) || leaseUntil <= now) return null;
     this.prune(now);
     if (typeof id !== "string" || !id.trim() || id !== id.trim() || id.length > 160) return null;
     if (!Number.isSafeInteger(attemptCount) || attemptCount < 1 || attemptCount > MAX_ATTEMPTS) return null;
-    if (!Number.isFinite(leaseUntil) || leaseUntil <= now) return null;
     if (typeof token !== "string" || token.length < 16 || token.length > MAX_TOKEN_LENGTH) return null;
     const current = this.entries.get(id);
     if (current && current.leaseUntil > now && attemptCount <= current.attemptCount) {
@@ -47,6 +47,7 @@ export class ProactiveDeliveryLeaseRegistry {
   }
 
   matches(id, token, now = Date.now()) {
+    if (!Number.isSafeInteger(now) || now < 0) return false;
     this.prune(now);
     if (typeof id !== "string" || typeof token !== "string") return false;
     const current = this.entries.get(id);
