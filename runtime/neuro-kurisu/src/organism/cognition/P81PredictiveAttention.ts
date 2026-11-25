@@ -22,6 +22,14 @@ export interface P81State {
   worldConflict01:number; worldDisagreement01:number; worldUnresolved01:number; worldChange01:number;
 }
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
+const isValidWorldSignal=(value:unknown):value is P81WorldStateSignal=>{
+ if(!value||typeof value!=='object'||Array.isArray(value))return false;
+ const world=value as Partial<P81WorldStateSignal>;
+ if(!Number.isSafeInteger(world.revision)||Number(world.revision)<0)return false;
+ if(world.evidenceClass!=='observed'&&world.evidenceClass!=='mixed'&&world.evidenceClass!=='inferred'&&world.evidenceClass!=='unknown')return false;
+ return ['evidenceConfidence01','uncertainty01','changeMagnitude01','conflict01','unresolved01','modelDisagreement01','predictionError01']
+  .every(key=>typeof (world as any)[key]==='number'&&Number.isFinite((world as any)[key])&&(world as any)[key]>=0&&(world as any)[key]<=1);
+};
 export const defaultP81=():P81State=>({
   version:1,cycles:0,selectedAction:'wait',attentionFocus:'none',expectedInformationGain01:0.2,
   exploitation01:.5,exploration01:.5,uncertainty01:.35,recentFocus:[],
@@ -50,7 +58,9 @@ export class P81PredictiveAttention {
  evaluate(i:P81Input){
   const candidates=i.candidates;
   const uncertainty=clamp(i.uncertainty01); const novelty=clamp(i.noveltyPressure01); const attention=clamp(i.attentionBudget01);
-  const world=i.worldState;
+  // Never let a delayed or malformed observation roll the attention system back to an older world.
+  const incomingWorld=isValidWorldSignal(i.worldState)?i.worldState:undefined;
+  const world=incomingWorld&&incomingWorld.revision>=this.state.worldRevision?incomingWorld:undefined;
   const worldConflict=clamp(world?.conflict01??0);
   const worldDisagreement=clamp(world?.modelDisagreement01??0);
   const worldUnresolved=clamp(world?.unresolved01??0);
@@ -73,11 +83,12 @@ export class P81PredictiveAttention {
   this.state.expectedInformationGain01=expectedInfo; this.state.exploitation01=exploitation; this.state.exploration01=exploration;
   this.state.uncertainty01=clamp(Math.max(uncertainty,clamp(world?.uncertainty01??0)));
   this.state.recentFocus=[...this.state.recentFocus,focus].slice(-24);
-  const worldRevision=world?.revision;
-  this.state.worldRevision=typeof worldRevision==='number'&&Number.isSafeInteger(worldRevision)&&worldRevision>=0?worldRevision:0;
-  this.state.worldEvidenceClass=world?.evidenceClass??'unknown';
-  this.state.worldConflict01=worldConflict; this.state.worldDisagreement01=worldDisagreement;
-  this.state.worldUnresolved01=worldUnresolved; this.state.worldChange01=worldChange;
+  if(world){
+   this.state.worldRevision=world.revision;
+   this.state.worldEvidenceClass=world.evidenceClass;
+   this.state.worldConflict01=worldConflict; this.state.worldDisagreement01=worldDisagreement;
+   this.state.worldUnresolved01=worldUnresolved; this.state.worldChange01=worldChange;
+  }
   return {selectedAction:selected,attentionFocus:focus,expectedInformationGain01:expectedInfo,exploration01:exploration,exploitation01:exploitation};
  }
  actionBias(action:string):number {
