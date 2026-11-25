@@ -120,7 +120,10 @@ const after=world.snapshot();
 assert.equal(telemetryRow.verified01,0);
 assert.deepEqual(after.facts,before.facts);
 assert.equal(after.confidence01,before.confidence01);
-assert.ok(after.events.some(x=>x.id===telemetryRow.eventId && x.label.startsWith('external-receipt:explore')));
+assert.equal(telemetryRow.quarantined,true);
+assert.ok(after.quarantinedOutcomes?.some(x=>x.id===telemetryRow.eventId && x.label.startsWith('external-receipt:explore')));
+assert.equal(after.events.some(x=>x.id===telemetryRow.eventId),false,
+  'unverified device telemetry must not enter canonical world events');
 
 const receiptWorld=new GroundedWorldState();
 const receiptBefore=receiptWorld.snapshot();
@@ -131,6 +134,9 @@ const receiptRow=receiptWorld.integrateExternalOutcome({
 const receiptAfter=receiptWorld.snapshot();
 assert.deepEqual(receiptAfter.facts,receiptBefore.facts);
 assert.equal(receiptAfter.confidence01,receiptBefore.confidence01);
-assert.ok(receiptAfter.events.some(x=>x.id===receiptRow.eventId && x.label.startsWith('external-receipt:respond')));
+assert.equal(receiptRow.quarantined,true);
+assert.ok(receiptAfter.quarantinedOutcomes?.some(x=>x.id===receiptRow.eventId && x.label.startsWith('external-receipt:respond')));
+assert.equal(receiptAfter.events.some(x=>x.id===receiptRow.eventId),false,
+  'device actuation receipts must remain outside canonical world events');
 
 console.log(JSON.stringify({ok:true,telemetryVerification,cameraVerification,receiptVerification,holdout:{early,ready}}));
