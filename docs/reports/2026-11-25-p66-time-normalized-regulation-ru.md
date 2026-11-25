@@ -25,6 +25,8 @@
 
 - Свежий локальный runtime TypeScript check: PASS.
 - Новый P66 dense-vs-sparse test: PASS. За 60 секунд 61 плотное наблюдение и 7 редких дают одинаковые meanStress и recoveryDebt в пределах floating-point округления.
+- Расширенный десятиминутный сценарий: 601 плотное наблюдение против 2 редких. Сравниваются meanError, meanStress, meanCapacity и recoveryDebt с допуском менее 1e-9; тест ловит старый пяти минутный elapsed cap.
+- После десятиминутного отсутствия наблюдений stableDuration и непрерывная stableCycles-серия сбрасываются; будущий lastAt в restore очищается, следующее актуальное наблюдение принимается как новый временной baseline.
 - Hysteresis regression: PASS.
 - Добавлен Core-level provenance regression: проверяет реальные call-site source/sample IDs, дедупликацию body sample и replay после restore.
 - В workflow добавлены runtime typecheck, P66 cadence regression, Core observation provenance, emotion/interoception regression и P66→P68 integration.

@@ -87,4 +87,26 @@ console.log('P66_TIME_NORMALIZED_OBSERVATION=PASS', JSON.stringify({
   duplicateObservations: afterRollback.duplicateObservations,
   stableDurationMs: stable.snapshot().stableDurationMs,
   invalidTimestampObservations: dedup.snapshot().invalidTimestampObservations,
+  longDense: {
+    cycles: longDenseState.cycles,
+    meanError01: longDenseState.meanError01,
+    meanStress01: longDenseState.meanStress01,
+    meanCapacity01: longDenseState.meanCapacity01,
+    recoveryDebt01: longDenseState.recoveryDebt01,
+  },
+  longSparse: {
+    cycles: longSparseState.cycles,
+    meanError01: longSparseState.meanError01,
+    meanStress01: longSparseState.meanStress01,
+    meanCapacity01: longSparseState.meanCapacity01,
+    recoveryDebt01: longSparseState.recoveryDebt01,
+  },
+  stableAfterGap: {
+    stableCycles: stable.snapshot().stableCycles,
+    stableDurationMs: stable.snapshot().stableDurationMs,
+  },
+  futureRestore: {
+    cyclesAfterRecovery: futureRestore.snapshot().cycles,
+    lastAt: futureRestore.snapshot().lastAt,
+  },
 }));
