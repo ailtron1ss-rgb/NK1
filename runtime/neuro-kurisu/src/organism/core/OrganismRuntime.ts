@@ -33,6 +33,7 @@ import { RuntimeClosureLedger } from '../system/RuntimeClosureLedger.ts';
 import { CausalDomainClosureLedger, type CausalDomainEvidence } from '../system/CausalDomainClosureLedger.ts';
 import { AdaptiveConsolidationGate } from '../system/AdaptiveConsolidationGate.ts';
 import { cameraEvidenceFromResult, inspectCameraFile, type CameraEvidence } from '../body/CameraEvidenceProcessor.ts';
+import { buildAndroidTelemetryObservation } from '../body/AndroidTelemetryObservationAdapter.ts';
 import { EmbodiedActionExecutor, type EmbodiedActionResult } from '../body/EmbodiedActionExecutor.ts';
 import { EmbodiedRecoveryController } from '../body/EmbodiedRecoveryController.ts';
 import type { VisionSemanticBackend } from '../body/VisionSemanticBackend.ts';
@@ -406,6 +407,7 @@ export class OrganismRuntime {
   private readonly clockScheduler = new RuntimeClockScheduler();
   private readonly continuityLedger: ContinuityLedger;
   private readonly evidenceBus = new RuntimeEvidenceBus(384);
+  private readonly deviceObservationSessionId = randomUUID();
   private readonly cognitiveEventFabric = new CognitiveEventFabric(512);
   private readonly openLoopRadar = new OpenLoopRadar();
   private readonly resourceEconomy = new CognitiveResourceEconomy();
@@ -1170,12 +1172,23 @@ export class OrganismRuntime {
     const activeBody = await this.embodiment.sampleActive(perceptionPlan.requestedSensors,true);
     const observedSensors:string[]=[];
     if(activeBody.telemetry.source==='android-termux' && activeBody.telemetry.staleMs===0){
-      if(perceptionPlan.requestedSensors.includes('battery') || perceptionPlan.requestedSensors.includes('thermal')) observedSensors.push('battery');
+      if(perceptionPlan.requestedSensors.includes('battery')) observedSensors.push('battery');
+      if(perceptionPlan.requestedSensors.includes('thermal')) observedSensors.push('thermal');
       if(perceptionPlan.requestedSensors.includes('motion')) observedSensors.push('motion');
       if(perceptionPlan.requestedSensors.includes('light')) observedSensors.push('light');
       if(perceptionPlan.requestedSensors.includes('proximity')) observedSensors.push('proximity');
       if(perceptionPlan.requestedSensors.includes('network')) observedSensors.push('network');
     }
+    // Only fresh Android host telemetry with explicit device consent enters the
+    // canonical observation gate and persistent grounded world.
+    const deviceObservation = buildAndroidTelemetryObservation({
+      telemetry: activeBody.telemetry,
+      previousSampledAt,
+      requestedSensors: observedSensors,
+      consentGranted: this.core.observationIntakeSummary().consent.device === true,
+      sessionId: this.deviceObservationSessionId,
+    });
+    if (deviceObservation) this.core.admitObservation(deviceObservation);
     const perceptionFulfilled = activeBody.telemetry.sampledAt>previousSampledAt && activeBody.telemetry.source==='android-termux' ? Math.min(1, observedSensors.length/Math.max(1,perceptionPlan.requestedSensors.filter((x:string)=>x!=='camera').length)) : 0;
     this.core.b365RecordPerceptionPlanResult({tick:this.core.operationalStatusSnapshot().tick,observedSensors,fulfilled01:perceptionFulfilled});
     const wasAwake = activeBody.awake;

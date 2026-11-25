@@ -14,8 +14,39 @@ const runtime = new OrganismRuntime({
 
 try {
   await runtime.init();
+  runtime.core.setObservationConsent('device', true);
+  const originalPlanActivePerception = runtime.core.b365PlanActivePerception.bind(runtime.core);
+  runtime.core.b365PlanActivePerception = (input) => ({
+    ...originalPlanActivePerception(input),
+    requestedSensors: ['battery', 'thermal', 'motion', 'light', 'proximity', 'network'],
+  });
+  const originalSampleActive = runtime.embodiment.sampleActive.bind(runtime.embodiment);
+  runtime.embodiment.sampleActive = async (requestedSensors, force) => {
+    const sampled = await originalSampleActive(requestedSensors, force);
+    return {
+      ...sampled,
+      telemetry: {
+        ...sampled.telemetry,
+        battery01: 0.72,
+        batteryTemperatureC: 34,
+        thermalPressure01: 0.28,
+        networkOnline: true,
+        ambientLight01: 0.63,
+        proximity01: 0.2,
+        motion01: 0.74,
+        sampledAt: Math.max(Date.now(), sampled.telemetry.sampledAt + 1),
+        source: 'android-termux',
+        staleMs: 0,
+      },
+    };
+  };
   const before = runtime.core.perceptionSnapshot();
   await runtime.step('world perception runtime ingress smoke test', { deliberate: false });
+  const androidIntake = runtime.core.observationIntakeSummary();
+  assert.equal(androidIntake.admitted, 1, 'one fresh consented Android sample enters the canonical observation gate');
+  assert.ok(runtime.core.groundedWorldSnapshot().entities.some(row =>
+    row.label === 'android-device-telemetry' && row.modalityEvidenceKinds.device === 'observed',
+  ), 'the same sample reaches the persistent grounded world model as device evidence');
   const after = runtime.core.perceptionSnapshot();
   assert.equal(after.eventCount, before.eventCount + 1, 'one core observation must produce exactly one canonical perception event');
   assert.ok(after.lastEvent && after.lastEvent.kind !== 'quiet', 'the real runtime sample must produce one non-quiet canonical perception event');
