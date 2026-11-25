@@ -164,13 +164,26 @@ function readyEngine(at = 1_000) {
       'retry claims must expose monotonic attempt counts');
     at = claim.deliveryNextAttemptAt;
   }
-  assert.equal(engine.claimReady(at, 1_000), null,
-    'the delivery attempt budget must remain bounded');
+  const finalLease = engine.snapshot().initiatives[0].deliveryLeaseUntil;
+  assert.ok(finalLease);
+  assert.equal(engine.claimReady(finalLease - 1, 1_000), null,
+    'the final in-flight attempt must retain its lease until expiry');
+  assert.equal(engine.snapshot().initiatives[0].status, 'ready');
   const diagnostics = engine.summary(at);
   assert.equal(diagnostics.deliveryExhausted, 1,
-    'exhausted deliveries must be observable instead of silently disappearing');
+    'exhausted deliveries must be observable during their final backoff');
   assert.equal(diagnostics.deliveryAttempts, 8);
   assert.equal(diagnostics.deliveryClaimable, 0);
+  assert.equal(engine.claimReady(at, 1_000), null,
+    'the delivery attempt budget must remain bounded');
+  const deadLetter = engine.snapshot().initiatives[0];
+  assert.equal(deadLetter.status, 'deferred',
+    'an exhausted outbox item must reach a terminal state after its final backoff');
+  assert.equal(deadLetter.reason, 'proactive-delivery-retry-budget-exhausted');
+  assert.equal(deadLetter.message, undefined,
+    'terminalized delivery payloads must be removed from durable state');
+  assert.equal(engine.summary(at).deliveryPending, 0,
+    'a dead-letter item must not remain in the ready queue');
 }
 
 
