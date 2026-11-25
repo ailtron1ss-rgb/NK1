@@ -188,29 +188,34 @@ export class DurableDeliveryOutbox {
   }
 
   enqueue(input: DurableDeliveryEnqueueInput, at = Date.now()): DurableDeliveryEnqueueResult {
-    if (!input || typeof input !== 'object') throw new Error('delivery-outbox-input-invalid');
+    const inputRecord = input as unknown as Record<string, unknown>;
+    if (!plainRecord(inputRecord) || Object.getOwnPropertySymbols(inputRecord).length > 0) throw new Error('delivery-outbox-input-invalid');
+    const allowedFields = new Set(['dedupeKey', 'kind', 'payloadRef', 'sourceTaskId', 'initiativeId', 'decisionId', 'consentScopeVersion', 'expiresAt', 'id']);
+    if (Object.keys(inputRecord).some(key => !allowedFields.has(key))) throw new Error('delivery-outbox-input-field-unsupported');
     if (!Number.isSafeInteger(at) || at < 0) throw new Error('delivery-outbox-time-invalid');
-    const dedupeKey = safeText(input.dedupeKey, 180, true)!;
+    const dedupeKey = safeText(ownValue(inputRecord, 'dedupeKey'), 180, true)!;
     const existing = this.state.records.find(record => record.dedupeKey === dedupeKey);
     if (existing) return { record: cloneRecord(existing), duplicate: true };
-    if (!KINDS.has(input.kind)) throw new Error('delivery-outbox-kind-invalid');
-    const payloadRef = safeText(input.payloadRef, 240, true)!;
-    const expiresAt = input.expiresAt === undefined ? null : safeTime(input.expiresAt, true);
+    const kind = ownValue(inputRecord, 'kind');
+    if (!KINDS.has(kind as DurableDeliveryKind)) throw new Error('delivery-outbox-kind-invalid');
+    const payloadRef = safeText(ownValue(inputRecord, 'payloadRef'), 240, true)!;
+    const expiryInput = ownValue(inputRecord, 'expiresAt');
+    const expiresAt = expiryInput === undefined ? null : safeTime(expiryInput, true);
     if (expiresAt !== null && expiresAt <= at) throw new Error('delivery-outbox-expiry-not-future');
     this.pruneTerminalRecords();
     if (this.state.records.length >= this.maxRecords) throw new Error('delivery-outbox-capacity-reached');
-    const id = safeText(input.id ?? randomUUID(), 180, true)!;
+    const id = safeText(ownValue(inputRecord, 'id') ?? randomUUID(), 180, true)!;
     if (this.state.records.some(record => record.id === id)) throw new Error('delivery-outbox-id-conflict');
     this.state.sequence += 1;
     const record: DurableDeliveryRecord = {
       id,
       dedupeKey,
-      kind: input.kind,
+      kind: kind as DurableDeliveryKind,
       payloadRef,
-      sourceTaskId: safeText(input.sourceTaskId, 180),
-      initiativeId: safeText(input.initiativeId, 180),
-      decisionId: safeText(input.decisionId, 180),
-      consentScopeVersion: safeText(input.consentScopeVersion, 120),
+      sourceTaskId: safeText(ownValue(inputRecord, 'sourceTaskId'), 180),
+      initiativeId: safeText(ownValue(inputRecord, 'initiativeId'), 180),
+      decisionId: safeText(ownValue(inputRecord, 'decisionId'), 180),
+      consentScopeVersion: safeText(ownValue(inputRecord, 'consentScopeVersion'), 120),
       createdAt: at,
       nextAttemptAt: at,
       expiresAt,
@@ -313,15 +318,18 @@ export class DurableDeliveryOutbox {
   }
 
   cancel(id: string, reasonCode: string): boolean {
-    const record = this.state.records.find(item => item.id === id);
+    const safeId = safeText(id, 180, true)!;
+    const safeReason = safeText(reasonCode, 80, true)!;
+    const record = this.state.records.find(item => item.id === safeId);
     if (!record || record.status !== 'pending') return false;
     record.status = 'cancelled';
-    record.lastErrorCode = safeText(reasonCode, 80, true)!;
+    record.lastErrorCode = safeReason;
     return true;
   }
 
   get(id: string): DurableDeliveryRecord | null {
-    const record = this.state.records.find(item => item.id === id);
+    const safeId = safeText(id, 180, true)!;
+    const record = this.state.records.find(item => item.id === safeId);
     return record ? cloneRecord(record) : null;
   }
 

@@ -74,8 +74,19 @@ const accessorRoot = { version: 1, sequence: 0, records: [] };
 Object.defineProperty(accessorRoot, 'records', { enumerable: true, get: () => [] });
 assert.throws(() => restored.restore(accessorRoot), /delivery-outbox-accessor-rejected/);
 
+const accessorInput = { kind: 'custom', payloadRef: 'ref:accessor' };
+Object.defineProperty(accessorInput, 'dedupeKey', { enumerable: true, get: () => 'unsafe' });
+assert.throws(() => restored.enqueue(accessorInput, at), /delivery-outbox-accessor-rejected/);
+const proxyInput = new Proxy({ dedupeKey: 'proxy:input', kind: 'custom', payloadRef: 'ref:proxy' }, {});
+assert.throws(() => restored.enqueue(proxyInput, at), /delivery-outbox-input-invalid/);
+assert.throws(() => restored.enqueue({ dedupeKey: 'extra:field', kind: 'custom', payloadRef: 'ref:extra', payload: 'raw text' }, at), /delivery-outbox-input-field-unsupported/);
+
+const leasedCancel = restored.enqueue({ dedupeKey: 'cancel:leased', kind: 'custom', payloadRef: 'ref:leased' }, at);
+assert.ok(restored.claim(leasedCancel.record.id, 'sender-C', at, 1000));
+assert.equal(restored.cancel(leasedCancel.record.id, 'user-revoked-consent'), false, 'a leased side effect must be reconciled before cancellation');
+
 const saturated = new DurableDeliveryOutbox({ maxRecords: 1 });
 saturated.enqueue({ dedupeKey: 'active:one', kind: 'custom', payloadRef: 'ref:one' }, at);
 assert.throws(() => saturated.enqueue({ dedupeKey: 'active:two', kind: 'custom', payloadRef: 'ref:two' }, at), /delivery-outbox-capacity-reached/);
 
-console.log(JSON.stringify({ test: 'durable-delivery-outbox', assertions: 25, status: 'PASS' }));
+console.log(JSON.stringify({ test: 'durable-delivery-outbox', assertions: 34, status: 'PASS' }));
