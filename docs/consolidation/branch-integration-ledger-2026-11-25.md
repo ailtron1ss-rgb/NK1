@@ -212,3 +212,29 @@ No exact-head workflow run was returned for current #1164 head b78a525acaabe0a4d
 - Exact-head synthetic PR merge run [#45621864080](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45621864080) — **SUCCESS**. Its `undo-first` job ran runtime typecheck, 11 ActionGateway cases, FileStateStore/filesystem integration (10 checks), action crash reconciliation, and archive/replay checks.
 - Typecheck evidence is limited: `TYPECHECK=PASS mode=node-strip-syntax-only files=746`; semantic TypeScript `tsc` was unavailable in that workflow. Filesystem Undo status explicitly returned `manual-intervention-required`; do not claim automatic reversal of all side effects.
 - This remains Draft/open/unmerged. No canonical source branch or Release ZIP was modified.
+## Delivery ownership and exact-head test correction — 2026-11-25
+
+### Corrected ownership boundary
+
+The earlier additional-pass note described #1181 and #1182 as competing lease owners. That conclusion is withdrawn after reading the latest PR heads and their changed-file sets:
+
+- [#1181](https://github.com/ailtron1ss-rgb/NK1/pull/1181) (`c92c734cc785fc4d36ba1cc9e9d471d0cf7c0436`) owns proactive social initiative claims, consent/quiet-hours rechecks, retry and browser UI ACK.
+- [#1182](https://github.com/ailtron1ss-rgb/NK1/pull/1182) (`fb1c5ebb0bcf5e458f806b687848df8936d5c5b0`) owns generic task-completion, reminder, notification and custom obligations. It rejects new `initiative-message` and `social-initiative` writes, and restores legacy social records only as inert compatibility rows.
+- Both use separate lifecycle state owners. Their shared `OrganismRuntime.ts` changes are integration points, not duplicate state machines. No message may be written into both flows.
+
+### #1182 exact-head workflow
+
+- Current PR head: `fb1c5ebb0bcf5e458f806b687848df8936d5c5b0`; base remains `workpass70-source@9008a8982a5173304456bee2c604bd0bc8665964`.
+- Current synthetic merge checkout for the PR was `368aac48c4a67a3725009222659f060a5ccdac5c` (head fb1c5ebb + canonical base). Dedicated workflow [#45624157399](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45624157399) completed **SUCCESS**.
+- The dedicated job passed the durable delivery contract; language invocation order; proactive delivery-consent gate; OpenLoop runtime integration; and runtime strip-syntax check. The test output explicitly reported `{"test":"durable-delivery-outbox","status":"PASS"}`.
+- Verification limitation: runtime typecheck reported `TYPECHECK=PASS mode=node-strip-syntax-only files=747` and explicitly noted that semantic `tsc` was unavailable because the compiler was not installed in the runtime job. Do not equate this with TypeScript semantic compilation.
+- The current code quarantines every failure after lease acquisition as `reconciliation-required`; only host reconciliation with `confirmed-not-delivered` authorizes retry. Confirmed-delivered settles without retry; expired-after-reconciliation cancels; max-attempt exhaustion dead-letters. Tests cover the ambiguous transport timeout, unknown outcome quarantine, retry only after reconciliation and expiry boundary.
+- The run query returned 73 PR-triggered workflow runs for the feature head: 61 already successful at the snapshot, no failures; 12 still in progress/queued. This is a moving snapshot; only the dedicated outbox workflow is reported as complete here.
+- PR remains Draft/open/unmerged. No source branch, main, Release or archive was changed.
+
+### Remaining verification and consolidation boundaries
+
+- #1181 current head `c92c734...` retains its own lease/retry state owner and still needs an exact-current-head delivery/browser ACK review; do not treat #1182's generic test as covering it.
+- #1164 current head `b78a525...` remains without a returned exact-head workflow run. Its new raycast test expects a fuller fit/pick contract than the current `avatarModelFitBounds.ts` implementation exposes; production helper correction and exact-head browser acceptance remain open.
+- #1170 and #1174 both have current-head CI evidence, but their `OrganismCore.ts` / `package.json` overlaps still require a combined diff review before merge.
+- The authenticated social outcome archive must not be wired to the single global runtime. Current app Better Auth can resolve a verified server-side subject through `verify.server.ts`; runtime API currently receives only a service bearer. User-scoped runtime identity and storage isolation must be established before any social ingress route is connected.
