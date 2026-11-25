@@ -3144,9 +3144,9 @@ export class OrganismRuntime {
   /** Pending self-initiated chat turn for the UI; no tool/device side effects occur here. */
   async autonomousDialogueReady() {
     return this.enqueue(async () => {
-      const initiative = this.core.pendingAutonomousSocialInitiativeMessage();
-      if (initiative) await this.core.flush();
-      return initiative;
+      const claim = this.core.claimAutonomousSocialInitiativeDelivery();
+      if (claim.stateChanged) await this.core.flush();
+      return claim.initiative;
     });
   }
 
@@ -3167,12 +3167,12 @@ export class OrganismRuntime {
   /** Mark a proactive chat turn delivered exactly once after the UI has stored it. */
   async acknowledgeAutonomousDialogue(id: string): Promise<boolean> {
     return this.enqueue(async () => {
-      const acknowledged = this.core.acknowledgeAutonomousSocialInitiative(id, Date.now());
-      if (acknowledged) {
+      const receipt = this.core.acknowledgeAutonomousSocialInitiativeWithState(id, Date.now());
+      if (receipt.stateChanged) await this.core.flush();
+      if (receipt.acknowledged) {
         // The user's durable chat receipt belongs to the canonical Core snapshot.
         // Persist it before updating the optional Open Loop projection so a
         // reminder-store failure cannot leave the delivery ACK only in memory.
-        await this.core.flush();
         try {
           await this.persistOpenLoopMutation(() => this.openLoopRadar.acknowledgeInitiative(id));
         } catch (error) {
@@ -3182,7 +3182,7 @@ export class OrganismRuntime {
           );
         }
       }
-      return acknowledged;
+      return receipt.acknowledged;
     });
   }
 
