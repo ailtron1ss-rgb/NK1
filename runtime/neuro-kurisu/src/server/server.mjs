@@ -31,6 +31,7 @@ import { WillSdkFacade } from '../organism/integration/will/WillSdkFacade.ts';
 import { WillMcpJsonRpcServer } from '../organism/integration/will/WillMcpJsonRpc.ts';
 import { WillChannelAdapter } from '../organism/integration/will/WillChannelAdapter.ts';
 import { startNativeSpeechSseStream } from './native-speech-sse.mjs';
+import { createRequestContext, formatAccessLog, parseOriginAllowlist, parseToggle, resolveCorsOrigin } from './http-request-context.mjs';
 import { parseTrustedConstitutionReviewKeys, createAuthenticatedConstitutionReviewVerifier, constitutionReviewAuthoritySnapshot } from '../organism/cognition/evolution/ConstitutionReviewAuthority.ts';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '../..');
@@ -124,12 +125,15 @@ let lastLanguageBackend = 'none';
 let lastLanguageFailure = '';
 const RATE_WINDOW_MS = Math.max(10000, Number(process.env.NEURO_RATE_WINDOW_MS || 60000));
 const RATE_LIMIT = Math.max(30, Number(process.env.NEURO_RATE_LIMIT || 240));
+const TRUST_PROXY = parseToggle(process.env.NEURO_TRUST_PROXY, false);
+const ACCESS_LOG_ENABLED = parseToggle(process.env.NEURO_ACCESS_LOG, true);
+const CORS_ALLOWLIST = parseOriginAllowlist(process.env.NEURO_CORS_ORIGINS);
 const rateBuckets = new Map();
-function consumeRateLimit(req, pathName) {
+function consumeRateLimit(clientAddress, pathName) {
     if (pathName === '/health' || pathName === '/api/health')
         return { allowed: true };
     const now = Date.now();
-    const key = String(req.socket?.remoteAddress || req.headers['x-forwarded-for'] || 'unknown');
+    const key = String(clientAddress || 'unknown');
     const current = rateBuckets.get(key);
     const bucket = !current || now - current.startedAt >= RATE_WINDOW_MS ? { startedAt: now, count: 0 } : current;
     bucket.count++;
@@ -139,6 +143,17 @@ function consumeRateLimit(req, pathName) {
             if (now - v.startedAt >= RATE_WINDOW_MS)
                 rateBuckets.delete(k);
     return bucket.count <= RATE_LIMIT ? { allowed: true, remaining: RATE_LIMIT - bucket.count } : { allowed: false, retryAfterSec: Math.ceil((bucket.startedAt + RATE_WINDOW_MS - now) / 1000) };
+}
+function applyCorsHeaders(req, res) {
+    const origin = resolveCorsOrigin(req.headers.origin, CORS_ALLOWLIST);
+    if (!origin)
+        return '';
+    res.setHeader('access-control-allow-origin', origin);
+    res.setHeader('vary', 'Origin');
+    res.setHeader('access-control-allow-methods', 'GET,POST,OPTIONS');
+    res.setHeader('access-control-allow-headers', 'authorization,content-type,x-request-id');
+    res.setHeader('access-control-max-age', '600');
+    return origin;
 }
 const VISION_BACKEND = VISION_ENABLED && process.env.GEMINI_API_KEY ? new GeminiVisionSemanticBackend({ apiKey: process.env.GEMINI_API_KEY, model: process.env.GEMINI_VISION_MODEL || process.env.GEMINI_MODEL || 'gemini-3.8-flash', timeoutMs: Number(process.env.GEMINI_VISION_TIMEOUT_MS || 12000), maxImageBytes: Number(process.env.GEMINI_VISION_MAX_IMAGE_BYTES || 8000000) }) : undefined;
 await mkdir(STATE, { recursive: true });
@@ -660,14 +675,27 @@ async function generateLanguage(request) {
 }
 async function route(req, res) {
     const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+    const context = createRequestContext(req, { trustProxy: TRUST_PROXY });
+    res.setHeader('x-request-id', context.requestId);
+    if (ACCESS_LOG_ENABLED)
+        res.on('finish', () => console.log('[access] ' + formatAccessLog({ ...context, status: res.statusCode, durationMs: Date.now() - context.startedAt })));
     try {
-        const auth = authorizeApiRequest(HOST, url.pathname, req.headers.authorization);
+        applyCorsHeaders(req, res);
+        if (req.method === 'OPTIONS') {
+            res.writeHead(204);
+            return res.end();
+        }
+        const auth = authorizeApiRequest(HOST, url.pathname, req.headers.authorization, undefined, {
+            remoteAddress: req.socket?.remoteAddress,
+            forwardedFor: req.headers['x-forwarded-for'],
+            forwarded: req.headers.forwarded,
+        });
         if (url.pathname.startsWith('/api/') && !auth.allowed)
-            return json(res, auth.status, { ok: false, error: 'api-authorization-required', reason: auth.reason });
-        const rate = consumeRateLimit(req, url.pathname);
+            return json(res, auth.status, { ok: false, error: 'api-authorization-required', reason: auth.reason, requestId: context.requestId });
+        const rate = consumeRateLimit(context.clientAddress, url.pathname);
         if (!rate.allowed) {
             res.setHeader('retry-after', String(rate.retryAfterSec));
-            return json(res, 429, { ok: false, error: 'rate-limit-exceeded', retryAfterSec: rate.retryAfterSec });
+            return json(res, 429, { ok: false, error: 'rate-limit-exceeded', retryAfterSec: rate.retryAfterSec, requestId: context.requestId });
         }
         if (url.pathname === '/health' || url.pathname === '/api/health') {
             return json(res, 200, { ok: true, ready: runtimeReady, service: 'neuro-kurisu', version: RELEASE_CONTRACT.application, organismCore: RELEASE_CONTRACT.organismCore, schemaVersion: RELEASE_CONTRACT.stateSchema, tick: runtimeReady ? runtime.core.operationalStatusSnapshot().tick : 0, uptimeSec: Math.round(process.uptime()), bodySource: runtimeReady ? runtime.embodiment.snapshot().telemetry.source : 'initializing', actionLedger: runtimeReady ? runtime.core.actionExecutionLedgerMetrics() : null, language: languageCapabilitySnapshot() });
@@ -2910,16 +2938,24 @@ async function route(req, res) {
         const message = String(error?.message || error);
         const code = String(error?.code || '');
         if (message === 'request-too-large')
-            return json(res, 413, { ok: false, error: 'request-too-large', maxBodyBytes: MAX_BODY_BYTES });
+            return json(res, 413, { ok: false, error: 'request-too-large', maxBodyBytes: MAX_BODY_BYTES, requestId: context.requestId });
         if (/JSON|Unexpected token|Expected property name|Unexpected end of JSON input/i.test(message))
-            return json(res, 400, { ok: false, error: 'invalid-json-request' });
+            return json(res, 400, { ok: false, error: 'invalid-json-request', requestId: context.requestId });
         if (code === 'transport-envelope-id-conflict' || code === 'transport-envelope-history-unknown')
-            return json(res, 409, { ok: false, error: code, message });
+            return json(res, 409, { ok: false, error: code, message, requestId: context.requestId });
         if (code === 'transport-envelope-invalid')
-            return json(res, 400, { ok: false, error: code, message });
+            return json(res, 400, { ok: false, error: code, message, requestId: context.requestId });
         if (code === 'transport-queue-full')
-            return json(res, 503, { ok: false, error: code, message });
-        return json(res, 500, { ok: false, error: message });
+            return json(res, 503, { ok: false, error: code, message, requestId: context.requestId });
+        // Internal details stay in the log; the client gets a correlation id instead.
+        console.error('[request-error] ' + JSON.stringify({
+            requestId: context.requestId,
+            method: context.method,
+            path: context.pathname,
+            message: message.slice(0, 500),
+            stack: String(error?.stack ?? '').split('\n').slice(0, 6).join(' | ').slice(0, 1200),
+        }));
+        return json(res, 500, { ok: false, error: 'internal-error', requestId: context.requestId });
     }
 }
 const server = http.createServer((req, res) => void route(req, res));

@@ -54,7 +54,13 @@ try {
       console.error(`TS_STRIP_UNSUPPORTED count=${unsupported}`);
       process.exit(1);
     }
-    console.log(`TYPECHECK=PASS mode=node-strip-syntax-only files=${files.length} note="TypeScript compiler not installed; semantic tsc check unavailable."`);
+    const summary = `mode=node-strip-syntax-only files=${files.length} note="TypeScript compiler not installed; semantic tsc check unavailable."`;
+    if (!/^(1|true|yes|on)$/i.test(String(process.env.NEURO_ALLOW_DEGRADED_TYPECHECK || ''))) {
+      console.error(`TYPECHECK=FAIL ${summary}`);
+      console.error('TYPECHECK_HINT install runtime/app dependencies for a semantic check, or set NEURO_ALLOW_DEGRADED_TYPECHECK=1 to accept a syntax-only local run');
+      process.exit(1);
+    }
+    console.log(`TYPECHECK=DEGRADED ${summary}`);
     process.exit(0);
   }
   process.exit(typeof error?.status === 'number' ? error.status : 1);
