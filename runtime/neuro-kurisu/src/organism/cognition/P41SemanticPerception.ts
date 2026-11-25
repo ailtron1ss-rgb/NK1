@@ -291,7 +291,7 @@ export class P41SemanticPerceptionEngine {
       stability01:restoreP41Unit(rawScene.stability01,d.scene.stability01),
       at:sceneAt,
     };
-    const entities:P41PerceptualEntity[]=Array.isArray(r.entities)?r.entities.slice(-192).flatMap((entity:any)=>{
+    const entities:P41PerceptualEntity[]=Array.isArray(r.entities)?r.entities.slice(0,192).flatMap((entity:any)=>{
       if(!entity||typeof entity!=='object'||Array.isArray(entity))return [];
       const id=restoreP41Text(entity.id,180);
       const label=normalizePerceptualLabel(entity.label);
@@ -333,7 +333,7 @@ export class P41SemanticPerceptionEngine {
         velocity,
       } satisfies P41PerceptualEntity];
     }):[];
-    const relations:P41PerceptualRelation[]=Array.isArray(r.relations)?r.relations.slice(-384).flatMap((relation:any)=>{
+    const relations:P41PerceptualRelation[]=Array.isArray(r.relations)?r.relations.slice(0,384).flatMap((relation:any)=>{
       if(!relation||typeof relation!=='object'||Array.isArray(relation))return [];
       const id=restoreP41Text(relation.id,180),from=normalizePerceptualLabel(relation.from),
         relationLabel=restoreP41Text(relation.relation,80),to=normalizePerceptualLabel(relation.to);
@@ -349,7 +349,7 @@ export class P41SemanticPerceptionEngine {
         at:restoreP41Time(relation.at,0),
       } satisfies P41PerceptualRelation];
     }):[];
-    const events:P41PerceptualEvent[]=Array.isArray(r.events)?r.events.slice(-128).flatMap((event:any)=>{
+    const events:P41PerceptualEvent[]=Array.isArray(r.events)?r.events.slice(0,128).flatMap((event:any)=>{
       if(!event||typeof event!=='object'||Array.isArray(event))return [];
       const id=restoreP41Text(event.id,180),label=restoreP41Text(event.label,180);
       if(!id||!label)return [];
@@ -364,7 +364,7 @@ export class P41SemanticPerceptionEngine {
         modalityEvidenceKinds:restoreP41ModalityEvidenceKinds(event.modalityEvidenceKinds),
       } satisfies P41PerceptualEvent];
     }):[];
-    const snapshots:P41PerceptualSnapshot[]=Array.isArray(r.snapshots)?r.snapshots.slice(-128).flatMap((snapshot:any)=>{
+    const snapshots:P41PerceptualSnapshot[]=Array.isArray(r.snapshots)?r.snapshots.slice(0,128).flatMap((snapshot:any)=>{
       if(!snapshot||typeof snapshot!=='object'||Array.isArray(snapshot))return [];
       const id=restoreP41Text(snapshot.id,180),snapshotScene=restoreP41Text(snapshot.scene,180);
       if(!id||!snapshotScene)return [];
@@ -378,7 +378,7 @@ export class P41SemanticPerceptionEngine {
         selfLocation:restoreP41Text(snapshot.selfLocation,120,'unknown'),
       } satisfies P41PerceptualSnapshot];
     }):[];
-    const pending:P41PendingPerception[]=Array.isArray(r.pending)?r.pending.slice(-64).flatMap((item:any)=>{
+    const pending:P41PendingPerception[]=Array.isArray(r.pending)?r.pending.slice(0,64).flatMap((item:any)=>{
       if(!item||typeof item!=='object'||Array.isArray(item)||!isP41Modality(item.modality))return [];
       const id=restoreP41Text(item.id,180),query=restoreP41Text(item.query,240);
       if(!id||!query)return [];
