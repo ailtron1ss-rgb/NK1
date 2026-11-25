@@ -31,4 +31,13 @@ const roundTrip=new ExternalEvidenceTrustEngine();
 roundTrip.restore(valid.snapshot());
 assert.equal(roundTrip.snapshot().acceptedCount,1,'valid corroboration must survive a sanitized restore');
 
+const freshness=new ExternalEvidenceTrustEngine();
+const newer=freshness.observe({claimKey:'claim:freshness',source:'device',independenceKey:'camera-fresh',confidence01:.8,at:now+2_000});
+const delayed=freshness.observe({claimKey:'claim:freshness',source:'device',independenceKey:'camera-fresh',confidence01:.7,at:now-60_000});
+assert.equal(delayed.lastSeenAt,newer.lastSeenAt,'delayed evidence must not move freshness backwards');
+const future=freshness.observe({claimKey:'claim:future',source:'device',independenceKey:'camera-future',confidence01:.8,at:now+30*24*60*60*1000});
+assert.ok(future.lastSeenAt<=Date.now()+5*60*1000,'far-future timestamps must be bounded');
+const invalidTime=freshness.observe({claimKey:'claim:invalid-time',source:'device',independenceKey:'camera-invalid',confidence01:.8,at:-1});
+assert.ok(invalidTime.lastSeenAt>=now-1_000,'negative timestamps must not create ancient evidence');
+
 console.log('EXTERNAL_EVIDENCE_TRUST_RESTORE_INTEGRITY=PASS');
