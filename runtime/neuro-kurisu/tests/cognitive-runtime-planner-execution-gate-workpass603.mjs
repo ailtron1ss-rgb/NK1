@@ -63,8 +63,14 @@ assert.match(runtimeSource,
   /const autonomousRecoveryAllowed = !externalText && cycle\.decision\.userRequestedAction == null;/,
   'autonomous recovery must never override external turns or explicit user-selected actions');
 assert.match(runtimeSource,
-  /const plan = riskRecoveryApplied\\s*\\?\\s*this\\.plans\\.buildBudgetFallback\\(selectedGoal, internalAction, 'risk-aware-recovery-override', worldPlanningSignal\\)\\s*:\\s*planningBudget\\.accepted && projectAllowed\\s*\\?\\s*this\\.plans\\.build\\(selectedGoal, internalAction, 4, 4, worldPlanningSignal\\)\\s*:\\s*this\\.plans\\.buildBudgetFallback\\(/,
-  'recovery overrides must use the one-step fallback and normal planning must remain budget-gated');
+  /const worldPlanningSignal = this\.core\.worldCognitiveAttentionSignal\(\);/,
+  'runtime must read the canonical world evidence signal once for planning');
+assert.ok(runtimeSource.includes("this.plans.buildBudgetFallback(selectedGoal, internalAction, 'risk-aware-recovery-override', worldPlanningSignal)"),
+  'risk recovery must retain the one-step fallback and share world evidence');
+assert.ok(runtimeSource.includes("this.plans.build(selectedGoal, internalAction, 4, 4, worldPlanningSignal)"),
+  'normal beam planning must receive the world evidence signal');
+assert.ok(runtimeSource.includes("this.plans.buildBudgetFallback(selectedGoal, internalAction, projectAllowed ? 'planning-budget-exhausted' : 'planner-project-gated', worldPlanningSignal)"),
+  'budget-gated fallback must receive the same world evidence signal');
 assert.match(runtimeSource,
   /const worldRolloutAllowed = executionPlan\?\.run\?\.\['world-rollout'\] !== false && spineDecision\.run\['world-rollout'\];/,
   'optional world rollout must obey its explicit execution-plan gate');
