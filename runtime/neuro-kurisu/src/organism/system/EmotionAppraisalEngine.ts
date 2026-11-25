@@ -326,17 +326,22 @@ function restoreOutcomes(value: unknown): Record<string,EmotionOutcomeCalibratio
     for(const metric of ['meanSuccess01','meanSurprise01','meanBenefit01'])
       if(typeof item[metric]!=='number' || !Number.isFinite(item[metric] as number) || (item[metric] as number)<0 || (item[metric] as number)>1) return {};
     const attempts=item.attempts as number;
+    // One neutral prior mass prevents the first weak outcome from fully replacing
+    // the neutral calibration baseline.
     const evidenceWeight01=item.evidenceWeight01===undefined
-      ? attempts*.15
-      : typeof item.evidenceWeight01==='number'&&Number.isFinite(item.evidenceWeight01)&&item.evidenceWeight01>=0&&item.evidenceWeight01<=attempts
+      ? 1+attempts*.15
+      : typeof item.evidenceWeight01==='number'&&Number.isFinite(item.evidenceWeight01)&&item.evidenceWeight01>=1&&item.evidenceWeight01<=attempts+1
         ? item.evidenceWeight01 : null;
     if(evidenceWeight01===null)return {};
     const incoming={attempts,evidenceWeight01,meanSuccess01:item.meanSuccess01 as number,meanSurprise01:item.meanSurprise01 as number,meanBenefit01:item.meanBenefit01 as number};
     const previous=output[key];
     if(!previous){output[key]=incoming;continue;}
     const totalAttempts=Math.min(Number.MAX_SAFE_INTEGER,previous.attempts+incoming.attempts);
-    const totalWeight=Math.min(Number.MAX_SAFE_INTEGER,previous.evidenceWeight01+incoming.evidenceWeight01);
-    const weight=totalWeight>0?incoming.evidenceWeight01/totalWeight:0;
+    const previousEvidence=Math.max(0,previous.evidenceWeight01-1);
+    const incomingEvidence=Math.max(0,incoming.evidenceWeight01-1);
+    const combinedEvidence=Math.min(Number.MAX_SAFE_INTEGER,previousEvidence+incomingEvidence);
+    const totalWeight=1+combinedEvidence;
+    const weight=combinedEvidence>0?incomingEvidence/combinedEvidence:0;
     const prior=1-weight;
     output[key]={attempts:totalAttempts,evidenceWeight01:totalWeight,
       meanSuccess01:c(previous.meanSuccess01*prior+incoming.meanSuccess01*weight),
@@ -459,7 +464,7 @@ export class EmotionAppraisalEngine {
   }):EmotionOutcomeCalibration{
     const key=canonicalAffectAction(String(input.action));
     if(!key)throw new RangeError('unsupported-affect-outcome-action');
-    const existing=this.state.outcomes[key]??{attempts:0,evidenceWeight01:0,meanSuccess01:.5,meanSurprise01:.5,meanBenefit01:.5};
+    const existing=this.state.outcomes[key]??{attempts:0,evidenceWeight01:1,meanSuccess01:.5,meanSurprise01:.5,meanBenefit01:.5};
     const reject=()=>{
       this.state.invalidOutcomes=Math.min(Number.MAX_SAFE_INTEGER,this.state.invalidOutcomes+1);
       return structuredClone(existing);
@@ -481,13 +486,13 @@ export class EmotionAppraisalEngine {
     }
     const recentOutcomeIds=decisionId?[...this.state.recentOutcomeIds.filter(id=>id!==decisionId),decisionId].slice(-512):this.state.recentOutcomeIds;
     const previousMood=this.state.mood;
-    const previous=this.state.outcomes[key]??{attempts:0,evidenceWeight01:0,meanSuccess01:.5,meanSurprise01:.5,meanBenefit01:.5};
+    const previous=this.state.outcomes[key]??{attempts:0,evidenceWeight01:1,meanSuccess01:.5,meanSurprise01:.5,meanBenefit01:.5};
     const success=input.success01,surprise=input.surprise01,cost=cost01;
     const benefit=c(success*.62+(1-surprise)*.24+(1-cost)*.14);
     const calibrationWeight=.15+.85*verified01;
     const attempts=Math.min(Number.MAX_SAFE_INTEGER,previous.attempts+1);
     const evidenceWeight01=Math.min(Number.MAX_SAFE_INTEGER,previous.evidenceWeight01+calibrationWeight);
-    const alpha=calibrationWeight/Math.max(calibrationWeight,evidenceWeight01);
+    const alpha=calibrationWeight/Math.max(1,evidenceWeight01);
     const row={
       attempts,evidenceWeight01,
       meanSuccess01:c(previous.meanSuccess01+(success-previous.meanSuccess01)*alpha),
@@ -568,8 +573,9 @@ export class EmotionAppraisalEngine {
     const e=this.state.history[0],key=canonicalAffectAction(action);
     if(!e||!key||!Number.isFinite(now))return 0;
     const intero=this.state.interoception,calibration=this.state.outcomes[key];
-    const learned=calibration&&calibration.evidenceWeight01>=3
-      ?(calibration.meanBenefit01-.5)*.035*c((calibration.evidenceWeight01-2)/4):0;
+    const learnedEvidence01=calibration?Math.max(0,calibration.evidenceWeight01-1):0;
+    const learned=calibration&&learnedEvidence01>=3
+      ?(calibration.meanBenefit01-.5)*.035*c((learnedEvidence01-2)/4):0;
     const confidenceGate=c((e.confidence01-.45)/.40),attentionGate=c(.35+e.interoceptiveDelta.attentionCapture01*.65);
     const pressure=c(intero.regulationPressure01),m=this.state.mood,moodAge=Math.max(0,now-m.lastAt);
     const unverifiedOutcomeEvidence=Math.max(0,m.outcomeUpdates-m.verifiedOutcomeUpdates)*.15;

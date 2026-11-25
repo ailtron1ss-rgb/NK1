@@ -151,8 +151,8 @@ assert.ok(verifiedFailureMood.stress01>unverifiedFailureMood.stress01,
 assert.ok(verifiedFailureMood.valence01<unverifiedFailureMood.valence01);
 assert.equal(verifiedFailureMood.outcomeUpdates,1);
 assert.equal(verifiedFailureMood.verifiedOutcomeUpdates,1);
-assert.equal(failedVerified.outcomeCalibration('verify').evidenceWeight01,1);
-assert.equal(failedUnverified.outcomeCalibration('verify').evidenceWeight01,.15);
+assert.equal(failedVerified.outcomeCalibration('verify').evidenceWeight01,2);
+assert.equal(failedUnverified.outcomeCalibration('verify').evidenceWeight01,1.15);
 assert.ok(failedVerified.outcomeCalibration('verify').meanSuccess01<failedUnverified.outcomeCalibration('verify').meanSuccess01,
   'verified success/failure calibration must be updated more strongly than unverified estimates');
 assert.ok(failedVerified.actionBias('rest',outcomeAt+200)>failedUnverified.actionBias('rest',outcomeAt+200),
@@ -160,10 +160,10 @@ assert.ok(failedVerified.actionBias('rest',outcomeAt+200)>failedUnverified.actio
 const verifiedCalibrationSnapshot=failedVerified.snapshot();
 const unverifiedCalibrationSnapshot=failedVerified.snapshot();
 verifiedCalibrationSnapshot.outcomes.verify={
-  attempts:4,evidenceWeight01:4,meanSuccess01:.1,meanSurprise01:.95,meanBenefit01:.2,
+  attempts:4,evidenceWeight01:5,meanSuccess01:.1,meanSurprise01:.95,meanBenefit01:.2,
 };
 unverifiedCalibrationSnapshot.outcomes.verify={
-  attempts:4,evidenceWeight01:.6,meanSuccess01:.1,meanSurprise01:.95,meanBenefit01:.2,
+  attempts:4,evidenceWeight01:1.6,meanSuccess01:.1,meanSurprise01:.95,meanBenefit01:.2,
 };
 const verifiedCalibrationEngine=new EmotionAppraisalEngine();
 const unverifiedCalibrationEngine=new EmotionAppraisalEngine();
