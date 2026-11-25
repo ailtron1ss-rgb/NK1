@@ -97,6 +97,7 @@ export interface GroundedEntity {
 }
 export interface GroundedRelation { id:string; from:string; relation:string; to:string; fromEntityId?:string; toEntityId?:string; confidence01:number; at:number; }
 export interface GroundedEvent { id:string; label:string; confidence01:number; lastAt:number; persistence01:number; evidenceKind?:'observed'|'model-output'|'derived'|'conflict'|'unresolved'; modalityEvidenceKinds?:Partial<Record<string,'observed'|'model-output'|'derived'|'conflict'|'unresolved'>>; }
+export interface GroundedQuarantinedOutcome { id:string; label:string; at:number; }
 export interface GroundedWorldStateSnapshot {
   version:1;
   revision:number;
@@ -110,10 +111,12 @@ export interface GroundedWorldStateSnapshot {
   facts:string[];
   /** Persisted facts cannot retain live verifier authority across process restarts. */
   quarantinedFacts?:string[];
+  /** Unverified external receipts are diagnostic only and never enter canonical world events. */
+  quarantinedOutcomes?:GroundedQuarantinedOutcome[];
   provenanceIds:string[];
   lastHash:string;
 }
-export const defaultGroundedWorldState=():GroundedWorldStateSnapshot=>({version:1,revision:0,lastAt:0,location:'unknown',uncertainty01:.5,confidence01:0,entities:[],relations:[],events:[],facts:[],quarantinedFacts:[],provenanceIds:[],lastHash:''});
+export const defaultGroundedWorldState=():GroundedWorldStateSnapshot=>({version:1,revision:0,lastAt:0,location:'unknown',uncertainty01:.5,confidence01:0,entities:[],relations:[],events:[],facts:[],quarantinedFacts:[],quarantinedOutcomes:[],provenanceIds:[],lastHash:''});
 
 export class GroundedWorldState {
   private state=defaultGroundedWorldState();
@@ -180,6 +183,16 @@ export class GroundedWorldState {
       }
     }
     const events:GroundedEvent[]=[];
+    const quarantinedOutcomes:GroundedQuarantinedOutcome[]=[];
+    if(Array.isArray(r.quarantinedOutcomes)){
+      for(const rawOutcome of r.quarantinedOutcomes.slice(0,96)){
+        if(!rawOutcome||typeof rawOutcome!=='object'||Array.isArray(rawOutcome))continue;
+        const item=rawOutcome as Record<string,unknown>;
+        const id=safeText(item.id,160),label=safeText(item.label,240);
+        if(!id||!label)continue;
+        quarantinedOutcomes.push({id,label,at:Math.min(safeTimestamp(item.at,lastAt),lastAt)});
+      }
+    }
     if(Array.isArray(r.events)){
       for(const rawEvent of r.events.slice(0,96)){
         if(!rawEvent||typeof rawEvent!=='object'||Array.isArray(rawEvent))continue;
@@ -187,6 +200,10 @@ export class GroundedWorldState {
         const id=safeText(event.id,160),label=safeText(event.label,240);
         if(!id||!label)continue;
         const eventAt=Math.min(safeTimestamp(event.lastAt,lastAt),lastAt);
+        if(label.startsWith('external-receipt:')){
+          quarantinedOutcomes.push({id,label:`restored-unverified:${label}`.slice(0,240),at:eventAt});
+          continue;
+        }
         events.push({
           id,label,confidence01:safeUnit(event.confidence01),lastAt:eventAt,
           persistence01:safeUnit(event.persistence01),
@@ -209,6 +226,7 @@ export class GroundedWorldState {
       entities,relations,events,
       facts:[],
       quarantinedFacts,
+      quarantinedOutcomes:quarantinedOutcomes.slice(-96),
       provenanceIds:safeStringArray(r.provenanceIds,128,256),
       lastHash:'',
     };
@@ -226,7 +244,7 @@ export class GroundedWorldState {
     const rawResult=input?.result&&typeof input.result==='object'&&!Array.isArray(input.result)
       ?input.result as Record<string,unknown>:{};
     const trusted=isTrustedEmbodiedOutcomeVerification(input?.verification,input?.result);
-        const verification=trusted?input.verification as OutcomeVerification:null;
+    const verification=trusted?input.verification as OutcomeVerification:null;
     const action=safeText(rawResult.action,64)??'unknown';
     const status=safeText(rawResult.status,32)??'unverified';
     const realityClass=safeText(rawResult.realityClass,48)??'untrusted';
@@ -237,33 +255,41 @@ export class GroundedWorldState {
       ? `trusted:${observationId??executionId??`${eventAt}:${action}`}`
       : `untrusted:${executionId??`${eventAt}:${action}:${status}:${realityClass}`}`;
     const eventId=`gw-external-${stableHash(eventIdentity)}`;
-    if(trusted&&input.verification&&typeof input.verification==='object'&&consumedWorldOutcomeVerifications.has(input.verification as object)){
-      return {revision:this.state.revision,eventId,confidence01:0,verified01:0,independent01:0,lastHash:this.state.lastHash,duplicate:true};
+
+    if(!trusted){
+      const existing=this.state.quarantinedOutcomes??[];
+      if(existing.some(item=>item.id===eventId)){
+        return {revision:this.state.revision,eventId,confidence01:0,verified01:0,independent01:0,lastHash:this.state.lastHash,duplicate:true,quarantined:true};
+      }
+      const label=`external-receipt:${action}:${status}:${realityClass}`.slice(0,240);
+      this.state={...this.state,quarantinedOutcomes:[{id:eventId,label,at:Math.min(eventAt,Date.now())},...existing].slice(0,96)};
+      return {revision:this.state.revision,eventId,confidence01:0,verified01:0,independent01:0,lastHash:this.state.lastHash,duplicate:false,quarantined:true};
+    }
+
+    if(input.verification&&typeof input.verification==='object'&&consumedWorldOutcomeVerifications.has(input.verification as object)){
+      return {revision:this.state.revision,eventId,confidence01:0,verified01:0,independent01:0,lastHash:this.state.lastHash,duplicate:true,quarantined:false};
     }
     if(this.state.events.some(event=>event.id===eventId)){
-      return {revision:this.state.revision,eventId,confidence01:0,verified01:0,independent01:0,lastHash:this.state.lastHash,duplicate:true};
+      return {revision:this.state.revision,eventId,confidence01:0,verified01:0,independent01:0,lastHash:this.state.lastHash,duplicate:true,quarantined:false};
     }
-    if(trusted&&input.verification&&typeof input.verification==='object')consumedWorldOutcomeVerifications.add(input.verification as object);
-    const label=trusted?`external-observation-receipt:${action}`:`external-receipt:${action}:${status}:${realityClass}`;
+    if(input.verification&&typeof input.verification==='object')consumedWorldOutcomeVerifications.add(input.verification as object);
     const event:GroundedEvent={
-      id:eventId,label,confidence01:trusted?safeUnit(verification?.confidence01):0,lastAt:eventAt,
-      persistence01:trusted?safeUnit(verification?.confidence01):0,
-      ...(trusted?{evidenceKind:'observed' as const}:{evidenceKind:'derived' as const}),
+      id:eventId,label:`external-observation-receipt:${action}`,confidence01:safeUnit(verification?.confidence01),lastAt:eventAt,
+      persistence01:safeUnit(verification?.confidence01),evidenceKind:'observed',
     };
-    const provenanceId=trusted&&observationId?observationId:executionId?`unverified-execution:${executionId}`:undefined;
     this.state={
       ...this.state,
       revision:this.state.revision+1,
       lastAt:Math.max(this.state.lastAt,eventAt),
       events:[event,...this.state.events].slice(0,96),
-      provenanceIds:provenanceId?[provenanceId,...this.state.provenanceIds.filter(value=>value!==provenanceId)].slice(0,128):this.state.provenanceIds,
+      provenanceIds:observationId?[observationId,...this.state.provenanceIds.filter(value=>value!==observationId)].slice(0,128):this.state.provenanceIds,
     };
     const digest=`${this.state.location}|${this.state.revision}|${this.state.facts.slice(-24).join('|')}|${this.state.events.slice(0,8).map(x=>x.id).join('|')}`;
     this.state.lastHash=stableHash(digest);
     return {
       revision:this.state.revision,eventId,
-      confidence01:trusted?safeUnit(verification?.confidence01):0,
-      verified01:trusted?1:0,independent01:trusted?1:0,lastHash:this.state.lastHash,duplicate:false,
+      confidence01:safeUnit(verification?.confidence01),
+      verified01:1,independent01:1,lastHash:this.state.lastHash,duplicate:false,quarantined:false,
     };
   }
   integrate(input:{at:number;base?:WorldContext|null;perception?:P41PerceptionState|null;evidence?:PerceptualEvidenceState|null;}):WorldContext{
@@ -485,7 +511,7 @@ export class GroundedWorldState {
     const location=norm(base?.location||p?.scene.label||this.state.location||'unknown');
     const provenance=[`grounded:${at}`,...freshEvidence.slice(0,16).map(x=>x.id)];
     const digest=`${location}|${uncertainty.toFixed(3)}|${entities.slice(0,24).map(x=>`${x.id}:${x.kind}:${x.label}:${x.confidence01.toFixed(2)}`).join('|')}|${relations.slice(0,16).map(x=>x.id).join('|')}|${eventList.slice(0,8).map(x=>x.id).join('|')}`;
-    this.state={version:1,revision:this.state.revision+1,lastAt:at,location,uncertainty01:uncertainty,confidence01:confidence,entities,relations,events:eventList,facts,quarantinedFacts:this.state.quarantinedFacts??[],provenanceIds:[...new Set(provenance)].slice(0,128),lastHash:stableHash(digest)};
+    this.state={version:1,revision:this.state.revision+1,lastAt:at,location,uncertainty01:uncertainty,confidence01:confidence,entities,relations,events:eventList,facts,quarantinedFacts:this.state.quarantinedFacts??[],quarantinedOutcomes:this.state.quarantinedOutcomes??[],provenanceIds:[...new Set(provenance)].slice(0,128),lastHash:stableHash(digest)};
     return {
       tick:base?.tick??0,location,energy:base?.energy??.8,attention:base?.attention??.7,
       uncertainty,facts,
@@ -514,5 +540,5 @@ export class GroundedWorldState {
       events:eventList.slice(0,32).map(x=>x.label),
     };
   }
-  summary(){return {revision:this.state.revision,location:this.state.location,confidence01:this.state.confidence01,uncertainty01:this.state.uncertainty01,entities:this.state.entities.length,relations:this.state.relations.length,events:this.state.events.length,facts:this.state.facts.length,quarantinedFacts:this.state.quarantinedFacts?.length??0,lastHash:this.state.lastHash,objectPermanence01:clamp(this.state.entities.length?this.state.entities.reduce((s,e)=>s+e.persistence01,0)/this.state.entities.length:0),liveEntities:this.state.entities.filter(e=>e.presenceStatus==='visible').length,fadingEntities:this.state.entities.filter(e=>e.presenceStatus==='fading').length,unknownPresenceEntities:this.state.entities.filter(e=>e.presenceStatus==='unknown').length};}
+  summary(){return {revision:this.state.revision,location:this.state.location,confidence01:this.state.confidence01,uncertainty01:this.state.uncertainty01,entities:this.state.entities.length,relations:this.state.relations.length,events:this.state.events.length,facts:this.state.facts.length,quarantinedFacts:this.state.quarantinedFacts?.length??0,quarantinedOutcomes:this.state.quarantinedOutcomes?.length??0,lastHash:this.state.lastHash,objectPermanence01:clamp(this.state.entities.length?this.state.entities.reduce((s,e)=>s+e.persistence01,0)/this.state.entities.length:0),liveEntities:this.state.entities.filter(e=>e.presenceStatus==='visible').length,fadingEntities:this.state.entities.filter(e=>e.presenceStatus==='fading').length,unknownPresenceEntities:this.state.entities.filter(e=>e.presenceStatus==='unknown').length};}
 }
