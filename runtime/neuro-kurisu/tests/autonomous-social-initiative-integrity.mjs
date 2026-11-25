@@ -13,6 +13,7 @@ const message='A useful observation about the project can connect evidence to a 
 const ttl=20*60_000;
 
 const plannedEngine=new AutonomousSocialInitiativeEngine();
+plannedEngine.setConsent(true);
 const planned=plannedEngine.cycle(makeInput(1000)).initiative;
 assert.ok(planned);
 assert.equal(plannedEngine.stageMessage(planned.id,message,999),false,'generation timestamps before plan creation must be rejected');
@@ -35,6 +36,7 @@ assert.equal(plannedEngine.observeExternalResponse('Stop.',1005)?.signal,'negati
   'an unmistakable standalone stop request must suppress unsolicited outreach');
 
 const staleStage=new AutonomousSocialInitiativeEngine();
+staleStage.setConsent(true);
 const stalePlan=staleStage.cycle(makeInput(2000)).initiative;
 assert.ok(stalePlan);
 assert.equal(staleStage.stageMessage(stalePlan.id,message,2000+ttl+1),false,
@@ -43,6 +45,7 @@ assert.equal(staleStage.latestReady(2000+ttl+1),null);
 assert.equal(staleStage.snapshot().initiatives[0].status,'deferred');
 
 const staleReady=new AutonomousSocialInitiativeEngine();
+staleReady.setConsent(true);
 const readyPlan=staleReady.cycle(makeInput(3000)).initiative;
 assert.ok(readyPlan);
 assert.equal(staleReady.stageMessage(readyPlan.id,message,3001),true);
@@ -53,6 +56,7 @@ assert.equal(staleReady.snapshot().initiatives[0].status,'deferred');
 assert.equal(staleReady.summary().executed,0);
 
 const stalePlanned=new AutonomousSocialInitiativeEngine();
+stalePlanned.setConsent(true);
 const oldPlan=stalePlanned.cycle(makeInput(4000)).initiative;
 assert.ok(oldPlan);
 assert.equal(stalePlanned.latestPlanned(4000+ttl+1),null);
@@ -94,7 +98,7 @@ assert.deepEqual(arrayProxyRestore.snapshot(),defaultAutonomousSocialInitiative(
 
 const sparseRestore=new AutonomousSocialInitiativeEngine();
 const sparse=[, {id:'sparse-valid',kind:'share-thought',status:'planned',createdAt:6000,reason:'A safe reason for a restored initiative',topic:'A safe topic about causal learning and memory'}];
-sparseRestore.restore({version:1,initiatives:sparse});
+sparseRestore.restore({version:1,consentGranted:true,consentDecisionAt:6000,initiatives:sparse});
 assert.equal(sparseRestore.snapshot().initiatives.length,1,'sparse slots are skipped without executing missing rows');
 assert.equal(sparseRestore.latestPlanned(6000)?.id,'sparse-valid');
 
@@ -110,6 +114,7 @@ assert.deepEqual(invalidVersion.snapshot(),defaultAutonomousSocialInitiative(),
   'unknown snapshot versions reset instead of being merged optimistically');
 
 const safeRoundTrip=new AutonomousSocialInitiativeEngine();
+safeRoundTrip.setConsent(true);
 const safePlan=safeRoundTrip.cycle(makeInput(8000)).initiative;
 assert.ok(safePlan);
 assert.equal(safeRoundTrip.stageMessage(safePlan.id,message,8001),true);
