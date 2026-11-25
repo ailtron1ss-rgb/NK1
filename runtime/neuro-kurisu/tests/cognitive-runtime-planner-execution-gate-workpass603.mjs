@@ -28,7 +28,22 @@ assert.ok(Number.isFinite(fallback.steps[0].confidence));
 assert.ok(Number.isFinite(fallback.expectedValue));
 assert.deepEqual(after, before,
   'fallback projection must remain pure and must not commit a world transition');
-assert.match(planEngineSource, /buildBudgetFallback\(goal: OrganismGoal \| null, preferred: ActionKind, reason: string\)/);
+assert.match(planEngineSource, /buildBudgetFallback\(goal: OrganismGoal \| null, preferred: ActionKind, reason: string, worldEvidence\?: PlanWorldEvidenceSignal\)/,
+  'budget fallback may consume optional read-only world evidence while preserving the bounded fallback contract');
+
+const worldEvidence = {
+  revision: 7, evidenceClass: 'mixed', evidenceConfidence01: .4, uncertainty01: .9,
+  changeMagnitude01: .8, conflict01: .9, unresolved01: .8, modelDisagreement01: .8, predictionError01: .9,
+};
+const worldFallback = engine.buildBudgetFallback(null, preferred, 'world-conflict-budget-fallback', worldEvidence);
+assert.equal(worldFallback.steps.length, 1);
+assert.equal(worldFallback.searchDepth, 1);
+assert.equal(worldFallback.beamWidth, 1);
+assert.ok(worldFallback.steps[0].confidence < fallback.steps[0].confidence);
+assert.equal(worldFallback.worldEvidenceRevision, 7);
+assert.ok(worldFallback.worldVerificationPressure01 >= .8);
+assert.deepEqual(environment.snapshot(), before,
+  'world-aware budget fallback must remain a pure projection');
 
 // Runtime contract: the recorded planning budget decision must actually gate the
 // expensive PlanEngine path; otherwise "budget-aware" planner metrics are cosmetic.
