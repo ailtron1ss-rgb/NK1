@@ -18,7 +18,7 @@ test("legacy avatar keeps one animation loop while speaking and outfit values ch
 test("stale legacy sprite image callbacks cannot replace the newest requested sprite", () => {
   assert.match(source, /let cancelled = false;/);
   assert.match(source, /if \(cancelled\) return;\s*previousRef\.current = currentRef\.current;/);
-  assert.match(source, /if \(!cancelled\) setReady\(Boolean\(currentRef\.current\)\);/);
+  assert.match(source, /if \(!cancelled\) setAssetStatus\("error"\)/);
   assert.match(source, /cancelled = true;\s*img\.onload = null;\s*img\.onerror = null;/);
 });
 
