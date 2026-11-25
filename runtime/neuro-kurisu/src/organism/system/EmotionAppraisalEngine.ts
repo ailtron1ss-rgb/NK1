@@ -591,9 +591,13 @@ export class EmotionAppraisalEngine {
     // from action selection even though those sources retain their own freshness.
     const comparableEpochMs=now>=1e11&&e.at>=1e11;
     const acuteFreshness=comparableEpochMs?Math.exp(-Math.max(0,now-e.at)/60_000):1;
-    const prior=acute*acuteFreshness+pressure*REGULATION_PRIORS[key]+learned+
-      moodPrior[key]*moodEvidence*moodFreshness;
-    return signedPrior(prior*confidenceGate*attentionGate);
+    const acutePrior=acute*acuteFreshness*confidenceGate*attentionGate;
+    // Slow channels have their own evidence gates. A low-confidence recent
+    // emotion must not suppress accumulated mood, interoception or outcomes.
+    const interoConfidence=c(Math.min(1,intero.cycles/5)*(.5+.5*intero.predictionCalibration01));
+    const regulationPrior=pressure*REGULATION_PRIORS[key]*interoConfidence;
+    const prior=acutePrior+regulationPrior+learned+moodPrior[key]*moodEvidence*moodFreshness;
+    return signedPrior(prior);
   }
 
   summary(){return {episodes:this.state.episodes,lastLabel:this.state.lastLabel,meanArousal01:this.state.meanArousal01,meanValence01:this.state.meanValence01,meanStress01:this.state.meanStress01,meanAttentionCapture01:this.state.meanAttentionCapture01,interoception:structuredClone(this.state.interoception),mood:this.moodSnapshot(),outcomes:structuredClone(this.state.outcomes)};}
