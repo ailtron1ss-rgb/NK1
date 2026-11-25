@@ -47,6 +47,23 @@ testCase('fading entities contribute change pressure without asserting confirmed
   const signal = projectWorldCognitiveSignal({ snapshot: baseSnapshot({ presenceStatus: 'fading', absenceEvidence01: 0.8 }), at: 100_000 });
   assert.ok(signal.changeMagnitude01 > 0.4); assert.equal(signal.evidenceClass, 'observed');
 });
+
+testCase('quarantined persisted facts create bounded re-verification pressure without confidence promotion', () => {
+  const baseline = projectWorldCognitiveSignal({ snapshot: baseSnapshot(), at: 100_000 });
+  const quarantined = projectWorldCognitiveSignal({
+    snapshot: baseSnapshot({}, {
+      quarantinedFacts: ['restored-unverified:door-was-open'],
+    }),
+    at: 100_000,
+  });
+  assert.equal(quarantined.evidenceClass, 'mixed',
+    'fresh evidence plus quarantined history must expose unresolved epistemic state');
+  assert.ok(quarantined.unresolved01 > baseline.unresolved01 + .05);
+  assert.ok(quarantined.uncertainty01 > baseline.uncertainty01);
+  assert.ok(quarantined.evidenceConfidence01 <= baseline.evidenceConfidence01,
+    'quarantined historical facts must never increase world evidence confidence');
+});
+
 testCase('every projected scalar remains finite and bounded for malformed numeric state', () => {
   const signal = projectWorldCognitiveSignal({
     snapshot: baseSnapshot({ confidence01: Number.NaN, lastSeenAt: Number.POSITIVE_INFINITY, observationCount: -1, absenceEvidence01: Number.NaN },
