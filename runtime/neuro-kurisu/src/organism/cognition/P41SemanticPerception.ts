@@ -36,7 +36,7 @@ const safeModalitySourceIds=(value:unknown):Partial<Record<P41Modality,string[]>
   if(!value||typeof value!=='object'||Array.isArray(value))return {};
   const row=value as Record<string,unknown>;
   const out:Partial<Record<P41Modality,string[]>>={};
-  const modalities:P41Modality[]=['text','speech','audio','vision','sensor','world','semantic'];
+  const modalities:P41Modality[]=['text','vision','audio','sensor','world'];
   for(const modality of modalities){
     const raw=row[modality];
     const candidates=Array.isArray(raw)?raw:typeof raw==='string'?[raw]:[];
