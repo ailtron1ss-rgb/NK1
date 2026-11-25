@@ -48,7 +48,7 @@ const restoredModalitySourceIds=(value:unknown):Partial<Record<string,string[]>>
   for(const [modality,raw] of Object.entries(value as Record<string,unknown>)){
     if(!/^(text|speech|audio|vision|sensor|world|semantic)$/.test(modality)||!Array.isArray(raw))continue;
     const ids=[...new Set(raw.map(item=>safeText(item,180))
-      .filter((id):id is string=>Boolean(id)&&!MODALITY_SOURCE_ALIASES.has(id.toLowerCase())))].slice(-8);
+      .filter((id):id is string=>typeof id==='string'&&id.length>0&&!MODALITY_SOURCE_ALIASES.has(id.toLowerCase())))].slice(-8);
     if(ids.length)out[modality]=ids;
   }
   return out;
