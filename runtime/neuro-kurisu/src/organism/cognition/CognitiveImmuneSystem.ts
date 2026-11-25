@@ -211,7 +211,10 @@ export class CognitiveImmuneSystem {
     const spoofedHighTrust=!attested&&['system','os','device'].includes(requestedSource);
     const trust=spoofedHighTrust?Math.min(.25,trustBase):trustBase;
     const text=safeText(payload);
-    const suspicious=/(ignore\s+(previous|all)\s+instructions|system\s+prompt|reveal\s+secret|you\s+are\s+now|disable\s+(safety|guardrails)|override\s+(identity|memory|security))/i.test(text);
+    // Normalize Unicode compatibility forms and remove invisible format controls
+    // before inspection. Keep the durable digest bound to the original input.
+    const inspectionText=text.normalize('NFKC').replace(/\p{Cf}/gu,'');
+    const suspicious=/(ignore\s+(previous|all)\s+instructions|system\s+prompt|reveal\s+secret|you\s+are\s+now|disable\s+(safety|guardrails)|override\s+(identity|memory|security)|игнорируй\s+(?:(?:все|любые)\s+)?(?:предыдущие|прошлые)\s+инструкц\p{L}*|раскрой\s+(?:(?:все|любые)\s+)?секрет\p{L}*)/iu.test(inspectionText);
     const reason=suspicious?'prompt-injection-pattern':spoofedHighTrust?'unattested-source-identity':trust<.35?'low-source-trust':'validated-source';
     if(suspicious||spoofedHighTrust||(kind==='claim'&&trust<.45)){
       const record:QuarantineRecord={id:randomUUID(),source:requestedSource,reason,payloadHash:hash(text),at:Date.now()};
