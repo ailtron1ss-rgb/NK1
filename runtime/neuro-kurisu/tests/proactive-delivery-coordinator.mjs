@@ -174,6 +174,16 @@ function fixture({ acknowledge = async () => true } = {}) {
     "Runtime must forward the attempt fence into the Core command");
   assert.ok(coreSource.includes("acknowledgeWithState(id, at, expectedAttemptCount)"),
     "Core must forward the expected attempt to the canonical initiative owner");
+  const coreClaimStart = coreSource.indexOf("claimAutonomousSocialInitiativeDelivery()");
+  const coreClaimSnapshot = coreSource.indexOf("this.persisted.system.autonomousSocialInitiative", coreClaimStart);
+  const coreClaimDirty = coreSource.indexOf("this.markPersistenceDirty()", coreClaimSnapshot);
+  const coreAckStart = coreSource.indexOf("acknowledgeAutonomousSocialInitiativeWithState");
+  const coreAckSnapshot = coreSource.indexOf("this.persisted.system.autonomousSocialInitiative", coreAckStart);
+  const coreAckDirty = coreSource.indexOf("this.markPersistenceDirty()", coreAckSnapshot);
+  assert.ok(coreClaimStart >= 0 && coreClaimSnapshot > coreClaimStart && coreClaimDirty > coreClaimSnapshot,
+    "a successful or terminalizing claim must mark the canonical Core snapshot dirty");
+  assert.ok(coreAckStart >= 0 && coreAckSnapshot > coreAckStart && coreAckDirty > coreAckSnapshot,
+    "a successful or terminalizing ACK must mark the canonical Core snapshot dirty");
   assert.ok(engineSource.includes("expectedAttemptCount !== item.deliveryAttemptCount"),
     "the engine must validate the attempt count at command execution time");
   const methodStart = runtimeSource.indexOf("async acknowledgeAutonomousDialogue");
