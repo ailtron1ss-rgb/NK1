@@ -108,6 +108,28 @@ function countContradictionPairs(claims:readonly EvidenceClaim[]):number{
   return Math.min(pairs,4096);
 }
 
+function restoredSource(value:unknown):EpistemicSource{
+  if(value==='observed')return 'model-output';
+  return value==='model-output'||value==='derived'||value==='unresolved'?value:'unresolved';
+}
+function restoredClaim(value:unknown):EvidenceClaim|null{
+  if(!value||typeof value!=='object'||Array.isArray(value))return null;
+  const row=value as Record<string,unknown>;
+  if(typeof row.id!=='string'||!row.id.trim()||row.id.length>180
+    ||typeof row.modality!=='string'||!row.modality.trim()||row.modality.length>32
+    ||typeof row.claim!=='string'||!row.claim.trim()||row.claim.length>360)return null;
+  const at=typeof row.at==='number'&&Number.isSafeInteger(row.at)&&row.at>=0?row.at:0;
+  const confidence01=typeof row.confidence01==='number'&&Number.isFinite(row.confidence01)&&row.confidence01>=0&&row.confidence01<=1?row.confidence01:0;
+  const targetIds=Array.isArray(row.targetIds)
+    ?[...new Set(row.targetIds.filter((id):id is string=>typeof id==='string'&&Boolean(id.trim())&&id.length<=180))].slice(0,24)
+    :[];
+  const supersedes=typeof row.supersedes==='string'&&row.supersedes.trim()&&row.supersedes.length<=180?row.supersedes:undefined;
+  return {
+    id:row.id,at,modality:row.modality,claim:row.claim,source:restoredSource(row.source),
+    confidence01,targetIds,...(supersedes?{supersedes}:{})
+  };
+}
+
 function safeCounter(value:unknown,ceiling:number):number{
   const n=Number(value);
   return Number.isSafeInteger(n)&&n>=0&&n<=ceiling?n:0;
@@ -118,7 +140,7 @@ export class PerceptualEpistemicGraph {
   restore(raw?:Partial<EpistemicState>|null){
     const d=defaultEpistemicState(); const r=raw??{};
     this.state={...d,...r,
-      claims:Array.isArray(r.claims)?r.claims.slice(-256):[],
+      claims:Array.isArray(r.claims)?r.claims.slice(-256).map(restoredClaim).filter((claim):claim is EvidenceClaim=>claim!==null):[],
       contradictionPairs:safeCounter(r.contradictionPairs,4096),
       resolvedPairs:safeCounter(r.resolvedPairs,4096),
       corroboratedPairs:safeCounter(r.corroboratedPairs,1000),
