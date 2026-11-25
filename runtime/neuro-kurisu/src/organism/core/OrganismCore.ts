@@ -184,6 +184,8 @@ import { isTrustedDecisionLinkedExternalPostcondition } from '../system/OutcomeV
 import type { OutcomeVerification } from '../system/OutcomeVerificationService.ts';
 import { OutcomeCognitionFabric } from '../system/OutcomeCognitionFabric.ts';
 import type { ExternalObservation, ExternalObservationAssessment } from '../system/ExternalObserverFabric.ts';
+import { isPlainDataArray, isPlainDataRecord, ownDataValue } from '../body/RestoreSanitizers.ts';
+import { sanitizePublicP41Ingress } from '../body/P41PublicIngress.ts';
 import { MultimodalPerception } from '../body/MultimodalPerception.ts';
 import { defaultCameraEvidenceState, type CameraEvidence } from '../body/CameraEvidenceProcessor.ts';
 import { CognitiveNetworkBus, affectWorkspaceActionBias, type SpecialistSignal } from '../cognition/CognitiveNetworkBus.ts';
@@ -277,6 +279,7 @@ import { defaultP41SemanticPerception } from '../cognition/P41SemanticPerception
 import { defaultP41NativePerception } from '../cognition/P41NativePerception.ts';
 import { P41TemporalPerceptionModel, defaultP41TemporalPerception } from '../cognition/P41TemporalPerceptionModel.ts';
 import { PerceptualEvidenceCompiler, defaultPerceptualEvidence } from '../body/PerceptualEvidenceCompiler.ts';
+import { defaultObservationIntakeState } from '../body/ObservationIntakeGate.ts';
 import { GroundedWorldState, defaultGroundedWorldState } from '../world/GroundedWorldState.ts';
 import { synchronizeGroundedSpatialMemories } from '../memory/GroundedSpatialMemoryBridge.ts';
 import { defaultUnifiedLatentWorldState } from '../world/UnifiedLatentWorldState.ts';
@@ -805,7 +808,7 @@ function defaultEmbodimentFacet(): EmbodimentFacet {
         toolAudit: [], p35: defaultP35SemanticWorldBody(), p37: defaultP37EmbodiedSensorium(),
         p40SemanticIntelligence: defaultP40SemanticIntelligence(), p41SemanticPerception: defaultP41SemanticPerception(),
         p41NativePerception: defaultP41NativePerception(), p41TemporalPerception: defaultP41TemporalPerception(),
-        p42Experience: defaultP42(), p43Imagery: defaultP43(), perceptualEvidence: defaultPerceptualEvidence(), cameraEvidence: defaultCameraEvidenceState(), deviceEvidence: defaultDeviceEvidence(), embodiedAction: undefined,
+        p42Experience: defaultP42(), p43Imagery: defaultP43(), perceptualEvidence: defaultPerceptualEvidence(), observationIntake: defaultObservationIntakeState(), cameraEvidence: defaultCameraEvidenceState(), deviceEvidence: defaultDeviceEvidence(), embodiedAction: undefined,
     };
 }
 function defaultLearningFacet(): import('./types.ts').LearningFacet {
@@ -1612,6 +1615,7 @@ export class OrganismCore {
         this.organismSystems.self.p39Life.restore((this.persisted.facets.learning as any).p39);
         this.organismSystems.self.p40ModelEcology.restore((this.persisted.facets.learning as any).p40ModelEcology);
         this.organismSystems.embodiment.perceptualEvidence.restore((this.persisted.facets.embodiment as any).perceptualEvidence);
+        this.organismSystems.embodiment.observationIntake.restore((this.persisted.facets.embodiment as any).observationIntake);
         this.developmentalNeural.cognitiveSpineScheduler.restore(this.persisted.system.cognitiveSpineSchedule);
         this.developmentalNeural.resourceAllocator.restore(this.persisted.system.resourceAllocation);
         this.developmentalNeural.unifiedCognitiveSubstrate.restore(this.persisted.system.unifiedCognitiveSubstrate);
@@ -1961,7 +1965,7 @@ export class OrganismCore {
             p58CognitiveKernel: this.organismSystems.self.p58CognitiveKernel, p61IntegratedMind: this.organismSystems.self.p61IntegratedMind, p63DevelopmentalOperatingSystem: this.organismSystems.self.p63DevelopmentalOperatingSystem,
             p64IntegratedOrganismDynamics: this.organismSystems.self.p64IntegratedOrganismDynamics, p66InteroceptiveHomeostasis: this.p66InteroceptiveHomeostasis, p67AutonomousGoalGenesis: this.p67AutonomousGoalGenesis, p68GoalEcology: this.p68GoalEcology,
             p74IntegratedOrganismKernel: this.organismSystems.self.p74IntegratedOrganismKernel, p77RealityExperimentOS: this.organismSystems.research.p77RealityExperimentOS, p81PredictiveAttention: this.organismSystems.self.p81PredictiveAttention, p82RealityProgress: this.organismSystems.research.p82RealityProgress,
-            perceptualEvidence: this.organismSystems.embodiment.perceptualEvidence, persistenceBudgetController: this.persistence.persistenceBudgetController, regretEngine: this.cognitiveRuntime.regretEngine, relationshipSelf: this.cognitiveRuntime.relationshipSelf,
+            perceptualEvidence: this.organismSystems.embodiment.perceptualEvidence, observationIntake: this.organismSystems.embodiment.observationIntake, persistenceBudgetController: this.persistence.persistenceBudgetController, regretEngine: this.cognitiveRuntime.regretEngine, relationshipSelf: this.cognitiveRuntime.relationshipSelf,
             revisionGraph: this.persistence.revisionGraph, revisionTokens: this.persistence.revisionTokens, selfSubsystem: this.selfSubsystem, semanticScars: this.cognitiveRuntime.semanticScars, sensorimotor: this.cognitiveRuntime.sensorimotor,
             socialDevelopment: this.cognitiveRuntime.socialDevelopment, valueEvolution: this.cognitiveRuntime.valueEvolution, developmentalAttractors: this.cognitiveRuntime.developmentalAttractors, valueProvenance: this.cognitiveRuntime.valueProvenance, worldSubsystem: this.worldSubsystem, canonicalNeuralSubstrate: this.developmentalNeural.neuralSubstrate, recurrentCausalMemory: this.developmentalNeural.recurrentCausalMemory,
             spikingPlasticNeuralB269: this.developmentalNeural.spikingPlasticNeuralB269, unifiedNeuroCausalCoreB365: this.developmentalNeural.unifiedNeuroCausalCoreB365.snapshot(),
@@ -4480,6 +4484,13 @@ export class OrganismCore {
             this.persisted.facets.embodiment.p41SemanticPerception = semanticP41;
         if (perceptionRefresh) {
             this.organismSystems.embodiment.perceptualEvidence.compile({ at: state.at, multimodal: this.embodimentSubsystem.multimodal.snapshot(), semantic: semanticP41, native: nativeP41, temporal: temporalP41 });
+            // Admitted canonical observations are compiled into perceptual evidence here.
+            // Integration into the grounded world happens once at admission time (see
+            // admitObservation), not per cycle, so an observation is never counted twice.
+            const admitted = this.organismSystems.embodiment.observationIntake.recent(32);
+            if (admitted.length) {
+                this.organismSystems.embodiment.perceptualEvidence.compileObservations({ at: state.at, observations: admitted });
+            }
             // Evidence is derived state; keep it hot every perception cycle, but materialize it less often
             // to avoid turning diagnostics into a phone-hostile persistence write/clone hotspot.
             if (state.tick % 8 === 0 || Boolean(observation.text) || Boolean(normalizedObservation.worldContext)) {
@@ -5381,6 +5392,7 @@ export class OrganismCore {
             this.persisted.facets.advanced.advancedResilience = this.governanceSubsystem.resilience.snapshot();
             this.persisted.facets.embodiment.multimodal = this.embodimentSubsystem.multimodal.snapshot();
             this.persisted.facets.embodiment.perceptualEvidence = this.organismSystems.embodiment.perceptualEvidence.snapshot();
+            this.persisted.facets.embodiment.observationIntake = this.organismSystems.embodiment.observationIntake.snapshot();
             this.persisted.facets.embodiment.toolAudit = this.cognitiveRuntime.actionGateway.snapshot();
             this.persisted.facets.advanced.consequenceAttribution = governanceSnapshot.consequences.slice(0, 256);
             this.persisted.facets.advanced.memoryFabric = this.memorySubsystem.fabric.snapshot();
@@ -11185,7 +11197,105 @@ export class OrganismCore {
     p39Snapshot() { return this.organismSystems.self.p39Life.snapshot(); }
     perceptualEvidenceSnapshot() { return this.organismSystems.embodiment.perceptualEvidence.snapshot(); }
     perceptualEvidenceSummary() { return this.organismSystems.embodiment.perceptualEvidence.summary(); }
-    recordExternalPerceptualEvidence(input: Parameters<PerceptualEvidenceCompiler['recordExternalEvidence']>[0]) { const row = this.organismSystems.embodiment.perceptualEvidence.recordExternalEvidence(input); this.persisted.facets.embodiment.perceptualEvidence = this.organismSystems.embodiment.perceptualEvidence.snapshot(); this.markPersistenceDirty(); return row; }
+    /**
+     * Admit one canonical observation through the single intake gate.
+     *
+     * This is the public ingress for external perception. Callers describe *what they
+     * observed and how they know*; the gate decides admissibility. It returns a
+     * rejection reason rather than throwing, because ingress happens on camera and
+     * telemetry callbacks where an exception would kill the caller.
+     */
+    admitObservation(input: unknown, options?: { now?: number; maxAgeMs?: number }) {
+        const result = this.organismSystems.embodiment.observationIntake.admit(input, options);
+        if (result.status === 'accepted' && result.observation) {
+            // Integrate exactly once, at admission. The grounded world and the intake
+            // ledger are then persisted together, so a restart restores a consistent
+            // pair and no observation is replayed into the world model.
+            this.worldSubsystem.groundedWorld.integrateObservation({ at: result.observation.receivedAt, observation: result.observation });
+            this.persisted.facets.advanced.groundedWorld = this.worldSubsystem.groundedWorld.snapshot();
+            this.persisted.facets.embodiment.observationIntake = this.organismSystems.embodiment.observationIntake.snapshot();
+            this.markPersistenceDirty();
+        }
+        return result;
+    }
+    observationIntakeSummary() { return this.organismSystems.embodiment.observationIntake.summary(); }
+    observationIntakeSnapshot() { return this.organismSystems.embodiment.observationIntake.snapshot(); }
+    /** Admitted observations that may back real-world grounding claims. */
+    groundedObservations(limit = 32) { return this.organismSystems.embodiment.observationIntake.groundedObservations(limit); }
+    observationConflicts(limit = 32) { return this.worldSubsystem.groundedWorld.observationConflicts(limit); }
+    /** Grant or revoke consent for a capture modality (vision/audio/device). */
+    setObservationConsent(modality: string, granted: boolean) {
+        const state = this.organismSystems.embodiment.observationIntake.setConsent(modality, granted);
+        this.persisted.facets.embodiment.observationIntake = state;
+        this.markPersistenceDirty();
+        return state;
+    }
+    recordExternalPerceptualEvidence(input: Parameters<PerceptualEvidenceCompiler['recordExternalEvidence']>[0]) {
+        // Public callers can supply context, but cannot self-attest verification.
+        if (!isPlainDataRecord(input)) return null;
+        const at = ownDataValue(input, 'at');
+        const modality = ownDataValue(input, 'modality');
+        const claim = ownDataValue(input, 'claim');
+        const confidence01 = ownDataValue(input, 'confidence01');
+        const rawParents = ownDataValue(input, 'parents');
+        if (typeof at !== 'number' || !Number.isFinite(at) || at < 0 ||
+            typeof claim !== 'string' || !claim.trim() ||
+            typeof confidence01 !== 'number' || !Number.isFinite(confidence01)) return null;
+        const safeModality = typeof modality === 'string' && ['text', 'vision', 'audio', 'sensor', 'world'].includes(modality)
+            ? modality : 'world';
+        const parents = isPlainDataArray(rawParents, 8)
+            ? rawParents.filter((parent): parent is string => typeof parent === 'string' && parent.length > 0).slice(0, 8)
+            : [];
+        const row = this.organismSystems.embodiment.perceptualEvidence.recordExternalEvidence({
+            at, modality: safeModality as any, claim: claim.slice(0, 240),
+            confidence01: Math.max(0, Math.min(1, confidence01)), parents, verified: false,
+        });
+        this.persisted.facets.embodiment.perceptualEvidence = this.organismSystems.embodiment.perceptualEvidence.snapshot();
+        this.markPersistenceDirty();
+        return row;
+    }
+    recordVerifiedExternalPerceptualEvidenceFromReceipt(input: {
+        evidenceId: string; at: number; modality: 'sensor' | 'world'; claim: string;
+        confidence01: number; parents: string[];
+    }) {
+        if (!isPlainDataRecord(input)) return null;
+        const evidenceId = ownDataValue(input, 'evidenceId');
+        const at = ownDataValue(input, 'at');
+        const modality = ownDataValue(input, 'modality');
+        const claim = ownDataValue(input, 'claim');
+        const confidence01 = ownDataValue(input, 'confidence01');
+        const rawParents = ownDataValue(input, 'parents');
+        if (typeof evidenceId !== 'string' || !evidenceId ||
+            typeof at !== 'number' || !Number.isFinite(at) || at < 0 ||
+            (modality !== 'sensor' && modality !== 'world') ||
+            typeof claim !== 'string' || typeof confidence01 !== 'number' ||
+            !Number.isFinite(confidence01) || !isPlainDataArray(rawParents, 8)) return null;
+        const parents = rawParents.filter((parent): parent is string => typeof parent === 'string' && parent.length > 0);
+        const recent = this.persisted.system.runtimeEvidence?.recent ?? [];
+        const receipt = recent.find((event: any) => event?.id === evidenceId);
+        if (!receipt || receipt.kind !== 'outcome' || receipt.external01 !== true || receipt.source !== 'external-device') return null;
+        const payload = receipt.payload as Record<string, unknown>;
+        const action = payload?.action;
+        const verified01 = Number(payload?.verified01);
+        if (typeof action !== 'string' || !action ||
+            !Number.isFinite(verified01) || verified01 < .5 ||
+            !claim.startsWith(`external-outcome:${action}:`) ||
+            Math.abs(at - Number(receipt.at)) > 120_000 ||
+            confidence01 < 0 || confidence01 > 1 ||
+            confidence01 > Number(receipt.confidence01) + .001) return null;
+        const actionParentId = receipt.parentIds?.[0];
+        const actionReceipt = recent.find((event: any) => event?.id === actionParentId);
+        if (!actionParentId || !actionReceipt || actionReceipt.kind !== 'action' ||
+            actionReceipt.source !== 'organism-action-gate' || actionReceipt.payload?.deviceActionPending !== true ||
+            !parents.includes(receipt.id) || !parents.includes(actionParentId) ||
+            !receipt.parentIds.every((parentId: string) => parents.includes(parentId))) return null;
+        const row = this.organismSystems.embodiment.perceptualEvidence.recordExternalEvidence({
+            at, modality, claim: claim.slice(0, 240), confidence01, parents, verified: true,
+        });
+        this.persisted.facets.embodiment.perceptualEvidence = this.organismSystems.embodiment.perceptualEvidence.snapshot();
+        this.markPersistenceDirty();
+        return row;
+    }
     recordGroundedExternalOutcome(input: Parameters<WorldSubsystemRuntime['groundedWorld']['integrateExternalOutcome']>[0]) { const row = this.worldSubsystem.groundedWorld.integrateExternalOutcome(input); this.persisted.facets.advanced.groundedWorld = this.worldSubsystem.groundedWorld.snapshot(); this.markPersistenceDirty(); return row; }
     groundedWorldSnapshot() { return this.worldSubsystem.groundedWorld.snapshot(); }
     groundedWorldSummary() { return this.worldSubsystem.groundedWorld.summary(); }
@@ -11277,7 +11387,13 @@ export class OrganismCore {
         const memories = result.items.map((m: any) => ({ ...m, content: String(m.content).slice(0, 320), tier: nodes.get(m.id)?.tier ?? 'unclassified', significance01: nodes.get(m.id)?.significance01 ?? 0, identityImpact01: nodes.get(m.id)?.identityImpact01 ?? 0 }));
         return { memories, semantic: result.semantic };
     }
-    p41PerceptionIngest(input: any) { const result = this.embodimentSubsystem.p41SemanticPerception.ingest(input); this.persisted.facets.embodiment.p41SemanticPerception = result; return result; }
+    p41PerceptionIngest(input: unknown) {
+        const safeInput = sanitizePublicP41Ingress(input);
+        if (!safeInput) return this.embodimentSubsystem.p41SemanticPerception.snapshot();
+        const result = this.embodimentSubsystem.p41SemanticPerception.ingest(safeInput);
+        this.persisted.facets.embodiment.p41SemanticPerception = result;
+        return result;
+    }
     p41NativeIngest(input: any) { const result = this.embodimentSubsystem.p41NativePerception.ingest(input); this.persisted.facets.embodiment.p41NativePerception = result; return result; }
     p41PerceptionSnapshot() { return this.embodimentSubsystem.p41SemanticPerception.snapshot(); }
     p41NativePerceptionSnapshot() { return this.embodimentSubsystem.p41NativePerception.snapshot(); }

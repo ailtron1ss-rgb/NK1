@@ -1,0 +1,224 @@
+/**
+ * NK1 grounded world perception — end-to-end path through the canonical OrganismCore.
+ *
+ * The unit suite proves the intake gate's rules in isolation. This suite proves the
+ * rules actually bind on the live organism: an observation admitted through the public
+ * API reaches the grounded world model and the perceptual evidence compiler, survives a
+ * durable checkpoint, and a rejected observation never does.
+ *
+ * Note on durability: admission is a hot path (camera and telemetry callbacks), so it
+ * marks state dirty and lets the organism's own checkpoint policy decide when to write.
+ * Tests that need a durable boundary call `core.flush()`, exactly as an embedder would.
+ */
+
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import { OrganismCore } from '../src/organism/core/OrganismCore.ts';
+import { MemoryStateStore } from '../src/organism/persistence/MemoryStateStore.ts';
+import { RuntimeEvidenceBus } from '../src/organism/system/RuntimeEvidenceBus.ts';
+
+const options = { cycleResultMode: 'operational', checkpointMinIntervalMs: 0 };
+const makeCore = async (store = new MemoryStateStore()) => {
+  const core = new OrganismCore(store, options);
+  await core.init();
+  return core;
+};
+
+const observation = (overrides = {}) => ({
+  id: `e2e_${Math.random().toString(36).slice(2)}`,
+  sourceId: 'cam-0',
+  sourceKind: 'camera',
+  modality: 'vision',
+  capturedAt: Date.now(),
+  confidence01: 0.9,
+  reliability01: 0.95,
+  sessionId: 'e2e-session',
+  provenance: 'device-capture',
+  payload: { subject: 'desk', claim: 'present' },
+  ...overrides,
+});
+
+test('a consented real capture reaches the grounded world model', async () => {
+  const core = await makeCore();
+  core.setObservationConsent('vision', true);
+  const admitted = core.admitObservation(observation({ payload: { subject: 'desk', claim: 'present' } }));
+  assert.equal(admitted.status, 'accepted');
+  assert.equal(admitted.observation.isRealCapture, true);
+
+  // Provenance is recorded at admission, before any cycle runs.
+  assert.ok(core.groundedWorldSnapshot().provenanceIds.includes(admitted.observation.id));
+
+  await core.observe({ text: 'look around' });
+
+  const world = core.groundedWorldSnapshot();
+  const entity = world.entities.find((row) => row.label === 'desk');
+  assert.ok(entity, 'the admitted observation must appear in grounded world state');
+  assert.equal(entity.modalityEvidenceKinds.vision, 'observed', 'a device capture is observed evidence');
+  assert.equal(entity.presenceStatus, 'visible');
+  assert.ok(entity.sourceIds.includes('cam-0'), 'the producing source is retained on the entity');
+  assert.equal(core.observationIntakeSummary().admitted, 1);
+});
+
+test('consent is required before a capture observation reaches the world model', async () => {
+  const core = await makeCore();
+  const denied = core.admitObservation(observation({ payload: { subject: 'window', claim: 'open' } }));
+  assert.equal(denied.reason, 'consent-required');
+
+  await core.observe({ text: 'look around' });
+  const world = core.groundedWorldSnapshot();
+  assert.equal(world.entities.find((row) => row.label === 'window'), undefined, 'a denied observation must not become world state');
+  assert.equal(core.observationIntakeSummary().admitted, 0);
+});
+
+test('a synthetic fixture cannot ground the world even through the live core', async () => {
+  const core = await makeCore();
+  core.setObservationConsent('vision', true);
+  const fixture = core.admitObservation(
+    observation({ provenance: 'synthetic-fixture', isRealCapture: true, payload: { subject: 'unicorn', claim: 'present' } }),
+  );
+  assert.equal(fixture.status, 'accepted');
+  assert.equal(fixture.observation.isRealCapture, false, 'the gate overrides the caller claim');
+
+  await core.observe({ text: 'look around' });
+  const entity = core.groundedWorldSnapshot().entities.find((row) => row.label === 'unicorn');
+  assert.ok(entity, 'the fixture is still recorded as evidence about a model');
+  assert.equal(entity.modalityEvidenceKinds.vision, 'unresolved', 'a fixture is never observed evidence');
+  assert.equal(entity.presenceStatus, 'unknown', 'a fixture cannot assert real visibility');
+  assert.equal(core.groundedObservations().length, 0, 'no grounded observations from fixtures');
+});
+
+test('observation intake survives a durable checkpoint without re-admitting replays', async () => {
+  const store = new MemoryStateStore();
+  const first = await makeCore(store);
+  first.setObservationConsent('vision', true);
+  const admitted = first.admitObservation(observation({ id: 'persist-1', payload: { subject: 'lamp', claim: 'on' } }));
+  assert.equal(admitted.status, 'accepted');
+  await first.observe({ text: 'look' });
+  await first.flush();
+
+  const second = await makeCore(store);
+  await second.observe({ text: 'resume' });
+  const restored = second.observationIntakeSummary();
+  assert.equal(restored.admitted, 1, 'admitted count survives restart');
+  assert.equal(restored.consent.vision, true, 'consent survives restart');
+
+  // A reconnect replays the last frame; it must be recognised, not counted twice.
+  const replay = second.admitObservation(observation({ id: 'persist-1', payload: { subject: 'lamp', claim: 'on' } }));
+  assert.equal(replay.reason, 'duplicate-observation');
+  assert.equal(second.observationIntakeSummary().admitted, 1);
+});
+
+test('the gate rejects hostile input on the live core without throwing', async () => {
+  const core = await makeCore();
+  core.setObservationConsent('vision', true);
+  assert.equal(core.admitObservation(null).status, 'rejected');
+  assert.equal(core.admitObservation({ id: 'x' }).status, 'rejected');
+  assert.equal(core.admitObservation(observation({ capturedAt: -5 })).status, 'rejected');
+  assert.equal(core.admitObservation(observation({ confidence01: 'high' })).status, 'rejected');
+  const proxy = new Proxy({}, { get() { throw new Error('trap'); } });
+  assert.equal(core.admitObservation(proxy).status, 'rejected');
+  await core.observe({ text: 'still alive' });
+  assert.ok(core.groundedWorldSnapshot(), 'the organism keeps running after hostile input');
+});
+
+test('cross-modality disagreement through the live core is preserved', async () => {
+  const core = await makeCore();
+  core.setObservationConsent('vision', true);
+  core.setObservationConsent('audio', true);
+  core.admitObservation(observation({ modality: 'vision', sourceId: 'cam-0', payload: { subject: 'door', claim: 'open' } }));
+  core.admitObservation(observation({ modality: 'audio', sourceId: 'mic-0', sourceKind: 'microphone', payload: { subject: 'door', claim: 'closed' } }));
+
+  const conflicts = core.observationConflicts();
+  assert.equal(conflicts.length, 1);
+  assert.equal(conflicts[0].previousClaim, 'open');
+  assert.equal(conflicts[0].incomingClaim, 'closed');
+
+  await core.observe({ text: 'what is the door doing' });
+  const door = core.groundedWorldSnapshot().entities.find((row) => row.label === 'door');
+  assert.ok(door, 'the disagreed-upon entity still exists');
+  assert.equal(door.modalityEvidenceKinds.audio, 'conflict', 'the contradiction is marked, not resolved away');
+  assert.equal(door.modalityEvidenceKinds.vision, 'observed', 'the agreeing modality keeps its own evidence kind');
+});
+
+
+test('public P41 ingress cannot self-assert sensor or world observations as observed evidence', async () => {
+  const core = await makeCore();
+  const at = Date.now();
+
+  core.p41PerceptionIngest({
+    at,
+    sensor: { location: 'caller-asserted-location', freshness01: 1 },
+    world: {
+      scene: 'caller-asserted-scene',
+      evidenceKind: 'observed',
+      objects: [
+        { label: 'caller-asserted-wall', confidence01: 0.99, evidenceKind: 'observed' },
+      ],
+      events: ['caller-asserted-event'],
+    },
+  });
+
+  const perception = core.p41PerceptionSnapshot();
+  const location = perception.entities.find((row) => row.label === 'caller-asserted-location');
+  const wall = perception.entities.find((row) => row.label === 'caller-asserted-wall');
+
+  assert.notEqual(location?.modalityEvidenceKinds?.sensor, 'observed',
+    'a caller-provided sensor object is not a host capture receipt');
+  assert.notEqual(wall?.modalityEvidenceKinds?.world, 'observed',
+    'a caller-provided world evidenceKind cannot promote a claim to a fact');
+  assert.notEqual(perception.sceneEvidenceKind, 'observed',
+    'scene provenance must not be caller-controlled through public P41 ingress');
+});
+
+test('public external perceptual evidence cannot promote caller-asserted verified=true', async () => {
+  const core = await makeCore();
+  const row = core.recordExternalPerceptualEvidence({
+    at: Date.now(),
+    modality: 'sensor',
+    claim: 'caller-asserted-external-outcome',
+    confidence01: 1,
+    verified: true,
+    parents: [],
+  });
+
+  assert.notEqual(row.kind, 'observed',
+    'verified must be derived from a core-owned receipt, not accepted as a caller boolean');
+  assert.equal(row.kind, 'derived');
+
+  const bus = new RuntimeEvidenceBus();
+  const observationReceipt = bus.publish({
+    tick: 4, kind: 'observation', source: 'perception-engine', confidence01: 0.7,
+    payload: { eventKind: 'device_observation' },
+  });
+  const actionReceipt = bus.publish({
+    tick: 4, kind: 'action', source: 'organism-action-gate', confidence01: 0.9,
+    parentIds: [observationReceipt.id],
+    payload: { action: 'look', deviceActionPending: true },
+  });
+  const predictionReceipt = bus.publish({
+    tick: 4, kind: 'prediction', source: 'reward-model', confidence01: 0.8,
+    parentIds: [observationReceipt.id],
+    payload: { action: 'look' },
+  });
+  const outcomeReceipt = bus.publish({
+    tick: 4, kind: 'outcome', source: 'external-device', confidence01: 0.8,
+    external01: true, parentIds: [actionReceipt.id, predictionReceipt.id],
+    payload: { action: 'look', verified01: 0.9, independent01: 0.85 },
+  });
+  core.setRuntimeEvidence(bus.snapshot());
+
+  const rejected = core.recordVerifiedExternalPerceptualEvidenceFromReceipt({
+    evidenceId: 'caller-invented-receipt', at: outcomeReceipt.at, modality: 'sensor',
+    claim: 'external-outcome:look:verified=0.9', confidence01: 0.8,
+    parents: [outcomeReceipt.id, actionReceipt.id, predictionReceipt.id],
+  });
+  assert.equal(rejected, null, 'an invented receipt id must not authorize grounded evidence');
+
+  const admitted = core.recordVerifiedExternalPerceptualEvidenceFromReceipt({
+    evidenceId: outcomeReceipt.id, at: outcomeReceipt.at, modality: 'sensor',
+    claim: 'external-outcome:look:verified=0.9', confidence01: 0.8,
+    parents: [outcomeReceipt.id, actionReceipt.id, predictionReceipt.id],
+  });
+  assert.equal(admitted?.kind, 'observed',
+    'the runtime may promote evidence only when a matching Core-owned external outcome receipt exists');
+});

@@ -15,7 +15,7 @@ import { buildAutonomousDialoguePrompt, buildCognitivePrompt, type LanguageInvok
 import { AdaptiveSynapticMatrixEngine, type AdaptiveSynapticMatrixState, type SynapticAdapterActivationManifest, type SynapticAdapterCandidate, type SynapticAdapterManifestVerifier, type SynapticAdapterRoutingInput, type SynapticAdapterTask, type SynapticReplayAnchorState, type SynapticReplayAnchorStore } from '../learning/AdaptiveSynapticMatrix.ts';
 import type { ContextBudgetLedgerReport } from '../language/ContextBudgetLedger.ts';
 import { CounterfactualEngine } from '../world/CounterfactualEngine.ts';
-import { EmbodimentRuntime, type VoiceInputResult } from '../body/EmbodimentRuntime.ts';
+import { EmbodimentRuntime, buildAndroidTelemetryObservation, type VoiceInputResult } from '../body/EmbodimentRuntime.ts';
 import { Mem0PlatformAdapter, type Mem0Candidate } from '../integration/mem0/Mem0PlatformAdapter.ts';
 import { buildCognitiveProposalPrompt, parseCognitiveProposal } from '../language/LanguageOrgan.ts';
 import { OperationalJournal } from '../persistence/OperationalJournal.ts';
@@ -32,7 +32,7 @@ import { ContinuousCognitiveFabric } from '../system/ContinuousCognitiveFabric.t
 import { RuntimeClosureLedger } from '../system/RuntimeClosureLedger.ts';
 import { CausalDomainClosureLedger, type CausalDomainEvidence } from '../system/CausalDomainClosureLedger.ts';
 import { AdaptiveConsolidationGate } from '../system/AdaptiveConsolidationGate.ts';
-import { cameraEvidenceFromResult, inspectCameraFile, type CameraEvidence } from '../body/CameraEvidenceProcessor.ts';
+import { buildCameraCaptureObservation, cameraEvidenceFromResult, inspectCameraFile, type CameraEvidence } from '../body/CameraEvidenceProcessor.ts';
 import { EmbodiedActionExecutor, type EmbodiedActionResult } from '../body/EmbodiedActionExecutor.ts';
 import { EmbodiedRecoveryController } from '../body/EmbodiedRecoveryController.ts';
 import type { VisionSemanticBackend } from '../body/VisionSemanticBackend.ts';
@@ -406,6 +406,8 @@ export class OrganismRuntime {
   private readonly clockScheduler = new RuntimeClockScheduler();
   private readonly continuityLedger: ContinuityLedger;
   private readonly evidenceBus = new RuntimeEvidenceBus(384);
+  private readonly deviceObservationSessionId = randomUUID();
+  private readonly cameraObservationSessionId = randomUUID();
   private readonly cognitiveEventFabric = new CognitiveEventFabric(512);
   private readonly openLoopRadar = new OpenLoopRadar();
   private readonly resourceEconomy = new CognitiveResourceEconomy();
@@ -1170,12 +1172,23 @@ export class OrganismRuntime {
     const activeBody = await this.embodiment.sampleActive(perceptionPlan.requestedSensors,true);
     const observedSensors:string[]=[];
     if(activeBody.telemetry.source==='android-termux' && activeBody.telemetry.staleMs===0){
-      if(perceptionPlan.requestedSensors.includes('battery') || perceptionPlan.requestedSensors.includes('thermal')) observedSensors.push('battery');
+      if(perceptionPlan.requestedSensors.includes('battery')) observedSensors.push('battery');
+      if(perceptionPlan.requestedSensors.includes('thermal')) observedSensors.push('thermal');
       if(perceptionPlan.requestedSensors.includes('motion')) observedSensors.push('motion');
       if(perceptionPlan.requestedSensors.includes('light')) observedSensors.push('light');
       if(perceptionPlan.requestedSensors.includes('proximity')) observedSensors.push('proximity');
       if(perceptionPlan.requestedSensors.includes('network')) observedSensors.push('network');
     }
+    // Only fresh Android host telemetry with explicit device consent enters the
+    // canonical observation gate and persistent grounded world.
+    const deviceObservation = buildAndroidTelemetryObservation({
+      telemetry: activeBody.telemetry,
+      previousSampledAt,
+      requestedSensors: observedSensors,
+      consentGranted: this.core.observationIntakeSummary().consent.device === true,
+      sessionId: this.deviceObservationSessionId,
+    });
+    if (deviceObservation) this.core.admitObservation(deviceObservation);
     const perceptionFulfilled = activeBody.telemetry.sampledAt>previousSampledAt && activeBody.telemetry.source==='android-termux' ? Math.min(1, observedSensors.length/Math.max(1,perceptionPlan.requestedSensors.filter((x:string)=>x!=='camera').length)) : 0;
     this.core.b365RecordPerceptionPlanResult({tick:this.core.operationalStatusSnapshot().tick,observedSensors,fulfilled01:perceptionFulfilled});
     const wasAwake = activeBody.awake;
@@ -1722,11 +1735,15 @@ export class OrganismRuntime {
     this.core.recordRealityEvidence({tick:cycle.state.tick,realityClass:embodiedLedgerClass,claim:`embodied-action:${physicalAction}`,confidence01:grounded.evidence01,independenceKey:`embodied:${embodiedAction.at}:${embodiedAction.source}`,parentIds:[actionEvidence.id]});
     this.core.recordRealityEvidence({tick:cycle.state.tick,realityClass:grounded.source==='external' ? 'device-observation' : 'simulator',claim:`action-consequence:${physicalAction}`,confidence01:grounded.evidence01,independenceKey:`consequence:${cycle.state.tick}:${embodiedAction.source}:${grounded.source}`,parentIds:[outcomeEvidence.id]});
     if(grounded.source==='external') {
-      this.core.recordExternalPerceptualEvidence({
+      // Publish the exact outcome receipt to Core before asking it to admit
+      // external perceptual evidence. The Core re-checks this immutable lineage.
+      this.core.setRuntimeEvidence(this.evidenceBus.snapshot());
+      this.core.recordVerifiedExternalPerceptualEvidenceFromReceipt({
+        evidenceId:outcomeEvidence.id,
         at:cycle.state.at,
         modality:embodiedAction.realityClass==='device-observation'?'sensor':'world',
         claim:`external-outcome:${embodiedAction.action}:verified=${grounded.verified01.toFixed(2)}:independent=${grounded.independent01.toFixed(2)}:consequence=${grounded.consequence01.toFixed(2)}:shadowDivergence=${shadowResolution.divergence01.toFixed(2)}`,
-        confidence01:grounded.evidence01, verified:grounded.verified01>.5, parents:[outcomeEvidence.id,actionEvidence.id],
+        confidence01:grounded.evidence01, parents:[outcomeEvidence.id,...outcomeEvidence.parentIds],
       });
     }
 
@@ -2563,6 +2580,15 @@ export class OrganismRuntime {
       }
     }
     const state = this.core.recordCameraEvidence(evidence);
+    const cameraObservation = buildCameraCaptureObservation({
+      evidence,
+      executionId: toolExecution.executionId,
+      providerReceiptId: toolExecution.providerReceiptId,
+      sessionId: this.cameraObservationSessionId,
+      receiptVerified: toolExecution.verified === true,
+      consentGranted: this.core.observationIntakeSummary().consent.vision === true,
+    });
+    if (cameraObservation) this.core.admitObservation(cameraObservation);
     let semantic = null as Awaited<ReturnType<VisionSemanticBackend['analyze']>> | null;
     let trackingMetrics: ReturnType<TemporalObjectTracker['update']>['metrics'] | null = null;
     if (this.config.visionBackend) this.core.setSemanticVisionAvailability(true);

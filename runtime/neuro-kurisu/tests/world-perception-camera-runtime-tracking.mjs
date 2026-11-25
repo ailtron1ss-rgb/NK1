@@ -73,6 +73,9 @@ try{
   assert.equal(first.semanticResult.objects[0].trackingStatus,'new');
   const firstTrackId=first.semanticResult.objects[0].trackId;
   assert.ok(firstTrackId);
+  assert.equal(runtime.core.observationIntakeSummary().admitted, 0,
+    'a physical camera capture must not enter the grounded world without explicit vision consent');
+  runtime.core.setObservationConsent('vision', true);
 
   // The bytes/hash are deliberately identical. A new capture receipt is still a
   // new frame and must associate the second detection to the prior track.
@@ -90,6 +93,14 @@ try{
   assert.ok(chair);
   assert.equal(chair.trackId?.endsWith(firstTrackId),true);
   assert.equal(chair.imageBoxCameraId,0);
+  assert.equal(chair.modalityEvidenceKinds?.vision, 'model-output',
+    "the vision backend's object interpretation must remain model-output, not device-capture");
+  const cameraDevice = runtime.core.groundedWorldSnapshot().entities.find(entity => entity.label === 'camera-0');
+  assert.ok(cameraDevice, 'a consented camera receipt must be represented in the grounded world');
+  assert.equal(cameraDevice.modalityEvidenceKinds.vision, 'observed');
+  assert.equal(cameraDevice.observationCount, 1);
+  assert.equal(runtime.core.observationIntakeSummary().admitted, 1,
+    'only the consented second capture should enter the canonical observation gate');
   assert.ok(chair.imageBoxAt>0);
   assert.deepEqual(chair.imageBox,{x:.12,y:.20,width:.20,height:.35});
 
