@@ -184,6 +184,8 @@ import { isTrustedDecisionLinkedExternalPostcondition } from '../system/OutcomeV
 import type { OutcomeVerification } from '../system/OutcomeVerificationService.ts';
 import { OutcomeCognitionFabric } from '../system/OutcomeCognitionFabric.ts';
 import type { ExternalObservation, ExternalObservationAssessment } from '../system/ExternalObserverFabric.ts';
+import { isPlainDataArray, isPlainDataRecord, ownDataValue } from '../body/RestoreSanitizers.ts';
+import { sanitizePublicP41Ingress } from '../body/P41PublicIngress.ts';
 import { MultimodalPerception } from '../body/MultimodalPerception.ts';
 import { defaultCameraEvidenceState, type CameraEvidence } from '../body/CameraEvidenceProcessor.ts';
 import { CognitiveNetworkBus, affectWorkspaceActionBias, type SpecialistSignal } from '../cognition/CognitiveNetworkBus.ts';
@@ -11228,7 +11230,72 @@ export class OrganismCore {
         this.markPersistenceDirty();
         return state;
     }
-    recordExternalPerceptualEvidence(input: Parameters<PerceptualEvidenceCompiler['recordExternalEvidence']>[0]) { const row = this.organismSystems.embodiment.perceptualEvidence.recordExternalEvidence(input); this.persisted.facets.embodiment.perceptualEvidence = this.organismSystems.embodiment.perceptualEvidence.snapshot(); this.markPersistenceDirty(); return row; }
+    recordExternalPerceptualEvidence(input: Parameters<PerceptualEvidenceCompiler['recordExternalEvidence']>[0]) {
+        // Public callers can supply context, but cannot self-attest verification.
+        if (!isPlainDataRecord(input)) return null;
+        const at = ownDataValue(input, 'at');
+        const modality = ownDataValue(input, 'modality');
+        const claim = ownDataValue(input, 'claim');
+        const confidence01 = ownDataValue(input, 'confidence01');
+        const rawParents = ownDataValue(input, 'parents');
+        if (typeof at !== 'number' || !Number.isFinite(at) || at < 0 ||
+            typeof claim !== 'string' || !claim.trim() ||
+            typeof confidence01 !== 'number' || !Number.isFinite(confidence01)) return null;
+        const safeModality = typeof modality === 'string' && ['text', 'vision', 'audio', 'sensor', 'world'].includes(modality)
+            ? modality : 'world';
+        const parents = isPlainDataArray(rawParents, 8)
+            ? rawParents.filter((parent): parent is string => typeof parent === 'string' && parent.length > 0).slice(0, 8)
+            : [];
+        const row = this.organismSystems.embodiment.perceptualEvidence.recordExternalEvidence({
+            at, modality: safeModality as any, claim: claim.slice(0, 240),
+            confidence01: Math.max(0, Math.min(1, confidence01)), parents, verified: false,
+        });
+        this.persisted.facets.embodiment.perceptualEvidence = this.organismSystems.embodiment.perceptualEvidence.snapshot();
+        this.markPersistenceDirty();
+        return row;
+    }
+    recordVerifiedExternalPerceptualEvidenceFromReceipt(input: {
+        evidenceId: string; at: number; modality: 'sensor' | 'world'; claim: string;
+        confidence01: number; parents: string[];
+    }) {
+        if (!isPlainDataRecord(input)) return null;
+        const evidenceId = ownDataValue(input, 'evidenceId');
+        const at = ownDataValue(input, 'at');
+        const modality = ownDataValue(input, 'modality');
+        const claim = ownDataValue(input, 'claim');
+        const confidence01 = ownDataValue(input, 'confidence01');
+        const rawParents = ownDataValue(input, 'parents');
+        if (typeof evidenceId !== 'string' || !evidenceId ||
+            typeof at !== 'number' || !Number.isFinite(at) || at < 0 ||
+            (modality !== 'sensor' && modality !== 'world') ||
+            typeof claim !== 'string' || typeof confidence01 !== 'number' ||
+            !Number.isFinite(confidence01) || !isPlainDataArray(rawParents, 8)) return null;
+        const parents = rawParents.filter((parent): parent is string => typeof parent === 'string' && parent.length > 0);
+        const recent = this.persisted.system.runtimeEvidence?.recent ?? [];
+        const receipt = recent.find((event: any) => event?.id === evidenceId);
+        if (!receipt || receipt.kind !== 'outcome' || receipt.external01 !== true || receipt.source !== 'external-device') return null;
+        const payload = receipt.payload as Record<string, unknown>;
+        const action = payload?.action;
+        const verified01 = Number(payload?.verified01);
+        if (typeof action !== 'string' || !action ||
+            !Number.isFinite(verified01) || verified01 < .5 ||
+            !claim.startsWith(`external-outcome:${action}:`) ||
+            Math.abs(at - Number(receipt.at)) > 120_000 ||
+            confidence01 < 0 || confidence01 > 1 ||
+            confidence01 > Number(receipt.confidence01) + .001) return null;
+        const actionParentId = receipt.parentIds?.[0];
+        const actionReceipt = recent.find((event: any) => event?.id === actionParentId);
+        if (!actionParentId || !actionReceipt || actionReceipt.kind !== 'action' ||
+            actionReceipt.source !== 'organism-action-gate' || actionReceipt.payload?.deviceActionPending !== true ||
+            !parents.includes(receipt.id) || !parents.includes(actionParentId) ||
+            !receipt.parentIds.every((parentId: string) => parents.includes(parentId))) return null;
+        const row = this.organismSystems.embodiment.perceptualEvidence.recordExternalEvidence({
+            at, modality, claim: claim.slice(0, 240), confidence01, parents, verified: true,
+        });
+        this.persisted.facets.embodiment.perceptualEvidence = this.organismSystems.embodiment.perceptualEvidence.snapshot();
+        this.markPersistenceDirty();
+        return row;
+    }
     recordGroundedExternalOutcome(input: Parameters<WorldSubsystemRuntime['groundedWorld']['integrateExternalOutcome']>[0]) { const row = this.worldSubsystem.groundedWorld.integrateExternalOutcome(input); this.persisted.facets.advanced.groundedWorld = this.worldSubsystem.groundedWorld.snapshot(); this.markPersistenceDirty(); return row; }
     groundedWorldSnapshot() { return this.worldSubsystem.groundedWorld.snapshot(); }
     groundedWorldSummary() { return this.worldSubsystem.groundedWorld.summary(); }
@@ -11320,7 +11387,13 @@ export class OrganismCore {
         const memories = result.items.map((m: any) => ({ ...m, content: String(m.content).slice(0, 320), tier: nodes.get(m.id)?.tier ?? 'unclassified', significance01: nodes.get(m.id)?.significance01 ?? 0, identityImpact01: nodes.get(m.id)?.identityImpact01 ?? 0 }));
         return { memories, semantic: result.semantic };
     }
-    p41PerceptionIngest(input: any) { const result = this.embodimentSubsystem.p41SemanticPerception.ingest(input); this.persisted.facets.embodiment.p41SemanticPerception = result; return result; }
+    p41PerceptionIngest(input: unknown) {
+        const safeInput = sanitizePublicP41Ingress(input);
+        if (!safeInput) return this.embodimentSubsystem.p41SemanticPerception.snapshot();
+        const result = this.embodimentSubsystem.p41SemanticPerception.ingest(safeInput);
+        this.persisted.facets.embodiment.p41SemanticPerception = result;
+        return result;
+    }
     p41NativeIngest(input: any) { const result = this.embodimentSubsystem.p41NativePerception.ingest(input); this.persisted.facets.embodiment.p41NativePerception = result; return result; }
     p41PerceptionSnapshot() { return this.embodimentSubsystem.p41SemanticPerception.snapshot(); }
     p41NativePerceptionSnapshot() { return this.embodimentSubsystem.p41NativePerception.snapshot(); }

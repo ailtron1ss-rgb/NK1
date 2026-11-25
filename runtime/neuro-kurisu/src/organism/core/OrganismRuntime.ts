@@ -1722,11 +1722,15 @@ export class OrganismRuntime {
     this.core.recordRealityEvidence({tick:cycle.state.tick,realityClass:embodiedLedgerClass,claim:`embodied-action:${physicalAction}`,confidence01:grounded.evidence01,independenceKey:`embodied:${embodiedAction.at}:${embodiedAction.source}`,parentIds:[actionEvidence.id]});
     this.core.recordRealityEvidence({tick:cycle.state.tick,realityClass:grounded.source==='external' ? 'device-observation' : 'simulator',claim:`action-consequence:${physicalAction}`,confidence01:grounded.evidence01,independenceKey:`consequence:${cycle.state.tick}:${embodiedAction.source}:${grounded.source}`,parentIds:[outcomeEvidence.id]});
     if(grounded.source==='external') {
-      this.core.recordExternalPerceptualEvidence({
+      // Publish the exact outcome receipt to Core before asking it to admit
+      // external perceptual evidence. The Core re-checks this immutable lineage.
+      this.core.setRuntimeEvidence(this.evidenceBus.snapshot());
+      this.core.recordVerifiedExternalPerceptualEvidenceFromReceipt({
+        evidenceId:outcomeEvidence.id,
         at:cycle.state.at,
         modality:embodiedAction.realityClass==='device-observation'?'sensor':'world',
         claim:`external-outcome:${embodiedAction.action}:verified=${grounded.verified01.toFixed(2)}:independent=${grounded.independent01.toFixed(2)}:consequence=${grounded.consequence01.toFixed(2)}:shadowDivergence=${shadowResolution.divergence01.toFixed(2)}`,
-        confidence01:grounded.evidence01, verified:grounded.verified01>.5, parents:[outcomeEvidence.id,actionEvidence.id],
+        confidence01:grounded.evidence01, parents:[outcomeEvidence.id,...outcomeEvidence.parentIds],
       });
     }
 

@@ -15,6 +15,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { OrganismCore } from '../src/organism/core/OrganismCore.ts';
 import { MemoryStateStore } from '../src/organism/persistence/MemoryStateStore.ts';
+import { RuntimeEvidenceBus } from '../src/organism/system/RuntimeEvidenceBus.ts';
 
 const options = { cycleResultMode: 'operational', checkpointMinIntervalMs: 0 };
 const makeCore = async (store = new MemoryStateStore()) => {
@@ -183,4 +184,41 @@ test('public external perceptual evidence cannot promote caller-asserted verifie
   assert.notEqual(row.kind, 'observed',
     'verified must be derived from a core-owned receipt, not accepted as a caller boolean');
   assert.equal(row.kind, 'derived');
+
+  const bus = new RuntimeEvidenceBus();
+  const observationReceipt = bus.publish({
+    tick: 4, kind: 'observation', source: 'perception-engine', confidence01: 0.7,
+    payload: { eventKind: 'device_observation' },
+  });
+  const actionReceipt = bus.publish({
+    tick: 4, kind: 'action', source: 'organism-action-gate', confidence01: 0.9,
+    parentIds: [observationReceipt.id],
+    payload: { action: 'look', deviceActionPending: true },
+  });
+  const predictionReceipt = bus.publish({
+    tick: 4, kind: 'prediction', source: 'reward-model', confidence01: 0.8,
+    parentIds: [observationReceipt.id],
+    payload: { action: 'look' },
+  });
+  const outcomeReceipt = bus.publish({
+    tick: 4, kind: 'outcome', source: 'external-device', confidence01: 0.8,
+    external01: true, parentIds: [actionReceipt.id, predictionReceipt.id],
+    payload: { action: 'look', verified01: 0.9, independent01: 0.85 },
+  });
+  core.setRuntimeEvidence(bus.snapshot());
+
+  const rejected = core.recordVerifiedExternalPerceptualEvidenceFromReceipt({
+    evidenceId: 'caller-invented-receipt', at: outcomeReceipt.at, modality: 'sensor',
+    claim: 'external-outcome:look:verified=0.9', confidence01: 0.8,
+    parents: [outcomeReceipt.id, actionReceipt.id, predictionReceipt.id],
+  });
+  assert.equal(rejected, null, 'an invented receipt id must not authorize grounded evidence');
+
+  const admitted = core.recordVerifiedExternalPerceptualEvidenceFromReceipt({
+    evidenceId: outcomeReceipt.id, at: outcomeReceipt.at, modality: 'sensor',
+    claim: 'external-outcome:look:verified=0.9', confidence01: 0.8,
+    parents: [outcomeReceipt.id, actionReceipt.id, predictionReceipt.id],
+  });
+  assert.equal(admitted?.kind, 'observed',
+    'the runtime may promote evidence only when a matching Core-owned external outcome receipt exists');
 });
