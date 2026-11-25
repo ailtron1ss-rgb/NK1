@@ -27,17 +27,18 @@ jobs:
         with:
           node-version-file: .nvmrc
           package-manager-cache: false
-      - name: Prove A-to-B snapshot attribution regression fails on test-only baseline (TDD red)
-        env:
-          BASELINE_WITH_TEST_ONLY: eb4fbdb50d9cef8af606826f7db6ae043f41c6ff
+      - name: Prove A-to-B snapshot attribution regression fails on the current integration base (TDD red)
         run: |
           set -euo pipefail
           RED_WORKTREE="$RUNNER_TEMP/nk1-workpass73-tdd-red"
-          git worktree add --detach "$RED_WORKTREE" "$BASELINE_WITH_TEST_ONLY"
+          git worktree add --detach "$RED_WORKTREE" "origin/$GITHUB_BASE_REF"
+          mkdir -p "$RED_WORKTREE/runtime/neuro-kurisu/tests"
+          cp "$GITHUB_WORKSPACE/runtime/neuro-kurisu/tests/active-information-gain-neural-attribution-workpass73.mjs" \
+            "$RED_WORKTREE/runtime/neuro-kurisu/tests/active-information-gain-neural-attribution-workpass73.mjs"
           cd "$RED_WORKTREE/runtime/neuro-kurisu"
           output=""
           if output=$(node --experimental-strip-types tests/active-information-gain-neural-attribution-workpass73.mjs 2>&1); then
-            echo "Expected A-to-B attribution regression, but the test passed on the test-only baseline."
+            echo "Expected A-to-B attribution regression on the current PR base, but the test passed."
             exit 1
           fi
           printf '%s\n' "$output"
