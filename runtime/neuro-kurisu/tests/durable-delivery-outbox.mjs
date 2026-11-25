@@ -241,4 +241,24 @@ try {
   await fs.rm(runtimeDirectory, { recursive: true, force: true });
 }
 
-console.log(JSON.stringify({ test: 'durable-delivery-outbox', assertions: 45, status: 'PASS' }));
+
+
+{
+  const ambiguous = new DurableDeliveryOutbox({ maxRecords: 4, maxAttempts: 3, retryBaseMs: 1000, retryMaxMs: 4000 });
+  const queued = ambiguous.enqueue({
+    dedupeKey: 'ambiguous:transport-timeout',
+    kind: 'notification',
+    payloadRef: 'notification:ambiguous-timeout',
+  }, at + 20_000);
+  assert.ok(ambiguous.claim(queued.record.id, 'sender-A', at + 20_001, 5_000));
+  assert.equal(ambiguous.recordFailure(queued.record.id, 'sender-A', 'transport-timeout', at + 20_002), true);
+  assert.equal(ambiguous.get(queued.record.id)?.status, 'reconciliation-required',
+    'a transport timeout is ambiguous: the recipient may have accepted the message before the ACK was lost');
+  assert.equal(ambiguous.claimNext('sender-B', at + 30_000, 1_000), null,
+    'an ambiguous send must not be retried before authoritative reconciliation');
+  assert.equal(ambiguous.resolveReconciliation(queued.record.id, 'confirmed-not-delivered', at + 30_000), true);
+  assert.equal(ambiguous.claim(queued.record.id, 'sender-B', at + 31_001, 1_000)?.status, 'leased',
+    'retry is permitted only after the host confirms that the recipient did not accept the message');
+}
+
+console.log(JSON.stringify({ test: 'durable-delivery-outbox', status: 'PASS' }));
