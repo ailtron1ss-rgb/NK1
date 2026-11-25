@@ -6,8 +6,12 @@ export interface AvatarModelFitBounds {
   source: "skinned-meshes" | "character-meshes";
   includedMeshes: number;
   excludedEnvironmentMeshes: number;
-  /** Exact character surfaces used for both fitting and safe pointer picking. */
+  /** Rig-preferred surfaces used to keep camera framing stable for animated/VRM models. */
   meshes: any[];
+  /** All visible character surfaces, including static head/accessory meshes, for pointer raycasts. */
+  pickMeshes: any[];
+  /** Full character envelope used to classify the vertical contact zone. */
+  contactBounds: Box3;
 }
 
 const ENVIRONMENT_NAME = /(^|_)(?:env_)?(?:floor|ground|background|backdrop|stagefloor)(?:_|$)/;
@@ -67,12 +71,22 @@ export function resolveAvatarModelFitBounds(root: any): AvatarModelFitBounds {
   const source = skinnedMeshes.length > 0 ? "skinned-meshes" : "character-meshes";
   const included = skinnedMeshes.length > 0 ? skinnedMeshes : characterMeshes;
   const bounds = new THREE.Box3();
+  const contactBounds = new THREE.Box3();
 
+  // Keep camera framing rig-preferred: static helper meshes must not unexpectedly
+  // change the established fit scale for an otherwise complete skinned character.
   for (const node of included) {
     bounds.union(new THREE.Box3().setFromObject(node));
   }
 
-  if (!isFiniteBox(bounds)) {
+  // Pointer contact is different from camera framing. VRM/glTF heads, eyes,
+  // hair and accessories are commonly static child meshes, so include every
+  // visible, finite character surface while continuing to exclude environment.
+  for (const node of characterMeshes) {
+    contactBounds.union(new THREE.Box3().setFromObject(node));
+  }
+
+  if (!isFiniteBox(bounds) || !isFiniteBox(contactBounds)) {
     throw new Error("Avatar model has no usable character mesh bounds.");
   }
 
@@ -82,6 +96,8 @@ export function resolveAvatarModelFitBounds(root: any): AvatarModelFitBounds {
     includedMeshes: included.length,
     excludedEnvironmentMeshes,
     meshes: included,
+    pickMeshes: characterMeshes,
+    contactBounds,
   };
 }
 
