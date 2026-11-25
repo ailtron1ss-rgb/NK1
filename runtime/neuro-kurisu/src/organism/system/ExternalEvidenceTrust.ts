@@ -78,8 +78,10 @@ export class ExternalEvidenceTrustEngine{
         id:r.id,claimKey:r.claimKey.trim(),source,sourceClass,
         independenceKey:r.independenceKey.trim().toLowerCase(),
         confidence01:clamp(r.confidence01),trust01:0,
-        corroborations:Math.max(1,finiteCount(r.corroborations,1)),
-        independentSources:1,contradictions:finiteCount(r.contradictions),
+        // Only bounded, unique event receipts survive restore. Persisted aggregate
+        // counters are attacker-controlled summaries, not corroboration evidence.
+        corroborations:Math.max(1,evidenceIds.length),
+        independentSources:1,contradictions:0,
         status:'candidate',firstSeenAt,lastSeenAt,evidenceIds,
       });
     }
