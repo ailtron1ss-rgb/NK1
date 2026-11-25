@@ -14,6 +14,7 @@ const runtimeInput = at => ({
 });
 
 const engine = new AutonomousSocialInitiativeEngine();
+engine.setConsent(true);
 engine.setQuietHours({ enabled: true, startHourUtc: 22, endHourUtc: 8 });
 const quiet = engine.cycle(runtimeInput(atHourUtc(23)));
 assert.equal(quiet.shouldInitiate, false, 'quiet hours suppress unsolicited user-visible delivery');
@@ -42,7 +43,7 @@ legacy.restore({
   reciprocity01: .5, initiative01: .3, initiatives: [], startedAt: 1_800_000_000_000,
   lastExternalInputAt: 0, lastInitiativeAt: 0,
 });
-assert.equal(legacy.deliveryPolicy().consentGranted, true,
-  'legacy snapshots preserve existing delivery behavior until consent is explicitly revoked');
+assert.equal(legacy.deliveryPolicy().consentGranted, false,
+  'legacy snapshots without an explicit timestamped consent decision restore fail-closed');
 assert.equal(legacy.deliveryPolicy().quietHoursEnabled, false);
 console.log('SELF_MOTIVATION_DELIVERY_CONSENT=PASS');
