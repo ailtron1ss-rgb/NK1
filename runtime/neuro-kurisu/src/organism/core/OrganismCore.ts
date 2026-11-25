@@ -3723,7 +3723,18 @@ export class OrganismCore {
     private domainClosureMarkSet(): CognitiveDomainMarkSet {
         // Closure needs compact before/after fingerprints only. Full subsystem snapshots here
         // were never used as evidence and created a large allocation/GC spike on every cycle.
-        const fingerprint = (value: unknown) => JSON.stringify(value).slice(0, 1600);
+        // The digest preserves the previous comparison semantics (equality of the first 1600
+        // characters) while keeping each closure record small.
+        const fingerprint = (value: unknown) => {
+            const text = JSON.stringify(value).slice(0, 1600);
+            let h1 = 0x811c9dc5, h2 = 0x9e3779b9;
+            for (let i = 0; i < text.length; i++) {
+                const code = text.charCodeAt(i);
+                h1 = Math.imul(h1 ^ code, 16777619) >>> 0;
+                h2 = Math.imul(h2 ^ (code + i), 2246822507) >>> 0;
+            }
+            return `f${h1.toString(16).padStart(8, '0')}${h2.toString(16).padStart(8, '0')}${text.length.toString(36)}`;
+        };
         const memoryEvents = this.persisted.facets.memory.eventLog ?? [];
         const memoryCount = this.memorySubsystem.events.size() + this.memorySubsystem.memories.snapshot({ clone: false }).length;
         const worldState = this.worldSubsystem.worldModel2.snapshot({ clone: false });
