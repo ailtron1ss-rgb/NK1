@@ -190,6 +190,17 @@ restoredIntegratedWorld.integrate({ at: perceptionAt, perception: p41RoundTrip.s
 assert.deepEqual(restoredIntegratedWorld.snapshot().entities.find(entity => entity.label === 'tracked-chair')?.sourceIds,
   ['camera-front'], 'P41 restore must not collapse source identity into a modality label');
 
+const p41HostileRestore = new P41SemanticPerceptionEngine();
+p41HostileRestore.restore({
+  ...semantic,
+  entities: semantic.entities.map(entity => ({
+    ...entity,
+    modalitySourceIds: { world: ['camera-front', 'world', 'vision'] },
+  })),
+});
+assert.deepEqual(p41HostileRestore.snapshot().entities.find(entity => entity.label === 'tracked-chair')?.modalitySourceIds?.world,
+  ['camera-front'], 'P41 checkpoint restore must strip modality names from source identity');
+
 const contextWithoutSource = new GroundedWorldState();
 contextWithoutSource.integrate({
   at: perceptionAt,
