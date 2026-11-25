@@ -29,7 +29,9 @@ const second=valid.observe({claimKey:'claim:real',source:'web',independenceKey:'
 assert.equal(second.status,'corroborated','two eligible independent sources should still corroborate');
 const roundTrip=new ExternalEvidenceTrustEngine();
 roundTrip.restore(valid.snapshot());
-assert.equal(roundTrip.snapshot().acceptedCount,1,'valid corroboration must survive a sanitized restore');
+assert.equal(roundTrip.snapshot().acceptedCount,2,'both independent corroborating source records must survive a sanitized restore');
+assert.equal(roundTrip.independenceCount('claim:real'),2,'restored corroboration must retain two independent source identities');
+assert.ok(roundTrip.scoreClaim('claim:real')>.8,'the restored claim score must reflect independent corroboration');
 
 const freshness=new ExternalEvidenceTrustEngine();
 const newer=freshness.observe({claimKey:'claim:freshness',source:'device',independenceKey:'camera-fresh',confidence01:.8,at:now+2_000});
