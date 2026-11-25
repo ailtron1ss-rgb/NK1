@@ -87,6 +87,8 @@ function readyEngine(at = 1_000) {
   const restored = new AutonomousSocialInitiativeEngine();
   restored.restore({
     version: 1,
+    consentGranted: true,
+    consentDecisionAt: 30_000,
     cycles: 1,
     planned: 1,
     executed: 0,
