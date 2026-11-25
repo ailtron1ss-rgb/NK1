@@ -51,10 +51,13 @@ export function projectWorldCognitiveSignal(input: {
     ? [...new Set(snapshot.quarantinedFacts.slice(0, 192).filter((fact): fact is string =>
       typeof fact === 'string' && fact.trim().length > 0 && fact.length <= 512))]
     : [];
+  const seenQuarantinedOutcomeIds = new Set<string>();
   const quarantinedOutcomeFreshWeight = Array.isArray(snapshot.quarantinedOutcomes)
     ? snapshot.quarantinedOutcomes.slice(0, 96).reduce((total, item) => {
         if (!isRecord(item) || typeof item.id !== 'string' || item.id.trim().length === 0
-          || typeof item.label !== 'string' || !item.label.startsWith('external-receipt:')) return total;
+          || typeof item.label !== 'string' || !item.label.startsWith('external-receipt:')
+          || seenQuarantinedOutcomeIds.has(item.id)) return total;
+        seenQuarantinedOutcomeIds.add(item.id);
         // Diagnostic operational receipts create only short-lived pressure. Persisted
         // semantic facts remain in their own durable quarantine until re-attested.
         return total + evidenceFreshness(item.at, nowAt, tauMs);
