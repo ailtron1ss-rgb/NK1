@@ -4,8 +4,8 @@
 
 - Репозиторий: `ailtron1ss-rgb/NK1`
 - Интеграционная база: `workpass70-source @ 87c9ed9034e09ca9fb83fd676ac52bb46434c4fe`
-- Затронуты только P66 runtime, его адресный regression test, package script и отдельный GitHub Actions workflow.
-- Не изменяются `main`, Release ZIP, OrganismCore, UI и серверные API.
+- Затронуты P66 runtime, оба его реальных call-site в текущем `OrganismCore`, адресные regression tests, package scripts и отдельный GitHub Actions workflow.
+- Не изменяются `main`, Release ZIP, UI и серверные API.
 
 ## Исправленная проблема
 
@@ -19,14 +19,16 @@
 - Добавлены ограниченные диагностические счётчики и необязательные source/sampleId для последующей корреляции телеметрии.
 - Идентичные sampleId дедуплицируются в ограниченном окне истории; out-of-order и сильно будущие timestamp не меняют регуляторное состояние.
 - Старые P66 snapshots восстанавливаются с безопасными значениями новых полей; существующая публичная структура и версия state остаются совместимыми.
+- Body telemetry передаёт `source=body-telemetry` и ID `<sensor-source>:<sampledAt>`; когнитивный цикл передаёт `source=cognitive-cycle` и ID `cycle:<tick>`. Два канала используют один P66 owner, но больше не смешиваются при аналитике и дедупликации.
 
 ## Проверка
 
 - Свежий локальный runtime TypeScript check: PASS.
 - Новый P66 dense-vs-sparse test: PASS. За 60 секунд 61 плотное наблюдение и 7 редких дают одинаковые meanStress и recoveryDebt в пределах floating-point округления.
 - Hysteresis regression: PASS.
-- В workflow добавлены runtime typecheck, P66 cadence regression, emotion/interoception regression и P66→P68 integration.
+- Добавлен Core-level provenance regression: проверяет реальные call-site source/sample IDs, дедупликацию body sample и replay после restore.
+- В workflow добавлены runtime typecheck, P66 cadence regression, Core observation provenance, emotion/interoception regression и P66→P68 integration.
 
 ## Границы
 
-Сейчас Core использует прежний вызов `observe` без source/sampleId, поэтому реальный путь продолжит работать с `unspecified`. Новая атрибуция готова как обратносуместимый контракт, но требует отдельного выборочного изменения крупного текущего OrganismCore после точечного анализа его актуального тела. Не заявляются физиологическая валидность, медицинская метрика или поведенческий uplift.
+Интеграция охватывает два подтверждённых call-site в текущем Core. Дополнительные поля source/sampleId не создают отдельного владельца состояния или второго контроллера: оба пути обращаются к тому же P66 instance. Не заявляются физиологическая валидность, медицинская метрика или поведенческий uplift.

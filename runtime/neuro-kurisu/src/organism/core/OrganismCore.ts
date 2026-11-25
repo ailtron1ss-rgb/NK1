@@ -3622,7 +3622,7 @@ export class OrganismCore {
         this.persisted.facets.embodiment.body = structuredClone(body);
         this.persisted.facets.embodiment.bodyEvents = structuredClone(events).slice(0, 200);
         applyBodyToOrganismState(this.persisted.state, body);
-        const intero = this.p66InteroceptiveHomeostasis.observe({ tick: this.persisted.state.tick, at: body.telemetry.sampledAt, energy01: body.bodyEnergy01, thermal01: body.thermalStrain01, capacity01: body.cognitiveCapacity01, load01: this.persisted.state.needs.cognitiveLoad, awake: body.awake, uncertainty01: this.persisted.state.needs.uncertainty, predictionError01: this.persisted.state.predictionError, novelty01: this.persisted.state.needs.novelty });
+        const intero = this.p66InteroceptiveHomeostasis.observe({ tick: this.persisted.state.tick, at: body.telemetry.sampledAt, energy01: body.bodyEnergy01, thermal01: body.thermalStrain01, capacity01: body.cognitiveCapacity01, load01: this.persisted.state.needs.cognitiveLoad, awake: body.awake, uncertainty01: this.persisted.state.needs.uncertainty, predictionError01: this.persisted.state.predictionError, novelty01: this.persisted.state.needs.novelty, source: 'body-telemetry', sampleId: `${body.telemetry.source}:${body.telemetry.sampledAt}` });
         (this.persisted.facets.embodiment as any).p66InteroceptiveHomeostasis = this.p66InteroceptiveHomeostasis.snapshot();
         if (Math.abs(prevBody.bodyEnergy01 - body.bodyEnergy01) > .08 || Math.abs(prevBody.thermalStrain01 - body.thermalStrain01) > .08)
             this.memorySubsystem.events.append(makeEvent('embodiment-sample', this.persisted.state.tick, { energyDelta: body.bodyEnergy01 - prevBody.bodyEnergy01, thermalDelta: body.thermalStrain01 - prevBody.thermalStrain01, interoceptiveMode: intero.mode, pressure01: intero.pressure01 } as any));
@@ -4595,7 +4595,8 @@ export class OrganismCore {
         const attentionTarget = normalizedObservation.worldContext?.location || (activeGoalPressureFallback(this.persisted.goals));
         state.attentionBudget = clamp(1 - n.cognitiveLoad * 0.52 - (1 - n.energy) * 0.28);
         const bodyTelemetry = { energy01: n.energy, thermal01: observation.embodiment?.thermalStrain01 ?? .2, capacity01: observation.embodiment?.cognitiveCapacity01 ?? (1 - n.cognitiveLoad), load01: n.cognitiveLoad };
-        const p66Homeostasis = this.p66InteroceptiveHomeostasis.observe({ tick: state.tick + 1, at: Date.now(), ...bodyTelemetry, awake: observation.embodiment?.awake ?? true, uncertainty01: n.uncertainty, predictionError01: state.predictionError, novelty01: state.needs.novelty });
+        const cognitiveObservedAt = Date.now();
+        const p66Homeostasis = this.p66InteroceptiveHomeostasis.observe({ tick: state.tick + 1, at: cognitiveObservedAt, ...bodyTelemetry, awake: observation.embodiment?.awake ?? true, uncertainty01: n.uncertainty, predictionError01: state.predictionError, novelty01: state.needs.novelty, source: 'cognitive-cycle', sampleId: `cycle:${state.tick + 1}` });
         const interoceptiveFrame = this.organismSystems.embodiment.interoceptiveStateEstimator.observe({ energy01: bodyTelemetry.energy01, thermal01: bodyTelemetry.thermal01, cognitiveLoad01: bodyTelemetry.load01, sleepPressure01: this.p66InteroceptiveHomeostasis.summary().recoveryDebt01, capacity01: bodyTelemetry.capacity01, sensoryFreshness01: observation.embodiment?.sensoryFreshness01 ?? .5, attentionBudget01: state.attentionBudget, externalInput: hasExternalSignal });
         // Reserve a bounded part of the global workspace for urgent internal signals.
         // This feeds the same tick's network broadcast and predictive action selection.
