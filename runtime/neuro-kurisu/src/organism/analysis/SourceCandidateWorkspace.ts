@@ -124,12 +124,18 @@ export function hashSourceCandidateTextV1(value: string): string {
 
 function safePath(value: unknown): string | null {
   if (typeof value !== 'string' || value.length === 0 || value.length > 1024 ||
-      value.includes('\0') || value.includes('\\') || value.startsWith('/') ||
+      value.includes('\\0') || value.includes('\\\\') || value.startsWith('/') ||
       /^[a-z]:/i.test(value) || value.endsWith('/')) return null;
   const parts = value.split('/');
-  if (parts.some(part => part.length === 0 || part === '.' || part === '..' || RESERVED_SEGMENTS.has(part.toLowerCase()))) {
-    return null;
-  }
+  if (parts.some(part => {
+    if (part.length === 0 || part === '.' || part === '..' || RESERVED_SEGMENTS.has(part.toLowerCase())) return true;
+    // Reject names whose interpretation changes on Windows or through alternate
+    // data streams. This keeps a candidate tree portable and prevents aliases.
+    if (/[<>:"|?*\\u0000-\\u001f]/.test(part) || /[. ]$/.test(part)) return true;
+    const deviceStem = part.split('.')[0].toUpperCase();
+    if (/^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])$/.test(deviceStem)) return true;
+    return false;
+  })) return null;
   if (parts.length === 1) {
     const rootName = parts[0].toLowerCase();
     if (rootName === RECEIPT_NAME || RESERVED_ROOT_PREFIXES.some(prefix => rootName.startsWith(prefix))) return null;
@@ -137,6 +143,9 @@ function safePath(value: unknown): string | null {
   return parts.join('/');
 }
 
+function portablePathKey(value: string): string {
+  return value.split('/').map(part => part.normalize('NFC').toLowerCase()).join('/');
+}
 function ownRecord(value: unknown, maxKeys: number): Record<string, unknown> | null {
   try {
     if (value === null || typeof value !== 'object' || Array.isArray(value) || nodeUtilTypes.isProxy(value)) return null;
@@ -272,6 +281,7 @@ export class SourceCandidateWorkspaceV1 {
 
       const files: NormalizedFile[] = [];
       const byPath = new Map<string, NormalizedFile>();
+      const sourcePathsByPortableKey = new Map<string, string>();
       let sourceBytes = 0;
       for (const rawFile of fileRows) {
         const file = ownRecord(rawFile, 4);
@@ -281,6 +291,10 @@ export class SourceCandidateWorkspaceV1 {
         const filePath = safePath(file.path);
         if (!filePath) return reject('invalid-source-path');
         if (byPath.has(filePath)) return reject('duplicate-source-path');
+        const portableKey = portablePathKey(filePath);
+        const portableAlias = sourcePathsByPortableKey.get(portableKey);
+        if (portableAlias && portableAlias !== filePath) return reject('source-path-alias-collision');
+        sourcePathsByPortableKey.set(portableKey, filePath);
         if (typeof file.content !== 'string') return reject('source-file-content-must-be-text');
         const size = new TextEncoder().encode(file.content).byteLength;
         if (size > MAX_SOURCE_FILE_BYTES || sourceBytes + size > MAX_SOURCE_BYTES) return reject('source-snapshot-size-limit');
@@ -298,6 +312,7 @@ export class SourceCandidateWorkspaceV1 {
 
       const edits: NormalizedEdit[] = [];
       const changedPaths = new Set<string>();
+      const changedPortablePaths = new Set<string>();
       let editBytes = 0;
       for (const rawEdit of editRows) {
         const edit = ownRecord(rawEdit, 6);
@@ -307,6 +322,11 @@ export class SourceCandidateWorkspaceV1 {
         const editPath = safePath(edit.path);
         if (!editPath || editPath === RECEIPT_NAME) return reject('invalid-source-path');
         if (changedPaths.has(editPath)) return reject('duplicate-edit-path');
+        const portableKey = portablePathKey(editPath);
+        if (changedPortablePaths.has(portableKey)) return reject('duplicate-edit-path-alias');
+        const sourceAlias = sourcePathsByPortableKey.get(portableKey);
+        if (sourceAlias && sourceAlias !== editPath) return reject('source-edit-path-alias-mismatch');
+        changedPortablePaths.add(portableKey);
         if (typeof edit.replacement !== 'string') return reject('source-edit-replacement-must-be-text');
         const replacementBytes = new TextEncoder().encode(edit.replacement).byteLength;
         if (replacementBytes > MAX_REPLACEMENT_BYTES || editBytes + replacementBytes > MAX_EDIT_BYTES) {
