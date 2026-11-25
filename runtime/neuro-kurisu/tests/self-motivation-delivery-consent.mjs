@@ -23,6 +23,22 @@ assert.equal(engine.deliveryPolicy().suppressedByConsent, 0);
 assert.equal(engine.cycle({ ...runtimeInput(atHourUtc(12, 1)), topics: [{ topic: 'A different unresolved question about project architecture and evidence', source: 'reflection', salience01: .9, freshness01: .9, interestFit01: .7, affectFit01: .6 }] }).shouldInitiate, true,
   'internal initiative can resume outside the quiet window');
 
+
+assert.equal(engine.mayDeliverUserVisible(atHourUtc(21)), true,
+  'the hour before the quiet-hours start remains deliverable');
+assert.equal(engine.mayDeliverUserVisible(atHourUtc(22)), false,
+  'the quiet-hours start hour is inclusive');
+assert.equal(engine.mayDeliverUserVisible(atHourUtc(7)), false,
+  'the quiet-hours window remains active through the hour before its end');
+assert.equal(engine.mayDeliverUserVisible(atHourUtc(8)), true,
+  'the quiet-hours end hour is exclusive');
+
+const allDayQuiet = new AutonomousSocialInitiativeEngine();
+allDayQuiet.setConsent(true);
+allDayQuiet.setQuietHours({ enabled: true, startHourUtc: 8, endHourUtc: 8 });
+assert.equal(allDayQuiet.mayDeliverUserVisible(atHourUtc(12)), false,
+  'equal start and end hours represent a full-day delivery pause');
+
 const noConsent = new AutonomousSocialInitiativeEngine();
 noConsent.setConsent(false);
 assert.equal(noConsent.cycle(runtimeInput(atHourUtc(12))).shouldInitiate, false,
