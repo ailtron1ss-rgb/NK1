@@ -25,6 +25,7 @@ export interface PortableSubjectFidelityReport {
   subjectId: string | null;
   sourceRelease: string | null;
   sourceSchema: number | null;
+  schemaCompatible: boolean;
   targetRelease: string;
   targetSchema: number;
   fingerprintValid: boolean;
@@ -102,6 +103,7 @@ export function evaluatePortableSubjectFidelity(source: PersistedOrganism, candi
       protocol: 'neuro-kurisu.subject-transfer.v1', status: 'insufficient', subjectId: isRecord(candidate) && typeof candidate.subjectId === 'string' ? candidate.subjectId : null,
       sourceRelease: isRecord(candidate) && typeof candidate.sourceRelease === 'string' ? candidate.sourceRelease : null,
       sourceSchema: isRecord(candidate) && Number.isFinite(Number(candidate.sourceSchema)) ? Number(candidate.sourceSchema) : null,
+      schemaCompatible: isRecord(candidate) && candidate.sourceSchema === RELEASE_CONTRACT.stateSchema,
       targetRelease: RELEASE_CONTRACT.application, targetSchema: RELEASE_CONTRACT.stateSchema, fingerprintValid: false,
       roundTrip: { attempted: false, matched: false, sourceFingerprint: null, restoredFingerprint: null }, hostBoundaryPreserved: false, subjectIdentityPreserved: false,
       portabilityCoverage01: 0, contentDensity01: 0, payloadBytes: 0, sections, warnings,
@@ -128,6 +130,11 @@ export function evaluatePortableSubjectFidelity(source: PersistedOrganism, candi
     warnings.push(`round-trip-failed:${(error instanceof Error ? error.message : String(error)).slice(0, 240)}`);
   }
 
+  const schemaCompatible = bundle.sourceSchema === RELEASE_CONTRACT.stateSchema;
+  if (!schemaCompatible && !warnings.includes('schema-migration-required-before-production-import')) {
+    warnings.push('schema-migration-required-before-production-import');
+  }
+
   const sectionValues = Object.values(sections);
   const portabilityCoverage01 = sectionValues.length ? sectionValues.filter((section) => section.present).length / sectionValues.length : 0;
   const densityParts = [sections.state.itemCount > 0, sections.goals.itemCount > 0, sections.traces.itemCount > 0, sections.memories.itemCount > 0, sections.worldModel.itemCount > 0, sections.facets.itemCount >= 6];
@@ -139,13 +146,14 @@ export function evaluatePortableSubjectFidelity(source: PersistedOrganism, candi
   if (bundle.sourceRelease !== RELEASE_CONTRACT.application) warnings.push('release-version-differs-from-current-runtime');
 
   const structural = portabilityCoverage01 === 1 && fingerprintValid;
-  const verified = structural && roundTripMatched && hostBoundaryPreserved && subjectIdentityPreserved;
+  const verified = structural && schemaCompatible && roundTripMatched && hostBoundaryPreserved && subjectIdentityPreserved;
   return {
     protocol: bundle.protocol,
     status: verified ? 'verified' : (structural ? 'partial' : 'insufficient'),
     subjectId: bundle.subjectId,
     sourceRelease: bundle.sourceRelease,
     sourceSchema: bundle.sourceSchema,
+    schemaCompatible,
     targetRelease: RELEASE_CONTRACT.application,
     targetSchema: RELEASE_CONTRACT.stateSchema,
     fingerprintValid,
