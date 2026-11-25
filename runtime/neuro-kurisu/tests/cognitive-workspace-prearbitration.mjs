@@ -14,6 +14,8 @@ await core.init();
 const order = [];
 let competed = null;
 let arbitrationWorkspace01 = null;
+let workspaceInputs = [];
+let arbitrationCandidateScores = [];
 const workspace = core.cognitiveRuntime.globalWorkspace;
 const coordinator = core.cognitiveRuntime.cognitiveKernelCoordinator;
 const compete = workspace.compete.bind(workspace);
@@ -21,12 +23,14 @@ const arbitrate = coordinator.integrateAndArbitrate.bind(coordinator);
 
 workspace.compete = (...args) => {
   order.push('workspace');
+  workspaceInputs = structuredClone(args[0]);
   competed = compete(...args);
   return competed;
 };
 coordinator.integrateAndArbitrate = (input, ...args) => {
   order.push('arbitration');
   arbitrationWorkspace01 = input.workspace01;
+  arbitrationCandidateScores = input.candidates.map(candidate => ({ action: candidate.action, score: candidate.score }));
   return arbitrate(input, ...args);
 };
 
@@ -48,6 +52,22 @@ assert.equal(order.at(-1), 'arbitration',
   'no global workspace competition may run after P61/P64 arbitration');
 assert.equal(arbitrationWorkspace01, competed.ignition01,
   'P61/P64 must consume the ignition produced by this cycle, not a stale previous-cycle signal');
+
+const actionByCandidateId = new Map(workspaceInputs.map(candidate => [candidate.id, candidate.content?.action]));
+const sourceScoreByAction = new Map(workspaceInputs.map(candidate => [candidate.content?.action, candidate.features?.[0]]));
+const selectedActions = new Set(competed.selectedIds.map(id => actionByCandidateId.get(id)).filter(Boolean));
+assert.ok(selectedActions.size > 0, 'the workspace must return a non-empty same-cycle coalition');
+const supportRows = arbitrationCandidateScores.map(candidate => ({
+  action: candidate.action,
+  selected: selectedActions.has(candidate.action),
+  delta: candidate.score - (sourceScoreByAction.get(candidate.action) ?? candidate.score),
+}));
+assert.ok(supportRows.some(row => row.selected && row.delta > 0.000001),
+  'selected workspace candidates must influence same-cycle arbitration, not only produce a diagnostic ignition scalar');
+assert.ok(supportRows.filter(row => row.selected).every(row => row.delta > 0 && row.delta <= 0.030001),
+  'workspace coalition support must be positive but strictly bounded to 0.03');
+assert.ok(supportRows.filter(row => !row.selected).every(row => Math.abs(row.delta) < 0.000001),
+  'non-selected candidates must not receive global workspace coalition support');
 
 console.log('NK1_COGNITIVE_WORKSPACE_PREARBITRATION=PASS', JSON.stringify({
   order,
