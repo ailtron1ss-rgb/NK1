@@ -47,15 +47,18 @@ function fixture({ acknowledge = async () => true } = {}) {
 }
 
 {
-  const f = fixture();
+  let ackCalls = 0;
+  const f = fixture({ acknowledge: async () => { ackCalls += 1; return true; } });
   const claimed = await f.coordinator.claim();
   const { id, deliveryToken } = claimed.body.initiative;
   assert.equal((await f.coordinator.acknowledge(id, "wrong-token")).status, 409);
   assert.equal((await f.coordinator.acknowledge("soc:other", deliveryToken)).status, 409);
   const accepted = await f.coordinator.acknowledge(id, deliveryToken);
   assert.deepEqual(accepted, { status: 200, body: { ok: true, acknowledged: true, id } });
-  assert.equal((await f.coordinator.acknowledge(id, deliveryToken)).status, 409,
-    "a successful receipt token is one-use");
+  const replay = await f.coordinator.acknowledge(id, deliveryToken);
+  assert.deepEqual(replay, { status: 200, body: { ok: true, acknowledged: true, id, idempotentReplay: true } });
+  assert.equal(ackCalls, 1,
+    "a lost HTTP response can be replayed without invoking the Core a second time");
 }
 
 {
