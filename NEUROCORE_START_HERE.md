@@ -549,3 +549,15 @@ When the user says “работай над проектом”, “продол
 - **Regression:** `test:p23:verified-skill-lifecycle-bootstrap` is registered in the continual-learning workflow.
 - **Verification:** exact-head Actions runs fail before steps start; the jobs have no step output and the logs endpoint returns `BlobNotFound`. This is consistent with the known runner/infrastructure problem, but does **not** prove the code or tests pass. Local typecheck/test execution is unavailable in this pass.
 - **Next P0:** connect the real learning/shadow supervisor to `registerTrustedSkillShadowRun` before receipt ingestion; provision trusted verifier keys; integrate authenticated approval; then get an actionable successful CI/typecheck run and audit every store creation/activation path.
+
+
+## Live engineering checkpoint — P23 Skill Shadow evidence freshness (2026-11-25)
+
+- Existing aspect PR [#1177](https://github.com/ailtron1ss-rgb/NK1/pull/1177), branch `aspect/skill-shadow-evidence-freshness-20261125`, current inspected HEAD `27c74e0502264f4a10959ad9f7cd49acfcd221c5`.
+- Canonical source remains `workpass70-source@9008a8982a5173304456bee2c604bd0bc8665964`; PR compare is 15 ahead / 0 behind and keeps six intended P23 files.
+- Freshness is purpose-aware: record and promotion require current evidence; persisted-active may restore historical evidence without age expiry, but signature, candidate/context identity, future bounds and valid timestamp checks remain mandatory.
+- New fail-closed checks reject non-positive, unsafe or fractional verifier clocks and fractional signed `observedAt` UTC-millisecond values.
+- TDD red was observed for unsafe verifier clock on test-only HEAD `fc4247d26ae2e8e41377fdd256a86ae9e96a3b47` ([run 45606567069](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45606567069)). Production fixes followed in `b43d5b64068e2a8b14888cf41c3e5026022d3cfe` and `27c74e0502264f4a10959ad9f7cd49acfcd221c5`.
+- Dedicated current-head workflow [45607764358](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45607764358) is pending; do not infer current-head success from older 63/63 checks.
+- PR #1177 remains Draft/open/unmerged. No source, main or Release artifact was modified.
+- Full record: [P23 signed Skill Shadow evidence freshness](docs/engineering/NK1_P23_SKILL_SHADOW_EVIDENCE_FRESHNESS_2026-11-25.md).
