@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { useKurisu } from "@/organism/store";
 import { emptySnapshot } from "@/organism/types";
 import { cn } from "@/lib/utils";
+import { neuroApi } from "@/neuro-kurisu/api";
 
 export function ChatPanel() {
   const snap = useKurisu((s) => s.snap) ?? emptySnapshot();
@@ -14,11 +15,38 @@ export function ChatPanel() {
   const reset = useKurisu((s) => s.reset);
   const error = useKurisu((s) => s.error);
   const [text, setText] = useState("");
+  const [proactiveConsent, setProactiveConsent] = useState<boolean | null>(null);
+  const [proactiveConsentBusy, setProactiveConsentBusy] = useState(false);
+  const [proactiveConsentError, setProactiveConsentError] = useState<string | null>(null);
   const end = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     end.current?.scrollIntoView({ behavior: "smooth" });
   }, [snap.chat.length, busy]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void neuroApi.proactiveDeliveryPolicy().then((result) => {
+      if (!cancelled) setProactiveConsent(result.policy.consentGranted === true);
+    }).catch((error) => {
+      if (!cancelled) setProactiveConsentError(error instanceof Error ? error.message : String(error));
+    });
+    return () => { cancelled = true; };
+  }, []);
+
+  const toggleProactiveConsent = async () => {
+    if (proactiveConsent === null || proactiveConsentBusy) return;
+    setProactiveConsentBusy(true);
+    setProactiveConsentError(null);
+    try {
+      const result = await neuroApi.setProactiveConsent(!proactiveConsent);
+      setProactiveConsent(result.policy.consentGranted === true);
+    } catch (error) {
+      setProactiveConsentError(error instanceof Error ? error.message : String(error));
+    } finally {
+      setProactiveConsentBusy(false);
+    }
+  };
 
   return (
     <section className="flex min-h-0 flex-1 flex-col rounded-xl border border-border bg-surface">
@@ -28,8 +56,12 @@ export function ChatPanel() {
           <p className="text-xs text-muted">
             {snap.lastDecision?.reason ?? "waiting for observation"}
           </p>
+          <p className="mt-1 text-[11px] text-subtle">Internal reflection continues when unsolicited messages are paused.</p>
         </div>
-        <div className="flex gap-1">
+        <div className="flex flex-wrap items-center justify-end gap-1">
+          <Button type="button" variant="outline" size="sm" disabled={proactiveConsent === null || proactiveConsentBusy} aria-pressed={proactiveConsent === true} onClick={() => void toggleProactiveConsent()}>
+            {proactiveConsent === null ? "Proactive consent: loading" : proactiveConsent ? "Pause proactive messages" : "Enable proactive messages"}
+          </Button>
           <Button variant="ghost" size="icon" aria-label={snap.awake ? "Sleep" : "Wake"} onClick={snap.awake ? sleep : wake}>
             {snap.awake ? <Moon className="size-4" /> : <Sun className="size-4" />}
           </Button>
@@ -39,6 +71,7 @@ export function ChatPanel() {
         </div>
       </header>
       {error ? <div className="border-b border-border bg-ember/10 px-4 py-2 text-xs text-muted">Runtime: {error}</div> : null}
+      {proactiveConsentError ? <div className="border-b border-border px-4 py-2 text-xs text-muted">Proactive consent: {proactiveConsentError}</div> : null}
       <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-4">
         {snap.chat.map((m) => (
           <article
