@@ -93,3 +93,14 @@ export function cameraEvidenceFromResult(result:{path?:string;size?:number;hash?
   const captureQuality01=clamp(entropy01*.35+clamp(Math.log10(Math.max(1,byteLength))/7)*.65);
   return {version:1,at,cameraId:Math.max(0,Math.floor(cameraId)),path:result.path,byteLength,sha256,width:null,height:null,byteEntropy01:entropy01,novelty01,captureQuality01,semanticVisionAvailable:false,evidenceKind:'camera-capture'};
 }
+
+export function buildCameraCaptureObservation(_input: {
+  evidence: CameraEvidence;
+  executionId: string;
+  providerReceiptId?: string;
+  sessionId: string;
+  receiptVerified: boolean;
+  consentGranted: boolean;
+}): null {
+  return null;
+}
