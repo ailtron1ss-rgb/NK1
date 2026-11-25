@@ -13,7 +13,9 @@ interface PaletteCommand extends UiCommandDescriptor {
 export function CommandPalette() {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
+  const [activeIndex, setActiveIndex] = useState(0);
   const input = useRef<HTMLInputElement>(null);
+  const opener = useRef<HTMLElement | null>(null);
   const setSection = useKurisu((s) => s.setSection);
   const setTab = useKurisu((s) => s.setTab);
   const refresh = useKurisu((s) => s.refresh);
@@ -26,8 +28,10 @@ export function CommandPalette() {
     const onKeyDown = (event: KeyboardEvent) => {
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
         event.preventDefault();
+        opener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
         setOpen(true);
         setQuery("");
+        setActiveIndex(0);
       } else if (event.key === "Escape") {
         setOpen(false);
       }
@@ -38,6 +42,7 @@ export function CommandPalette() {
 
   useEffect(() => {
     if (open) input.current?.focus();
+    else opener.current?.focus();
   }, [open]);
 
   const navigate = (section: AppSection) => {
@@ -57,29 +62,82 @@ export function CommandPalette() {
     { id: "wake", title: "Wake organism", detail: "Request the canonical wake transition", keywords: ["resume", "awake", "проснуться"], icon: Sun, disabled: !connected || awake, run: () => { void wake(); } },
   ], [connected, awake, navigate, refresh, sleep, wake, setSection, setTab]);
 
-  const visible = filterUiCommands(commands, query);
+  const visible = useMemo(() => filterUiCommands(commands, query), [commands, query]);
+
+  useEffect(() => {
+    const firstEnabled = visible.findIndex((command) => !command.disabled);
+    setActiveIndex(firstEnabled >= 0 ? firstEnabled : 0);
+  }, [query]);
+
+  const closePalette = () => setOpen(false);
+  const runActiveCommand = () => {
+    const command = visible[activeIndex];
+    if (!command || command.disabled) return;
+    command.run();
+    closePalette();
+  };
+  const moveActive = (direction: 1 | -1) => {
+    if (!visible.length) return;
+    for (let offset = 1; offset <= visible.length; offset += 1) {
+      const next = (activeIndex + direction * offset + visible.length * 2) % visible.length;
+      if (!visible[next].disabled) {
+        setActiveIndex(next);
+        return;
+      }
+    }
+  };
 
   if (!open) {
     return (
-      <button type="button" onClick={() => { setOpen(true); setQuery(""); }} className="fixed right-3 top-20 z-40 flex items-center gap-2 rounded-full border border-border bg-surface/90 px-3 py-2 text-[10px] text-muted shadow-lg backdrop-blur" aria-label="Open command palette">
+      <button type="button" onClick={() => {
+        opener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+        setOpen(true);
+        setQuery("");
+        setActiveIndex(0);
+      }} className="fixed right-3 top-20 z-40 flex items-center gap-2 rounded-full border border-border bg-surface/90 px-3 py-2 text-[10px] text-muted shadow-lg backdrop-blur" aria-label="Open command palette">
         <Command className="size-3.5" /> Quick commands <kbd className="rounded border border-border px-1.5 py-0.5">Ctrl K</kbd>
       </button>
     );
   }
 
   return (
-    <div className="fixed inset-0 z-[120] flex items-start justify-center bg-black/60 px-3 pt-[12vh] backdrop-blur-sm" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setOpen(false); }}>
+    <div className="fixed inset-0 z-[120] flex items-start justify-center bg-black/60 px-3 pt-[12vh] backdrop-blur-sm" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) closePalette(); }}>
       <section role="dialog" aria-modal="true" aria-label="Quick command palette" className="w-full max-w-xl overflow-hidden rounded-xl border border-border bg-surface shadow-2xl">
         <div className="flex items-center gap-2 border-b border-border px-3">
           <Search className="size-4 shrink-0 text-muted" />
-          <input ref={input} value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search pages and actions…" aria-label="Search commands" className="h-12 min-w-0 flex-1 bg-transparent text-sm text-fg outline-none placeholder:text-subtle" />
-          <button type="button" onClick={() => setOpen(false)} aria-label="Close command palette" className="rounded p-1.5 text-muted hover:text-fg"><X className="size-4" /></button>
+          <input
+            ref={input}
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "ArrowDown") { event.preventDefault(); moveActive(1); }
+              else if (event.key === "ArrowUp") { event.preventDefault(); moveActive(-1); }
+              else if (event.key === "Enter") { event.preventDefault(); runActiveCommand(); }
+            }}
+            placeholder="Search pages and actions…"
+            aria-label="Search commands"
+            aria-controls="kurisu-command-list"
+            aria-activedescendant={visible[activeIndex] ? "kurisu-command-" + visible[activeIndex].id : undefined}
+            className="h-12 min-w-0 flex-1 bg-transparent text-sm text-fg outline-none placeholder:text-subtle"
+          />
+          <button type="button" onClick={closePalette} aria-label="Close command palette" className="rounded p-1.5 text-muted hover:text-fg"><X className="size-4" /></button>
         </div>
-        <div className="max-h-[60vh] overflow-y-auto p-2">
-          {visible.length ? visible.map((command) => {
+        <div id="kurisu-command-list" role="listbox" aria-label="Available commands" className="max-h-[60vh] overflow-y-auto p-2">
+          {visible.length ? visible.map((command, index) => {
             const Icon = command.icon;
+            const active = index === activeIndex;
             return (
-              <button key={command.id} type="button" disabled={command.disabled} onClick={() => { command.run(); setOpen(false); }} className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left hover:bg-elevated focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-not-allowed disabled:opacity-40">
+              <button
+                key={command.id}
+                id={"kurisu-command-" + command.id}
+                type="button"
+                role="option"
+                aria-selected={active}
+                disabled={command.disabled}
+                onMouseEnter={() => setActiveIndex(index)}
+                onClick={() => { command.run(); closePalette(); }}
+                className={"flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-not-allowed disabled:opacity-40 " + (active ? "bg-elevated" : "hover:bg-elevated")}
+              >
                 <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-elevated text-accent"><Icon className="size-4" /></span>
                 <span className="min-w-0 flex-1"><span className="block text-sm font-medium text-fg">{command.title}</span><span className="mt-0.5 block text-xs text-muted">{command.detail}</span></span>
                 {command.disabled ? <span className="text-[9px] text-subtle">Unavailable</span> : null}
