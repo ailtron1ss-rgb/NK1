@@ -94,6 +94,7 @@ restored.restore({
     velocity: { x: Number.POSITIVE_INFINITY, y: 0, z: 0 },
     sourceIds: ['camera-1', 'vision', 'world', '', 7],
     modalityEvidenceKinds: { vision: 'observed' },
+    modalitySourceIds: { vision: ['camera-1', 'vision', 'semantic', 'camera-2'] },
     presenceStatus: 'visible', persistence01: 4,
     absenceEvidence01: -1, observationCount: Number.POSITIVE_INFINITY,
   }],
@@ -130,6 +131,8 @@ assert.deepEqual(safe.entities[0].modalities, ['vision']);
 assert.equal(safe.entities[0].position, null);
 assert.equal(safe.entities[0].velocity, null);
 assert.deepEqual(safe.entities[0].sourceIds, ['camera-1']);
+assert.deepEqual(safe.entities[0].modalitySourceIds, { vision: ['camera-1', 'camera-2'] },
+  'restored modality provenance must retain true source IDs and reject modality aliases');
 assert.ok(!safe.entities[0].sourceIds.some(id => ['vision', 'world', 'audio', 'sensor', 'text'].includes(id)),
   'legacy modality labels must be removed from restored source identity');
 assert.equal(safe.entities[0].observationCount, 1);
@@ -176,6 +179,8 @@ integratedWorld.integrate({ at: perceptionAt, perception: semantic });
 const integratedChair = integratedWorld.snapshot().entities.find(entity => entity.label === 'tracked-chair');
 assert.ok(integratedChair);
 assert.deepEqual(integratedChair.modalities, ['world']);
+assert.deepEqual(integratedChair.modalitySourceIds?.world, ['camera-front'],
+  'GroundedWorldState must preserve provider identity at the modality boundary');
 assert.deepEqual(integratedChair.sourceIds, ['camera-front'],
   'sourceIds must preserve provider/source identity, not copy modality names');
 assert.equal(integratedChair.sourceIds.includes('world'), false);
@@ -244,6 +249,9 @@ const mixedWorld = new GroundedWorldState();
 const mixedContext = mixedWorld.integrate({ at: perceptionAt, perception: mixedSemantic });
 assert.equal(mixedContext.objects.find(object => object.label === 'tracked-chair')?.evidenceKind, 'model-output',
   'aggregate world-context evidence must not upgrade model output because one modality is observed');
+assert.deepEqual(mixedWorld.snapshot().entities.find(entity => entity.label === 'tracked-chair')?.modalitySourceIds,
+  { vision: ['camera-front'], sensor: ['host-sensor'] },
+  'modality-specific source provenance must survive canonical world integration');
 assert.equal(mixedWorld.snapshot().events.find(event => event.id === 'mixed-event')?.evidenceKind, 'model-output',
   'mixed-modality events must use the conservative evidence class');
 
