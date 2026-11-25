@@ -135,9 +135,14 @@ export function validateRuntimeCheckpointEnvelope(value:unknown):RuntimeCheckpoi
     if(!isPlainRecord(owner)||!hasExactKeys(owner,['encoding','rawBytes','compressedBytes','payloadBase64']))
       return {ok:false,reason:name+':owner-payload-shape-invalid'};
     const rawBytes=ownData(owner,'rawBytes'),compressedBytes=ownData(owner,'compressedBytes');
+    const payloadBase64=ownData(owner,'payloadBase64');
     if(ownData(owner,'encoding')!=='deflate-raw+base64'||!safeCounter(rawBytes)||rawBytes>MAX_OWNER_RAW_BYTES||
        !safeCounter(compressedBytes)||compressedBytes===0||compressedBytes>MAX_TOTAL_COMPRESSED_BYTES)
       return {ok:false,reason:name+':owner-payload-metadata-invalid'};
+    // Reject a mismatched encoded length before regex scanning, base64 allocation or decompression.
+    const expectedBase64Length=Math.ceil(compressedBytes/3)*4;
+    if(typeof payloadBase64!=='string'||payloadBase64.length!==expectedBase64Length||payloadBase64.length>MAX_BASE64_LENGTH)
+      return {ok:false,reason:name+':owner-payload-base64-length-invalid'};
     preflightRawBytes+=rawBytes;
     preflightCompressedBytes+=compressedBytes;
     if(preflightRawBytes>MAX_TOTAL_RAW_BYTES||preflightCompressedBytes>MAX_TOTAL_COMPRESSED_BYTES)

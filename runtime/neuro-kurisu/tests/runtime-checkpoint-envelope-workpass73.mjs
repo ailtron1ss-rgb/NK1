@@ -77,6 +77,18 @@ try {
   const validatedEnvelope=validateRuntimeCheckpointEnvelope(envelope);
   assert.equal(validatedEnvelope.ok,true,'the committed envelope must pass whole-bundle hash and owner validation');
   const envelopeSnapshots=validatedEnvelope.snapshots;
+  // A declared one-byte compressed owner must not cause a large base64 allocation.
+  const oversizedBase64Envelope=structuredClone(envelope);
+  const worldCompressedBytes=oversizedBase64Envelope.owners.world.compressedBytes;
+  oversizedBase64Envelope.owners.world.compressedBytes=1;
+  oversizedBase64Envelope.owners.world.payloadBase64='A'.repeat(1024*1024);
+  oversizedBase64Envelope.compressedBytes=oversizedBase64Envelope.compressedBytes-worldCompressedBytes+1;
+  const oversizedBase64Result=validateRuntimeCheckpointEnvelope(oversizedBase64Envelope);
+  assert.equal(oversizedBase64Result.ok,false,
+    'base64 length inconsistent with declared compressed bytes must be rejected during preflight');
+  assert.equal(oversizedBase64Result.reason,'world:owner-payload-base64-length-invalid',
+    'the preflight must reject the encoded length before attempting base64 decode or decompression');
+
   const tamperedEnvelope=structuredClone(envelope);
   tamperedEnvelope.ownerHashes.world='0'.repeat(64);
   assert.equal(validateRuntimeCheckpointEnvelope(tamperedEnvelope).ok,false,
