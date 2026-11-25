@@ -65,7 +65,7 @@ export class ExternalEvidenceTrustEngine{
     const source = restored as Partial<ExternalEvidenceTrustState>;
     const finiteCount=(value:unknown,fallback=0)=>typeof value==='number'&&Number.isSafeInteger(value)&&value>=0?Math.min(value,1_000_000):fallback;
     const validStatus=(value:unknown):value is EvidenceStatus=>value==='candidate'||value==='corroborated'||value==='contested'||value==='expired';
-    const rows=Array.isArray(source.records)?source.records.slice(-256):[];
+    const rows=Array.isArray(source.records)?source.records.slice(0,256):[];
     // An event receipt may belong to exactly one persisted source/claim row.
     // If a checkpoint reuses an ID across rows, remove that ID from every claimant.
     const evidenceIdUseCount=new Map<string,number>();
