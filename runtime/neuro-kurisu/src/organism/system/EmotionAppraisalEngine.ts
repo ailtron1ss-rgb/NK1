@@ -381,7 +381,7 @@ export class EmotionAppraisalEngine {
       interoception:restoreInteroception(r.interoception,d.interoception),
       mood:restoreAffectMood(r.mood),
       outcomes:restoreOutcomes(r.outcomes),
-      recentOutcomeIds:(ownDataArray(r.recentOutcomeIds,512)??[]).map(value=>validText(value,256)).filter((value):value is string=>value!==null).slice(-128),
+      recentOutcomeIds:(ownDataArray(r.recentOutcomeIds,512)??[]).map(value=>validText(value,256)).filter((value):value is string=>value!==null).slice(-512),
       duplicateOutcomes:validCounter(r.duplicateOutcomes,0),
       invalidOutcomes:validCounter(r.invalidOutcomes,0),
       outOfOrderOutcomes:validCounter(r.outOfOrderOutcomes,0),
