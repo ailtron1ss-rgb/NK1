@@ -549,3 +549,57 @@ test('core binds B273 goal outcome credit to the admitted goal and selected acti
     /autonomousGoalLifecycleB273\.learnFromOutcome\(\{[\s\S]*?goalId:\s*b338Lifecycle\.goal\?\.id[\s\S]*?plannedAction:\s*b338Lifecycle\.action[\s\S]*?outcomeId:/,
     'embodied outcome learning must use the same exact-goal attribution contract');
 });
+
+
+test('P81 ignores delayed world snapshots and preserves the newest revision', () => {
+  const attention = new P81PredictiveAttention();
+  attention.evaluate({
+    ...baseAttentionInput,
+    worldState: {
+      revision: 22, evidenceClass: 'mixed', evidenceConfidence01: .7,
+      uncertainty01: .2, changeMagnitude01: .2, conflict01: .8,
+      unresolved01: .2, modelDisagreement01: .6, predictionError01: .2,
+    },
+  });
+  const newest = attention.snapshot();
+  attention.evaluate({
+    ...baseAttentionInput,
+    tick: 13,
+    worldState: {
+      revision: 19, evidenceClass: 'observed', evidenceConfidence01: 1,
+      uncertainty01: 0, changeMagnitude01: 0, conflict01: 0,
+      unresolved01: 0, modelDisagreement01: 0, predictionError01: 0,
+    },
+  });
+  assert.equal(attention.snapshot().worldRevision, 22,
+    'a delayed world snapshot must not roll back the cognitive world revision');
+  assert.equal(attention.snapshot().worldEvidenceClass, newest.worldEvidenceClass);
+  assert.equal(attention.snapshot().worldConflict01, newest.worldConflict01);
+  assert.equal(attention.snapshot().attentionFocus, 'world-conflict',
+    'stale input must not erase the active conflict focus');
+});
+
+test('P81 rejects malformed world signals instead of treating them as grounded evidence', () => {
+  const attention = new P81PredictiveAttention();
+  attention.evaluate({
+    ...baseAttentionInput,
+    worldState: {
+      revision: 4, evidenceClass: 'observed', evidenceConfidence01: 1,
+      uncertainty01: 0, changeMagnitude01: 1, conflict01: 0,
+      unresolved01: 0, modelDisagreement01: 0, predictionError01: 0,
+    },
+  });
+  const before = attention.snapshot();
+  attention.evaluate({
+    ...baseAttentionInput,
+    tick: 13,
+    worldState: {
+      revision: 5, evidenceClass: 'observed', evidenceConfidence01: 1,
+      uncertainty01: 0, changeMagnitude01: Number.NaN, conflict01: 0,
+      unresolved01: 0, modelDisagreement01: 0, predictionError01: 0,
+    },
+  });
+  assert.equal(attention.snapshot().worldRevision, before.worldRevision);
+  assert.equal(attention.snapshot().worldChange01, before.worldChange01);
+  assert.equal(attention.snapshot().worldEvidenceClass, before.worldEvidenceClass);
+});
