@@ -64,4 +64,22 @@ test('the production store routes proactive ACK through the durable persistence 
     'the proactive ACK call must happen inside the storage-before-ACK gate');
 });
 
+
+test('a negative server ACK is not mistaken for a completed delivery', async () => {
+  const target = storage();
+  const result = await persistChatBeforeAcknowledge(target, chat, async () => ({
+    ok: true,
+    acknowledged: false,
+  }));
+  assert.equal(result, false,
+    'a lease-expired or policy-rejected ACK must remain retryable');
+});
+
+test('an incomplete ACK response is not treated as a delivery receipt', async () => {
+  const target = storage();
+  const result = await persistChatBeforeAcknowledge(target, chat, async () => ({ ok: true }));
+  assert.equal(result, false,
+    'only an explicit positive server receipt may complete the delivery transaction');
+});
+
 console.log('PROACTIVE_CHAT_DURABLE_ACK=PASS');
