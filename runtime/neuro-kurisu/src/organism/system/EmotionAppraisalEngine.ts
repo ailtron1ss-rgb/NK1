@@ -47,7 +47,8 @@ export interface EmotionOutcomeCalibration {
 /** Slow affective state is separate from time-bounded emotion episodes. */
 export interface AffectMoodState {
   version:1; valence01:number; arousal01:number; stress01:number; socialSafety01:number;
-  lastAt:number; lastEpisodeId:string|null; events:number; interoceptiveSamples:number; interoceptiveDurationMs:number;
+  lastAt:number; lastEpisodeId:string|null; lastOutcomeId:string|null; events:number; interoceptiveSamples:number; interoceptiveDurationMs:number;
+  outcomeUpdates:number; verifiedOutcomeUpdates:number;
   recoveryActive:boolean; recoveryStartedAt:number; recoveryStartDistance01:number; recoveryLastDistance01:number;
   recoverySamples:number; meanRecoveryRate01:number; resilience01:number; resilienceConfidence01:number;
 }
@@ -72,6 +73,10 @@ export interface EmotionAppraisalState {
   interoception:InteroceptiveAffectState;
   mood:AffectMoodState;
   outcomes:Record<string,EmotionOutcomeCalibration>;
+  recentOutcomeIds:string[];
+  duplicateOutcomes:number;
+  invalidOutcomes:number;
+  outOfOrderOutcomes:number;
 }
 
 
@@ -94,8 +99,9 @@ function canonicalAffectAction(action:string):AffectAction|null {
   return Object.prototype.hasOwnProperty.call(TENDENCY_ACTION,action)?TENDENCY_ACTION[action as EmotionActionTendency]:null;
 }
 const defaultAffectMood=():AffectMoodState=>({
-  version:1,valence01:.5,arousal01:.22,stress01:.18,socialSafety01:.55,lastAt:0,lastEpisodeId:null,
-  events:0,interoceptiveSamples:0,interoceptiveDurationMs:0,recoveryActive:false,recoveryStartedAt:0,recoveryStartDistance01:0,
+  version:1,valence01:.5,arousal01:.22,stress01:.18,socialSafety01:.55,lastAt:0,lastEpisodeId:null,lastOutcomeId:null,
+  events:0,interoceptiveSamples:0,interoceptiveDurationMs:0,outcomeUpdates:0,verifiedOutcomeUpdates:0,
+  recoveryActive:false,recoveryStartedAt:0,recoveryStartDistance01:0,
   recoveryLastDistance01:0,recoverySamples:0,meanRecoveryRate01:0,resilience01:.5,resilienceConfidence01:0,
 });
 const emptyInteroception=():InteroceptiveAffectState=>({
@@ -104,7 +110,7 @@ const emptyInteroception=():InteroceptiveAffectState=>({
   predicted:{energy01:.68,thermal01:.2,capacity01:.72,load01:.38},
   lastAt:0,timebaseInitialized:false,recentSampleIds:[],duplicateObservations:0,outOfOrderObservations:0,invalidObservations:0,
 });
-const empty=():EmotionAppraisalState=>({version:2,episodes:0,lastTick:-1,lastAt:0,lastLabel:'calm',meanArousal01:0.22,meanValence01:0.5,meanStress01:0.2,meanAttentionCapture01:0.2,history:[],feelings:[],interoception:emptyInteroception(),mood:defaultAffectMood(),outcomes:{}});
+const empty=():EmotionAppraisalState=>({version:2,episodes:0,lastTick:-1,lastAt:0,lastLabel:'calm',meanArousal01:0.22,meanValence01:0.5,meanStress01:0.2,meanAttentionCapture01:0.2,history:[],feelings:[],interoception:emptyInteroception(),mood:defaultAffectMood(),outcomes:{},recentOutcomeIds:[],duplicateOutcomes:0,invalidOutcomes:0,outOfOrderOutcomes:0});
 
 const EMOTION_LABELS = new Set<EmotionLabel>(['curiosity','calm','joy','anxiety','frustration','sadness','anger','protective']);
 const ACTION_TENDENCIES = new Set<EmotionActionTendency>(['explore','engage','verify','reflect','rest','protect','withdraw','approach']);
@@ -245,6 +251,8 @@ function restoreAffectMood(value:unknown):AffectMoodState {
   return {version:1,valence01:row.valence01 as number,arousal01:row.arousal01 as number,stress01:row.stress01 as number,socialSafety01:row.socialSafety01 as number,
     lastAt:row.lastAt,lastEpisodeId:row.lastEpisodeId as string|null,events:validCounter(row.events,0),interoceptiveSamples:validCounter(row.interoceptiveSamples,0),
     recoveryActive:row.recoveryActive,recoveryStartedAt:row.recoveryStartedAt,recoveryStartDistance01:row.recoveryStartDistance01 as number,
+    lastOutcomeId:row.lastOutcomeId===null?null:validText(row.lastOutcomeId),
+    outcomeUpdates:validCounter(row.outcomeUpdates,0),verifiedOutcomeUpdates:validCounter(row.verifiedOutcomeUpdates,0),
     recoveryLastDistance01:row.recoveryLastDistance01 as number,recoverySamples:validCounter(row.recoverySamples,0),interoceptiveDurationMs:validCounter(row.interoceptiveDurationMs,0),
     meanRecoveryRate01:row.meanRecoveryRate01 as number,resilience01:row.resilience01 as number,resilienceConfidence01:row.resilienceConfidence01 as number};
 }
@@ -373,6 +381,10 @@ export class EmotionAppraisalEngine {
       interoception:restoreInteroception(r.interoception,d.interoception),
       mood:restoreAffectMood(r.mood),
       outcomes:restoreOutcomes(r.outcomes),
+      recentOutcomeIds:(ownDataArray(r.recentOutcomeIds,128)??[]).map(value=>validText(value,256)).filter((value):value is string=>value!==null).slice(-128),
+      duplicateOutcomes:validCounter(r.duplicateOutcomes,0),
+      invalidOutcomes:validCounter(r.invalidOutcomes,0),
+      outOfOrderOutcomes:validCounter(r.outOfOrderOutcomes,0),
     };
   }
   snapshot(){return structuredClone(this.state);}
@@ -430,14 +442,76 @@ export class EmotionAppraisalEngine {
     return structuredClone(this.state.interoception);
   }
 
-  recordOutcome(input:{emotionId?:string;action:string;success01:number;surprise01:number;regulationCost01?:number}):EmotionOutcomeCalibration{
+  recordOutcome(input:{
+    emotionId?:string;decisionId?:string;at?:number;verified01?:number;
+    action:string;success01:number;surprise01:number;regulationCost01?:number;
+  }):EmotionOutcomeCalibration{
     const key=canonicalAffectAction(String(input.action));
     if(!key)throw new RangeError('unsupported-affect-outcome-action');
-    const prev=this.state.outcomes[key]??{attempts:0,meanSuccess01:.5,meanSurprise01:.5,meanBenefit01:.5};
-    const success=c(input.success01),surprise=c(input.surprise01),cost=c(input.regulationCost01??0),benefit=c(success*.62+(1-surprise)*.24+(1-cost)*.14);
-    const n=Math.min(Number.MAX_SAFE_INTEGER,prev.attempts+1);
-    const row={attempts:n,meanSuccess01:c(prev.meanSuccess01+(success-prev.meanSuccess01)/n),meanSurprise01:c(prev.meanSurprise01+(surprise-prev.meanSurprise01)/n),meanBenefit01:c(prev.meanBenefit01+(benefit-prev.meanBenefit01)/n)};
-    this.state.outcomes={...this.state.outcomes,[key]:row};return structuredClone(row);
+    const existing=this.state.outcomes[key]??{attempts:0,meanSuccess01:.5,meanSurprise01:.5,meanBenefit01:.5};
+    const reject=()=>{
+      this.state.invalidOutcomes=Math.min(Number.MAX_SAFE_INTEGER,this.state.invalidOutcomes+1);
+      return structuredClone(existing);
+    };
+    const decisionId=input.decisionId===undefined?null:validText(input.decisionId,256);
+    if(input.decisionId!==undefined&&!decisionId)return reject();
+    if(decisionId&&this.state.recentOutcomeIds.includes(decisionId)){
+      this.state.duplicateOutcomes=Math.min(Number.MAX_SAFE_INTEGER,this.state.duplicateOutcomes+1);
+      return structuredClone(existing);
+    }
+    const now=Date.now(),at=input.at===undefined?now:input.at;
+    const verified01=input.verified01===undefined?.2:input.verified01;
+    const cost01=input.regulationCost01===undefined?0:input.regulationCost01;
+    const values=[input.success01,input.surprise01,cost01,verified01];
+    if(typeof at!=='number'||!Number.isFinite(at)||at<0||at>now+250||
+       !values.every(value=>typeof value==='number'&&Number.isFinite(value)&&value>=0&&value<=1)||
+       (input.emotionId!==undefined&&(!validText(input.emotionId)||!this.state.history.some(e=>e.id===input.emotionId)))){
+      return reject();
+    }
+    const recentOutcomeIds=decisionId?[...this.state.recentOutcomeIds.filter(id=>id!==decisionId),decisionId].slice(-128):this.state.recentOutcomeIds;
+    const previousMood=this.state.mood;
+    const previous=this.state.outcomes[key]??{attempts:0,meanSuccess01:.5,meanSurprise01:.5,meanBenefit01:.5};
+    const success=input.success01,surprise=input.surprise01,cost=cost01;
+    const benefit=c(success*.62+(1-surprise)*.24+(1-cost)*.14);
+    const attempts=Math.min(Number.MAX_SAFE_INTEGER,previous.attempts+1);
+    const row={
+      attempts,
+      meanSuccess01:c(previous.meanSuccess01+(success-previous.meanSuccess01)/attempts),
+      meanSurprise01:c(previous.meanSurprise01+(surprise-previous.meanSurprise01)/attempts),
+      meanBenefit01:c(previous.meanBenefit01+(benefit-previous.meanBenefit01)/attempts),
+    };
+    let mood=previousMood;
+    let outOfOrderOutcomes=this.state.outOfOrderOutcomes;
+    if(at<previousMood.lastAt){
+      outOfOrderOutcomes=Math.min(Number.MAX_SAFE_INTEGER,outOfOrderOutcomes+1);
+    }else{
+      const {mood:advanced}=advanceMood(previousMood,at);
+      const evidenceWeight=.12+.88*verified01;
+      const valenceTarget=c(.5+(success-.5)*.32+(.5-surprise)*.16-(cost-.5)*.12);
+      const stressTarget=c(.18+(1-success)*.34+surprise*.20+cost*.18);
+      const arousalTarget=c(.22+surprise*.24+cost*.16);
+      const nudge=(current:number,target:number,rate:number,limit:number)=>
+        current+Math.max(-limit,Math.min(limit,(target-current)*rate*evidenceWeight));
+      const next:AffectMoodState={
+        ...advanced,
+        valence01:c(nudge(advanced.valence01,valenceTarget,.10,.022)),
+        arousal01:c(nudge(advanced.arousal01,arousalTarget,.10,.018)),
+        stress01:c(nudge(advanced.stress01,stressTarget,.11,.026)),
+        lastAt:at,lastOutcomeId:decisionId??previousMood.lastOutcomeId,
+        events:Math.min(Number.MAX_SAFE_INTEGER,advanced.events+1),
+        outcomeUpdates:Math.min(Number.MAX_SAFE_INTEGER,advanced.outcomeUpdates+1),
+        verifiedOutcomeUpdates:verified01>=.8?Math.min(Number.MAX_SAFE_INTEGER,advanced.verifiedOutcomeUpdates+1):advanced.verifiedOutcomeUpdates,
+      };
+      const distance=moodDistance(next);
+      mood=next;
+      if(distance>.06&&!next.recoveryActive){
+        mood={...next,recoveryActive:true,recoveryStartedAt:at,recoveryStartDistance01:distance,recoveryLastDistance01:distance};
+      }
+    }
+    this.state={
+      ...this.state,outcomes:{...this.state.outcomes,[key]:row},recentOutcomeIds,outOfOrderOutcomes,mood,
+    };
+    return structuredClone(row);
   }
   outcomeCalibration(action:string):EmotionOutcomeCalibration|null{const key=canonicalAffectAction(String(action)),row=key?this.state.outcomes[key]:null;return row?structuredClone(row):null;}
   appraise(input:{tick:number;at?:number;goalPressure01?:number;goalCongruence01?:number;controllability01?:number;novelty01?:number;selfRelevance01?:number;socialMeaning01?:number;uncertainty01?:number;predictionError01?:number;homeostaticPressure01?:number;energy01?:number;success01?:number;external?:boolean}):EmotionEpisode{

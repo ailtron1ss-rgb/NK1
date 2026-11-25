@@ -127,6 +127,92 @@ interoRestored.restore(denseIntero.snapshot());
 assert.deepEqual(interoRestored.snapshot().interoception,denseIntero.snapshot().interoception);
 assert.equal(interoRestored.snapshot().mood.interoceptiveDurationMs,denseIntero.snapshot().mood.interoceptiveDurationMs);
 
+// Verified decision outcomes close the long-horizon affect loop exactly once.
+const failedVerified=new EmotionAppraisalEngine();
+const failedUnverified=new EmotionAppraisalEngine();
+const outcomeAt=Date.now()-1_000;
+const failedEpisode=failedVerified.appraise({
+  tick:500,at:outcomeAt,goalPressure01:.3,goalCongruence01:.5,controllability01:.7,
+  novelty01:.3,selfRelevance01:.5,socialMeaning01:.1,uncertainty01:.3,predictionError01:.1,
+});
+failedUnverified.restore(failedVerified.snapshot());
+failedVerified.recordOutcome({
+  decisionId:'decision:verified-failure',emotionId:failedEpisode.id,at:outcomeAt+100,verified01:1,
+  action:'verify',success01:.05,surprise01:.95,regulationCost01:.9,
+});
+failedUnverified.recordOutcome({
+  decisionId:'decision:unverified-failure',emotionId:failedEpisode.id,at:outcomeAt+100,verified01:0,
+  action:'verify',success01:.05,surprise01:.95,regulationCost01:.9,
+});
+const verifiedFailureMood=failedVerified.snapshot().mood;
+const unverifiedFailureMood=failedUnverified.snapshot().mood;
+assert.ok(verifiedFailureMood.stress01>unverifiedFailureMood.stress01,
+  'verified failure/surprise must update slow mood more than an unverified estimate');
+assert.ok(verifiedFailureMood.valence01<unverifiedFailureMood.valence01);
+assert.equal(verifiedFailureMood.outcomeUpdates,1);
+assert.equal(verifiedFailureMood.verifiedOutcomeUpdates,1);
+
+const beforeDuplicate=failedVerified.snapshot();
+const originalCalibration=failedVerified.outcomeCalibration('verify');
+failedVerified.recordOutcome({
+  decisionId:'decision:verified-failure',emotionId:failedEpisode.id,at:outcomeAt+200,verified01:1,
+  action:'verify',success01:.99,surprise01:.01,regulationCost01:0,
+});
+const afterDuplicate=failedVerified.snapshot();
+assert.equal(afterDuplicate.outcomes.verify.attempts,originalCalibration.attempts,
+  'replayed outcome must not update calibration twice');
+assert.equal(afterDuplicate.mood.outcomeUpdates,beforeDuplicate.mood.outcomeUpdates,
+  'replayed outcome must not shift slow mood twice');
+assert.equal(afterDuplicate.duplicateOutcomes,beforeDuplicate.duplicateOutcomes+1);
+
+const restoredOutcome=new EmotionAppraisalEngine();
+restoredOutcome.restore(beforeDuplicate);
+restoredOutcome.recordOutcome({
+  decisionId:'decision:verified-failure',emotionId:failedEpisode.id,at:outcomeAt+300,verified01:1,
+  action:'verify',success01:.99,surprise01:.01,regulationCost01:0,
+});
+assert.equal(restoredOutcome.snapshot().outcomes.verify.attempts,originalCalibration.attempts,
+  'decision outcome ledger must survive snapshot/restore');
+assert.equal(restoredOutcome.snapshot().mood.outcomeUpdates,beforeDuplicate.mood.outcomeUpdates);
+
+const successfulVerified=new EmotionAppraisalEngine();
+successfulVerified.restore(beforeDuplicate);
+successfulVerified.recordOutcome({
+  decisionId:'decision:verified-recovery',emotionId:failedEpisode.id,at:outcomeAt+60_000,verified01:1,
+  action:'rest',success01:.98,surprise01:.02,regulationCost01:.05,
+});
+assert.ok(successfulVerified.snapshot().mood.valence01>beforeDuplicate.mood.valence01,
+  'verified success should move slow mood toward positive valence');
+assert.ok(successfulVerified.snapshot().mood.stress01<beforeDuplicate.mood.stress01,
+  'verified success should ease slow stress');
+
+const noRetroactiveMood=new EmotionAppraisalEngine();
+noRetroactiveMood.restore(successfulVerified.snapshot());
+const moodBeforeLate=noRetroactiveMood.snapshot().mood;
+noRetroactiveMood.recordOutcome({
+  decisionId:'decision:late-feedback',emotionId:failedEpisode.id,at:outcomeAt,verified01:1,
+  action:'respond',success01:.1,surprise01:.9,regulationCost01:.7,
+});
+assert.deepEqual(noRetroactiveMood.snapshot().mood,moodBeforeLate,
+  'late action feedback must not rewind or mutate a newer mood timeline');
+assert.equal(noRetroactiveMood.snapshot().outOfOrderOutcomes,1);
+
+const invalidOutcome=new EmotionAppraisalEngine();
+invalidOutcome.recordOutcome({
+  decisionId:'decision:invalid',at:Date.now(),verified01:1,
+  action:'rest',success01:Number.NaN,surprise01:.2,regulationCost01:.1,
+});
+assert.equal(invalidOutcome.snapshot().outcomes.rest,undefined);
+assert.equal(invalidOutcome.snapshot().invalidOutcomes,1);
+
+console.log('AFFECT_OUTCOME_MOOD_CAUSAL_LOOP=PASS',JSON.stringify({
+  verifiedFailure:{stress:verifiedFailureMood.stress01,valence:verifiedFailureMood.valence01},
+  unverifiedFailure:{stress:unverifiedFailureMood.stress01,valence:unverifiedFailureMood.valence01},
+  verifiedSuccess:{stress:successfulVerified.snapshot().mood.stress01,valence:successfulVerified.snapshot().mood.valence01},
+  duplicateOutcomes:afterDuplicate.duplicateOutcomes,
+  restoredIdempotency:true,
+}));
+
 console.log('INTEROCEPTIVE_AFFECT_TIME_NORMALIZATION=PASS',JSON.stringify({
   dense:{cycles:denseInteroState.cycles,mismatch:denseInteroState.meanMismatch01,pressure:denseInteroState.regulationPressure01,predictedEnergy:denseInteroState.predicted.energy01,mood:denseMood.stress01,evidenceMs:denseIntero.snapshot().mood.interoceptiveDurationMs},
   sparse:{cycles:sparseInteroState.cycles,mismatch:sparseInteroState.meanMismatch01,pressure:sparseInteroState.regulationPressure01,predictedEnergy:sparseInteroState.predicted.energy01,mood:sparseMood.stress01,evidenceMs:sparseIntero.snapshot().mood.interoceptiveDurationMs},
