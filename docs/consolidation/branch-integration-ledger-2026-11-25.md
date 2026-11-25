@@ -99,3 +99,14 @@ PR #1174 was updated in place: its existing aspect branch now includes the canon
 Previously open PR #1170 remains Draft with its 83/83 Actions matrix passing. Independent review and target-device/power-loss soak remain open. The current published Release/ZIP and legal blockers are unchanged.
 
 These two neighbouring aspect PRs are existing work by their respective branch authors, not code changes from this pass. They were rechecked on their current exact HEADs after the above work and are recorded to preserve the whole cognitive chain in the handoff. Both remain Draft and unmerged.
+
+
+## P23 signed Skill Shadow freshness — 2026-11-25 update
+
+- Existing PR [#1177](https://github.com/ailtron1ss-rgb/NK1/pull/1177) was synchronized in place with canonical `workpass70-source@9008a8982a5173304456bee2c604bd0bc8665964` using two-parent merge commit `b77d904911a0cb97355e48cfc35a23c0819e19b2`; no force-push or successor branch.
+- Latest inspected PR HEAD: `27c74e0502264f4a10959ad9f7cd49acfcd221c5`; compare: 15 ahead / 0 behind; six intended files.
+- Strengthening covers 30-day evidence freshness, a five-minute future-clock allowance, exact candidate/version and Ed25519 binding, trusted external run context, explicit record/promotion/persisted-active verification purposes, and fail-closed safe-integer validation for clock and signed UTC millisecond timestamps.
+- TDD red was observed at test-only HEAD `fc4247d26ae2e8e41377fdd256a86ae9e96a3b47`: exact assertion proved an unsafe finite clock passed persisted-active verification. Run [45606567069](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45606567069). Clock hardening followed in `b43d5b64068e2a8b14888cf41c3e5026022d3cfe); fractional receipt timestamp test and corresponding safe-integer validation followed in `27c74e0502264f4a10959ad9f7cd49acfcd221c5`.
+- Dedicated exact-head P23 workflow [45607764358](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45607764358) was pending at documentation time. Historical 63/63 checks belonged to the older base/head and are not reused as current proof.
+- PR remains Draft/open/unmerged. No canonical source, `main`, Release tag or Release ZIP was changed. No skill-quality uplift, recall improvement, or live production verification is claimed.
+- Full engineering record: [NK1_P23_SKILL_SHADOW_EVIDENCE_FRESHNESS_2026-11-25.md](../engineering/NK1_P23_SKILL_SHADOW_EVIDENCE_FRESHNESS_2026-11-25.md).
