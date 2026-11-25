@@ -64,6 +64,7 @@ export function Avatar3DStage(props:Props){
  const host=useRef<HTMLDivElement>(null),fileInput=useRef<HTMLInputElement>(null),runtime=useRef<Runtime|null>(null),latest=useRef(props),loadToken=useRef(0);
  const remoteLoadAbort=useRef<AbortController|null>(null),previewPendingRef=useRef(false);
  const [remoteModelUrl,setRemoteModelUrl]=useState("");
+ const [remoteImportOpen,setRemoteImportOpen]=useState(false);
  const [ready,setReady]=useState(false),[modelName,setModelName]=useState(""),[modelFingerprint,setModelFingerprint]=useState(""),[state,setState]=useState<"empty"|"loading"|"loaded"|"error"|"webgl-unavailable">("empty"),[message,setMessage]=useState(""),[storageMessage,setStorageMessage]=useState("3D-модель не загружена. Процедурная геометрия намеренно скрыта.");
  latest.current=props;
  const loadModel=useCallback(async(blob:Blob,name:string,persistence:ModelPersistence)=>{
@@ -172,6 +173,7 @@ export function Avatar3DStage(props:Props){
    if(token!==loadToken.current||controller.signal.aborted)return;
    await loadModel(downloaded.blob,downloaded.filename,"persist");
    setRemoteModelUrl("");
+   setRemoteImportOpen(false);
   }catch(error){
    if(token!==loadToken.current||controller.signal.aborted)return;
    setState("error");setMessage(error instanceof Error?error.message:"Не удалось загрузить модель по HTTPS.");
@@ -204,13 +206,14 @@ export function Avatar3DStage(props:Props){
    <button type="button" onClick={()=>void loadV7Candidate()} disabled={!ready||state==="loading"} aria-label="Предпросмотр кандидата v7, неканоническая модель без сохранения" title="v7 — структурно проверенный кандидат; предпросмотр без сохранения и без продвижения в canonical" className="rounded-md border border-violet-100/25 bg-violet-950/65 px-2.5 py-1.5 text-[10px] font-mono text-violet-50 hover:border-violet-100/55">Сравнить v7 · preview</button>
    <button type="button" onClick={()=>void loadV12Candidate()} disabled={!ready||state==="loading"} aria-label="Предпросмотр кандидата v12 с мимическими morph targets; без сохранения" title="v12 — morph-ready кандидат; preview-only, без сохранения и без canonical promotion" className="rounded-md border border-cyan-100/25 bg-cyan-950/65 px-2.5 py-1.5 text-[10px] font-mono text-cyan-50 hover:border-cyan-100/55">Новый v12 · preview</button>
    <button type="button" onClick={()=>void fileInput.current?.click()} disabled={!ready||state==="loading"} className="rounded-md border border-cyan-100/25 bg-slate-950/75 px-2.5 py-1.5 text-[10px] font-mono text-cyan-50 hover:border-cyan-100/55">Загрузить VRM/GLB</button>
+   <button type="button" onClick={()=>setRemoteImportOpen((open)=>!open)} disabled={!ready||state==="loading"} aria-label="Импортировать 3D-модель по HTTPS" aria-expanded={remoteImportOpen} aria-controls="avatar-3d-remote-import" className="rounded-md border border-cyan-100/25 bg-slate-950/75 px-2.5 py-1.5 text-[10px] font-mono text-cyan-50 hover:border-cyan-100/55">Импорт URL</button>
    {modelName?<button type="button" onClick={()=>void reset()} className="rounded-md border border-white/15 bg-slate-950/75 px-2.5 py-1.5 text-[10px] font-mono text-white/80">{modelName===KURISU_HYBRID_MODEL_V7_CANDIDATE.filename||modelName===KURISU_HYBRID_MODEL_V12_CANDIDATE.filename?"Вернуться к основной модели":"Сбросить"}</button>:null}
    <input ref={fileInput} type="file" accept=".vrm,.glb,model/gltf-binary" onChange={onFile} className="hidden" aria-label="Выберите локальную VRM или GLB модель"/>
   </div>
-  <div className="absolute right-3 top-14 z-20 flex w-[min(24rem,calc(100%-1.5rem))] items-center gap-1.5 rounded-lg border border-cyan-100/15 bg-slate-950/85 p-1.5 backdrop-blur">
+  {remoteImportOpen?<div id="avatar-3d-remote-import" className="absolute right-3 top-14 z-20 flex w-[min(24rem,calc(100%-1.5rem))] items-center gap-1.5 rounded-lg border border-cyan-100/15 bg-slate-950/85 p-1.5 backdrop-blur">
    <input type="url" value={remoteModelUrl} onChange={(event)=>setRemoteModelUrl(event.currentTarget.value)} placeholder="https://…/kurisu.vrm" autoComplete="off" spellCheck={false} aria-label="HTTPS-ссылка на удалённую VRM или GLB модель" className="min-w-0 flex-1 bg-transparent px-2 py-1 text-[10px] text-white outline-none placeholder:text-white/40"/>
    <button type="button" onClick={()=>void onRemoteModel()} disabled={!ready||state==="loading"||!remoteModelUrl.trim()} className="shrink-0 rounded-md border border-cyan-100/25 bg-cyan-950/70 px-2.5 py-1.5 text-[10px] font-mono text-cyan-50 disabled:opacity-40">Импорт по HTTPS</button>
-  </div>
+  </div>:null}
   <div role="group" aria-label="Управление масштабом 3D-модели" className="absolute right-3 top-[6.75rem] z-20 flex items-center gap-1 rounded-lg border border-violet-100/15 bg-slate-950/85 p-1.5 backdrop-blur">
    <button type="button" aria-label="Отдалить 3D-модель" title="Отдалить" onClick={()=>zoomCamera(.45)} disabled={!ready} className="min-h-9 min-w-9 rounded-md border border-white/15 px-2 py-1 text-sm text-white/85 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300 disabled:opacity-40">−</button>
    <button type="button" aria-label="Приблизить 3D-модель" title="Приблизить" onClick={()=>zoomCamera(-.45)} disabled={!ready} className="min-h-9 min-w-9 rounded-md border border-white/15 px-2 py-1 text-sm text-white/85 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300 disabled:opacity-40">+</button>
