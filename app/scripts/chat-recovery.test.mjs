@@ -22,6 +22,21 @@ test("does not mutate the persisted input array", () => {
   assert.equal(recovered[0].delivery, "unknown");
 });
 
+test("discards malformed local cache rows and keeps the newest bounded window", () => {
+  const recovered = recoverPendingChatTurns([
+    null,
+    "bad row",
+    { id: "missing-role", text: "x", at: 1, tick: 1 },
+    { id: "bad-clock", role: "user", text: "x", at: "1", tick: 1 },
+    ...Array.from({ length: 130 }, (_, index) => ({
+      id: "u" + index, role: "user", text: "message", at: index, tick: index, delivery: "sent",
+    })),
+  ]);
+  assert.equal(recovered.length, 120);
+  assert.equal(recovered[0].id, "u10");
+  assert.equal(recovered[119].id, "u129");
+});
+
 test("does not change explicit rejected or unknown results", () => {
   const turns = [
     { id: "u1", role: "user", text: "request", at: 1, tick: 1, delivery: "rejected" },
