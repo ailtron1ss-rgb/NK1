@@ -37,3 +37,19 @@ export function readRuntimeListening(value: unknown): boolean | null {
   if (!isRecord(value) || !isRecord(value.voice) || !isRecord(value.voice.state)) return null;
   return typeof value.voice.state.listening === "boolean" ? value.voice.state.listening : null;
 }
+
+
+export type VoiceStopResolution =
+  | { confirmed: true; status: "idle"; reason: null }
+  | { confirmed: false; status: "stop-unconfirmed"; reason: string };
+
+/** Fail closed: any missing/unknown runtime status keeps the microphone operation locked. */
+export function resolveVoiceStop(listening: boolean | null, interruptionRequested: boolean, verificationError?: string | null): VoiceStopResolution {
+  if (listening === false) return { confirmed: true, status: "idle", reason: null };
+  const detail = typeof verificationError === "string" && verificationError.trim()
+    ? verificationError.trim().replace(/[\r\n\t\u0000-\u001f]+/g, " ").slice(0, 180)
+    : interruptionRequested
+      ? "Stop requested, but microphone release is not confirmed by the runtime."
+      : "The runtime has not confirmed that microphone capture stopped.";
+  return { confirmed: false, status: "stop-unconfirmed", reason: detail };
+}
