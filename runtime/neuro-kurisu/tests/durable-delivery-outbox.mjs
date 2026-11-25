@@ -47,7 +47,14 @@ assert.equal(outbox.acknowledge(created.record.id, 'sender-A', at + 1005), true)
 assert.equal(outbox.get(created.record.id)?.status, 'delivered');
 assert.equal(outbox.acknowledge(created.record.id, 'sender-A', at + 1006), false, 'delivery acknowledgement is one-shot');
 
-const leaseRow = outbox.enqueue({ dedupeKey: 'initiative:22', kind: 'initiative-message', payloadRef: 'initiative-message:22' }, at + 2000);
+assert.throws(() => outbox.enqueue({
+  dedupeKey: 'initiative:22',
+  kind: 'initiative-message',
+  payloadRef: 'initiative-message:22',
+}, at + 1999), /delivery-outbox-kind-invalid/,
+  'the generic outbox must not take ownership of social initiative message leases');
+
+const leaseRow = outbox.enqueue({ dedupeKey: 'generic:lease:22', kind: 'custom', payloadRef: 'custom:lease-22' }, at + 2000);
 assert.ok(outbox.claim(leaseRow.record.id, 'crashed-sender', at + 2001, 1000));
 assert.equal(outbox.reapExpiredLeases(at + 3001), 1);
 assert.equal(outbox.get(leaseRow.record.id)?.status, 'pending', 'expired lease is recoverable after sender crash');
