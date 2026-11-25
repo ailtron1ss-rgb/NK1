@@ -1,7 +1,8 @@
-import { useMemo, useRef, useEffect, useState } from "react";
+
 import type { OrganismSnapshot } from "@/organism/types";
 import { useKurisu } from "@/organism/store";
 import { cn } from "@/lib/utils";
+import { MemoryExplorer } from "@/components/MemoryExplorer";
 
 export function Labs({ snap }: { snap: OrganismSnapshot }) {
   const tab = useKurisu((s) => s.tab);
@@ -31,7 +32,7 @@ export function Labs({ snap }: { snap: OrganismSnapshot }) {
         ))}
       </div>
       {tab === "mind" ? <MindNote snap={snap} /> : null}
-      {tab === "memory" ? <MemoryLab snap={snap} /> : null}
+      {tab === "memory" ? <MemoryExplorer /> : null}
       {tab === "lab" ? <InnerLab snap={snap} /> : null}
       {tab === "skills" ? <SkillsLab snap={snap} /> : null}
       {tab === "evidence" ? <EvidenceLab snap={snap} /> : null}
@@ -64,36 +65,6 @@ function MindNote({ snap }: { snap: OrganismSnapshot }) {
           ))}
         </ul>
       </div>
-    </div>
-  );
-}
-
-function MemoryLab({ snap }: { snap: OrganismSnapshot }) {
-  const [q, setQ] = useState("");
-  const items = useMemo(() => {
-    const s = q.trim().toLowerCase();
-    return snap.memories.filter((m) => !s || m.text.toLowerCase().includes(s)).slice(0, 24);
-  }, [q, snap.memories]);
-  return (
-    <div>
-      <input
-        value={q}
-        onChange={(e) => setQ(e.target.value)}
-        placeholder="Search memories…"
-        className="mb-3 h-11 w-full rounded-md border border-border bg-bg px-3 text-sm"
-      />
-      <ul className="max-h-72 space-y-2 overflow-y-auto">
-        {items.map((m) => (
-          <li key={m.id} className="rounded-md border border-border bg-bg px-3 py-2">
-            <p className="text-sm text-fg">{m.text}</p>
-            <p className="mt-1 text-xs uppercase tracking-wider text-subtle">
-              {m.kind} · {m.emotion} · pe {m.predictionError.toFixed(2)} · touches {m.touches}
-              {m.verified ? " · verified" : ""}
-            </p>
-          </li>
-        ))}
-        {items.length === 0 ? <li className="text-sm text-muted">No memories yet.</li> : null}
-      </ul>
     </div>
   );
 }
