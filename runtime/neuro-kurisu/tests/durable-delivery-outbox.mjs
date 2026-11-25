@@ -57,10 +57,37 @@ assert.throws(() => outbox.enqueue({
 const leaseRow = outbox.enqueue({ dedupeKey: 'generic:lease:22', kind: 'custom', payloadRef: 'custom:lease-22' }, at + 2000);
 assert.ok(outbox.claim(leaseRow.record.id, 'crashed-sender', at + 2001, 1000));
 assert.equal(outbox.reapExpiredLeases(at + 3001), 1);
-assert.equal(outbox.get(leaseRow.record.id)?.status, 'pending', 'expired lease is recoverable after sender crash');
-assert.equal(outbox.claim(leaseRow.record.id, 'sender-B', at + 3002, 1000)?.attemptCount, 2);
-assert.equal(outbox.reapExpiredLeases(at + 4002), 1);
-assert.equal(outbox.get(leaseRow.record.id)?.status, 'dead-letter', 'exhausted lease attempts are retained for operator review');
+assert.equal(outbox.get(leaseRow.record.id)?.status, 'reconciliation-required',
+  'an expired lease is quarantined because the external side effect may have happened');
+assert.equal(outbox.claim(leaseRow.record.id, 'sender-B', at + 3002, 1000), null,
+  'an expired ambiguous lease must not be retried without host reconciliation');
+assert.equal(outbox.pendingCandidate(at + 3002), null,
+  'reconciliation-required records are not visible as ordinary pending work');
+assert.equal(outbox.resolveReconciliation(leaseRow.record.id, 'confirmed-not-delivered', at + 3002), true,
+  'host reconciliation may requeue only after it confirms that no external delivery occurred');
+assert.equal(outbox.get(leaseRow.record.id)?.status, 'pending');
+assert.equal(outbox.get(leaseRow.record.id)?.nextAttemptAt, at + 4002,
+  'reconciled retry observes exponential backoff');
+assert.equal(outbox.claim(leaseRow.record.id, 'sender-B', at + 4001, 1000), null);
+assert.equal(outbox.claim(leaseRow.record.id, 'sender-B', at + 4002, 1000)?.attemptCount, 2);
+assert.equal(outbox.reapExpiredLeases(at + 5002), 1);
+assert.equal(outbox.get(leaseRow.record.id)?.status, 'reconciliation-required',
+  'the second ambiguous lease also requires reconciliation');
+assert.equal(outbox.resolveReconciliation(leaseRow.record.id, 'confirmed-not-delivered', at + 5002), true);
+assert.equal(outbox.get(leaseRow.record.id)?.status, 'dead-letter',
+  'reconciled attempts cannot exceed the configured attempt ceiling');
+
+const uncertainDelivered = outbox.enqueue({
+  dedupeKey: 'generic:reconciliation:delivered',
+  kind: 'notification',
+  payloadRef: 'notification:reconcile-delivered',
+}, at + 6000);
+assert.ok(outbox.claim(uncertainDelivered.record.id, 'sender-C', at + 6001, 1000));
+assert.equal(outbox.reapExpiredLeases(at + 7001), 1);
+assert.equal(outbox.resolveReconciliation(uncertainDelivered.record.id, 'confirmed-delivered', at + 7002), true,
+  'authoritative reconciliation can settle an ambiguous send as delivered without a duplicate retry');
+assert.equal(outbox.get(uncertainDelivered.record.id)?.status, 'delivered');
+assert.equal(outbox.get(uncertainDelivered.record.id)?.deliveredAt, at + 7002);
 
 const expiring = outbox.enqueue({
   dedupeKey: 'reminder:expired',
