@@ -254,6 +254,24 @@ try {
       /sensitive-environment-key-not-authorized/,
       'explicit credentials require the same exact authorization as inherited credentials',
     );
+    for (const [key, value] of [
+      ['SSH_AUTH_SOCK', '/tmp/host-ssh-agent.sock'],
+      ['GPG_AGENT_INFO', '/tmp/host-gpg-agent:1:1'],
+      ['KUBECONFIG', '/home/nk1/.kube/config'],
+      ['GOOGLE_APPLICATION_CREDENTIALS', '/home/nk1/gcp-service-account.json'],
+      ['AWS_PROFILE', 'production'],
+      ['DOCKER_HOST', 'unix:///var/run/docker.sock'],
+    ]) {
+      await assert.rejects(
+        () => runLearningProcess(run, 'b'.repeat(64), {
+          ...base,
+          env: { [key]: value },
+          args: ['-e', 'process.stdout.write("should-not-run")'],
+        }),
+        /sensitive-environment-key-not-authorized/,
+        key + ' must be treated as a credential or host-authority selector',
+      );
+    }
     const allowed = await runLearningProcess(run, 'b'.repeat(64), {
       ...base,
       env: { [sensitiveKey]: sensitiveValue },
