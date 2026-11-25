@@ -48,6 +48,8 @@ export interface ConsentRecord {
   actor:'self'|'creator';
   decision:'approved'|'declined';
   reason:string;
+  /** Exact host approval ticket or other causal source; absent on legacy/domain-only consent. */
+  referenceId?:string;
   at:number;
 }
 
@@ -136,6 +138,28 @@ const reconcileEvidenceRefs=(value:unknown,known:Set<string>):string[]=>{
   if(!Array.isArray(value))return [];
   return [...new Set(value.filter((id):id is string=>typeof id==='string'&&known.has(id)) )].slice(0,12);
 };
+const normalizeConsentRecord=(value:unknown):ConsentRecord|null=>{
+  if(!value||typeof value!=='object'||Array.isArray(value))return null;
+  const row=value as Partial<ConsentRecord>;
+  const id=typeof row.id==='string'?row.id.trim():'';
+  const action=typeof row.action==='string'?row.action.trim():'';
+  const reason=typeof row.reason==='string'?row.reason.trim():'';
+  const actor=row.actor;
+  const decision=row.decision;
+  const at=row.at;
+  if(!id||id.length>180||!action||action.length>120||!reason||reason.length>220||
+    (actor!=='self'&&actor!=='creator')||(decision!=='approved'&&decision!=='declined')||
+    typeof row.risk01!=='number'||!Number.isFinite(row.risk01)||
+    typeof at!=='number'||!Number.isFinite(at)||at<0)return null;
+  let referenceId:string|undefined;
+  if(row.referenceId!==undefined){
+    if(typeof row.referenceId!=='string')return null;
+    const candidate=row.referenceId.trim();
+    if(!candidate||candidate.length>180||/[\u0000-\u001f\u007f]/.test(candidate))return null;
+    referenceId=candidate;
+  }
+  return {id,action:action.slice(0,120),risk01:clamp(row.risk01),actor,decision,reason:reason.slice(0,220),...(referenceId?{referenceId}:{}),at};
+};
 
 export class P34CausalPersonhoodEngine {
   private state=defaultState();
@@ -160,11 +184,20 @@ export class P34CausalPersonhoodEngine {
     })):[];
     const goals=Array.isArray(v?.goals)?v!.goals.filter((row:any)=>row&&typeof row==='object'&&!Array.isArray(row)&&typeof row.id==='string'&&typeof row.title==='string').slice(0,96).map((row:any)=>({...row,evidenceIds:reconcileEvidenceRefs(row.evidenceIds,knownEvidenceIds)})):[];
     const changeRequests=Array.isArray(v?.changeRequests)?v!.changeRequests.filter((row:any)=>row&&typeof row==='object'&&!Array.isArray(row)&&typeof row.id==='string'&&typeof row.field==='string').slice(0,96).map((row:any)=>({...row,evidenceIds:reconcileEvidenceRefs(row.evidenceIds,knownEvidenceIds)})):[];
+    const consentHistory:ConsentRecord[]=[];
+    const consentIds=new Set<string>();
+    for(const candidate of Array.isArray(v?.consentHistory)?v!.consentHistory.slice(0,1024):[]){
+      const row=normalizeConsentRecord(candidate);
+      if(!row||consentIds.has(row.id))continue;
+      consentIds.add(row.id);
+      consentHistory.push(row);
+      if(consentHistory.length>=256)break;
+    }
     this.state={...d,...(v??{}),
       evidence,
       claims,
       goals,
-      consentHistory:Array.isArray(v?.consentHistory)?v!.consentHistory.slice(0,256):[],
+      consentHistory,
       changeRequests,
       relationshipHistory:Array.isArray(v?.relationshipHistory)?v!.relationshipHistory.slice(0,256):[],
       continuityBranches:Array.isArray(v?.continuityBranches)?v!.continuityBranches.slice(0,48):[],
@@ -239,8 +272,13 @@ export class P34CausalPersonhoodEngine {
     return true;
   }
 
-  recordConsent(input:{action:string;risk01:number;actor:P34ApprovalActor;decision:'approved'|'declined';reason:string}){
-    const row:ConsentRecord={id:idFor('consent',`${input.action}:${input.actor}:${input.decision}`),action:String(input.action).slice(0,120),risk01:clamp(input.risk01),actor:input.actor,decision:input.decision,reason:String(input.reason).slice(0,220),at:now()};
+  recordConsent(input:{action:string;risk01:number;actor:P34ApprovalActor;decision:'approved'|'declined';reason:string;referenceId?:string}){
+    const action=String(input.action).trim().slice(0,120);
+    const reason=String(input.reason).trim().slice(0,220);
+    const candidateReference=typeof input.referenceId==='string'?input.referenceId.trim():'';
+    const referenceId=candidateReference&&candidateReference.length<=180&&!/[\u0000-\u001f\u007f]/.test(candidateReference)?candidateReference:undefined;
+    const at=now();
+    const row:ConsentRecord={id:idFor('consent',`${action}:${input.actor}:${input.decision}:${referenceId??at}`),action,risk01:clamp(input.risk01),actor:input.actor,decision:input.decision,reason,...(referenceId?{referenceId}:{}),at};
     this.state.consentHistory=[row,...this.state.consentHistory].slice(0,256);
     this.recomputeMetrics();
     return structuredClone(row);
