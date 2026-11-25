@@ -2334,8 +2334,24 @@ export class OrganismCore {
     organismCognitiveArchitecture() {
         const architecture=this.organismSystems.cognitiveArchitecture();
         const health=this.organismSystems.health();
+        const subsystemHealth=this.cognitiveRuntime.cognitiveSubsystemRegistry.health();
         const status=this.operationalStatusSnapshot();
-        return { ...architecture, runtimeSnapshot:{ tick:Number.isFinite(status.tick)?status.tick:0, systems:health.map(item=>({ systemName:item.systemName, available:item.available, snapshotKeys:item.snapshotKeys, snapshotMs:item.snapshotMs, checkedAt:item.checkedAt })) } };
+        return { ...architecture, runtimeSnapshot:{
+            tick:Number.isFinite(status.tick)?status.tick:0,
+            systems:health.map(item=>({ systemName:item.systemName, available:item.available, snapshotKeys:item.snapshotKeys, snapshotMs:item.snapshotMs, checkedAt:item.checkedAt })),
+            cognitiveSubsystems:subsystemHealth.map(item=>({
+                name:item.name,
+                available:item.available,
+                probeCount:item.probeCount,
+                failedProbeCount:item.failedProbeCount,
+                failedPorts:item.failedPorts,
+                probeMs:item.probeMs,
+                checkedAt:item.checkedAt,
+                ownership:item.ownership,
+                probeKind:item.probeKind,
+                evidence:item.evidence,
+            })),
+        } };
     }
     organismSystemExecutionOrder() { return this.organismSystems.executionOrder(); }
     organismSystemHealth() { return this.organismSystems.health(); }
@@ -2354,9 +2370,12 @@ export class OrganismCore {
     selfSubsystemSnapshot() { return this.selfSubsystem.snapshot(); }
     governanceSubsystemSnapshot() { return this.governanceSubsystem.snapshot(); }
     cognitiveSubsystemHealth() { return this.cognitiveRuntime.cognitiveSubsystemRegistry.health(); }
+    cognitiveSubsystemProbeDetails(force = false) { return this.cognitiveRuntime.cognitiveSubsystemRegistry.probeDetails(force); }
     cognitiveSubsystemFlightSnapshot() { this.cognitiveRuntime.cognitiveSubsystemRegistry.health(); return this.cognitiveRuntime.cognitiveSubsystemRegistry.flightSnapshot(); }
     cognitiveSubsystemFlightSummary() { this.cognitiveRuntime.cognitiveSubsystemRegistry.health(); return this.cognitiveRuntime.cognitiveSubsystemRegistry.flightSummary(); }
     externalProjectResearchConfig() { return this.evidenceResearchSubsystem.externalProjectResearchTool.snapshot(); }
+    /** Read-only last selected project; diagnostics must not trigger scheduling. */
+    multiProjectScheduleSnapshot() { return this.agencySubsystem.projectScheduler.snapshot(); }
     multiProjectSchedule(projects = this.agencySubsystem.selfProjects.activeProjects(), ctx?: Partial<import('../system/MultiProjectScheduler.ts').ProjectScheduleContext>) { const state = this.persisted.state; const budget = this.agencySubsystem.budget.snapshot(); return this.agencySubsystem.projectScheduler.choose(projects, { tick: state.tick, energy01: state.needs.energy, cognitiveLoad01: state.needs.cognitiveLoad, uncertainty01: state.needs.uncertainty, goalPressure01: state.needs.goalPressure, budget01: Number((budget as any).remaining01 ?? (budget as any).available01 ?? 0.5), selectedProjectId: this.agencySubsystem.selfProjects.activeProject()?.id ?? null, at: state.at, ...ctx }); }
     cognitiveSpineScheduleSnapshot() { return this.developmentalNeural.cognitiveSpineScheduler.snapshot(); }
     cognitiveExecutionPlanSnapshot() { return this.cognitiveRuntime.cognitiveExecutionPlanner.snapshot(); }
