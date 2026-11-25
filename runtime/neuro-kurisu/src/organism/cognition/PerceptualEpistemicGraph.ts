@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { cloneInertSnapshot } from '../core/InertSnapshot.ts';
 const clamp=(n:number)=>Math.max(0,Math.min(1,Number.isFinite(n)?n:0));
 export type EpistemicSource='observed'|'model-output'|'derived'|'unresolved';
 export interface EvidenceClaim { id:string; at:number; modality:string; claim:string; source:EpistemicSource; confidence01:number; targetIds:string[]; supersedes?:string; }
@@ -138,7 +139,10 @@ function safeCounter(value:unknown,ceiling:number):number{
 export class PerceptualEpistemicGraph {
   private state=defaultEpistemicState();
   restore(raw?:Partial<EpistemicState>|null){
-    const d=defaultEpistemicState(); const r=raw??{};
+    const d=defaultEpistemicState();
+    const restored=raw===undefined||raw===null?{}:cloneInertSnapshot<unknown>(raw,{maxDepth:12,maxProperties:32_768});
+    if(!restored||typeof restored!=='object'||Array.isArray(restored))throw new Error('epistemic-snapshot-invalid');
+    const r=restored as Partial<EpistemicState>;
     this.state={...d,...r,
       claims:Array.isArray(r.claims)?r.claims.slice(-256).map(restoredClaim).filter((claim):claim is EvidenceClaim=>claim!==null):[],
       contradictionPairs:safeCounter(r.contradictionPairs,4096),
