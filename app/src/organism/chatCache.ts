@@ -19,7 +19,7 @@ function restoreTurn(value: unknown): ChatTurn | null {
   if (typeof raw.id !== "string" || !raw.id.trim() || raw.id !== raw.id.trim() || raw.id.length > MAX_CHAT_ID) return null;
   if (raw.role !== "user" && raw.role !== "kurisu") return null;
   if (typeof raw.text !== "string") return null;
-  const text = raw.text.replace(/[\\u0000-\\u0008\\u000B\\u000C\\u000E-\\u001F\\u007F]/g, "").slice(0, MAX_CHAT_TEXT);
+  const text = raw.text.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, "").slice(0, MAX_CHAT_TEXT);
   if (!text.trim()) return null;
   if (!Number.isSafeInteger(raw.at) || Number(raw.at) < 0) return null;
   if (!Number.isSafeInteger(raw.tick) || Number(raw.tick) < 0) return null;
