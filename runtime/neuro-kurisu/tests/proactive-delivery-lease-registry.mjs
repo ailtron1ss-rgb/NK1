@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import { ProactiveDeliveryLeaseRegistry } from "../src/server/proactive-delivery-lease-registry.mjs";
 
 {
@@ -44,4 +45,16 @@ import { ProactiveDeliveryLeaseRegistry } from "../src/server/proactive-delivery
   assert.equal(leases.issue("soc:x", 1, 5_000, "short", 1), null);
 }
 
-console.log("PROACTIVE_DELIVERY_LEASE_REGISTRY=PASS");
+
+{
+  const server = await readFile(new URL("../src/server/server.mjs", import.meta.url), "utf8");
+  assert.ok(server.includes("PROACTIVE_DELIVERY_LEASES.issue("),
+    "the GET delivery route must issue a per-attempt token");
+  assert.ok(server.includes("PROACTIVE_DELIVERY_LEASES.matches("),
+    "the ACK route must reject stale or unknown tokens");
+  assert.ok(server.includes("PROACTIVE_DELIVERY_LEASES.consume("),
+    "a successful ACK must consume the one-use token");
+  assert.ok(server.includes("PROACTIVE_DELIVERY_LEASES.clear()"),
+    "revoking consent must invalidate in-flight delivery tokens");
+}
+\nconsole.log("PROACTIVE_DELIVERY_LEASE_REGISTRY=PASS");
