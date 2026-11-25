@@ -4,6 +4,8 @@ import { resolveSpritePath } from "./spriteEngine";
 import { readAvatarPreference, writeAvatarPreference } from "./safeLocalStorage";
 import type { ActionKind, EmotionLabel } from "@/organism/types";
 
+type SpriteAssetStatus = "loading" | "ready" | "error";
+
 const EXPRESSION: Record<EmotionLabel, string> = {
   curiosity: "thinking",
   calm: "neutral",
@@ -39,7 +41,7 @@ export function LegacySpriteDeck({
   const [outfit, setOutfit] = useState<VisualProfileId>("lab_coat");
   const [preferencesHydrated, setPreferencesHydrated] = useState(false);
   const [open, setOpen] = useState(false);
-  const [ready, setReady] = useState(false);
+  const [assetStatus, setAssetStatus] = useState<SpriteAssetStatus>("loading");
   const blend = useRef(1);
   // Keep the canvas loop mounted across emotion/speech changes. These refs expose
   // current render values to the frame callback without restarting its clock.
@@ -50,6 +52,7 @@ export function LegacySpriteDeck({
 
   useEffect(() => {
     let cancelled = false;
+    setAssetStatus("loading");
     const visualAction = thinking ? "reflect" : speaking ? "respond" : action;
     const url = resolveSpritePath(EXPRESSION[emotion] ?? "neutral", {
       preferLab: outfit === "lab_coat" || outfit === "formal",
@@ -63,10 +66,11 @@ export function LegacySpriteDeck({
       previousRef.current = currentRef.current;
       currentRef.current = img;
       blend.current = 0;
-      setReady(true);
+      setAssetStatus("ready");
     };
     img.onerror = () => {
-      if (!cancelled) setReady(Boolean(currentRef.current));
+      // Keep the last good frame visible; report that the requested replacement failed.
+      if (!cancelled) setAssetStatus("error");
     };
     img.src = url;
     return () => {
@@ -141,6 +145,11 @@ export function LegacySpriteDeck({
 
   return <div className="relative overflow-hidden rounded-xl border border-border bg-bg">
     <canvas ref={canvasRef} className="h-[320px] w-full md:h-[420px]" />
+    <span role="status" aria-live="polite" className="sr-only">
+      {assetStatus === "error"
+        ? currentRef.current ? "Не удалось загрузить новый спрайт; предыдущий кадр сохранён." : "Не удалось загрузить спрайт."
+        : assetStatus === "ready" ? "Спрайт загружен." : "Загрузка спрайта."}
+    </span>
     <button
       type="button"
       aria-label={open ? "Скрыть каталог одежды Курису" : "Открыть каталог одежды Курису"}
@@ -149,7 +158,7 @@ export function LegacySpriteDeck({
       onClick={() => setOpen((v) => !v)}
       className="absolute right-3 top-3 rounded-md border border-border bg-black/60 px-2.5 py-1 text-[10px] font-mono text-white/70 hover:text-white"
     >
-      {open ? "hide outfit" : ready ? "legacy deck" : "loading"}
+      {open ? "hide outfit" : assetStatus === "ready" ? "legacy deck" : assetStatus === "error" ? "assets unavailable" : "loading"}
     </button>
     {open ? <div id="legacy-outfit-options" role="group" aria-label="Выбор одежды и визуального профиля" className="absolute inset-x-3 bottom-3 rounded-lg border border-border bg-black/75 p-2 backdrop-blur">
       <div className="mb-2 text-[10px] uppercase tracking-wider text-white/50">visual legacy / profile catalog</div>
