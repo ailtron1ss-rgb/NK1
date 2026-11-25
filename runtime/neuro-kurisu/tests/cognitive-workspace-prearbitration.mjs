@@ -42,6 +42,10 @@ assert.ok(order.indexOf('workspace') >= 0 && order.indexOf('arbitration') >= 0,
   'both workspace competition and P61/P64 arbitration must execute');
 assert.ok(order.indexOf('workspace') < order.indexOf('arbitration'),
   'current-cycle workspace competition must precede P61/P64 arbitration');
+assert.equal(order.filter(event => event === 'workspace').length, 1,
+  'the current cycle must compete the global workspace exactly once; no late duplicate competition is allowed');
+assert.equal(order.at(-1), 'arbitration',
+  'no global workspace competition may run after P61/P64 arbitration');
 assert.equal(arbitrationWorkspace01, competed.ignition01,
   'P61/P64 must consume the ignition produced by this cycle, not a stale previous-cycle signal');
 
