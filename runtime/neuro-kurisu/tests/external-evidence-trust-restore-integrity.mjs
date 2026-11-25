@@ -48,4 +48,25 @@ assert.ok(future.lastSeenAt<=Date.now()+5*60*1000,'far-future timestamps must be
 const invalidTime=freshness.observe({claimKey:'claim:invalid-time',source:'device',independenceKey:'camera-invalid',confidence01:.8,at:-1});
 assert.ok(invalidTime.lastSeenAt>=now-1_000,'negative timestamps must not create ancient evidence');
 
+const sourceEligibility=new ExternalEvidenceTrustEngine();
+const grounded=sourceEligibility.observe({claimKey:'claim:eligibility',source:'device',independenceKey:'camera-eligibility',confidence01:.99,at:now,evidenceId:'eligibility-device-event'});
+const simulated=sourceEligibility.observe({claimKey:'claim:eligibility',source:'simulated-world-environment',independenceKey:'sim-run-eligibility',confidence01:1,at:now+1,evidenceId:'eligibility-sim-event'});
+assert.equal(grounded.status,'candidate');
+assert.equal(simulated.status,'candidate','simulator evidence must never corroborate a real source');
+assert.equal(sourceEligibility.independenceCount('claim:eligibility'),1,
+  'simulator must not count as an independent witness for a real-world claim');
+assert.equal(sourceEligibility.scoreClaim('claim:eligibility')<.8,true,
+  'simulator confidence must not inflate the score of a grounded-world claim');
+const restoredEligibility=new ExternalEvidenceTrustEngine();
+restoredEligibility.restore(sourceEligibility.snapshot());
+assert.equal(restoredEligibility.independenceCount('claim:eligibility'),1,
+  'source eligibility must be identical after restore');
+
+const internalOnly=new ExternalEvidenceTrustEngine();
+internalOnly.observe({claimKey:'claim:internal',source:'organism',independenceKey:'internal-a',confidence01:1,at:now,evidenceId:'internal-event-a'});
+internalOnly.observe({claimKey:'claim:internal',source:'organism',independenceKey:'internal-b',confidence01:1,at:now+1,evidenceId:'internal-event-b'});
+assert.equal(internalOnly.independenceCount('claim:internal'),0,
+  'organism-generated evidence cannot independently verify its own world claim');
+assert.equal(internalOnly.snapshot().acceptedCount,0);
+
 console.log('EXTERNAL_EVIDENCE_TRUST_RESTORE_INTEGRITY=PASS');
