@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { GroundedWorldState } from '../src/organism/world/GroundedWorldState.ts';
+import { P41SemanticPerceptionEngine } from '../src/organism/cognition/P41SemanticPerception.ts';
 
 // A caller must not be able to manufacture authority by supplying matching
 // proof labels and confidence numbers. Only an executor-bound verifier receipt
@@ -146,5 +147,29 @@ assert.deepEqual(safe.quarantinedFacts, ['restored-unverified:valid fact'],
   'persisted fact text remains available in an explicitly unverified quarantine');
 assert.deepEqual(safe.provenanceIds, ['source-1']);
 assert.notEqual(safe.lastHash, 'attacker-controlled-hash');
+
+
+const perceptionAt = 1_700_000_100_000;
+const semantic = new P41SemanticPerceptionEngine().ingest({
+  at: perceptionAt,
+  world: {
+    scene: 'provenance-lab',
+    evidenceKind: 'derived',
+    objects: [{
+      label: 'tracked-chair',
+      trackId: 'chair-1',
+      sourceId: 'camera-front',
+      evidenceKind: 'derived',
+    }],
+  },
+});
+const integratedWorld = new GroundedWorldState();
+integratedWorld.integrate({ at: perceptionAt, perception: semantic });
+const integratedChair = integratedWorld.snapshot().entities.find(entity => entity.label === 'tracked-chair');
+assert.ok(integratedChair);
+assert.deepEqual(integratedChair.modalities, ['world']);
+assert.deepEqual(integratedChair.sourceIds, ['camera-front'],
+  'sourceIds must preserve provider/source identity, not copy modality names');
+assert.equal(integratedChair.sourceIds.includes('world'), false);
 
 console.log('GROUNDED_WORLD_WRITE_AUTHORITY_INTEGRITY=PASS');
