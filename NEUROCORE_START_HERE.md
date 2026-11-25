@@ -1,34 +1,46 @@
-# CURRENT HANDOFF — 2026-11-21
+# CURRENT HANDOFF — 2026-11-24
 
-**Canonical source baseline:** `workpass70-source` @ `f1cbaa9492ea297d67d8c7461642a75de92b677e`.  
-**main:** `06e01cdd0a8e60ed70991f22e842887f544d1ebf` (release/metadata only).
+**Canonical source:** `workpass70-source` @ `87c9ed9034e09ca9fb83fd676ac52bb46434c4fe`.  
+**main:** `06e01cdd0a8e60ed70991f22e842887f544d1ebf` (release/metadata only).  
+**Live source exact-SHA Actions:** **11/11 SUCCESS**. GitHub API reports `protected=false` for the source branch.
 
-## Exact-source evidence
+## Verified source checkpoint
 
-- Source HEAD commit time: 2026-11-21T07:53:04Z; parent `8d98f271e1374376cc81a9ba0c6e77c014f13ca8`.
-- Exact source Actions: **9/9 SUCCESS** on `f1cbaa9492ea297d67d8c7461642a75de92b677e`; see [daily report](docs/NK1_DAILY_ENGINEERING_CYCLE_2026-11-21.md) for all nine run links.
-- Full branch census: 1,053 refs / 1,035 unique heads / 3 duplicate-tip groups / 18 excess aliases. Open PR count: 275.
-- [PR #1059](https://github.com/ailtron1ss-rgb/NK1/pull/1059) is Draft, based on the live source SHA. It carries a benchmark-only locale-neutral BM25 tokenization fix and Turkish-I regression. First exact-head Actions: 16/17 SUCCESS; the memory-integrity failure was a fixture contract issue (missing explicit `independenceGroupId` with query evidence enabled), corrected in commit `396e1241226820a0dcd64ea92dbaaf33eaba024f`. Code/test head `67460ab86ca25179b2d4125cc7dbe1d692b60f80` then passed **18/18 exact-head Actions SUCCESS**. The synthetic benchmark remains not-promoted (recallDelta=0); recheck the current PR head after this documentation-only update.
-- PR #903 remains open/Draft; stacked children #916/#928/#947 are merged only into parent branches. Compare live source to #903: 180 ahead / 893 behind; do not rebase, merge or rewrite without a deliberate source-based salvage pass.
-- No PR was merged by this cycle. No branch was deleted or force-pushed.
+- Live source HEAD is the merge commit for PR #1161, observed at 2026-11-24T11:28:30Z. It was merged externally before this cycle; do not attribute that merge to this cycle.
+- PR #1161 converts branch-retirement candidate reporting to manual, read-only GET-only audit; `contents: read`; no branch refs were deleted.
+- No direct commits to `workpass70-source` or `main` were made by this cycle.
+
+## Active verified work
+
+| PR | Head SHA | Exact checks | State / scope |
+|---|---|---:|---|
+| [#1167](https://github.com/ailtron1ss-rgb/NK1/pull/1167) | `eccbb9238d9a97cc7389e9d04064ebd251218a6b` | 73/73 | Draft; one decision ID across 11 cognitive stages and metacognitive reflection |
+| [#1168](https://github.com/ailtron1ss-rgb/NK1/pull/1168) | `19e4089674067ba30bb8c30947c3ef261ba10940` | 35/35 | Draft; verified agency outcome and SelfAuthorship |
+| [#1169](https://github.com/ailtron1ss-rgb/NK1/pull/1169) | `91ce0af2629e2583ce6aa107d3e6c6ac2b4096fa` | 68/68 | Draft; plugin quarantine via real PluginMessageIngress test and sidecar restart |
+| [#1164](https://github.com/ailtron1ss-rgb/NK1/pull/1164) | `846519a5e1952bf790562cf2d35d9d43cee83099` | 15/15 | Draft; avatar v7 preview-only; manual visual/license acceptance remains |
+
+- PR #1167 and #1164 use base `8328336`; live source is now `87c9ed9`. Recompare/sync without force-push and rerun exact-head CI before any merge.
+- PR #1152 is merged. #1149 and #1153 remain open on base `54f9ec7` and overlap MemoryOS2 identity/revision/restore; do not merge independently.
+- PR #1133 contains the 2026-11-24 daily report and branch census; it remains Draft/open and its base is `8328336`.
 
 ## Release truth
 
-- Stable ZIP metadata SHA-256: `c5cf6a63661e28b30f976d03c8839a231341d73a09489b9066f062e29b224286`.
-- Latest prerelease ZIP metadata SHA-256: `9effadfcf0d402b462dd9cf2fd5b5793742039c9260db80578be830952bf52eb`.
-- ZIP bytes were not materialized; independent hash, extraction manifest and source parity remain UNVERIFIED.
-- Human license review remains pending; redistribution approval is false.
-- The 75-aspect registry is a 2026-11-06 snapshot, not current readiness evidence.
+- Latest Release tag `Neuro`, published 2026-10-19.
+- ZIP `Neuro_Kurisu_WORKPASS70_2026-10-19.zip`, 135,290,615 bytes; GitHub metadata digest `sha256:c5cf6a63661e28b30f976d03c8839a231341d73a09489b9066f062e29b224286`.
+- ZIP bytes were not materialized or independently hashed in this cycle; source/ZIP parity remains **UNVERIFIED**.
+- `contracts/RELEASE_LICENSE_REVIEW.json` is pending. Root project license is `NOASSERTION`; runtime is private/all-rights-reserved; redistribution approval=false. Human review is mandatory.
 
-## Next P0 / P1
+## Next execution order
 
-1. Re-read PR #1059 current head and exact-SHA Actions; fix only any reproduced failure and keep Draft.
-2. Continue #903 source-based salvage analysis without rewriting branch history.
-3. Materialize the October 19 ZIP through a supported path; independently hash/extract and compare to source.
-4. Run immutable RU/EN holdout with at least five paired seeds.
-5. Complete browser/WebGL and Android/Termux soak; obtain human license review.
+1. MemoryOS2 hunk matrix: #1149/#1153 vs merged #1152; identify one canonical write/revision/restore implementation.
+2. Sync #1167 against current source and rerun exact-head Actions.
+3. Run immutable independent RU/EN holdout with ≥5 paired seeds; no synthetic-only uplift claim.
+4. Complete actual host plugin reconnect/duplicate delivery, Android/Termux 10k ticks, speech interrupt and lip-sync soak.
+5. Materialize/hash/extract the Release ZIP and complete human license review.
 
-**Current cycle report:** [docs/NK1_DAILY_ENGINEERING_CYCLE_2026-11-21.md](docs/NK1_DAILY_ENGINEERING_CYCLE_2026-11-21.md).
+**Current daily report:** [docs/NK1_DAILY_ENGINEERING_CYCLE_2026-11-24.md](docs/NK1_DAILY_ENGINEERING_CYCLE_2026-11-24.md).
+
+No PR merge, Release publication, branch deletion, force-push, production change or paid action was performed by this cycle.
 
 ---
 
