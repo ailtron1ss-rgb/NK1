@@ -202,6 +202,7 @@ const outcomeSnapshot=structuredClone(valid); outcomeSnapshot.outcomes=manyOutco
 const outcomeRestore=new EmotionAppraisalEngine(); outcomeRestore.restore(outcomeSnapshot);
 assert.ok(Object.keys(outcomeRestore.snapshot().outcomes).length<=8,'only registered action keys are restored');
 assert.deepEqual(outcomeRestore.snapshot().recentOutcomeIds,[]);
+assert.ok(outcomeRestore.snapshot().recentOutcomeIds.length<=512);
 assert.equal(outcomeRestore.snapshot().duplicateOutcomes,0);
 assert.equal(outcomeRestore.snapshot().invalidOutcomes,0);
 assert.equal(outcomeRestore.snapshot().outOfOrderOutcomes,0);

@@ -381,7 +381,7 @@ export class EmotionAppraisalEngine {
       interoception:restoreInteroception(r.interoception,d.interoception),
       mood:restoreAffectMood(r.mood),
       outcomes:restoreOutcomes(r.outcomes),
-      recentOutcomeIds:(ownDataArray(r.recentOutcomeIds,128)??[]).map(value=>validText(value,256)).filter((value):value is string=>value!==null).slice(-128),
+      recentOutcomeIds:(ownDataArray(r.recentOutcomeIds,512)??[]).map(value=>validText(value,256)).filter((value):value is string=>value!==null).slice(-128),
       duplicateOutcomes:validCounter(r.duplicateOutcomes,0),
       invalidOutcomes:validCounter(r.invalidOutcomes,0),
       outOfOrderOutcomes:validCounter(r.outOfOrderOutcomes,0),
@@ -468,7 +468,7 @@ export class EmotionAppraisalEngine {
        (input.emotionId!==undefined&&(!validText(input.emotionId)||!this.state.history.some(e=>e.id===input.emotionId)))){
       return reject();
     }
-    const recentOutcomeIds=decisionId?[...this.state.recentOutcomeIds.filter(id=>id!==decisionId),decisionId].slice(-128):this.state.recentOutcomeIds;
+    const recentOutcomeIds=decisionId?[...this.state.recentOutcomeIds.filter(id=>id!==decisionId),decisionId].slice(-512):this.state.recentOutcomeIds;
     const previousMood=this.state.mood;
     const previous=this.state.outcomes[key]??{attempts:0,meanSuccess01:.5,meanSurprise01:.5,meanBenefit01:.5};
     const success=input.success01,surprise=input.surprise01,cost=cost01;

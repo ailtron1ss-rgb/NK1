@@ -199,6 +199,33 @@ assert.deepEqual(noRetroactiveMood.snapshot().mood,moodBeforeLate,
   'late action feedback must not rewind or mutate a newer mood timeline');
 assert.equal(noRetroactiveMood.snapshot().outOfOrderOutcomes,1);
 
+const boundedOutcomes=new EmotionAppraisalEngine();
+const boundedEpisode=boundedOutcomes.appraise({
+  tick:700,at:Date.now()-500,goalPressure01:.2,goalCongruence01:.7,controllability01:.8,
+  novelty01:.25,selfRelevance01:.4,socialMeaning01:.1,uncertainty01:.2,predictionError01:.1,
+});
+for(let i=0;i<520;i++){
+  boundedOutcomes.recordOutcome({
+    decisionId:`bounded-decision:${i}`,emotionId:boundedEpisode.id,verified01:.5,
+    at:Date.now(),action:'wait',success01:.6,surprise01:.2,regulationCost01:.1,
+  });
+}
+assert.equal(boundedOutcomes.snapshot().recentOutcomeIds.length,512,
+  'outcome idempotency ledger is bounded to the most recent 512 decisions');
+assert.equal(boundedOutcomes.snapshot().recentOutcomeIds[0],'bounded-decision:8');
+assert.equal(boundedOutcomes.snapshot().recentOutcomeIds.at(-1),'bounded-decision:519');
+const boundedRestore=new EmotionAppraisalEngine();
+boundedRestore.restore(boundedOutcomes.snapshot());
+assert.deepEqual(boundedRestore.snapshot().recentOutcomeIds,boundedOutcomes.snapshot().recentOutcomeIds,
+  'the bounded 512-decision replay ledger must survive restore');
+const retainedCalibration=boundedRestore.outcomeCalibration('wait');
+boundedRestore.recordOutcome({
+  decisionId:'bounded-decision:519',emotionId:boundedEpisode.id,verified01:1,
+  at:Date.now(),action:'wait',success01:.99,surprise01:.01,regulationCost01:0,
+});
+assert.equal(boundedRestore.outcomeCalibration('wait')?.attempts,retainedCalibration?.attempts,
+  'the newest retained decision remains idempotent after restore');
+
 const invalidOutcome=new EmotionAppraisalEngine();
 invalidOutcome.recordOutcome({
   decisionId:'decision:invalid',at:Date.now(),verified01:1,
