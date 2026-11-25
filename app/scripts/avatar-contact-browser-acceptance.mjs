@@ -22,6 +22,7 @@ async function clickUntilContact(canvas, bounds, expectedCount, yCandidates) {
     })(),
     pointerTrace: window.__nkAvatarPointerTrace ?? [],
     fitDiagnostics: element.getAttribute("data-avatar-fit-diagnostics"),
+    lastRaycast: element.getAttribute("data-avatar-last-raycast"),
     readyText: document.body.innerText.match(/Модель загружена|Геометрия загружена|Модель не загружена|3D-рендерер недоступен/g) ?? [],
   }));
   const screenshotPath = `${process.env.RUNNER_TEMP ?? process.cwd()}/avatar-contact-debug.png`;
