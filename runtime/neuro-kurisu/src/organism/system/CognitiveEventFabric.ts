@@ -282,15 +282,28 @@ export class CognitiveEventFabric {
     const at=Number.isFinite(input.at)?Number(input.at):Date.now();
     const suppliedId=typeof input.id==='string'?input.id.trim():'';
     if(input.id!==undefined&&(!suppliedId||suppliedId.length>180||/[\u0000-\u001f\u007f]/.test(suppliedId))) throw new Error('invalid-cognitive-event-id');
+    if(typeof input.tick!=='number'||!Number.isFinite(input.tick)||input.tick<0) throw new Error('invalid-cognitive-event-tick');
+    if(!COGNITIVE_STAGES.has(input.stage)) throw new Error('invalid-cognitive-event-stage');
+    const tick=Math.max(0,Math.floor(input.tick));
+    const source=String(input.source||'unknown').slice(0,120);
+    const parentIds=[...(input.parentIds??[])].map(String).slice(0,12);
+    const external=Boolean(input.external);
+    const confidence01=clamp01(input.confidence01??0.5);
+    const payload=cleanPayload(input.payload);
+    const contentFingerprint=sha256Stable({tick,stage:input.stage,source,parentIds,external,confidence01,payload});
     if(suppliedId){
       const prior=this.events.find(event=>event.id===suppliedId);
       if(prior){
-        if(prior.tick!==Math.max(0,Math.floor(input.tick))||prior.stage!==input.stage||prior.source!==String(input.source||'unknown').slice(0,120))
-          throw new Error('cognitive-event-id-conflict');
+        const priorFingerprint=sha256Stable({
+          tick:prior.tick,stage:prior.stage,source:prior.source,parentIds:prior.parentIds,
+          external:prior.external,confidence01:prior.confidence01,payload:prior.payload,
+        });
+        if(priorFingerprint!==contentFingerprint) throw new Error('cognitive-event-id-conflict');
+        // Wall-clock timestamp is intentionally excluded: replaying the same causal
+        // event later must preserve its original time and ordering receipt.
         return {...prior,parentIds:[...prior.parentIds],payload:{...prior.payload}};
       }
     }
-    const parentIds=[...(input.parentIds??[])].map(String).slice(0,12);
     const knownParentClock=parentIds.reduce((value,parentId)=>{
       const parent=this.events.find(event=>event.id===parentId);
       return Math.max(value,parent?.logicalTime??0);
@@ -298,12 +311,12 @@ export class CognitiveEventFabric {
     const sequence=Math.max(this.sequenceWatermark,this.total)+1;
     const logicalTime=Math.max(this.logicalClock,knownParentClock)+1;
     const event:CognitiveEventNode={
-      id:suppliedId||`cef:${at}:${Math.max(0,Math.floor(input.tick))}:${Math.random().toString(16).slice(2)}`,
+      id:suppliedId||('cef:'+at+':'+tick+':'+Math.random().toString(16).slice(2)),
       sequence,logicalTime,
-      tick:Math.max(0,Math.floor(input.tick)), at,
-      stage:input.stage, source:String(input.source||'unknown').slice(0,120),
+      tick, at,
+      stage:input.stage, source,
       parentIds,
-      external:Boolean(input.external), confidence01:clamp01(input.confidence01??0.5), payload:cleanPayload(input.payload),
+      external, confidence01, payload,
     };
     this.events.unshift(event);
     if(this.events.length>this.capacity)this.events=this.events.slice(0,this.capacity);
