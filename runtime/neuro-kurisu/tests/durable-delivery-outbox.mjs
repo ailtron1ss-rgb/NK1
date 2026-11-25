@@ -89,4 +89,4 @@ const saturated = new DurableDeliveryOutbox({ maxRecords: 1 });
 saturated.enqueue({ dedupeKey: 'active:one', kind: 'custom', payloadRef: 'ref:one' }, at);
 assert.throws(() => saturated.enqueue({ dedupeKey: 'active:two', kind: 'custom', payloadRef: 'ref:two' }, at), /delivery-outbox-capacity-reached/);
 
-console.log(JSON.stringify({ test: 'durable-delivery-outbox', assertions: 34, status: 'PASS' }));
+console.log(JSON.stringify({ test: 'durable-delivery-outbox', assertions: 35, status: 'PASS' }));
