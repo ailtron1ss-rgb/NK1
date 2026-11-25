@@ -48,7 +48,60 @@ function stableId(claimKey:string,source:string,at:number){return `evidence:${sh
 export const defaultExternalEvidenceTrust=():ExternalEvidenceTrustState=>({version:1,records:[],acceptedCount:0,contestedCount:0,expiredCount:0,meanTrust01:.5});
 export class ExternalEvidenceTrustEngine{
  private state=defaultExternalEvidenceTrust();
- restore(raw?:Partial<ExternalEvidenceTrustState>|null){const d=defaultExternalEvidenceTrust();this.state={...d,...(raw??{}),records:Array.isArray(raw?.records)?raw!.records.slice(-256).map((record:any)=>({...record,...(Array.isArray(record?.evidenceIds)?{evidenceIds:record.evidenceIds.filter((id:any)=>typeof id==='string'&&id.trim()&&id.length<=180).slice(-64)}:{})})):[]};this.recompute();}
+ restore(raw?:Partial<ExternalEvidenceTrustState>|null){
+    const d=defaultExternalEvidenceTrust();
+    const now=Date.now();
+    const finiteCount=(value:unknown,fallback=0)=>typeof value==='number'&&Number.isSafeInteger(value)&&value>=0?Math.min(value,1_000_000):fallback;
+    const validStatus=(value:unknown):value is EvidenceStatus=>value==='candidate'||value==='corroborated'||value==='contested'||value==='expired';
+    const rows=Array.isArray(raw?.records)?raw!.records.slice(-256):[];
+    const records:ExternalEvidenceRecord[]=[];
+    for(const value of rows){
+      if(!value||typeof value!=='object'||Array.isArray(value))continue;
+      const r=value as Partial<ExternalEvidenceRecord>;
+      if(typeof r.id!=='string'||!r.id.trim()||r.id.length>180
+        ||typeof r.claimKey!=='string'||!r.claimKey.trim()||r.claimKey.length>180
+        ||typeof r.source!=='string'||!r.source.trim()||r.source.length>120
+        ||typeof r.independenceKey!=='string'||!r.independenceKey.trim()||r.independenceKey.length>120
+        ||typeof r.confidence01!=='number'||!Number.isFinite(r.confidence01)
+        ||typeof r.trust01!=='number'||!Number.isFinite(r.trust01)
+        ||!validStatus(r.status)
+        ||!Number.isSafeInteger(r.firstSeenAt)||Number(r.firstSeenAt)<0
+        ||!Number.isSafeInteger(r.lastSeenAt)||Number(r.lastSeenAt)<0)continue;
+      const source=r.source.trim().toLowerCase();
+      const sourceClass=sourceClassOf(source);
+      const firstSeenAt=Math.min(Number(r.firstSeenAt),now+5*60*1000);
+      const lastSeenAt=Math.max(firstSeenAt,Math.min(Number(r.lastSeenAt),now+5*60*1000));
+      const evidenceIds=Array.isArray(r.evidenceIds)
+        ?[...new Set(r.evidenceIds.filter((id):id is string=>typeof id==='string'&&Boolean(id.trim())&&id.length<=180))].slice(-64)
+        :[];
+      records.push({
+        id:r.id,claimKey:r.claimKey.trim(),source,sourceClass,
+        independenceKey:r.independenceKey.trim().toLowerCase(),
+        confidence01:clamp(r.confidence01),trust01:0,
+        corroborations:Math.max(1,finiteCount(r.corroborations,1)),
+        independentSources:1,contradictions:finiteCount(r.contradictions),
+        status:'candidate',firstSeenAt,lastSeenAt,evidenceIds,
+      });
+    }
+    // Rebuild trust and corroboration from sanitized source identities. Persisted
+    // aggregate counters and statuses are never authority to promote evidence.
+    for(const record of records){
+      const sameClaim=records.filter(other=>other.claimKey===record.claimKey);
+      const eligible=sameClaim.filter(other=>other.sourceClass!=='simulator'&&other.sourceClass!=='unknown'&&other.sourceClass!=='organism');
+      record.independentSources=new Set(eligible.map(other=>other.independenceKey)).size||1;
+      record.trust01=clamp(baseTrust(record.sourceClass)*.55
+        +record.confidence01*.2
+        +Math.min(1,record.corroborations/4)*.10
+        +Math.min(1,record.independentSources/3)*.18
+        -record.contradictions*.12);
+      const eligibleSource=record.sourceClass!=='simulator'&&record.sourceClass!=='unknown'&&record.sourceClass!=='organism';
+      record.status=record.contradictions>=2?'contested'
+        :eligibleSource&&record.independentSources>=2&&record.trust01>=.72?'corroborated'
+        :'candidate';
+    }
+    this.state={...d,records};
+    this.recompute();
+  }
  snapshot(){return structuredClone(this.state);}
  observe(input:{claimKey:string;source:string;independenceKey?:string;confidence01?:number;contradiction01?:number;at?:number;evidenceId?:string}):ExternalEvidenceRecord{
    const at=Number.isFinite(input.at)?Number(input.at):Date.now();
