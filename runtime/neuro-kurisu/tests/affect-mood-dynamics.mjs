@@ -78,5 +78,58 @@ for(let seed=1;seed<=5;seed++){
   seedResults.push({seed,restMoodDelta,exploreMoodDelta,restAt24h});
 }
 
+
 console.log('AFFECT_MOOD_ACTION_PRIOR_PAIRED=PASS',JSON.stringify(seedResults));
+
+// Interoceptive affect uses elapsed-time filters too: equal trajectories at
+// different publication rates must produce nearly equal posterior states.
+const interoStart=Date.now()-120_000;
+const denseIntero=new EmotionAppraisalEngine();
+const sparseIntero=new EmotionAppraisalEngine();
+for(const engine of [denseIntero,sparseIntero]){
+  engine.appraise({tick:300,at:interoStart,goalPressure01:.55,goalCongruence01:.42,controllability01:.46,novelty01:.5,
+    selfRelevance01:.6,socialMeaning01:.25,uncertainty01:.52,predictionError01:.3,homeostaticPressure01:.42,energy01:.5,success01:.48});
+}
+const sensorState={energy01:.4,thermal01:.46,capacity01:.52,load01:.58,homeostaticPressure01:.64};
+for(let at=interoStart;at<=interoStart+60_000;at+=1_000)
+  denseIntero.observeInteroception({...sensorState,at,sampleId:`dense:${at}`});
+for(let at=interoStart;at<=interoStart+60_000;at+=10_000)
+  sparseIntero.observeInteroception({...sensorState,at,sampleId:`sparse:${at}`});
+const denseInteroState=denseIntero.snapshot().interoception;
+const sparseInteroState=sparseIntero.snapshot().interoception;
+for(const key of ['meanMismatch01','regulationPressure01','stability01','recovery01','predictionCalibration01'])
+  assert.ok(Math.abs(denseInteroState[key]-sparseInteroState[key])<.025,
+    `interoceptive posterior ${key} must not depend on call cadence (${denseInteroState[key]} vs ${sparseInteroState[key]})`);
+assert.ok(Math.abs(denseInteroState.predicted.energy01-sparseInteroState.predicted.energy01)<.005);
+const denseMood=denseIntero.moodSnapshot(interoStart+60_000);
+const sparseMood=sparseIntero.moodSnapshot(interoStart+60_000);
+for(const key of ['valence01','arousal01','stress01','socialSafety01'])
+  assert.ok(Math.abs(denseMood[key]-sparseMood[key])<.025,
+    `slow mood ${key} must not become stronger just because the sensor publishes more frequently`);
+assert.equal(denseInteroState.recentSampleIds.length,64);
+assert.equal(denseInteroState.lastAt,sparseInteroState.lastAt);
+assert.equal(denseIntero.snapshot().mood.interoceptiveDurationMs,sparseIntero.snapshot().mood.interoceptiveDurationMs);
+
+const replay=new EmotionAppraisalEngine();
+replay.observeInteroception({...sensorState,at:interoStart,sampleId:'sensor:one'});
+const afterReplay=replay.snapshot().interoception;
+replay.observeInteroception({...sensorState,at:interoStart+1_000,sampleId:'sensor:one'});
+assert.equal(replay.snapshot().interoception.cycles,afterReplay.cycles);
+assert.equal(replay.snapshot().interoception.duplicateObservations,1);
+replay.observeInteroception({...sensorState,at:interoStart-1_000,sampleId:'sensor:older'});
+assert.equal(replay.snapshot().interoception.outOfOrderObservations,1);
+replay.observeInteroception({...sensorState,at:interoStart+2_000,energy01:Number.NaN});
+assert.equal(replay.snapshot().interoception.invalidObservations,1);
+assert.equal(replay.snapshot().interoception.cycles,afterReplay.cycles);
+const interoRestored=new EmotionAppraisalEngine();
+interoRestored.restore(denseIntero.snapshot());
+assert.deepEqual(interoRestored.snapshot().interoception,denseIntero.snapshot().interoception);
+assert.equal(interoRestored.snapshot().mood.interoceptiveDurationMs,denseIntero.snapshot().mood.interoceptiveDurationMs);
+
+console.log('INTEROCEPTIVE_AFFECT_TIME_NORMALIZATION=PASS',JSON.stringify({
+  dense:{cycles:denseInteroState.cycles,mismatch:denseInteroState.meanMismatch01,pressure:denseInteroState.regulationPressure01,predictedEnergy:denseInteroState.predicted.energy01,mood:denseMood.stress01,evidenceMs:denseIntero.snapshot().mood.interoceptiveDurationMs},
+  sparse:{cycles:sparseInteroState.cycles,mismatch:sparseInteroState.meanMismatch01,pressure:sparseInteroState.regulationPressure01,predictedEnergy:sparseInteroState.predicted.energy01,mood:sparseMood.stress01,evidenceMs:sparseIntero.snapshot().mood.interoceptiveDurationMs},
+  replay:{duplicates:replay.snapshot().interoception.duplicateObservations,outOfOrder:replay.snapshot().interoception.outOfOrderObservations,invalid:replay.snapshot().interoception.invalidObservations}
+}));
+
 

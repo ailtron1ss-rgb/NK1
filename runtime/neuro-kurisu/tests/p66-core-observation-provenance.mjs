@@ -18,6 +18,8 @@ const cognitiveEnd = core.indexOf('});', cognitiveStart);
 assert.notEqual(cognitiveEnd, -1, 'cognitive observation call must remain syntactically bounded');
 const cognitiveCall = core.slice(cognitiveStart, cognitiveEnd);
 assert.ok(cognitiveCall.includes("source: 'cognitive-cycle'"), 'cognitive cycle must declare a distinct provenance');
+assert.ok(core.includes('emotionAppraisal.observeInteroception({ ...bodyTelemetry, homeostaticPressure01: p66Homeostasis.pressure01, at: cognitiveObservedAt, sampleId: `cycle:${state.tick + 1}` })'),
+  'EmotionAppraisalEngine must receive the same cognitive-cycle sample identity as P66');
 assert.ok(cognitiveCall.includes('sampleId: `cycle:${state.tick + 1}`'),
   'cognitive sample identity must be tied to the exact Core tick');
 

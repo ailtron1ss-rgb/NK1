@@ -6,6 +6,8 @@ on:
     paths:
       - "runtime/neuro-kurisu/src/organism/cognition/P66InteroceptiveHomeostasis.ts"
       - "runtime/neuro-kurisu/src/organism/core/OrganismCore.ts"
+      - "runtime/neuro-kurisu/src/organism/system/EmotionAppraisalEngine.ts"
+      - "runtime/neuro-kurisu/tests/affect-mood-dynamics.mjs"
       - "runtime/neuro-kurisu/tests/p66-time-normalized-observation.mjs"
       - "runtime/neuro-kurisu/tests/p66-core-observation-provenance.mjs"
       - "runtime/neuro-kurisu/package.json"
@@ -15,6 +17,8 @@ on:
     paths:
       - "runtime/neuro-kurisu/src/organism/cognition/P66InteroceptiveHomeostasis.ts"
       - "runtime/neuro-kurisu/src/organism/core/OrganismCore.ts"
+      - "runtime/neuro-kurisu/src/organism/system/EmotionAppraisalEngine.ts"
+      - "runtime/neuro-kurisu/tests/affect-mood-dynamics.mjs"
       - "runtime/neuro-kurisu/tests/p66-time-normalized-observation.mjs"
       - "runtime/neuro-kurisu/tests/p66-core-observation-provenance.mjs"
       - "runtime/neuro-kurisu/package.json"
@@ -49,6 +53,9 @@ jobs:
       - name: P66 Core observation provenance
         working-directory: runtime/neuro-kurisu
         run: npm run test:p66:core-observation-provenance
+      - name: Emotion/interoception time-normalized state
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:affect-mood-dynamics
       - name: Emotion/interoception regression
         working-directory: runtime/neuro-kurisu
         run: npm run test:big-pass-172

@@ -33,6 +33,8 @@ export interface InteroceptiveAffectState {
   predictionCalibration01:number;
   lastObserved:{energy01:number;thermal01:number;capacity01:number;load01:number};
   predicted:{energy01:number;thermal01:number;capacity01:number;load01:number};
+  lastAt:number; timebaseInitialized:boolean; recentSampleIds:string[];
+  duplicateObservations:number; outOfOrderObservations:number; invalidObservations:number;
 }
 
 export interface EmotionOutcomeCalibration {
@@ -45,7 +47,7 @@ export interface EmotionOutcomeCalibration {
 /** Slow affective state is separate from time-bounded emotion episodes. */
 export interface AffectMoodState {
   version:1; valence01:number; arousal01:number; stress01:number; socialSafety01:number;
-  lastAt:number; lastEpisodeId:string|null; events:number; interoceptiveSamples:number;
+  lastAt:number; lastEpisodeId:string|null; events:number; interoceptiveSamples:number; interoceptiveDurationMs:number;
   recoveryActive:boolean; recoveryStartedAt:number; recoveryStartDistance01:number; recoveryLastDistance01:number;
   recoverySamples:number; meanRecoveryRate01:number; resilience01:number; resilienceConfidence01:number;
 }
@@ -93,13 +95,14 @@ function canonicalAffectAction(action:string):AffectAction|null {
 }
 const defaultAffectMood=():AffectMoodState=>({
   version:1,valence01:.5,arousal01:.22,stress01:.18,socialSafety01:.55,lastAt:0,lastEpisodeId:null,
-  events:0,interoceptiveSamples:0,recoveryActive:false,recoveryStartedAt:0,recoveryStartDistance01:0,
+  events:0,interoceptiveSamples:0,interoceptiveDurationMs:0,recoveryActive:false,recoveryStartedAt:0,recoveryStartDistance01:0,
   recoveryLastDistance01:0,recoverySamples:0,meanRecoveryRate01:0,resilience01:.5,resilienceConfidence01:0,
 });
 const emptyInteroception=():InteroceptiveAffectState=>({
   cycles:0, meanMismatch01:.18, lastMismatch01:.18, regulationPressure01:.18, stability01:.72, recovery01:.5, predictionCalibration01:.5,
   lastObserved:{energy01:.68,thermal01:.2,capacity01:.72,load01:.38},
   predicted:{energy01:.68,thermal01:.2,capacity01:.72,load01:.38},
+  lastAt:0,timebaseInitialized:false,recentSampleIds:[],duplicateObservations:0,outOfOrderObservations:0,invalidObservations:0,
 });
 const empty=():EmotionAppraisalState=>({version:2,episodes:0,lastTick:-1,lastAt:0,lastLabel:'calm',meanArousal01:0.22,meanValence01:0.5,meanStress01:0.2,meanAttentionCapture01:0.2,history:[],feelings:[],interoception:emptyInteroception(),mood:defaultAffectMood(),outcomes:{}});
 
@@ -109,6 +112,8 @@ const APPRAISAL_KEYS = ['relevance01','goalCongruence01','controllability01','no
 const DELTA_KEYS = ['stress01','energy01','load01','attentionCapture01'] as const;
 const INTERO_KEYS = ['meanMismatch01','lastMismatch01','regulationPressure01','stability01','recovery01','predictionCalibration01'] as const;
 const BODY_KEYS = ['energy01','thermal01','capacity01','load01'] as const;
+const MAX_INTEROCEPTIVE_ELAPSED_MS=24*60*60_000;
+const interoceptiveAlpha=(elapsedMs:number,tauMs:number)=>1-Math.exp(-Math.min(MAX_INTEROCEPTIVE_ELAPSED_MS,Math.max(0,elapsedMs))/tauMs);
 
 /** Copy own data properties only; accessors and hostile Proxy traps fail closed. */
 const MAX_SNAPSHOT_RECORD_KEYS = 256;
@@ -208,6 +213,9 @@ function restoreInteroception(value: unknown, fallback: InteroceptiveAffectState
   const lastObserved=ownDataRecord(row.lastObserved);
   const predicted=ownDataRecord(row.predicted);
   if(!lastObserved || !predicted) return fallback;
+  const lastAtValid=typeof row.lastAt==='number'&&Number.isFinite(row.lastAt)&&row.lastAt>=0&&row.lastAt<=Date.now()+250;
+  const timebaseInitialized=row.timebaseInitialized===true&&lastAtValid;
+  const recentSampleIds=ownDataArray(row.recentSampleIds,64)?.filter((x):x is string=>validText(x,180)!==null) as string[]|undefined;
   for(const key of BODY_KEYS) {
     if(typeof lastObserved[key]!=='number' || !Number.isFinite(lastObserved[key] as number) || (lastObserved[key] as number)<0 || (lastObserved[key] as number)>1 ||
        typeof predicted[key]!=='number' || !Number.isFinite(predicted[key] as number) || (predicted[key] as number)<0 || (predicted[key] as number)>1) return fallback;
@@ -220,6 +228,10 @@ function restoreInteroception(value: unknown, fallback: InteroceptiveAffectState
     recovery01:row.recovery01 as number, predictionCalibration01:row.predictionCalibration01 as number,
     lastObserved:Object.fromEntries(BODY_KEYS.map(key=>[key,lastObserved[key]])) as InteroceptiveAffectState['lastObserved'],
     predicted:Object.fromEntries(BODY_KEYS.map(key=>[key,predicted[key]])) as InteroceptiveAffectState['predicted'],
+    lastAt:timebaseInitialized?Number(row.lastAt):0,timebaseInitialized,recentSampleIds:recentSampleIds??[],
+    duplicateObservations:validCounter(row.duplicateObservations,0),
+    outOfOrderObservations:validCounter(row.outOfOrderObservations,0),
+    invalidObservations:validCounter(row.invalidObservations,0),
   };
 }
 function restoreAffectMood(value:unknown):AffectMoodState {
@@ -233,7 +245,7 @@ function restoreAffectMood(value:unknown):AffectMoodState {
   return {version:1,valence01:row.valence01 as number,arousal01:row.arousal01 as number,stress01:row.stress01 as number,socialSafety01:row.socialSafety01 as number,
     lastAt:row.lastAt,lastEpisodeId:row.lastEpisodeId as string|null,events:validCounter(row.events,0),interoceptiveSamples:validCounter(row.interoceptiveSamples,0),
     recoveryActive:row.recoveryActive,recoveryStartedAt:row.recoveryStartedAt,recoveryStartDistance01:row.recoveryStartDistance01 as number,
-    recoveryLastDistance01:row.recoveryLastDistance01 as number,recoverySamples:validCounter(row.recoverySamples,0),
+    recoveryLastDistance01:row.recoveryLastDistance01 as number,recoverySamples:validCounter(row.recoverySamples,0),interoceptiveDurationMs:validCounter(row.interoceptiveDurationMs,0),
     meanRecoveryRate01:row.meanRecoveryRate01 as number,resilience01:row.resilience01 as number,resilienceConfidence01:row.resilienceConfidence01 as number};
 }
 function moodDistance(m:AffectMoodState):number {
@@ -278,7 +290,8 @@ function updateMoodFromBody(m:AffectMoodState,pressure:number,mismatch:number,at
   const next:AffectMoodState={...advanced,valence01:c(advanced.valence01+(c(.53-pressure*.22-mismatch*.08)-advanced.valence01)*alpha(8*60_000)),
     arousal01:c(advanced.arousal01+(c(.18+pressure*.42+mismatch*.14)-advanced.arousal01)*alpha(2*60_000)),
     stress01:c(advanced.stress01+(c(.12+pressure*.68+mismatch*.16)-advanced.stress01)*alpha(3*60_000)),
-    interoceptiveSamples:Math.min(Number.MAX_SAFE_INTEGER,advanced.interoceptiveSamples+1)};
+    interoceptiveSamples:Math.min(Number.MAX_SAFE_INTEGER,advanced.interoceptiveSamples+1),
+    interoceptiveDurationMs:Math.min(Number.MAX_SAFE_INTEGER,advanced.interoceptiveDurationMs+elapsedMs)};
   return recordMoodRecovery(m,next,elapsedMs,at);
 }
 function projectMood(m:AffectMoodState,now:number):AffectMoodFrameV1 {
@@ -365,24 +378,55 @@ export class EmotionAppraisalEngine {
   snapshot(){return structuredClone(this.state);}
   moodSnapshot(now=Date.now()):AffectMoodFrameV1{return projectMood(this.state.mood,Number.isFinite(now)&&now>=0?now:this.state.mood.lastAt);}
 
-  observeInteroception(input:{energy01:number;thermal01:number;capacity01:number;load01:number;homeostaticPressure01?:number;at?:number}):InteroceptiveAffectState{
-    const st=this.state.interoception;
+  observeInteroception(input:{energy01:number;thermal01:number;capacity01:number;load01:number;homeostaticPressure01?:number;at?:number;sampleId?:string}):InteroceptiveAffectState{
+    const st=this.state.interoception,now=Date.now(),requestedAt=input.at===undefined?now:input.at;
+    const numeric=[input.energy01,input.thermal01,input.capacity01,input.load01,input.homeostaticPressure01??0];
+    if(typeof requestedAt!=='number'||!Number.isFinite(requestedAt)||requestedAt<0||requestedAt>now+250||
+       !numeric.every(value=>typeof value==='number'&&Number.isFinite(value))){
+      this.state.interoception={...st,invalidObservations:Math.min(Number.MAX_SAFE_INTEGER,st.invalidObservations+1)};
+      return structuredClone(this.state.interoception);
+    }
+    const sampleId=input.sampleId===undefined?null:validText(input.sampleId,180);
+    if(input.sampleId!==undefined&&!sampleId){
+      this.state.interoception={...st,invalidObservations:Math.min(Number.MAX_SAFE_INTEGER,st.invalidObservations+1)};
+      return structuredClone(this.state.interoception);
+    }
+    if(sampleId&&st.recentSampleIds.includes(sampleId)){
+      this.state.interoception={...st,duplicateObservations:Math.min(Number.MAX_SAFE_INTEGER,st.duplicateObservations+1)};
+      return structuredClone(this.state.interoception);
+    }
+    if(st.timebaseInitialized&&requestedAt<st.lastAt){
+      this.state.interoception={...st,outOfOrderObservations:Math.min(Number.MAX_SAFE_INTEGER,st.outOfOrderObservations+1)};
+      return structuredClone(this.state.interoception);
+    }
+    const elapsedMs=st.timebaseInitialized?Math.min(MAX_INTEROCEPTIVE_ELAPSED_MS,Math.max(0,requestedAt-st.lastAt)):(st.cycles===0?1_000:0);
     const actual={energy01:c(input.energy01),thermal01:c(input.thermal01),capacity01:c(input.capacity01),load01:c(input.load01)};
     const errors=[Math.abs(actual.energy01-st.predicted.energy01),Math.abs(actual.thermal01-st.predicted.thermal01),Math.abs(actual.capacity01-st.predicted.capacity01),Math.abs(actual.load01-st.predicted.load01)];
     const mismatch=c(errors[0]*.28+errors[1]*.18+errors[2]*.30+errors[3]*.24);
     const pressure=c(mismatch*.46+c(input.homeostaticPressure01??0)*.54);
     const stable=c(1-mismatch);
-    const recovery=c((actual.energy01*.35+actual.capacity01*.35+(1-actual.thermal01)*.15+(1-actual.load01)*.15));
+    const recovery=c(actual.energy01*.35+actual.capacity01*.35+(1-actual.thermal01)*.15+(1-actual.load01)*.15);
+    const predictionAlpha=interoceptiveAlpha(elapsedMs,5_000);
+    const meanAlpha=interoceptiveAlpha(elapsedMs,30_000);
+    const pressureTau=pressure>st.regulationPressure01?12_000:45_000;
+    const pressureAlpha=interoceptiveAlpha(elapsedMs,pressureTau);
+    const recoveryAlpha=interoceptiveAlpha(elapsedMs,45_000);
     const nextPred={
-      energy01:c(st.predicted.energy01*.82+actual.energy01*.18),
-      thermal01:c(st.predicted.thermal01*.82+actual.thermal01*.18),
-      capacity01:c(st.predicted.capacity01*.82+actual.capacity01*.18),
-      load01:c(st.predicted.load01*.82+actual.load01*.18),
+      energy01:c(st.predicted.energy01+(actual.energy01-st.predicted.energy01)*predictionAlpha),
+      thermal01:c(st.predicted.thermal01+(actual.thermal01-st.predicted.thermal01)*predictionAlpha),
+      capacity01:c(st.predicted.capacity01+(actual.capacity01-st.predicted.capacity01)*predictionAlpha),
+      load01:c(st.predicted.load01+(actual.load01-st.predicted.load01)*predictionAlpha),
     };
-    const n=st.cycles+1;
-    this.state.interoception={...st,cycles:n,meanMismatch01:c(st.meanMismatch01*.94+mismatch*.06),lastMismatch01:mismatch,regulationPressure01:c(st.regulationPressure01*.9+pressure*.1),stability01:c(st.stability01*.94+stable*.06),recovery01:c(st.recovery01*.9+recovery*.1),predictionCalibration01:c(st.predictionCalibration01*.94+(1-mismatch)*.06),lastObserved:actual,predicted:nextPred};
-    const requestedAt=typeof input.at==='number'&&Number.isFinite(input.at)&&input.at>=0?input.at:Date.now();
-    if(requestedAt>=this.state.mood.lastAt&&requestedAt<=Date.now()+250)this.state.mood=updateMoodFromBody(this.state.mood,pressure,mismatch,requestedAt);
+    const n=Math.min(Number.MAX_SAFE_INTEGER,st.cycles+1);
+    const recentSampleIds=sampleId?[...st.recentSampleIds.filter(id=>id!==sampleId),sampleId].slice(-64):st.recentSampleIds;
+    this.state.interoception={...st,cycles:n,lastAt:requestedAt,timebaseInitialized:true,recentSampleIds,
+      meanMismatch01:c(st.meanMismatch01+(mismatch-st.meanMismatch01)*meanAlpha),lastMismatch01:mismatch,
+      regulationPressure01:c(st.regulationPressure01+(pressure-st.regulationPressure01)*pressureAlpha),
+      stability01:c(st.stability01+(stable-st.stability01)*meanAlpha),
+      recovery01:c(st.recovery01+(recovery-st.recovery01)*recoveryAlpha),
+      predictionCalibration01:c(st.predictionCalibration01+((1-mismatch)-st.predictionCalibration01)*meanAlpha),
+      lastObserved:actual,predicted:nextPred};
+    if(requestedAt>=this.state.mood.lastAt)this.state.mood=updateMoodFromBody(this.state.mood,pressure,mismatch,requestedAt);
     return structuredClone(this.state.interoception);
   }
 
@@ -440,7 +484,7 @@ export class EmotionAppraisalEngine {
     const learned=calibration&&calibration.attempts>=3?(calibration.meanBenefit01-.5)*.035*c((calibration.attempts-2)/4):0;
     const confidenceGate=c((e.confidence01-.45)/.40),attentionGate=c(.35+e.interoceptiveDelta.attentionCapture01*.65);
     const pressure=c(intero.regulationPressure01),m=this.state.mood,moodAge=Math.max(0,now-m.lastAt);
-    const moodEvidence=c((m.events*2+m.interoceptiveSamples)/8),moodFreshness=Math.exp(-moodAge/(24*60*60_000));
+    const moodEvidence=c((m.events*2+m.interoceptiveDurationMs/60_000)/8),moodFreshness=Math.exp(-moodAge/(24*60*60_000));
     const stress=c((m.stress01-.18)/.82),lowValence=c((.5-m.valence01)/.5);
     const moodPrior:Record<AffectAction,number>={respond:-.008*stress,explore:-.012*stress+.005*c((m.valence01-.5)/.5)*(1-stress),
       verify:.010*stress+.003*lowValence,rest:.014*stress,reflect:.008*stress+.003*lowValence,wait:.003*stress,defer:.003*stress};
