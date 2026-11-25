@@ -187,8 +187,10 @@ highAcuteGateEngine.restore(highAcuteGateSnapshot);
 const slowOnlyNow=outcomeAt+30*60_000;
 assert.ok(Math.abs(lowAcuteGateEngine.actionBias('rest',slowOnlyNow)-highAcuteGateEngine.actionBias('rest',slowOnlyNow))<1e-6,
   'low confidence/attention on a stale acute emotion must not suppress slow mood and verified outcome priors');
-assert.notEqual(lowAcuteGateEngine.actionBias('verify',outcomeAt+200),highAcuteGateEngine.actionBias('verify',outcomeAt+200),
-  'acute confidence/attention must continue to gate the immediate emotional episode');
+assert.equal(lowAcuteGateEngine.snapshot().history[0].actionTendency,'engage',
+  'this fixture must exercise the engage emotional tendency');
+assert.notEqual(lowAcuteGateEngine.actionBias('respond',outcomeAt+200),highAcuteGateEngine.actionBias('respond',outcomeAt+200),
+  'acute confidence/attention must continue to gate the immediate emotional episode for an action in its active tendency prior');
 
 console.log('AFFECT_MOOD_ACTION_PRIOR_PAIRED=PASS',JSON.stringify(seedResults));
 
