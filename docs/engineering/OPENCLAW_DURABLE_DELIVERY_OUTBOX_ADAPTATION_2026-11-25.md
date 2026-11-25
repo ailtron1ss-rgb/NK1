@@ -11,8 +11,8 @@ The donor's durable outbox lifecycle is adapted as a TypeScript sidecar using NK
 
 ## Contract
 - A row stores only an opaque payloadRef, stable dedupeKey, sourceTaskId/initiativeId/decisionId, consent-scope revision, expiry and retry/lease metadata. Raw prompts, credentials, message bodies and file contents are not stored in the outbox.
-- Lifecycle: pending -> leased -> delivered, cancelled or dead-letter.
-- Leases recover after process interruption; claim increments a bounded attempt counter.
+- Lifecycle: pending -> leased -> delivered, cancelled or dead-letter. If a lease expires or the obligation expires while leased, the record moves to `reconciliation-required`; it is not automatically re-queued.
+- Leases recover after process interruption into a persisted quarantine state. Claim increments a bounded attempt counter; an expired lease alone is not proof that the external operation did not happen.
 - Retry uses bounded exponential backoff; exhausted attempts remain visible in dead-letter.
 - Acknowledgement requires the current lease owner and is one-shot.
 - Recipient idempotency uses the stable dedupeKey; transport delivery is at-least-once, never described as exactly-once.
@@ -25,7 +25,7 @@ The donor's durable outbox lifecycle is adapted as a TypeScript sidecar using NK
 - Existing consent and quiet-hours policy remains host/social-owner responsibility.
 - Runtime does not start a sender and gains no network permissions. prepareNextDeliveryObligation() returns a leased item only when a host-injected deliveryAdmission callback explicitly accepts it; absent callback means no claim.
 - The host sender must re-check current consent/quiet-hours and execute the actual outbound operation through the existing ActionGateway with the outbox dedupeKey as its provider idempotency token.
-- An ambiguous ActionGateway result must be reconciled before the sender acknowledges or retries the outbox item.
+- An ambiguous ActionGateway result must be reconciled before the sender acknowledges or retries the outbox item. `resolveReconciliation()` only accepts an explicit host outcome (`confirmed-delivered`, `confirmed-not-delivered`, or `cancelled`); unknown remains quarantined. A retry is only possible after confirmed-not-delivered, observes bounded backoff, and respects the attempt ceiling. Confirmed delivery settles the row without a duplicate send.
 - This is a durable obligation/transport lifecycle, not a new executor and not a claim that a production channel transport is connected.
 
 
