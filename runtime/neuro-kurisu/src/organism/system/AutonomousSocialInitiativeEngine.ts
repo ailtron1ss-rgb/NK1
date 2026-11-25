@@ -737,6 +737,7 @@ export class AutonomousSocialInitiativeEngine {
   acknowledgeWithState(
     id: string,
     at = Date.now(),
+    expectedAttemptCount?: number,
   ): { acknowledged: boolean; stateChanged: boolean } {
     const acknowledgedAt = safeTime(at);
     if (acknowledgedAt === undefined) return { acknowledged: false, stateChanged: false };
@@ -745,6 +746,8 @@ export class AutonomousSocialInitiativeEngine {
     if (!item || item.internalOnly === true || !this.mayDeliverUserVisible(acknowledgedAt) || item.status !== 'ready' || typeof item.stagedAt !== 'number'
       || typeof item.deliveryAttemptCount !== 'number' || !Number.isSafeInteger(item.deliveryAttemptCount) || item.deliveryAttemptCount < 1
       || typeof item.deliveryLeaseUntil !== 'number' || item.deliveryLeaseUntil <= acknowledgedAt
+      || (expectedAttemptCount !== undefined
+        && (!Number.isSafeInteger(expectedAttemptCount) || expectedAttemptCount !== item.deliveryAttemptCount))
       || acknowledgedAt < item.stagedAt || acknowledgedAt < item.createdAt
       || acknowledgedAt - item.createdAt > INITIATIVE_PENDING_TTL_MS) {
       return { acknowledged: false, stateChanged };
@@ -761,8 +764,8 @@ export class AutonomousSocialInitiativeEngine {
   }
 
   /** Compatibility surface for callers that need only the acknowledgement result. */
-  acknowledge(id: string, at = Date.now()): boolean {
-    return this.acknowledgeWithState(id, at).acknowledged;
+  acknowledge(id: string, at = Date.now(), expectedAttemptCount?: number): boolean {
+    return this.acknowledgeWithState(id, at, expectedAttemptCount).acknowledged;
   }
 
   defer(id: string, at = Date.now()): boolean {
