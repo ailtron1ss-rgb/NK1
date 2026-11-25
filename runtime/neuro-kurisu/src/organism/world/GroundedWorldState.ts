@@ -3,6 +3,19 @@ import type { P41PerceptionState } from '../cognition/P41SemanticPerception.ts';
 import type { PerceptualEvidenceState } from '../body/PerceptualEvidenceCompiler.ts';
 
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
+type GroundedEvidenceKind='observed'|'model-output'|'derived'|'conflict'|'unresolved';
+const restoredEvidenceKind=(value:unknown):GroundedEvidenceKind=>{
+  // Persisted snapshots are data, not a live host attestation.
+  if(value==='observed')return 'model-output';
+  return value==='model-output'||value==='derived'||value==='conflict'||value==='unresolved'?value:'unresolved';
+};
+const restoredModalityEvidence=(value:unknown):Partial<Record<string,GroundedEvidenceKind>>=>{
+  if(!value||typeof value!=='object'||Array.isArray(value))return {};
+  return Object.fromEntries(Object.entries(value as Record<string,unknown>)
+    .filter(([key])=>/^[a-z][a-z0-9_-]{0,31}$/i.test(key))
+    .slice(0,12)
+    .map(([key,kind])=>[key,restoredEvidenceKind(kind)]));
+};
 const norm=(x:string)=>String(x??'').trim().toLowerCase().slice(0,120);
 // Match P41 cleanTrackId: identity tokens retain case and only normalize Unicode/whitespace.
 const cleanIdentity=(value:unknown)=>{
@@ -85,7 +98,7 @@ export class GroundedWorldState {
           modalities:Array.isArray(e?.modalities)?[...new Set(e.modalities.filter((x:any)=>typeof x==='string'))]:[],
           trackAliases:Array.isArray(e?.trackAliases)?[...new Set(e.trackAliases.filter((x:any)=>typeof x==='string'))].slice(-16):[],
           sourceIds:Array.isArray(e?.sourceIds)?[...new Set(e.sourceIds.filter((x:any)=>typeof x==='string'))].slice(-16):[],
-          modalityEvidenceKinds:e?.modalityEvidenceKinds&&typeof e.modalityEvidenceKinds==='object'?{...e.modalityEvidenceKinds}:{},
+          modalityEvidenceKinds:restoredModalityEvidence(e?.modalityEvidenceKinds),
           ...(validImageEvidence?{imageBox,imageBoxCameraId,imageBoxAt,imageBoxConfidence01}:{imageBox:undefined,imageBoxCameraId:undefined,imageBoxAt:undefined,imageBoxConfidence01:undefined}),
           presenceStatus:['visible','fading','unknown'].includes(e?.presenceStatus)?e.presenceStatus:'unknown',
           persistence01:clamp(Number(e?.persistence01??0)),
@@ -97,7 +110,7 @@ export class GroundedWorldState {
         };
       }):[],
       relations:Array.isArray(r.relations)?r.relations.slice(0,256):[],
-      events:Array.isArray(r.events)?r.events.slice(0,96):[],
+      events:Array.isArray(r.events)?r.events.slice(0,96).map((event:any)=>({...event,...(event?.evidenceKind!==undefined?{evidenceKind:restoredEvidenceKind(event.evidenceKind)}:{}),...(event?.modalityEvidenceKinds!==undefined?{modalityEvidenceKinds:restoredModalityEvidence(event.modalityEvidenceKinds)}:{})})):[],
       facts:Array.isArray(r.facts)?r.facts.slice(0,192):[],
       provenanceIds:Array.isArray(r.provenanceIds)?r.provenanceIds.slice(0,128):[],
     };
