@@ -6,6 +6,7 @@ on:
     paths:
       - 'runtime/neuro-kurisu/src/organism/learning/VerifiedSkillShadowEvidence.ts'
       - 'runtime/neuro-kurisu/src/organism/learning/VersionedSkillCandidateStore.ts'
+      - 'runtime/neuro-kurisu/scripts/create-skill-promotion-approval-request.mjs'
       - 'runtime/neuro-kurisu/tests/p23-skill-shadow-evidence-freshness.mjs'
       - 'runtime/neuro-kurisu/package.json'
       - '.github/workflows/nk1-p23-skill-shadow-evidence-freshness.yml'
@@ -38,5 +39,7 @@ jobs:
         run: npm run test:p23:verified-skill-shadow-evidence
       - name: Existing versioned skill candidate lifecycle
         run: npm run test:p23:versioned-skill-candidate-store
+      - name: Promotion approval request uses promotion freshness
+        run: npm run test:p23:create-skill-promotion-approval-request
       - name: Runtime type syntax validation
         run: npm run typecheck
