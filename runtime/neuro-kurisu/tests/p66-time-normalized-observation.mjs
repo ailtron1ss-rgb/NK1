@@ -20,6 +20,19 @@ assert.ok(Math.abs(denseState.meanStress01 - sparseState.meanStress01) < .035,
 assert.ok(Math.abs(denseState.recoveryDebt01 - sparseState.recoveryDebt01) < .035,
   `recovery debt must depend on elapsed time, not observation count (${denseState.recoveryDebt01} vs ${sparseState.recoveryDebt01})`);
 
+// Ten minutes of elapsed time must not be silently truncated to the old five-minute cap.
+const longDense = new P66InteroceptiveHomeostasis();
+const longSparse = new P66InteroceptiveHomeostasis();
+for (let at = 1_000; at <= 601_000; at += 1_000) sample(longDense, at, 'cognitive-cycle', `long:${at}`);
+sample(longSparse, 1_000, 'cognitive-cycle', 'long:1000');
+sample(longSparse, 601_000, 'cognitive-cycle', 'long:601000');
+const longDenseState = longDense.snapshot();
+const longSparseState = longSparse.snapshot();
+for (const key of ['meanError01', 'meanStress01', 'meanCapacity01', 'recoveryDebt01']) {
+  assert.ok(Math.abs(longDenseState[key] - longSparseState[key]) < 1e-9,
+    `ten-minute dense and sparse observation schedules must agree for ${key} (${longDenseState[key]} vs ${longSparseState[key]})`);
+}
+
 const dedup = new P66InteroceptiveHomeostasis();
 sample(dedup, 1_000, 'body-telemetry', 'sensor:1000');
 const afterFirst = dedup.snapshot();
@@ -44,6 +57,9 @@ const calm = { ...stressed, energy01: .68, thermal01: .2, capacity01: .72, load0
 for (let at = 1_000; at <= 11_000; at += 1_000) stable.observe({ tick: at / 1000, at, ...calm, awake: true, source: 'cognitive-cycle' });
 assert.equal(stable.snapshot().stableDurationMs, 10_000,
   'the first stable observation establishes a baseline; only the ten elapsed one-second intervals count');
+stable.observe({ tick: 611, at: 611_000, ...calm, awake: true, source: 'cognitive-cycle' });
+assert.equal(stable.snapshot().stableDurationMs, 0,
+  'a ten-minute gap without observations cannot be treated as continuously confirmed stability');
 
 const legacy = new P66InteroceptiveHomeostasis();
 const old = { ...afterFirst };
@@ -55,6 +71,14 @@ delete old.stableDurationMs;
 delete old.invalidTimestampObservations;
 legacy.restore(old);
 assert.equal(legacy.snapshot().duplicateObservations, 0, 'legacy snapshots must default new cadence diagnostics safely');
+
+const futureRestore = new P66InteroceptiveHomeostasis();
+futureRestore.restore({ ...afterFirst, lastAt: Date.now() + 60_000 });
+assert.equal(futureRestore.snapshot().lastAt, 0,
+  'a far-future restored timestamp must fail closed to the safe baseline');
+futureRestore.observe({ tick: 1, at: Date.now(), ...calm, awake: true, source: 'cognitive-cycle' });
+assert.equal(futureRestore.snapshot().cycles, 2,
+  'a future restored clock must not reject the next valid observation as out of order');
 
 console.log('P66_TIME_NORMALIZED_OBSERVATION=PASS', JSON.stringify({
   denseCycles: denseState.cycles, sparseCycles: sparseState.cycles,
