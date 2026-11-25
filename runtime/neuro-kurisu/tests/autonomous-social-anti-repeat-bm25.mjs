@@ -28,6 +28,7 @@ function deliver(engine, at, topic, message) {
 }
 
 const engine = new AutonomousSocialInitiativeEngine();
+engine.setConsent(true); // This suite tests delivery behavior, so opt in explicitly.
 const unrelated = [
   ['Acoustic embodiment calibration under changing latency budgets', 'We examined acoustic embodiment calibration under several latency budgets.'],
   ['Tactile sensor grounding across uncertain physical surfaces', 'We explored tactile sensor grounding when physical surfaces were uncertain.'],
