@@ -42,7 +42,7 @@ for (const [name, altered, message] of [
   ['bad manifest', { ...base, manifestFingerprint: 'x' }, /SHA-256/],
   ['unsafe observation filename', { ...base, observationFileName: '../outside.json' }, /safe basename/],
   ['bad inherit-env', { ...base, command: { ...base.command, inheritEnv: ['PATH; touch /tmp/pwn'] } }, /environment variable names/],
-  ['duplicate sensitive grants', { ...base, command: { ...base.command, allowSensitiveEnv: ['NK1_TEST_ACCESS_TOKEN', 'NK1_TEST_ACCESS_TOKEN'] } }, /unique environment variable names/],
+  ['duplicate sensitive grants', { ...base, command: { ...base.command, allowSensitiveEnv: ['NK1_TEST_ACCESS_TOKEN', 'NK1_TEST_ACCESS_TOKEN'] } }, /unique sensitive environment variable names/],
   ['unbound sensitive grant', { ...base, command: { ...base.command, allowSensitiveEnv: ['DATABASE_URL'] } }, /bind to supplied command keys/],
   ['non-sensitive grant', { ...base, command: { ...base.command, allowSensitiveEnv: ['NK1_TEST_MODE'] } }, /sensitive environment variable names/],
   ['unknown property', { ...base, shell: true }, /unknown configuration fields/],
