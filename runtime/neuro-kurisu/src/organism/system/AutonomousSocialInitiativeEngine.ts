@@ -370,6 +370,7 @@ export class AutonomousSocialInitiativeEngine {
       suppressedByConsent:this.state.suppressedByConsent,suppressedByQuietHours:this.state.suppressedByQuietHours,
       outbox: {
         pending: summary.deliveryPending,
+        deadLettered: summary.deliveryDeadLettered,
         leased: summary.deliveryLeased,
         backoff: summary.deliveryBackoff,
         claimable: summary.deliveryClaimable,
@@ -788,6 +789,8 @@ export class AutonomousSocialInitiativeEngine {
       deliveryEligiblePlans: this.state.initiatives.filter(i => i.status === 'planned' && i.internalOnly !== true).length,
       ready: this.state.initiatives.filter(i => i.status === 'ready' && i.internalOnly !== true).length,
       deliveryPending: readyItems.length,
+      deliveryDeadLettered: this.state.initiatives.filter(i => i.status === 'deferred'
+        && i.reason === 'proactive-delivery-retry-budget-exhausted').length,
       deliveryLeased: readyItems.filter(i => typeof i.deliveryLeaseUntil === 'number' && i.deliveryLeaseUntil > now).length,
       deliveryBackoff: readyItems.filter(i => (i.deliveryLeaseUntil === undefined || i.deliveryLeaseUntil <= now)
         && typeof i.deliveryNextAttemptAt === 'number' && i.deliveryNextAttemptAt > now).length,
