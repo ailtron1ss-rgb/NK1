@@ -12,7 +12,7 @@ export type LabsTab = "mind" | "memory" | "lab" | "skills" | "evidence";
 export type AppSection = "home" | "memory" | "motivation" | "settings" | "more";
 export type AvatarViewMode = "live2d" | "legacy" | "original" | "3d";
 export type UiConnectionStatus = "connecting" | "connected" | "degraded" | "disconnected";
-export type VoiceInputStatus = "idle" | "listening" | "stopping" | "transcribed" | "empty" | "error" | "stop-unconfirmed";
+export type VoiceInputStatus = "idle" | "requesting" | "listening" | "stopping" | "transcribed" | "empty" | "error" | "stop-unconfirmed";
 
 export interface UiConnectionState {
   status: UiConnectionStatus;
@@ -108,8 +108,13 @@ export const useKurisu = create<KurisuStore>((set, get) => {
       const chat = useCachedChat ? loadChat() : current.snap.chat;
       const nextSnapshot = toOrganismSnapshot(remote, chat);
       const languageDegraded = remote.language?.degraded === true;
+      const currentVoiceStatus = get().voiceInputStatus;
+      const voiceInputStatus = nextSnapshot.voice.listening && (currentVoiceStatus === "requesting" || currentVoiceStatus === "listening")
+        ? "listening"
+        : currentVoiceStatus;
       set({
         snap: nextSnapshot,
+        voiceInputStatus,
         connection: {
           status: "connected",
           version: remote.version,
@@ -194,7 +199,7 @@ export const useKurisu = create<KurisuStore>((set, get) => {
 
     listen: async () => {
       const current = get();
-      if (current.voiceInputStatus === "listening" || current.voiceInputStatus === "stopping" || current.voiceInputStatus === "stop-unconfirmed") {
+      if (current.voiceInputStatus === "requesting" || current.voiceInputStatus === "listening" || current.voiceInputStatus === "stopping" || current.voiceInputStatus === "stop-unconfirmed") {
         set({ voiceInputError: "The previous microphone capture has not been confirmed stopped." });
         return null;
       }
@@ -207,7 +212,7 @@ export const useKurisu = create<KurisuStore>((set, get) => {
         return null;
       }
       const operationId = ++voiceInputOperationId;
-      set({ voiceInputStatus: "listening", voiceInputError: null });
+      set({ voiceInputStatus: "requesting", voiceInputError: null });
       try {
         // ActionGateway raises an explicit microphone-input approval challenge
         // before capture. The API client resumes only after that approval.
