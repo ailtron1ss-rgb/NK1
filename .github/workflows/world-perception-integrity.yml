@@ -12,6 +12,8 @@ on:
       - "runtime/neuro-kurisu/src/organism/cognition/P41SemanticPerception.ts"
       - "runtime/neuro-kurisu/src/organism/world/GroundedWorldState.ts"
       - "runtime/neuro-kurisu/src/organism/body/PerceptualEvidenceCompiler.ts"
+      - "runtime/neuro-kurisu/src/organism/system/ExternalEvidenceTrust.ts"
+      - "runtime/neuro-kurisu/tests/external-evidence-trust-restore-integrity.mjs"
       - "runtime/neuro-kurisu/src/organism/body/GeminiVisionSemanticBackend.ts"
       - "runtime/neuro-kurisu/src/organism/body/TemporalObjectTracker.ts"
       - "runtime/neuro-kurisu/tests/temporal-object-tracker.mjs"
@@ -40,6 +42,8 @@ on:
       - "runtime/neuro-kurisu/src/organism/cognition/P41SemanticPerception.ts"
       - "runtime/neuro-kurisu/src/organism/world/GroundedWorldState.ts"
       - "runtime/neuro-kurisu/src/organism/body/PerceptualEvidenceCompiler.ts"
+      - "runtime/neuro-kurisu/src/organism/system/ExternalEvidenceTrust.ts"
+      - "runtime/neuro-kurisu/tests/external-evidence-trust-restore-integrity.mjs"
       - "runtime/neuro-kurisu/src/organism/body/GeminiVisionSemanticBackend.ts"
       - "runtime/neuro-kurisu/src/organism/body/TemporalObjectTracker.ts"
       - "runtime/neuro-kurisu/tests/temporal-object-tracker.mjs"
@@ -102,6 +106,9 @@ jobs:
       - name: Run P41 independent-evidence truthfulness regression
         working-directory: runtime/neuro-kurisu
         run: npm run test:p41:truthfulness
+      - name: Verify restored external evidence trust cannot self-promote
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/external-evidence-trust-restore-integrity.mjs
       - name: Verify grounded object identity and evidence provenance
         working-directory: runtime/neuro-kurisu
         run: node --experimental-strip-types tests/world-perception-grounded-identity-provenance.mjs
