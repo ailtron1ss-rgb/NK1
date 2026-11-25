@@ -373,7 +373,8 @@ export class GroundedWorldState {
     // Canonical world-context objects preserve their own IDs and their actual
     // knowledge flags. A confidence score is not a resource value or a grasp.
     for(const o of (base?.objects??[])){
-      const sourceId=cleanIdentity(o.sourceId)||'world-context';
+      const suppliedSourceId=cleanIdentity(o.sourceId);
+      const sourceId=suppliedSourceId||'world-context';
       const objectId=cleanIdentity(o.id);
       const trackId=objectId?('world:'+sourceId+':'+objectId):undefined;
       const evidenceKind=normalizeEvidence(o.evidenceKind);
@@ -397,7 +398,7 @@ export class GroundedWorldState {
         modalities:['world'],
         ...(trackId?{trackId}:{}),
         modalityEvidenceKinds:{world:evidenceKind},
-        sourceIds:sourceId?[sourceId]:[],
+        sourceIds:suppliedSourceId?[suppliedSourceId]:[],
         ...(hasPosition?{position:{x:Number(o.x),y:Number(o.y),z:Number(o.z)},positionFrameId:coordinateFrameId}:{position:null}),
         ...(hasImageBox?{imageBox:{x:Number(imageBox!.x),y:Number(imageBox!.y),width:Number(imageBox!.width),height:Number(imageBox!.height)},imageBoxCameraId,imageBoxAt,imageBoxConfidence01}:{}),
         value:Number.isFinite(o.value)?o.value:0,
