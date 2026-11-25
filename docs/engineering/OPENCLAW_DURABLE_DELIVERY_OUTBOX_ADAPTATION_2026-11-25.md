@@ -28,6 +28,17 @@ The donor's durable outbox lifecycle is adapted as a TypeScript sidecar using NK
 - An ambiguous ActionGateway result must be reconciled before the sender acknowledges or retries the outbox item.
 - This is a durable obligation/transport lifecycle, not a new executor and not a claim that a production channel transport is connected.
 
+
+## Exclusive ownership boundary (2026-11-25)
+
+The generic outbox deliberately supports only `task-completion`, `reminder`, `notification`, and `custom` obligations. It explicitly rejects `initiative-message`.
+
+User-visible proactive social initiative delivery remains exclusively owned by the existing `AutonomousSocialInitiativeEngine` lifecycle in [PR #1181](https://github.com/ailtron1ss-rgb/NK1/pull/1181): its stable initiative identity, claim lease, bounded retry, consent/quiet-hours re-check, and browser durable-chat-before-ACK gate form one domain-specific state machine.
+
+Do not enqueue the same social initiative into this generic outbox. Doing so would create two competing lease/attempt clocks and ambiguous ACK ownership for one logical user-visible message. If a future architecture consolidates the two paths, it must use one canonical lease owner and one authoritative acknowledgement boundary; that consolidation is outside this PR.
+
+Regression coverage explicitly asserts that enqueueing `initiative-message` fails with `delivery-outbox-kind-invalid`. The generic outbox still carries optional `initiativeId` metadata only as correlation metadata for a generic obligation; it does not make the social initiative engine's ready-message stream eligible for this queue.
+
 ## Verification
 - Added focused contract tests for deduplication, lease ownership, expiry recovery, retry backoff, dead-letter retention, cancellation, restore integrity and bounded capacity.
 - PR workflow runs the new contract, existing consent/OpenLoop regressions and runtime typecheck.
