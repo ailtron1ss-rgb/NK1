@@ -58,3 +58,20 @@ test("sprite semantics take precedence over misleading legacy filenames and shee
   assert.match(engine, /visual review found several "lab_\*" filenames depict sleep, phone use or unrelated gestures/);
   assert.doesNotMatch(engine, /if \(preferLab\) \{\s*const labCandidates/);
 });
+
+
+test("legacy outfit preference hydrates after mount without SSR mismatch or default overwrite", () => {
+  assert.match(source, /const \[outfit, setOutfit\] = useState<VisualProfileId>\("lab_coat"\)/);
+  assert.match(source, /const \[preferencesHydrated, setPreferencesHydrated\] = useState\(false\)/);
+  assert.match(source, /setOutfit\(readStoredOutfit\(\)\)/);
+  assert.match(source, /setPreferencesHydrated\(true\)/);
+  assert.match(source, /if \(!preferencesHydrated\) return;/);
+  assert.doesNotMatch(source, /useState\(readStoredOutfit\)/);
+});
+
+test("legacy outfit picker exposes accessible disclosure and selected profile state", () => {
+  assert.match(source, /aria-expanded=\{open\}/);
+  assert.match(source, /aria-controls="legacy-outfit-options"/);
+  assert.match(source, /id="legacy-outfit-options"/);
+  assert.match(source, /aria-pressed=\{outfit === item\.id\}/);
+});
