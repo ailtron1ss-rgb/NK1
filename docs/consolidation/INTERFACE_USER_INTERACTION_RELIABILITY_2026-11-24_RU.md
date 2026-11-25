@@ -59,7 +59,7 @@
 - Memory Explorer использует read-only MemoryOS2 inspector: current/all temporal scope, semantic preview, источник/происхождение записи, confidence/salience и экспорт сырого ответа.
 - Runtime Health panel агрегирует независимые GET snapshots: status-lite, session continuity и action-recovery queue. Периодическое обновление останавливается на скрытой вкладке.
 - Action recovery queue остаётся только диагностикой; UI не повторяет и не исполняет неопределённые внешние действия автоматически.
-- Command Palette открывается по Ctrl/⌘+K и через видимую кнопку; поддерживает переход по разделам, обновление canonical snapshot и sleep/wake, когда runtime подключён.
+- Command Palette открывается по Ctrl/⌘+K и через видимую кнопку; поддерживает переход по разделам, обновление canonical snapshot и sleep/wake, когда runtime подключён. Стрелки перемещают выбор, Enter запускает команду, Escape закрывает диалог; после закрытия фокус возвращается к кнопке-источнику.
 - Chat composer поддерживает многострочный ввод (Enter отправляет, Shift+Enter добавляет строку), копирование ответов, локальный экспорт истории и подтверждение очистки только browser transcript.
 
 ## Проверочные модули
@@ -70,7 +70,7 @@
 - `app/scripts/voice-interaction.test.mjs`: валидный transcript, пустой/неверный ответ, ограничение размера, runtime listening status, fail-closed stop verification.
 - `app/scripts/memory-explorer.test.mjs`: безопасная проекция read-only MemoryOS2 response и malformed records.
 - `app/scripts/runtime-diagnostics.test.mjs`: read-only recovery queue и валидные operational metrics.
-- `app/scripts/command-palette.test.mjs`: нормализованный поиск команд.
+- `app/scripts/command-palette.test.mjs`: нормализованный поиск, циклическая keyboard navigation и пропуск недоступных команд.
 - `app/scripts/action-approval-decline.test.mjs`: явный owner decline не исполняет side effect и не маскируется под unknown delivery.
 - `app/scripts/polling-schedule.test.mjs`: bounded exponential backoff.
 
@@ -86,4 +86,4 @@
 
 ## Текущая проверка
 
-На проверенном exact HEAD `7ebc63c9edb812c0f7c4fd763e7baf5ef5b78ec5` GitHub Actions app workflow завершился успешно: 655/655 script tests, TypeScript typecheck и client/SSR/Nitro development bundle build. Последующее исправление fail-closed microphone stop добавлено отдельными коммитами и требует повторного exact-HEAD прогона до объявления финального CI gate зелёным.
+На проверенном exact HEAD `7ebc63c9edb812c0f7c4fd763e7baf5ef5b78ec5` GitHub Actions app workflow завершился успешно: 655/655 script tests, TypeScript typecheck и client/SSR/Nitro development bundle build. После этого добавлены fail-closed microphone-stop проверка и клавиатурная навигация command palette; они проходят отдельный exact-HEAD CI перед закрытием PR.
