@@ -314,3 +314,12 @@ test("Legacy outfit controls are not covered by the global avatar toolbar on mob
  const stage=await readFile(path.join(root,"src/components/AvatarStage.tsx"),"utf8");
  assert.match(stage,/mode === "3d" \|\| mode === "legacy" \? "relative z-30 flex w-full flex-wrap items-center gap-2 border-b border-border bg-black\/70 p-2 backdrop-blur"\s*:\s*"absolute left-3 top-3 z-30/);
 });
+
+test("3D pointer picking declares the Three.js raycaster and vector types",async()=>{
+ const stage=await readFile(stagePath,"utf8");
+ const threeTypes=await readFile(path.join(root,"src/types/three.d.ts"),"utf8");
+ assert.match(stage,/new THREE\.Vector2\(/);
+ assert.match(stage,/new THREE\.Raycaster\(/);
+ assert.match(threeTypes,/export const Vector2:any/);
+ assert.match(threeTypes,/export const Raycaster:any/);
+});
