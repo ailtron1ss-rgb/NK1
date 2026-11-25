@@ -91,6 +91,25 @@ testCase('quarantined external receipts create bounded re-verification pressure 
   });
   assert.ok(saturated.unresolved01 <= 0.45,
     'quarantine pressure must remain bounded under receipt flooding');
+  const singleReceipt = projectWorldCognitiveSignal({
+    snapshot: baseSnapshot({}, {
+      quarantinedOutcomes: [
+        { id: 'same-receipt', label: 'external-receipt:explore:executed:device-telemetry', at: 99_000 },
+      ],
+    }),
+    at: 100_000,
+  });
+  const duplicateReceipt = projectWorldCognitiveSignal({
+    snapshot: baseSnapshot({}, {
+      quarantinedOutcomes: [
+        { id: 'same-receipt', label: 'external-receipt:explore:executed:device-telemetry', at: 99_000 },
+        { id: 'same-receipt', label: 'external-receipt:explore:executed:device-telemetry', at: 99_000 },
+      ],
+    }),
+    at: 100_000,
+  });
+  assert.equal(duplicateReceipt.unresolved01, singleReceipt.unresolved01,
+    'duplicate diagnostic receipt IDs must not multiply verification pressure');
 });
 
 
