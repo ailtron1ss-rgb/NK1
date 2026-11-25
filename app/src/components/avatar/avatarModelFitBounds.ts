@@ -24,6 +24,15 @@ function isFiniteBox(bounds: Box3): boolean {
   ].every(Number.isFinite);
 }
 
+function isEffectivelyVisible(node: any): boolean {
+  let current = node;
+  while (current) {
+    if (current.visible === false) return false;
+    current = current.parent ?? null;
+  }
+  return true;
+}
+
 function isEnvironmentMesh(node: any, bounds: Box3): boolean {
   const normalizedName = String(node.name ?? "")
     .toLowerCase()
@@ -55,7 +64,7 @@ export function resolveAvatarModelFitBounds(root: any): AvatarModelFitBounds {
   let excludedEnvironmentMeshes = 0;
 
   root.traverse((node: any) => {
-    if (!node?.isMesh || !node.geometry || node.visible === false) return;
+    if (!node?.isMesh || !node.geometry || !isEffectivelyVisible(node)) return;
 
     const bounds = new THREE.Box3().setFromObject(node);
     if (!isFiniteBox(bounds)) return;
