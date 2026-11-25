@@ -18,7 +18,8 @@ export class ProactiveDeliveryCoordinator {
       || typeof runtime.autonomousDialogueReady !== "function"
       || typeof runtime.acknowledgeAutonomousDialogue !== "function"
       || typeof runtime.autonomousDialogueDeliveryPolicy !== "function"
-      || typeof runtime.setAutonomousDialogueConsent !== "function") {
+      || typeof runtime.setAutonomousDialogueConsent !== "function"
+      || typeof runtime.setAutonomousDialogueQuietHours !== "function") {
       throw new TypeError("proactive-delivery-runtime-contract-invalid");
     }
     if (!leases || typeof leases.issue !== "function" || typeof leases.matches !== "function"
@@ -48,6 +49,20 @@ export class ProactiveDeliveryCoordinator {
     const policy = await this.runtime.setAutonomousDialogueConsent(consentGranted);
     if (!consentGranted) this.leases.clear();
     return policy;
+  }
+
+  async setQuietHours(input) {
+    if (!input || typeof input !== "object" || Array.isArray(input)
+      || typeof input.enabled !== "boolean"
+      || !Number.isSafeInteger(input.startHourUtc) || input.startHourUtc < 0 || input.startHourUtc > 23
+      || !Number.isSafeInteger(input.endHourUtc) || input.endHourUtc < 0 || input.endHourUtc > 23) {
+      throw new TypeError("invalid-proactive-quiet-hours");
+    }
+    return this.runtime.setAutonomousDialogueQuietHours({
+      enabled: input.enabled,
+      startHourUtc: input.startHourUtc,
+      endHourUtc: input.endHourUtc,
+    });
   }
 
   async claim() {
