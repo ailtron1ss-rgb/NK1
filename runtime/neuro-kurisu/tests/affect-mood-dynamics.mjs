@@ -180,7 +180,7 @@ assert.equal(restoredOutcome.snapshot().mood.outcomeUpdates,beforeDuplicate.mood
 const successfulVerified=new EmotionAppraisalEngine();
 successfulVerified.restore(beforeDuplicate);
 successfulVerified.recordOutcome({
-  decisionId:'decision:verified-recovery',emotionId:failedEpisode.id,at:outcomeAt+60_000,verified01:1,
+  decisionId:'decision:verified-recovery',emotionId:failedEpisode.id,at:Date.now(),verified01:1,
   action:'rest',success01:.98,surprise01:.02,regulationCost01:.05,
 });
 assert.ok(successfulVerified.snapshot().mood.valence01>beforeDuplicate.mood.valence01,
