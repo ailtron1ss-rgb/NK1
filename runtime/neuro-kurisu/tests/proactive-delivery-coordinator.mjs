@@ -27,6 +27,9 @@ function fixture({ acknowledge = async () => true } = {}) {
     async setAutonomousDialogueConsent(value) {
       return { consentGranted: value, mayDeliverUserVisible: value };
     },
+    async setAutonomousDialogueQuietHours(input) {
+      return { consentGranted: true, quietHoursEnabled: input.enabled, quietStartHourUtc: input.startHourUtc, quietEndHourUtc: input.endHourUtc };
+    },
   };
   let tokens = 0;
   const coordinator = new ProactiveDeliveryCoordinator({
@@ -206,6 +209,25 @@ function fixture({ acknowledge = async () => true } = {}) {
   delayed[1]();
   assert.equal((await secondAck).status, 200,
     "the current attempt's ACK remains eligible after stale ACK rejection");
+}
+
+
+{
+  const f = fixture();
+  const policy = await f.coordinator.setQuietHours({ enabled: true, startHourUtc: 22, endHourUtc: 8 });
+  assert.equal(policy.quietHoursEnabled, true);
+  assert.equal(policy.quietStartHourUtc, 22);
+  assert.equal(policy.quietEndHourUtc, 8);
+  for (const invalid of [
+    null,
+    [],
+    { enabled: 1, startHourUtc: 22, endHourUtc: 8 },
+    { enabled: true, startHourUtc: -1, endHourUtc: 8 },
+    { enabled: true, startHourUtc: 22, endHourUtc: 24 },
+    { enabled: true, startHourUtc: 22.5, endHourUtc: 8 },
+  ]) {
+    await assert.rejects(() => f.coordinator.setQuietHours(invalid), /invalid-proactive-quiet-hours/);
+  }
 }
 
 console.log("PROACTIVE_DELIVERY_COORDINATOR=PASS");
