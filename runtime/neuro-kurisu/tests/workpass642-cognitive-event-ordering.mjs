@@ -29,6 +29,21 @@ const replay = fabric.append({
 assert.equal(replay.sequence, second.sequence, 'idempotent event replay must preserve its original sequence');
 assert.equal(replay.logicalTime, second.logicalTime, 'idempotent event replay must preserve its original logical time');
 assert.equal(fabric.snapshot().total, 3, 'replaying an existing event must not advance the event count');
+assert.throws(() => fabric.append({
+  id: 'order:2', tick: 4, at: 9_999, stage: 'prediction', source: 'clock-fixture',
+  parentIds: [first.id], payload: { changed: true },
+}), /cognitive-event-id-conflict/,
+  'reusing an event ID with a changed payload must be a conflict, not an idempotent replay');
+assert.throws(() => fabric.append({
+  id: 'order:2', tick: 4, at: 9_999, stage: 'prediction', source: 'clock-fixture',
+  parentIds: [], payload: {},
+}), /cognitive-event-id-conflict/,
+  'reusing an event ID with changed causal parents must be a conflict');
+assert.throws(() => fabric.append({
+  id: 'order:2', tick: 4, at: 9_999, stage: 'prediction', source: 'clock-fixture',
+  parentIds: [first.id], external: true,
+}), /cognitive-event-id-conflict/,
+  'reusing an event ID with changed trust/source classification must be a conflict');
 
 const snapshot = fabric.snapshot();
 assert.equal(snapshot.sequenceWatermark, 3);
