@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Activity, Brain, Command, Home, Moon, Search, Settings, HeartPulse, Sun, Wrench, X } from "lucide-react";
 import { useKurisu, type AppSection } from "@/organism/store";
-import { filterUiCommands, type UiCommandDescriptor } from "@/organism/commandPalette";
+import { filterUiCommands, nextUiCommandIndex, type UiCommandDescriptor } from "@/organism/commandPalette";
 
 interface PaletteCommand extends UiCommandDescriptor {
   detail: string;
@@ -45,11 +45,11 @@ export function CommandPalette() {
     else opener.current?.focus();
   }, [open]);
 
-  const navigate = (section: AppSection) => {
+  const navigate = useCallback((section: AppSection) => {
     setSection(section);
     if (section === "memory") setTab("memory");
     if (section === "more") setTab("mind");
-  };
+  }, [setSection, setTab]);
 
   const commands = useMemo<PaletteCommand[]>(() => [
     { id: "home", title: "Open Home", detail: "Avatar, conversation and live HUD", keywords: ["avatar", "chat", "main", "главная"], icon: Home, run: () => navigate("home") },
@@ -60,14 +60,14 @@ export function CommandPalette() {
     { id: "refresh", title: "Refresh canonical state", detail: "Fetch the latest authoritative UI snapshot", keywords: ["sync", "runtime", "reconnect", "обновить"], icon: Activity, disabled: !connected, run: () => { void refresh(); } },
     { id: "sleep", title: "Put organism to sleep", detail: "Request the canonical sleep transition", keywords: ["rest", "pause", "сон"], icon: Moon, disabled: !connected || !awake, run: () => { void sleep(); } },
     { id: "wake", title: "Wake organism", detail: "Request the canonical wake transition", keywords: ["resume", "awake", "проснуться"], icon: Sun, disabled: !connected || awake, run: () => { void wake(); } },
-  ], [connected, awake, navigate, refresh, sleep, wake, setSection, setTab]);
+  ], [connected, awake, navigate, refresh, sleep, wake]);
 
   const visible = useMemo(() => filterUiCommands(commands, query), [commands, query]);
 
   useEffect(() => {
     const firstEnabled = visible.findIndex((command) => !command.disabled);
     setActiveIndex(firstEnabled >= 0 ? firstEnabled : 0);
-  }, [query]);
+  }, [visible]);
 
   const closePalette = () => setOpen(false);
   const runActiveCommand = () => {
@@ -77,14 +77,10 @@ export function CommandPalette() {
     closePalette();
   };
   const moveActive = (direction: 1 | -1) => {
-    if (!visible.length) return;
-    for (let offset = 1; offset <= visible.length; offset += 1) {
-      const next = (activeIndex + direction * offset + visible.length * 2) % visible.length;
-      if (!visible[next].disabled) {
-        setActiveIndex(next);
-        return;
-      }
-    }
+    setActiveIndex((currentIndex) => {
+      const next = nextUiCommandIndex(visible, currentIndex, direction);
+      return next >= 0 ? next : currentIndex;
+    });
   };
 
   if (!open) {
