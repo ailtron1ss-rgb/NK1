@@ -69,4 +69,33 @@ assert.equal(internalOnly.independenceCount('claim:internal'),0,
   'organism-generated evidence cannot independently verify its own world claim');
 assert.equal(internalOnly.snapshot().acceptedCount,0);
 
+
+const simulatorCannotElevateOs=new ExternalEvidenceTrustEngine();
+simulatorCannotElevateOs.observe({claimKey:'claim:sim-first',source:'simulated-world-environment',independenceKey:'sim-first',confidence01:1,at:now,evidenceId:'sim-first-event'});
+const osAfterSimulator=simulatorCannotElevateOs.observe({claimKey:'claim:sim-first',source:'os',independenceKey:'host-os',confidence01:.99,at:now+1,evidenceId:'host-os-event'});
+assert.equal(osAfterSimulator.status,'candidate',
+  'a simulator must not be counted as the second independent source for a high-trust OS witness');
+assert.equal(simulatorCannotElevateOs.independenceCount('claim:sim-first'),1);
+
+const duplicateReceiptRestore=new ExternalEvidenceTrustEngine();
+duplicateReceiptRestore.restore({version:1,records:[
+  {id:'dup-device',claimKey:'claim:duplicate',source:'device',independenceKey:'camera-a',confidence01:1,trust01:1,corroborations:999,independentSources:2,contradictions:0,status:'corroborated',firstSeenAt:now,lastSeenAt:now,evidenceIds:['same-event-id']},
+  {id:'dup-os',claimKey:'claim:duplicate',source:'os',independenceKey:'host-b',confidence01:1,trust01:1,corroborations:999,independentSources:2,contradictions:0,status:'corroborated',firstSeenAt:now,lastSeenAt:now,evidenceIds:['same-event-id']},
+]});
+assert.equal(duplicateReceiptRestore.snapshot().acceptedCount,0,
+  'one persisted event receipt cannot be replayed across two source identities');
+assert.equal(duplicateReceiptRestore.independenceCount('claim:duplicate'),2,
+  'source identity count remains diagnostic, but duplicate receipts cannot promote the records');
+assert.ok(duplicateReceiptRestore.snapshot().records.every(row=>row.corroborations===0),
+  'duplicate receipts must be removed from every claimant');
+
+const receiptlessRestore=new ExternalEvidenceTrustEngine();
+receiptlessRestore.restore({version:1,records:[
+  {id:'receiptless-device',claimKey:'claim:receiptless',source:'device',independenceKey:'camera-r',confidence01:1,trust01:1,corroborations:999,independentSources:2,contradictions:0,status:'corroborated',firstSeenAt:now,lastSeenAt:now},
+  {id:'receiptless-os',claimKey:'claim:receiptless',source:'os',independenceKey:'host-r',confidence01:1,trust01:1,corroborations:999,independentSources:2,contradictions:0,status:'corroborated',firstSeenAt:now,lastSeenAt:now},
+]});
+assert.equal(receiptlessRestore.snapshot().acceptedCount,0,
+  'persisted aggregate counters without durable event receipts cannot restore corroboration');
+assert.ok(receiptlessRestore.snapshot().records.every(row=>row.corroborations===0));
+
 console.log('EXTERNAL_EVIDENCE_TRUST_RESTORE_INTEGRITY=PASS');
