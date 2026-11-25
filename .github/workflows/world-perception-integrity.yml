@@ -17,6 +17,7 @@ on:
       - "runtime/neuro-kurisu/src/organism/system/ExternalEvidenceTrust.ts"
       - "runtime/neuro-kurisu/tests/external-evidence-trust-restore-integrity.mjs"
       - "runtime/neuro-kurisu/tests/perception-external-ingress-attestation.mjs"
+      - "runtime/neuro-kurisu/tests/grounded-world-restore-provenance.mjs"
       - "runtime/neuro-kurisu/src/organism/body/GeminiVisionSemanticBackend.ts"
       - "runtime/neuro-kurisu/src/organism/body/TemporalObjectTracker.ts"
       - "runtime/neuro-kurisu/tests/temporal-object-tracker.mjs"
@@ -109,6 +110,9 @@ jobs:
       - name: Run P41 independent-evidence truthfulness regression
         working-directory: runtime/neuro-kurisu
         run: npm run test:p41:truthfulness
+      - name: Verify persisted world snapshots cannot self-attest observations
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/grounded-world-restore-provenance.mjs
       - name: Verify caller labels cannot self-attest external perception
         working-directory: runtime/neuro-kurisu
         run: node --experimental-strip-types tests/perception-external-ingress-attestation.mjs
