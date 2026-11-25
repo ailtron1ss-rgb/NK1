@@ -47,11 +47,18 @@ export class ProactiveDeliveryLeaseRegistry {
   }
 
   matches(id, token, now = Date.now()) {
-    if (!Number.isSafeInteger(now) || now < 0) return false;
+    return this.attemptCountFor(id, token, now) !== null;
+  }
+
+  /** Return the persisted engine attempt bound to this live receipt token. */
+  attemptCountFor(id, token, now = Date.now()) {
+    if (!Number.isSafeInteger(now) || now < 0) return null;
     this.prune(now);
-    if (typeof id !== "string" || typeof token !== "string") return false;
+    if (typeof id !== "string" || typeof token !== "string") return null;
     const current = this.entries.get(id);
-    return Boolean(current && current.token === token && current.leaseUntil > now);
+    return current && current.token === token && current.leaseUntil > now
+      ? current.attemptCount
+      : null;
   }
 
   consume(id, token, now = Date.now()) {
