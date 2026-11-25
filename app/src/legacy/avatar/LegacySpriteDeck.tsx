@@ -36,7 +36,8 @@ export function LegacySpriteDeck({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const currentRef = useRef<HTMLImageElement | null>(null);
   const previousRef = useRef<HTMLImageElement | null>(null);
-  const [outfit, setOutfit] = useState<VisualProfileId>(readStoredOutfit);
+  const [outfit, setOutfit] = useState<VisualProfileId>("lab_coat");
+  const [preferencesHydrated, setPreferencesHydrated] = useState(false);
   const [open, setOpen] = useState(false);
   const [ready, setReady] = useState(false);
   const blend = useRef(1);
@@ -75,7 +76,15 @@ export function LegacySpriteDeck({
     };
   }, [emotion, outfit, action, thinking, speaking]);
 
-  useEffect(() => { persistOutfit(outfit); }, [outfit]);
+  useEffect(() => {
+    setOutfit(readStoredOutfit());
+    setPreferencesHydrated(true);
+  }, []);
+
+  useEffect(() => {
+    if (!preferencesHydrated) return;
+    persistOutfit(outfit);
+  }, [outfit, preferencesHydrated]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -132,13 +141,20 @@ export function LegacySpriteDeck({
 
   return <div className="relative overflow-hidden rounded-xl border border-border bg-bg">
     <canvas ref={canvasRef} className="h-[320px] w-full md:h-[420px]" />
-    <button type="button" onClick={() => setOpen((v) => !v)} className="absolute right-3 top-3 rounded-md border border-border bg-black/60 px-2.5 py-1 text-[10px] font-mono text-white/70 hover:text-white">
+    <button
+      type="button"
+      aria-label={open ? "Скрыть каталог одежды Курису" : "Открыть каталог одежды Курису"}
+      aria-expanded={open}
+      aria-controls="legacy-outfit-options"
+      onClick={() => setOpen((v) => !v)}
+      className="absolute right-3 top-3 rounded-md border border-border bg-black/60 px-2.5 py-1 text-[10px] font-mono text-white/70 hover:text-white"
+    >
       {open ? "hide outfit" : ready ? "legacy deck" : "loading"}
     </button>
-    {open ? <div className="absolute inset-x-3 bottom-3 rounded-lg border border-border bg-black/75 p-2 backdrop-blur">
+    {open ? <div id="legacy-outfit-options" role="group" aria-label="Выбор одежды и визуального профиля" className="absolute inset-x-3 bottom-3 rounded-lg border border-border bg-black/75 p-2 backdrop-blur">
       <div className="mb-2 text-[10px] uppercase tracking-wider text-white/50">visual legacy / profile catalog</div>
       <div className="grid grid-cols-2 gap-1.5 md:grid-cols-3">
-        {OUTFITS.map((item) => <button key={item.id} type="button" onClick={() => setOutfit(item.id)} className={`rounded-md border px-2 py-1.5 text-left text-[10px] ${outfit === item.id ? "border-accent bg-accent/15 text-white" : "border-white/10 text-white/65"}`}><div>{item.nameRu}</div><div className="truncate text-white/35">{item.description}</div></button>)}
+        {OUTFITS.map((item) => <button key={item.id} type="button" aria-pressed={outfit === item.id} onClick={() => setOutfit(item.id)} className={`rounded-md border px-2 py-1.5 text-left text-[10px] ${outfit === item.id ? "border-accent bg-accent/15 text-white" : "border-white/10 text-white/65"}`}><div>{item.nameRu}</div><div className="truncate text-white/35">{item.description}</div></button>)}
       </div>
     </div> : null}
   </div>;
