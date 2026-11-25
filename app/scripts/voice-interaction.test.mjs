@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { parseVoiceListenResponse, readRuntimeListening } from "../src/organism/voiceInteraction.ts";
+import { parseVoiceListenResponse, readRuntimeListening, resolveVoiceStop } from "../src/organism/voiceInteraction.ts";
 
 test("accepts and trims an actual runtime transcript", () => {
   assert.deepEqual(parseVoiceListenResponse({ ok: true, text: "  turn left  " }), {
@@ -41,4 +41,21 @@ test("reports unknown listening state rather than inventing a boolean", () => {
   assert.equal(readRuntimeListening({ voice: { state: { listening: false } } }), false);
   assert.equal(readRuntimeListening({ voice: {} }), null);
   assert.equal(readRuntimeListening(null), null);
+});
+
+
+test("only an explicit runtime false confirms microphone stop", () => {
+  assert.deepEqual(resolveVoiceStop(false, true), { confirmed: true, status: "idle", reason: null });
+  assert.deepEqual(resolveVoiceStop(true, true), {
+    confirmed: false, status: "stop-unconfirmed",
+    reason: "The runtime has not confirmed that microphone capture stopped.",
+  });
+  assert.equal(resolveVoiceStop(null, true).status, "stop-unconfirmed");
+});
+
+test("stop verification errors keep the microphone locked", () => {
+  const result = resolveVoiceStop(null, true, "voice status endpoint offline");
+  assert.equal(result.confirmed, false);
+  assert.equal(result.status, "stop-unconfirmed");
+  assert.match(result.reason, /offline/);
 });
