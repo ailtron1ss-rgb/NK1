@@ -9,6 +9,7 @@ import { ConnectionStatus } from "@/components/ConnectionStatus";
 import { MotivationPanel } from "@/components/MotivationPanel";
 import { SettingsPanel } from "@/components/SettingsPanel";
 import { RuntimeHealthPanel } from "@/components/RuntimeHealthPanel";
+import { CommandPalette } from "@/components/CommandPalette";
 import { useKurisu, type AppSection } from "@/organism/store";
 import { emptySnapshot } from "@/organism/types";
 import { ResearchDock } from "@/research/ResearchDock";
@@ -121,6 +122,7 @@ function Home() {
         Canonical state is authoritative · local preferences affect presentation only · 2.5D remains gated
       </footer>
 
+      <CommandPalette />
       <AppNavigation active={section} onSelect={navigate} />
     </main>
   );
