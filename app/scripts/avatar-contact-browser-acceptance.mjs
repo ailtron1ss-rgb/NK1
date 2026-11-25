@@ -149,13 +149,13 @@ try {
   await originalSvg.click({ position: { x: originalBounds.width * 0.5, y: originalBounds.height * 0.22 } });
   const originalDesktopHeadDeadline = Date.now() + timeoutMs;
   while (observedEvents.length < 5 && Date.now() < originalDesktopHeadDeadline) await page.waitForTimeout(50);
-  assert.equal(observedEvents[12]?.interaction?.zone, "head",
+  assert.equal(observedEvents[4]?.interaction?.zone, "head",
     "Original 2D SVG face tap must reach the canonical avatar-contact protocol");
   await page.waitForTimeout(1_600);
   await originalSvg.click({ position: { x: originalBounds.width * 0.5, y: originalBounds.height * 0.58 } });
   const originalDesktopBodyDeadline = Date.now() + timeoutMs;
   while (observedEvents.length < 6 && Date.now() < originalDesktopBodyDeadline) await page.waitForTimeout(50);
-  assert.equal(observedEvents[13]?.interaction?.zone, "body",
+  assert.equal(observedEvents[5]?.interaction?.zone, "body",
     "Original 2D SVG torso tap must reach the canonical avatar-contact protocol");
 
   await page.setViewportSize({ width: 390, height: 844 });
@@ -167,16 +167,16 @@ try {
   await originalSvg.click({ position: { x: mobileOriginalBounds.width * 0.5, y: mobileOriginalBounds.height * 0.22 } });
   const originalMobileHeadDeadline = Date.now() + timeoutMs;
   while (observedEvents.length < 7 && Date.now() < originalMobileHeadDeadline) await page.waitForTimeout(50);
-  assert.equal(observedEvents[10]?.interaction?.zone, "head",
+  assert.equal(observedEvents[6]?.interaction?.zone, "head",
     "mobile Original 2D face tap must use the canonical contact protocol");
   await page.waitForTimeout(1_600);
   await originalSvg.click({ position: { x: mobileOriginalBounds.width * 0.5, y: mobileOriginalBounds.height * 0.58 } });
   const originalMobileBodyDeadline = Date.now() + timeoutMs;
   while (observedEvents.length < 8 && Date.now() < originalMobileBodyDeadline) await page.waitForTimeout(50);
-  assert.equal(observedEvents[11]?.interaction?.zone, "body",
+  assert.equal(observedEvents[7]?.interaction?.zone, "body",
     "mobile Original 2D torso tap must use the canonical contact protocol");
 
-  assert.deepEqual(observedEvents.slice(8, 12).map((event) => event.interaction), [
+  assert.deepEqual(observedEvents.slice(4, 8).map((event) => event.interaction), [
     { protocolVersion: 1, kind: "avatar-contact", zone: "head" },
     { protocolVersion: 1, kind: "avatar-contact", zone: "body" },
     { protocolVersion: 1, kind: "avatar-contact", zone: "head" },
@@ -209,11 +209,11 @@ try {
 
   await page.waitForTimeout(1_600);
   await clickUntilContact(threeCanvas, threeBounds, 9, [0.18, 0.22, 0.26, 0.30, 0.34]);
-  assert.equal(observedEvents[4]?.interaction?.zone, "head",
+  assert.equal(observedEvents[8]?.interaction?.zone, "head",
     "3D head raycast must reach the canonical avatar-contact protocol");
   await page.waitForTimeout(1_600);
   await clickUntilContact(threeCanvas, threeBounds, 10, [0.44, 0.48, 0.52, 0.56, 0.60]);
-  assert.equal(observedEvents[5]?.interaction?.zone, "body",
+  assert.equal(observedEvents[9]?.interaction?.zone, "body",
     "3D body raycast must reach the canonical avatar-contact protocol");
 
   await page.setViewportSize({ width: 390, height: 844 });
@@ -223,13 +223,13 @@ try {
     "mobile 3D canvas must retain a usable contact target");
   await page.waitForTimeout(1_600);
   await clickUntilContact(threeCanvas, mobileThreeBounds, 11, [0.18, 0.22, 0.26, 0.30, 0.34]);
-  assert.equal(observedEvents[6]?.interaction?.zone, "head",
+  assert.equal(observedEvents[10]?.interaction?.zone, "head",
     "mobile 3D head raycast must use the canonical avatar-contact protocol");
   await page.waitForTimeout(1_600);
   await clickUntilContact(threeCanvas, mobileThreeBounds, 12, [0.44, 0.48, 0.52, 0.56, 0.60]);
-  assert.equal(observedEvents[7]?.interaction?.zone, "body",
+  assert.equal(observedEvents[11]?.interaction?.zone, "body",
     "mobile 3D body raycast must use the canonical avatar-contact protocol");
-  assert.deepEqual(observedEvents.slice(4, 8).map((event) => event.interaction), [
+  assert.deepEqual(observedEvents.slice(8, 12).map((event) => event.interaction), [
     { protocolVersion: 1, kind: "avatar-contact", zone: "head" },
     { protocolVersion: 1, kind: "avatar-contact", zone: "body" },
     { protocolVersion: 1, kind: "avatar-contact", zone: "head" },
@@ -255,12 +255,12 @@ try {
   await legacyCanvas.click({ position: { x: spriteX + spriteWidth * 0.5, y: spriteY + spriteHeight * 0.22 } });
   const legacyHeadDeadline = Date.now() + timeoutMs;
   while (observedEvents.length < 13 && Date.now() < legacyHeadDeadline) await page.waitForTimeout(50);
-  assert.equal(observedEvents[8]?.interaction?.zone, "head", "Legacy sprite head hit must use the canonical social contact protocol");
+  assert.equal(observedEvents[12]?.interaction?.zone, "head", "Legacy sprite head hit must use the canonical social contact protocol");
   await page.waitForTimeout(1_600);
   await legacyCanvas.click({ position: { x: spriteX + spriteWidth * 0.5, y: spriteY + spriteHeight * 0.64 } });
   const legacyBodyDeadline = Date.now() + timeoutMs;
   while (observedEvents.length < 14 && Date.now() < legacyBodyDeadline) await page.waitForTimeout(50);
-  assert.equal(observedEvents[9]?.interaction?.zone, "body", "Legacy sprite body hit must use the canonical social contact protocol");
+  assert.equal(observedEvents[13]?.interaction?.zone, "body", "Legacy sprite body hit must use the canonical social contact protocol");
   assert.deepEqual(observedEvents.slice(12).map((event) => event.interaction), [
     { protocolVersion: 1, kind: "avatar-contact", zone: "head" },
     { protocolVersion: 1, kind: "avatar-contact", zone: "body" },
