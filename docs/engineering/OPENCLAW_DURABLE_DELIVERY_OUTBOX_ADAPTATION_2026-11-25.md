@@ -65,3 +65,13 @@ This requirement is based on established distributed-systems guidance:
   https://docs.temporal.io/activity-definition
 
 A regression test was appended to tests/durable-delivery-outbox.mjs on the current branch head. It expects transport-timeout to become reconciliation-required, suppresses claimNext, and allows a new claim only after explicit confirmed-not-delivered reconciliation. This is a test-first guard, not yet an observed RED or a production fix: the current recordFailure implementation still returns a timed-out attempt to pending, and the exact-head GitHub Actions run is waiting for repository workflow approval.
+
+
+## Additional open-source implementation review
+
+A developer-index search surfaced two useful implementation references with the same failure boundary:
+
+- [Hermes issue #84257 — webhook idempotency and process-local delivery outcome](https://github.com/NousResearch/hermes-agent/issues/84257): a target may accept work before the sender observes a timeout/exception. Releasing the deduplication key on every failure can duplicate execution; retaining it for uncertain outcomes avoids that, while only an explicit pre-admission rejection can safely release it.
+- [Mastra case-store outbox implementation](https://github.com/mastra-ai/mastra/blob/97ebf48fc194c5d7bcc315b5499270d1fbfb0f82/templates/template-customer-refund-agent/src/mastra/lib/case-store-outbox.ts): its uncertain external outcome is projected as an escalated/uncertain delivery state rather than treated as a routine retry.
+
+NK1's outbox deliberately uses a stricter explicit reconciliation state instead of process-local dedupe or an unqualified retry. The design should remain small: the host adapter reports whether the side-effect boundary was definitely not crossed, definitely accepted, or unknown; the outbox persists that disposition and does not infer it from the error string alone.
