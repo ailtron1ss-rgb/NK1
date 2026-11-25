@@ -14,8 +14,6 @@ on:
       - "runtime/neuro-kurisu/src/organism/core/InertSnapshot.ts"
       - "runtime/neuro-kurisu/src/organism/world/WorldBeliefProjection.ts"
       - "runtime/neuro-kurisu/tests/world-belief-projection.test.mjs"
-      - "runtime/neuro-kurisu/src/organism/world/WorldBeliefProjection.ts"
-      - "runtime/neuro-kurisu/tests/world-belief-projection.test.mjs"
       - "runtime/neuro-kurisu/src/organism/body/PerceptualEvidenceCompiler.ts"
       - "runtime/neuro-kurisu/src/organism/system/ExternalEvidenceTrust.ts"
       - "runtime/neuro-kurisu/tests/external-evidence-trust-restore-integrity.mjs"
