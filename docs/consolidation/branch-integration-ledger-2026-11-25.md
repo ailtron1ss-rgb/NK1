@@ -132,3 +132,57 @@ These two neighbouring aspect PRs are existing work by their respective branch a
 - Current head `27c74e0502264f4a10959ad9f7cd49acfcd221c5`; dedicated freshness workflow passed. The full exact-head check matrix completed **65/65 SUCCESS**. Runtime syntax/type verification in that matrix used node strip-syntax; semantic TSC was unavailable there. (The separate #1182 architecture workflow above did run semantic `tsc` successfully.)
 
 All three aspect PRs are still Draft and unmerged. This checkpoint is a status/evidence handoff only and does not claim their code is integrated into canonical source.
+
+
+## Проверка интеграционных границ и exact-head состояния — 2026-11-25, дополнительный проход
+
+### Источник и метод
+
+- Повторная сверка выполнена по PR API, актуальным head/base SHA и полным спискам изменённых файлов на 2026-11-25.
+- Canonical source на момент этой сверки остаётся workpass70-source@9008a8982a5173304456bee2c604bd0bc8665964.
+- Для всех записей ниже различаются: наличие кода, наличие теста, выполнение exact-head CI и merge/release. Отсутствие CI-статуса не трактуется как PASS.
+- Новые merge не выполнялись; source, main и Release не изменялись.
+
+### Проверенные PR и ограничения доказательств
+
+| PR | Exact HEAD при проверке | Base | Суть / наблюдаемая граница | Статус доказательств |
+|---|---|---|---|---|
+| [#1182](https://github.com/ailtron1ss-rgb/NK1/pull/1182) | e3fee3e6ec59ab16597e6c049d30ca16830a3834 | workpass70-source@9008a898... | Durable host-admitted outbox, idempotency key, bounded lease/retry/reconciliation, transcript-before-ACK. Добавлен regression-тест: transport timeout должен перейти в reconciliation-required; retry допускается только после host-подтверждения confirmed-not-delivered. | Тест добавлен на exact branch head; GitHub Actions требует repository approval, поэтому результат именно этого head пока не наблюдался. Тест ожидаемо конфликтует с текущим recordFailure, которое возвращает любой timeout в pending; production fix не объявляется готовым. Draft/open/unmerged. |
+| [#1181](https://github.com/ailtron1ss-rgb/NK1/pull/1181) | c92c734cc785fc4d36ba1cc9e9d471d0cf7c0436 | workpass70-source@9008a898... | Lease/retry реализован прямо в AutonomousSocialInitiativeEngine. Четыре файла пересекаются с #1182: OrganismRuntime, chatCache.ts, store.ts, proactive-chat test. | Архитектурное дублирование lease owner: выбрать один канонический delivery owner. Предпочтителен host-side outbox из #1182 при условии прохождения тестов; не сливать обе реализации целиком. Draft/open/unmerged. |
+| [#1174](https://github.com/ailtron1ss-rgb/NK1/pull/1174) | e1f83557bc8f5e7d9b304f943f8fce8d9c9b6192 | workpass70-source@9008a898... | Crash-safe continuity journal / watchdog checkpoint semantics. | Предыдущий ledger записывает 76/76 и отдельный 11-step acceptance; текущая сверка подтвердила PR head/file set, но не повторяла physical power-loss/device soak. Два общих файла с #1170: OrganismCore.ts и package.json. Draft/open/unmerged. |
+| [#1170](https://github.com/ailtron1ss-rgb/NK1/pull/1170) | 2095bce3353daacb8eebe567a53b33ef32ff1931 | workpass70-source@9008a898... | Atomic runtime checkpoint envelope for Core/world/sidecars and projection fault matrix. | Предыдущий ledger отмечает 83/83 Actions для ранее проверенного head; текущая сверка подтвердила PR head/file set, но не считает историческую матрицу доказательством нового head без exact-SHA rerun. Два общих файла с #1174. Draft/open/unmerged. |
+| [#1169](https://github.com/ailtron1ss-rgb/NK1/pull/1169) | fd19ea915ea5cfd60bd16419efc3645b9b65a116 | #1170 @2095bce... | N.E.K.O. plugin ingress quarantine, one-use host capability, durable ingress receipts and restart behavior. | Stacked dependency: сначала проверить/принять parent checkpoint envelope #1170; #1169 нельзя рассматривать как самостоятельный прямой merge в source. Previous exact-head 68/68 относится к older head, не автоматически к этому SHA. Draft/open/unmerged. |
+| [#1180](https://github.com/ailtron1ss-rgb/NK1/pull/1180) | abf87d02188265f2856cf07d84749a2012daea29 | workpass70-source@9008a898... | P53 self-modification preview-only без независимых holdout / transfer доказательств; legacy promotions quarantined при миграции. | Сильный safety design; exact-head CI для этого SHA текущей сверкой не подтверждён. Прежние 74/74 нельзя переносить на новый SHA без совпадения. Draft/open/unmerged. |
+| [#1179](https://github.com/ailtron1ss-rgb/NK1/pull/1179) | b2bce0c294f0c4383fceb0bb9a333d9841232f14 | workpass70-source@9008a898... | Metacognitive neural integrity: 27-dimensional feature input, matched prediction targets / gradients, restore sanitization. | Предыдущий test-only RED установил 24-vs-27 input defect; текущий exact head всё ещё требует своего CI evidence. Нет утверждения о real-world cognition uplift или device validation. Draft/open/unmerged. |
+| [#1177](https://github.com/ailtron1ss-rgb/NK1/pull/1177) | 27c74e0502264f4a10959ad9f7cd49acfcd221c5 | workpass70-source@9008a898... | P23 signed skill evidence freshness, exact-candidate/run binding, safe integer timestamps and verification purpose. | Dedicated freshness workflow на exact head записан как SUCCESS в предыдущем разделе P23. Semantic TypeScript и production skill-quality improvement не заявляются. Draft/open/unmerged. |
+| [#1175](https://github.com/ailtron1ss-rgb/NK1/pull/1175) | 2b85d7465f69ec15a996993b2d3cf68cde825ebf | workpass70-source@9008a898... | Grounded world evidence → appraisal / predictive attention / planning. | Head изменился после ранее записанных SHA; прежние 51/51 нельзя считать доказательством текущего head без exact match. Draft/open/unmerged. |
+| [#1167](https://github.com/ailtron1ss-rgb/NK1/pull/1167) | bf06021a161bd2acb5284532da20c510c2282b3d | workpass70-source@8328336... | Decision identity across cognitive stages and CEF / metacognitive episode boundary. | Base старше current source; синхронизировать/rebase и повторить exact-head matrix до интеграции. Прежние 73/73 относятся к older head. Draft/open/unmerged. |
+| [#1168](https://github.com/ailtron1ss-rgb/NK1/pull/1168) | 404526bc8f23b942c22438dc5892a9d4f3b644f0 | workpass70-source@87c9ed... | Broad verified agency outcome loop; 37 changed files. Branch name has -r2 suffix. | Stale base и широкий diff повышают review cost. Не создавать следующие suffix variants; сначала hunk-level review с merged #1157 и SelfAuthorship stack #1162/#1165/#1166. Старое 35/35 не доказывает текущий base/head. Draft/open/unmerged. |
+| [#1176](https://github.com/ailtron1ss-rgb/NK1/pull/1176) | 305d4f25d1ff174af6034f1989f3a1511368d681 | workpass70-source@87c9ed... | Read-only probes for every cognitive subsystem port. | Stale base; использовать как observability input только после синхронизации с текущими owner contracts. Draft/open/unmerged. |
+| [#1164](https://github.com/ailtron1ss-rgb/NK1/pull/1164) | b78a525acaabe0a4de00fd807eefe87a44a93c75 | workpass70-source@8328336... | Avatar/3D stage, browser acceptance. Добавлен test-only raycast regression для static head meshes beside skinned torso, full-character contact bounds и floor exclusion. | Последний наблюдавшийся browser run на более раннем SHA завершился ошибкой: 3D head raycast не отправил canonical contact. Текущий test-only commit не имеет exact-head status; требуется repository approval. 3D E2E, Android soak, audio/lip-sync и release promotion не приняты. Draft/open/unmerged. |
+
+### Интеграционные правила для следующих циклов
+
+1. Durable delivery: #1182 — предполагаемый единый persistence/lease owner. Из #1181 можно перенести недостающие consent/quiet-hour lifecycle tests, но не добавлять две параллельные lease state machines в Core и outbox.
+2. Runtime checkpoint + continuity: #1170 и #1174 дополняют друг друга, но оба меняют Core flush и package scripts. Свести hunks в один порядок checkpoint generation; continuity journal остаётся подчинённым canonical checkpoint owner.
+3. Plugin trust boundary: #1169 зависит от #1170. Сохранить one-use host capability и durable receipt; интегрировать только после актуализации и проверки parent.
+4. Self-improvement: #1180 должен оставаться fail-closed, пока отсутствуют независимые host-owned holdout/transfer evidence. Shadow score самого агента не является разрешением на promotion.
+5. Neural self-observation: #1179 — исправление существующего neural substrate, а не второй metacognition engine. Сохранить schema, target semantics и migration под текущим owner.
+6. Avatar: renderer остаётся потребителем shared Core/Motor state; тестировать реальный canvas input → perception evidence → UI snapshot. Внешний вид не сертифицирует interaction.
+
+### Изменения, сделанные в ходе этого дополнительного прохода
+
+- PR #1164: добавлен только тест геометрии / contact picking; production logic не менялась.
+- PR #1182: добавлен только тест неоднозначного transport timeout; production logic не менялась.
+- Оба теста не помечены как RED: exact GitHub Actions run заблокирован approval, локального repository sandbox нет.
+- ProductOS sandbox команды недоступны из-за исчерпанного free-credit balance; это ограничение среды, не результат проверки кода.
+- Ни один branch ref, protected setting, workpass70-source, main, Release или ZIP не изменялся.
+
+### Следующий эффективный порядок
+
+1. Разблокировать GitHub Actions для целевых PR; выполнить RED на #1164 и #1182 exact heads.
+2. Исправить 3D picking: отделить rig-preferred camera-fit bounds от полного character-only pick mesh set и contact bounds.
+3. Исправить ambiguous delivery: unknown transport outcome → reconciliation-required; retry только после authoritative host reconciliation confirmed-not-delivered.
+4. Свести #1170 + #1174 на двух пересекающихся Core/package files и повторить exact-head CI; #1169 следует за parent.
+5. Повторно проверить exact-head P53, metacognitive, P23 и world integration; синхронизировать stale bases до merge consideration.
+6. Только после acceptance review проверять release manifest/ZIP hash и legal/license gate. Не называть изменения released до parity with artifact.
