@@ -23,6 +23,20 @@ import { WorldAgencyLearningCausalBridge, defaultWorldAgencyLearning } from '../
 import { DerivedWorldPreviewCache } from '../system/DerivedWorldPreviewCache.ts';
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
 
+export interface WorldCognitiveSignalV1 {
+  version: 1;
+  revision: number;
+  evidenceClass: 'observed' | 'mixed' | 'inferred' | 'unknown';
+  evidenceConfidence01: number;
+  uncertainty01: number;
+  changeMagnitude01: number;
+  conflict01: number;
+  unresolved01: number;
+  modelDisagreement01: number;
+  predictionError01: number;
+}
+
+
 function isWorldContext(value: unknown): value is WorldContext {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
   const context = value as Partial<WorldContext>;
@@ -269,6 +283,65 @@ export class WorldSubsystemRuntime {
     this.worldLearningStats.lastActionError01=trained.error01;
     this.worldLearningStats.lastAt=Date.now();
     return { ...trained, brain:brainTrained, unifiedAfter, canonicalResolution, predictionBefore:{candidates,usedStoredPrediction:resolution.resolved,predictionId:resolution.predictionId ?? predictionId,worldModel2:worldModelResolution}, candidates };
+  }
+
+  /** Read-only, provenance-aware projection for Appraisal and attention. It never mutates canonical world or promotes hypotheses. */
+  cognitiveAttentionSignal(): WorldCognitiveSignalV1 {
+    const snapshot = this.groundedWorld.snapshot();
+    const allowed = new Set(['observed', 'model-output', 'derived', 'conflict', 'unresolved']);
+    const modalityNames = new Set(['text', 'speech', 'audio', 'vision', 'sensor', 'world', 'semantic']);
+    const evidenceKinds: Array<'observed' | 'model-output' | 'derived' | 'conflict' | 'unresolved'> = [];
+
+    for (const entity of snapshot.entities) {
+      const kinds = Object.values(entity.modalityEvidenceKinds ?? {}).filter(
+        (kind): kind is 'observed' | 'model-output' | 'derived' | 'conflict' | 'unresolved' =>
+          typeof kind === 'string' && allowed.has(kind),
+      );
+      const sourceIds = (entity.sourceIds ?? []).filter(id =>
+        typeof id === 'string' && id.trim().length > 0 && !modalityNames.has(id.trim().toLowerCase()),
+      );
+      const hasSourceProvenance = sourceIds.length > 0;
+      for (const kind of kinds) {
+        // An "observed" label without a source identity is not sufficient evidence.
+        evidenceKinds.push(kind === 'observed' && !hasSourceProvenance ? 'unresolved' : kind);
+      }
+    }
+
+    const count = (kind: string) => evidenceKinds.filter(value => value === kind).length;
+    const total = Math.max(1, evidenceKinds.length);
+    const observed = count('observed');
+    const inferred = count('model-output') + count('derived');
+    const conflict01 = clamp(count('conflict') / total);
+    const unresolved01 = clamp(count('unresolved') / total);
+    const evidenceClass: WorldCognitiveSignalV1['evidenceClass'] =
+      observed > 0 && (inferred > 0 || conflict01 > 0 || unresolved01 > 0) ? 'mixed'
+        : observed > 0 ? 'observed'
+          : inferred > 0 ? 'inferred' : 'unknown';
+
+    const model = this.worldModel2.snapshot({ clone: false });
+    const latestModelError = Array.isArray(model.predictionErrors) && model.predictionErrors.length > 0
+      ? clamp(Number(model.predictionErrors[model.predictionErrors.length - 1]))
+      : 0;
+    const changeMagnitude01 = clamp(Math.max(
+      this.worldLearningStats.lastPassiveError01,
+      this.worldLearningStats.lastActionError01,
+    ));
+    const modelDisagreement01 = this.worldLearningStats.observations > 0
+      ? clamp(1 - this.worldLearningStats.modelAgreement01)
+      : 0;
+
+    return {
+      version: 1,
+      revision: Number.isSafeInteger(snapshot.revision) && snapshot.revision >= 0 ? snapshot.revision : 0,
+      evidenceClass,
+      evidenceConfidence01: clamp(snapshot.confidence01),
+      uncertainty01: clamp(Math.max(snapshot.uncertainty01, conflict01 * .55 + unresolved01 * .35)),
+      changeMagnitude01,
+      conflict01,
+      unresolved01,
+      modelDisagreement01,
+      predictionError01: clamp(Math.max(latestModelError, this.worldLearningStats.lastPassiveError01, this.worldLearningStats.lastActionError01)),
+    };
   }
 
   worldModelAgreement(){
