@@ -23,6 +23,8 @@ on:
       - "app/scripts/memory-explorer.test.mjs"
       - "app/scripts/runtime-diagnostics.test.mjs"
       - "app/scripts/command-palette.test.mjs"
+      - "app/scripts/action-approval-decline.test.mjs"
+      - "app/src/neuro-kurisu/action-approval-broker.ts"
       - "app/scripts/organism-snapshot-sync.test.mjs"
       - "app/package.json"
       - "app/package-lock.json"
