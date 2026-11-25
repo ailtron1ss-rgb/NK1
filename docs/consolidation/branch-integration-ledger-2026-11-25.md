@@ -186,3 +186,20 @@ All three aspect PRs are still Draft and unmerged. This checkpoint is a status/e
 4. Свести #1170 + #1174 на двух пересекающихся Core/package files и повторить exact-head CI; #1169 следует за parent.
 5. Повторно проверить exact-head P53, metacognitive, P23 и world integration; синхронизировать stale bases до merge consideration.
 6. Только после acceptance review проверять release manifest/ZIP hash и legal/license gate. Не называть изменения released до parity with artifact.
+
+## Exact-head CI refresh — 2026-11-25
+
+A fresh query of workflow runs associated with the exact current PR head SHAs returned the following results. Counts below are the returned PR-triggered workflow runs from the GitHub commit workflow-run endpoint (first page), not a claim that every check visible in every UI view was enumerated. All returned runs in each group were completed SUCCESS.
+
+| PR | Exact HEAD | Returned runs | Successful | Relevant dedicated run |
+|---|---|---:|---:|---|
+| [#1177](https://github.com/ailtron1ss-rgb/NK1/pull/1177) | 27c74e0502264f4a10959ad9f7cd49acfcd221c5 | 65 | 65 | [Skill shadow evidence freshness](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45607764358) |
+| [#1179](https://github.com/ailtron1ss-rgb/NK1/pull/1179) | b2bce0c294f0c4383fceb0bb9a333d9841232f14 | 11 | 11 | [Metacognitive Neural Integrity](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45609224720) |
+| [#1180](https://github.com/ailtron1ss-rgb/NK1/pull/1180) | abf87d02188265f2856cf07d84749a2012daea29 | 70 | 70 | [P53 Self-Improvement Fail-Closed](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45608425117) |
+| [#1175](https://github.com/ailtron1ss-rgb/NK1/pull/1175) | 2b85d7465f69ec15a996993b2d3cf68cde825ebf | 46 | 46 | All returned commit-associated workflow runs SUCCESS |
+| [#1170](https://github.com/ailtron1ss-rgb/NK1/pull/1170) | 2095bce3353daacb8eebe567a53b33ef32ff1931 | 75 | 75 | All returned commit-associated workflow runs SUCCESS |
+| [#1174](https://github.com/ailtron1ss-rgb/NK1/pull/1174) | e1f83557bc8f5e7d9b304f943f8fce8d9c9b6192 | 70 | 70 | [Continuity runtime durability](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45603680507) |
+
+The exact-head refresh upgrades the evidence status for these six heads compared with the prior section's earlier cautious note. It does not remove independent review, stale dependency, overlapping-file, device-soak, or merge/release gates. In particular, #1170 and #1174 both pass their respective current matrices but still overlap in OrganismCore.ts and package.json; passing CI independently does not prove a correct combined result.
+
+No exact-head workflow run was returned for current #1164 head b78a525acaabe0a4de00fd807eefe87a44a93c75 or current #1182 head d8870dd796eecf8c406ba56e5c80d77074917a2f. Their new regression tests remain unexecuted; no RED/green result is claimed.
