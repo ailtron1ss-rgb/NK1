@@ -1928,6 +1928,13 @@
     "test:self-authorship-verified-execution-workpass70": "node --experimental-strip-types tests/self-authorship-verified-execution-workpass70.mjs",
     "test:self-authorship-spineonly-runtime-workpass71": "node --experimental-strip-types tests/self-authorship-spineonly-runtime-workpass71.mjs",
     "test:action-receipt-selfauthorship-recovery-workpass72": "node --experimental-strip-types tests/action-receipt-selfauthorship-recovery-workpass72.mjs",
-    "test:cef-decision-reference-workpass72": "node --experimental-strip-types tests/cef-decision-reference-workpass72.mjs"
+    "test:cef-decision-reference-workpass72": "node --experimental-strip-types tests/cef-decision-reference-workpass72.mjs",
+    "test:p66:time-normalized-observation": "node --experimental-strip-types tests/p66-time-normalized-observation.mjs",
+    "test:p66:core-observation-provenance": "node --experimental-strip-types tests/p66-core-observation-provenance.mjs",
+    "test:affect-mood-dynamics": "node --experimental-strip-types tests/affect-mood-dynamics.mjs",
+    "test:avatar-affect-frame-lineage": "node --experimental-strip-types tests/avatar-affect-frame-lineage.mjs",
+    "test:p66:affect-hysteresis-consistency": "node --experimental-strip-types tests/p66-hysteresis-state-consistency.mjs",
+    "test:emotion-state-dynamics": "npm run typecheck && npm run test:affect-mood-dynamics && npm run test:affect:restore-integrity && npm run test:p66:time-normalized-observation && npm run test:p66:core-observation-provenance && npm run test:p66:affect-hysteresis-consistency && npm run test:avatar-affect-frame-lineage && npm run test:big-pass-172 && npm run test:big-pass-190:p66 && npm run test:p66:p68 && npm run test:voice",
+    "test:affect:restore-integrity": "node --experimental-strip-types tests/workpass610-emotion-appraisal-restore-integrity.mjs"
   }
 }

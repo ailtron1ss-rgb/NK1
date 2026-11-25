@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict';
 import { EmbodimentRuntime } from '../src/organism/body/EmbodimentRuntime.ts';
 import { OrganismRuntime } from '../src/organism/core/OrganismRuntime.ts';
-import { projectVoiceEmotionContext } from '../src/organism/core/OrganismRuntime.ts';
 import { buildVoicePlan } from '../src/organism/body/VoiceEmbodiment.ts';
 import { defaultBodyState } from '../src/organism/body/EmbodiedBody.ts';
+import { EmotionAppraisalEngine, projectEmotionAffectFrame } from '../src/organism/system/EmotionAppraisalEngine.ts';
 
 const runtime = new EmbodimentRuntime();
 const state = {
@@ -56,65 +56,108 @@ assert.equal(defaultPlan.tone, livePlan.tone === 'focused' ? 'focused' : default
 assert.ok(defaultPlan.prosody.rate >= 0.72 && defaultPlan.prosody.rate <= 1.25);
 assert.ok(defaultPlan.prosody.pitch >= 0.72 && defaultPlan.prosody.pitch <= 1.28);
 
-const appraisalEpisode = {
-  id: 'emo:9:9009:9', tick: 9, at: 9009, label: 'curiosity',
-  valence01: .91, arousal01: .78, dominance01: .84,
+const eventAt = Date.now() - 100;
+const appraisalEngine = new EmotionAppraisalEngine();
+const appraisalEpisode = appraisalEngine.appraise({
+  tick: 9, at: eventAt, novelty01: .82, uncertainty01: .48,
+  predictionError01: .12, homeostaticPressure01: .1, goalPressure01: .28,
+  goalCongruence01: .82, controllability01: .84, success01: .86,
+});
+appraisalEngine.inferFeeling(appraisalEpisode, {
+  energy01: .8, cognitiveLoad01: .3, uncertainty01: .48, selfFocus01: .7,
+});
+const makeRuntimeContext = (snapshot, appraisal) => {
+  const context = Object.create(OrganismRuntime.prototype);
+  context.core = {
+    emotionAffectFrameSnapshot: (now) => projectEmotionAffectFrame({
+      stateVersion: snapshot?.state?.tick,
+      stateAt: snapshot?.state?.at,
+      now,
+      appraisal,
+      cognitiveField: snapshot?.facets?.cognition?.cognitiveField,
+    }),
+  };
+  return context;
 };
 const resolveRuntimeEmotion = OrganismRuntime.prototype['voiceEmotionContext'];
-const mappedEmotion = resolveRuntimeEmotion.call({
-  core: {
-    snapshot: () => ({ facets: { cognition: { cognitiveField: {
-      dominantEmotion: 'calm', valence01: .12, arousal01: .18, coherence01: .31,
-    } } } }),
-    emotionAppraisalSnapshot: () => ({
-      history: [appraisalEpisode], lastLabel: 'calm', meanValence01: .5, meanArousal01: .2,
-    }),
-  },
-});
-assert.deepEqual(mappedEmotion, {
-  label: 'curiosity', valence01: .91, arousal01: .78, dominance01: .84,
-}, 'speech must use the latest canonical emotion episode rather than unrelated cognitive-field coherence');
+const mappedEmotion = resolveRuntimeEmotion.call(makeRuntimeContext({
+  state: { tick: 9, at: eventAt },
+  facets: { cognition: { cognitiveField: {
+    dominantEmotion: 'sadness', valence01: .12, arousal01: .18, dominance01: .31,
+  } } },
+}, appraisalEngine.snapshot()));
+assert.equal(mappedEmotion.label, appraisalEpisode.label,
+  'speech must use the latest canonical emotion episode rather than unrelated cognitive-field values');
+assert.equal(mappedEmotion.episodeId, appraisalEpisode.id);
+assert.equal(mappedEmotion.stateVersion, 9);
+assert.equal(mappedEmotion.source, 'emotion-appraisal');
+assert.equal(mappedEmotion.actionTendency, appraisalEpisode.actionTendency);
+assert.equal(mappedEmotion.cause, appraisalEpisode.cause);
 
-const fallbackEmotion = resolveRuntimeEmotion.call({
-  core: {
-    snapshot: () => ({ facets: { cognition: { cognitiveField: { valence01: .2, arousal01: .3 } } } }),
-    emotionAppraisalSnapshot: () => ({
-      history: [], lastLabel: 'sadness', meanValence01: .24, meanArousal01: .39,
-    }),
-  },
-});
-assert.deepEqual(fallbackEmotion, {
-  label: 'sadness', valence01: .24, arousal01: .39, dominance01: .5,
-}, 'restored aggregate appraisal must remain usable when no episode is available');
+const fallbackNow = Date.now();
+const fallbackEmotion = resolveRuntimeEmotion.call(makeRuntimeContext({
+  state: { tick: 10, at: fallbackNow },
+  facets: { cognition: { cognitiveField: { valence01: .2, arousal01: .3 } } },
+}, {
+  version: 2, lastTick: 10, lastAt: fallbackNow, lastLabel: 'sadness',
+  meanValence01: .24, meanArousal01: .39, meanStress01: .34, meanAttentionCapture01: .4,
+  history: [], feelings: [], interoception: { predictionCalibration01: .66 },
+}));
+assert.equal(fallbackEmotion.label, 'sadness');
+assert.equal(fallbackEmotion.stateVersion, 10);
+assert.equal(fallbackEmotion.source, 'appraisal-summary',
+  'restored aggregate appraisal must remain preferred when episode history is empty');
+assert.ok(Math.abs(fallbackEmotion.valence01 - .24) < .001);
+assert.ok(Math.abs(fallbackEmotion.arousal01 - .39) < .001);
 
 runtime.applyToState(state, { emotion: mappedEmotion });
 const appraisalDrivenPlan = runtime.previewVoicePlan('Это интересно, проверим', { action: 'explore' });
 assert.ok(appraisalDrivenPlan.reason.includes('affect-curiosity'),
   'canonical emotion appraisal must reach the speech prosody planner');
 
-
-const projected = projectVoiceEmotionContext(
-  {facets:{cognition:{cognitiveField:{dominantEmotion:'JOY',valence01:.71,arousal01:.62,dominance01:.12,coherence01:.99}}}},
-  {history:[{label:'joy',valence01:.71,arousal01:.62,dominance01:.83}]},
-);
-assert.deepEqual(projected,{label:'joy',valence01:.71,arousal01:.62,dominance01:.83},
-  'latest appraisal episode must own the voice emotion projection');
-
-const fieldFallback = projectVoiceEmotionContext({
-  facets:{cognition:{cognitiveField:{dominantEmotion:'curiosity',valence01:.9,arousal01:.8,dominance01:.66,coherence01:.99}}},
+const projectionNow = Date.now();
+const joyEngine = new EmotionAppraisalEngine();
+const joyEpisode = joyEngine.appraise({
+  tick: 20, at: projectionNow - 50, socialMeaning01: .9, goalCongruence01: .92,
+  controllability01: .82, success01: .94, novelty01: .55, uncertainty01: .1,
 });
+const projected = projectEmotionAffectFrame({
+  stateVersion:20,
+  stateAt:projectionNow,
+  now:projectionNow,
+  appraisal:joyEngine.snapshot(),
+  cognitiveField:{dominantEmotion:'sadness',valence01:.1,arousal01:.9,dominance01:.12,coherence01:.99},
+});
+assert.equal(projected.label, joyEpisode.label, 'latest canonical episode must own the voice emotion projection');
+assert.equal(projected.episodeId, joyEpisode.id);
+assert.equal(projected.source, 'emotion-appraisal');
+assert.equal(projected.stateVersion, 20);
+assert.ok(Math.abs(projected.dominance01 - joyEpisode.dominance01) < .01);
+
+const fieldNow = Date.now();
+const fieldFallback = projectEmotionAffectFrame({ stateVersion:21, stateAt:fieldNow, now:fieldNow,
+  cognitiveField:{dominantEmotion:'curiosity',valence01:.9,arousal01:.8,dominance01:.66,coherence01:.99},
+});
+assert.equal(fieldFallback.source,'cognitive-field-fallback');
 assert.equal(fieldFallback.dominance01,.66,'use affect-specific dominance when no episode is available');
 
-const missingDominance = projectVoiceEmotionContext({
-  facets:{cognition:{cognitiveField:{dominantEmotion:'curiosity',valence01:.9,arousal01:.8,coherence01:.99}}},
+const missingDominance = projectEmotionAffectFrame({ stateVersion:22, stateAt:fieldNow, now:fieldNow,
+  cognitiveField:{dominantEmotion:'curiosity',valence01:.9,arousal01:.8,coherence01:.99},
 });
 assert.equal(missingDominance.dominance01,.5,'never substitute cognitive coherence for missing affective dominance');
 
-const malformed = projectVoiceEmotionContext({
-  facets:{cognition:{cognitiveField:{dominantEmotion:'not-an-emotion',valence01:Infinity,arousal01:'not-finite',dominance01:-4}}},
+const malformed = projectEmotionAffectFrame({ stateVersion:23, stateAt:fieldNow, now:fieldNow,
+  cognitiveField:{dominantEmotion:'not-an-emotion',valence01:Infinity,arousal01:'not-finite',dominance01:-4},
 });
-assert.deepEqual(malformed,{label:'calm',valence01:.5,arousal01:.22,dominance01:0});
-assert.deepEqual(projectVoiceEmotionContext(null),{label:'calm',valence01:.5,arousal01:.22,dominance01:.5});
+assert.equal(malformed.source,'default');
+assert.equal(malformed.label,'calm');
+assert.equal(malformed.valence01,.5);
+assert.equal(malformed.arousal01,.22);
+assert.equal(malformed.dominance01,.5);
+const emptyProjection = projectEmotionAffectFrame({ stateVersion:0, now:fieldNow });
+assert.equal(emptyProjection.source,'default');
+assert.equal(emptyProjection.label,'calm');
+assert.equal(emptyProjection.dominance01,.5);
 
 const body = defaultBodyState();
 const needs = {energy:.7,cognitiveLoad:.4,uncertainty:.3,socialNeed:.3,novelty:.3,identityCoherence:.8,goalPressure:.3};

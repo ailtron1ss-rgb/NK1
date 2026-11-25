@@ -1,0 +1,69 @@
+name: NK1 P66 time-normalized interoceptive regulation
+
+on:
+  pull_request:
+    branches: [workpass70-source]
+    paths:
+      - "runtime/neuro-kurisu/src/organism/cognition/P66InteroceptiveHomeostasis.ts"
+      - "runtime/neuro-kurisu/src/organism/core/OrganismCore.ts"
+      - "runtime/neuro-kurisu/src/organism/system/EmotionAppraisalEngine.ts"
+      - "runtime/neuro-kurisu/tests/affect-mood-dynamics.mjs"
+      - "runtime/neuro-kurisu/tests/workpass610-emotion-appraisal-restore-integrity.mjs"
+      - "runtime/neuro-kurisu/tests/p66-time-normalized-observation.mjs"
+      - "runtime/neuro-kurisu/tests/p66-core-observation-provenance.mjs"
+      - "runtime/neuro-kurisu/package.json"
+      - ".github/workflows/nk1-p66-time-normalized-regulation.yml"
+  push:
+    branches: [workpass70-source, aspect/affect-history-aggregate-reconciliation-20261119]
+    paths:
+      - "runtime/neuro-kurisu/src/organism/cognition/P66InteroceptiveHomeostasis.ts"
+      - "runtime/neuro-kurisu/src/organism/core/OrganismCore.ts"
+      - "runtime/neuro-kurisu/src/organism/system/EmotionAppraisalEngine.ts"
+      - "runtime/neuro-kurisu/tests/affect-mood-dynamics.mjs"
+      - "runtime/neuro-kurisu/tests/workpass610-emotion-appraisal-restore-integrity.mjs"
+      - "runtime/neuro-kurisu/tests/p66-time-normalized-observation.mjs"
+      - "runtime/neuro-kurisu/tests/p66-core-observation-provenance.mjs"
+      - "runtime/neuro-kurisu/package.json"
+      - ".github/workflows/nk1-p66-time-normalized-regulation.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nk1-p66-time-normalized-regulation-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  p66-temporal-regulation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: runtime/neuro-kurisu/package-lock.json
+      - name: Install runtime dependencies
+        working-directory: runtime/neuro-kurisu
+        run: npm ci
+      - name: Runtime TypeScript check
+        working-directory: runtime/neuro-kurisu
+        run: npm run typecheck
+      - name: P66 elapsed-time regression
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:p66:time-normalized-observation
+      - name: P66 Core observation provenance
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:p66:core-observation-provenance
+      - name: Emotion/interoception time-normalized state
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:affect-mood-dynamics
+      - name: Emotion outcome and persistence restore integrity
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:affect:restore-integrity
+      - name: Emotion/interoception regression
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:big-pass-172
+      - name: P66/P68 homeostatic goal integration
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:p66:p68

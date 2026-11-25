@@ -49,7 +49,12 @@
     "test:avatar-remote-source": "node --experimental-strip-types --test scripts/avatar-remote-source.test.mjs",
     "validate:2p5d-assets": "node --experimental-strip-types scripts/validate-depth-rig-assets.mjs",
     "test:2p5d-asset-inventory": "node --experimental-strip-types --test scripts/depth-rig-asset-inventory.test.mjs",
-    "test:avatar-animation-runtime": "node --experimental-strip-types --test scripts/avatar-animation-runtime.test.mjs"
+    "test:avatar-animation-runtime": "node --experimental-strip-types --test scripts/avatar-animation-runtime.test.mjs",
+    "test:affect-frame-normalize": "node --experimental-strip-types scripts/affect-frame-normalize.test.mjs",
+    "test:affect-frame-presentation": "node --experimental-strip-types scripts/affect-frame-presentation.test.mjs",
+    "test:affect-frame-bridge": "node --experimental-strip-types scripts/affect-frame-bridge.test.mjs",
+    "typecheck:affect-frame": "tsc -p tsconfig.affect.verify.json",
+    "test:affect-frame-integration": "npm run typecheck:affect-frame && npm run test:affect-frame-normalize && npm run test:affect-frame-presentation && npm run test:affect-frame-bridge && npm run test:embodiment-ui-bridge && npm run test:browser-voice-prosody"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.4",

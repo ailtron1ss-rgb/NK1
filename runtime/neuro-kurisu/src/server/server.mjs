@@ -1032,6 +1032,7 @@ async function route(req, res) {
             const lastReward01 = Number(state.lastActionSuccess ?? 0.5);
             const voiceSnapshot = runtime.embodiment.voiceSnapshot();
             const avatarNow = Date.now();
+            const affectFrame = runtime.affectFrameSnapshot(avatarNow);
             const rawTraits = snapshot.system?.neuralGerminalOrganismB270?.traitValues;
             const personalityEntries = rawTraits && typeof rawTraits === 'object' && !Array.isArray(rawTraits)
                 ? Object.entries(rawTraits).filter((entry) => typeof entry[0] === 'string' && Number.isFinite(Number(entry[1]))).slice(0, 64)
@@ -1042,12 +1043,13 @@ async function route(req, res) {
                     profile: '3d',
                     now: avatarNow,
                     affect: {
-                        valence01: Number(field.valence01 ?? .5),
-                        arousal01: Number(field.arousal01 ?? .2),
-                        dominance01: Number(field.coherence01 ?? .5),
+                        stateVersion: affectFrame.stateVersion, episodeId: affectFrame.episodeId, freshness01: affectFrame.freshness01,
+                        valence01: affectFrame.valence01, arousal01: affectFrame.arousal01, dominance01: affectFrame.dominance01,
+                        stress01: affectFrame.stress01, confidence01: affectFrame.confidence01, sampledAt: affectFrame.sampledAt,
+                        moodValence01: affectFrame.mood.valence01, moodArousal01: affectFrame.mood.arousal01,
+                        moodStress01: affectFrame.mood.stress01, moodSocialSafety01: affectFrame.mood.socialSafety01,
+                        moodSampledAt: affectFrame.mood.sampledAt, moodFreshness01: affectFrame.mood.freshness01,
                         curiosity01: Number(state.needs?.novelty ?? .5),
-                        confidence01: Number(state.lastPredictionConfidence ?? .5),
-                        sampledAt: avatarNow,
                     },
                     personality: {
                         adaptiveNames: personalityEntries.map(([name]) => name),
@@ -1061,7 +1063,8 @@ async function route(req, res) {
             }
             return json(res, 200, { ok: true, version: RELEASE_CONTRACT.application, organismCore: RELEASE_CONTRACT.organismCore, schemaVersion: RELEASE_CONTRACT.stateSchema, at: state.at, tick: state.tick, awake: body.awake,
                 state: { needs: { ...state.needs, sleepPressure: Number(p48?.interoception?.sleepPressure01 ?? (body.awake ? .15 : .85)) }, predictionError: state.predictionError, selfPredictionError: state.selfPredictionError, attentionBudget: state.attentionBudget, lastAction: state.lastAction, lastReward01: lastReward01, autonomyScore: state.autonomyScore, predictedNextAction: state.predictedNextAction, lastPredictionConfidence: state.lastPredictionConfidence, worldContextVersion: state.worldContextVersion },
-                emotion: { label: scoreLabel, valence: Number(field.valence01 ?? .5), arousal: Number(field.arousal01 ?? .2), dominance: Number(field.coherence01 ?? .5), tendency: String(state.lastAction), cause: String(field.rationale ?? 'cognitive-field') },
+                emotion: { label: affectFrame.label, valence: affectFrame.valence01, arousal: affectFrame.arousal01, dominance: affectFrame.dominance01, tendency: affectFrame.actionTendency, cause: affectFrame.cause },
+                affectFrame,
                 identity: { subjectId: String(p33?.identity?.canonicalName ?? 'kurisu').toLowerCase().replace(/\s+/g, '-'), name: String(p33?.identity?.canonicalName ?? 'Makise Kurisu'), fingerprint: String(snapshot.facets.consciousness?.identityContinuity?.selfNarrativeFingerprint ?? ''), createdAt: Number(p33?.identity?.createdAt ?? state.at), cycles: Number(p33?.continuity?.lifeTicks ?? state.tick), traits: (snapshot.system?.neuralGerminalOrganismB270?.traitValues && typeof snapshot.system.neuralGerminalOrganismB270.traitValues === 'object') ? snapshot.system.neuralGerminalOrganismB270.traitValues : {}, trust: Number(p33?.relationship?.trust01 ?? .5), traitNames: Array.isArray(p33?.identity?.coreTraits) ? p33.identity.coreTraits : [] },
                 lastDecision: candidates.length || state.lastAction !== 'none' ? { tick: state.tick, action: String(state.lastAction), predictedNextAction: String(state.predictedNextAction), selectedScore: Number(candidates.find((x) => x.action === state.lastAction)?.score ?? 0), candidates, workspace: Array.isArray(workspace?.selected) ? workspace.selected : [], reason: `canonical action=${String(state.lastAction)} next=${String(state.predictedNextAction)}` } : null,
                 memories: (Array.isArray(memoryOS?.items) ? memoryOS.items.slice(-32) : []).map((m) => ({ id: String(m.id), kind: String(m.kind), summary: String(m.content ?? m.summary ?? ''), salience: Number(m.salience ?? 0), confidence: Number(m.confidence ?? 0), predictionError: Number(m.predictionError ?? 0), createdAt: Number(m.createdAt ?? state.at), retrievedAt: Number(m.lastAccessAt ?? 0), retrievalCount: Number(m.retrievalCount ?? 0) })),

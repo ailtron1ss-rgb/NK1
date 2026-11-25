@@ -1,0 +1,45 @@
+name: NK1 emotion state temporal validation
+on:
+  pull_request:
+    branches: [workpass70-source]
+    paths:
+      - "runtime/neuro-kurisu/src/organism/system/EmotionAppraisalEngine.ts"
+      - "runtime/neuro-kurisu/src/organism/cognition/P66InteroceptiveHomeostasis.ts"
+      - "runtime/neuro-kurisu/src/organism/body/AvatarBrainAffectBridge.ts"
+      - "runtime/neuro-kurisu/src/organism/core/OrganismCore.ts"
+      - "runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts"
+      - "runtime/neuro-kurisu/src/server/server.mjs"
+      - "runtime/neuro-kurisu/tests/**"
+      - "docs/reports/2026-11-25-emotion-state-affect-mood-integration-ru.md"
+      - "docs/reports/2026-11-25-p66-time-normalized-regulation-ru.md"
+      - "app/src/components/avatar/affectFrame.ts"
+      - "app/src/components/avatar/embodimentUiBridge.ts"
+      - "app/src/neuro-kurisu/**"
+      - "app/src/organism/types.ts"
+      - "app/scripts/affect-frame-*.test.mjs"
+      - "app/tsconfig.affect.verify.json"
+      - "runtime/neuro-kurisu/package.json"
+      - "app/package.json"
+jobs:
+  runtime:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: runtime/neuro-kurisu/package-lock.json
+      - run: npm ci --prefix runtime/neuro-kurisu
+      - run: npm run test:emotion-state-dynamics --prefix runtime/neuro-kurisu
+  app:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - run: npm ci --prefix app
+      - run: npm run test:affect-frame-integration --prefix app

@@ -1,0 +1,25 @@
+{
+  "compilerOptions": {
+    "noEmit": true,
+    "strict": true,
+    "skipLibCheck": true,
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "baseUrl": ".",
+    "paths": {
+      "@/*": [
+        "src/*"
+      ]
+    },
+    "types": [],
+    "allowImportingTsExtensions": true
+  },
+  "files": [
+    "src/organism/types.ts",
+    "src/neuro-kurisu/types.ts",
+    "src/neuro-kurisu/normalize.ts",
+    "src/components/avatar/affectFrame.ts",
+    "src/components/avatar/embodimentUiBridge.ts"
+  ]
+}
