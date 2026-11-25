@@ -18,6 +18,7 @@ import { InteroceptiveStateEstimator } from '../system/InteroceptiveStateEstimat
 import { ActivePerceptionExecutor, defaultActivePerceptionExecutor, type ActivePerceptionModality } from '../system/ActivePerceptionExecutor.ts';
 import { ActivePerceptionNeuralSubstrate } from '../cognition/ActivePerceptionNeuralSubstrate.ts';
 import { PerceptualEvidenceCompiler, defaultPerceptualEvidence } from '../body/PerceptualEvidenceCompiler.ts';
+import { ObservationIntakeGate } from '../body/ObservationIntakeGate.ts';
 import { countOr, isPlainDataRecord, ownDataValue, stringOr, timestampOr, unitOr } from '../body/RestoreSanitizers.ts';
 
 /** BIG PASS 51: physical owner for sensor, perception and embodied-experience state. */
