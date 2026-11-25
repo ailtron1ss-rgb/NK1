@@ -15,6 +15,25 @@ async function clickUntilContact(canvas, bounds, expectedCount, yCandidates) {
     }
     if (observedEvents.length >= expectedCount) return y;
   }
+  const diagnostics = await canvas.evaluate((element) => ({
+    rect: (() => {
+      const rect = element.getBoundingClientRect();
+      return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
+    })(),
+    pointerTrace: window.__nkAvatarPointerTrace ?? [],
+    readyText: document.body.innerText.match(/Модель загружена|Геометрия загружена|Модель не загружена|3D-рендерер недоступен/g) ?? [],
+  }));
+  const screenshotPath = `${process.env.RUNNER_TEMP ?? process.cwd()}/avatar-contact-debug.png`;
+  await canvas.screenshot({ path: screenshotPath }).catch((error) => {
+    console.error("[avatar-contact] Failed to capture 3D canvas:", error);
+  });
+  console.error("[avatar-contact] 3D pointer diagnostics", JSON.stringify({
+    expectedCount,
+    observedCount: observedEvents.length,
+    yCandidates,
+    screenshotPath,
+    ...diagnostics,
+  }));
   throw new Error(`No avatar contact was recorded after probing canvas y positions: ${yCandidates.join(", ")}`);
 }
 
@@ -27,6 +46,24 @@ try {
   const page = await browser.newPage({ viewport: { width: 1280, height: 900 }, deviceScaleFactor: 1 });
   await page.addInitScript(() => {
     window.__nkAvatarSpriteDraws = [];
+    window.__nkAvatarPointerTrace = [];
+    const tracePointer = (event) => {
+      const target = event.target;
+      if (!(target instanceof HTMLCanvasElement)
+        || !String(target.getAttribute("aria-label") ?? "").startsWith("3D-модель")) return;
+      window.__nkAvatarPointerTrace.push({
+        type: event.type,
+        button: event.button,
+        pointerId: event.pointerId,
+        isPrimary: event.isPrimary,
+        x: Math.round(event.clientX),
+        y: Math.round(event.clientY),
+      });
+    };
+    document.addEventListener("pointerdown", tracePointer, true);
+    document.addEventListener("pointermove", tracePointer, true);
+    document.addEventListener("pointerup", tracePointer, true);
+    document.addEventListener("pointercancel", tracePointer, true);
     const drawImage = CanvasRenderingContext2D.prototype.drawImage;
     CanvasRenderingContext2D.prototype.drawImage = function (image, ...args) {
       if (image instanceof HTMLImageElement && image.src.includes("/sprites/")) {
