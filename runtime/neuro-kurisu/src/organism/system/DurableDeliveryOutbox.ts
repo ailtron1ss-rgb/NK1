@@ -175,6 +175,13 @@ export class DurableDeliveryOutbox {
       const leaseOwner = safeText(ownValue(row, 'leaseOwner'), 120);
       const leaseUntil = safeTime(ownValue(row, 'leaseUntil'))!;
       const deliveredAt = safeTime(ownValue(row, 'deliveredAt'), true);
+      const attemptCount = safeCounter(ownValue(row, 'attemptCount'), this.maxAttempts);
+      if ((status === 'leased' || status === 'reconciliation-required') && attemptCount === 0) {
+        throw new Error('delivery-outbox-attempt-lineage-invalid');
+      }
+      if (status === 'pending' && attemptCount >= this.maxAttempts) {
+        throw new Error('delivery-outbox-attempts-exhausted-pending');
+      }
       if (status === 'leased' && (!leaseOwner || leaseUntil <= 0)) throw new Error('delivery-outbox-lease-invalid');
       if (status !== 'leased' && (leaseOwner !== null || leaseUntil !== 0)) throw new Error('delivery-outbox-stale-lease');
       if (status === 'delivered' && deliveredAt === null) throw new Error('delivery-outbox-delivery-receipt-missing');
@@ -191,7 +198,7 @@ export class DurableDeliveryOutbox {
         createdAt: safeTime(ownValue(row, 'createdAt'))!,
         nextAttemptAt: safeTime(ownValue(row, 'nextAttemptAt'))!,
         expiresAt: safeTime(ownValue(row, 'expiresAt'), true),
-        attemptCount: safeCounter(ownValue(row, 'attemptCount'), this.maxAttempts),
+        attemptCount,
         status: status as DurableDeliveryStatus,
         leaseOwner,
         leaseUntil,
@@ -248,7 +255,7 @@ export class DurableDeliveryOutbox {
   pendingCandidate(at = Date.now()): DurableDeliveryRecord | null {
     if (!Number.isSafeInteger(at) || at < 0) throw new Error('delivery-outbox-time-invalid');
     const candidate = this.state.records
-      .filter(record => record.status === 'pending' && record.nextAttemptAt <= at && (record.expiresAt === null || record.expiresAt > at))
+      .filter(record => record.status === 'pending' && record.attemptCount < this.maxAttempts && record.nextAttemptAt <= at && (record.expiresAt === null || record.expiresAt > at))
       .sort((a, b) => a.nextAttemptAt - b.nextAttemptAt || a.createdAt - b.createdAt || a.id.localeCompare(b.id))[0];
     return candidate ? cloneRecord(candidate) : null;
   }
@@ -329,7 +336,8 @@ export class DurableDeliveryOutbox {
     }
     this.reapExpiredLeases(at);
     const record = this.state.records.find(item => item.id === safeId);
-    if (!record || record.status !== 'pending' || record.nextAttemptAt > at || (record.expiresAt !== null && record.expiresAt <= at)) return null;
+    if (!record || record.status !== 'pending' || record.attemptCount >= this.maxAttempts
+      || record.nextAttemptAt > at || (record.expiresAt !== null && record.expiresAt <= at)) return null;
     record.status = 'leased';
     record.leaseOwner = owner;
     record.leaseUntil = addSafeTime(at, leaseMs);
