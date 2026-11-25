@@ -131,7 +131,7 @@ function safePath(value: unknown): string | null {
     if (part.length === 0 || part === '.' || part === '..' || RESERVED_SEGMENTS.has(part.toLowerCase())) return true;
     // Reject names whose interpretation changes on Windows or through alternate
     // data streams. This keeps a candidate tree portable and prevents aliases.
-    if (/[<>:"|?*\\u0000-\\u001f]/.test(part) || /[. ]$/.test(part)) return true;
+    if (/[<>:"|?*\u0000-\u001f]/.test(part) || /[. ]$/.test(part)) return true;
     const deviceStem = part.split('.')[0].toUpperCase();
     if (/^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])$/.test(deviceStem)) return true;
     return false;
