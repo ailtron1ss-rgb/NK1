@@ -160,6 +160,16 @@ function fixture({ acknowledge = async () => true } = {}) {
   const runtimeSource = await readFile(new URL("../src/organism/core/OrganismRuntime.ts", import.meta.url), "utf8");
   const coreSource = await readFile(new URL("../src/organism/core/OrganismCore.ts", import.meta.url), "utf8");
   const engineSource = await readFile(new URL("../src/organism/system/AutonomousSocialInitiativeEngine.ts", import.meta.url), "utf8");
+  const serverSource = await readFile(new URL("../src/server/server.mjs", import.meta.url), "utf8");
+  const coordinatorSource = await readFile(new URL("../src/server/proactive-delivery-coordinator.mjs", import.meta.url), "utf8");
+  assert.ok(runtimeSource.includes("setAutonomousDialogueQuietHours(input)"),
+    "Runtime must serialize quiet-hours policy changes");
+  assert.ok(coreSource.includes("setAutonomousInitiativeQuietHours(input)"),
+    "Core must remain the owner of persisted quiet-hours configuration");
+  assert.ok(serverSource.includes("/api/organism/proactive-quiet-hours"),
+    "the server must expose the quiet-hours configuration endpoint");
+  assert.ok(coordinatorSource.includes("invalid-proactive-quiet-hours"),
+    "the coordinator must validate quiet-hours payloads before entering Runtime");
   assert.ok(runtimeSource.includes("acknowledgeAutonomousSocialInitiativeWithState(id, Date.now(), expectedAttemptCount)"),
     "Runtime must forward the attempt fence into the Core command");
   assert.ok(coreSource.includes("acknowledgeWithState(id, at, expectedAttemptCount)"),
