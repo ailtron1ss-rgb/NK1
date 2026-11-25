@@ -363,10 +363,21 @@ export class AutonomousSocialInitiativeEngine {
   }
   deliveryPolicy(at=Date.now()){
     const quietNow=this.state.quietHoursEnabled&&withinQuietHoursUtc(at,this.state.quietStartHourUtc,this.state.quietEndHourUtc);
+    const summary = this.summary(at);
     return {consentGranted:this.state.consentGranted,quietHoursEnabled:this.state.quietHoursEnabled,
       quietStartHourUtc:this.state.quietStartHourUtc,quietEndHourUtc:this.state.quietEndHourUtc,
       mayDeliverUserVisible:this.state.consentGranted&&!quietNow,
-      suppressedByConsent:this.state.suppressedByConsent,suppressedByQuietHours:this.state.suppressedByQuietHours};
+      suppressedByConsent:this.state.suppressedByConsent,suppressedByQuietHours:this.state.suppressedByQuietHours,
+      outbox: {
+        pending: summary.deliveryPending,
+        leased: summary.deliveryLeased,
+        backoff: summary.deliveryBackoff,
+        claimable: summary.deliveryClaimable,
+        exhausted: summary.deliveryExhausted,
+        attempts: summary.deliveryAttempts,
+        attemptsRemaining: summary.deliveryAttemptsRemaining,
+        lastAttemptAt: summary.deliveryLastAttemptAt,
+      }};
   }
 
   private expirePending(at: number): void {
