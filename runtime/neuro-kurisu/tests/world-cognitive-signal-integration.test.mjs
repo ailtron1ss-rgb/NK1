@@ -136,7 +136,8 @@ test('WorldSubsystemRuntime exports a read-only provenance-aware cognitive signa
   const signal = runtime.cognitiveAttentionSignal();
 
   assert.equal(signal.revision, 17);
-  assert.equal(signal.evidenceClass, 'mixed');
+  assert.equal(signal.evidenceClass, 'inferred',
+    'restored observation labels without a fresh admission receipt must not self-attest as observed');
   assert.ok(signal.conflict01 > .25);
   assert.ok(signal.evidenceConfidence01 >= 0 && signal.evidenceConfidence01 <= 1);
   assert.deepEqual(runtime.groundedWorld.snapshot(), before,
