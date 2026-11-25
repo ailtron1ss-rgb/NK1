@@ -49,7 +49,15 @@ export function restoreChatCache(serialized: string | null): ChatTurn[] {
   try {
     const parsed: unknown = JSON.parse(serialized);
     if (!Array.isArray(parsed)) return [];
-    return parsed.slice(-MAX_CHAT_TURNS).map(restoreTurn).filter((turn): turn is ChatTurn => turn !== null);
+    const restored = parsed.slice(-MAX_CHAT_TURNS)
+      .map(restoreTurn)
+      .filter((turn): turn is ChatTurn => turn !== null);
+    const seen = new Set<string>();
+    return restored.filter((turn) => {
+      if (seen.has(turn.id)) return false;
+      seen.add(turn.id);
+      return true;
+    });
   } catch {
     return [];
   }
