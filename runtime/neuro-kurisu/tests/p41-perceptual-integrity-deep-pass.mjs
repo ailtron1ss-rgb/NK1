@@ -262,10 +262,19 @@ function semanticVision(objects, at, extra = {}) {
     id: 'legacy-chair', label: 'chair', kind: 'object', confidence01: 0.7, salience01: 0.5,
     present01: 0.8, firstSeenAt: 1, lastSeenAt: 2, observations: 2, modalities: ['vision'],
     position: null,
+    modalitySourceIds:{
+      vision:['vision','detector'],
+      audio:['speech','microphone'],
+      speech:['speech-channel'],
+      semantic:['semantic-channel'],
+    },
   }];
   const restored = new P41SemanticPerceptionEngine();
   restored.restore(legacy);
   assert.equal(restored.snapshot().entities[0].id, 'legacy-chair');
+  assert.deepEqual(restored.snapshot().entities[0].modalitySourceIds,
+    {vision:['detector'],audio:['microphone']},
+    'legacy restore must keep canonical modality source IDs and drop modality-name aliases');
   assert.equal(restored.snapshot().modalityReliability.vision.calibrationSamples, 0);
   assert.equal(restored.snapshot().metrics.crossModalEvidenceCoverage01, 0);
 }
