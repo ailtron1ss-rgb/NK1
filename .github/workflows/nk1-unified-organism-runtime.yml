@@ -99,6 +99,8 @@ jobs:
         run: node --experimental-strip-types --test app/scripts/proactive-chat-cache.test.mjs
       - name: Proactive delivery lease-token fencing and expiry
         run: node runtime/neuro-kurisu/tests/proactive-delivery-lease-registry.mjs
+      - name: Proactive delivery coordinator lifecycle and concurrent ACK fencing
+        run: node runtime/neuro-kurisu/tests/proactive-delivery-coordinator.mjs
       - name: N.E.K.O. proactive topic-source diversity
         run: npm --prefix runtime/neuro-kurisu run test:neko-social-source-fairness
       - name: Endogenous motivation and goal genesis
