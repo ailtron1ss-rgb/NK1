@@ -28,6 +28,9 @@ jobs:
           package-manager-cache: false
       - name: Verify input dimension and legacy state migration
         run: node --experimental-strip-types runtime/neuro-kurisu/tests/metacognitive-input-dimension.mjs
+      - name: Verify malformed checkpoint restore sanitization
+        if: always()
+        run: node --experimental-strip-types runtime/neuro-kurisu/tests/metacognitive-restore-sanitization.mjs
       - name: Verify paired observation and outcome alignment
         if: always()
         run: node --experimental-strip-types runtime/neuro-kurisu/tests/metacognitive-observation-alignment.mjs
