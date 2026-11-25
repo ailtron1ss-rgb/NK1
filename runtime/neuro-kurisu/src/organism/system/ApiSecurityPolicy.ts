@@ -1,9 +1,9 @@
 export interface ApiSecurityDecision { allowed: boolean; status: number; reason: string; }
-export type ApiApprovalActor = 'api-token-owner'|'loopback-owner';
+export type ApiApprovalActor = 'api-token-holder'|'loopback-local-client';
 /** Map only server-verified authorization outcomes to audit principals. */
 export function apiApprovalActor(reason: string): ApiApprovalActor {
-  if (reason === 'authenticated') return 'api-token-owner';
-  if (reason === 'loopback-research-mode') return 'loopback-owner';
+  if (reason === 'authenticated') return 'api-token-holder';
+  if (reason === 'loopback-research-mode') return 'loopback-local-client';
   throw new Error('api-approval-actor-unavailable');
 }
 const LOOPBACK = new Set(['127.0.0.1','::1','localhost']);

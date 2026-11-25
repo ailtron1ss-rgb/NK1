@@ -3,8 +3,8 @@ import { readFile } from 'node:fs/promises';
 import { ActionGateway } from '../src/organism/system/ActionGateway.ts';
 import { apiApprovalActor } from '../src/organism/system/ApiSecurityPolicy.ts';
 
-assert.equal(apiApprovalActor('authenticated'), 'api-token-owner');
-assert.equal(apiApprovalActor('loopback-research-mode'), 'loopback-owner');
+assert.equal(apiApprovalActor('authenticated'), 'api-token-holder');
+assert.equal(apiApprovalActor('loopback-research-mode'), 'loopback-local-client');
 assert.throws(() => apiApprovalActor('public-health'), /api-approval-actor-unavailable/);
 assert.throws(() => apiApprovalActor('caller-supplied-owner'), /api-approval-actor-unavailable/);
 
@@ -19,7 +19,7 @@ gateway.registerTool({
   execute: async () => ({ accepted: true }),
 });
 
-for (const actor of ['api-token-owner', 'loopback-owner', 'owner']) {
+for (const actor of ['api-token-holder', 'loopback-local-client', 'owner']) {
   const request = await gateway.requestToolApproval(
     'fixture.approval.attribution',
     { operation: 'attribution-check' },
@@ -39,7 +39,7 @@ for (const actor of ['api-token-owner', 'loopback-owner', 'owner']) {
 const restored = new ActionGateway({ live: true });
 restored.restoreExecutionLedger(persisted);
 const restoredRows = restored.toolPermissionSnapshot().requests;
-for (const actor of ['api-token-owner', 'loopback-owner', 'owner']) {
+for (const actor of ['api-token-holder', 'loopback-local-client', 'owner']) {
   assert.ok(restoredRows.some((row) => row.actor === actor),
     'approval actor provenance must survive ActionGateway snapshot restore');
 }

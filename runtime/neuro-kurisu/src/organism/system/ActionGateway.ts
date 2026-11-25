@@ -133,11 +133,11 @@ export interface ToolExecutionContext {
   expectedPreconditionHash?:string;
 }
 export type ActionToolPermissionClass = 'web'|'device'|'filesystem'|'code'|'system'|'self-modification';
-export type ActionToolApprovalActor = 'owner'|'api-token-owner'|'loopback-owner';
+export type ActionToolApprovalActor = 'owner'|'api-token-holder'|'loopback-local-client';
 export type ActionToolApprovalOperation = 'execute'|'reconcile'|'direct';
 export type ActionToolApprovalStatus = 'pending'|'approved'|'declined'|'consumed'|'expired';
 export function isActionToolApprovalActor(value: unknown): value is ActionToolApprovalActor {
-  return value === 'owner' || value === 'api-token-owner' || value === 'loopback-owner';
+  return value === 'owner' || value === 'api-token-holder' || value === 'loopback-local-client';
 }
 export interface ActionToolApprovalRecord {
   id:string; toolId:string; permissionClass:ActionToolPermissionClass; operation:ActionToolApprovalOperation;
