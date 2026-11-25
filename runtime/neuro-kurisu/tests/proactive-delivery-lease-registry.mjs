@@ -28,11 +28,11 @@ import { ProactiveDeliveryLeaseRegistry } from "../src/server/proactive-delivery
   leases.issue("soc:a", 1, 50_000, "token-a-0000000001", 1);
   leases.issue("soc:b", 1, 50_000, "token-b-0000000001", 1);
   leases.issue("soc:c", 1, 50_000, "token-c-0000000001", 1);
-  assert.equal(leases.size(), 2, "the ephemeral token registry must remain bounded");
+  assert.equal(leases.size(2), 2, "the ephemeral token registry must remain bounded");
   assert.equal(leases.matches("soc:a", "token-a-0000000001", 2), false,
     "capacity eviction must fail closed");
   leases.clear();
-  assert.equal(leases.size(), 0);
+  assert.equal(leases.size(3), 0);
 }
 
 {
