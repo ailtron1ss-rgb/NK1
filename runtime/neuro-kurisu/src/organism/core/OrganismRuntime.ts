@@ -211,7 +211,7 @@ export interface RuntimeConfig extends OrganismConfig {
   /** Durable delivery-obligation sidecar. Does not start a sender or grant network permissions. */
   deliveryOutboxStore?: JsonStateStore<DurableDeliveryOutboxState>;
   /** Host-owned consent/quiet-hours admission; absent means outbound delivery claims fail closed. */
-  deliveryAdmission?: (record: Readonly<DurableDeliveryRecord>, at: number) => boolean | Promise<boolean>;
+  deliveryAdmission?: (record: Readonly<DurableDeliveryRecord>, at: number) => boolean;
   worldStateStore?: JsonStateStore<PersistedWorld>;
   journal?: { write(level: 'info'|'warn'|'error', event: string, data?: Record<string, unknown>): Promise<void> };
   visionBackend?: VisionSemanticBackend;
@@ -3078,7 +3078,7 @@ export class OrganismRuntime {
       if (!candidate) return null;
       let admitted = false;
       try {
-        admitted = await this.deliveryAdmission(candidate, at) === true;
+        admitted = this.deliveryAdmission(candidate, at) === true;
       } catch {
         admitted = false;
       }
