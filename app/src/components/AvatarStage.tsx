@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { EmotionLabel, OrganismSnapshot } from "@/organism/types";
-import { neuroApiUrl } from "@/neuro-kurisu/api";
+import { neuroApi, neuroApiUrl } from "@/neuro-kurisu/api";
+import { createLive2DTapRecorder } from "./avatar/embodimentIntentAdapter";
 import {
   connectNativeSpeechProviderEvents,
   describeNativeSpeechProviderStatus,
@@ -122,6 +123,7 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
   const lastSpeechSessionRef = useRef<BrowserSpeechSession | null>(null);
   const speechPhaseRef = useRef<SpeechPhase>("idle");
   const [live, setLive] = useState(false);
+  const [contactStatus, setContactStatus] = useState<"idle" | "recording" | "recorded" | "error">("idle");
   const [viewerReadyRevision, setViewerReadyRevision] = useState(0);
   // Browser-backed preferences start from deterministic SSR-safe values, then hydrate after mount.
   // Native speech remains opt-in; restoring the preference never replays historical chat.
@@ -196,9 +198,18 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
   }), []);
 
   useEffect(() => {
+    let active = true;
+    const tapRecorder = createLive2DTapRecorder({
+      recordExternalEvent: (detail, importance) => neuroApi.recordExternalEvent(detail, importance),
+      onStatus: (status) => { if (active) setContactStatus(status); },
+    });
     const onMsg = (ev: MessageEvent) => {
       if (ev.origin !== window.location.origin || ev.source !== frame.current?.contentWindow) return;
       if (!isRecord(ev.data) || typeof ev.data.type !== "string") return;
+      if (ev.data.type === "live2d_tap") {
+        void tapRecorder.record(ev.data);
+        return;
+      }
       if (ev.data.type === "live2d_ready") {
         if (typeof ev.data.profile !== "string" || ev.data.profile.length > 24) return;
         setLive(true);
@@ -225,7 +236,13 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
       }
     };
     window.addEventListener("message", onMsg);
-    return () => window.removeEventListener("message", onMsg);
+    // Replay readiness after the host listener is attached. This closes the
+    // fast-iframe/slow-hydration race without trusting a message from another frame.
+    frame.current?.contentWindow?.postMessage({ type: "kurisu_viewer_hello", protocolVersion: 1 }, window.location.origin);
+    return () => {
+      active = false;
+      window.removeEventListener("message", onMsg);
+    };
   }, []);
 
   useEffect(() => {
@@ -603,10 +620,10 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
           avatarBrainChannels={projection.brainChannels ?? undefined}
         /> : mode === "3d" ? <Avatar3DStage emotion={snap.emotion.label} action={snap.lastOption} motorPlan={projection.motorPlan} arousal={snap.emotion.arousal} valence={snap.emotion.valence} dominance={snap.emotion.dominance} energy={snap.needs.energy} cognitiveLoad={snap.needs.cognitiveLoad} uncertainty={snap.needs.uncertainty} socialNeed={snap.needs.socialNeed} novelty={snap.needs.novelty} goalPressure={snap.needs.goalPressure} curiosity={snap.curiosity} predictionError={snap.predictionError} traits={snap.identity.traits} gazeX={projection.gaze.x} gazeY={projection.gaze.y} speaking={projection.speaking} mouthPose={projection.mouthPose} thinking={thinking} awake={snap.awake} bodyChannels={{ ...motionChannelsRef.current, ...projection.bodyChannels }} avatarBrainFrame={projection.brainFrame ?? undefined} onReturnTo2D={() => setMode("live2d")} /> : <>
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_30%,color-mix(in_oklab,var(--color-ember)_18%,transparent),transparent_62%)]" />
-        <iframe ref={frame} title="Kurisu Live2D" src="/live2d/viewer.html?profile=auto" className={cn("relative z-10 h-[320px] w-full border-0 transition-opacity duration-300 md:h-[420px]", live ? "opacity-100" : "opacity-0")} allow="autoplay" />
+        <iframe ref={frame} title="Kurisu Live2D" src="/live2d/viewer.html?profile=auto" onLoad={() => frame.current?.contentWindow?.postMessage({ type: "kurisu_viewer_hello", protocolVersion: 1 }, window.location.origin)} className={cn("relative z-10 h-[320px] w-full border-0 transition-opacity duration-300 md:h-[420px]", live ? "opacity-100" : "opacity-0")} allow="autoplay" />
         {!live ? <div className="absolute inset-0 z-[11] flex items-center justify-center p-6"><div className="max-w-sm rounded-xl border border-border bg-bg/85 p-4 text-center backdrop-blur"><p className="text-xs font-medium uppercase tracking-wider text-subtle">Live2D unavailable</p><p className="mt-1 text-sm text-fg">Переключитесь на Legacy — там используются реальные legacy sprite-ассеты.</p><button type="button" aria-pressed={false} onClick={() => setMode("legacy")} className="mt-3 rounded-md border border-border px-3 py-1.5 text-xs text-fg hover:bg-elevated">Open Legacy</button></div></div> : null}
         <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 flex items-end justify-between p-4">
-          <div><p className="font-display text-lg tracking-tight text-fg">Kurisu</p><p className="text-xs text-muted tabular-nums">{snap.awake ? "awake" : "sleep"} · {snap.emotion.label} · t{snap.tick}</p><p className="text-[10px] text-muted">{voiceStatus === "unsupported" ? "голос недоступен в этом браузере" : voiceStatus === "unknown" ? "исход воспроизведения неизвестен" : voiceStatus === "speaking" ? "говорит · виземы привязаны к временной шкале речи" : voiceEnabled ? "голос включён · речь запускается для новых реплик" : "голос выключен"}</p><p className="text-[10px] text-muted">Termux provider: {nativeSpeechConnection === "connected" ? "подключён" : nativeSpeechConnection === "reconnecting" ? "переподключение" : nativeSpeechConnection === "closed" ? "отключён" : "подключение"}</p>{nativeSpeechProviderEvent ? <p className="max-w-[min(75vw,420px)] text-[10px] text-muted">{describeNativeSpeechProviderStatus(nativeSpeechProviderEvent)}</p> : null}{intentAck ? <p className="text-[9px] text-muted tabular-nums">intent #{intentAck.stateVersion} · {intentAck.status === "parameters-observed" ? `параметры: ${intentAck.observedCount}/6` : "принятие без readback"} · expr:{intentAck.expressionStatus} · motion:{intentAck.motionStatus} · partial</p> : null}</div>
+          <div><p className="font-display text-lg tracking-tight text-fg">Kurisu</p><p className="text-xs text-muted tabular-nums">{snap.awake ? "awake" : "sleep"} · {snap.emotion.label} · t{snap.tick}</p>{contactStatus !== "idle" ? <p role="status" aria-live="polite" className="text-[10px] text-muted">{contactStatus === "recording" ? "касание → сенсорный слой…" : contactStatus === "recorded" ? "касание зарегистрировано организмом" : "сенсорный канал недоступен"}</p> : null}<p className="text-[10px] text-muted">{voiceStatus === "unsupported" ? "голос недоступен в этом браузере" : voiceStatus === "unknown" ? "исход воспроизведения неизвестен" : voiceStatus === "speaking" ? "говорит · виземы привязаны к временной шкале речи" : voiceEnabled ? "голос включён · речь запускается для новых реплик" : "голос выключен"}</p><p className="text-[10px] text-muted">Termux provider: {nativeSpeechConnection === "connected" ? "подключён" : nativeSpeechConnection === "reconnecting" ? "переподключение" : nativeSpeechConnection === "closed" ? "отключён" : "подключение"}</p>{nativeSpeechProviderEvent ? <p className="max-w-[min(75vw,420px)] text-[10px] text-muted">{describeNativeSpeechProviderStatus(nativeSpeechProviderEvent)}</p> : null}{intentAck ? <p className="text-[9px] text-muted tabular-nums">intent #{intentAck.stateVersion} · {intentAck.status === "parameters-observed" ? `параметры: ${intentAck.observedCount}/6` : "принятие без readback"} · expr:{intentAck.expressionStatus} · motion:{intentAck.motionStatus} · partial</p> : null}</div>
           <span className="rounded-full border border-border bg-bg/70 px-2.5 py-1 text-xs uppercase tracking-wider text-muted">{live ? "live2d" : "live2d unavailable"}</span>
         </div>
       </>}

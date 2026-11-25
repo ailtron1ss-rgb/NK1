@@ -185,6 +185,10 @@ export const neuroApi = {
     method: "POST",
     body: JSON.stringify({ message, deliberate, speak, ...(approvalId ? { approvalId } : {}) }),
   }),
+  recordExternalEvent: (detail: string, importance = 0.4) => request<{ ok: boolean; perception?: Record<string, unknown> }>("/api/organism/event", {
+    method: "POST",
+    body: JSON.stringify({ detail, importance }),
+  }),
   proactiveMessage: () => request<{ ok: boolean; initiative: null | { id: string; kind: string; topic: string; message: string; createdAt: number; tick?: number; priority01: number; status: string } }>("/api/organism/proactive-message"),
   ackProactiveMessage: (id: string) => request<{ ok: boolean; acknowledged: boolean }>("/api/organism/proactive-message/ack", { method: "POST", body: JSON.stringify({ id }) }),
   sleep: (reason = "ui") => request<{ ok: boolean }>("/api/organism/sleep", { method: "POST", body: JSON.stringify({ reason }) }),

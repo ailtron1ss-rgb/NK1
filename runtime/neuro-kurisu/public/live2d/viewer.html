@@ -205,11 +205,12 @@ import { normalizeEmbodimentIntentV1 } from './embodiment-intent.mjs';
     const nx=(ev.clientX-r.left)/Math.max(1,r.width), ny=(ev.clientY-r.top)/Math.max(1,r.height);
     const zone=ny<0.50?'head':'body';
     try{model.motion(zone==='head'?'TapHead':'TapBody')}catch{}
-    send('live2d_tap',{zone,nx,ny});
+    send('live2d_tap',{protocolVersion:1,zone,nx,ny});
   },{passive:true});
   window.addEventListener('message',ev=>{
-    if(ev.origin!==window.location.origin)return;
+    if(ev.origin!==window.location.origin||ev.source!==parent)return;
     const d=ev.data||{};
+    if(d.type==='kurisu_viewer_hello'&&d.protocolVersion===1){if(model&&app)send('live2d_ready',{profile:assetProfile,modelPath});return;}
     if(d.type==='kurisu_lipsync')lipTarget=clamp(d.value,0,1);
     else if(d.type==='kurisu_embodiment_intent'){
       const normalized=normalizeEmbodimentIntentV1(d);
