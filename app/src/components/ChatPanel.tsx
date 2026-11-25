@@ -17,6 +17,10 @@ export function ChatPanel() {
   const [text, setText] = useState("");
   const [proactiveConsent, setProactiveConsent] = useState<boolean | null>(null);
   const [proactiveOutbox, setProactiveOutbox] = useState<{ pending: number; deadLettered: number; leased: number; backoff: number; claimable: number; exhausted: number } | null>(null);
+  const [quietHoursEnabled, setQuietHoursEnabled] = useState(false);
+  const [quietStartHourUtc, setQuietStartHourUtc] = useState(22);
+  const [quietEndHourUtc, setQuietEndHourUtc] = useState(8);
+  const [quietHoursBusy, setQuietHoursBusy] = useState(false);
   const [proactiveConsentBusy, setProactiveConsentBusy] = useState(false);
   const [proactiveConsentError, setProactiveConsentError] = useState<string | null>(null);
   const proactiveConsentEpoch = useRef(0);
@@ -37,6 +41,9 @@ export function ChatPanel() {
         if (!cancelled && epochAtStart === proactiveConsentEpoch.current) {
           setProactiveConsent(result.policy.consentGranted === true);
           setProactiveOutbox(result.policy.outbox);
+          setQuietHoursEnabled(result.policy.quietHoursEnabled === true);
+          setQuietStartHourUtc(result.policy.quietStartHourUtc);
+          setQuietEndHourUtc(result.policy.quietEndHourUtc);
           setProactiveConsentError(null);
         }
       }).catch((error) => {
@@ -52,6 +59,30 @@ export function ChatPanel() {
       window.clearInterval(timer);
     };
   }, []);
+
+  const saveQuietHours = async () => {
+    if (quietHoursBusy || quietStartHourUtc < 0 || quietStartHourUtc > 23
+      || quietEndHourUtc < 0 || quietEndHourUtc > 23) return;
+    proactiveConsentEpoch.current += 1;
+    setQuietHoursBusy(true);
+    setProactiveConsentError(null);
+    try {
+      const result = await neuroApi.setProactiveQuietHours({
+        enabled: quietHoursEnabled,
+        startHourUtc: quietStartHourUtc,
+        endHourUtc: quietEndHourUtc,
+      });
+      setQuietHoursEnabled(result.policy.quietHoursEnabled === true);
+      setQuietStartHourUtc(result.policy.quietStartHourUtc);
+      setQuietEndHourUtc(result.policy.quietEndHourUtc);
+      setProactiveOutbox(result.policy.outbox);
+    } catch (error) {
+      setProactiveConsentError(error instanceof Error ? error.message : String(error));
+    } finally {
+      proactiveConsentEpoch.current += 1;
+      setQuietHoursBusy(false);
+    }
+  };
 
   const toggleProactiveConsent = async () => {
     if (proactiveConsent === null || proactiveConsentBusy) return;
@@ -81,6 +112,22 @@ export function ChatPanel() {
             {snap.lastDecision?.reason ?? "waiting for observation"}
           </p>
           <p className="mt-1 text-[11px] text-subtle">Internal reflection continues when unsolicited messages are paused.</p>
+          <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-subtle">
+            <label className="inline-flex items-center gap-1.5">
+              <input type="checkbox" checked={quietHoursEnabled} onChange={(event) => setQuietHoursEnabled(event.target.checked)} disabled={quietHoursBusy} />
+              Quiet hours (UTC)
+            </label>
+            <label className="inline-flex items-center gap-1">
+              <span>From</span>
+              <input aria-label="Quiet hours start hour UTC" type="number" min={0} max={23} step={1} value={quietStartHourUtc} onChange={(event) => setQuietStartHourUtc(Math.max(0, Math.min(23, Number(event.target.value))))} disabled={quietHoursBusy} className="w-12 rounded border border-border bg-bg px-1 py-0.5 text-fg" />
+            </label>
+            <label className="inline-flex items-center gap-1">
+              <span>To</span>
+              <input aria-label="Quiet hours end hour UTC" type="number" min={0} max={23} step={1} value={quietEndHourUtc} onChange={(event) => setQuietEndHourUtc(Math.max(0, Math.min(23, Number(event.target.value))))} disabled={quietHoursBusy} className="w-12 rounded border border-border bg-bg px-1 py-0.5 text-fg" />
+            </label>
+            <Button type="button" variant="ghost" size="sm" disabled={quietHoursBusy} onClick={() => void saveQuietHours()}>{quietHoursBusy ? "Saving…" : "Save hours"}</Button>
+          </div>
+          <p className="mt-1 text-[10px] text-subtle">Hours use UTC and are inclusive of the configured interval. Delivery stays off during this window.</p>
           {proactiveOutbox ? <p className="mt-1 text-[10px] text-subtle" aria-live="polite">Outbox: {proactiveOutbox.pending} pending · {proactiveOutbox.leased} leased · {proactiveOutbox.backoff} retry · {proactiveOutbox.claimable} ready · {proactiveOutbox.exhausted} exhausted · {proactiveOutbox.deadLettered} dead-lettered</p> : null}
         </div>
         <div className="flex flex-wrap items-center justify-end gap-1">
