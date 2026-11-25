@@ -8,6 +8,7 @@ export const CHAT_CACHE_KEY = "neuro-kurisu-chat-v2";
 const MAX_CHAT_TURNS = 120;
 const MAX_CHAT_TEXT = 12_000;
 const MAX_CHAT_ID = 200;
+const MAX_CHAT_CACHE_CHARS = 1_750_000;
 const EMOTIONS = new Set<EmotionLabel>([
   "curiosity", "calm", "joy", "anxiety", "frustration", "sadness", "anger", "protective",
 ]);
@@ -43,32 +44,37 @@ function restoreTurn(value: unknown): ChatTurn | null {
   return turn;
 }
 
+function restoreUniqueTurns(values: readonly unknown[]): ChatTurn[] {
+  const seen = new Set<string>();
+  const restored: ChatTurn[] = [];
+  for (const value of values) {
+    const turn = restoreTurn(value);
+    if (!turn || seen.has(turn.id)) continue;
+    seen.add(turn.id);
+    restored.push(turn);
+  }
+  return restored;
+}
+
 /** Restore only valid, bounded chat turns from the browser's untrusted local cache. */
 export function restoreChatCache(serialized: string | null): ChatTurn[] {
-  if (typeof serialized !== "string" || !serialized) return [];
+  if (typeof serialized !== "string" || !serialized || serialized.length > MAX_CHAT_CACHE_CHARS) return [];
   try {
     const parsed: unknown = JSON.parse(serialized);
     if (!Array.isArray(parsed)) return [];
-    const restored = parsed.slice(-MAX_CHAT_TURNS)
-      .map(restoreTurn)
-      .filter((turn): turn is ChatTurn => turn !== null);
-    const seen = new Set<string>();
-    return restored.filter((turn) => {
-      if (seen.has(turn.id)) return false;
-      seen.add(turn.id);
-      return true;
-    });
+    return restoreUniqueTurns(parsed.slice(-MAX_CHAT_TURNS));
   } catch {
     return [];
   }
 }
 
-/** Persist the bounded chat transcript. False means a later delivery attempt is required. */
+/** Persist a sanitized bounded transcript; false means a later delivery attempt is required. */
 export function persistChatCache(storage: ChatCacheStorage | null, chat: readonly unknown[]): boolean {
   try {
     if (!storage || typeof storage.setItem !== "function" || !Array.isArray(chat)) return false;
-    const serialized = JSON.stringify(chat.slice(-MAX_CHAT_TURNS));
-    if (typeof serialized !== "string") return false;
+    const normalized = restoreUniqueTurns(chat.slice(-MAX_CHAT_TURNS));
+    const serialized = JSON.stringify(normalized);
+    if (typeof serialized !== "string" || serialized.length > MAX_CHAT_CACHE_CHARS) return false;
     storage.setItem(CHAT_CACHE_KEY, serialized);
     return true;
   } catch {
