@@ -80,7 +80,7 @@ test("legacy outfit picker exposes accessible disclosure and selected profile st
 test("legacy sprite loading exposes a terminal error instead of remaining stuck in loading", () => {
   assert.match(source, /type SpriteAssetStatus = "loading" \| "ready" \| "error"/);
   assert.match(source, /setAssetStatus\("loading"\)/);
-  assert.match(source, /setAssetStatus\(currentRef\.current \? "ready" : "error"\)/);
+  assert.match(source, /if \(!cancelled\) setAssetStatus\("error"\)/);
   assert.match(source, /assets unavailable/);
   assert.match(source, /role="status" aria-live="polite"/);
   assert.match(source, /предыдущий кадр сохранён/);
