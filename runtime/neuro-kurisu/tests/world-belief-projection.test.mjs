@@ -18,7 +18,8 @@ testCase('fresh sourced observations produce an observed, confidence-bearing sig
 });
 testCase('stale observations lose confidence and become unresolved rather than remaining current facts', () => {
   const signal = projectWorldCognitiveSignal({ snapshot: baseSnapshot({ lastSeenAt: 0 }), at: 3_600_000 });
-  assert.equal(signal.evidenceClass, 'unknown'); assert.equal(signal.evidenceConfidence01, 0);
+  assert.equal(signal.evidenceClass, 'unknown'); assert.ok(signal.evidenceConfidence01 < 1e-20,
+    'stale evidence confidence should decay to numerical zero');
   assert.ok(signal.unresolved01 > 0.7); assert.ok(signal.uncertainty01 >= 0.65);
 });
 testCase('model output is inferred evidence and never becomes observed evidence', () => {
