@@ -147,7 +147,7 @@ export function createContextBoundSkillShadowEvidenceVerifier(
     // Future timestamps are suspicious for every lifecycle state. Only age expiry
     // is exempted for already-active skills; a signed receipt from the future is
     // never accepted as historical evidence.
-    if (!Number.isFinite(nowMs) || payload.observedAt > nowMs + maxFutureSkewMs) return false;
+    if (!Number.isSafeInteger(nowMs) || nowMs <= 0 || payload.observedAt > nowMs + maxFutureSkewMs) return false;
     if (purpose !== 'persisted-active' && nowMs - payload.observedAt > maxAgeMs) return false;
     return true;
   };
