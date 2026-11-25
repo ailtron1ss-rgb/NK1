@@ -73,7 +73,7 @@ const restoreP41Time=(value:unknown,fallback=0):number=>
 const restoreP41Text=(value:unknown,max=180,fallback=''):string=>{
   if(typeof value!=='string')return fallback;
   const text=value.normalize('NFKC').trim();
-  return text&&text.length<=max&&!/[\\u0000-\\u001f\\u007f-\\u009f]/u.test(text)?text:fallback;
+  return text&&text.length<=max&&!/[\u0000-\u001f\u007f-\u009f]/u.test(text)?text:fallback;
 };
 const restoreP41Strings=(value:unknown,maxItems=32,maxLength=180):string[]=>{
   if(!Array.isArray(value))return [];
@@ -394,7 +394,7 @@ export class P41SemanticPerceptionEngine {
       } satisfies P41PendingPerception];
     }):[];
     const modalityReliability=Object.fromEntries((Object.keys(d.modalityReliability) as P41Modality[]).map(modality=>{
-      const rawReliability=r.modalityReliability?.[modality]??{};
+      const rawReliability:Partial<P41PerceptionState['modalityReliability'][P41Modality]>=r.modalityReliability?.[modality]??{};
       const fallback=d.modalityReliability[modality];
       return [modality,{
         reliability01:restoreP41Unit(rawReliability.reliability01,fallback.reliability01),
