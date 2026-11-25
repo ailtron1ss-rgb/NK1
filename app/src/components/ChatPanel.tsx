@@ -131,7 +131,7 @@ export function ChatPanel() {
             </label>
             <Button type="button" variant="ghost" size="sm" disabled={quietHoursBusy} onClick={() => void saveQuietHours()}>{quietHoursBusy ? "Saving…" : "Save hours"}</Button>
           </div>
-          <p className="mt-1 text-[10px] text-subtle">Hours use UTC and are inclusive of the configured interval. Delivery stays off during this window.</p>
+          <p className="mt-1 text-[10px] text-subtle">Hours use UTC: the start hour is included and the end hour is excluded (for example, 22–08 blocks 22:00 through 07:59). Equal start and end hours pause delivery for the full day.</p>
           {proactiveOutbox ? <p className="mt-1 text-[10px] text-subtle" aria-live="polite">Outbox: {proactiveOutbox.pending} pending · {proactiveOutbox.leased} leased · {proactiveOutbox.backoff} retry · {proactiveOutbox.claimable} ready · {proactiveOutbox.exhausted} exhausted · {proactiveOutbox.deadLettered} dead-lettered</p> : null}
         </div>
         <div className="flex flex-wrap items-center justify-end gap-1">
