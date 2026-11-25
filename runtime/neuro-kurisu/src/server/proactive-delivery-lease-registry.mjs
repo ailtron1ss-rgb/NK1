@@ -57,8 +57,8 @@ export class ProactiveDeliveryLeaseRegistry {
     this.entries.clear();
   }
 
-  size() {
-    this.prune();
+  size(now = Date.now()) {
+    this.prune(now);
     return this.entries.size;
   }
 }
