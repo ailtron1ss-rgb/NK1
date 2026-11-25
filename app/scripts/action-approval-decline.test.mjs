@@ -29,7 +29,7 @@ test("an explicit owner decline rejects the original request with a typed 403 ou
 
   assert.equal(getActionApprovalSnapshot().find((card) => card.id === id)?.stage, "pending");
   await decideActionApproval(id, false);
-  await assert.rejects(pending, (error: unknown) =>
+  await assert.rejects(pending, (error) =>
     error instanceof ActionDeclinedError
       && error.status === 403
       && error.code === "ACTION_DECLINED"
