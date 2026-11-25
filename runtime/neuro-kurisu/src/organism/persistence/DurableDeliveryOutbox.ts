@@ -3,7 +3,7 @@ import { types as nodeUtilTypes } from 'node:util';
 
 export type DurableDeliveryStatus = 'pending' | 'leased' | 'reconciliation-required' | 'delivered' | 'cancelled' | 'dead-letter';
 export type DurableDeliveryReconciliationOutcome = 'confirmed-delivered' | 'confirmed-not-delivered' | 'cancelled';
-export type DurableDeliveryKind = 'task-completion' | 'reminder' | 'notification' | 'custom';
+export type DurableDeliveryKind = 'task-completion' | 'reminder' | 'notification' | 'social-initiative' | 'custom';
 
 export interface DurableDeliveryRecord {
   id: string;
@@ -62,7 +62,7 @@ const RETRY_BASE_MS = 1000;
 const RETRY_MAX_MS = 60 * 60_000;
 const MAX_LEASE_MS = 30 * 60_000;
 const STATUSES = new Set<DurableDeliveryStatus>(['pending', 'leased', 'reconciliation-required', 'delivered', 'cancelled', 'dead-letter']);
-const KINDS = new Set<DurableDeliveryKind>(['task-completion', 'reminder', 'notification', 'custom']);
+const KINDS = new Set<DurableDeliveryKind>(['task-completion', 'reminder', 'notification', 'social-initiative', 'custom']);
 
 function plainRecord(value: unknown): value is Record<string, unknown> {
   if (!value || typeof value !== 'object' || Array.isArray(value) || nodeUtilTypes.isProxy(value)) return false;

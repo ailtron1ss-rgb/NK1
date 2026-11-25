@@ -165,6 +165,10 @@ interface RuntimeNmcNAdvisor {
   evaluate(input: RuntimeNmcNAdvisorInput, options?: { timeoutMs?: number }): Promise<RuntimeNmcNAdvisorDecision | null>;
 }
 
+const AUTONOMOUS_SOCIAL_DELIVERY_TTL_MS = 20 * 60_000;
+const AUTONOMOUS_SOCIAL_DELIVERY_LEASE_MS = 30_000;
+const AUTONOMOUS_SOCIAL_DELIVERY_LEASE_OWNER = 'nk1-proactive-social-ui';
+
 export interface RuntimeConfig extends OrganismConfig {
   stateFile: string;
   worldStateFile?: string;
@@ -3060,6 +3064,19 @@ export class OrganismRuntime {
     }
   }
 
+  private async claimDeliveryObligationById(
+    id: string, leaseOwner: string, leaseMs: number, at: number,
+  ): Promise<DurableDeliveryRecord | null> {
+    if (!this.deliveryAdmission) return null;
+    const candidate = this.deliveryOutbox.get(id);
+    if (!candidate || candidate.status !== 'pending' || candidate.nextAttemptAt > at
+      || (candidate.expiresAt !== null && candidate.expiresAt <= at)) return null;
+    let admitted = false;
+    try { admitted = this.deliveryAdmission(candidate, at) === true; } catch { admitted = false; }
+    if (!admitted) return null;
+    return this.persistDeliveryOutboxMutation(() => this.deliveryOutbox.claim(id, leaseOwner, at, leaseMs));
+  }
+
   enqueueDeliveryObligation(input: DurableDeliveryEnqueueInput, at = Date.now()) {
     return this.enqueue(() => this.persistDeliveryOutboxMutation(() => this.deliveryOutbox.enqueue(input, at)));
   }
@@ -3225,20 +3242,79 @@ export class OrganismRuntime {
     return this.enqueue(() => this.core.forgetExplicitUserModelEvidence(input));
   }
 
-  /** Pending self-initiated chat turn for the UI; no tool/device side effects occur here. */
+  /** Lease a proactive chat turn before exposing it to the browser recipient. */
   async autonomousDialogueReady() {
-    return this.enqueue(async () => this.core.pendingAutonomousSocialInitiativeMessage());
+    return this.enqueue(async () => {
+      const at = Date.now();
+      const initiative = this.core.pendingAutonomousSocialInitiativeMessage();
+      if (!initiative || typeof initiative.id !== 'string' || !initiative.id
+        || !Number.isSafeInteger(initiative.createdAt)) return null;
+      const initiativeId = initiative.id;
+      const expiresAt = initiative.createdAt + AUTONOMOUS_SOCIAL_DELIVERY_TTL_MS;
+      if (!Number.isSafeInteger(expiresAt) || expiresAt <= at) return null;
+
+      await this.persistDeliveryOutboxMutation(() => this.deliveryOutbox.reapExpiredLeases(at));
+      const queued = await this.persistDeliveryOutboxMutation(() => this.deliveryOutbox.enqueue({
+        dedupeKey: `autonomous-social-initiative:${initiativeId}`,
+        kind: 'social-initiative',
+        payloadRef: `nk1:social-initiative/${initiativeId}`,
+        initiativeId,
+        expiresAt,
+      }, at));
+      if (queued.record.status === 'reconciliation-required') {
+        // Re-expose only the same stable ID to the idempotent local browser transcript.
+        return initiative;
+      }
+      if (queued.record.status !== 'pending') return null;
+      const lease = await this.claimDeliveryObligationById(
+        queued.record.id,
+        AUTONOMOUS_SOCIAL_DELIVERY_LEASE_OWNER,
+        AUTONOMOUS_SOCIAL_DELIVERY_LEASE_MS,
+        at,
+      );
+      return lease ? initiative : null;
+    });
   }
 
-  /** Mark a proactive chat turn delivered exactly once after the UI has stored it. */
+  /** ACK after local chat persistence; duplicate ACKs repair partial commits safely. */
   async acknowledgeAutonomousDialogue(id: string): Promise<boolean> {
     return this.enqueue(async () => {
-      const acknowledged = this.core.acknowledgeAutonomousSocialInitiative(id, Date.now());
-      if (acknowledged) {
-        await this.persistOpenLoopMutation(() => this.openLoopRadar.acknowledgeInitiative(id));
-        await this.core.flush();
+      const initiativeId = typeof id === 'string' ? id.trim() : '';
+      if (!initiativeId || initiativeId.length > 180) return false;
+      const existing = this.deliveryOutbox.snapshot().records.find(record =>
+        record.kind === 'social-initiative' && record.initiativeId === initiativeId);
+      if (!existing) return false;
+      if (existing.status === 'delivered') return true;
+
+      const at = Date.now();
+      await this.persistDeliveryOutboxMutation(() => this.deliveryOutbox.reapExpiredLeases(at));
+      const current = this.deliveryOutbox.get(existing.id);
+      if (!current) return false;
+      const expiredAmbiguous = current.status === 'reconciliation-required';
+      if (!expiredAmbiguous && (current.status !== 'leased'
+        || current.leaseOwner !== AUTONOMOUS_SOCIAL_DELIVERY_LEASE_OWNER
+        || current.leaseUntil <= at)) return false;
+
+      let initiative = this.core.snapshot().system.autonomousSocialInitiative?.initiatives
+        ?.find((item: any) => item.id === initiativeId);
+      if (!initiative) return false;
+      if (initiative.status === 'ready') {
+        this.core.acknowledgeAutonomousSocialInitiative(initiativeId, at);
+        initiative = this.core.snapshot().system.autonomousSocialInitiative?.initiatives
+          ?.find((item: any) => item.id === initiativeId);
       }
-      return acknowledged;
+      if (initiative?.status !== 'executed' && initiative?.status !== 'deferred') return false;
+      if (initiative.status === 'executed') {
+        await this.persistOpenLoopMutation(() => this.openLoopRadar.acknowledgeInitiative(initiativeId));
+      }
+      await this.core.flush();
+
+      if (expiredAmbiguous) {
+        return this.persistDeliveryOutboxMutation(() =>
+          this.deliveryOutbox.resolveReconciliation(current.id, 'confirmed-delivered', at));
+      }
+      return this.persistDeliveryOutboxMutation(() =>
+        this.deliveryOutbox.acknowledge(current.id, AUTONOMOUS_SOCIAL_DELIVERY_LEASE_OWNER, at));
     });
   }
 

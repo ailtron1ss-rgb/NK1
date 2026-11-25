@@ -377,7 +377,8 @@ const NMCN_RUNTIME_ADVISOR = NMCN_RUNTIME_PORT ? {
         }
     },
 } : null;
-const runtime = new OrganismRuntime({
+let runtime;
+runtime = new OrganismRuntime({
     stateFile,
     worldStateFile: worldFile,
     enableLanguage: true,
@@ -398,6 +399,12 @@ const runtime = new OrganismRuntime({
     phonePolicy: PHONE_POLICY,
     checkpointMinIntervalMs: CHECKPOINT_MIN_MS,
     checkpointMaxDirtyCycles: CHECKPOINT_MAX_CYCLES,
+    deliveryAdmission: (record, at) => {
+        if (record.kind !== 'social-initiative' || !record.initiativeId || !runtime) return false;
+        const initiative = runtime.core.pendingAutonomousSocialInitiativeMessage();
+        const policy = runtime.core.autonomousInitiativeDeliveryPolicy();
+        return policy.mayDeliverUserVisible === true && initiative?.id === record.initiativeId;
+    },
     stateStore: new FileStateStore(stateFile, { backupEverySaves: BACKUP_EVERY_SAVES, encoding: PHONE_MODE ? 'v8' : 'json' }),
     worldStateStore: new FileStateStore(worldFile, { backupEverySaves: BACKUP_EVERY_SAVES, encoding: PHONE_MODE ? 'v8' : 'json' }),
     ...(TRUSTED_SHADOW_LEARNING ? { trustedShadowLearning: TRUSTED_SHADOW_LEARNING } : {}),
