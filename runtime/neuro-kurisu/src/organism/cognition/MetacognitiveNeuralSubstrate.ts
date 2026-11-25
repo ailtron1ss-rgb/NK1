@@ -10,19 +10,19 @@ export interface MetacognitiveNeuralInput{
   identityDrift01:number; actionOutcome01:number; tick:number; at:number;
 }
 export interface MetacognitiveNeuralState{
-  version:1; inputDim:number; hiddenDim:number; hidden:number[];
+  version:1|2; inputDim:number; hiddenDim:number; hidden:number[];
   inputWeights:number[][]; recurrentWeights:number[][]; outputWeights:number[][]; outputBias:number[];
-  lastInput:number[]; lastOutput:number[]; stepCount:number; learningSteps:number;
+  lastInput:number[]; lastOutput:number[]; lastTarget:number[]; stepCount:number; learningSteps:number;
   calibrationError01:number; selfUncertainty01:number; introspectivePredictionError01:number;
   revisionReadiness01:number; lastTick:number; lastAt:number;
 }
 function defaults():MetacognitiveNeuralState{
-  const inputDim=24,hiddenDim=32,outputDim=6;
+  const inputDim=27,hiddenDim=32,outputDim=6;
   return {
-    version:1,inputDim,hiddenDim,hidden:new Array(hiddenDim).fill(0),
+    version:2,inputDim,hiddenDim,hidden:new Array(hiddenDim).fill(0),
     inputWeights:matrix(hiddenDim,inputDim,21001),recurrentWeights:matrix(hiddenDim,hiddenDim,22001),
     outputWeights:matrix(outputDim,hiddenDim,23001),outputBias:new Array(outputDim).fill(0),
-    lastInput:new Array(inputDim).fill(0),lastOutput:new Array(outputDim).fill(.5),
+    lastInput:new Array(inputDim).fill(0),lastOutput:new Array(outputDim).fill(.5),lastTarget:new Array(outputDim).fill(.5),
     stepCount:0,learningSteps:0,calibrationError01:.5,selfUncertainty01:.5,
     introspectivePredictionError01:.5,revisionReadiness01:.5,lastTick:0,lastAt:0,
   };
@@ -36,9 +36,13 @@ export class MetacognitiveNeuralSubstrate{
     const mat=(v:any,rows:number,cols:number)=>Array.isArray(v)
       ? Array.from({length:rows},(_,i)=>arr(v[i],cols)) : matrix(rows,cols,991);
     this.state={...d,...r,
+      // V1 checkpoints used a 24-feature contract. Preserve their learned prefix and
+      // zero-pad the three newly represented features instead of reinitializing weights.
+      version:2,inputDim:d.inputDim,hiddenDim:d.hiddenDim,
       hidden:arr(r.hidden,d.hiddenDim),inputWeights:mat(r.inputWeights,d.hiddenDim,d.inputDim),
       recurrentWeights:mat(r.recurrentWeights,d.hiddenDim,d.hiddenDim),outputWeights:mat(r.outputWeights,6,d.hiddenDim),
-      outputBias:arr(r.outputBias,6,.5),lastInput:arr(r.lastInput,d.inputDim),lastOutput:arr(r.lastOutput,6,.5)};
+      outputBias:arr(r.outputBias,6,.5),lastInput:arr(r.lastInput,d.inputDim),lastOutput:arr(r.lastOutput,6,.5),
+      lastTarget:arr(r.lastTarget,6,.5)};
   }
   private pack(i:MetacognitiveNeuralInput){
     const groups=[i.centralLatent,i.workspace,i.selfLatent,[i.predictionError01,i.confidence01,i.worldUncertainty01,i.identityDrift01,i.actionOutcome01]];
@@ -60,15 +64,16 @@ export class MetacognitiveNeuralSubstrate{
   }
   observe(input:MetacognitiveNeuralInput){
     const x=this.pack(input),prevH=this.state.hidden.slice(),h=this.hiddenStep(x),pred=this.outputs(h);
+    const desired=[
+      clamp01(input.confidence01),clamp01(1-input.predictionError01),clamp01(1-input.worldUncertainty01),
+      clamp01(1-input.identityDrift01),clamp01(input.actionOutcome01),clamp01(1-input.actionOutcome01)];
     let introspectiveError=.5,calError=.5;
     if(this.state.stepCount>0){
-      introspectiveError=clamp01(this.state.lastOutput.reduce((s,v,i)=>s+Math.abs(v-(this.state.lastInput[i%this.state.lastInput.length]??0)),0)/(this.state.lastOutput.length*1.5));
+      introspectiveError=clamp01(this.state.lastOutput.reduce((s,v,i)=>s+Math.abs(v-(this.state.lastTarget[i]??.5)),0)/this.state.lastOutput.length);
       calError=Math.abs((this.state.lastOutput[0]??.5)-clamp01(input.actionOutcome01));
-      this.learn(prevH,h,this.state.lastOutput,[
-        clamp01(input.confidence01),clamp01(1-input.predictionError01),clamp01(1-input.worldUncertainty01),
-        clamp01(1-input.identityDrift01),clamp01(input.actionOutcome01),clamp01(1-input.actionOutcome01)]);
+      this.learn(prevH,h,x,desired);
     }
-    this.state.hidden=h;this.state.lastInput=x;this.state.lastOutput=pred;
+    this.state.hidden=h;this.state.lastInput=x;this.state.lastOutput=pred;this.state.lastTarget=desired;
     this.state.stepCount++;this.state.learningSteps++;
     this.state.calibrationError01=clamp01(this.state.calibrationError01*.96+calError*.04);
     this.state.introspectivePredictionError01=clamp01(this.state.introspectivePredictionError01*.96+introspectiveError*.04);
@@ -77,7 +82,7 @@ export class MetacognitiveNeuralSubstrate{
     this.state.lastTick=input.tick;this.state.lastAt=input.at;
     return this.globalState();
   }
-  private learn(prevH:number[],h:number[],target:number[],desired:number[]){
+  private learn(prevH:number[],h:number[],input:number[],desired:number[]){
     const pred=this.outputs(h),lr=.01/Math.sqrt(1+this.state.learningSteps/5000),gradH=new Array(this.state.hiddenDim).fill(0);
     for(let i=0;i<6;i++){
       const e=desired[i]-(pred[i]??0),d=e*(pred[i]??.5)*(1-(pred[i]??.5));
@@ -89,7 +94,7 @@ export class MetacognitiveNeuralSubstrate{
     }
     for(let j=0;j<this.state.hiddenDim;j++){
       const dh=gradH[j]*(1-(h[j]??0)**2);
-      for(let i=0;i<this.state.inputDim;i++)this.state.inputWeights[j][i]=Math.max(-1,Math.min(1,this.state.inputWeights[j][i]+lr*dh*(this.state.lastInput[i]??0)));
+      for(let i=0;i<this.state.inputDim;i++)this.state.inputWeights[j][i]=Math.max(-1,Math.min(1,this.state.inputWeights[j][i]+lr*dh*(input[i]??0)));
       for(let i=0;i<this.state.hiddenDim;i++)this.state.recurrentWeights[j][i]=Math.max(-1,Math.min(1,this.state.recurrentWeights[j][i]+lr*dh*(prevH[i]??0)));
     }
   }

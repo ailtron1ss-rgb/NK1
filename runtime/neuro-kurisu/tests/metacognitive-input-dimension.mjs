@@ -35,4 +35,12 @@ assert.equal(migrated.inputDim, 27);
 assert.equal(migrated.lastInput.length, 27);
 assert.equal(migrated.lastInput[0], 0.42);
 assert.equal(migrated.lastInput[24], 0);
+assert.equal(migrated.inputWeights[0].length, 27);
+assert.equal(migrated.inputWeights[0][0], legacy.inputWeights[0][0],
+  'legacy learned input weights must remain unchanged across the dimension migration');
+assert.equal(migrated.inputWeights[0][24], 0,
+  'newly introduced input weights must start at zero rather than randomizing old checkpoints');
+assert.equal(migrated.inputWeights[0][26], 0);
+assert.deepEqual(migrated.lastTarget, new Array(6).fill(0.5),
+  'legacy checkpoints without paired targets must receive the neutral target baseline');
 console.log(JSON.stringify({ pass: 'metacognitive-input-dimension', inputDim: state.inputDim, migratedVersion: migrated.version }));
