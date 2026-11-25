@@ -184,12 +184,14 @@ export class GroundedWorldState {
     }
     const events:GroundedEvent[]=[];
     const quarantinedOutcomes:GroundedQuarantinedOutcome[]=[];
+    const quarantinedOutcomeIds=new Set<string>();
     if(Array.isArray(r.quarantinedOutcomes)){
       for(const rawOutcome of r.quarantinedOutcomes.slice(0,96)){
         if(!rawOutcome||typeof rawOutcome!=='object'||Array.isArray(rawOutcome))continue;
         const item=rawOutcome as Record<string,unknown>;
         const id=safeText(item.id,160),label=safeText(item.label,240);
-        if(!id||!label)continue;
+        if(!id||!label||quarantinedOutcomeIds.has(id))continue;
+        quarantinedOutcomeIds.add(id);
         quarantinedOutcomes.push({id,label,at:Math.min(safeTimestamp(item.at,lastAt),lastAt)});
       }
     }
@@ -201,7 +203,10 @@ export class GroundedWorldState {
         if(!id||!label)continue;
         const eventAt=Math.min(safeTimestamp(event.lastAt,lastAt),lastAt);
         if(label.startsWith('external-receipt:')||label.startsWith('external-observation-receipt:')){
-          quarantinedOutcomes.push({id,label:`restored-unverified:${label}`.slice(0,240),at:eventAt});
+          if(!quarantinedOutcomeIds.has(id)){
+            quarantinedOutcomeIds.add(id);
+            quarantinedOutcomes.push({id,label:`restored-unverified:${label}`.slice(0,240),at:eventAt});
+          }
           continue;
         }
         events.push({
