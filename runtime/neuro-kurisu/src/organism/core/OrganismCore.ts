@@ -2211,7 +2211,21 @@ export class OrganismCore {
         if (fullProjection) {
             this.persistence.persistenceFullCheckpointCount += 1;
             t = Date.now();
-            await this.store.save(this.persisted);
+            try {
+                await this.cognitiveRuntime.recoveryWatchdog.checkpoint({
+                    now: Date.now(),
+                    tick: this.persisted.state.tick,
+                    learningCount: (this.developmentalNeural.neuralPersonalityAgencyNucleusB296.snapshot() as any).learningUpdates ?? 0,
+                }, async watchdogState => {
+                    // The marker is part of the same canonical Core commit. It is not
+                    // advanced by a heartbeat or by a failed/partial projection.
+                    this.persisted.system.recoveryWatchdog = watchdogState;
+                    await this.store.save(this.persisted);
+                });
+            } catch (error) {
+                this.persisted.system.recoveryWatchdog = this.cognitiveRuntime.recoveryWatchdog.snapshot();
+                throw error;
+            }
             saveMs = Date.now() - t;
             const persistedMetrics = this.persistenceMetrics();
             this.persistence.persistenceDurabilityGovernor.recordCheckpoint({
