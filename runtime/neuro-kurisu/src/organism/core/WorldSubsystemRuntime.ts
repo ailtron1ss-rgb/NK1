@@ -17,6 +17,7 @@ import { P52CounterfactualDevelopmentMind } from '../world/P52CounterfactualDeve
 import { P57RealityFirstObservatory } from '../system/P57RealityFirstObservatory.ts';
 import { P79EmbodiedSituationModel } from '../world/P79EmbodiedSituationModel.ts';
 import { GroundedWorldState } from '../world/GroundedWorldState.ts';
+import { projectWorldCognitiveSignal } from '../world/WorldBeliefProjection.ts';
 import { P83PersistentRealityModel } from '../world/P83PersistentRealityModel.ts';
 import { WorldCausalCalibration, defaultWorldCausalCalibration } from '../system/WorldCausalCalibration.ts';
 import { WorldAgencyLearningCausalBridge, defaultWorldAgencyLearning } from '../system/WorldAgencyLearningCausalBridge.ts';
@@ -286,62 +287,18 @@ export class WorldSubsystemRuntime {
   }
 
   /** Read-only, provenance-aware projection for Appraisal and attention. It never mutates canonical world or promotes hypotheses. */
+  /** Read-only, freshness-aware projection for appraisal and attention. */
   cognitiveAttentionSignal(): WorldCognitiveSignalV1 {
-    const snapshot = this.groundedWorld.snapshot();
-    const allowed = new Set(['observed', 'model-output', 'derived', 'conflict', 'unresolved']);
-    const modalityNames = new Set(['text', 'speech', 'audio', 'vision', 'sensor', 'world', 'semantic']);
-    const evidenceKinds: Array<'observed' | 'model-output' | 'derived' | 'conflict' | 'unresolved'> = [];
-
-    for (const entity of snapshot.entities) {
-      const kinds = Object.values(entity.modalityEvidenceKinds ?? {}).filter(
-        (kind): kind is 'observed' | 'model-output' | 'derived' | 'conflict' | 'unresolved' =>
-          typeof kind === 'string' && allowed.has(kind),
-      );
-      const sourceIds = (entity.sourceIds ?? []).filter(id =>
-        typeof id === 'string' && id.trim().length > 0 && !modalityNames.has(id.trim().toLowerCase()),
-      );
-      const hasSourceProvenance = sourceIds.length > 0;
-      for (const kind of kinds) {
-        // An "observed" label without a source identity is not sufficient evidence.
-        evidenceKinds.push(kind === 'observed' && !hasSourceProvenance ? 'unresolved' : kind);
-      }
-    }
-
-    const count = (kind: string) => evidenceKinds.filter(value => value === kind).length;
-    const total = Math.max(1, evidenceKinds.length);
-    const observed = count('observed');
-    const inferred = count('model-output') + count('derived');
-    const conflict01 = clamp(count('conflict') / total);
-    const unresolved01 = clamp(count('unresolved') / total);
-    const evidenceClass: WorldCognitiveSignalV1['evidenceClass'] =
-      observed > 0 && (inferred > 0 || conflict01 > 0 || unresolved01 > 0) ? 'mixed'
-        : observed > 0 ? 'observed'
-          : inferred > 0 ? 'inferred' : 'unknown';
-
     const model = this.worldModel2.snapshot({ clone: false });
     const latestModelError = Array.isArray(model.predictionErrors) && model.predictionErrors.length > 0
-      ? clamp(Number(model.predictionErrors[model.predictionErrors.length - 1]))
+      ? model.predictionErrors[model.predictionErrors.length - 1]
       : 0;
-    const changeMagnitude01 = clamp(Math.max(
-      this.worldLearningStats.lastPassiveError01,
-      this.worldLearningStats.lastActionError01,
-    ));
-    const modelDisagreement01 = this.worldLearningStats.observations > 0
-      ? clamp(1 - this.worldLearningStats.modelAgreement01)
-      : 0;
-
-    return {
-      version: 1,
-      revision: Number.isSafeInteger(snapshot.revision) && snapshot.revision >= 0 ? snapshot.revision : 0,
-      evidenceClass,
-      evidenceConfidence01: clamp(snapshot.confidence01),
-      uncertainty01: clamp(Math.max(snapshot.uncertainty01, conflict01 * .55 + unresolved01 * .35)),
-      changeMagnitude01,
-      conflict01,
-      unresolved01,
-      modelDisagreement01,
-      predictionError01: clamp(Math.max(latestModelError, this.worldLearningStats.lastPassiveError01, this.worldLearningStats.lastActionError01)),
-    };
+    return projectWorldCognitiveSignal({
+      snapshot: this.groundedWorld.snapshot(),
+      learningStats: this.worldLearningStats,
+      latestModelError,
+      at: Date.now(),
+    });
   }
 
   worldModelAgreement(){
