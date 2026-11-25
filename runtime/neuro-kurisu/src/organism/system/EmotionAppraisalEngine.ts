@@ -446,7 +446,10 @@ export class EmotionAppraisalEngine {
       verify:.010*stress+.003*lowValence,rest:.014*stress,reflect:.008*stress+.003*lowValence,wait:.003*stress,defer:.003*stress};
     const acute=TENDENCY_PRIORS[e.actionTendency]?.[key]??0;
     const prior=acute+pressure*REGULATION_PRIORS[key]+learned+moodPrior[key]*moodEvidence*moodFreshness;
-    const age=Math.max(0,now-e.at),freshness=Math.exp(-age/60_000);
+    // Synthetic/test clocks (e.g. 1001) are valid within their own time domain.
+    // Only apply wall-clock decay when both timestamps are epoch milliseconds.
+    const comparableEpochMs=now>=1e11&&e.at>=1e11;
+    const freshness=comparableEpochMs?Math.exp(-Math.max(0,now-e.at)/60_000):1;
     return signedPrior(prior*confidenceGate*attentionGate*freshness);
   }
 
