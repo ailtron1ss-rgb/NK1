@@ -51,6 +51,14 @@
 - 3D остаётся явно обозначенным Preview.
 - HUD и Motivation скрывают стартовые boot defaults до первого подтверждённого canonical snapshot.
 
+### Операционный центр и дополнительные инструменты
+
+- Memory Explorer использует read-only MemoryOS2 inspector: current/all temporal scope, semantic preview, источник/происхождение записи, confidence/salience и экспорт сырого ответа.
+- Runtime Health panel агрегирует независимые GET snapshots: status-lite, session continuity и action-recovery queue. Периодическое обновление останавливается на скрытой вкладке.
+- Action recovery queue остаётся только диагностикой; UI не повторяет и не исполняет неопределённые внешние действия автоматически.
+- Command Palette открывается по Ctrl/⌘+K и через видимую кнопку; поддерживает переход по разделам, обновление canonical snapshot и sleep/wake, когда runtime подключён.
+- Chat composer поддерживает многострочный ввод (Enter отправляет, Shift+Enter добавляет строку), копирование ответов, локальный экспорт истории и подтверждение очистки только browser transcript.
+
 ## Проверочные модули
 
 - `app/scripts/organism-snapshot-sync.test.mjs`: поздний ответ, timestamp regression, tick regression, перезапуск runtime, смена schema/version, malformed metadata.
@@ -61,6 +69,8 @@
 ## Границы этого прохода
 
 - Browser SpeechSynthesis остаётся opt-in и запускается только на новых ответах; экран Settings управляет теми же предпочтениями, что AvatarStage.
+- Voice capture получает отдельный requesting state: UI не пишет «слушает», пока runtime не подтвердил voice.listening=true; approval challenge остаётся отдельным.
+- Многострочный чат и экспорт работают только с локальной browser history; это не является экспортом/изменением canonical MemoryOS2.
 - Настоящий microphone/ASR session start/result/permissions не объявляется готовым этим UI-проходом. Наличие native provider process events само по себе не доказывает успешное воспроизведение аудио.
 - Акустический playback receipt, Android device soak, GPU-presented frame, измеренный lip-sync и visual acceptance 3D-модели остаются отдельными проверками.
 - 2.5D не активируется без принятого layered asset pack.
