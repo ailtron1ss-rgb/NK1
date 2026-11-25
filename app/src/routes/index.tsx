@@ -8,6 +8,7 @@ import { AppNavigation } from "@/components/AppNavigation";
 import { ConnectionStatus } from "@/components/ConnectionStatus";
 import { MotivationPanel } from "@/components/MotivationPanel";
 import { SettingsPanel } from "@/components/SettingsPanel";
+import { RuntimeHealthPanel } from "@/components/RuntimeHealthPanel";
 import { useKurisu, type AppSection } from "@/organism/store";
 import { emptySnapshot } from "@/organism/types";
 import { ResearchDock } from "@/research/ResearchDock";
@@ -104,6 +105,7 @@ function Home() {
       {section === "more" ? (
         <section className="mx-auto max-w-7xl space-y-4" aria-label="More tools and diagnostics">
           <div><h2 className="font-display text-2xl text-fg">More</h2><p className="text-sm text-muted">Research, integration, governance and diagnostic workspaces.</p></div>
+          <RuntimeHealthPanel />
           <Labs snap={snap} />
           <ResearchDock />
           <IntegrationConsole />
