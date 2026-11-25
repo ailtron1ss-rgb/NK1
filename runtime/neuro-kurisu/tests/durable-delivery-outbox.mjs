@@ -80,6 +80,7 @@ assert.throws(() => restored.enqueue(accessorInput, at), /delivery-outbox-access
 const proxyInput = new Proxy({ dedupeKey: 'proxy:input', kind: 'custom', payloadRef: 'ref:proxy' }, {});
 assert.throws(() => restored.enqueue(proxyInput, at), /delivery-outbox-input-invalid/);
 assert.throws(() => restored.enqueue({ dedupeKey: 'extra:field', kind: 'custom', payloadRef: 'ref:extra', payload: 'raw text' }, at), /delivery-outbox-input-field-unsupported/);
+assert.throws(() => restored.enqueue({ dedupeKey: 'raw:payload', kind: 'custom', payloadRef: 'This is the message text' }, at), /delivery-outbox-payload-ref-invalid/);
 
 const leasedCancel = restored.enqueue({ dedupeKey: 'cancel:leased', kind: 'custom', payloadRef: 'ref:leased' }, at);
 assert.ok(restored.claim(leasedCancel.record.id, 'sender-C', at, 1000));
@@ -89,4 +90,4 @@ const saturated = new DurableDeliveryOutbox({ maxRecords: 1 });
 saturated.enqueue({ dedupeKey: 'active:one', kind: 'custom', payloadRef: 'ref:one' }, at);
 assert.throws(() => saturated.enqueue({ dedupeKey: 'active:two', kind: 'custom', payloadRef: 'ref:two' }, at), /delivery-outbox-capacity-reached/);
 
-console.log(JSON.stringify({ test: 'durable-delivery-outbox', assertions: 35, status: 'PASS' }));
+console.log(JSON.stringify({ test: 'durable-delivery-outbox', assertions: 36, status: 'PASS' }));

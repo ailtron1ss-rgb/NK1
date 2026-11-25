@@ -90,6 +90,14 @@ function safeTime(value: unknown, nullable = false): number | null {
   return value;
 }
 
+function safePayloadRef(value: unknown): string {
+  const reference = safeText(value, 240, true)!;
+  if (!/^[a-z][a-z0-9+.-]{0,31}:[A-Za-z0-9][A-Za-z0-9._:/-]{0,199}$/u.test(reference)) {
+    throw new Error('delivery-outbox-payload-ref-invalid');
+  }
+  return reference;
+}
+
 function safeCounter(value: unknown, max: number): number {
   if (typeof value !== 'number' || !Number.isSafeInteger(value) || value < 0 || value > max) {
     throw new Error('delivery-outbox-counter-invalid');
@@ -168,7 +176,7 @@ export class DurableDeliveryOutbox {
         id,
         dedupeKey,
         kind: kind as DurableDeliveryKind,
-        payloadRef: safeText(ownValue(row, 'payloadRef'), 240, true)!,
+        payloadRef: safePayloadRef(ownValue(row, 'payloadRef')),
         sourceTaskId: safeText(ownValue(row, 'sourceTaskId'), 180),
         initiativeId: safeText(ownValue(row, 'initiativeId'), 180),
         decisionId: safeText(ownValue(row, 'decisionId'), 180),
@@ -198,7 +206,7 @@ export class DurableDeliveryOutbox {
     if (existing) return { record: cloneRecord(existing), duplicate: true };
     const kind = ownValue(inputRecord, 'kind');
     if (!KINDS.has(kind as DurableDeliveryKind)) throw new Error('delivery-outbox-kind-invalid');
-    const payloadRef = safeText(ownValue(inputRecord, 'payloadRef'), 240, true)!;
+    const payloadRef = safePayloadRef(ownValue(inputRecord, 'payloadRef'));
     const expiryInput = ownValue(inputRecord, 'expiresAt');
     const expiresAt = expiryInput === undefined ? null : safeTime(expiryInput, true);
     if (expiresAt !== null && expiresAt <= at) throw new Error('delivery-outbox-expiry-not-future');
