@@ -67,6 +67,13 @@ assert.ok(afterLegacy.sequence > Math.max(...legacySequences),
 assert.ok(afterLegacy.logicalTime > Math.max(...legacyEvents.map(event => event.logicalTime)),
   'legacy migration must seed the logical clock above restored events');
 
+const reorderedSnapshot = structuredClone(snapshot);
+reorderedSnapshot.recent.reverse();
+const reordered = new CognitiveEventFabric(128);
+reordered.restore(reorderedSnapshot);
+assert.deepEqual(reordered.recent(128).map(event => event.sequence), [3, 2, 1],
+  'restore must reconstruct canonical newest-first order from sequence, not trust serialized array order');
+
 const duplicateSequence = structuredClone(snapshot);
 duplicateSequence.recent[1].sequence = duplicateSequence.recent[0].sequence;
 const duplicateSafe = new CognitiveEventFabric(128);
