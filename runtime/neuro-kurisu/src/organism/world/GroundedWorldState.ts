@@ -158,7 +158,7 @@ export class GroundedWorldState {
           position,velocity,
           ...(validImageEvidence?{imageBox,imageBoxCameraId,imageBoxAt,imageBoxConfidence01}:{}),
           modalityEvidenceKinds:restoredModalityEvidence(e.modalityEvidenceKinds),
-          sourceIds:safeStringArray(e.sourceIds,16,180),
+          sourceIds:safeStringArray(e.sourceIds,16,180).filter(sourceId=>!['text','vision','audio','sensor','world'].includes(sourceId.trim().toLowerCase())),
           ...(value!==undefined?{value}:{}),
           valueKnown:e.valueKnown===true&&value!==undefined,
           visibilityKnown:e.visibilityKnown===true,
