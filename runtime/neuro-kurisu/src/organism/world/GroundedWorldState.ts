@@ -413,7 +413,8 @@ export class GroundedWorldState {
     // Canonical world-context objects preserve their own IDs and their actual
     // knowledge flags. A confidence score is not a resource value or a grasp.
     for(const o of (base?.objects??[])){
-      const suppliedSourceId=cleanIdentity(o.sourceId);
+      const candidateSourceId=cleanIdentity(o.sourceId);
+      const suppliedSourceId=candidateSourceId&&!MODALITY_SOURCE_ALIASES.has(candidateSourceId.toLowerCase())?candidateSourceId:'';
       const sourceId=suppliedSourceId||'world-context';
       const objectId=cleanIdentity(o.id);
       const trackId=objectId?('world:'+sourceId+':'+objectId):undefined;
@@ -476,7 +477,7 @@ export class GroundedWorldState {
         // provider/source IDs explicitly carried by the corresponding modality.
         sourceIds:[...new Set(Object.values(x.modalitySourceIds??{}).flatMap(ids=>Array.isArray(ids)?ids:[])
           .filter(sourceId=>typeof sourceId==='string'&&sourceId.trim().length>0&&sourceId.length<=180
-            &&!['text','vision','audio','sensor','world'].includes(sourceId.trim().toLowerCase())))].slice(-16),
+            &&!MODALITY_SOURCE_ALIASES.has(sourceId.trim().toLowerCase())))].slice(-16),
         visibilityKnown:x.modalities.includes('vision'),
         presenceStatus:x.modalities.includes('vision')?(x.present01>.52?'visible':'fading'):'unknown',
         persistence01:clamp(Math.min(1,x.observations/12)),
