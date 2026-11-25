@@ -22,17 +22,19 @@ assert.equal(plannedEngine.latestPlanned(1000)?.id,planned.id);
 assert.equal(plannedEngine.stageMessage(planned.id,message,1001),true);
 assert.equal(plannedEngine.latestReady(1000),null,'a message cannot be delivered before staging');
 assert.equal(plannedEngine.acknowledge(planned.id,1000),false,'delivery cannot precede stagedAt');
-assert.equal(plannedEngine.acknowledge(planned.id,1002),true);
-assert.equal(plannedEngine.acknowledge(planned.id,1003),false,'delivery acknowledgement remains idempotent');
-assert.equal(plannedEngine.observeExternalResponse('That movie was boring',1004),null,
+const plannedClaim = plannedEngine.claimReady(1002);
+assert.equal(plannedClaim?.id,planned.id,'user-visible ACK requires a live delivery lease');
+assert.equal(plannedEngine.acknowledge(planned.id,1003),true);
+assert.equal(plannedEngine.acknowledge(planned.id,1004),false,'delivery acknowledgement remains idempotent');
+assert.equal(plannedEngine.observeExternalResponse('That movie was boring',1005),null,
   'an unrelated negative remark must not be attributed to the latest proactive thought');
 assert.equal(plannedEngine.snapshot().initiatives[0].feedbackSignal,undefined,
   'unrelated feedback must leave the initiative untouched');
-assert.equal(plannedEngine.observeExternalResponse('That was interesting',1004.5),null,
+assert.equal(plannedEngine.observeExternalResponse('That was interesting',1005.5),null,
   'an unrelated positive remark must not be attributed to the latest proactive thought');
 assert.equal(plannedEngine.snapshot().initiatives[0].feedbackSignal,undefined,
   'unrelated positive feedback must leave the initiative untouched');
-assert.equal(plannedEngine.observeExternalResponse('Stop.',1005)?.signal,'negative',
+assert.equal(plannedEngine.observeExternalResponse('Stop.',1006)?.signal,'negative',
   'an unmistakable standalone stop request must suppress unsolicited outreach');
 
 const staleStage=new AutonomousSocialInitiativeEngine();
