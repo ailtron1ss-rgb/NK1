@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { P41SemanticPerceptionEngine } from '../src/organism/cognition/P41SemanticPerception.ts';
 import { PerceptualEvidenceCompiler } from '../src/organism/body/PerceptualEvidenceCompiler.ts';
+import { PerceptualEpistemicGraph } from '../src/organism/cognition/PerceptualEpistemicGraph.ts';
 
 const perception = new P41SemanticPerceptionEngine();
 const world = perception.ingest({
@@ -94,4 +95,35 @@ assert.equal(restoredCompiler.snapshot().evidence[0].kind, 'model-output',
 assert.equal(restoredCompiler.snapshot().metrics.groundedSignalRatio01, 0,
   'restored grounded ratio must be recomputed from downgraded evidence');
 
-console.log('PERCEPTION_EXTERNAL_INGRESS_ATTESTATION=PASS');
+const hostileP41 = new P41SemanticPerceptionEngine();
+let p41GetterCalls = 0;
+const getterP41 = { version: 1, tick: 0, entities: [], relations: [], events: [], snapshots: [], pending: [] };
+Object.defineProperty(getterP41, 'scene', {
+  enumerable: true,
+  get() { p41GetterCalls += 1; return { label: 'attacker-scene' }; },
+});
+assert.throws(() => hostileP41.restore(getterP41), /inert-snapshot-invalid/,
+  'P41 restore must reject accessor-backed checkpoints');
+assert.equal(p41GetterCalls, 0, 'P41 restore must not execute accessors');
+
+let p41ProxyTrapCalls = 0;
+const proxyP41 = new Proxy({ version: 1, entities: [] }, {
+  getPrototypeOf() { p41ProxyTrapCalls += 1; throw new Error('P41 proxy trap'); },
+});
+assert.throws(() => hostileP41.restore(proxyP41), /inert-snapshot-invalid/,
+  'P41 restore must reject proxy-backed checkpoints');
+assert.equal(p41ProxyTrapCalls, 0, 'P41 restore must reject proxies before reflection');
+
+const hostileGraph = new PerceptualEpistemicGraph();
+let graphGetterCalls = 0;
+const getterGraph = { version: 1, claims: [] };
+Object.defineProperty(getterGraph, 'claims', {
+  enumerable: true,
+  get() { graphGetterCalls += 1; return []; },
+});
+assert.throws(() => hostileGraph.restore(getterGraph), /inert-snapshot-invalid/,
+  'epistemic graph restore must reject accessor-backed checkpoints');
+assert.equal(graphGetterCalls, 0, 'epistemic graph restore must not execute accessors');
+
+console.log('PERCEPTION_EXTERNAL_INGRESS_ATTESTATION=PASS hostile=3');
+
