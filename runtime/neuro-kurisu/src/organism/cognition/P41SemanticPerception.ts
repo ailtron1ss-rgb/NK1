@@ -1,4 +1,5 @@
 import type { ActionKind } from '../core/types.ts';
+import { cloneInertSnapshot } from '../core/InertSnapshot.ts';
 import { PerceptualContinuityModel, defaultPerceptualContinuityState, type ContinuityState } from './PerceptualContinuityModel.ts';
 import { PerceptualEpistemicGraph, defaultEpistemicState, type EpistemicState } from './PerceptualEpistemicGraph.ts';
 
@@ -237,7 +238,10 @@ export class P41SemanticPerceptionEngine {
   private readonly epistemic = new PerceptualEpistemicGraph();
 
   restore(raw?:Partial<P41PerceptionState>|null){
-    const d=defaultP41SemanticPerception(); const r=raw??{};
+    const d=defaultP41SemanticPerception();
+    const restored=raw===undefined||raw===null?{}:cloneInertSnapshot<unknown>(raw,{maxDepth:24,maxProperties:65_536});
+    if(!restored||typeof restored!=='object'||Array.isArray(restored))throw new Error('p41-perception-snapshot-invalid');
+    const r=restored as Partial<P41PerceptionState>;
     this.state={...d,...r,
       scene:{...d.scene,...(r.scene??{})},
       ...(r.sceneEvidenceKind!==undefined?{sceneEvidenceKind:restoreP41EvidenceKind(r.sceneEvidenceKind)}:{}),
