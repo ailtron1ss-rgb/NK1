@@ -117,4 +117,36 @@ assert.equal(receiptlessLive.independenceCount('claim:receiptless-live'),0,
 assert.equal(receiptlessLive.scoreClaim('claim:receiptless-live'),0,
   'receiptless source claims must not contribute a positive evidence score');
 
-console.log('EXTERNAL_EVIDENCE_TRUST_RESTORE_INTEGRITY=PASS');
+
+const hostileTrust = new ExternalEvidenceTrustEngine();
+let trustGetterCalls = 0;
+const getterTrustSnapshot = { version:1, records:[] };
+Object.defineProperty(getterTrustSnapshot, 'records', {
+  enumerable: true,
+  get() { trustGetterCalls += 1; return []; },
+});
+assert.throws(() => hostileTrust.restore(getterTrustSnapshot), /inert-snapshot-invalid/,
+  'an accessor-backed evidence snapshot must fail closed');
+assert.equal(trustGetterCalls, 0, 'evidence restore must never execute getters');
+
+let nestedTrustGetterCalls = 0;
+const hostileEvidenceRow = {
+  id:'hostile-row', claimKey:'claim:hostile', source:'device', independenceKey:'device-a',
+  confidence01:.9, trust01:.9, firstSeenAt:now, lastSeenAt:now, status:'candidate',
+};
+Object.defineProperty(hostileEvidenceRow, 'source', {
+  enumerable: true,
+  get() { nestedTrustGetterCalls += 1; return 'os'; },
+});
+assert.throws(() => hostileTrust.restore({ version:1, records:[hostileEvidenceRow] }), /inert-snapshot-invalid/);
+assert.equal(nestedTrustGetterCalls, 0, 'nested evidence accessors must never execute');
+
+let trustProxyTrapCalls = 0;
+const proxyTrustSnapshot = new Proxy({ version:1, records:[] }, {
+  getPrototypeOf() { trustProxyTrapCalls += 1; throw new Error('proxy trap must not run'); },
+});
+assert.throws(() => hostileTrust.restore(proxyTrustSnapshot), /inert-snapshot-invalid/);
+assert.equal(trustProxyTrapCalls, 0, 'proxy-backed evidence snapshots must be rejected without invoking traps');
+
+console.log('EXTERNAL_EVIDENCE_TRUST_RESTORE_INTEGRITY=PASS hostile=3');
+
