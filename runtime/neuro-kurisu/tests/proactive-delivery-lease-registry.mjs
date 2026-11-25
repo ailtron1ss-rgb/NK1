@@ -118,4 +118,19 @@ import { ProactiveDeliveryLeaseRegistry } from "../src/server/proactive-delivery
   assert.equal(leases.completedAttemptCountFor("soc:retry-receipt", "old-completed-token-01", 5), null);
 }
 
+
+{
+  const leases = new ProactiveDeliveryLeaseRegistry({ maxEntries: 2 });
+  for (const id of ["receipt:a", "receipt:b", "receipt:c"]) {
+    leases.issue(id, 1, 50_000, `completed-${id}-token`, 1);
+    leases.complete(id, `completed-${id}-token`, 2);
+  }
+  assert.equal(leases.completedAttemptCountFor("receipt:a", "completed-receipt:a-token", 3), null,
+    "the completed receipt ledger must evict its oldest entry at capacity");
+  assert.equal(leases.completedAttemptCountFor("receipt:b", "completed-receipt:b-token", 3), 1);
+  assert.equal(leases.completedAttemptCountFor("receipt:c", "completed-receipt:c-token", 3), 1);
+  leases.clear();
+  assert.equal(leases.completedAttemptCountFor("receipt:c", "completed-receipt:c-token", 4), null);
+}
+
 console.log("PROACTIVE_DELIVERY_LEASE_REGISTRY=PASS");
