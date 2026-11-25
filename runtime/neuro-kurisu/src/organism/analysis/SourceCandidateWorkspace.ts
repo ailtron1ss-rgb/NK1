@@ -189,6 +189,14 @@ function ownDenseArray(value: unknown, maxLength: number): unknown[] | null {
   }
 }
 
+function hasAncestorPathCollision(paths: Iterable<string>): boolean {
+  const ordered = [...paths].sort(comparePath);
+  for (let index = 1; index < ordered.length; index += 1) {
+    if (ordered[index].startsWith(ordered[index - 1] + '/')) return true;
+  }
+  return false;
+}
+
 function comparePath(left: string, right: string): number {
   return left < right ? -1 : left > right ? 1 : 0;
 }
@@ -308,6 +316,9 @@ export class SourceCandidateWorkspaceV1 {
         files.push(normalized);
         byPath.set(filePath, normalized);
       }
+      if (hasAncestorPathCollision(sourcePathsByPortableKey.keys())) {
+        return reject('source-path-ancestor-collision');
+      }
       const beforeTreeSha256 = treeHash(files);
 
       const edits: NormalizedEdit[] = [];
@@ -355,6 +366,12 @@ export class SourceCandidateWorkspaceV1 {
           replacementSha256: sha256(edit.replacement),
           createIfMissing,
         });
+      }
+
+      const resultingPortablePaths = new Set(sourcePathsByPortableKey.keys());
+      for (const edit of edits) resultingPortablePaths.add(portablePathKey(edit.path));
+      if (hasAncestorPathCollision(resultingPortablePaths)) {
+        return reject('candidate-path-ancestor-collision');
       }
 
       const editSetSha256 = editSetHash(edits);
