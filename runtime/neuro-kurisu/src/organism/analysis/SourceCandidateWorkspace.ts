@@ -124,7 +124,7 @@ export function hashSourceCandidateTextV1(value: string): string {
 
 function safePath(value: unknown): string | null {
   if (typeof value !== 'string' || value.length === 0 || value.length > 1024 ||
-      value.includes('\\0') || value.includes('\\\\') || value.startsWith('/') ||
+      value.includes('\\0') || value.includes('\\') || value.startsWith('/') ||
       /^[a-z]:/i.test(value) || value.endsWith('/')) return null;
   const parts = value.split('/');
   if (parts.some(part => {
