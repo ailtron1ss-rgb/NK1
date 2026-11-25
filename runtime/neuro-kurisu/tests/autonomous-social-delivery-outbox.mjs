@@ -24,6 +24,7 @@ const message = 'A useful observation about the project can connect evidence to 
 
 function readyEngine(at = 1_000) {
   const engine = new AutonomousSocialInitiativeEngine();
+  engine.setConsent(true);
   const initiative = engine.cycle(makeInput(at)).initiative;
   assert.ok(initiative);
   assert.equal(engine.stageMessage(initiative.id, message, at + 1), true);
