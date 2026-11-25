@@ -3967,3 +3967,14 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Keep two-to-four clean pairs exploratory, require paired coverage across at least two holdout delays, and exclude duplicate arms from confirmatory means/effects.
 - Expand deterministic regression coverage for the five-pair boundary, negative holdout effect despite positive acquisition aggregate, duplicate-arm downgrade, unpaired delay exclusion and snapshot/restore parity.
 - This strengthens evidence quality; it does not claim positive recall uplift or independent real-world dataset results.
+
+
+## 2026-11-24 — Verified self-development attribution (feature branch)
+
+- Replace selection-based SelfAuthorship credit with a bounded pending-decision ledger keyed by the exact Core decision ID.
+- Settle intrinsic authorship only for matching verified outcomes; bind ActionGateway postcondition receipts to the selected decision and persist settlement at the existing Core checkpoint boundary.
+- Preserve CEF decision correlation without fabricating a parent edge when the matching decision node is absent.
+- Add regressions for pending/verified outcomes, spine-only attribution, restart reconciliation, idempotent replay and CEF compatibility.
+- This is an aspect-branch implementation milestone; it is not a merged change or a published Release.
+
+- Deduplicate restored pending SelfAuthorship rows by exact decision ID, retaining the newest ledger entry so a malformed snapshot cannot award the same decision twice.
