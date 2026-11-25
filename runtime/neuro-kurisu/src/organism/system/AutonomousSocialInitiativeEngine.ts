@@ -383,12 +383,25 @@ export class AutonomousSocialInitiativeEngine {
   private expirePending(at: number): void {
     if (!Number.isFinite(at) || at < 0) return;
     for (const item of this.state.initiatives) {
-      if ((item.status === 'planned' || item.status === 'ready')
-        && at >= item.createdAt && at - item.createdAt > INITIATIVE_PENDING_TTL_MS) {
-        item.status = 'deferred';
-        item.resolvedAt = at;
-        this.state.deferred = Math.min(MAX_SOCIAL_COUNTER, this.state.deferred + 1);
+      const expired = (item.status === 'planned' || item.status === 'ready')
+        && at >= item.createdAt && at - item.createdAt > INITIATIVE_PENDING_TTL_MS;
+      const attemptsExhausted = item.status === 'ready'
+        && item.internalOnly !== true
+        && safeCounter(item.deliveryAttemptCount, 0, MAX_SOCIAL_DELIVERY_ATTEMPTS) >= MAX_SOCIAL_DELIVERY_ATTEMPTS
+        && (item.deliveryLeaseUntil === undefined || item.deliveryLeaseUntil <= at)
+        && (item.deliveryNextAttemptAt === undefined || item.deliveryNextAttemptAt <= at);
+      if (!expired && !attemptsExhausted) continue;
+      item.status = 'deferred';
+      item.resolvedAt = at;
+      if (attemptsExhausted && !expired) {
+        item.reason = 'proactive-delivery-retry-budget-exhausted';
       }
+      // Dead-lettered content is not retained as a deliverable payload.
+      item.message = undefined;
+      item.stagedAt = undefined;
+      item.deliveryLeaseUntil = undefined;
+      item.deliveryNextAttemptAt = undefined;
+      this.state.deferred = Math.min(MAX_SOCIAL_COUNTER, this.state.deferred + 1);
     }
   }
 
@@ -682,7 +695,9 @@ export class AutonomousSocialInitiativeEngine {
    */
   claimReady(now = Date.now(), requestedLeaseMs = DEFAULT_SOCIAL_DELIVERY_LEASE_MS): SocialInitiative | null {
     const at = safeTime(now);
-    if (at === undefined || !this.mayDeliverUserVisible(at)) return null;
+    if (at === undefined) return null;
+    this.expirePending(at);
+    if (!this.mayDeliverUserVisible(at)) return null;
     const leaseMs = Number.isSafeInteger(requestedLeaseMs)
       ? Math.max(MIN_SOCIAL_DELIVERY_LEASE_MS, Math.min(MAX_SOCIAL_DELIVERY_LEASE_MS, requestedLeaseMs))
       : DEFAULT_SOCIAL_DELIVERY_LEASE_MS;
