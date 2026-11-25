@@ -44,3 +44,24 @@ The outbox stores bounded delivery metadata, stable deduplication keys, opaque p
 The PR workflow runs the generic outbox contract, a real OrganismRuntime proactive handoff contract, browser transcript-before-ACK/lost-ACK retry tests, existing proactive-consent and OpenLoop regressions, and runtime typecheck.
 
 No local NK1 checkout was available in this session; local test execution is not claimed. GitHub Actions on the exact final PR head is the verification source. Draft status is retained pending exact-head checks.
+
+
+## Ambiguous failure semantics — required before merge
+
+A transport timeout, connection reset after request transmission, or lost response is not proof that the recipient did not perform the side effect. Therefore the word "failure" is not a sufficient retry disposition.
+
+Required state transition:
+- A definitive pre-send rejection or authoritative recipient result "not accepted" may enter bounded backoff and pending.
+- An outcome that is unknown after the request may have crossed the side-effect boundary must enter reconciliation-required.
+- Reconciliation may settle as confirmed-delivered, confirmed-not-delivered, or cancelled. Unknown remains quarantined; confirmed-not-delivered alone can authorize another attempt.
+- A stable idempotency key must be reused across retries. The outbox does not claim exactly-once execution at the transport layer; it provides durable at-least-once attempts plus recipient idempotency/reconciliation.
+
+This requirement is based on established distributed-systems guidance:
+- AWS Builders' Library, "Timeouts, retries, and backoff with jitter": side-effecting APIs are not safe to retry without idempotency; a timeout does not establish that the side effect did not happen.
+  https://aws.amazon.com/builders-library/timeouts-retries-and-backoff-with-jitter/
+- Temporal, "Error handling": an Activity can complete and the worker can crash before reporting completion; retries may repeat execution, so activities should be idempotent and use stable idempotency keys.
+  https://docs.temporal.io/develop/typescript/best-practices/error-handling
+- Temporal, "Activity Definition": activities can execute multiple times, and partial side effects can repeat; downstream idempotency keys are required for effectful operations.
+  https://docs.temporal.io/activity-definition
+
+A regression test was appended to tests/durable-delivery-outbox.mjs on the current branch head. It expects transport-timeout to become reconciliation-required, suppresses claimNext, and allows a new claim only after explicit confirmed-not-delivered reconciliation. This is a test-first guard, not yet an observed RED or a production fix: the current recordFailure implementation still returns a timed-out attempt to pending, and the exact-head GitHub Actions run is waiting for repository workflow approval.
