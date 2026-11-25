@@ -41,17 +41,28 @@ export class P81PredictiveAttention {
  restore(raw:Partial<P81State>|undefined){
   if(!raw)return;
   const d=defaultP81();
+  const unit=(value:unknown,fallback:number)=>typeof value==='number'&&Number.isFinite(value)?clamp(value):fallback;
+  const count=(value:unknown)=>typeof value==='number'&&Number.isSafeInteger(value)&&value>=0?Math.min(value,Number.MAX_SAFE_INTEGER):d.cycles;
+  const label=(value:unknown,fallback:string)=>typeof value==='string'&&value.length>0&&value.length<=96&&!/[\\u0000-\\u001f\\u007f-\\u009f]/u.test(value)?value:fallback;
   const evidenceClass=raw.worldEvidenceClass==='observed'||raw.worldEvidenceClass==='mixed'||raw.worldEvidenceClass==='inferred'||raw.worldEvidenceClass==='unknown'
     ? raw.worldEvidenceClass : d.worldEvidenceClass;
   this.state={
-   ...d,...raw,
-   recentFocus:Array.isArray(raw.recentFocus)?raw.recentFocus.filter((x):x is string=>typeof x==='string').slice(-24):[],
+   ...d,
+   version:1,
+   cycles:count(raw.cycles),
+   selectedAction:label(raw.selectedAction,d.selectedAction),
+   attentionFocus:label(raw.attentionFocus,d.attentionFocus),
+   expectedInformationGain01:unit(raw.expectedInformationGain01,d.expectedInformationGain01),
+   exploitation01:unit(raw.exploitation01,d.exploitation01),
+   exploration01:unit(raw.exploration01,d.exploration01),
+   uncertainty01:unit(raw.uncertainty01,d.uncertainty01),
+   recentFocus:Array.isArray(raw.recentFocus)?raw.recentFocus.filter((x):x is string=>typeof x==='string'&&x.length>0&&x.length<=96&&!/[\\u0000-\\u001f\\u007f-\\u009f]/u.test(x)).slice(-24):[],
    worldRevision:Number.isSafeInteger(raw.worldRevision)&&Number(raw.worldRevision)>=0?Number(raw.worldRevision):d.worldRevision,
    worldEvidenceClass:evidenceClass,
-   worldConflict01:clamp(Number(raw.worldConflict01??0)),
-   worldDisagreement01:clamp(Number(raw.worldDisagreement01??0)),
-   worldUnresolved01:clamp(Number(raw.worldUnresolved01??0)),
-   worldChange01:clamp(Number(raw.worldChange01??0)),
+   worldConflict01:unit(raw.worldConflict01,d.worldConflict01),
+   worldDisagreement01:unit(raw.worldDisagreement01,d.worldDisagreement01),
+   worldUnresolved01:unit(raw.worldUnresolved01,d.worldUnresolved01),
+   worldChange01:unit(raw.worldChange01,d.worldChange01),
   };
  }
  snapshot(){return JSON.parse(JSON.stringify(this.state)) as P81State;}
