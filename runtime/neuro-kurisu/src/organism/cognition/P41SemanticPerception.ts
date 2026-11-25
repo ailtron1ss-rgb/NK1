@@ -31,6 +31,19 @@ function normalizedImageBox(value:unknown):P41ImageBox|undefined{
 function positionDistance(a:{x:number;y:number;z:number},b:{x:number;y:number;z:number}):number{
   return Math.sqrt((a.x-b.x)**2+(a.y-b.y)**2+(a.z-b.z)**2);
 }
+const safeModalitySourceIds=(value:unknown):Partial<Record<P41Modality,string[]>>=>{
+  if(!value||typeof value!=='object'||Array.isArray(value))return {};
+  const row=value as Record<string,unknown>;
+  const out:Partial<Record<P41Modality,string[]>>={};
+  const modalities:P41Modality[]=['text','vision','audio','sensor','world'];
+  for(const modality of modalities){
+    const raw=row[modality];
+    const candidates=Array.isArray(raw)?raw:typeof raw==='string'?[raw]:[];
+    const ids=[...new Set(candidates.map(cleanTrackId).filter(Boolean))].slice(-8);
+    if(ids.length)out[modality]=ids;
+  }
+  return out;
+};
 const ACTIONS:ActionKind[] = ['respond','explore','verify','rest','reflect','wait','defer'];
 export type P41Modality = 'text'|'vision'|'audio'|'sensor'|'world';
 export type P41EvidenceKind = 'observed'|'model-output'|'derived'|'unresolved';
@@ -58,6 +71,8 @@ export interface P41PerceptualEntity {
   modalityLastSeenAt?:Partial<Record<P41Modality,number>>;
   /** Provenance for each modality; missing legacy entries remain unresolved. */
   modalityEvidenceKinds?:Partial<Record<P41Modality,P41EvidenceKind>>;
+  /** Provider/source IDs kept distinct from the modality channel names. */
+  modalitySourceIds?:Partial<Record<P41Modality,string[]>>;
   position:{x:number;y:number;z:number}|null;
   /** Last normalized 2D image-space localization; never interpreted as world coordinates. */
   imageBox?:P41ImageBox;
@@ -223,6 +238,7 @@ export class P41SemanticPerceptionEngine {
         const validImageEvidence=Boolean(imageBox&&cameraId!==undefined&&imageAt!==undefined&&imageAt<=snapshotAt&&boxConfidence!==undefined);
         return {
           ...entity,
+          modalitySourceIds:safeModalitySourceIds(entity?.modalitySourceIds),
           ...(validImageEvidence?{imageBox,imageBoxCameraId:cameraId,imageBoxAt:imageAt,imageBoxConfidence01:boxConfidence}:{imageBox:undefined,imageBoxCameraId:undefined,imageBoxAt:undefined,imageBoxConfidence01:undefined}),
         };
       }):[],
@@ -302,7 +318,7 @@ export class P41SemanticPerceptionEngine {
       const namespacedTrackId=suppliedTrackId?'vision:'+cameraId+':'+(cleanTrackId(o.sourceId)||'backend')+':'+suppliedTrackId:undefined;
       const position=finitePosition(o.x,o.y,o.z);
       const positionFrameId=cleanTrackId(o.coordinateFrameId);
-      const e=this.upsertEntity(String(o.label),o.kind??'object',clamp(o.confidence01??.5),.66,'vision',at,position,'model-output',namespacedTrackId,positionFrameId);
+      const e=this.upsertEntity(String(o.label),o.kind??'object',clamp(o.confidence01??.5),.66,'vision',at,position,'model-output',namespacedTrackId,positionFrameId,cleanTrackId(o.sourceId));
       if(e){
         targets.push(e.id);
         const box=o.bbox;
@@ -361,7 +377,7 @@ export class P41SemanticPerceptionEngine {
       const evidenceKind:P41EvidenceKind=o.evidenceKind==='observed'?'model-output':(o.evidenceKind??sceneEvidenceKind);
       const coordinateFrameId=cleanTrackId(o.coordinateFrameId);
       const position=coordinateFrameId?finitePosition(o.x,o.y,o.z):null;
-      const entity=this.upsertEntity(String(o.label),o.kind??'object',clamp(o.confidence01??.35),.52,'world',at,position,evidenceKind,namespacedTrackId,position?coordinateFrameId:undefined);
+      const entity=this.upsertEntity(String(o.label),o.kind??'object',clamp(o.confidence01??.35),.52,'world',at,position,evidenceKind,namespacedTrackId,position?coordinateFrameId:undefined,cleanTrackId(o.sourceId));
       const box=o.bbox2D;
       const validBox=Boolean(box&&[box.x,box.y,box.width,box.height].every(value=>typeof value==='number'&&Number.isFinite(value))
         &&box.x>=0&&box.y>=0&&box.width>0&&box.height>0&&box.x+box.width<=1.000001&&box.y+box.height<=1.000001);
@@ -390,10 +406,11 @@ export class P41SemanticPerceptionEngine {
 
   private expirePending(at:number){ for(const p of this.state.pending){ if(p.status==='pending'&&p.expiresAt<=at) p.status='expired'; } }
 
-  private upsertEntity(label:string,kind:P41EntityKind,confidence01:number,salience01:number,modality:P41Modality,at:number,pos:{x:number;y:number;z:number}|null,evidenceKind:P41EvidenceKind,suppliedTrackId?:string,positionFrameId?:string){
+  private upsertEntity(label:string,kind:P41EntityKind,confidence01:number,salience01:number,modality:P41Modality,at:number,pos:{x:number;y:number;z:number}|null,evidenceKind:P41EvidenceKind,suppliedTrackId?:string,positionFrameId?:string,sourceId?:string){
     const key=normalizePerceptualLabel(label); if(!key) return null;
     const explicitTrackId=cleanTrackId(suppliedTrackId);
     const safePositionFrameId=cleanTrackId(positionFrameId);
+    const safeSourceId=cleanTrackId(sourceId);
     let e=explicitTrackId?this.state.entities.find(x=>x.trackId===explicitTrackId||x.trackAliases?.includes(explicitTrackId)):undefined;
     // Cross-modal association is allowed only when there is exactly one recent
     // same-label candidate that has not already been observed by this modality.
@@ -425,7 +442,7 @@ export class P41SemanticPerceptionEngine {
     const trackId=explicitTrackId??(!e&&canTrackPosition?'auto-track-'+(++this.state.nextTrackSequence):undefined);
     if(!e){
       const id=stableId('entity',kind+':'+key+':'+(trackId??'singleton'));
-      e={id,label:key,kind,...(trackId?{trackId}:{}),confidence01:clamp(confidence01),salience01:clamp(salience01),present01:1,firstSeenAt:at,lastSeenAt:at,observations:1,modalities:[modality],modalityLastSeenAt:{[modality]:at},modalityEvidenceKinds:{[modality]:evidenceKind},position:pos,positionFrameId:safePositionFrameId||undefined,velocity:null,trackAliases:[]};
+      e={id,label:key,kind,...(trackId?{trackId}:{}),confidence01:clamp(confidence01),salience01:clamp(salience01),present01:1,firstSeenAt:at,lastSeenAt:at,observations:1,modalities:[modality],modalityLastSeenAt:{[modality]:at},modalityEvidenceKinds:{[modality]:evidenceKind},modalitySourceIds:safeSourceId?{[modality]:[safeSourceId]}:{},position:pos,positionFrameId:safePositionFrameId||undefined,velocity:null,trackAliases:[]};
       this.state.entities.unshift(e);
     }else{
       const previousAt=e.lastSeenAt;
@@ -445,6 +462,10 @@ export class P41SemanticPerceptionEngine {
       if(!e.modalities.includes(modality))e.modalities.push(modality);
       e.modalityLastSeenAt={...(e.modalityLastSeenAt??{}),[modality]:at};
       e.modalityEvidenceKinds={...(e.modalityEvidenceKinds??{}),[modality]:evidenceKind};
+      if(safeSourceId){
+        const priorSources=e.modalitySourceIds?.[modality]??[];
+        e.modalitySourceIds={...(e.modalitySourceIds??{}),[modality]:[...new Set([...priorSources,safeSourceId])].slice(-8)};
+      }
       if(pos)e.position=pos;
       if(safePositionFrameId)e.positionFrameId=safePositionFrameId;
       if(explicitTrackId&&e.trackId&&e.trackId!==explicitTrackId){
