@@ -34,10 +34,12 @@ assert.ok(compiler.snapshot().metrics.groundedSignalRatio01 <= .036 + 1e-12,
 
 const sensorCheckpoint = new P41SemanticPerceptionEngine().ingest({
   at: 3_000,
-  sensor: { location: 'restore-lab', freshness01: .95 },
+  sensor: { location: 'restore-lab', sourceId: 'host-sensor:imu-front', freshness01: .95 },
 });
 const persistedEntity = sensorCheckpoint.entities.find(row => row.modalities.includes('sensor'));
 assert.ok(persistedEntity);
+assert.deepEqual(persistedEntity.modalitySourceIds?.sensor, ['host-sensor:imu-front'],
+  'sensor ingress must retain the explicit hardware source identity');
 const forgedCheckpoint = {
   ...sensorCheckpoint,
   sceneEvidenceKind: 'observed',
