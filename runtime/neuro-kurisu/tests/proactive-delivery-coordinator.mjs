@@ -184,6 +184,16 @@ function fixture({ acknowledge = async () => true } = {}) {
     "a successful or terminalizing claim must mark the canonical Core snapshot dirty");
   assert.ok(coreAckStart >= 0 && coreAckSnapshot > coreAckStart && coreAckDirty > coreAckSnapshot,
     "a successful or terminalizing ACK must mark the canonical Core snapshot dirty");
+  const coreStageStart = coreSource.indexOf("stageAutonomousSocialInitiativeMessage(id");
+  const coreStageSnapshot = coreSource.indexOf("this.persisted.system.autonomousSocialInitiative", coreStageStart);
+  const coreStageDirty = coreSource.indexOf("this.markPersistenceDirty()", coreStageSnapshot);
+  const coreDeferStart = coreSource.indexOf("deferAutonomousSocialInitiative(id");
+  const coreDeferSnapshot = coreSource.indexOf("this.persisted.system.autonomousSocialInitiative", coreDeferStart);
+  const coreDeferDirty = coreSource.indexOf("this.markPersistenceDirty()", coreDeferSnapshot);
+  assert.ok(coreStageStart >= 0 && coreStageSnapshot > coreStageStart && coreStageDirty > coreStageSnapshot,
+    "staging a user-visible initiative must mark canonical Core persistence dirty");
+  assert.ok(coreDeferStart >= 0 && coreDeferSnapshot > coreDeferStart && coreDeferDirty > coreDeferSnapshot,
+    "deferring an initiative must mark canonical Core persistence dirty");
   assert.ok(engineSource.includes("expectedAttemptCount !== item.deliveryAttemptCount"),
     "the engine must validate the attempt count at command execution time");
   const methodStart = runtimeSource.indexOf("async acknowledgeAutonomousDialogue");
