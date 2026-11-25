@@ -7,6 +7,8 @@ on:
       - "app/src/components/Avatar3DStage.tsx"
       - "app/src/components/AvatarStage.tsx"
       - "app/src/components/avatar/avatarModelFitBounds.ts"
+      - "app/src/types/three.d.ts"
+      - "app/scripts/avatar-3d-stage.test.mjs"
       - "app/scripts/avatar-contact-browser-acceptance.mjs"
       - "app/scripts/avatar-contact-event.test.mjs"
       - "app/scripts/avatar-contact-perception-route.test.mjs"
@@ -21,6 +23,8 @@ on:
       - "app/src/components/Avatar3DStage.tsx"
       - "app/src/components/AvatarStage.tsx"
       - "app/src/components/avatar/avatarModelFitBounds.ts"
+      - "app/src/types/three.d.ts"
+      - "app/scripts/avatar-3d-stage.test.mjs"
       - "app/scripts/avatar-contact-browser-acceptance.mjs"
       - "app/scripts/avatar-contact-event.test.mjs"
       - "app/scripts/avatar-contact-perception-route.test.mjs"
@@ -38,7 +42,7 @@ concurrency:
 jobs:
   avatar-contact:
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -52,38 +56,58 @@ jobs:
       - name: Install headless Chromium
         working-directory: app
         run: npx playwright install --with-deps chromium
-      - name: App typecheck
+      - name: App TypeScript check
         run: npm --prefix app run typecheck
+      - name: 3D renderer and Three.js pointer-picking invariants
+        run: node --experimental-strip-types --test app/scripts/avatar-3d-stage.test.mjs
       - name: Verify contact recorder and canonical event payload
         run: node --experimental-strip-types --test app/scripts/avatar-contact-event.test.mjs
-      - name: Verify real runtime perception and SocialMind evidence
+      - name: Verify runtime perception and SocialMind evidence in isolation
         run: node --experimental-strip-types app/scripts/avatar-contact-perception-route.test.mjs
-      - name: Build app and hydrate canonical avatar assets
-        run: npm --prefix app run build:dev
-      - name: Start production preview server
+      - name: Start the real organism runtime behind the Vite proxy
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/nk1-avatar-runtime-state"
+          HOST=127.0.0.1 PORT=3310 STATE_DIR="$RUNNER_TEMP/nk1-avatar-runtime-state" NK_TEST_DISABLE_AUTORUN=1 \
+            npm --prefix runtime/neuro-kurisu start > "$RUNNER_TEMP/avatar-contact-runtime.log" 2>&1 &
+          echo $! > "$RUNNER_TEMP/avatar-contact-runtime.pid"
+          for attempt in $(seq 1 90); do
+            if curl --fail --silent "http://127.0.0.1:3310/api/health" > "$RUNNER_TEMP/avatar-contact-health.json"; then
+              if node -e 'const h=JSON.parse(require("fs").readFileSync(process.argv[1],"utf8")); process.exit(h.ready===true?0:1)' "$RUNNER_TEMP/avatar-contact-health.json"; then
+                exit 0
+              fi
+            fi
+            sleep 2
+          done
+          cat "$RUNNER_TEMP/avatar-contact-runtime.log"
+          exit 1
+      - name: Start the Vite app with the real organism API proxy
         working-directory: app
         run: |
           set -euo pipefail
-          npm run preview -- --host 127.0.0.1 --port 8081 > "$RUNNER_TEMP/avatar-contact-preview.log" 2>&1 &
-          echo $! > "$RUNNER_TEMP/avatar-contact-preview.pid"
+          npm run dev > "$RUNNER_TEMP/avatar-contact-app.log" 2>&1 &
+          echo $! > "$RUNNER_TEMP/avatar-contact-app.pid"
           for attempt in $(seq 1 60); do
-            if curl --fail --silent "http://127.0.0.1:8081/" > /dev/null; then
+            if curl --fail --silent "http://127.0.0.1:8080/" > /dev/null; then
               exit 0
             fi
             sleep 2
           done
-          cat "$RUNNER_TEMP/avatar-contact-preview.log"
+          cat "$RUNNER_TEMP/avatar-contact-app.log"
           exit 1
-      - name: Verify Live2D, 3D and Legacy head/body contacts on desktop and mobile
+      - name: Verify real Live2D, 3D and Legacy contacts on desktop and mobile
         working-directory: app
         env:
           AVATAR_CONTACT_TIMEOUT_MS: "30000"
-        run: node scripts/avatar-contact-browser-acceptance.mjs http://127.0.0.1:8081
-      - name: Upload browser preview log
+        run: node scripts/avatar-contact-browser-acceptance.mjs http://127.0.0.1:8080
+      - name: Upload real-runtime browser acceptance logs
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: nk1-avatar-contact-browser-acceptance
-          path: ${{ runner.temp }}/avatar-contact-preview.log
+          path: |
+            ${{ runner.temp }}/avatar-contact-app.log
+            ${{ runner.temp }}/avatar-contact-runtime.log
+            ${{ runner.temp }}/avatar-contact-health.json
           if-no-files-found: warn
           retention-days: 14
