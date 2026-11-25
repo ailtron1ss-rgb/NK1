@@ -549,7 +549,7 @@ export class GroundedWorldState {
           collectionKnown:x.collectionKnown===true,
           confidence01:clamp(x.confidence01),
           evidenceKind:canonicalKind,
-          sourceId:x.sourceIds?.[0]??x.id,
+          ...(x.sourceIds?.[0]?{sourceId:x.sourceIds[0]}:{}),
           ...(x.position&&x.positionFrameId?{
             x:x.position.x,y:x.position.y,z:x.position.z,coordinateFrameId:x.positionFrameId,
           }:{ }),
