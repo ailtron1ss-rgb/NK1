@@ -37,6 +37,8 @@ jobs:
         run: npm --prefix runtime/neuro-kurisu run test:autonomous-social-delivery-runtime
       - name: Browser transcript-before-ACK and retry contract
         run: npm --prefix runtime/neuro-kurisu run test:proactive-chat-durable-ack
+      - name: Existing language invocation-order regression
+        run: node --experimental-strip-types runtime/neuro-kurisu/tests/language-invoke-order-regression.mjs
       - name: Existing proactive delivery consent regression
         run: npm --prefix runtime/neuro-kurisu run test:self-motivation:delivery-consent
       - name: Existing OpenLoop runtime integration

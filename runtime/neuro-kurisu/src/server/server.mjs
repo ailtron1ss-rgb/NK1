@@ -377,8 +377,7 @@ const NMCN_RUNTIME_ADVISOR = NMCN_RUNTIME_PORT ? {
         }
     },
 } : null;
-let runtime;
-runtime = new OrganismRuntime({
+const runtime = new OrganismRuntime({
     stateFile,
     worldStateFile: worldFile,
     enableLanguage: true,
