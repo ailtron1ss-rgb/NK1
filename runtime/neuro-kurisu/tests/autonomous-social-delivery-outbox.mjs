@@ -173,4 +173,18 @@ function readyEngine(at = 1_000) {
   assert.equal(diagnostics.deliveryClaimable, 0);
 }
 
+
+{
+  const { engine } = readyEngine(300_000);
+  const before = engine.deliveryPolicy(300_001);
+  assert.equal(before.outbox.claimable, 1,
+    'the public delivery policy must expose an actionable outbox snapshot');
+  assert.equal(before.outbox.pending, 1);
+  const claim = engine.claimReady(300_002, 1_000);
+  assert.ok(claim);
+  const during = engine.deliveryPolicy(300_003);
+  assert.equal(during.outbox.leased, 1);
+  assert.equal(during.outbox.claimable, 0);
+}
+
 console.log('AUTONOMOUS_SOCIAL_DELIVERY_OUTBOX=PASS');
