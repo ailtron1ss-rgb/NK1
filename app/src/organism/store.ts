@@ -33,6 +33,7 @@ let latestSnapshotRequestId = 0;
 let chatSequence = 0;
 let voiceInputOperationId = 0;
 let snapshotPollInFlight = false;
+let initiativePollInFlight = false;
 let snapshotPollFailureCount = 0;
 let nextSnapshotPollAt = 0;
 
@@ -315,31 +316,36 @@ export const useKurisu = create<KurisuStore>((set, get) => {
         if (["requesting", "listening", "stopping", "stop-unconfirmed"].includes(current.voiceInputStatus)) return;
 
         const now = Date.now();
-        if (now - lastInitiativePollAt < 5_000) return;
+        if (initiativePollInFlight || now - lastInitiativePollAt < 5_000) return;
         lastInitiativePollAt = now;
-        const pending = await neuroApi.proactiveMessage();
-        const initiative = pending.initiative;
-        if (!initiative?.id || !initiative.message?.trim()) return;
-        const existing = get().snap.chat;
-        const turnId = `ui-initiative-${initiative.id}`;
-        const chat = existing.some(turn => turn.id === turnId)
-          ? existing
-          : [...existing, {
-              id: turnId,
-              role: "kurisu" as const,
-              text: initiative.message.trim(),
-              at: Number(initiative.createdAt || now),
-              tick: Number(get().snap.tick || 0),
-              option: "reflect" as const,
-              backend: `autonomous-initiative:${initiative.kind}`,
-            }].slice(-120);
-        if (chat !== existing) {
-          saveChat(chat);
-          set({ snap: { ...get().snap, chat } });
+        initiativePollInFlight = true;
+        try {
+          const pending = await neuroApi.proactiveMessage();
+          const initiative = pending.initiative;
+          if (!initiative?.id || !initiative.message?.trim()) return;
+          const existing = get().snap.chat;
+          const turnId = `ui-initiative-${initiative.id}`;
+          const chat = existing.some(turn => turn.id === turnId)
+            ? existing
+            : [...existing, {
+                id: turnId,
+                role: "kurisu" as const,
+                text: initiative.message.trim(),
+                at: Number(initiative.createdAt || now),
+                tick: Number(get().snap.tick || 0),
+                option: "reflect" as const,
+                backend: `autonomous-initiative:${initiative.kind}`,
+              }].slice(-120);
+          if (chat !== existing) {
+            saveChat(chat);
+            set({ snap: { ...get().snap, chat } });
+          }
+          // ACK only after the message is safely in the browser's durable chat cache.
+          // If ACK fails, the stable turn id makes the next poll idempotent.
+          await neuroApi.ackProactiveMessage(initiative.id).catch(() => null);
+        } finally {
+          initiativePollInFlight = false;
         }
-        // ACK only after the message is safely in the browser's durable chat cache.
-        // If ACK fails, the stable turn id makes the next poll idempotent.
-        await neuroApi.ackProactiveMessage(initiative.id).catch(() => null);
       } catch (error) {
         set({ error: errorMessage(error) });
       } finally {
