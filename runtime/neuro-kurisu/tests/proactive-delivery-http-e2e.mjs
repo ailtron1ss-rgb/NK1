@@ -127,6 +127,17 @@ try {
   assert.equal(claim.data.ok, true);
   assert.ok(claim.data.initiative === null || typeof claim.data.initiative === "object",
     "the canonical POST claim route must return either no ready message or a typed initiative");
+  const claimedBeforeRestart = claim.data.initiative;
+
+  if (claimedBeforeRestart) {
+    assert.equal(typeof claimedBeforeRestart.deliveryToken, "string",
+      "a claimed UI initiative must include a process-local attempt receipt");
+    const wrongReceipt = await call(first.base, "/api/organism/proactive-message/ack", "POST", {
+      id: claimedBeforeRestart.id,
+      deliveryToken: "wrong-process-local-token",
+    });
+    assert.equal(wrongReceipt.status, 409);
+  }
 
   const invalidAck = await call(first.base, "/api/organism/proactive-message/ack", "POST", {
     id: " invalid-id ",
@@ -152,6 +163,14 @@ try {
     "quiet-hours policy must survive a real server restart");
   assert.equal(restoredPolicy.data.policy.quietStartHourUtc, 22);
   assert.equal(restoredPolicy.data.policy.quietEndHourUtc, 8);
+  if (claimedBeforeRestart) {
+    const staleReceipt = await call(second.base, "/api/organism/proactive-message/ack", "POST", {
+      id: claimedBeforeRestart.id,
+      deliveryToken: claimedBeforeRestart.deliveryToken,
+    });
+    assert.equal(staleReceipt.status, 409,
+      "a prior process's receipt token must not authorize delivery ACK after restart");
+  }
   console.log("PROACTIVE_DELIVERY_HTTP_E2E=PASS");
 } catch (error) {
   const logs = [first?.logs?.(), second?.logs?.()].filter(Boolean).join("\n");
