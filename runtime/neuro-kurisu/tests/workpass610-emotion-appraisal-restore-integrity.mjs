@@ -201,9 +201,10 @@ const manyOutcomes=Object.fromEntries(Array.from({length:80},(_,i)=>[['rest','ex
 const outcomeSnapshot=structuredClone(valid); outcomeSnapshot.outcomes=manyOutcomes;
 const outcomeRestore=new EmotionAppraisalEngine(); outcomeRestore.restore(outcomeSnapshot);
 assert.ok(Object.keys(outcomeRestore.snapshot().outcomes).length<=8,'only registered action keys are restored');
-assert.equal(outcomeRestore.snapshot().outcomes.rest.evidenceWeight01,
-  1+outcomeRestore.snapshot().outcomes.rest.attempts*.15,
-  'legacy calibration rows without an evidence mass receive a conservative unverified weight');
+const restoredLegacyEvidenceWeight=outcomeRestore.snapshot().outcomes.rest.evidenceWeight01;
+const expectedLegacyEvidenceWeight=1+outcomeRestore.snapshot().outcomes.rest.attempts*.15;
+assert.ok(Math.abs(restoredLegacyEvidenceWeight-expectedLegacyEvidenceWeight)<1e-12,
+  `legacy calibration rows without an evidence mass receive conservative unverified weight (${restoredLegacyEvidenceWeight} vs ${expectedLegacyEvidenceWeight})`);
 assert.deepEqual(outcomeRestore.snapshot().recentOutcomeIds,[]);
 assert.ok(outcomeRestore.snapshot().recentOutcomeIds.length<=512);
 assert.equal(outcomeRestore.snapshot().duplicateOutcomes,0);
