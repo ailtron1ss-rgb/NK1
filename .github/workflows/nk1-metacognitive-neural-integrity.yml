@@ -2,7 +2,7 @@ name: NK1 Metacognitive Neural Integrity
 
 on:
   push:
-    branches: ["**"]
+    branches: ["workpass70-source"]
     paths:
       - ".github/workflows/nk1-metacognitive-neural-integrity.yml"
       - "runtime/neuro-kurisu/src/organism/cognition/MetacognitiveNeuralSubstrate.ts"
