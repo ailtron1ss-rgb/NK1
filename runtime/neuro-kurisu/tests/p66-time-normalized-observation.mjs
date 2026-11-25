@@ -76,9 +76,15 @@ const futureRestore = new P66InteroceptiveHomeostasis();
 futureRestore.restore({ ...afterFirst, lastAt: Date.now() + 60_000 });
 assert.equal(futureRestore.snapshot().lastAt, 0,
   'a far-future restored timestamp must fail closed to the safe baseline');
+assert.equal(futureRestore.snapshot().cycles, 0,
+  'invalid restored clock must not retain stale temporal EMA history');
+assert.equal(futureRestore.snapshot().history.length, 0,
+  'invalid restored clock must clear stale sample IDs from the replay window');
+assert.equal(futureRestore.snapshot().stableDurationMs, 0,
+  'invalid restored clock must not retain continuity evidence across an uncertain timebase');
 futureRestore.observe({ tick: 1, at: Date.now(), ...calm, awake: true, source: 'cognitive-cycle' });
-assert.equal(futureRestore.snapshot().cycles, 2,
-  'a future restored clock must not reject the next valid observation as out of order');
+assert.equal(futureRestore.snapshot().cycles, 1,
+  'the next valid observation must establish a fresh temporal baseline');
 
 console.log('P66_TIME_NORMALIZED_OBSERVATION=PASS', JSON.stringify({
   denseCycles: denseState.cycles, sparseCycles: sparseState.cycles,
