@@ -81,12 +81,16 @@ export class ProactiveDeliveryLeaseRegistry {
 
   /** Move a live token into a short-lived idempotency receipt ledger. */
   complete(id, token, now = Date.now()) {
-    if (!this.matches(id, token, now)) return false;
+    if (!Number.isSafeInteger(now) || now < 0 || typeof id !== "string" || typeof token !== "string") return false;
+    // The coordinator calls complete only after the serialized engine accepted
+    // this exact attempt. Allow the HTTP reply to finish just after lease expiry,
+    // but never complete a token already replaced by a newer attempt.
     const current = this.entries.get(id);
-    if (!current) return false;
+    if (!current || current.token !== token) return false;
     const expiresAt = now + COMPLETED_RECEIPT_TTL_MS;
     if (!Number.isSafeInteger(expiresAt)) return false;
     this.entries.delete(id);
+    this.prune(now);
     this.completed.delete(id);
     this.completed.set(id, {
       attemptCount: current.attemptCount,
