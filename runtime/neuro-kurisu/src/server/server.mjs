@@ -129,7 +129,8 @@ function consumeRateLimit(req, pathName) {
     if (pathName === '/health' || pathName === '/api/health')
         return { allowed: true };
     const now = Date.now();
-    const key = String(req.socket?.remoteAddress || req.headers['x-forwarded-for'] || 'unknown');
+    // The socket peer is transport-owned. Do not let an untrusted caller rotate
+    // its own bucket with a spoofed X-Forwarded-For header.
     const current = rateBuckets.get(key);
     const bucket = !current || now - current.startedAt >= RATE_WINDOW_MS ? { startedAt: now, count: 0 } : current;
     bucket.count++;
@@ -661,14 +662,16 @@ async function generateLanguage(request) {
 async function route(req, res) {
     const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
     try {
-        const auth = authorizeApiRequest(HOST, url.pathname, req.headers.authorization);
-        if (url.pathname.startsWith('/api/') && !auth.allowed)
-            return json(res, auth.status, { ok: false, error: 'api-authorization-required', reason: auth.reason });
+        // Bound every non-health request before authentication so missing/invalid
+        // bearer attempts cannot bypass the existing per-peer rate-limit bucket.
         const rate = consumeRateLimit(req, url.pathname);
         if (!rate.allowed) {
             res.setHeader('retry-after', String(rate.retryAfterSec));
             return json(res, 429, { ok: false, error: 'rate-limit-exceeded', retryAfterSec: rate.retryAfterSec });
         }
+        const auth = authorizeApiRequest(HOST, url.pathname, req.headers.authorization);
+        if (url.pathname.startsWith('/api/') && !auth.allowed)
+            return json(res, auth.status, { ok: false, error: 'api-authorization-required', reason: auth.reason });
         if (url.pathname === '/health' || url.pathname === '/api/health') {
             return json(res, 200, { ok: true, ready: runtimeReady, service: 'neuro-kurisu', version: RELEASE_CONTRACT.application, organismCore: RELEASE_CONTRACT.organismCore, schemaVersion: RELEASE_CONTRACT.stateSchema, tick: runtimeReady ? runtime.core.operationalStatusSnapshot().tick : 0, uptimeSec: Math.round(process.uptime()), bodySource: runtimeReady ? runtime.embodiment.snapshot().telemetry.source : 'initializing', actionLedger: runtimeReady ? runtime.core.actionExecutionLedgerMetrics() : null, language: languageCapabilitySnapshot() });
         }
