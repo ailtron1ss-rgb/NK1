@@ -229,6 +229,15 @@ try {
   const stored = JSON.parse(await readFile(success.receiptPath, 'utf8'));
   assert.equal(stored.runId, run.runId);
 
+  const ordinaryMode = await runLearningProcess(run, 'b'.repeat(64), {
+    ...base,
+    env: { NODE_ENV: 'test' },
+    args: ['-e', 'process.stdout.write(process.env.NODE_ENV || "missing")'],
+  });
+  assert.equal(ordinaryMode.receipt.status, 'completed');
+  assert.equal(ordinaryMode.receipt.stdout, 'test',
+    'ordinary NODE_ENV configuration must remain available without a credential grant');
+
   // Lumina-derived least-privilege boundary: credential-shaped environment
   // variables must not cross into a child unless the host grants each exact key.
   const sensitiveKey = 'NK1_TEST_ACCESS_TOKEN';
