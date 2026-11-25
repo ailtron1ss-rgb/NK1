@@ -58,8 +58,8 @@ test('an ACK transport failure leaves the already stored message safe for idempo
 test('the production store routes proactive ACK through the durable persistence gate', async () => {
   const source = await readFile(new URL('../src/organism/store.ts', import.meta.url), 'utf8');
   assert.ok(source.includes('persistChatBeforeAcknowledge'));
-  const gate = source.indexOf('persistChatBeforeAcknowledge');
-  const acknowledgement = source.indexOf('ackProactiveMessage(initiative.id)');
+  const gate = source.lastIndexOf('persistChatBeforeAcknowledge(');
+  const acknowledgement = source.indexOf('ackProactiveMessage(initiative.id)', gate);
   assert.ok(gate >= 0 && acknowledgement > gate,
     'the proactive ACK call must happen inside the storage-before-ACK gate');
 });
