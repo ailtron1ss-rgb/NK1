@@ -90,6 +90,11 @@ let second;
 try {
   first = await startServer(port, stateDir);
 
+  const initialPolicy = await call(first.base, "/api/organism/proactive-consent");
+  assert.equal(initialPolicy.status, 200);
+  assert.equal(initialPolicy.data.policy.consentGranted, false,
+    "fresh runtime startup must keep user-visible proactive consent disabled");
+
   const invalidConsent = await call(first.base, "/api/organism/proactive-consent", "POST", null);
   assert.equal(invalidConsent.status, 400,
     "null consent bodies must be rejected as client errors, not server exceptions");
@@ -129,6 +134,13 @@ try {
   });
   assert.equal(invalidAck.status, 400,
     "malformed IDs must be rejected before the token registry or Core is touched");
+
+  const revoked = await call(first.base, "/api/organism/proactive-consent", "POST", { consentGranted: false });
+  assert.equal(revoked.status, 200);
+  assert.equal(revoked.data.policy.consentGranted, false);
+  const reenabled = await call(first.base, "/api/organism/proactive-consent", "POST", { consentGranted: true });
+  assert.equal(reenabled.status, 200);
+  assert.equal(reenabled.data.policy.consentGranted, true);
 
   await stopServer(first.child);
   second = await startServer(port, stateDir);
