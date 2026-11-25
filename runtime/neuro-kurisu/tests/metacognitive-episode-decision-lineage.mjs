@@ -74,6 +74,29 @@ assert.throws(
 );
 assert.equal(conflictFabric.snapshot().total,0,'invalid decision identity must fail before any partial cycle is appended');
 
+// Invalid owner receipts must reject the whole cycle before any stage is appended.
+const invalidAttentionFabric=new CognitiveEventFabric(256);
+assert.throws(
+  ()=>invalidAttentionFabric.recordOperationalCycle(cycleInput(15,'decision:invalid-attention-receipt',{
+    attention:{...stagePayload('global-workspace',{broadcastId:'workspace:15'}),receipt:{}},
+  })),
+  /invalid-stage-owner-receipt:attention:/,
+  'an invalid attention receipt must fail closed',
+);
+assert.equal(invalidAttentionFabric.snapshot().total,0,
+  'invalid attention evidence must not leave observation, prediction or appraisal events behind');
+
+const invalidMemoryFabric=new CognitiveEventFabric(256);
+assert.throws(
+  ()=>invalidMemoryFabric.recordOperationalCycle(cycleInput(16,'decision:invalid-memory-receipt',{
+    memory:{...stagePayload('MemoryFabric.retrieveForCognition',{retrievedCount:1}),receipt:{}},
+  })),
+  /invalid-stage-owner-receipt:memory:/,
+  'an invalid memory receipt must fail closed',
+);
+assert.equal(invalidMemoryFabric.snapshot().total,0,
+  'invalid memory evidence must not leave any earlier operational stage behind');
+
 const legacyFabric=new CognitiveEventFabric(256);
 const legacyIds=legacyFabric.recordOperationalCycle(cycleInput(14,undefined));
 const legacy=legacyFabric.verifyOperationalCycle(verifierIds(legacyIds));
