@@ -162,7 +162,12 @@ function normalizeTool(
       (row.destructive !== false || !/(?:\.read|:read)$/i.test(capability))) {
     return { reason: 'invalid-resource-read-declaration' };
   }
-  if (row.permissionClass !== 'none' && row.requiresHostApproval !== true) {
+  // A destructive capability must always resolve to a host-approvable
+  // permission class. "none" cannot be used to downscope an effectful tool.
+  if (row.destructive && row.permissionClass === 'none') {
+    return { reason: 'invalid-approval-declaration' };
+  }
+  if ((row.permissionClass !== 'none' || row.destructive) && row.requiresHostApproval !== true) {
     return { reason: 'invalid-approval-declaration' };
   }
   return {
