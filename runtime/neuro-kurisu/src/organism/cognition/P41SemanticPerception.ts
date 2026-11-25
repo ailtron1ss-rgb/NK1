@@ -343,7 +343,9 @@ export class P41SemanticPerceptionEngine {
   }
 
   ingestWorld(w:NonNullable<P41SemanticInput['world']>,at:number){
-    const sceneEvidenceKind=w.evidenceKind??'unresolved';
+    // P41 world payloads are caller/model inputs, not host attestations. Never let a
+    // self-asserted `observed` label cross the external-ingress boundary.
+    const sceneEvidenceKind:P41EvidenceKind=w.evidenceKind==='observed'?'model-output':(w.evidenceKind??'unresolved');
     if(w.scene){
       const label=String(w.scene).slice(0,120);
       const sameSceneObservation=this.state.scene.at===at&&this.state.scene.label===label;
@@ -356,7 +358,7 @@ export class P41SemanticPerceptionEngine {
     for(const o of (w.objects??[]).slice(0,24)){
       const suppliedTrackId=cleanTrackId(o.trackId);
       const namespacedTrackId=suppliedTrackId?'world:'+(cleanTrackId(o.sourceId)||'canonical')+':'+suppliedTrackId:undefined;
-      const evidenceKind=o.evidenceKind??sceneEvidenceKind;
+      const evidenceKind:P41EvidenceKind=o.evidenceKind==='observed'?'model-output':(o.evidenceKind??sceneEvidenceKind);
       const coordinateFrameId=cleanTrackId(o.coordinateFrameId);
       const position=coordinateFrameId?finitePosition(o.x,o.y,o.z):null;
       const entity=this.upsertEntity(String(o.label),o.kind??'object',clamp(o.confidence01??.35),.52,'world',at,position,evidenceKind,namespacedTrackId,position?coordinateFrameId:undefined);
