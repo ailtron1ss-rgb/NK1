@@ -436,7 +436,7 @@ export class B273AutonomousGoalLifecycle{
       reward01:input.reward01,predictionError01:input.predictionError01,independentGain01:input.independentGain01,
     }].slice(-128);
     this.state.learningUpdates++;
-    return {accepted,revised,completed,abandoned,skillCreated,goalId:goal.id,gain01:gain,offPlan:!onPlan,planCompleted};
+    return {accepted,revised,completed,abandoned,skillCreated,goalId:goal.id,gain01:gain,duplicate:false,offPlan:!onPlan,planCompleted};
   }
   actionBias(action:ActionKind){
     const active=this.state.activeGoalId?this.state.goals.find(g=>g.id===this.state.activeGoalId):null; if(!active)return 0;
