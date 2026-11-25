@@ -62,6 +62,7 @@ export class ContinuityLedger {
   private retentionDroppedFrames = 0;
   private lastError: string | null = null;
   private lastDurabilityWarning: string | null = null;
+  private pendingRollbackSize: number | null = null;
 
   constructor(filePath: string, maxBytes = 4 * 1024 * 1024, flushEveryFrames = 4) {
     this.filePath = filePath;
@@ -70,6 +71,27 @@ export class ContinuityLedger {
   }
 
   metrics(): ContinuityLedgerMetrics { return { ...this.stats }; }
+
+  private async repairPendingAppendRollback(): Promise<void> {
+    const rollbackSize = this.pendingRollbackSize;
+    if (rollbackSize === null) return;
+    const repairHandle = await open(this.filePath, 'r+');
+    try {
+      const currentSize = (await repairHandle.stat()).size;
+      if (currentSize < rollbackSize) {
+        throw new Error('continuity-ledger-rollback-boundary-lost');
+      }
+      if (currentSize > rollbackSize) {
+        await repairHandle.truncate(rollbackSize);
+        await repairHandle.sync();
+        this.recoveredTailBytes += currentSize - rollbackSize;
+      }
+      this.pendingRollbackSize = null;
+      this.lastDurabilityWarning = null;
+    } finally {
+      await repairHandle.close();
+    }
+  }
 
   private async repairTornTail(): Promise<void> {
     let bytes: Buffer;
@@ -97,6 +119,7 @@ export class ContinuityLedger {
   private async ensureHandle(): Promise<ContinuityFileHandle> {
     if (this.handle) return this.handle;
     await mkdir(dirname(this.filePath), { recursive: true });
+    await this.repairPendingAppendRollback();
     await this.repairTornTail();
     this.handle = await open(this.filePath, 'a+');
     return this.handle;
@@ -190,7 +213,9 @@ export class ContinuityLedger {
         await handle.truncate(startSize);
         await handle.sync();
       } catch (rollbackError) {
-        // Force a later reopen/repair from the last complete JSONL line before retry.
+        // Preserve the exact pre-append boundary. A partial write may end with a
+        // newline, so a torn-tail-only repair would not be enough to avoid duplicates.
+        this.pendingRollbackSize = startSize;
         this.lastDurabilityWarning = 'append-rollback-failed:' +
           String((rollbackError as any)?.message ?? rollbackError).slice(0, 140);
         if (this.handle === handle) this.handle = null;
