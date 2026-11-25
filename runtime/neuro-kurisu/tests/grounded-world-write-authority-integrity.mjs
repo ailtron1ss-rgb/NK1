@@ -49,7 +49,8 @@ assert.equal(after.revision, before.revision,
   'unverified receipts must not advance the canonical world revision');
 assert.equal(after.lastAt, before.lastAt,
   'caller timestamps must not advance the canonical world clock');
-assert.equal(after.events.find(event => event.id === forged.eventId)?.evidenceKind, 'derived',
+assert.equal(after.quarantinedOutcomes?.find(event => event.id === forged.eventId)?.label,
+  'external-receipt:explore:executed:device-observation',
   'forged result and verification lookalikes must remain explicitly unverified');
 const replayed = world.integrateExternalOutcome({ result: forgedResult, verification: forgedVerification });
 assert.equal(replayed.duplicate, true,
