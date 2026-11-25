@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { P41SemanticPerceptionEngine } from '../src/organism/cognition/P41SemanticPerception.ts';
 import { PerceptualEvidenceCompiler } from '../src/organism/body/PerceptualEvidenceCompiler.ts';
 import { PerceptualEpistemicGraph } from '../src/organism/cognition/PerceptualEpistemicGraph.ts';
+import { ExternalEvidenceTrustEngine } from '../src/organism/system/ExternalEvidenceTrust.ts';
 
 const perception = new P41SemanticPerceptionEngine();
 const world = perception.ingest({
@@ -180,6 +181,45 @@ assert.equal(numericState.metrics.grounding01, .18);
 assert.equal(numericState.metrics.sceneContinuity01, .1);
 assert.equal(numericState.metrics.updates, 0);
 assert.equal(numericState.metrics.epistemicContradictions, 0);
+
+
+const newestFirstEntities = Array.from({ length: 193 }, (_, index) => ({
+  id: `entity-${index}`, label: `item-${index}`, kind: 'object',
+  confidence01: .5, salience01: .5, present01: 1,
+  firstSeenAt: index + 1, lastSeenAt: index + 1, observations: 1,
+  modalities: ['sensor'], modalityEvidenceKinds: { sensor: 'derived' },
+  modalitySourceIds: { sensor: [`device-${index}`] }, position: null,
+}));
+const newestP41 = new P41SemanticPerceptionEngine();
+newestP41.restore({ version:1, entities:newestFirstEntities });
+assert.equal(newestP41.snapshot().entities.length, 192);
+assert.equal(newestP41.snapshot().entities[0].id, 'entity-0',
+  'restore must preserve the newest-first P41 window');
+assert.ok(!newestP41.snapshot().entities.some(entity => entity.id === 'entity-192'));
+
+const newestClaims = Array.from({ length: 257 }, (_, index) => ({
+  id: `claim-${index}`, at: index + 1, modality: 'sensor', claim: `item-${index}`,
+  source: 'derived', confidence01: .5, targetIds: [],
+}));
+const newestGraph = new PerceptualEpistemicGraph();
+newestGraph.restore({ version:1, claims:newestClaims });
+assert.equal(newestGraph.snapshot().claims.length, 256);
+assert.equal(newestGraph.snapshot().claims[0].id, 'claim-0',
+  'epistemic graph restore must retain the newest-first claim window');
+assert.ok(!newestGraph.snapshot().claims.some(claim => claim.id === 'claim-256'));
+
+const newestTrust = new ExternalEvidenceTrustEngine();
+const newestRecords = Array.from({ length: 257 }, (_, index) => ({
+  id: `record-${index}`, claimKey: `claim-${index}`, source: 'device',
+  independenceKey: `camera-${index}`, confidence01: .5, trust01: .5,
+  corroborations: 1, independentSources: 1, contradictions: 0, status: 'candidate',
+  firstSeenAt: 10_000 + index, lastSeenAt: 10_000 + index, evidenceIds: [`event-${index}`],
+}));
+newestTrust.restore({ version:1, records:newestRecords });
+assert.equal(newestTrust.snapshot().records.length, 256);
+assert.equal(newestTrust.snapshot().records[0].id, 'record-0',
+  'external trust restore must retain the newest-first evidence window');
+assert.ok(!newestTrust.snapshot().records.some(record => record.id === 'record-256'));
 
 console.log('PERCEPTION_EXTERNAL_INGRESS_ATTESTATION=PASS hostile=3');
 
