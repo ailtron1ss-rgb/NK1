@@ -116,7 +116,7 @@ export class ExternalEvidenceTrustEngine{
         -record.contradictions*.12);
       const eligibleSource=record.sourceClass!=='simulator'&&record.sourceClass!=='unknown'&&record.sourceClass!=='organism';
       record.status=record.contradictions>=2?'contested'
-        :eligibleSource&&record.evidenceIds?.length>0&&record.independentSources>=2&&record.trust01>=.72?'corroborated'
+        :eligibleSource&&(record.evidenceIds?.length??0)>0&&record.independentSources>=2&&record.trust01>=.72?'corroborated'
         :'candidate';
     }
     this.state={...d,records};
