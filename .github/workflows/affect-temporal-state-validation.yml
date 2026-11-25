@@ -22,16 +22,16 @@ jobs:
   runtime:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with: { node-version: "22.12.0", cache: npm, cache-dependency-path: runtime/neuro-kurisu/package-lock.json }
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with: { node-version-file: .nvmrc, cache: npm, cache-dependency-path: runtime/neuro-kurisu/package-lock.json }
       - run: npm ci --prefix runtime/neuro-kurisu
       - run: npm run test:emotion-state-dynamics --prefix runtime/neuro-kurisu
   app:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with: { node-version: "22.12.0", cache: npm, cache-dependency-path: app/package-lock.json }
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with: { node-version-file: .nvmrc, cache: npm, cache-dependency-path: app/package-lock.json }
       - run: npm ci --prefix app
       - run: npm run test:affect-frame-integration --prefix app
