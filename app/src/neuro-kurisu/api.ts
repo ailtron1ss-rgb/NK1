@@ -162,7 +162,7 @@ async function request<T>(path: string, init?: RequestInit, allowApprovalContinu
   return data as T;
 }
 
-type MemoryInspectorOptions = { query?: string; limit?: number; temporalMode?: "current" | "at" | "all"; asOfAt?: number };
+type MemoryInspectorOptions = { query?: string; limit?: number; temporalMode?: "current" | "at" | "all"; asOfAt?: number; semantic?: boolean };
 
 function memoryInspectorSearch(options: MemoryInspectorOptions = {}): string {
   const params = new URLSearchParams();
@@ -173,6 +173,7 @@ function memoryInspectorSearch(options: MemoryInspectorOptions = {}): string {
   }
   if (options.temporalMode) params.set("temporalMode", options.temporalMode);
   if (options.asOfAt !== undefined && Number.isFinite(options.asOfAt)) params.set("asOfAt", String(options.asOfAt));
+  if (options.semantic === true && query && (!options.temporalMode || options.temporalMode === "current") && options.asOfAt === undefined) params.set("semantic", "1");
   const suffix = params.toString();
   return suffix ? `?${suffix}` : "";
 }
