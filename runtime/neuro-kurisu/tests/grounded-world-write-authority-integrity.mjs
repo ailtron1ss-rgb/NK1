@@ -92,9 +92,9 @@ restored.restore({
     trackId: '  ', trackAliases: ['ok', 7],
     position: { x: Number.NaN, y: 0, z: 0 },
     velocity: { x: Number.POSITIVE_INFINITY, y: 0, z: 0 },
-    sourceIds: ['camera-1', 'vision', 'world', '', 7],
+    sourceIds: ['camera-1', 'vision', 'world', 'speech', 'semantic', '', 7],
     modalityEvidenceKinds: { vision: 'observed' },
-    modalitySourceIds: { vision: ['camera-1', 'vision', 'semantic', 'camera-2'] },
+    modalitySourceIds: { vision: ['camera-1', 'vision', 'semantic', 'speech', 'camera-2'] },
     presenceStatus: 'visible', persistence01: 4,
     absenceEvidence01: -1, observationCount: Number.POSITIVE_INFINITY,
   }],
@@ -133,7 +133,7 @@ assert.equal(safe.entities[0].velocity, null);
 assert.deepEqual(safe.entities[0].sourceIds, ['camera-1']);
 assert.deepEqual(safe.entities[0].modalitySourceIds, { vision: ['camera-1', 'camera-2'] },
   'restored modality provenance must retain true source IDs and reject modality aliases');
-assert.ok(!safe.entities[0].sourceIds.some(id => ['vision', 'world', 'audio', 'sensor', 'text'].includes(id)),
+assert.ok(!safe.entities[0].sourceIds.some(id => ['text', 'speech', 'audio', 'vision', 'sensor', 'world', 'semantic'].includes(id)),
   'legacy modality labels must be removed from restored source identity');
 assert.equal(safe.entities[0].observationCount, 1);
 assert.equal(safe.entities[0].persistence01, 0,
@@ -200,7 +200,7 @@ p41HostileRestore.restore({
   ...semantic,
   entities: semantic.entities.map(entity => ({
     ...entity,
-    modalitySourceIds: { world: ['camera-front', 'world', 'vision'] },
+    modalitySourceIds: { world: ['camera-front', 'world', 'vision', 'speech', 'semantic'] },
   })),
 });
 assert.deepEqual(p41HostileRestore.snapshot().entities.find(entity => entity.label === 'tracked-chair')?.modalitySourceIds?.world,
@@ -214,12 +214,14 @@ const contextWithoutSourceResult = contextWithoutSource.integrate({
     facts: [],
     objects: [{
       id: 'base-chair-1', label: 'base-chair', confidence01: .8,
-      visible: true, visibilityKnown: true,
+      visible: true, visibilityKnown: true, sourceId: 'speech',
     }],
   },
 });
 const baseChair = contextWithoutSource.snapshot().entities.find(entity => entity.label === 'base-chair');
 assert.ok(baseChair);
+assert.deepEqual(baseChair.modalitySourceIds, {},
+  'a modality alias cannot be persisted as a source in the canonical world');
 assert.deepEqual(baseChair.sourceIds, [],
   'a synthetic world-context identity used for tracking must not be promoted into source provenance');
 const baseChairContextObject = contextWithoutSourceResult.objects.find(object => object.label === 'base-chair');
