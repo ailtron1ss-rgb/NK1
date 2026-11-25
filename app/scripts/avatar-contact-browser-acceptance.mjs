@@ -135,6 +135,54 @@ try {
     { detail: "Пользователь коснулся области корпуса аватара Курису через экранный интерфейс.", importance: 0.24, interaction: { protocolVersion: 1, kind: "avatar-contact", zone: "body" } },
   ], "desktop and mobile head/body clicks must reach the canonical organism event client with low salience");
 
+  // Original SVG must use the same canonical contact protocol instead of being a
+  // visual-only mode. Its face occupies the upper third of the authored viewBox.
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.waitForTimeout(350);
+  await page.getByRole("button", { name: "Переключить на режим NK1 Original" }).click();
+  const originalStage = page.getByTestId("kurisu-original-stage");
+  const originalSvg = originalStage.locator("svg[role='img']");
+  await originalSvg.waitFor({ state: "visible", timeout: timeoutMs });
+  const originalBounds = await originalSvg.boundingBox();
+  assert.ok(originalBounds && originalBounds.width > 0 && originalBounds.height > 0,
+    "Original 2D SVG must expose a visible contact surface");
+  await originalSvg.click({ position: { x: originalBounds.width * 0.5, y: originalBounds.height * 0.22 } });
+  const originalDesktopHeadDeadline = Date.now() + timeoutMs;
+  while (observedEvents.length < 5 && Date.now() < originalDesktopHeadDeadline) await page.waitForTimeout(50);
+  assert.equal(observedEvents[12]?.interaction?.zone, "head",
+    "Original 2D SVG face tap must reach the canonical avatar-contact protocol");
+  await page.waitForTimeout(1_600);
+  await originalSvg.click({ position: { x: originalBounds.width * 0.5, y: originalBounds.height * 0.58 } });
+  const originalDesktopBodyDeadline = Date.now() + timeoutMs;
+  while (observedEvents.length < 6 && Date.now() < originalDesktopBodyDeadline) await page.waitForTimeout(50);
+  assert.equal(observedEvents[13]?.interaction?.zone, "body",
+    "Original 2D SVG torso tap must reach the canonical avatar-contact protocol");
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.waitForTimeout(500);
+  const mobileOriginalBounds = await originalSvg.boundingBox();
+  assert.ok(mobileOriginalBounds && mobileOriginalBounds.width >= 320,
+    "mobile Original 2D SVG must retain a usable hit target");
+  await page.waitForTimeout(1_600);
+  await originalSvg.click({ position: { x: mobileOriginalBounds.width * 0.5, y: mobileOriginalBounds.height * 0.22 } });
+  const originalMobileHeadDeadline = Date.now() + timeoutMs;
+  while (observedEvents.length < 7 && Date.now() < originalMobileHeadDeadline) await page.waitForTimeout(50);
+  assert.equal(observedEvents[10]?.interaction?.zone, "head",
+    "mobile Original 2D face tap must use the canonical contact protocol");
+  await page.waitForTimeout(1_600);
+  await originalSvg.click({ position: { x: mobileOriginalBounds.width * 0.5, y: mobileOriginalBounds.height * 0.58 } });
+  const originalMobileBodyDeadline = Date.now() + timeoutMs;
+  while (observedEvents.length < 8 && Date.now() < originalMobileBodyDeadline) await page.waitForTimeout(50);
+  assert.equal(observedEvents[11]?.interaction?.zone, "body",
+    "mobile Original 2D torso tap must use the canonical contact protocol");
+
+  assert.deepEqual(observedEvents.slice(8, 12).map((event) => event.interaction), [
+    { protocolVersion: 1, kind: "avatar-contact", zone: "head" },
+    { protocolVersion: 1, kind: "avatar-contact", zone: "body" },
+    { protocolVersion: 1, kind: "avatar-contact", zone: "head" },
+    { protocolVersion: 1, kind: "avatar-contact", zone: "body" },
+  ]);
+
   // 3D uses raycasts against the loaded character-only meshes. A camera drag must
   // rotate the view without being misreported as a social contact.
   await page.setViewportSize({ width: 1280, height: 900 });
@@ -157,14 +205,14 @@ try {
   await page.mouse.move(threeBounds.x + threeBounds.width * 0.5 + 32, threeBounds.y + threeBounds.height * 0.5, { steps: 4 });
   await page.mouse.up();
   await page.waitForTimeout(250);
-  assert.equal(observedEvents.length, 4, "3D camera orbit must not create a false contact event");
+  assert.equal(observedEvents.length, 8, "3D camera orbit must not create a false contact event");
 
   await page.waitForTimeout(1_600);
-  await clickUntilContact(threeCanvas, threeBounds, 5, [0.18, 0.22, 0.26, 0.30, 0.34]);
+  await clickUntilContact(threeCanvas, threeBounds, 9, [0.18, 0.22, 0.26, 0.30, 0.34]);
   assert.equal(observedEvents[4]?.interaction?.zone, "head",
     "3D head raycast must reach the canonical avatar-contact protocol");
   await page.waitForTimeout(1_600);
-  await clickUntilContact(threeCanvas, threeBounds, 6, [0.44, 0.48, 0.52, 0.56, 0.60]);
+  await clickUntilContact(threeCanvas, threeBounds, 10, [0.44, 0.48, 0.52, 0.56, 0.60]);
   assert.equal(observedEvents[5]?.interaction?.zone, "body",
     "3D body raycast must reach the canonical avatar-contact protocol");
 
@@ -174,11 +222,11 @@ try {
   assert.ok(mobileThreeBounds && mobileThreeBounds.width >= 320,
     "mobile 3D canvas must retain a usable contact target");
   await page.waitForTimeout(1_600);
-  await clickUntilContact(threeCanvas, mobileThreeBounds, 7, [0.18, 0.22, 0.26, 0.30, 0.34]);
+  await clickUntilContact(threeCanvas, mobileThreeBounds, 11, [0.18, 0.22, 0.26, 0.30, 0.34]);
   assert.equal(observedEvents[6]?.interaction?.zone, "head",
     "mobile 3D head raycast must use the canonical avatar-contact protocol");
   await page.waitForTimeout(1_600);
-  await clickUntilContact(threeCanvas, mobileThreeBounds, 8, [0.44, 0.48, 0.52, 0.56, 0.60]);
+  await clickUntilContact(threeCanvas, mobileThreeBounds, 12, [0.44, 0.48, 0.52, 0.56, 0.60]);
   assert.equal(observedEvents[7]?.interaction?.zone, "body",
     "mobile 3D body raycast must use the canonical avatar-contact protocol");
   assert.deepEqual(observedEvents.slice(4, 8).map((event) => event.interaction), [
@@ -206,19 +254,19 @@ try {
   const [spriteX, spriteY, spriteWidth, spriteHeight] = spriteDraw.args;
   await legacyCanvas.click({ position: { x: spriteX + spriteWidth * 0.5, y: spriteY + spriteHeight * 0.22 } });
   const legacyHeadDeadline = Date.now() + timeoutMs;
-  while (observedEvents.length < 9 && Date.now() < legacyHeadDeadline) await page.waitForTimeout(50);
+  while (observedEvents.length < 13 && Date.now() < legacyHeadDeadline) await page.waitForTimeout(50);
   assert.equal(observedEvents[8]?.interaction?.zone, "head", "Legacy sprite head hit must use the canonical social contact protocol");
   await page.waitForTimeout(1_600);
   await legacyCanvas.click({ position: { x: spriteX + spriteWidth * 0.5, y: spriteY + spriteHeight * 0.64 } });
   const legacyBodyDeadline = Date.now() + timeoutMs;
-  while (observedEvents.length < 10 && Date.now() < legacyBodyDeadline) await page.waitForTimeout(50);
+  while (observedEvents.length < 14 && Date.now() < legacyBodyDeadline) await page.waitForTimeout(50);
   assert.equal(observedEvents[9]?.interaction?.zone, "body", "Legacy sprite body hit must use the canonical social contact protocol");
-  assert.deepEqual(observedEvents.slice(8).map((event) => event.interaction), [
+  assert.deepEqual(observedEvents.slice(12).map((event) => event.interaction), [
     { protocolVersion: 1, kind: "avatar-contact", zone: "head" },
     { protocolVersion: 1, kind: "avatar-contact", zone: "body" },
   ]);
 
-  assert.equal(observedEvents.length, 10, "all Live2D, 3D and Legacy desktop/mobile contacts must reach the canonical event route");
+  assert.equal(observedEvents.length, 14, "Live2D, Original 2D, 3D and Legacy desktop/mobile contacts must reach the canonical event route");
 
   // Verify the real runtime consumed the interactions, rather than accepting
   // only a browser-side HTTP payload.
