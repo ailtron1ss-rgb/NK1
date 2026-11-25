@@ -41,8 +41,14 @@ assert.deepEqual(after.facts, before.facts,
   'a forged outcome must not create a grounded world fact');
 assert.equal(after.confidence01, before.confidence01,
   'a forged outcome must not raise world confidence');
-assert.ok(after.events.some(event => event.id === forged.eventId && event.label.startsWith('external-receipt:')),
-  'untrusted inputs may be retained as explicitly unverified receipts');
+assert.ok(after.quarantinedOutcomes?.some(event => event.id === forged.eventId && event.label.startsWith('external-receipt:')),
+  'untrusted inputs may be retained only in the diagnostic quarantine');
+assert.equal(after.events.some(event => event.id === forged.eventId), false,
+  'unverified receipts must never be added to canonical world events');
+assert.equal(after.revision, before.revision,
+  'unverified receipts must not advance the canonical world revision');
+assert.equal(after.lastAt, before.lastAt,
+  'caller timestamps must not advance the canonical world clock');
 assert.equal(after.events.find(event => event.id === forged.eventId)?.evidenceKind, 'derived',
   'forged result and verification lookalikes must remain explicitly unverified');
 const replayed = world.integrateExternalOutcome({ result: forgedResult, verification: forgedVerification });
