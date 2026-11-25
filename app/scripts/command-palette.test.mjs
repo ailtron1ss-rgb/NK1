@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { filterUiCommands } from "../src/organism/commandPalette.ts";
+import { filterUiCommands, nextUiCommandIndex } from "../src/organism/commandPalette.ts";
 
 const commands = [
   { id: "home", title: "Open home", keywords: ["avatar", "chat"] },
@@ -22,4 +22,21 @@ test("does not mutate the command source", () => {
   const before = commands.slice();
   filterUiCommands(commands, "chat");
   assert.deepEqual(commands, before);
+});
+
+
+test("keyboard navigation wraps and skips disabled commands", () => {
+  const items = [
+    { id: "a", title: "A", keywords: [], disabled: false },
+    { id: "b", title: "B", keywords: [], disabled: true },
+    { id: "c", title: "C", keywords: [], disabled: false },
+  ];
+  assert.equal(nextUiCommandIndex(items, 0, 1), 2);
+  assert.equal(nextUiCommandIndex(items, 2, 1), 0);
+  assert.equal(nextUiCommandIndex(items, 0, -1), 2);
+});
+
+test("keyboard navigation returns no selection when all commands are disabled", () => {
+  assert.equal(nextUiCommandIndex([{ id: "a", title: "A", keywords: [], disabled: true }], 0, 1), -1);
+  assert.equal(nextUiCommandIndex([], 0, 1), -1);
 });
