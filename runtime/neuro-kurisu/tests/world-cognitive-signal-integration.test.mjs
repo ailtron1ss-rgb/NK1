@@ -124,6 +124,7 @@ test('WorldSubsystemRuntime exports a read-only provenance-aware cognitive signa
       modalityEvidenceKinds: { vision: 'observed', predictor: 'conflict' },
     }],
     facts: ['door changed state'],
+    quarantinedFacts: ['restored-unverified:door changed state'],
     provenanceIds: ['capture-17'],
     lastHash: 'world-17',
   };
@@ -136,6 +137,10 @@ test('WorldSubsystemRuntime exports a read-only provenance-aware cognitive signa
   const signal = runtime.cognitiveAttentionSignal();
 
   assert.equal(signal.revision, 17);
+  assert.ok(signal.unresolved01 >= .12,
+    'quarantined historical facts must propagate bounded re-verification pressure into cognition');
+  assert.ok(signal.uncertainty01 >= .12,
+    'quarantined history must not be mistaken for a current observed world fact');
   assert.equal(signal.evidenceClass, 'inferred',
     'restored observation labels without a fresh admission receipt must not self-attest as observed');
   assert.ok(signal.conflict01 > .25);
