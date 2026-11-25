@@ -32,7 +32,7 @@ import { ContinuousCognitiveFabric } from '../system/ContinuousCognitiveFabric.t
 import { RuntimeClosureLedger } from '../system/RuntimeClosureLedger.ts';
 import { CausalDomainClosureLedger, type CausalDomainEvidence } from '../system/CausalDomainClosureLedger.ts';
 import { AdaptiveConsolidationGate } from '../system/AdaptiveConsolidationGate.ts';
-import { cameraEvidenceFromResult, inspectCameraFile, type CameraEvidence } from '../body/CameraEvidenceProcessor.ts';
+import { buildCameraCaptureObservation, cameraEvidenceFromResult, inspectCameraFile, type CameraEvidence } from '../body/CameraEvidenceProcessor.ts';
 import { EmbodiedActionExecutor, type EmbodiedActionResult } from '../body/EmbodiedActionExecutor.ts';
 import { EmbodiedRecoveryController } from '../body/EmbodiedRecoveryController.ts';
 import type { VisionSemanticBackend } from '../body/VisionSemanticBackend.ts';
@@ -407,6 +407,7 @@ export class OrganismRuntime {
   private readonly continuityLedger: ContinuityLedger;
   private readonly evidenceBus = new RuntimeEvidenceBus(384);
   private readonly deviceObservationSessionId = randomUUID();
+  private readonly cameraObservationSessionId = randomUUID();
   private readonly cognitiveEventFabric = new CognitiveEventFabric(512);
   private readonly openLoopRadar = new OpenLoopRadar();
   private readonly resourceEconomy = new CognitiveResourceEconomy();
@@ -2579,6 +2580,15 @@ export class OrganismRuntime {
       }
     }
     const state = this.core.recordCameraEvidence(evidence);
+    const cameraObservation = buildCameraCaptureObservation({
+      evidence,
+      executionId: toolExecution.executionId,
+      providerReceiptId: toolExecution.providerReceiptId,
+      sessionId: this.cameraObservationSessionId,
+      receiptVerified: toolExecution.verified === true,
+      consentGranted: this.core.observationIntakeSummary().consent.vision === true,
+    });
+    if (cameraObservation) this.core.admitObservation(cameraObservation);
     let semantic = null as Awaited<ReturnType<VisionSemanticBackend['analyze']>> | null;
     let trackingMetrics: ReturnType<TemporalObjectTracker['update']>['metrics'] | null = null;
     if (this.config.visionBackend) this.core.setSemanticVisionAvailability(true);

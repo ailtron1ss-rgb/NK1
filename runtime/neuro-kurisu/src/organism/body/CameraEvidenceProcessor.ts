@@ -94,13 +94,75 @@ export function cameraEvidenceFromResult(result:{path?:string;size?:number;hash?
   return {version:1,at,cameraId:Math.max(0,Math.floor(cameraId)),path:result.path,byteLength,sha256,width:null,height:null,byteEntropy01:entropy01,novelty01,captureQuality01,semanticVisionAvailable:false,evidenceKind:'camera-capture'};
 }
 
-export function buildCameraCaptureObservation(_input: {
+export interface CameraCaptureObservationInput {
+  id: string;
+  sourceId: string;
+  sourceKind: string;
+  modality: 'vision';
+  capturedAt: number;
+  confidence01: number;
+  reliability01: number;
+  sessionId: string;
+  provenance: 'device-capture';
+  evidenceRefs: string[];
+  payload: Record<string, unknown>;
+}
+
+/**
+ * Bind camera-frame metadata to a verified ActionGateway receipt. It deliberately
+ * excludes image bytes and filesystem paths; semantic detections stay a separate
+ * model-output stream in P41.
+ */
+export function buildCameraCaptureObservation(input: {
   evidence: CameraEvidence;
   executionId: string;
   providerReceiptId?: string;
   sessionId: string;
   receiptVerified: boolean;
   consentGranted: boolean;
-}): null {
-  return null;
+}): CameraCaptureObservationInput | null {
+  const evidence = input?.evidence;
+  const executionId = input?.executionId;
+  const providerReceiptId = input?.providerReceiptId;
+  const sessionId = input?.sessionId;
+  if (!input || input.receiptVerified !== true || input.consentGranted !== true ||
+      !evidence || evidence.evidenceKind !== 'camera-capture' ||
+      !Number.isFinite(evidence.at) || evidence.at < 0 ||
+      !Number.isSafeInteger(evidence.cameraId) || evidence.cameraId < 0 ||
+      !Number.isSafeInteger(evidence.byteLength) || evidence.byteLength <= 0 ||
+      typeof evidence.sha256 !== 'string' || !/^[a-f0-9]{64}$/i.test(evidence.sha256) ||
+      !Number.isFinite(evidence.captureQuality01) || evidence.captureQuality01 < 0 || evidence.captureQuality01 > 1 ||
+      typeof executionId !== 'string' || !executionId.trim() || executionId.length > 128 ||
+      typeof providerReceiptId !== 'string' || !providerReceiptId.trim() || providerReceiptId.length > 256 ||
+      typeof sessionId !== 'string' || !sessionId.trim() || sessionId.length > 128) return null;
+
+  const cameraId = Math.floor(evidence.cameraId);
+  const digest = evidence.sha256.toLowerCase();
+  const capturedAt = Math.floor(evidence.at);
+  const payload: Record<string, unknown> = {
+    subject: 'camera-' + cameraId,
+    kind: 'sensor',
+    claim: 'frame:' + digest + ':' + capturedAt,
+    cameraId,
+    byteLength: evidence.byteLength,
+    sha256: digest,
+    captureQuality01: Math.max(0, Math.min(1, evidence.captureQuality01)),
+    novelty01: Math.max(0, Math.min(1, evidence.novelty01)),
+  };
+  if (Number.isSafeInteger(evidence.width) && Number(evidence.width) > 0) payload.width = evidence.width;
+  if (Number.isSafeInteger(evidence.height) && Number(evidence.height) > 0) payload.height = evidence.height;
+
+  return {
+    id: 'camera-capture:' + executionId,
+    sourceId: 'android-camera-' + cameraId,
+    sourceKind: 'camera-device-capture',
+    modality: 'vision',
+    capturedAt: evidence.at,
+    confidence01: Math.max(0, Math.min(1, evidence.captureQuality01)),
+    reliability01: 0.72,
+    sessionId,
+    provenance: 'device-capture',
+    evidenceRefs: [executionId, providerReceiptId],
+    payload,
+  };
 }
