@@ -603,3 +603,39 @@ test('P81 rejects malformed world signals instead of treating them as grounded e
   assert.equal(attention.snapshot().worldChange01, before.worldChange01);
   assert.equal(attention.snapshot().worldEvidenceClass, before.worldEvidenceClass);
 });
+
+
+test('P81 sanitizes malformed persisted attention state before it can affect action bias', () => {
+  const attention = new P81PredictiveAttention();
+  attention.restore({
+    cycles: -9,
+    selectedAction: { forged: true },
+    attentionFocus: 'x'.repeat(5000),
+    expectedInformationGain01: Number.NaN,
+    exploitation01: -2,
+    exploration01: Number.POSITIVE_INFINITY,
+    uncertainty01: 3,
+    recentFocus: ['ok', 7, 'y'.repeat(5000)],
+    worldRevision: -1,
+    worldConflict01: Number.NaN,
+    worldDisagreement01: 2,
+    worldUnresolved01: -1,
+    worldChange01: Number.POSITIVE_INFINITY,
+  });
+
+  const state = attention.snapshot();
+  assert.equal(state.cycles, 0);
+  assert.equal(state.selectedAction, 'wait');
+  assert.equal(state.attentionFocus, 'none');
+  assert.equal(state.expectedInformationGain01, .2);
+  assert.equal(state.exploitation01, 0);
+  assert.equal(state.exploration01, .5);
+  assert.equal(state.uncertainty01, 1);
+  assert.deepEqual(state.recentFocus, ['ok']);
+  assert.equal(state.worldRevision, 0);
+  assert.equal(state.worldConflict01, 0);
+  assert.equal(state.worldDisagreement01, 1);
+  assert.equal(state.worldUnresolved01, 0);
+  assert.equal(state.worldChange01, 0);
+  assert.ok(Number.isFinite(attention.actionBias('verify')));
+});
