@@ -23,6 +23,7 @@ export class ProactiveDeliveryCoordinator {
     }
     if (!leases || typeof leases.issue !== "function" || typeof leases.matches !== "function"
       || typeof leases.consume !== "function" || typeof leases.attemptCountFor !== "function"
+      || typeof leases.completedAttemptCountFor !== "function" || typeof leases.complete !== "function"
       || typeof leases.clear !== "function") {
       throw new TypeError("proactive-delivery-lease-registry-contract-invalid");
     }
@@ -76,8 +77,17 @@ export class ProactiveDeliveryCoordinator {
     if (typeof id !== "string" || !id.trim() || id !== id.trim() || id.length > 160) {
       return { status: 400, body: { ok: false, acknowledged: false, error: "invalid-initiative-id" } };
     }
+    const now = this.now();
+    const completedAttemptCount = typeof token === "string"
+      ? this.leases.completedAttemptCountFor(id, token, now)
+      : null;
+    if (completedAttemptCount !== null) {
+      // A response may have been lost after Core committed. Replay the durable
+      // receipt without invoking the Runtime or mutating the initiative again.
+      return { status: 200, body: { ok: true, acknowledged: true, id, idempotentReplay: true } };
+    }
     const attemptCount = typeof token === "string"
-      ? this.leases.attemptCountFor(id, token, this.now())
+      ? this.leases.attemptCountFor(id, token, now)
       : null;
     if (attemptCount === null) {
       return { status: 409, body: { ok: false, acknowledged: false, error: "proactive-delivery-lease-token-invalid" } };
@@ -93,7 +103,7 @@ export class ProactiveDeliveryCoordinator {
       if (!acknowledged) {
         return { status: 409, body: { ok: false, acknowledged: false, error: "proactive-delivery-ack-rejected" } };
       }
-      this.leases.consume(id, token, this.now());
+      this.leases.complete(id, token, this.now());
       return { status: 200, body: { ok: true, acknowledged: true, id } };
     } catch {
       // Keep the receipt token live while its lease remains valid. The caller
