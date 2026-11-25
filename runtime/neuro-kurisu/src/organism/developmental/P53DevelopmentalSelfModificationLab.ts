@@ -9,7 +9,7 @@
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
 
 export type P53Knob = 'exploration'|'verification'|'reflection'|'attention'|'prediction';
-export type P53Status = 'candidate'|'testing'|'promotable'|'promoted'|'rejected'|'cooldown';
+export type P53Status = 'candidate'|'testing'|'promotable'|'promoted'|'rejected'|'cooldown'|'preview-only';
 
 export interface P53IdentityFirewall {
   protectedKeys:string[];
@@ -38,7 +38,8 @@ export interface P53Candidate {
 }
 
 export interface P53State {
-  version:2;
+  version:3;
+  quarantinedLegacyPromotions:number;
   proposals:number;
   tests:number;
   promotions:number;
@@ -56,10 +57,10 @@ export interface P53State {
 }
 
 export const defaultP53=():P53State=>({
-  version:2,proposals:0,tests:0,promotions:0,rejections:0,cooldowns:0,oscillationBlocks:0,
+  version:3,quarantinedLegacyPromotions:0,proposals:0,tests:0,promotions:0,rejections:0,cooldowns:0,oscillationBlocks:0,
   identityViolations:0,bestImprovement01:0,developmentalReadiness01:.25,labStability01:.8,
   candidates:[],activeKnobProfile:{exploration:.5,verification:.5,reflection:.5,attention:.5,prediction:.5},
-  firewall:{protectedKeys:['identity','coreValues','name','continuityAnchors'],protectedHash:'P53-ID-FIREWALL-v2',violations:0},lastReason:''
+  firewall:{protectedKeys:['identity','coreValues','name','continuityAnchors'],protectedHash:'P53-ID-FIREWALL-v3',violations:0},lastReason:''
 });
 
 function hash(s:string){let h=2166136261>>>0;for(let i=0;i<s.length;i++)h=Math.imul(h^s.charCodeAt(i),16777619)>>>0;return h.toString(16)}
@@ -68,9 +69,21 @@ export class P53DevelopmentalSelfModificationLab {
   private state=defaultP53();
   restore(raw?:Partial<P53State>|null){
     const d=defaultP53(),r=raw??{};
+    const candidates=Array.isArray(r.candidates)?r.candidates.slice(-128):[];
+    const legacyPromotionCandidates=candidates.filter(candidate=>candidate?.status==='promotable'||candidate?.status==='promoted').length;
+    const priorPromotionCount=Number.isSafeInteger(r.promotions)&&Number(r.promotions)>0?Number(r.promotions):0;
+    const priorQuarantineCount=Number.isSafeInteger(r.quarantinedLegacyPromotions)&&Number(r.quarantinedLegacyPromotions)>0?Number(r.quarantinedLegacyPromotions):0;
+    const quarantinedLegacyPromotions=Math.max(priorQuarantineCount,priorPromotionCount,legacyPromotionCandidates);
     this.state={...d,...r,
-      candidates:Array.isArray(r.candidates)?r.candidates.slice(-128):[],
-      activeKnobProfile:{...d.activeKnobProfile,...(r.activeKnobProfile??{})},
+      version:3,
+      quarantinedLegacyPromotions,
+      promotions:0,
+      bestImprovement01:0,
+      candidates:candidates.map(candidate=>
+        candidate?.status==='promotable'||candidate?.status==='promoted'
+          ? {...candidate,status:'preview-only',holdout01:0,transfer01:0,improvement01:0,reason:`${candidate.reason}|legacy-promotion-quarantined`}
+          : candidate),
+      activeKnobProfile:{...d.activeKnobProfile},
       firewall:{...d.firewall,...(r.firewall??{})}
     };
   }
@@ -108,36 +121,38 @@ export class P53DevelopmentalSelfModificationLab {
 
   test(id:string,input:{predictionError01:number;selfPredictionError01:number;uncertainty01:number;identityContinuity01:number;grounding01:number;causalAlignment01:number;holdoutFactor01?:number}):P53Candidate|null{
     const c=this.state.candidates.find(x=>x.id===id); if(!c)return null;
-    if(c.status==='promoted'||c.status==='rejected')return structuredClone(c);
-    c.status='testing'; this.state.tests++;
+    if(c.status==='promoted'||c.status==='rejected'||c.status==='preview-only')return structuredClone(c);
+    // Any historical promotable state is demoted before it can be consumed again.
+    if(c.status==='promotable'){
+      c.status='preview-only';c.holdout01=0;c.transfer01=0;c.improvement01=0;
+      c.reason=`${c.reason}|promotion-quarantined-no-independent-verifier`;
+      return structuredClone(c);
+    }
+    this.state.tests++;
     const change=Math.min(.12,Math.abs(c.delta)*1.4);
     const targetSignal=c.knob==='verification'?1-input.predictionError01:c.knob==='prediction'?1-input.selfPredictionError01:c.knob==='attention'?1-input.uncertainty01:1-input.predictionError01*.6;
+    // Shadow metrics are local diagnostic previews, not independent outcome evidence.
     c.shadow01=clamp(c.baseline01 + targetSignal*.18 + change*.25 - input.uncertainty01*.08);
-    c.holdout01=clamp(c.shadow01*.64+(input.holdoutFactor01??.72)*.24+input.grounding01*.12);
+    c.holdout01=0;
     c.identityPreservation01=clamp(Math.min(c.identityPreservation01,input.identityContinuity01));
     c.stability01=clamp((1-input.selfPredictionError01)*.38+(1-input.uncertainty01)*.24+input.causalAlignment01*.22+input.grounding01*.16);
-    c.transfer01=clamp(c.holdout01*.55+c.stability01*.3+input.grounding01*.15);
-    c.improvement01=clamp((c.holdout01-c.baseline01)*2.8);
+    c.transfer01=0;
+    c.improvement01=0;
     c.risk01=clamp(input.uncertainty01*.35+(1-c.identityPreservation01)*.45+Math.abs(c.delta)*1.8);
     c.evidenceCount++;
-    const ready=c.improvement01>=.08 && c.holdout01>=.62 && c.transfer01>=.60 && c.identityPreservation01>=.84 && c.risk01<.28 && c.stability01>=.58;
-    c.status=ready?'promotable':'testing'; c.lastAt=Date.now();
-    if(c.improvement01>this.state.bestImprovement01)this.state.bestImprovement01=c.improvement01;
-    this.state.developmentalReadiness01=clamp(this.state.developmentalReadiness01*.9+(ready?.9:.3)*.1);
+    c.status='preview-only';c.lastAt=Date.now();
+    this.state.developmentalReadiness01=clamp(this.state.developmentalReadiness01*.9+.3*.1);
     return structuredClone(c);
   }
 
-  promote(id:string,at=Date.now()):P53Candidate|null{
+  promote(id:string,_at=Date.now()):P53Candidate|null{
     const c=this.state.candidates.find(x=>x.id===id); if(!c)return null;
-    if(c.status!=='promotable')return structuredClone(c);
-    if(!this.state.firewall.protectedKeys.length){this.state.identityViolations++;c.status='rejected';return structuredClone(c);}
-    const next=clamp(this.state.activeKnobProfile[c.knob]+c.delta);
-    this.state.activeKnobProfile[c.knob]=next;
-    c.status='promoted'; c.lastAt=at; this.state.promotions++;
-    const opposites=this.state.candidates.filter(x=>x.id!==c.id&&x.knob===c.knob&&Math.sign(x.delta)!==Math.sign(c.delta)&&x.status==='promotable');
-    for(const o of opposites)o.status='cooldown';
-    this.state.cooldowns+=opposites.length;
-    this.state.labStability01=clamp(this.state.labStability01*.94+c.stability01*.06);
+    if(c.status==='promotable'||c.status==='promoted'){
+      c.status='preview-only';c.holdout01=0;c.transfer01=0;c.improvement01=0;
+      c.reason=`${c.reason}|promotion-quarantined-no-independent-verifier`;
+    }
+    // P53 has no host-owned verifier capability. Its own shadow results and caller
+    // inputs cannot authorize a live policy change; the promotion API is fail-closed.
     return structuredClone(c);
   }
 
@@ -153,9 +168,8 @@ export class P53DevelopmentalSelfModificationLab {
     if(input.tick%12===0)proposal=this.propose(proposalInput);
     const pending=this.state.candidates.filter(c=>c.status==='candidate'||c.status==='testing').slice(0,3);
     for(const c of pending){this.test(c.id,input);}
-    for(const c of this.state.candidates.filter(c=>c.status==='promotable').slice(0,2)){
-      if(c.evidenceCount>=2 && input.identityContinuity01>=.86)this.promote(c.id,input.at);
-    }
+    // No autonomous promotion: a separate host-owned verifier and explicit
+    // promotion capability must be wired before any candidate can affect live policy.
     this.state.candidates=this.state.candidates.slice(0,96);
     return {proposal,activeKnobProfile:{...this.state.activeKnobProfile},readiness01:this.state.developmentalReadiness01};
   }
