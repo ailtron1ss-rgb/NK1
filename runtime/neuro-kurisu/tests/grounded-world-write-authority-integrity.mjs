@@ -186,6 +186,17 @@ assert.deepEqual(integratedChair.sourceIds, ['camera-front'],
 assert.equal(integratedChair.sourceIds.includes('world'), false);
 
 
+const p41AliasIngress = new P41SemanticPerceptionEngine().ingest({
+  at: perceptionAt + 1,
+  world: {
+    scene: 'source-alias-lab',
+    evidenceKind: 'derived',
+    objects: [{ label: 'alias-source-object', trackId: 'alias-track', sourceId: 'semantic', evidenceKind: 'derived' }],
+  },
+});
+assert.equal(p41AliasIngress.entities.find(entity => entity.label === 'alias-source-object')?.modalitySourceIds?.world, undefined,
+  'modality names must be rejected as source IDs at the live P41 ingress');
+
 const p41RoundTrip = new P41SemanticPerceptionEngine();
 p41RoundTrip.restore(semantic);
 assert.deepEqual(p41RoundTrip.snapshot().entities.find(entity => entity.label === 'tracked-chair')?.modalitySourceIds?.world,
