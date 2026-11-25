@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { mkdtemp, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
@@ -37,6 +38,13 @@ function makeIngress(receiptStore, calls, authorize = async () => true) {
 }
 
 try {
+  const notReadyCalls = { steps: [] };
+  const notReady = makeIngress(new FileStateStore(path.join(dir, 'not-ready.json')), notReadyCalls);
+  const beforeInitialize = await notReady.handle(request('before-init'));
+  assert.equal(beforeInitialize.errorCode, 'receipt-store-not-initialized');
+  assert.equal(notReadyCalls.steps.length, 0,
+    'a host cannot receive plugin events before its receipt checkpoint is restored');
+
   const store = new FileStateStore(statePath);
   const firstCalls = { steps: [] };
   const first = makeIngress(store, firstCalls);
@@ -115,7 +123,35 @@ try {
     'current host authorization must still be rechecked before serving a cached receipt');
   assert.equal(deniedCalls.steps.length, 0);
 
-  console.log('NEKO_PLUGIN_MESSAGE_RECEIPT_PERSISTENCE=PASS cases=6');
+  // v1 snapshots emitted by the early adapter remain readable as completed receipts.
+  const legacyText = 'A v1 N.E.K.O. receipt is still a completed receipt.';
+  const legacyFingerprint = createHash('sha256').update(JSON.stringify({
+    pluginId: 'notes', messageId: 'legacy-1', aiBehavior: 'respond', visibility: [], text: legacyText,
+  })).digest('hex');
+  const legacyStore = new FileStateStore(path.join(dir, 'legacy-v1.json'));
+  await legacyStore.save({ version: 1, receipts: [{
+    pluginId: 'notes', messageId: 'legacy-1', fingerprint: legacyFingerprint,
+    result: { accepted: true, aiBehavior: 'respond', visibility: [], cognitiveProcessed: true, presented: false, replayed: false },
+  }] });
+  const legacyCalls = { steps: [] };
+  const legacyIngress = makeIngress(legacyStore, legacyCalls);
+  await legacyIngress.initialize();
+  const legacyReplay = await legacyIngress.handle(request('legacy-1', legacyText));
+  assert.equal(legacyReplay.accepted, true);
+  assert.equal(legacyReplay.replayed, true);
+  assert.equal(legacyCalls.steps.length, 0,
+    'migration from the prior v1 checkpoint must not re-run completed cognition');
+
+  const corruptStore = new FileStateStore(path.join(dir, 'corrupt.json'));
+  await corruptStore.save({ version: 2, receipts: [{
+    pluginId: 'notes', messageId: 'corrupt-1', fingerprint: 'not-a-sha256', status: 'pending',
+  }] });
+  const corruptIngress = makeIngress(corruptStore, { steps: [] });
+  await assert.rejects(() => corruptIngress.initialize(), /neko-message-receipt-row-invalid/);
+  assert.equal((await corruptIngress.handle(request('corrupt-1'))).errorCode, 'receipt-store-not-initialized',
+    'corrupt receipt state must block ingress instead of silently clearing replay guards');
+
+  console.log('NEKO_PLUGIN_MESSAGE_RECEIPT_PERSISTENCE=PASS cases=9');
 } finally {
   await rm(dir, { recursive: true, force: true });
 }
