@@ -11,6 +11,7 @@ on:
       - "runtime/neuro-kurisu/src/organism/cognition/PerceptualEpistemicGraph.ts"
       - "runtime/neuro-kurisu/src/organism/cognition/P41SemanticPerception.ts"
       - "runtime/neuro-kurisu/src/organism/world/GroundedWorldState.ts"
+      - "runtime/neuro-kurisu/src/organism/core/InertSnapshot.ts"
       - "runtime/neuro-kurisu/src/organism/world/WorldBeliefProjection.ts"
       - "runtime/neuro-kurisu/tests/world-belief-projection.test.mjs"
       - "runtime/neuro-kurisu/src/organism/world/WorldBeliefProjection.ts"
