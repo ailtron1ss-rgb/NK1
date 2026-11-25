@@ -10,6 +10,7 @@ on:
       - 'runtime/neuro-kurisu/src/organism/core/OrganismCore.ts'
       - 'runtime/neuro-kurisu/tests/cognitive-subsystem-port-probes-20261124.mjs'
       - 'runtime/neuro-kurisu/package.json'
+      - 'docs/special-mechanisms/2026-11-25-modernization-workpass.md'
       - '.github/workflows/nk1-cognitive-subsystem-readonly-probes.yml'
 permissions:
   contents: read
