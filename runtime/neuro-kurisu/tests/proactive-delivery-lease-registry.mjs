@@ -57,4 +57,5 @@ import { ProactiveDeliveryLeaseRegistry } from "../src/server/proactive-delivery
   assert.ok(server.includes("PROACTIVE_DELIVERY_LEASES.clear()"),
     "revoking consent must invalidate in-flight delivery tokens");
 }
-\nconsole.log("PROACTIVE_DELIVERY_LEASE_REGISTRY=PASS");
+
+console.log("PROACTIVE_DELIVERY_LEASE_REGISTRY=PASS");
