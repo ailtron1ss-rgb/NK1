@@ -332,3 +332,40 @@ test("3D model tools stay inside a collapsed disclosure so the avatar canvas rem
  assert.match(stage,/\{controlsOpen\s*\?\s*<div id="avatar-3d-controls"/);
  assert.match(stage,/Настройки 3D/);
 });
+
+
+test("3D avatar contact picking includes static head meshes and classifies against complete character bounds", async () => {
+ const THREE = await import("three");
+ const { resolveAvatarModelFitBounds, resolveAvatarContactZone } = await import("../src/components/avatar/avatarModelFitBounds.ts");
+ const root = new THREE.Group();
+ const material = new THREE.MeshBasicMaterial();
+ const torso = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1.2, 0.5), material);
+ torso.name = "RiggedTorso";
+ torso.position.y = 1.4;
+ torso.isSkinnedMesh = true;
+ root.add(torso);
+ const head = new THREE.Mesh(new THREE.SphereGeometry(0.4, 20, 16), material);
+ head.name = "StaticHeadSurface";
+ head.position.y = 2.55;
+ root.add(head);
+ const floor = new THREE.Mesh(new THREE.BoxGeometry(20, 0.1, 20), material);
+ floor.name = "Environment_Floor";
+ floor.position.y = -0.05;
+ root.add(floor);
+
+ const fit = resolveAvatarModelFitBounds(root);
+ const camera = new THREE.PerspectiveCamera(31, 1, 0.1, 100);
+ camera.position.set(0, 2.55, 6);
+ camera.lookAt(0, 2.55, 0);
+ camera.updateMatrixWorld(true);
+ const raycaster = new THREE.Raycaster();
+ raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
+ const headHit = raycaster.intersectObjects(fit.pickMeshes, true)[0];
+
+ assert.ok(headHit, "the actual raycast must hit a visible static head surface even when a skinned torso exists");
+ assert.equal(headHit.object, head);
+ assert.equal(resolveAvatarContactZone(headHit.point.y, fit.contactBounds), "head",
+   "head contact must be classified against full character bounds, not torso-only fit bounds");
+ assert.equal(fit.source, "skinned-meshes", "camera fitting must retain its skinned-mesh preference");
+ assert.ok(!fit.pickMeshes.includes(floor), "scene floors must never become contact targets");
+});
