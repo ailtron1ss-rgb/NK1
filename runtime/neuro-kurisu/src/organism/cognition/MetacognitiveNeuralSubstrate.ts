@@ -32,7 +32,13 @@ export class MetacognitiveNeuralSubstrate{
   snapshot(){return structuredClone(this.state);}
   restore(raw?:Partial<MetacognitiveNeuralState>|null){
     const d=defaults(),r=raw??{};
-    const arr=(v:any,n:number,fill=0)=>Array.isArray(v)?v.slice(0,n).concat(new Array(Math.max(0,n-v.length)).fill(fill)).slice(0,n):new Array(n).fill(fill);
+    const bounded=(value:unknown,min:number,max:number,fallback:number)=>{
+      return typeof value==='number'&&Number.isFinite(value)?Math.max(min,Math.min(max,value)):fallback;
+    };
+    const safeCount=(value:unknown)=>typeof value==='number'&&Number.isSafeInteger(value)&&value>=0?value:0;
+    const safeTime=(value:unknown)=>typeof value==='number'&&Number.isFinite(value)&&value>=0?value:0;
+    const arr=(v:any,n:number,fill=0,min=-1,max=1)=>
+      Array.from({length:n},(_,i)=>bounded(Array.isArray(v)?v[i]:undefined,min,max,fill));
     const mat=(v:any,rows:number,cols:number)=>Array.isArray(v)
       ? Array.from({length:rows},(_,i)=>arr(v[i],cols)) : matrix(rows,cols,991);
     this.state={...d,...r,
@@ -41,8 +47,14 @@ export class MetacognitiveNeuralSubstrate{
       version:2,inputDim:d.inputDim,hiddenDim:d.hiddenDim,
       hidden:arr(r.hidden,d.hiddenDim),inputWeights:mat(r.inputWeights,d.hiddenDim,d.inputDim),
       recurrentWeights:mat(r.recurrentWeights,d.hiddenDim,d.hiddenDim),outputWeights:mat(r.outputWeights,6,d.hiddenDim),
-      outputBias:arr(r.outputBias,6,.5),lastInput:arr(r.lastInput,d.inputDim),lastOutput:arr(r.lastOutput,6,.5),
-      lastTarget:arr(r.lastTarget,6,.5)};
+      outputBias:arr(r.outputBias,6,.5),lastInput:arr(r.lastInput,d.inputDim),lastOutput:arr(r.lastOutput,6,.5,0,1),
+      lastTarget:arr(r.lastTarget,6,.5,0,1),
+      stepCount:safeCount(r.stepCount),learningSteps:safeCount(r.learningSteps),
+      calibrationError01:bounded(r.calibrationError01,0,1,d.calibrationError01),
+      selfUncertainty01:bounded(r.selfUncertainty01,0,1,d.selfUncertainty01),
+      introspectivePredictionError01:bounded(r.introspectivePredictionError01,0,1,d.introspectivePredictionError01),
+      revisionReadiness01:bounded(r.revisionReadiness01,0,1,d.revisionReadiness01),
+      lastTick:safeCount(r.lastTick),lastAt:safeTime(r.lastAt)};
   }
   private pack(i:MetacognitiveNeuralInput){
     const groups=[i.centralLatent,i.workspace,i.selfLatent,[i.predictionError01,i.confidence01,i.worldUncertainty01,i.identityDrift01,i.actionOutcome01]];
