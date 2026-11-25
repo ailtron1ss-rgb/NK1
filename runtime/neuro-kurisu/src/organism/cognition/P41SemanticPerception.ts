@@ -47,6 +47,17 @@ const safeModalitySourceIds=(value:unknown):Partial<Record<P41Modality,string[]>
 const ACTIONS:ActionKind[] = ['respond','explore','verify','rest','reflect','wait','defer'];
 export type P41Modality = 'text'|'vision'|'audio'|'sensor'|'world';
 export type P41EvidenceKind = 'observed'|'model-output'|'derived'|'unresolved';
+const restoreP41EvidenceKind=(value:unknown):P41EvidenceKind=>
+  value==='observed'?'model-output'
+    :value==='model-output'||value==='derived'||value==='unresolved'?value:'unresolved';
+const restoreP41ModalityEvidenceKinds=(value:unknown):Partial<Record<P41Modality,P41EvidenceKind>>=>{
+  if(!value||typeof value!=='object'||Array.isArray(value))return {};
+  const row=value as Record<string,unknown>;
+  const out:Partial<Record<P41Modality,P41EvidenceKind>>={};
+  const modalities:P41Modality[]=['text','vision','audio','sensor','world'];
+  for(const modality of modalities)if(row[modality]!==undefined)out[modality]=restoreP41EvidenceKind(row[modality]);
+  return out;
+};
 export type P41EntityKind = 'person'|'object'|'place'|'event'|'concept'|'body'|'unknown';
 export interface P41ImageBox {x:number;y:number;width:number;height:number;}
 
@@ -229,6 +240,7 @@ export class P41SemanticPerceptionEngine {
     const d=defaultP41SemanticPerception(); const r=raw??{};
     this.state={...d,...r,
       scene:{...d.scene,...(r.scene??{})},
+      ...(r.sceneEvidenceKind!==undefined?{sceneEvidenceKind:restoreP41EvidenceKind(r.sceneEvidenceKind)}:{}),
       entities:Array.isArray(r.entities)?r.entities.slice(-192).map((entity:any)=>{
         const imageBox=normalizedImageBox(entity?.imageBox);
         const cameraId=Number.isSafeInteger(entity?.imageBoxCameraId)&&Number(entity.imageBoxCameraId)>=0?Number(entity.imageBoxCameraId):undefined;
@@ -239,11 +251,18 @@ export class P41SemanticPerceptionEngine {
         return {
           ...entity,
           modalitySourceIds:safeModalitySourceIds(entity?.modalitySourceIds),
+          modalityEvidenceKinds:restoreP41ModalityEvidenceKinds(entity?.modalityEvidenceKinds),
           ...(validImageEvidence?{imageBox,imageBoxCameraId:cameraId,imageBoxAt:imageAt,imageBoxConfidence01:boxConfidence}:{imageBox:undefined,imageBoxCameraId:undefined,imageBoxAt:undefined,imageBoxConfidence01:undefined}),
         };
       }):[],
-      relations:Array.isArray(r.relations)?r.relations.slice(-384):[],
-      events:Array.isArray(r.events)?r.events.slice(-128):[],
+      relations:Array.isArray(r.relations)?r.relations.slice(-384).map((relation:any)=>({
+        ...relation,evidenceKind:restoreP41EvidenceKind(relation?.evidenceKind),
+      })):[],
+      events:Array.isArray(r.events)?r.events.slice(-128).map((event:any)=>({
+        ...event,
+        evidenceKind:restoreP41EvidenceKind(event?.evidenceKind),
+        modalityEvidenceKinds:restoreP41ModalityEvidenceKinds(event?.modalityEvidenceKinds),
+      })):[],
       snapshots:Array.isArray(r.snapshots)?r.snapshots.slice(-128):[],
       pending:Array.isArray(r.pending)?r.pending.slice(-64):[],
       modalityReliability:Object.fromEntries((Object.keys(d.modalityReliability) as P41Modality[]).map(modality=>[
