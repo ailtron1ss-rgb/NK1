@@ -46,10 +46,10 @@ export class ProactiveDeliveryLeaseRegistry {
     }
 
     if (!current) this.completed.delete(id);
-    if (!current && this.entries.size >= this.maxEntries) {
-      const oldestId = this.entries.keys().next().value;
-      if (typeof oldestId === "string") this.entries.delete(oldestId);
-    }
+    // Active claims may still be inside a Core ACK/checkpoint. Never evict
+    // a live token to admit a new claim: fail closed and let the new engine
+    // lease retry after capacity becomes available.
+    if (!current && this.entries.size >= this.maxEntries) return null;
     this.entries.set(id, { attemptCount, leaseUntil, token });
     return token;
   }
