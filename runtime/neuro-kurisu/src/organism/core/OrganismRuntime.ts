@@ -3178,7 +3178,7 @@ export class OrganismRuntime {
         } catch (error) {
           console.warn(
             '[proactive-delivery] durable Core receipt committed; Open Loop surfacing projection will reconcile after its lease:',
-            error?.message || error,
+            error instanceof Error ? error.message : String(error),
           );
         }
       }
