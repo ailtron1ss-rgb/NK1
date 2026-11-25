@@ -61,8 +61,8 @@ const futureObservation = {
 };
 assert.equal(verify(futureObservation, candidate, 'record'), false,
   'evidence timestamp beyond allowed clock skew is rejected');
-assert.equal(verify(futureObservation, candidate, 'persisted-active'), true,
-  'persisted active evidence keeps signature/context integrity without applying intake freshness');
+assert.equal(verify(futureObservation, candidate, 'persisted-active'), false,
+  'implausibly future-dated evidence is rejected even when re-verifying an active skill');
 assert.throws(() => createContextBoundSkillShadowEvidenceVerifier(keys, context, {
   maxAgeMs: 0, now: () => now,
 }), /invalid skill shadow evidence freshness policy/);
