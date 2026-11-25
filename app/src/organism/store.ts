@@ -7,6 +7,7 @@ import { readAvatarPreference, writeAvatarPreference } from "@/legacy/avatar/saf
 import { shouldApplyUiSnapshot, type UiSnapshotStamp } from "./snapshotSync";
 import { withChatDeliveryStatus } from "./chatDelivery";
 import { parseVoiceListenResponse, readRuntimeListening } from "./voiceInteraction";
+import { snapshotPollDelayMs } from "./pollingSchedule";
 
 export type LabsTab = "mind" | "memory" | "lab" | "skills" | "evidence";
 export type AppSection = "home" | "memory" | "motivation" | "settings" | "more";
@@ -31,6 +32,9 @@ let lastInitiativePollAt = 0;
 let latestSnapshotRequestId = 0;
 let chatSequence = 0;
 let voiceInputOperationId = 0;
+let snapshotPollInFlight = false;
+let snapshotPollFailureCount = 0;
+let nextSnapshotPollAt = 0;
 
 function loadChat(): OrganismSnapshot["chat"] {
   if (typeof window === "undefined") return [];
@@ -162,6 +166,8 @@ export const useKurisu = create<KurisuStore>((set, get) => {
 
     hydrate: async () => {
       if (get().hydrated) return;
+      snapshotPollFailureCount = 0;
+      nextSnapshotPollAt = 0;
       set({
         hydrated: true,
         error: null,
@@ -174,6 +180,8 @@ export const useKurisu = create<KurisuStore>((set, get) => {
     },
 
     refresh: async () => {
+      snapshotPollFailureCount = 0;
+      nextSnapshotPollAt = Date.now() + 1_400;
       const current = get().connection;
       if (current.lastSyncedAt === null) {
         set({ connection: { ...current, status: "connecting", lastError: null } });
@@ -282,14 +290,33 @@ export const useKurisu = create<KurisuStore>((set, get) => {
     },
 
     tickIdle: async () => {
-      if (get().busy || !get().hydrated) return;
-      const synced = await pullCanonicalSnapshot(false);
-      if (!synced || get().connection.status === "disconnected") return;
+      if (get().busy || !get().hydrated || snapshotPollInFlight) return;
+      if (typeof document !== "undefined" && document.visibilityState === "hidden") return;
+      const startedAt = Date.now();
+      if (startedAt < nextSnapshotPollAt) return;
 
-      const now = Date.now();
-      if (now - lastInitiativePollAt < 5_000) return;
-      lastInitiativePollAt = now;
+      snapshotPollInFlight = true;
       try {
+        const synced = await pullCanonicalSnapshot(false);
+        const current = get();
+        if (!synced && current.connection.status !== "connected") {
+          snapshotPollFailureCount = Math.min(16, snapshotPollFailureCount + 1);
+          nextSnapshotPollAt = Date.now() + snapshotPollDelayMs(snapshotPollFailureCount);
+          return;
+        }
+
+        // A superseded response is not a transport failure when a newer request
+        // already restored the connection. Keep the healthy polling cadence.
+        snapshotPollFailureCount = 0;
+        nextSnapshotPollAt = Date.now() + 1_400;
+        if (!synced || current.connection.status !== "connected") return;
+
+        // Do not inject autonomous dialogue into an active or pending microphone turn.
+        if (["requesting", "listening", "stopping", "stop-unconfirmed"].includes(current.voiceInputStatus)) return;
+
+        const now = Date.now();
+        if (now - lastInitiativePollAt < 5_000) return;
+        lastInitiativePollAt = now;
         const pending = await neuroApi.proactiveMessage();
         const initiative = pending.initiative;
         if (!initiative?.id || !initiative.message?.trim()) return;
@@ -315,6 +342,8 @@ export const useKurisu = create<KurisuStore>((set, get) => {
         await neuroApi.ackProactiveMessage(initiative.id).catch(() => null);
       } catch (error) {
         set({ error: errorMessage(error) });
+      } finally {
+        snapshotPollInFlight = false;
       }
     },
 
