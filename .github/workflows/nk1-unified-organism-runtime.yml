@@ -101,6 +101,8 @@ jobs:
         run: node runtime/neuro-kurisu/tests/proactive-delivery-lease-registry.mjs
       - name: Proactive delivery coordinator lifecycle and concurrent ACK fencing
         run: node runtime/neuro-kurisu/tests/proactive-delivery-coordinator.mjs
+      - name: Proactive delivery HTTP lifecycle and restart persistence
+        run: node --experimental-strip-types runtime/neuro-kurisu/tests/proactive-delivery-http-e2e.mjs
       - name: N.E.K.O. proactive topic-source diversity
         run: npm --prefix runtime/neuro-kurisu run test:neko-social-source-fairness
       - name: Endogenous motivation and goal genesis
