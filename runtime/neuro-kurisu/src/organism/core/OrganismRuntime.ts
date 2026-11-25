@@ -3262,8 +3262,15 @@ export class OrganismRuntime {
         expiresAt,
       }, at));
       if (queued.record.status === 'reconciliation-required') {
+        // Host admission still applies to same-ID replay after an ambiguous lease.
+        let admitted = false;
+        try {
+          admitted = this.deliveryAdmission?.(queued.record, at) === true;
+        } catch {
+          admitted = false;
+        }
         // Re-expose only the same stable ID to the idempotent local browser transcript.
-        return initiative;
+        return admitted ? initiative : null;
       }
       if (queued.record.status !== 'pending') return null;
       const lease = await this.claimDeliveryObligationById(
