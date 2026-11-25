@@ -2,7 +2,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import type { NekoPluginVoiceTranscriptBridge } from '../integration/neko/NekoPluginVoiceTranscriptBridge.ts';
 import type { NekoAsrProviderPort } from '../integration/neko/NekoAsrTranscriptAdapter.ts';
 import { assertCognitiveCycleBoundaryInput } from './CognitiveCycleBoundary.ts';
-import { buildUniversalInputInterpretation, createDefaultCognitiveImmuneSystem, formatUniversalInterpretationContext } from '../cognition/UniversalInputInterpreter.ts';
+import { buildUniversalInputInterpretation, createDefaultCognitiveImmuneSystem, formatUniversalInterpretationContext, isExplicitDirectUserText } from '../cognition/UniversalInputInterpreter.ts';
 
 import { externalGoalForRuntimeInput, normalizeRuntimeExternalPluginSource, shouldInvokeLanguageForRuntimeStep, type RuntimeExternalGoalPolicy, type RuntimeExternalPluginSource } from './RuntimeInputPolicy.ts';
 import { normalizeWorldContext } from './WorldContextNormalizer.ts';
@@ -1425,14 +1425,14 @@ export class OrganismRuntime {
       },
       at: Date.now(),
     });
-    // Common admission boundary for non-text external observations. Direct user text
-    // keeps its established interaction policy; cached P41 items are model-derived
-    // internal context, not a fresh sensor event. Every live modality is screened
-    // before it can be recorded, fused, retrieved or used by appraisal.
+    // Common admission boundary for external observations. Only explicitly source-classified
+    // direct user text keeps the ordinary interaction policy; OCR/model/ambiguous text must
+    // pass inspection too. Cached P41 items remain model-derived internal context, not a
+    // fresh sensor event. Every other live modality is screened before fusion or appraisal.
     const admittedModalityInputs = [] as typeof interpretation.modalityInputs;
     const quarantinedModalityInputs: Array<{modality:string;reason:string;payloadHash:string;trust:number}> = [];
     for (const modalityInput of interpretation.modalityInputs) {
-      if (modalityInput.modality === 'text' || modalityInput.evidence.includes('p41-cached-perceptual-evidence')) {
+      if (isExplicitDirectUserText(modalityInput) || modalityInput.evidence.includes('p41-cached-perceptual-evidence')) {
         admittedModalityInputs.push(modalityInput);
         continue;
       }
