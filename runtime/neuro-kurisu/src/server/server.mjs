@@ -1895,7 +1895,8 @@ async function route(req, res) {
         }
         if (req.method === 'GET' && url.pathname === '/api/organism/proactive-consent') {
             if (!runtimeReady) return json(res, 503, { ok: false, error: 'organism-runtime-not-ready' });
-            return json(res, 200, { ok: true, policy: runtime.core.autonomousInitiativeDeliveryPolicy() });
+            const policy = await runtime.autonomousDialogueDeliveryPolicy();
+            return json(res, 200, { ok: true, policy });
         }
         if (req.method === 'POST' && url.pathname === '/api/organism/proactive-consent') {
             if (!runtimeReady) return json(res, 503, { ok: false, error: 'organism-runtime-not-ready' });
