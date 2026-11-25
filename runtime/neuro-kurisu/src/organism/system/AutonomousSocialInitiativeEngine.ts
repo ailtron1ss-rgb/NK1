@@ -243,6 +243,7 @@ function normalizeRestoredInitiative(raw: unknown, index: number): { item: Socia
       kind,
       priority01: safeRatio(ownData(raw, 'priority01'), .4),
       status,
+      internalOnly: ownData(raw, 'internalOnly') === true,
       createdAt,
       reason: unsafeTopic || unsafeReadyMessage || readyStateInvalid ? 'privacy-filtered-restored-initiative' : safeReason,
       topic: safeTopic ?? 'A previously stored topic was withheld after a privacy check',
