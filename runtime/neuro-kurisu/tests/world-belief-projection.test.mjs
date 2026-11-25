@@ -93,6 +93,31 @@ testCase('quarantined external receipts create bounded re-verification pressure 
     'quarantine pressure must remain bounded under receipt flooding');
 });
 
+
+testCase('stale quarantined receipts decay and future-dated receipts cannot create current pressure', () => {
+  const baseline = projectWorldCognitiveSignal({ snapshot: baseSnapshot(), at: 100_000 });
+  const stale = projectWorldCognitiveSignal({
+    snapshot: baseSnapshot({}, {
+      quarantinedOutcomes: [
+        { id: 'old-receipt', label: 'external-receipt:explore:executed:device-telemetry', at: 0 },
+      ],
+    }),
+    at: 3_600_000,
+  });
+  const future = projectWorldCognitiveSignal({
+    snapshot: baseSnapshot({}, {
+      quarantinedOutcomes: [
+        { id: 'future-receipt', label: 'external-receipt:explore:executed:device-telemetry', at: 900_000 },
+      ],
+    }),
+    at: 100_000,
+  });
+  assert.ok(stale.unresolved01 <= baseline.unresolved01 + .001,
+    'stale operational receipts must decay instead of permanently holding attention');
+  assert.ok(future.unresolved01 <= baseline.unresolved01 + .001,
+    'future-dated diagnostic receipts must not create current re-verification pressure');
+});
+
 testCase('every projected scalar remains finite and bounded for malformed numeric state', () => {
   const signal = projectWorldCognitiveSignal({
     snapshot: baseSnapshot({ confidence01: Number.NaN, lastSeenAt: Number.POSITIVE_INFINITY, observationCount: -1, absenceEvidence01: Number.NaN },
