@@ -97,7 +97,7 @@ testCase('quarantined external receipts create bounded re-verification pressure 
 testCase('stale quarantined receipts decay and future-dated receipts cannot create current pressure', () => {
   const baseline = projectWorldCognitiveSignal({ snapshot: baseSnapshot(), at: 100_000 });
   const stale = projectWorldCognitiveSignal({
-    snapshot: baseSnapshot({}, {
+    snapshot: baseSnapshot({ lastSeenAt: 3_599_000 }, {
       quarantinedOutcomes: [
         { id: 'old-receipt', label: 'external-receipt:explore:executed:device-telemetry', at: 0 },
       ],
