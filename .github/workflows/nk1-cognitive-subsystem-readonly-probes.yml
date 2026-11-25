@@ -1,0 +1,42 @@
+name: NK1 cognitive subsystem read-only probes
+
+on:
+  pull_request:
+    branches: [workpass70-source]
+    paths:
+      - 'runtime/neuro-kurisu/src/organism/core/CognitiveSubsystemRegistry.ts'
+      - 'runtime/neuro-kurisu/src/organism/core/CognitiveSubsystemPorts.ts'
+      - 'runtime/neuro-kurisu/src/organism/core/CognitiveSubsystemFacade.ts'
+      - 'runtime/neuro-kurisu/src/organism/core/OrganismCore.ts'
+      - 'runtime/neuro-kurisu/tests/cognitive-subsystem-port-probes-20261124.mjs'
+      - 'runtime/neuro-kurisu/package.json'
+      - '.github/workflows/nk1-cognitive-subsystem-readonly-probes.yml'
+permissions:
+  contents: read
+concurrency:
+  group: nk1-cognitive-subsystem-readonly-probes-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  subsystem-readonly-probes:
+    name: Seven domains and all read-only port probes
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: runtime/neuro-kurisu
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v7
+      - name: Set up Node
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: runtime/neuro-kurisu/package-lock.json
+      - name: Install locked dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Read-only subsystem port probe contract
+        run: npm run test:special-system-probes
+      - name: System contract cache and projection reuse
+        run: npm run test:big-pass-59
+      - name: Runtime type syntax validation
+        run: npm run typecheck
