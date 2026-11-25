@@ -178,4 +178,31 @@ assert.deepEqual(integratedChair.sourceIds, ['camera-front'],
   'sourceIds must preserve provider/source identity, not copy modality names');
 assert.equal(integratedChair.sourceIds.includes('world'), false);
 
+
+const p41RoundTrip = new P41SemanticPerceptionEngine();
+p41RoundTrip.restore(semantic);
+assert.deepEqual(p41RoundTrip.snapshot().entities.find(entity => entity.label === 'tracked-chair')?.modalitySourceIds?.world,
+  ['camera-front'], 'P41 restore must preserve source identity by modality');
+const restoredIntegratedWorld = new GroundedWorldState();
+restoredIntegratedWorld.integrate({ at: perceptionAt, perception: p41RoundTrip.snapshot() });
+assert.deepEqual(restoredIntegratedWorld.snapshot().entities.find(entity => entity.label === 'tracked-chair')?.sourceIds,
+  ['camera-front'], 'P41 restore must not collapse source identity into a modality label');
+
+const contextWithoutSource = new GroundedWorldState();
+contextWithoutSource.integrate({
+  at: perceptionAt,
+  base: {
+    tick: 1, location: 'lab', energy: .8, attention: .7, uncertainty: .2,
+    facts: [],
+    objects: [{
+      id: 'base-chair-1', label: 'base-chair', confidence01: .8,
+      visible: true, visibilityKnown: true,
+    }],
+  },
+});
+const baseChair = contextWithoutSource.snapshot().entities.find(entity => entity.label === 'base-chair');
+assert.ok(baseChair);
+assert.deepEqual(baseChair.sourceIds, [],
+  'a synthetic world-context identity used for tracking must not be promoted into source provenance');
+
 console.log('GROUNDED_WORLD_WRITE_AUTHORITY_INTEGRITY=PASS');
