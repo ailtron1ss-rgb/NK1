@@ -113,6 +113,22 @@ testCase('quarantined external receipts create bounded re-verification pressure 
 });
 
 
+
+testCase('restored unverified receipt labels retain pressure after quarantine migration', () => {
+  const baseline = projectWorldCognitiveSignal({ snapshot: baseSnapshot(), at: 100_000 });
+  const restored = projectWorldCognitiveSignal({
+    snapshot: baseSnapshot({}, {
+      quarantinedOutcomes: [
+        { id: 'restored-receipt', label: 'restored-unverified:external-receipt:explore:executed:device-telemetry', at: 99_000 },
+      ],
+    }),
+    at: 100_000,
+  });
+  assert.ok(restored.unresolved01 > baseline.unresolved01 + .05,
+    'quarantined receipt pressure must survive restore-time label prefixing');
+  assert.ok(restored.evidenceConfidence01 <= baseline.evidenceConfidence01);
+});
+
 testCase('stale quarantined receipts decay and future-dated receipts cannot create current pressure', () => {
   const baseline = projectWorldCognitiveSignal({ snapshot: baseSnapshot(), at: 100_000 });
   const stale = projectWorldCognitiveSignal({
