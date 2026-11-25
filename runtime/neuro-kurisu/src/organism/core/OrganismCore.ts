@@ -2993,19 +2993,25 @@ export class OrganismCore {
         this.persisted.system.autonomousSocialInitiative = this.organismSystems.agency.autonomousSocialInitiative.snapshot();
         return staged;
     }
+    claimAutonomousSocialInitiativeDelivery() {
+        const result = this.organismSystems.agency.autonomousSocialInitiative.claimReadyWithState();
+        if (result.stateChanged) {
+            this.persisted.system.autonomousSocialInitiative = this.organismSystems.agency.autonomousSocialInitiative.snapshot();
+        }
+        return result;
+    }
     pendingAutonomousSocialInitiativeMessage() {
-        const initiative = this.organismSystems.agency.autonomousSocialInitiative.claimReady();
-        // claimReady also expires stale plans and dead-letters exhausted retries.
-        // Persist the owner snapshot even when no user-visible message is returned.
-        this.persisted.system.autonomousSocialInitiative = this.organismSystems.agency.autonomousSocialInitiative.snapshot();
-        return initiative;
+        return this.claimAutonomousSocialInitiativeDelivery().initiative;
+    }
+    acknowledgeAutonomousSocialInitiativeWithState(id: string, at = Date.now()) {
+        const result = this.organismSystems.agency.autonomousSocialInitiative.acknowledgeWithState(id, at);
+        if (result.stateChanged) {
+            this.persisted.system.autonomousSocialInitiative = this.organismSystems.agency.autonomousSocialInitiative.snapshot();
+        }
+        return result;
     }
     acknowledgeAutonomousSocialInitiative(id: string, at = Date.now()) {
-        const acknowledged = this.organismSystems.agency.autonomousSocialInitiative.acknowledge(id, at);
-        // acknowledge may reject an expired lease after converting the ready item
-        // to a terminal deferred state; that state transition must also be durable.
-        this.persisted.system.autonomousSocialInitiative = this.organismSystems.agency.autonomousSocialInitiative.snapshot();
-        return acknowledged;
+        return this.acknowledgeAutonomousSocialInitiativeWithState(id, at).acknowledged;
     }
     deferAutonomousSocialInitiative(id: string, at = Date.now()) {
         const deferred = this.organismSystems.agency.autonomousSocialInitiative.defer(id, at);
