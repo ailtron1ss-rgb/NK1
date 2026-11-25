@@ -1909,6 +1909,18 @@ async function route(req, res) {
             const policy = await proactiveDelivery.setConsent(input.consentGranted);
             return json(res, 200, { ok: true, policy });
         }
+        if (req.method === 'POST' && url.pathname === '/api/organism/proactive-quiet-hours') {
+            if (!runtimeReady) return json(res, 503, { ok: false, error: 'organism-runtime-not-ready' });
+            const input = await body(req);
+            if (!input || typeof input !== 'object' || Array.isArray(input)
+                || typeof input.enabled !== 'boolean'
+                || !Number.isSafeInteger(input.startHourUtc) || input.startHourUtc < 0 || input.startHourUtc > 23
+                || !Number.isSafeInteger(input.endHourUtc) || input.endHourUtc < 0 || input.endHourUtc > 23) {
+                return json(res, 400, { ok: false, error: 'invalid-proactive-quiet-hours' });
+            }
+            const policy = await proactiveDelivery.setQuietHours(input);
+            return json(res, 200, { ok: true, policy });
+        }
         // POST is the canonical state-changing claim endpoint. GET remains as
         // a compatibility alias for older clients but is not used by the app.
         if ((req.method === 'POST' && url.pathname === '/api/organism/proactive-message/claim')
