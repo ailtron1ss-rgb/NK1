@@ -31,6 +31,8 @@ export interface SocialInitiative {
   /** Conversational influence only; it never overrides safety policy or the stable Kurisu profile. */
   toneHint?: SocialToneHint;
   message?: string;
+  /** Internal cognitive candidate; never eligible for user-visible generation or delivery. */
+  internalOnly?: boolean;
   stagedAt?: number;
   resolvedAt?: number;
   /** Number of host delivery claims; persisted to make retries bounded and replay-safe. */
@@ -64,6 +66,8 @@ export interface SocialInitiativeState {
   lastExternalInputAt: number;
   lastInitiativeAt: number;
   consentGranted: boolean;
+  /** Timestamp of an explicit user consent decision; legacy implicit defaults are not consent. */
+  consentDecisionAt: number;
   quietHoursEnabled: boolean;
   quietStartHourUtc: number;
   quietEndHourUtc: number;
@@ -76,7 +80,7 @@ export const defaultAutonomousSocialInitiative = (): SocialInitiativeState => ({
   version: 1, cycles: 0, planned: 0, executed: 0, deferred: 0,
   reciprocity01: .54, initiative01: .34, initiatives: [],
   startedAt: 0, lastExternalInputAt: 0, lastInitiativeAt: 0,
-  consentGranted:true,quietHoursEnabled:false,quietStartHourUtc:22,quietEndHourUtc:8,
+  consentGranted:false,consentDecisionAt:0,quietHoursEnabled:false,quietStartHourUtc:22,quietEndHourUtc:8,
   suppressedByConsent:0,suppressedByQuietHours:0,
 });
 
@@ -289,6 +293,22 @@ export class AutonomousSocialInitiativeEngine {
           if (normalized.privacyDeferred) privacyDeferredCount++;
         }
       }
+      const rawConsentDecisionAt = safeTime(ownData(raw, 'consentDecisionAt')) ?? 0;
+      const consentGranted = ownData(raw, 'consentGranted') === true && rawConsentDecisionAt > 0;
+      // Legacy pending thoughts remain private; staged messages are quarantined without
+      // a timestamped affirmative user consent decision.
+      for (const item of initiatives) {
+        if (consentGranted || item.status === 'executed' || item.status === 'deferred') continue;
+        if (item.status === 'ready') {
+          item.status = 'deferred';
+          item.message = undefined;
+          item.stagedAt = undefined;
+          item.resolvedAt = Math.max(item.createdAt, Date.now());
+          privacyDeferredCount++;
+        } else if (item.status === 'planned') {
+          item.internalOnly = true;
+        }
+      }
       this.state = {
         version: 1,
         cycles: safeCounter(ownData(raw, 'cycles'), 0),
@@ -301,7 +321,8 @@ export class AutonomousSocialInitiativeEngine {
         lastExternalInputAt: safeTime(ownData(raw, 'lastExternalInputAt')) ?? 0,
         lastInitiativeAt: safeTime(ownData(raw, 'lastInitiativeAt')) ?? 0,
         initiatives,
-        consentGranted:ownData(raw,'consentGranted')===undefined?defaults.consentGranted:ownData(raw,'consentGranted')===true,
+        consentGranted,
+        consentDecisionAt: rawConsentDecisionAt,
         quietHoursEnabled:ownData(raw,'quietHoursEnabled')===true,
         quietStartHourUtc:safeHour(ownData(raw,'quietStartHourUtc'),defaults.quietStartHourUtc),
         quietEndHourUtc:safeHour(ownData(raw,'quietEndHourUtc'),defaults.quietEndHourUtc),
@@ -318,10 +339,16 @@ export class AutonomousSocialInitiativeEngine {
 
   setConsent(granted:boolean):void{
     this.state.consentGranted=granted===true;
+    this.state.consentDecisionAt=Date.now();
     if(!this.state.consentGranted){
       const at=Date.now();
-      for(const item of this.state.initiatives.filter(item=>item.status==='planned'||item.status==='ready'))
-        this.defer(item.id,Math.max(at,item.createdAt));
+      for(const item of this.state.initiatives){
+        if((item.status==='planned'||item.status==='ready')&&item.internalOnly!==true){
+          this.defer(item.id,Math.max(at,item.createdAt));
+          item.message=undefined;
+          item.stagedAt=undefined;
+        }
+      }
     }
   }
   setQuietHours(input:{enabled:boolean;startHourUtc?:number;endHourUtc?:number}):void{
@@ -404,15 +431,10 @@ export class AutonomousSocialInitiativeEngine {
     if (!this.state.startedAt) this.state.startedAt = at;
     if (input.externalInput) this.state.lastExternalInputAt = at;
     this.expirePending(at);
-    const hasPending = this.state.initiatives.some(item => item.status === 'planned' || item.status === 'ready');
-    if(!this.state.consentGranted){
-      this.state.suppressedByConsent=Math.min(MAX_SOCIAL_COUNTER,this.state.suppressedByConsent+1);
-      return {shouldInitiate:false,initiative:null};
-    }
-    if(this.state.quietHoursEnabled&&withinQuietHoursUtc(at,this.state.quietStartHourUtc,this.state.quietEndHourUtc)){
-      this.state.suppressedByQuietHours=Math.min(MAX_SOCIAL_COUNTER,this.state.suppressedByQuietHours+1);
-      return {shouldInitiate:false,initiative:null};
-    }
+    const hasPending = this.state.initiatives.some(item => (item.status === 'planned' || item.status === 'ready') && item.internalOnly !== true);
+    const deliveryAllowed = this.mayDeliverUserVisible(at);
+    if (!this.state.consentGranted) this.state.suppressedByConsent = Math.min(MAX_SOCIAL_COUNTER, this.state.suppressedByConsent + 1);
+    else if (!deliveryAllowed) this.state.suppressedByQuietHours = Math.min(MAX_SOCIAL_COUNTER, this.state.suppressedByQuietHours + 1);
     const quietPeriodMs = Math.max(0, input.quietPeriodMs ?? 180_000);
     const cooldownMs = Math.max(0, input.cooldownMs ?? 300_000);
     const startupGraceMs = Math.max(0, input.startupGraceMs ?? 45_000);
@@ -572,6 +594,7 @@ export class AutonomousSocialInitiativeEngine {
       kind,
       priority01: pressure,
       status: 'planned',
+      internalOnly: !deliveryAllowed,
       createdAt: at,
       reason: `endogenous-conversation:${source}:${kind}:affect-${emotionLabel ?? 'unspecified'}`,
       topic,
@@ -592,7 +615,7 @@ export class AutonomousSocialInitiativeEngine {
     const at = safeTime(now) ?? Date.now();
     this.expirePending(at);
     if(!this.mayDeliverUserVisible(at))return null;
-    const item = this.state.initiatives.find(i => i.status === 'planned'
+    const item = this.state.initiatives.find(i => i.status === 'planned' && i.internalOnly !== true
       && at >= i.createdAt && at - i.createdAt <= INITIATIVE_PENDING_TTL_MS);
     return item ? structuredClone(item) : null;
   }
@@ -600,7 +623,7 @@ export class AutonomousSocialInitiativeEngine {
   stageMessage(id: string, message: string, at = Date.now()): boolean {
     const item = this.state.initiatives.find(i => i.id === id);
     const stagedAt = safeTime(at);
-    if (!item || item.status !== 'planned' || stagedAt === undefined || stagedAt < item.createdAt) return false;
+    if (!item || item.internalOnly === true || item.status !== 'planned' || stagedAt === undefined || stagedAt < item.createdAt) return false;
     if(!this.mayDeliverUserVisible(stagedAt)){this.defer(id,stagedAt);return false;}
     if (stagedAt - item.createdAt > INITIATIVE_PENDING_TTL_MS) {
       this.defer(id, stagedAt);
@@ -623,7 +646,7 @@ export class AutonomousSocialInitiativeEngine {
     const at = safeTime(now) ?? Date.now();
     this.expirePending(at);
     if (!this.mayDeliverUserVisible(at)) return null;
-    const item = this.state.initiatives.find(i => i.status === 'ready'
+    const item = this.state.initiatives.find(i => i.status === 'ready' && i.internalOnly !== true
       && Boolean(i.message?.trim())
       && typeof i.stagedAt === 'number'
       && i.stagedAt >= i.createdAt
@@ -651,7 +674,7 @@ export class AutonomousSocialInitiativeEngine {
     const leaseMs = Number.isSafeInteger(requestedLeaseMs)
       ? Math.max(MIN_SOCIAL_DELIVERY_LEASE_MS, Math.min(MAX_SOCIAL_DELIVERY_LEASE_MS, requestedLeaseMs))
       : DEFAULT_SOCIAL_DELIVERY_LEASE_MS;
-    const item = this.state.initiatives.find(i => i.status === 'ready'
+    const item = this.state.initiatives.find(i => i.status === 'ready' && i.internalOnly !== true
       && Boolean(i.message?.trim())
       && typeof i.stagedAt === 'number'
       && i.stagedAt >= i.createdAt
@@ -676,7 +699,7 @@ export class AutonomousSocialInitiativeEngine {
     if (acknowledgedAt === undefined) return false;
     this.expirePending(acknowledgedAt);
     const item = this.state.initiatives.find(i => i.id === id);
-    if (!item || item.status !== 'ready' || typeof item.stagedAt !== 'number'
+    if (!item || item.internalOnly === true || !this.mayDeliverUserVisible(acknowledgedAt) || item.status !== 'ready' || typeof item.stagedAt !== 'number'
       || acknowledgedAt < item.stagedAt || acknowledgedAt < item.createdAt
       || acknowledgedAt - item.createdAt > INITIATIVE_PENDING_TTL_MS) return false;
     item.status = 'executed';
@@ -711,7 +734,9 @@ export class AutonomousSocialInitiativeEngine {
       deferred: this.state.deferred, reciprocity01: this.state.reciprocity01,
       initiative01: this.state.initiative01,
       active: this.state.initiatives.filter(i => i.status === 'planned' || i.status === 'ready').length,
-      ready: this.state.initiatives.filter(i => i.status === 'ready').length,
+      internalPlans: this.state.initiatives.filter(i => i.status === 'planned' && i.internalOnly === true).length,
+      deliveryEligiblePlans: this.state.initiatives.filter(i => i.status === 'planned' && i.internalOnly !== true).length,
+      ready: this.state.initiatives.filter(i => i.status === 'ready' && i.internalOnly !== true).length,
       positiveFeedback: this.state.initiatives.filter(i => i.feedbackSignal === 'positive').length,
       engagedFeedback: this.state.initiatives.filter(i => i.feedbackSignal === 'engaged').length,
       negativeFeedback: this.state.initiatives.filter(i => i.feedbackSignal === 'negative').length,
