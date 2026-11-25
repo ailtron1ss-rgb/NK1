@@ -39,7 +39,7 @@ const safeModalitySourceIds=(value:unknown):Partial<Record<P41Modality,string[]>
   for(const modality of modalities){
     const raw=row[modality];
     const candidates=Array.isArray(raw)?raw:typeof raw==='string'?[raw]:[];
-    const ids=[...new Set(candidates.map(cleanTrackId).filter(Boolean))].slice(-8);
+    const ids=[...new Set(candidates.map(cleanTrackId).filter(id=>Boolean(id)&&!['text','vision','audio','sensor','world'].includes(id.toLowerCase())))].slice(-8);
     if(ids.length)out[modality]=ids;
   }
   return out;
