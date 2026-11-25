@@ -30,12 +30,28 @@ export interface Needs {
   sleepPressure: number;
 }
 
+export type EmotionTendency = ActionKind | "engage" | "protect" | "withdraw" | "approach" | "defer";
+export type AffectFrameSource = "emotion-appraisal" | "appraisal-summary" | "cognitive-field-fallback" | "default";
+
+export interface OrganismMoodFrame {
+  schemaVersion: 1;
+  valence01: number; arousal01: number; stress01: number; socialSafety01: number;
+  deviation01: number; recoveryRate01: number; resilience01: number; resilienceConfidence01: number;
+  sampledAt: number; ageMs: number; freshness01: number;
+}
+export interface OrganismAffectFrame {
+  schemaVersion: 1; stateVersion: number; tick: number; episodeId: string | null; feelingId: string | null;
+  label: EmotionLabel; actionTendency: EmotionTendency;
+  valence01: number; arousal01: number; dominance01: number; intensity01: number; confidence01: number; stress01: number;
+  sampledAt: number; ageMs: number; freshness01: number; cause: string; source: AffectFrameSource; mood: OrganismMoodFrame | null;
+}
+
 export interface EmotionState {
   label: EmotionLabel;
   valence: number;
   arousal: number;
   dominance: number;
-  tendency: ActionKind;
+  tendency: EmotionTendency;
   cause: string;
 }
 
@@ -185,6 +201,7 @@ export interface OrganismSnapshot {
   at: number;
   awake: boolean;
   avatarBrain?: AvatarBrainEnvelopeV1 | null;
+  affectFrame?: OrganismAffectFrame | null;
   needs: Needs;
   emotion: EmotionState;
   identity: IdentityPublic;

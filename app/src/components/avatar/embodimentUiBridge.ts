@@ -8,6 +8,7 @@
  * renderer executed a channel it does not support.
  */
 import type { EmotionLabel, OrganismSnapshot } from "@/organism/types";
+import { resolvePresentationEmotion } from "./affectFrame.ts";
 import { advanceSwitchProgress, planEmbodimentSwitch } from "./embodimentSwitch.ts";
 import type {
   BodyChannel,
@@ -154,7 +155,8 @@ function mergePoseChannels(
 
 /** Project the canonical snapshot into a renderer-neutral semantic body state. */
 export function projectSemanticBodyState(input: SemanticBodyProjectionInput): SemanticBodyState {
-  const label = input.snapshot.emotion.label;
+  const presentationEmotion = resolvePresentationEmotion(input.snapshot);
+  const label = presentationEmotion.label;
   const gazeX = clampUnit(input.gaze?.x);
   const gazeY = clampUnit(input.gaze?.y);
   const speechPhase = normalizeSpeechPhase(input.speechPhase);
@@ -163,7 +165,7 @@ export function projectSemanticBodyState(input: SemanticBodyProjectionInput): Se
     revision: Number.isSafeInteger(input.revision) && input.revision >= 0 ? input.revision : 0,
     capturedAtMonotonicMs: Math.max(0, Number.isFinite(input.monotonicMs) ? input.monotonicMs : 0),
     emotion: EMOTION_TO_EXPRESSION[label] ?? "neutral",
-    emotionIntensity: clamp01(input.snapshot.emotion.arousal),
+    emotionIntensity: clamp01(presentationEmotion.arousal),
     expression: EXPRESSION_TEXT[label] ?? "neutral",
     gaze: { x: gazeX, y: gazeY },
     speech: {

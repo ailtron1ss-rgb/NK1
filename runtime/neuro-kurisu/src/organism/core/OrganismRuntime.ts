@@ -19,6 +19,7 @@ import { EmbodimentRuntime, type VoiceInputResult } from '../body/EmbodimentRunt
 import { Mem0PlatformAdapter, type Mem0Candidate } from '../integration/mem0/Mem0PlatformAdapter.ts';
 import { buildCognitiveProposalPrompt, parseCognitiveProposal } from '../language/LanguageOrgan.ts';
 import { OperationalJournal } from '../persistence/OperationalJournal.ts';
+import { projectEmotionAffectFrame, type EmotionAffectFrameV1 } from '../system/EmotionAppraisalEngine.ts';
 import type { JsonStateStore } from '../persistence/FileStateStore.ts';
 import { choosePhonePolicyDelay, type PhonePolicyConfig } from '../system/PhoneRuntimePolicy.ts';
 import { RuntimeClockScheduler, type RuntimeClockDecision } from '../system/RuntimeClockScheduler.ts';
@@ -287,40 +288,12 @@ export interface RuntimeStepOptions {
   externalSource?: RuntimeExternalPluginSource;
 }
 
-export interface VoiceEmotionContext {
-  label:string;
-  valence01:number;
-  arousal01:number;
-  dominance01:number;
-}
-
-/** Project the latest canonical affect appraisal into a bounded voice context. */
-export function projectVoiceEmotionContext(snapshot:unknown, appraisalSnapshot?:unknown):VoiceEmotionContext {
-  const record=(value:unknown):Record<string,unknown> =>
-    value!==null && typeof value==='object' && !Array.isArray(value)
-      ? value as Record<string,unknown>
-      : {};
-  const source=record(snapshot);
-  const facets=record(source.facets);
-  const cognition=record(facets.cognition);
-  const field=record(cognition.cognitiveField);
-  const appraisal=record(appraisalSnapshot);
-  const history=Array.isArray(appraisal.history)?appraisal.history:[];
-  const episode=record(history[0]);
-  const finite=(value:unknown,fallback:number):number => {
-    const parsed=Number(value);
-    return Number.isFinite(parsed)?parsed:fallback;
-  };
-  const unit=(value:number):number => Math.max(0,Math.min(1,value));
-  const known=new Set(['curiosity','calm','joy','anxiety','frustration','sadness','anger','protective']);
-  const rawLabel=String(episode.label??appraisal.lastLabel??field.dominantEmotion??'calm').toLocaleLowerCase();
-  return {
-    label:known.has(rawLabel)?rawLabel:'calm',
-    valence01:unit(finite(episode.valence01,finite(appraisal.meanValence01,finite(field.valence01,.5)))),
-    arousal01:unit(finite(episode.arousal01,finite(appraisal.meanArousal01,finite(field.arousal01,.22)))),
-    // Appraisal dominance is perceived control; cognitive coherence is not a substitute.
-    dominance01:unit(finite(episode.dominance01,finite(field.dominance01,.5))),
-  };
+export type VoiceEmotionContext=EmotionAffectFrameV1;
+/** Canonical revision-bound affect frame shared by voice, UI and avatar. */
+export function projectVoiceEmotionContext(snapshot:unknown,appraisalSnapshot?:unknown,now=Date.now()):VoiceEmotionContext {
+  const record=(v:unknown):Record<string,unknown>=>v!==null&&typeof v==='object'&&!Array.isArray(v)?v as Record<string,unknown>:{};
+  const root=record(snapshot),state=record(root.state),facets=record(root.facets),cognition=record(facets.cognition);
+  return projectEmotionAffectFrame({stateVersion:state.tick,stateAt:state.at,now,appraisal:appraisalSnapshot,cognitiveField:cognition.cognitiveField});
 }
 
 export interface RuntimeStep { cycle: OrganismCycleResult; worldAction: EnvironmentAction; language?: LanguageResponse; embodiedAction?: EmbodiedActionResult; }
@@ -2624,8 +2597,11 @@ export class OrganismRuntime {
     });
   }
   /** Read the current affective appraisal from the canonical cognition owner. */
+  affectFrameSnapshot(now=Date.now()):VoiceEmotionContext {
+    return projectVoiceEmotionContext(this.core.snapshot(),this.core.emotionAppraisalSnapshot(),now);
+  }
   private voiceEmotionContext(): VoiceEmotionContext {
-    return projectVoiceEmotionContext(this.core.snapshot(),this.core.emotionAppraisalSnapshot());
+    return this.affectFrameSnapshot();
   }
 
   async speak(text: string): Promise<boolean> {

@@ -1,4 +1,4 @@
-import type { OrganismSnapshot, ActionKind, EmotionLabel, MemoryRecord, Skill, Goal, Belief, AvatarBrainEnvelopeV1 } from "@/organism/types";
+import type { OrganismSnapshot, ActionKind, EmotionLabel, EmotionTendency, OrganismAffectFrame, MemoryRecord, Skill, Goal, Belief, AvatarBrainEnvelopeV1 } from "@/organism/types";
 import type { BackendUiSnapshot } from "./types";
 
 const clamp = (n: unknown, fallback = 0) => {
@@ -19,6 +19,37 @@ const emotion = (x: unknown): EmotionLabel => {
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   Boolean(value) && typeof value === "object" && !Array.isArray(value);
+
+const EMOTION_TENDENCIES = new Set<EmotionTendency>(["respond","explore","verify","rest","reflect","wait","engage","protect","withdraw","approach","defer"]);
+const AFFECT_SOURCES = new Set(["emotion-appraisal","appraisal-summary","cognitive-field-fallback","default"]);
+function normalizeAffectFrame(value: unknown, tick: number, now: number): OrganismAffectFrame | null {
+  if(!isRecord(value)||value.schemaVersion!==1||!Number.isSafeInteger(value.stateVersion)||value.stateVersion!==tick||
+    !Number.isSafeInteger(value.tick)||Number(value.tick)<0||typeof value.label!=="string"||
+    !EMOTION_TENDENCIES.has(value.actionTendency as EmotionTendency)||!AFFECT_SOURCES.has(String(value.source))||
+    typeof value.cause!=="string"||value.cause.length>512) return null;
+  const sample=value.sampledAt,age=now-Number(sample);
+  if(typeof sample!=="number"||!Number.isFinite(sample)||sample<0||age< -250||age>30_000||
+    typeof value.ageMs!=="number"||!Number.isFinite(value.ageMs)||Math.abs(value.ageMs-Math.max(0,age))>5_000||
+    typeof value.freshness01!=="number"||!Number.isFinite(value.freshness01)||value.freshness01<=0||value.freshness01>1||
+    Math.abs(value.freshness01-Math.max(0,1-Math.max(0,age)/30_000))>.1) return null;
+  if(!["valence01","arousal01","dominance01","intensity01","confidence01","stress01"].every(k=>typeof value[k]==="number"&&Number.isFinite(value[k])&&Number(value[k])>=0&&Number(value[k])<=1))return null;
+  if(value.episodeId!==null&&(typeof value.episodeId!=="string"||value.episodeId.length>256))return null;
+  if(value.feelingId!==null&&(typeof value.feelingId!=="string"||value.feelingId.length>256))return null;
+  const moodRaw=value.mood;
+  let mood: OrganismAffectFrame["mood"]=null;
+  if(isRecord(moodRaw)&&moodRaw.schemaVersion===1&&typeof moodRaw.sampledAt==="number"&&Number.isFinite(moodRaw.sampledAt)&&
+    typeof moodRaw.ageMs==="number"&&Number.isFinite(moodRaw.ageMs)&&typeof moodRaw.freshness01==="number"&&Number.isFinite(moodRaw.freshness01)){
+    const moodAge=now-moodRaw.sampledAt;
+    const moodNumeric=["valence01","arousal01","stress01","socialSafety01","deviation01","recoveryRate01","resilience01","resilienceConfidence01"];
+    const moodValid=moodAge>=-250&&moodAge<=7*24*60*60_000&&Math.abs(moodRaw.ageMs-Math.max(0,moodAge))<=5_000&&
+      moodRaw.freshness01>=0&&moodRaw.freshness01<=1&&Math.abs(moodRaw.freshness01-Math.exp(-Math.max(0,moodAge)/(24*60*60_000)))<=.08&&
+      moodNumeric.every(k=>typeof moodRaw[k]==="number"&&Number.isFinite(moodRaw[k])&&Number(moodRaw[k])>=0&&Number(moodRaw[k])<=1);
+    if(moodValid)mood=moodRaw as unknown as OrganismAffectFrame["mood"];
+  }
+  const allowedLabels=new Set(["curiosity","calm","joy","anxiety","frustration","sadness","anger","protective"]);
+  if(!allowedLabels.has(value.label))return null;
+  return {...value,mood} as unknown as OrganismAffectFrame;
+}
 
 const AVATAR_BRAIN_EXPRESSIONS = new Set(["neutral", "curious", "focused", "amused", "concerned", "tired", "determined"]);
 const AVATAR_BRAIN_PROFILES = new Set(["2d", "2.5d", "3d"]);
@@ -56,7 +87,21 @@ function normalizeAvatarBrain(value: unknown, tick: number): AvatarBrainEnvelope
   return value as unknown as AvatarBrainEnvelopeV1;
 }
 
-export function toOrganismSnapshot(remote: BackendUiSnapshot, chat: OrganismSnapshot["chat"]): OrganismSnapshot {
+export function toOrganismSnapshot(remote: BackendUiSnapshot, chat: OrganismSnapshot["chat"], now = Date.now()): OrganismSnapshot {
+  const hasAffectFrame = Object.prototype.hasOwnProperty.call(remote, "affectFrame");
+  const affectFrame = hasAffectFrame ? normalizeAffectFrame(remote.affectFrame, Number(remote.tick), now) : null;
+  const normalizedEmotion = affectFrame ? {
+    label: affectFrame.label, valence: affectFrame.valence01, arousal: affectFrame.arousal01,
+    dominance: affectFrame.dominance01, tendency: affectFrame.actionTendency, cause: affectFrame.cause,
+  } : hasAffectFrame ? {
+    label: "calm" as EmotionLabel, valence: .5, arousal: .22, dominance: .5,
+    tendency: "engage" as EmotionTendency, cause: "stale-affect-frame",
+  } : {
+    label: emotion(remote.emotion.label), valence: clamp(remote.emotion.valence),
+    arousal: clamp(remote.emotion.arousal), dominance: clamp(remote.emotion.dominance),
+    tendency: (EMOTION_TENDENCIES.has(remote.emotion.tendency as EmotionTendency) ? remote.emotion.tendency : action(remote.emotion.tendency)) as EmotionTendency,
+    cause: remote.emotion.cause,
+  };
   const last = remote.lastDecision;
   const memories: MemoryRecord[] = remote.memories.map((m) => ({
     id: m.id,
@@ -107,14 +152,8 @@ export function toOrganismSnapshot(remote: BackendUiSnapshot, chat: OrganismSnap
     awake: Boolean(remote.awake),
     avatarBrain: normalizeAvatarBrain(remote.avatarBrain, Number(remote.tick)),
     needs: remote.state.needs,
-    emotion: {
-      label: emotion(remote.emotion.label),
-      valence: clamp(remote.emotion.valence),
-      arousal: clamp(remote.emotion.arousal),
-      dominance: clamp(remote.emotion.dominance),
-      tendency: action(remote.emotion.tendency),
-      cause: remote.emotion.cause,
-    },
+    emotion: normalizedEmotion,
+    affectFrame,
     identity: {
       subjectId: remote.identity.subjectId,
       name: remote.identity.name,

@@ -1,0 +1,17 @@
+import assert from 'node:assert/strict';
+import { EmotionAppraisalEngine, projectEmotionAffectFrame } from '../src/organism/system/EmotionAppraisalEngine.ts';
+const now=Date.now()-120_000, engine=new EmotionAppraisalEngine();
+const episode=engine.appraise({tick:41,at:now,goalPressure01:.9,goalCongruence01:.1,controllability01:.1,novelty01:.8,selfRelevance01:.9,socialMeaning01:.6,uncertainty01:.9,predictionError01:.9,homeostaticPressure01:.85,energy01:.25,success01:.1,external:true});
+assert.equal(episode.label,'anxiety');
+const acute=projectEmotionAffectFrame({stateVersion:41,stateAt:now,now:now+500,appraisal:engine.snapshot()});
+assert.equal(acute.schemaVersion,1);assert.equal(acute.source,'emotion-appraisal');assert.ok(acute.mood.stress01>.18);assert.equal(acute.episodeId,episode.id);
+const freshBoot=new EmotionAppraisalEngine().moodSnapshot(now);assert.equal(freshBoot.ageMs,0);assert.equal(freshBoot.resilienceConfidence01,0);
+engine.observeInteroception({energy01:.68,thermal01:.2,capacity01:.72,load01:.38,homeostaticPressure01:.02,at:now+60_000});
+const recovered=engine.moodSnapshot(now+60_000);
+assert.ok(recovered.resilienceConfidence01>0,'recovery must have measured a reduction in mood deviation');
+const restored=new EmotionAppraisalEngine();restored.restore(engine.snapshot());
+assert.equal(restored.moodSnapshot(now+60_000).events,engine.moodSnapshot(now+60_000).events);
+const stale=projectEmotionAffectFrame({stateVersion:40,stateAt:now,now:now+120_000,appraisal:engine.snapshot()});
+assert.equal(stale.label,'calm','future tick must never become canonical');
+assert.ok(engine.actionBias('explore',now+60_000)>=-.045&&engine.actionBias('explore',now+60_000)<=.045);
+console.log('AFFECT_MOOD_DYNAMICS=PASS',JSON.stringify({episode:episode.label,stress:acute.mood.stress01,recoveryConfidence:recovered.resilienceConfidence01}));
