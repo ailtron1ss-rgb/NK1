@@ -3186,7 +3186,7 @@ export class OrganismRuntime {
           await this.persistOpenLoopMutation(() => this.openLoopRadar.acknowledgeInitiative(id));
         } catch (error) {
           console.warn(
-            '[proactive-delivery] durable Core receipt committed; Open Loop surfacing projection will reconcile after its lease:',
+            '[proactive-delivery] Core chat receipt is durable, but the optional Open Loop projection may be stale and require reconciliation:',
             error instanceof Error ? error.message : String(error),
           );
         }
