@@ -125,5 +125,61 @@ assert.throws(() => hostileGraph.restore(getterGraph), /inert-snapshot-invalid/,
   'epistemic graph restore must reject accessor-backed checkpoints');
 assert.equal(graphGetterCalls, 0, 'epistemic graph restore must not execute accessors');
 
+
+const numericP41 = new P41SemanticPerceptionEngine();
+numericP41.restore({
+  version: 1,
+  tick: -7,
+  scene: { label: 'forged-scene', confidence01: 9, stability01: -4, at: -1 },
+  entities: [{
+    id: 'forged-entity', label: 'chair', kind: 'object',
+    confidence01: 9, salience01: -2, present01: 8,
+    firstSeenAt: -5, lastSeenAt: -10, observations: -99,
+    modalities: ['vision', 'unknown-modality'],
+    modalityLastSeenAt: { vision: -4 },
+    modalityEvidenceKinds: { vision: 'observed' },
+    modalitySourceIds: { vision: ['detector-1'] },
+    position: { x: 1e12, y: 0, z: 0 },
+    velocity: { x: 0, y: Number.POSITIVE_INFINITY, z: 0 },
+  }],
+  modalityReliability: {
+    vision: {
+      reliability01: 9, observations: -4, conflict01: 7, latency01: -1,
+      reportedQuality01: 2, serviceSuccess01: 8,
+      calibrationSamples: -3, calibrationMae01: 4, calibrationBias01: -4, lastVerifiedAt: -1,
+    },
+  },
+  actionBias: { explore: 9, verify: -8 },
+  metrics: {
+    grounding01: 9, temporalBinding01: -1, objectPermanence01: 4,
+    crossModalAgreement01: 8, crossModalEvidenceCoverage01: 7,
+    outcomeAlignment01: -2, activePerceptionUtility01: 5, unresolvedRate01: 6,
+    updates: -1, sceneContinuity01: 3, temporalGrounding01: 2,
+    evidenceTraceability01: 9, epistemicContradictions: -1,
+  },
+});
+const numericState = numericP41.snapshot();
+assert.equal(numericState.tick, 0);
+assert.equal(numericState.scene.confidence01, .12,
+  'out-of-range restored scene confidence must fall back to default, not saturate at one');
+assert.equal(numericState.scene.stability01, .15);
+assert.equal(numericState.entities[0].confidence01, 0);
+assert.equal(numericState.entities[0].salience01, 0);
+assert.equal(numericState.entities[0].present01, 0);
+assert.equal(numericState.entities[0].observations, 1);
+assert.equal(numericState.entities[0].position, null,
+  'non-finite and implausibly large restored coordinates must be discarded');
+assert.equal(numericState.entities[0].velocity, null);
+assert.deepEqual(numericState.entities[0].modalities, ['vision']);
+assert.equal(numericState.modalityReliability.vision.reliability01, .38);
+assert.equal(numericState.modalityReliability.vision.observations, 0);
+assert.equal(numericState.modalityReliability.vision.calibrationMae01, 0);
+assert.equal(numericState.actionBias.explore, 0);
+assert.equal(numericState.actionBias.verify, 0);
+assert.equal(numericState.metrics.grounding01, .18);
+assert.equal(numericState.metrics.sceneContinuity01, .1);
+assert.equal(numericState.metrics.updates, 0);
+assert.equal(numericState.metrics.epistemicContradictions, 0);
+
 console.log('PERCEPTION_EXTERNAL_INGRESS_ATTESTATION=PASS hostile=3');
 
