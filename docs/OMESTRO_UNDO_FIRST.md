@@ -1,8 +1,9 @@
 # OmeStro #04 — Undo-First Intelligence
 
-**Branch:** `aspect/undo-first-intelligence-20261117`  
-**Base:** `workpass70-source` @ `1e83a011fc677ff20f2348570322bd562181d9ff`  
-**Status:** Draft implementation; merge and Release promotion are separate gates.
+**Original implementation:** merged by [PR #1071](https://github.com/ailtron1ss-rgb/NK1/pull/1071)  
+**Core API continuation:** [PR #1178](https://github.com/ailtron1ss-rgb/NK1/pull/1178), branch `aspect/undo-first-core-registration-20261125`  
+**Base:** `workpass70-source` @ `87c9ed9034e09ca9fb83fd676ac52bb46434c4fe`  
+**Status:** ActionGateway + FileStateStore adapter are integrated into the current source. PR #1178 adds the public Core undo boundary and removes Runtime access to private Core internals; it remains Draft pending independent review. Release promotion is separate and has not occurred.
 
 ## Runtime contract
 
@@ -83,4 +84,4 @@ The gateway reports Undo-First coverage separately from the existing receipt/app
 
 ## Evidence boundary
 
-The regressions exercise preparation ordering, durable plan restore, verified compensation, duplicate-undo prevention, state divergence, unresolved-action refusal, pre-persist cleanup, and pending-tombstone retention after an ambiguous receipt write. The filesystem integration regression drives a real FileStateStore-backed OrganismRuntime and its canonical OrganismCore through approved file creation, content-hash readback, the public `OrganismRuntime.executeUndoForKey` recovery facade, manual-plan persistence and post-restart replay. CI evidence is recorded against the exact PR head. No Release ZIP is changed by this branch.
+The regressions exercise preparation ordering, durable plan restore, verified compensation, duplicate-undo prevention, state divergence, unresolved-action refusal, pre-persist cleanup, and pending-tombstone retention after an ambiguous receipt write. The filesystem integration regression drives a real FileStateStore-backed OrganismRuntime and its canonical OrganismCore through approved file creation, content-hash readback, the public `OrganismCore.executeUndoForKey` boundary, the public `OrganismRuntime.executeUndoForKey` facade after restart, manual-plan persistence and replay. The Runtime registers the adapter exactly once through `OrganismCore.registerActionTool`; Core does not register a second copy. [PR #1178 exact-head Undo-First workflow](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45564188694) passed: 11 ActionGateway cases, filesystem create-only integration, path/symlink controls, durable artifact and restart replay. The workflow type check used Node strip-syntax mode; semantic TypeScript `tsc` and independent review remain separate gates. No Release ZIP is changed by this branch.
