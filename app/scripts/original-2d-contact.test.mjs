@@ -18,5 +18,6 @@ test("Original SVG forwards only a short primary pointer tap and supports the sh
   assert.match(stage, /onPointerUp=\{handleSvgPointerUp\}/);
   assert.match(stage, /onPointerCancel=\{handleSvgPointerCancel\}/);
   assert.match(stage, /Math\.hypot\(event\.clientX - start\.x, event\.clientY - start\.y\) > 8/);
+  assert.ok(parent.includes('mode === "3d" || mode === "legacy" || mode === "original" ? "relative z-30'), "Original 2D toolbar must not cover the SVG contact surface");
   assert.match(parent, /KurisuOriginalStage[\s\S]*?onContact=\{\(contact\) => \{ void contactRecorder\.record\(\{ type: "live2d_tap", protocolVersion: 1, \.\.\.contact \}\); \}\}/);
 });
