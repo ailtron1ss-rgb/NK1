@@ -82,7 +82,6 @@ const makeRegistry = (options = {}) => new NekoPluginManifestPolicyRegistry(make
 {
   for (const altered of [
     { capability: 'notes.admin' },
-    { destructive: true },
     { permissionClass: 'system', requiresHostApproval: true },
     { requiresHostApproval: true },
   ]) {
