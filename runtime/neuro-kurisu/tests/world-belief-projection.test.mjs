@@ -64,6 +64,35 @@ testCase('quarantined persisted facts create bounded re-verification pressure wi
     'quarantined historical facts must never increase world evidence confidence');
 });
 
+testCase('quarantined external receipts create bounded re-verification pressure without canonical confidence', () => {
+  const baseline = projectWorldCognitiveSignal({ snapshot: baseSnapshot(), at: 100_000 });
+  const quarantined = projectWorldCognitiveSignal({
+    snapshot: baseSnapshot({}, {
+      quarantinedOutcomes: [
+        { id: 'receipt-1', label: 'external-receipt:explore:executed:device-telemetry', at: 99_000 },
+        { id: 'receipt-2', label: 'external-receipt:respond:executed:device-actuation', at: 99_500 },
+      ],
+    }),
+    at: 100_000,
+  });
+  assert.equal(quarantined.evidenceClass, 'mixed');
+  assert.ok(quarantined.unresolved01 > baseline.unresolved01 + .05);
+  assert.ok(quarantined.uncertainty01 > baseline.uncertainty01);
+  assert.ok(quarantined.evidenceConfidence01 <= baseline.evidenceConfidence01,
+    'unverified external receipts cannot increase canonical evidence confidence');
+
+  const saturated = projectWorldCognitiveSignal({
+    snapshot: baseSnapshot({}, {
+      quarantinedOutcomes: Array.from({ length: 96 }, (_, index) => ({
+        id: `receipt-${index}`, label: 'external-receipt:explore:executed:device-telemetry', at: 99_000,
+      })),
+    }),
+    at: 100_000,
+  });
+  assert.ok(saturated.unresolved01 <= 0.45,
+    'quarantine pressure must remain bounded under receipt flooding');
+});
+
 testCase('every projected scalar remains finite and bounded for malformed numeric state', () => {
   const signal = projectWorldCognitiveSignal({
     snapshot: baseSnapshot({ confidence01: Number.NaN, lastSeenAt: Number.POSITIVE_INFINITY, observationCount: -1, absenceEvidence01: Number.NaN },
