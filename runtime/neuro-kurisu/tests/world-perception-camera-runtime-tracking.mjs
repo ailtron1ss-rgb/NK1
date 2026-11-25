@@ -94,7 +94,7 @@ try{
   assert.equal(chair.trackId?.endsWith(firstTrackId),true);
   assert.equal(chair.imageBoxCameraId,0);
   assert.equal(chair.modalityEvidenceKinds?.vision, 'model-output',
-    'the vision backend's object interpretation must remain model-output, not device-capture');
+    "the vision backend's object interpretation must remain model-output, not device-capture");
   const cameraDevice = runtime.core.groundedWorldSnapshot().entities.find(entity => entity.label === 'camera-0');
   assert.ok(cameraDevice, 'a consented camera receipt must be represented in the grounded world');
   assert.equal(cameraDevice.modalityEvidenceKinds.vision, 'observed');
