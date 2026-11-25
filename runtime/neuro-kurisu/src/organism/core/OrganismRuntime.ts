@@ -3169,8 +3169,18 @@ export class OrganismRuntime {
     return this.enqueue(async () => {
       const acknowledged = this.core.acknowledgeAutonomousSocialInitiative(id, Date.now());
       if (acknowledged) {
-        await this.persistOpenLoopMutation(() => this.openLoopRadar.acknowledgeInitiative(id));
+        // The user's durable chat receipt belongs to the canonical Core snapshot.
+        // Persist it before updating the optional Open Loop projection so a
+        // reminder-store failure cannot leave the delivery ACK only in memory.
         await this.core.flush();
+        try {
+          await this.persistOpenLoopMutation(() => this.openLoopRadar.acknowledgeInitiative(id));
+        } catch (error) {
+          console.warn(
+            '[proactive-delivery] durable Core receipt committed; Open Loop surfacing projection will reconcile after its lease:',
+            error?.message || error,
+          );
+        }
       }
       return acknowledged;
     });
