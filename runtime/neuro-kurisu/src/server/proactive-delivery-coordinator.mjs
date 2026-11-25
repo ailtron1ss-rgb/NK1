@@ -92,24 +92,25 @@ export class ProactiveDeliveryCoordinator {
     if (typeof id !== "string" || !id.trim() || id !== id.trim() || id.length > 160) {
       return { status: 400, body: { ok: false, acknowledged: false, error: "invalid-initiative-id" } };
     }
-    const now = this.now();
-    const completedAttemptCount = typeof token === "string"
-      ? this.leases.completedAttemptCountFor(id, token, now)
-      : null;
-    if (completedAttemptCount !== null) {
-      // A response may have been lost after Core committed. Replay the durable
-      // receipt without invoking the Runtime or mutating the initiative again.
-      return { status: 200, body: { ok: true, acknowledged: true, id, idempotentReplay: true } };
-    }
-    const attemptCount = typeof token === "string"
-      ? this.leases.attemptCountFor(id, token, now)
-      : null;
-    if (attemptCount === null) {
+    if (typeof token !== "string") {
       return { status: 409, body: { ok: false, acknowledged: false, error: "proactive-delivery-lease-token-invalid" } };
     }
     const inFlightKey = JSON.stringify([id, token]);
+    // Do not prune an expired token while its own Runtime ACK is still in
+    // flight: Core may have committed just before expiry while the checkpoint
+    // response is still pending. The successful completion moves it into the
+    // idempotent receipt ledger for safe replay.
     if (this.acknowledgementsInFlight.has(inFlightKey)) {
       return { status: 409, body: { ok: false, acknowledged: false, error: "proactive-delivery-ack-in-flight" } };
+    }
+    const now = this.now();
+    const completedAttemptCount = this.leases.completedAttemptCountFor(id, token, now);
+    if (completedAttemptCount !== null) {
+      return { status: 200, body: { ok: true, acknowledged: true, id, idempotentReplay: true } };
+    }
+    const attemptCount = this.leases.attemptCountFor(id, token, now);
+    if (attemptCount === null) {
+      return { status: 409, body: { ok: false, acknowledged: false, error: "proactive-delivery-lease-token-invalid" } };
     }
 
     this.acknowledgementsInFlight.add(inFlightKey);
