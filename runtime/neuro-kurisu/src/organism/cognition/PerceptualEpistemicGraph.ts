@@ -144,7 +144,7 @@ export class PerceptualEpistemicGraph {
     if(!restored||typeof restored!=='object'||Array.isArray(restored))throw new Error('epistemic-snapshot-invalid');
     const r=restored as Partial<EpistemicState>;
     this.state={...d,...r,
-      claims:Array.isArray(r.claims)?r.claims.slice(-256).map(restoredClaim).filter((claim):claim is EvidenceClaim=>claim!==null):[],
+      claims:Array.isArray(r.claims)?r.claims.slice(0,256).map(restoredClaim).filter((claim):claim is EvidenceClaim=>claim!==null):[],
       contradictionPairs:safeCounter(r.contradictionPairs,4096),
       resolvedPairs:safeCounter(r.resolvedPairs,4096),
       corroboratedPairs:safeCounter(r.corroboratedPairs,1000),
