@@ -148,6 +148,8 @@ import { B272EndogenousGoalGenesis } from '../src/organism/cognition/B272Endogen
 import { B273AutonomousGoalLifecycle } from '../src/organism/cognition/B273AutonomousGoalLifecycle.ts';
 import { IntrinsicMotivationEngine } from '../src/organism/cognition/IntrinsicMotivationEngine.ts';
 import { IntrinsicMotivationGoalCoupling } from '../src/organism/cognition/IntrinsicMotivationGoalCoupling.ts';
+import { PlanEngine } from '../src/organism/world/PlanEngine.ts';
+import { WorldEnvironment } from '../src/organism/world/WorldEnvironment.ts';
 
 const endogenousCycle = {
   tick: 1,
@@ -304,4 +306,52 @@ test('core sends the same grounded world signal to B272 and B273 before goal adm
   assert.match(coreSource,
     /canonicalSelfAgencyAuthority\.admitGoal\(/,
     'world evidence must not bypass canonical self-agency goal admission');
+});
+test('PlanEngine bounds speculative horizon and confidence when grounded world evidence conflicts', () => {
+  const baseline = new PlanEngine(new WorldEnvironment()).build(null, 'explore', 4, 4);
+  const worldAware = new PlanEngine(new WorldEnvironment()).build(null, 'explore', 4, 4, worldConflictSignal);
+
+  assert.ok(worldAware.searchDepth < baseline.searchDepth,
+    'high world conflict must shorten speculative planning horizon');
+  assert.ok(worldAware.steps[0].confidence < baseline.steps[0].confidence,
+    'world conflict must lower confidence in predicted plan outcomes');
+  assert.equal(worldAware.worldEvidenceRevision, worldConflictSignal.revision,
+    'the plan must retain the source world revision for review');
+  assert.ok(worldAware.worldVerificationPressure01 >= .6,
+    'the plan must expose a bounded verification-pressure diagnostic');
+});
+
+test('budget fallback remains one-step and discounts confidence under world conflict', () => {
+  const baselineEnvironment = new WorldEnvironment();
+  const worldEnvironment = new WorldEnvironment();
+  const before = worldEnvironment.snapshot();
+  const baseline = new PlanEngine(baselineEnvironment).buildBudgetFallback(null, 'explore', 'test');
+  const worldAware = new PlanEngine(worldEnvironment).buildBudgetFallback(null, 'explore', 'test', worldConflictSignal);
+
+  assert.equal(worldAware.steps.length, 1);
+  assert.equal(worldAware.searchDepth, 1);
+  assert.equal(worldAware.beamWidth, 1);
+  assert.ok(worldAware.steps[0].confidence < baseline.steps[0].confidence,
+    'fallback must not present an uncertain world projection as high confidence');
+  assert.equal(worldAware.worldEvidenceRevision, worldConflictSignal.revision);
+  assert.deepEqual(worldEnvironment.snapshot(), before,
+    'world-aware fallback must remain a pure projection without committing the environment');
+});
+
+test('runtime passes one read-only world signal into both normal and budget-gated planning', () => {
+  const coreSource = readFileSync(new URL('../src/organism/core/OrganismCore.ts', import.meta.url), 'utf8');
+  const runtimeSource = readFileSync(new URL('../src/organism/core/OrganismRuntime.ts', import.meta.url), 'utf8');
+
+  assert.match(coreSource,
+    /worldCognitiveAttentionSignal\(\)\s*\{\s*return this\.worldSubsystem\.cognitiveAttentionSignal\(\);\s*\}/,
+    'Core must expose the canonical read-only world signal without a second world owner');
+  assert.match(runtimeSource,
+    /const worldPlanningSignal = this\.core\.worldCognitiveAttentionSignal\(\);/,
+    'the runtime must take one world evidence snapshot for the plan');
+  assert.match(runtimeSource,
+    /this\.plans\.build\([\s\S]{0,220}worldPlanningSignal/,
+    'normal beam planning must consume the world evidence snapshot');
+  assert.match(runtimeSource,
+    /this\.plans\.buildBudgetFallback\([\s\S]{0,220}worldPlanningSignal/,
+    'budget-gated fallback must consume the same world evidence snapshot');
 });

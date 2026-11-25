@@ -35,7 +35,7 @@ jobs:
           package-manager-cache: false
       - name: Run intrinsic motivation and endogenous goal coupling regressions
         run: node --experimental-strip-types runtime/neuro-kurisu/tests/intrinsic-motivation-goal-coupling.mjs
-      - name: World evidence to endogenous goal generation and lifecycle regressions
+      - name: World evidence to goals and planning regressions
         run: node --experimental-strip-types --test runtime/neuro-kurisu/tests/world-cognitive-signal-integration.test.mjs
       - name: Typecheck runtime
         working-directory: runtime/neuro-kurisu
