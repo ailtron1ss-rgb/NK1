@@ -42,3 +42,84 @@ try {
   await runtime.stop?.();
   await rm(dir, { recursive: true, force: true });
 }
+
+
+import { buildAndroidTelemetryObservation } from '../src/organism/body/AndroidTelemetryObservationAdapter.ts';
+
+const androidTelemetry = (overrides = {}) => ({
+  battery01: 0.72,
+  batteryTemperatureC: 34,
+  thermalPressure01: 0.28,
+  cpuLoad01: 0.31,
+  ramPressure01: 0.42,
+  networkOnline: true,
+  screenInteractive: true,
+  ambientLight01: 0.63,
+  proximity01: 0.2,
+  motion01: 0.74,
+  charging: false,
+  sampledAt: 2000,
+  source: 'android-termux',
+  staleMs: 0,
+  ...overrides,
+});
+
+const androidInput = (overrides = {}) => ({
+  telemetry: androidTelemetry(),
+  previousSampledAt: 1000,
+  requestedSensors: ['battery', 'thermal', 'motion', 'light', 'proximity', 'network'],
+  consentGranted: true,
+  sessionId: 'android-test-session',
+  ...overrides,
+});
+
+assert.deepEqual(
+  buildAndroidTelemetryObservation(androidInput()),
+  {
+    id: 'android-telemetry:2000',
+    sourceId: 'android-termux-primary',
+    sourceKind: 'android-telemetry',
+    modality: 'device',
+    capturedAt: 2000,
+    confidence01: 0.85,
+    reliability01: 0.65,
+    sessionId: 'android-test-session',
+    provenance: 'host-interface',
+    payload: {
+      subject: 'android-device-telemetry',
+      claim: 'battery=0.72;temperatureC=34;thermal=0.28;motion=0.74;light=0.63;proximity=0.2;network=online',
+      battery01: 0.72,
+      batteryTemperatureC: 34,
+      thermalPressure01: 0.28,
+      motion01: 0.74,
+      ambientLight01: 0.63,
+      proximity01: 0.2,
+      networkOnline: true,
+    },
+  },
+  'a fresh consented Android sample must become a bounded device observation',
+);
+
+for (const override of [
+  { consentGranted: false },
+  { telemetry: androidTelemetry({ source: 'simulated' }) },
+  { telemetry: androidTelemetry({ source: 'node-host' }) },
+  { telemetry: androidTelemetry({ staleMs: 1 }) },
+  { telemetry: androidTelemetry({ sampledAt: 1000 }) },
+  { requestedSensors: [] },
+]) {
+  assert.equal(buildAndroidTelemetryObservation(androidInput(override)), null,
+    'non-consented, simulated, stale, repeated and unrequested samples must not enter grounded world state');
+}
+
+runtime.core.setObservationConsent('device', true);
+const admittedAndroidSample = runtime.core.admitObservation(buildAndroidTelemetryObservation(androidInput()), { now: 2000 });
+assert.equal(admittedAndroidSample.status, 'accepted');
+assert.equal(admittedAndroidSample.observation?.isRealCapture, true);
+const groundedAndroidDevice = runtime.core.groundedWorldSnapshot().entities.find(
+  row => row.label === 'android-device-telemetry',
+);
+assert.equal(groundedAndroidDevice?.modalityEvidenceKinds.device, 'observed',
+  'Android host telemetry must reach GroundedWorldState only through the consented canonical gate');
+
+console.log('ANDROID_TELEMETRY_OBSERVATION_ADAPTER=PASS');
