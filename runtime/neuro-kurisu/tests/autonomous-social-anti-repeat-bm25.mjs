@@ -24,7 +24,9 @@ function deliver(engine, at, topic, message) {
   }]));
   assert.ok(planned.initiative, `expected an initiative for ${topic}`);
   assert.equal(engine.stageMessage(planned.initiative.id, message, at + 1), true);
-  assert.equal(engine.acknowledge(planned.initiative.id, at + 2), true);
+  assert.equal(engine.acknowledge(planned.initiative.id, at + 2), false, 'ACK requires an acquired delivery lease');
+  assert.equal(engine.claimReady(at + 2)?.id, planned.initiative.id);
+  assert.equal(engine.acknowledge(planned.initiative.id, at + 3), true);
 }
 
 const engine = new AutonomousSocialInitiativeEngine();
