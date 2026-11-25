@@ -6,7 +6,7 @@ const baseSnapshot = (entityOverrides = {}, snapshotOverrides = {}) => ({
   entities: [{
     id: 'entity-1', confidence01: 0.9, lastSeenAt: 99_000, observationCount: 3,
     modalities: ['vision'], modalityEvidenceKinds: { vision: 'observed' },
-    sourceIds: ['camera:front'], presenceStatus: 'visible', absenceEvidence01: 0,
+    sourceIds: ['camera:front'], modalitySourceIds: { vision: ['camera:front'] }, presenceStatus: 'visible', absenceEvidence01: 0,
     ...entityOverrides,
   }],
   ...snapshotOverrides,
@@ -27,9 +27,48 @@ testCase('model output is inferred evidence and never becomes observed evidence'
   assert.equal(signal.evidenceClass, 'inferred'); assert.ok(signal.evidenceConfidence01 > 0);
 });
 testCase('an observed label without source provenance is downgraded to unresolved', () => {
-  const signal = projectWorldCognitiveSignal({ snapshot: baseSnapshot({ sourceIds: [] }), at: 100_000 });
+  const signal = projectWorldCognitiveSignal({ snapshot: baseSnapshot({ sourceIds: [], modalitySourceIds: {} }), at: 100_000 });
   assert.equal(signal.evidenceClass, 'unknown'); assert.ok(signal.unresolved01 > 0.9); assert.equal(signal.evidenceConfidence01, 0);
 });
+testCase('aggregate or cross-modal source IDs cannot attest an observed modality', () => {
+  const aggregateOnly = projectWorldCognitiveSignal({
+    snapshot: baseSnapshot({ modalitySourceIds: {}, sourceIds: ['unbound-camera-source'] }),
+    at: 100_000,
+  });
+  const wrongModality = projectWorldCognitiveSignal({
+    snapshot: baseSnapshot({ modalitySourceIds: { audio: ['speaker:front'] } }),
+    at: 100_000,
+  });
+  assert.equal(aggregateOnly.evidenceClass, 'unknown');
+  assert.equal(aggregateOnly.evidenceConfidence01, 0);
+  assert.equal(wrongModality.evidenceClass, 'unknown');
+  assert.equal(wrongModality.evidenceConfidence01, 0);
+});
+
+testCase('opaque source ID counts do not create independent-corroboration confidence bonuses', () => {
+  const singleObservedSource = projectWorldCognitiveSignal({
+    snapshot: baseSnapshot({ modalitySourceIds: { vision: ['camera:front'] } }),
+    at: 100_000,
+  });
+  const multipleObservedSourceLabels = projectWorldCognitiveSignal({
+    snapshot: baseSnapshot({ modalitySourceIds: { vision: ['camera:front', 'claimed-independent:model-2', 'claimed-independent:cloud'] } }),
+    at: 100_000,
+  });
+  assert.equal(multipleObservedSourceLabels.evidenceConfidence01, singleObservedSource.evidenceConfidence01,
+    'opaque identifiers are provenance labels, not cryptographic proof of independent corroboration');
+
+  const singleModelSource = projectWorldCognitiveSignal({
+    snapshot: baseSnapshot({ modalityEvidenceKinds: { vision: 'model-output' }, modalitySourceIds: { vision: ['model:one'] } }),
+    at: 100_000,
+  });
+  const multipleModelSourceLabels = projectWorldCognitiveSignal({
+    snapshot: baseSnapshot({ modalityEvidenceKinds: { vision: 'model-output' }, modalitySourceIds: { vision: ['model:one', 'model:two'] } }),
+    at: 100_000,
+  });
+  assert.equal(multipleModelSourceLabels.evidenceConfidence01, singleModelSource.evidenceConfidence01,
+    'multiple caller-supplied model source IDs cannot increase confidence');
+});
+
 testCase('conflicting modalities remain explicit and increase epistemic uncertainty', () => {
   const signal = projectWorldCognitiveSignal({ snapshot: baseSnapshot({ modalityEvidenceKinds: { vision: 'observed', audio: 'conflict' } }), at: 100_000 });
   assert.equal(signal.evidenceClass, 'mixed'); assert.ok(signal.conflict01 > 0.2); assert.ok(signal.uncertainty01 > 0.2);
