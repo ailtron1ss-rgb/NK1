@@ -384,3 +384,166 @@ test('runtime sends rollout depth and branch budget to the correct Counterfactua
     'this.counterfactuals.imagine(plan.steps[0]?.environmentAction, Math.max(1, Math.min(4, plan.searchDepth)), resourceAllocation.maxCounterfactualBranches)'
   ), 'runtime must use plan depth as horizon and resourceAllocation.maxCounterfactualBranches as beam width');
 });
+
+
+const stableLifecycleInput = (tick, worldEvidence) => ({
+  tick,
+  endogenousGoalVector: [.65, .32, -.18, .12, .44, -.22, .16, .27],
+  selfLatent: new Array(16).fill(.10),
+  worldLatent: new Array(16).fill(.08),
+  neuralAssembly: new Array(16).fill(.04),
+  needs: {
+    energy01: .90, uncertainty01: .12, novelty01: .25, goalPressure01: .25,
+    socialNeed01: .15, autonomy01: .85, coherence01: .86,
+  },
+  traits: {
+    curiosity: .70, 'truth-seeking': .85, 'self-reflection': .70,
+    'self-preservation': .65, care: .55, persistence: .75,
+  },
+  predictionError01: .12,
+  identityContinuity01: .92,
+  autobiographicalContinuity01: .90,
+  availableActions: ['explore', 'verify', 'reflect', 'respond', 'rest', 'wait', 'defer'],
+  ...(worldEvidence ? { worldEvidence } : {}),
+});
+
+const positiveGoalOutcome = (step, tick, overrides = {}) => ({
+  tick,
+  goalId: step.goalId,
+  action: step.action,
+  plannedAction: step.action,
+  plan: step.plan,
+  outcomeId: `goal-outcome:${tick}:${step.goalId}:${step.action}`,
+  reward01: .92,
+  predictionError01: .08,
+  independentGain01: .35,
+  personalityAlignment01: .80,
+  externalEvidence01: 0,
+  ...overrides,
+});
+
+test('B273 credits a multi-step skill only after every planned action has a matching outcome', () => {
+  const lifecycle = new B273AutonomousGoalLifecycle();
+  const first = lifecycle.step(stableLifecycleInput(1));
+  assert.ok(first.plan.length >= 2, 'fixture must produce a multi-step plan');
+
+  const firstOutcome = lifecycle.learnFromOutcome(positiveGoalOutcome(first, 1));
+  assert.equal(firstOutcome.skillCreated, false,
+    'one successful first step must not certify the unexecuted remainder of a plan');
+  assert.equal(lifecycle.snapshot().skills.length, 0);
+  assert.equal(lifecycle.snapshot().planExecution.nextIndex, 1);
+
+  const afterFirstStep = lifecycle.snapshot();
+  const restored = new B273AutonomousGoalLifecycle();
+  restored.restore(afterFirstStep);
+  assert.deepEqual(restored.snapshot().planExecution, afterFirstStep.planExecution,
+    'an in-flight plan execution must survive restart');
+
+  let next = restored.step(stableLifecycleInput(2));
+  assert.equal(next.goalId, first.goalId, 'the same active goal should retain its plan execution');
+  assert.deepEqual(next.plan, first.plan.slice(1),
+    'the next cycle must execute the remaining suffix, not restart or replace the plan');
+
+  let tick = 2;
+  while (restored.snapshot().planExecution && tick < 8) {
+    const result = restored.learnFromOutcome(positiveGoalOutcome(next, tick));
+    if (restored.snapshot().planExecution === null) {
+      assert.equal(result.skillCreated, true,
+        'a fully executed and positively evaluated plan may become a skill');
+      break;
+    }
+    tick += 1;
+    next = restored.step(stableLifecycleInput(tick));
+  }
+
+  const completed = restored.snapshot();
+  assert.equal(completed.planExecution, null);
+  assert.equal(completed.completedPlanRuns, 1);
+  assert.equal(completed.skills.length, 1);
+  assert.deepEqual(completed.skills[0].actions, first.plan,
+    'learned skill must contain only the exact, fully executed action sequence');
+});
+
+test('B273 rejects off-plan actions without positive goal or skill credit', () => {
+  const lifecycle = new B273AutonomousGoalLifecycle();
+  const step = lifecycle.step(stableLifecycleInput(10));
+  const wrongAction = ['respond', 'explore', 'verify', 'rest', 'reflect', 'wait', 'defer']
+    .find(action => action !== step.action);
+  const before = lifecycle.snapshot();
+  const result = lifecycle.learnFromOutcome(positiveGoalOutcome(step, 10, {
+    action: wrongAction,
+    outcomeId: `off-plan:10:${step.goalId}`,
+  }));
+  const after = lifecycle.snapshot();
+
+  assert.equal(result.offPlan, true);
+  assert.equal(after.learningUpdates, before.learningUpdates);
+  assert.equal(after.goals.find(g => g.id === step.goalId).progress01,
+    before.goals.find(g => g.id === step.goalId).progress01);
+  assert.equal(after.skills.length, 0);
+  assert.equal(after.offPlanOutcomes, before.offPlanOutcomes + 1);
+  assert.equal(after.planExecution, null);
+});
+
+test('B273 outcome credit is idempotent for duplicate outcome IDs and ticks', () => {
+  const lifecycle = new B273AutonomousGoalLifecycle();
+  const step = lifecycle.step(stableLifecycleInput(20));
+  const outcome = positiveGoalOutcome(step, 20);
+  const accepted = lifecycle.learnFromOutcome(outcome);
+  const afterAccepted = lifecycle.snapshot();
+  const duplicate = lifecycle.learnFromOutcome(outcome);
+  const afterDuplicate = lifecycle.snapshot();
+
+  assert.equal(accepted.duplicate, false);
+  assert.equal(duplicate.duplicate, true);
+  assert.equal(afterDuplicate.learningUpdates, afterAccepted.learningUpdates);
+  assert.equal(afterDuplicate.outcomeHistory.length, afterAccepted.outcomeHistory.length);
+  assert.equal(afterDuplicate.goals.find(g => g.id === step.goalId).progress01,
+    afterAccepted.goals.find(g => g.id === step.goalId).progress01);
+  assert.equal(afterDuplicate.duplicateOutcomes, afterAccepted.duplicateOutcomes + 1);
+});
+
+test('B273 rejects outcomes belonging to a different goal', () => {
+  const lifecycle = new B273AutonomousGoalLifecycle();
+  const step = lifecycle.step(stableLifecycleInput(30));
+  const before = lifecycle.snapshot();
+  const result = lifecycle.learnFromOutcome(positiveGoalOutcome(step, 30, {
+    goalId: 'foreign-goal',
+    outcomeId: 'foreign-goal-outcome',
+  }));
+  const after = lifecycle.snapshot();
+
+  assert.equal(result.rejected, true);
+  assert.equal(after.learningUpdates, before.learningUpdates);
+  assert.equal(after.goals.find(g => g.id === step.goalId).progress01,
+    before.goals.find(g => g.id === step.goalId).progress01);
+  assert.equal(after.offPlanOutcomes, before.offPlanOutcomes);
+});
+
+test('B273 aborts an in-flight plan when new world evidence makes verification urgent', () => {
+  const lifecycle = new B273AutonomousGoalLifecycle();
+  const first = lifecycle.step(stableLifecycleInput(40));
+  lifecycle.learnFromOutcome(positiveGoalOutcome(first, 40));
+  const pending = lifecycle.snapshot().planExecution;
+  assert.ok(pending);
+
+  const conflicted = lifecycle.step(stableLifecycleInput(41, worldConflictSignal));
+  const current = lifecycle.snapshot();
+
+  assert.equal(current.planExecution.nextIndex, 0,
+    'a high-conflict world update must discard the stale plan suffix');
+  assert.equal(conflicted.action, 'verify',
+    'high world conflict should make verification the first step of the replacement plan');
+  assert.notDeepEqual(conflicted.plan, pending.actions.slice(pending.nextIndex));
+});
+
+test('core binds B273 goal outcome credit to the admitted goal and selected action', () => {
+  const coreSource = readFileSync(new URL('../src/organism/core/OrganismCore.ts', import.meta.url), 'utf8');
+
+  assert.match(coreSource,
+    /autonomousGoalLifecycleB273\.learnFromOutcome\(\{[\s\S]*?goalId:\s*b273Current\.goal\?\.id[\s\S]*?plannedAction:\s*b273Current\.action[\s\S]*?outcomeId:/,
+    'real runtime goal learning must carry goal identity, planned action and idempotent outcome key');
+  assert.match(coreSource,
+    /autonomousGoalLifecycleB273\.learnFromOutcome\(\{[\s\S]*?goalId:\s*b338Lifecycle\.goal\?\.id[\s\S]*?plannedAction:\s*b338Lifecycle\.action[\s\S]*?outcomeId:/,
+    'embodied outcome learning must use the same exact-goal attribution contract');
+});
