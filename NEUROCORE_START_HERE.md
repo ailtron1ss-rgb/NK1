@@ -21,6 +21,7 @@
 | [#1173](https://github.com/ailtron1ss-rgb/NK1/pull/1173) | `b7b6a6d76141010677af36a8a8453fe7a3b52b86` | 95/95 SUCCESS | Draft; visual/avatar-device validation and review |
 | [#1174](https://github.com/ailtron1ss-rgb/NK1/pull/1174) | `e1f83557bc8f5e7d9b304f943f8fce8d9c9b6192` | 76/76 SUCCESS, 0 failures, 0 pending | Independent review, semantic runtime TSC and real device power-loss soak |
 | [#1170](https://github.com/ailtron1ss-rgb/NK1/pull/1170) | `bdcad2c34a5dd9ffa0443c4cca8b56d989cc43e6` | 83/83 Actions SUCCESS | Independent review; semantic TSC check and Android/Termux soak |
+| [#1185](https://github.com/ailtron1ss-rgb/NK1/pull/1185) | `651a3c92dae4e1b71d7dde69dedaa34999482a84` | 14/14 Actions SUCCESS | Draft; candidate workspace only (`materialized`, not executed); host admission adapter and OS-level isolation remain future gates |
 
 ## Key outcomes
 
@@ -42,7 +43,7 @@
 
 The latest October 19 ZIP remains the only verified published artifact by metadata. ZIP bytes, extraction manifest and source parity remain UNVERIFIED; human license review and redistribution approval remain blocking. November source/PR changes are not RELEASED.
 
-**Current cycle note:** this handoff was refreshed on 2026-11-25. The prior 2026-11-24 checkpoint remains below as historical context.
+**Current cycle note:** this handoff was refreshed on 2026-11-25. The current daily engineering report is [docs/NK1_DAILY_ENGINEERING_CYCLE_2026-11-25.md](docs/NK1_DAILY_ENGINEERING_CYCLE_2026-11-25.md). The prior 2026-11-24 checkpoint remains below as historical context.
 ---
 # ARCHIVED HANDOFF — 2026-11-24
 
