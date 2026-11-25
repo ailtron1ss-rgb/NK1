@@ -149,6 +149,7 @@ import { B273AutonomousGoalLifecycle } from '../src/organism/cognition/B273Auton
 import { IntrinsicMotivationEngine } from '../src/organism/cognition/IntrinsicMotivationEngine.ts';
 import { IntrinsicMotivationGoalCoupling } from '../src/organism/cognition/IntrinsicMotivationGoalCoupling.ts';
 import { PlanEngine } from '../src/organism/world/PlanEngine.ts';
+import { CounterfactualEngine } from '../src/organism/world/CounterfactualEngine.ts';
 import { WorldEnvironment } from '../src/organism/world/WorldEnvironment.ts';
 
 const endogenousCycle = {
@@ -354,4 +355,32 @@ test('runtime passes one read-only world signal into both normal and budget-gate
   assert.match(runtimeSource,
     /this\.plans\.buildBudgetFallback\([\s\S]{0,220}worldPlanningSignal/,
     'budget-gated fallback must consume the same world evidence snapshot');
+});
+test('counterfactual rollout respects zero and one-branch resource limits', () => {
+  const environment = new WorldEnvironment();
+  const engine = new CounterfactualEngine(environment);
+  const before = environment.snapshot();
+
+  const none = engine.imagine('inspect', 2, 0);
+  const one = engine.imagine('inspect', 2, 1);
+  const three = engine.imagine('inspect', 2, 3);
+
+  assert.equal(none.length, 0,
+    'a zero counterfactual branch budget must not be raised to a hidden minimum');
+  assert.equal(one.length, 1,
+    'a one-branch budget must not silently create two or more paths');
+  assert.ok(three.length <= 3,
+    'counterfactual output must never exceed the requested branch width');
+  assert.ok(one[0].actions.length <= 2,
+    'the planning horizon must remain separate from the branch-count budget');
+  assert.deepEqual(environment.snapshot(), before,
+    'counterfactual search must remain a pure shadow projection');
+});
+
+test('runtime sends rollout depth and branch budget to the correct CounterfactualEngine arguments', () => {
+  const runtimeSource = readFileSync(new URL('../src/organism/core/OrganismRuntime.ts', import.meta.url), 'utf8');
+
+  assert.ok(runtimeSource.includes(
+    'this.counterfactuals.imagine(plan.steps[0]?.environmentAction, Math.max(1, Math.min(4, plan.searchDepth)), resourceAllocation.maxCounterfactualBranches)'
+  ), 'runtime must use plan depth as horizon and resourceAllocation.maxCounterfactualBranches as beam width');
 });
