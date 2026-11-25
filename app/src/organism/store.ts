@@ -93,7 +93,7 @@ export const useKurisu = create<KurisuStore>((set, get) => ({
       lastInitiativePollAt = now;
       const pending = await neuroApi.proactiveMessage();
       const initiative = pending.initiative;
-      if (!initiative?.id || !initiative.message?.trim()) return;
+      if (!initiative?.id || !initiative.message?.trim() || !initiative.deliveryToken) return;
       const existing = get().snap.chat;
       const turnId = `ui-initiative-${initiative.id}`;
       const chat = existing.some(turn => turn.id === turnId)
@@ -118,7 +118,7 @@ export const useKurisu = create<KurisuStore>((set, get) => ({
       await persistChatBeforeAcknowledge(
         storage,
         chat,
-        () => neuroApi.ackProactiveMessage(initiative.id),
+        () => neuroApi.ackProactiveMessage(initiative.id, initiative.deliveryToken),
       );
     } catch (error) {
       set({ error: error instanceof Error ? error.message : String(error) });
