@@ -6,7 +6,7 @@ import { toOrganismSnapshot } from "@/neuro-kurisu/normalize";
 import { readAvatarPreference, writeAvatarPreference } from "@/legacy/avatar/safeLocalStorage";
 import { shouldApplyUiSnapshot, type UiSnapshotStamp } from "./snapshotSync";
 import { withChatDeliveryStatus } from "./chatDelivery";
-import { parseVoiceListenResponse, readRuntimeListening } from "./voiceInteraction";
+import { parseVoiceListenResponse, readRuntimeListening, resolveVoiceStop } from "./voiceInteraction";
 import { snapshotPollDelayMs } from "./pollingSchedule";
 import { recoverPendingChatTurns } from "./chatRecovery";
 
@@ -252,21 +252,15 @@ export const useKurisu = create<KurisuStore>((set, get) => {
         const interruption = await neuroApi.voiceInterrupt("ui-microphone-stop");
         const snapshot = await neuroApi.voiceStatus().catch(() => null);
         const listening = readRuntimeListening(snapshot);
-        if (listening === false) {
-          set({ voiceInputStatus: "idle", voiceInputError: null });
-          return true;
-        }
         const requested = Boolean(interruption && typeof interruption === "object"
           && (interruption as Record<string, unknown>).interruptionRequested === true);
-        set({
-          voiceInputStatus: "stop-unconfirmed",
-          voiceInputError: requested
-            ? "Stop requested; the runtime has not confirmed microphone capture release."
-            : "The runtime could not confirm that microphone capture stopped.",
-        });
-        return false;
+        const resolution = resolveVoiceStop(listening, requested);
+        set({ voiceInputStatus: resolution.status, voiceInputError: resolution.reason });
+        return resolution.confirmed;
       } catch (error) {
-        set({ voiceInputStatus: "error", voiceInputError: errorMessage(error) });
+        // The stop request may have reached Android even when the response was lost.
+        // Do not unlock another capture until the runtime explicitly confirms idle.
+        set({ voiceInputStatus: "stop-unconfirmed", voiceInputError: errorMessage(error) });
         return false;
       }
     },
