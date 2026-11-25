@@ -1061,16 +1061,19 @@ async function route(req, res) {
             }
             const socialEvidence = snapshot.facets?.advanced?.socialMind?.evidence;
             const latestAvatarContact = Array.isArray(socialEvidence)
-                ? socialEvidence.find((item) => {
+                ? socialEvidence.reduce((latest, item) => {
                     const claim = String(item?.claim ?? '');
-                    return (claim === 'user-action:avatar-contact-head' || claim === 'user-action:avatar-contact-body')
+                    const isFreshContact = (claim === 'user-action:avatar-contact-head' || claim === 'user-action:avatar-contact-body')
                         && item?.source === 'interaction'
                         && item?.evidenceKind === 'observed'
                         && Number.isFinite(item?.observedAt)
                         && avatarNow >= Number(item.observedAt)
                         && avatarNow - Number(item.observedAt) <= 3200
                         && typeof item?.id === 'string';
-                })
+                    return isFreshContact && (!latest || Number(item.observedAt) > Number(latest.observedAt))
+                        ? item
+                        : latest;
+                }, null)
                 : null;
             const avatarInteraction = latestAvatarContact ? {
                 schemaVersion: 1,
