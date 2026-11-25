@@ -303,6 +303,17 @@ export class GroundedWorldState {
     const normalizeEvidence=(value:unknown):'observed'|'model-output'|'derived'|'conflict'|'unresolved'=>{
       return value==='observed'||value==='model-output'||value==='derived'||value==='conflict'||value==='unresolved'?value:'unresolved';
     };
+    // An aggregate may be no more certain than its least-certain modality.
+    // Keep per-modality provenance intact; expose a conservative summary only.
+    const aggregateEvidence=(values:unknown[]):'observed'|'model-output'|'derived'|'conflict'|'unresolved'=>{
+      const kinds=values.map(normalizeEvidence);
+      return kinds.includes('conflict')?'conflict'
+        :kinds.includes('unresolved')?'unresolved'
+        :kinds.includes('model-output')?'model-output'
+        :kinds.includes('derived')?'derived'
+        :kinds.includes('observed')?'observed'
+        :'unresolved';
+    };
     const trackTokens=(entity:Pick<GroundedEntity,'id'|'trackId'|'trackAliases'>):string[]=>{
       const values:string[]=[];
       if(entity.id)values.push('id:'+entity.id);
@@ -417,7 +428,7 @@ export class GroundedWorldState {
       const evidenceKinds:Record<string,'observed'|'model-output'|'derived'|'conflict'|'unresolved'>={};
       for(const modality of x.modalities)evidenceKinds[modality]=normalizeEvidence(x.modalityEvidenceKinds?.[modality]);
       const allKinds=Object.values(evidenceKinds);
-      const evidenceKind: 'observed'|'model-output'|'derived'|'conflict'|'unresolved'=allKinds.includes('conflict')?'conflict':allKinds.includes('observed')?'observed':allKinds.includes('model-output')?'model-output':allKinds.includes('derived')?'derived':'unresolved';
+      const evidenceKind=aggregateEvidence(allKinds);
       const incoming:GroundedEntity={
         id:x.id,label:norm(x.label)||'unknown',kind:x.kind,
         confidence01:clamp(x.confidence01),present01:clamp(x.present01),
@@ -483,7 +494,7 @@ export class GroundedWorldState {
     for(const x of (p?.events??[]).slice(0,64)){
       const modalityEvidenceKinds={...(x.modalityEvidenceKinds??{})};
       const allEventKinds=Object.values(modalityEvidenceKinds).map(normalizeEvidence);
-      const evidenceKind: 'observed'|'model-output'|'derived'|'conflict'|'unresolved'=allEventKinds.includes('conflict')?'conflict':allEventKinds.includes('observed')?'observed':allEventKinds.includes('model-output')?'model-output':allEventKinds.includes('derived')?'derived':normalizeEvidence(x.evidenceKind);
+      const evidenceKind=aggregateEvidence(allEventKinds.length?allEventKinds:[x.evidenceKind]);
       const old=eventRows.get(x.id);
       eventRows.set(x.id,old?{
         ...old,label:norm(x.label),
@@ -527,7 +538,7 @@ export class GroundedWorldState {
       uncertainty,facts,
       objects:entities.filter(x=>x.kind!=='event'&&x.kind!=='concept').slice(0,64).map(x=>{
         const evidenceKinds=Object.values(x.modalityEvidenceKinds??{}).map(normalizeEvidence);
-        const canonicalKind: 'observed'|'model-output'|'derived'|'conflict'|'unresolved'=evidenceKinds.includes('conflict')?'conflict':evidenceKinds.includes('observed')?'observed':evidenceKinds.includes('model-output')?'model-output':evidenceKinds.includes('derived')?'derived':'unresolved';
+        const canonicalKind=aggregateEvidence(evidenceKinds);
         return {
           id:x.id,label:x.label,location,
           value:x.valueKnown&&Number.isFinite(x.value)?Number(x.value):0,
