@@ -92,7 +92,7 @@ restored.restore({
     trackId: '  ', trackAliases: ['ok', 7],
     position: { x: Number.NaN, y: 0, z: 0 },
     velocity: { x: Number.POSITIVE_INFINITY, y: 0, z: 0 },
-    sourceIds: ['camera-1', '', 7],
+    sourceIds: ['camera-1', 'vision', 'world', '', 7],
     modalityEvidenceKinds: { vision: 'observed' },
     presenceStatus: 'visible', persistence01: 4,
     absenceEvidence01: -1, observationCount: Number.POSITIVE_INFINITY,
@@ -130,6 +130,8 @@ assert.deepEqual(safe.entities[0].modalities, ['vision']);
 assert.equal(safe.entities[0].position, null);
 assert.equal(safe.entities[0].velocity, null);
 assert.deepEqual(safe.entities[0].sourceIds, ['camera-1']);
+assert.ok(!safe.entities[0].sourceIds.some(id => ['vision', 'world', 'audio', 'sensor', 'text'].includes(id)),
+  'legacy modality labels must be removed from restored source identity');
 assert.equal(safe.entities[0].observationCount, 1);
 assert.equal(safe.entities[0].persistence01, 0,
   'out-of-range persisted persistence must not be upgraded to full permanence');
