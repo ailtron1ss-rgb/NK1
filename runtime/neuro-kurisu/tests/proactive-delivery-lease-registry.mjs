@@ -61,4 +61,18 @@ import { ProactiveDeliveryLeaseRegistry } from "../src/server/proactive-delivery
     "revoking consent must invalidate in-flight delivery tokens");
 }
 
+
+{
+  const leases = new ProactiveDeliveryLeaseRegistry();
+  assert.equal(leases.issue("soc:same-attempt", 1, 10_000, "first-token-0000000001", 1),
+    "first-token-0000000001");
+  assert.equal(leases.issue("soc:same-attempt", 1, 10_000, "second-token-00000002", 2), null,
+    "an active attempt cannot be assigned a replacement receipt token");
+  assert.equal(leases.issue("soc:same-attempt", 2, 20_000, "retry-token-0000000001", 2),
+    "retry-token-0000000001",
+    "only a monotonically newer engine attempt may replace the current token");
+  assert.equal(leases.matches("soc:same-attempt", "first-token-0000000001", 3), false);
+  assert.equal(leases.matches("soc:same-attempt", "retry-token-0000000001", 3), true);
+}
+
 console.log("PROACTIVE_DELIVERY_LEASE_REGISTRY=PASS");
