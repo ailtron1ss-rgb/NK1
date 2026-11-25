@@ -113,9 +113,8 @@ assert.equal(lateRow?.proofClass,'none');
 const world=new GroundedWorldState();
 const before=world.snapshot();
 const telemetryRow=world.integrateExternalOutcome({
-  at:telemetry.at,action:'explore',status:'executed',proofClass:'device-telemetry',
-  verified01:0,independent01:0,evidence01:0,consequence01:0,
-  claim:'fresh device telemetry only',provenanceId:`telemetry:${telemetry.executionId}`,divergence01:.42,
+  result:telemetry,
+  verification:telemetryVerification,
 });
 const after=world.snapshot();
 assert.equal(telemetryRow.verified01,0);
@@ -126,9 +125,8 @@ assert.ok(after.events.some(x=>x.id===telemetryRow.eventId && x.label.startsWith
 const receiptWorld=new GroundedWorldState();
 const receiptBefore=receiptWorld.snapshot();
 const receiptRow=receiptWorld.integrateExternalOutcome({
-  at:receipt.at,action:'respond',status:'executed',proofClass:'stable-device-receipt',
-  verified01:0,independent01:0,evidence01:.26,consequence01:.18,
-  claim:'command accepted; effect unverified',provenanceId:`receipt:${receipt.executionId}`,divergence01:.7,
+  result:receipt,
+  verification:receiptVerification,
 });
 const receiptAfter=receiptWorld.snapshot();
 assert.deepEqual(receiptAfter.facts,receiptBefore.facts);
