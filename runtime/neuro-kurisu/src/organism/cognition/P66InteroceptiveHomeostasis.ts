@@ -9,6 +9,26 @@
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
 const finiteAt=(x:unknown):x is number=>typeof x==='number'&&Number.isFinite(x)&&x>=0;
 const counter=(x:unknown)=>typeof x==='number'&&Number.isSafeInteger(x)&&x>=0?x:0;
+const P66_MODES=['recover','protect','balance','engage','explore'] as const;
+const isMode=(x:unknown):x is P66Mode=>typeof x==='string'&&(P66_MODES as readonly string[]).includes(x);
+const P66_SOURCES=['body-telemetry','cognitive-cycle','unspecified'] as const;
+const isSource=(x:unknown):x is P66ObservationSource=>typeof x==='string'&&(P66_SOURCES as readonly string[]).includes(x);
+const boundedOr=(x:unknown,fallback:number)=>typeof x==='number'&&Number.isFinite(x)?clamp(x):fallback;
+/** Copy only own data properties; a corrupt persisted object must not execute accessors. */
+const ownRecord=(value:unknown):Record<string,unknown>|null=>{
+  if(value===null||typeof value!=='object'||Array.isArray(value))return null;
+  try{
+    const prototype=Object.getPrototypeOf(value);
+    if(prototype!==Object.prototype&&prototype!==null)return null;
+    const descriptors=Object.getOwnPropertyDescriptors(value);
+    const result:Record<string,unknown>=Object.create(null);
+    for(const [key,descriptor] of Object.entries(descriptors)){
+      if(!('value' in descriptor))return null;
+      result[key]=descriptor.value;
+    }
+    return result;
+  }catch{return null;}
+};
 const timeAlpha=(elapsedMs:number,tauMs:number)=>1-Math.exp(-Math.max(0,elapsedMs)/tauMs);
 const MAX_ELAPSED_MS=24*60*60_000;
 const MAX_STABLE_GAP_MS=60_000;
@@ -18,7 +38,7 @@ type P66HistoryRow={at:number;tick:number;error01:number;stress01:number;mode:P6
 export interface P66State {
   version:1;cycles:number;modeCounts:Record<P66Mode,number>;meanError01:number;meanStress01:number;
   meanCapacity01:number;lastCapacity01:number;lastError01:number;lastStress01:number;lastPressure01:number;recoveryDebt01:number;stableCycles:number;stableDurationMs:number;lastMode:P66Mode;lastAt:number;
-  bodyTelemetryObservations:number;cognitiveObservations:number;duplicateObservations:number;outOfOrderObservations:number;invalidTimestampObservations:number;
+  bodyTelemetryObservations:number;cognitiveObservations:number;duplicateObservations:number;outOfOrderObservations:number;invalidTimestampObservations:number;invalidValueObservations:number;
   setpoints:{energy01:number;thermal01:number;capacity01:number;load01:number;awake01:number};
   history:P66HistoryRow[];
 }
@@ -26,37 +46,68 @@ export const defaultP66=():P66State=>({
   version:1,cycles:0,modeCounts:{recover:0,protect:0,balance:0,engage:0,explore:0},
   meanError01:.3,meanStress01:.25,meanCapacity01:.7,lastCapacity01:.7,lastError01:.3,lastStress01:.25,
   lastPressure01:.3,recoveryDebt01:.18,stableCycles:0,stableDurationMs:0,lastMode:'balance',lastAt:0,
-  bodyTelemetryObservations:0,cognitiveObservations:0,duplicateObservations:0,outOfOrderObservations:0,invalidTimestampObservations:0,
+  bodyTelemetryObservations:0,cognitiveObservations:0,duplicateObservations:0,outOfOrderObservations:0,invalidTimestampObservations:0,invalidValueObservations:0,
   setpoints:{energy01:.68,thermal01:.25,capacity01:.72,load01:.38,awake01:1},history:[],
 });
 export class P66InteroceptiveHomeostasis {
   private state=defaultP66();
 
   restore(raw?:Partial<P66State>|null){
-    const d=defaultP66(),r=raw??{};
+    const d=defaultP66(),r=ownRecord(raw)??{};
     const now=Date.now();
-    const validTimebase=finiteAt(r.lastAt)&&r.lastAt<=now+250;
-    const history=validTimebase&&Array.isArray(r.history)
-      ? r.history.slice(0,128).filter(row=>row&&finiteAt(row.at)&&row.at<=now+250&&Number.isSafeInteger(row.tick)&&row.tick>=0)
-      : [];
+    const validTimebase=finiteAt(r.lastAt)&&Number(r.lastAt)<=now+250;
+    const rawCounts=ownRecord(r.modeCounts)??Object.create(null);
+    const modeCounts:Record<P66Mode,number>={...d.modeCounts};
+    for(const mode of P66_MODES) modeCounts[mode]=counter(rawCounts[mode]);
+    const rawSetpoints=ownRecord(r.setpoints)??Object.create(null);
+    const setpoints={
+      energy01:boundedOr(rawSetpoints.energy01,d.setpoints.energy01),
+      thermal01:boundedOr(rawSetpoints.thermal01,d.setpoints.thermal01),
+      capacity01:boundedOr(rawSetpoints.capacity01,d.setpoints.capacity01),
+      load01:boundedOr(rawSetpoints.load01,d.setpoints.load01),
+      awake01:boundedOr(rawSetpoints.awake01,d.setpoints.awake01),
+    };
+    const history:P66HistoryRow[]=[];
+    if(validTimebase&&Array.isArray(r.history)){
+      for(const item of r.history.slice(0,128)){
+        const row=ownRecord(item);
+        if(!row||!finiteAt(row.at)||Number(row.at)>now+250||!Number.isSafeInteger(row.tick)||Number(row.tick)<0||!isMode(row.mode))continue;
+        const values=[row.error01,row.stress01,row.energy01,row.thermal01,row.capacity01];
+        if(!values.every(value=>typeof value==='number'&&Number.isFinite(value)))continue;
+        const source=isSource(row.source)?row.source:'unspecified';
+        const sampleId=typeof row.sampleId==='string'&&row.sampleId.length>0&&row.sampleId.length<=180?row.sampleId:undefined;
+        history.push({
+          at:Number(row.at),tick:Number(row.tick),error01:clamp(row.error01 as number),
+          stress01:clamp(row.stress01 as number),mode:row.mode,
+          energy01:clamp(row.energy01 as number),thermal01:clamp(row.thermal01 as number),
+          capacity01:clamp(row.capacity01 as number),source,...(sampleId?{sampleId}:{})
+        });
+      }
+    }
     this.state={
-      ...d,...r,
-      // A corrupt/future clock starts a fresh temporal segment, but does not
-      // erase slow regulator state such as learned setpoints or recovery debt.
+      version:1,
       cycles:validTimebase?counter(r.cycles):0,
-      modeCounts:{...d.modeCounts,...(r.modeCounts??{})},
-      setpoints:{...d.setpoints,...(r.setpoints??{})},
-      history,
-      lastAt:validTimebase?Number(r.lastAt):0,
-      lastPressure01:clamp(Number(r.lastPressure01??d.lastPressure01)),
-      recoveryDebt01:clamp(Number(r.recoveryDebt01??d.recoveryDebt01)),
+      modeCounts,
+      meanError01:boundedOr(r.meanError01,d.meanError01),
+      meanStress01:boundedOr(r.meanStress01,d.meanStress01),
+      meanCapacity01:boundedOr(r.meanCapacity01,d.meanCapacity01),
+      lastCapacity01:boundedOr(r.lastCapacity01,d.lastCapacity01),
+      lastError01:boundedOr(r.lastError01,d.lastError01),
+      lastStress01:boundedOr(r.lastStress01,d.lastStress01),
+      lastPressure01:boundedOr(r.lastPressure01,d.lastPressure01),
+      recoveryDebt01:boundedOr(r.recoveryDebt01,d.recoveryDebt01),
       stableCycles:validTimebase?counter(r.stableCycles):0,
       stableDurationMs:validTimebase?counter(r.stableDurationMs):0,
+      lastMode:isMode(r.lastMode)?r.lastMode:d.lastMode,
+      lastAt:validTimebase?Number(r.lastAt):0,
       bodyTelemetryObservations:counter(r.bodyTelemetryObservations),
       cognitiveObservations:counter(r.cognitiveObservations),
       duplicateObservations:counter(r.duplicateObservations),
       outOfOrderObservations:counter(r.outOfOrderObservations),
       invalidTimestampObservations:counter(r.invalidTimestampObservations),
+      invalidValueObservations:counter(r.invalidValueObservations),
+      setpoints,
+      history,
     };
   }
 
@@ -78,6 +129,12 @@ export class P66InteroceptiveHomeostasis {
     }
     if(this.state.cycles>0&&input.at<this.state.lastAt){
       this.state.outOfOrderObservations=Math.min(Number.MAX_SAFE_INTEGER,this.state.outOfOrderObservations+1);
+      return this.currentResult();
+    }
+    const numericInputs=[input.tick,input.energy01,input.thermal01,input.capacity01,input.load01,input.uncertainty01,input.predictionError01,input.novelty01];
+    if(!Number.isSafeInteger(input.tick)||input.tick<0||typeof input.awake!=='boolean'||
+       !numericInputs.every(value=>typeof value==='number'&&Number.isFinite(value))){
+      this.state.invalidValueObservations=Math.min(Number.MAX_SAFE_INTEGER,this.state.invalidValueObservations+1);
       return this.currentResult();
     }
 
@@ -152,5 +209,5 @@ export class P66InteroceptiveHomeostasis {
   private currentResult(){
     return {mode:this.state.lastMode,error01:this.state.lastError01,stress01:this.state.lastStress01,capacity01:this.state.lastCapacity01,pressure01:this.state.lastPressure01};
   }
-  summary(){return {cycles:this.state.cycles,modeCounts:this.state.modeCounts,meanError01:this.state.meanError01,meanStress01:this.state.meanStress01,meanCapacity01:this.state.meanCapacity01,lastError01:this.state.lastError01,lastStress01:this.state.lastStress01,lastPressure01:this.state.lastPressure01,recoveryDebt01:this.state.recoveryDebt01,stableCycles:this.state.stableCycles,stableDurationMs:this.state.stableDurationMs,bodyTelemetryObservations:this.state.bodyTelemetryObservations,cognitiveObservations:this.state.cognitiveObservations,duplicateObservations:this.state.duplicateObservations,outOfOrderObservations:this.state.outOfOrderObservations,invalidTimestampObservations:this.state.invalidTimestampObservations,lastMode:this.state.lastMode,setpoints:this.state.setpoints};}
+  summary(){return {cycles:this.state.cycles,modeCounts:this.state.modeCounts,meanError01:this.state.meanError01,meanStress01:this.state.meanStress01,meanCapacity01:this.state.meanCapacity01,lastError01:this.state.lastError01,lastStress01:this.state.lastStress01,lastPressure01:this.state.lastPressure01,recoveryDebt01:this.state.recoveryDebt01,stableCycles:this.state.stableCycles,stableDurationMs:this.state.stableDurationMs,bodyTelemetryObservations:this.state.bodyTelemetryObservations,cognitiveObservations:this.state.cognitiveObservations,duplicateObservations:this.state.duplicateObservations,outOfOrderObservations:this.state.outOfOrderObservations,invalidTimestampObservations:this.state.invalidTimestampObservations,invalidValueObservations:this.state.invalidValueObservations,lastMode:this.state.lastMode,setpoints:this.state.setpoints};}
 }

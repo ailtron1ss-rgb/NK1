@@ -52,6 +52,25 @@ sample(dedup, Date.now() + 60_000, 'cognitive-cycle', 'future:clock-skew');
 assert.equal(dedup.snapshot().cycles, beforeFuture.cycles, 'far-future timestamp must not poison persisted homeostasis');
 assert.equal(dedup.snapshot().invalidTimestampObservations, 1);
 
+// Invalid sensor values must not be interpreted as extreme physiology.
+const invalidSensor = new P66InteroceptiveHomeostasis();
+const validSensor = {
+  tick: 1, at: 1_000, energy01: .7, thermal01: .2, capacity01: .8, load01: .2,
+  awake: true, uncertainty01: .1, predictionError01: .1, novelty01: .2,
+  source: 'body-telemetry', sampleId: 'sensor:1000',
+};
+invalidSensor.observe({ ...validSensor, energy01: Number.NaN });
+assert.equal(invalidSensor.snapshot().cycles, 0, 'NaN energy must not be interpreted as empty energy');
+assert.equal(invalidSensor.snapshot().invalidValueObservations, 1);
+invalidSensor.observe({ ...validSensor, capacity01: Number.POSITIVE_INFINITY });
+assert.equal(invalidSensor.snapshot().cycles, 0, 'infinite capacity must be rejected before regulation');
+assert.equal(invalidSensor.snapshot().invalidValueObservations, 2);
+invalidSensor.observe({ ...validSensor, tick: 1.5 });
+assert.equal(invalidSensor.snapshot().cycles, 0, 'fractional organism ticks must not enter P66 state');
+assert.equal(invalidSensor.snapshot().invalidValueObservations, 3);
+invalidSensor.observe(validSensor);
+assert.equal(invalidSensor.snapshot().cycles, 1, 'a valid observation must be accepted after rejected malformed input');
+
 const stable = new P66InteroceptiveHomeostasis();
 const calm = { ...stressed, energy01: .68, thermal01: .2, capacity01: .72, load01: .2, uncertainty01: .1, predictionError01: .1 };
 for (let at = 1_000; at <= 11_000; at += 1_000) stable.observe({ tick: at / 1000, at, ...calm, awake: true, source: 'cognitive-cycle' });
@@ -71,6 +90,37 @@ delete old.stableDurationMs;
 delete old.invalidTimestampObservations;
 legacy.restore(old);
 assert.equal(legacy.snapshot().duplicateObservations, 0, 'legacy snapshots must default new cadence diagnostics safely');
+assert.equal(legacy.snapshot().invalidValueObservations, 0, 'legacy snapshots must default invalid-value diagnostics safely');
+
+// Persisted regulator data is a trust boundary: malformed ratios/counters/modes
+// must not leak NaN, arbitrary keys or invalid mode names into live control.
+const corruptRestore = new P66InteroceptiveHomeostasis();
+corruptRestore.restore({
+  ...afterFirst,
+  meanError01: Number.NaN,
+  meanStress01: 'broken',
+  lastMode: 'unrecognized',
+  modeCounts: { engage: -7, recover: Number.NaN, injectedMode: 99 },
+  setpoints: { energy01: Number.NaN, thermal01: 'broken', capacity01: 4, load01: -2, awake01: 1 },
+});
+const corrupt = corruptRestore.snapshot();
+assert.equal(corrupt.meanError01, .3, 'non-finite persisted mean must restore to a safe default');
+assert.equal(corrupt.meanStress01, .25, 'non-numeric persisted mean must restore to a safe default');
+assert.equal(corrupt.lastMode, 'balance', 'unknown persisted mode must restore to a safe mode');
+assert.deepEqual(Object.keys(corrupt.modeCounts).sort(), ['balance','engage','explore','protect','recover']);
+assert.equal(corrupt.modeCounts.engage, 0);
+assert.equal(corrupt.modeCounts.recover, 0);
+assert.equal(corrupt.setpoints.energy01, .68);
+assert.equal(corrupt.setpoints.thermal01, .25);
+assert.equal(corrupt.setpoints.capacity01, 1, 'finite setpoint ratios are bounded');
+assert.equal(corrupt.setpoints.load01, 0, 'finite setpoint ratios are bounded');
+assert.ok(Object.values(corrupt).every(value => typeof value !== 'number' || Number.isFinite(value)));
+
+const hostileRestore = new P66InteroceptiveHomeostasis();
+const hostileSnapshot = {};
+Object.defineProperty(hostileSnapshot, 'lastAt', { enumerable: true, get() { throw new Error('getter must not execute'); } });
+hostileRestore.restore(hostileSnapshot);
+assert.equal(hostileRestore.snapshot().lastAt, 0, 'accessor-bearing persisted state must fail closed without invoking getters');
 
 const futureRestore = new P66InteroceptiveHomeostasis();
 futureRestore.restore({ ...afterFirst, lastAt: Date.now() + 60_000 });

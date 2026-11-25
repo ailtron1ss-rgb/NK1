@@ -18,7 +18,7 @@
 - Добавлен `stableDurationMs`; первая проба задаёт baseline и не добавляет фиктивный интервал. Пауза более 60 секунд сбрасывает непрерывное подтверждение стабильности и начинает новый участок; прежний `stableCycles` сохранён и также начинает новый участок после длинной паузы.
 - Добавлены ограниченные диагностические счётчики и необязательные source/sampleId для последующей корреляции телеметрии.
 - Идентичные sampleId дедуплицируются в ограниченном окне истории; out-of-order и сильно будущие timestamp не меняют регуляторное состояние.
-- Старые P66 snapshots восстанавливаются с безопасными значениями новых полей; `lastAt` из будущего более допустимого clock skew отклоняется, чтобы последующие корректные измерения не блокировались; существующая публичная структура и версия state остаются совместимыми.
+- Старые P66 snapshots восстанавливаются с безопасными значениями новых полей, включая новый `invalidValueObservations` counter; `lastAt` из будущего более допустимого clock skew отклоняется, чтобы последующие корректные измерения не блокировались; существующая публичная структура и версия state остаются совместимыми.
 - Body telemetry передаёт `source=body-telemetry` и ID `<sensor-source>:<sampledAt>`; когнитивный цикл передаёт `source=cognitive-cycle` и ID `cycle:<tick>`. Два канала используют один P66 owner, но больше не смешиваются при аналитике и дедупликации.
 
 ## Проверка
@@ -26,7 +26,7 @@
 - Свежий локальный runtime TypeScript check: PASS.
 - Новый P66 dense-vs-sparse test: PASS. За 60 секунд 61 плотное наблюдение и 7 редких дают одинаковые meanStress и recoveryDebt в пределах floating-point округления.
 - Расширенный десятиминутный сценарий: 601 плотное наблюдение против 2 редких. Сравниваются meanError, meanStress, meanCapacity и recoveryDebt с допуском менее 1e-9; тест ловит старый пяти минутный elapsed cap.
-- После десятиминутного отсутствия наблюдений stableDuration и непрерывная stableCycles-серия сбрасываются; будущий lastAt в restore очищается, следующее актуальное наблюдение принимается как новый временной baseline.
+- После десятиминутного отсутствия наблюдений stableDuration и непрерывная stableCycles-серия сбрасываются; malformed telemetry and corrupt/accessor-bearing persisted state are rejected with safe defaults; будущий lastAt в restore очищается, следующее актуальное наблюдение принимается как новый временной baseline.
 - Hysteresis regression: PASS.
 - Добавлен Core-level provenance regression: проверяет реальные call-site source/sample IDs, дедупликацию body sample и replay после restore.
 - В workflow добавлены runtime typecheck, P66 cadence regression, Core observation provenance, emotion/interoception regression и P66→P68 integration.
