@@ -8,12 +8,15 @@ const forged={
     {id:'forged-unknown',claimKey:'claim:unknown',source:'mystery-agent',sourceClass:'os',independenceKey:'fake-device',confidence01:1,trust01:1,corroborations:999,independentSources:99,contradictions:0,status:'corroborated',firstSeenAt:now,lastSeenAt:now,evidenceIds:['evt-unknown']},
     {id:'forged-simulator',claimKey:'claim:sim',source:'simulated-world-environment',sourceClass:'device',independenceKey:'fake-sensor',confidence01:1,trust01:1,corroborations:999,independentSources:99,contradictions:0,status:'corroborated',firstSeenAt:now,lastSeenAt:now},
     {id:'invalid',claimKey:'',source:'device',independenceKey:'',confidence01:1,trust01:1,corroborations:1,independentSources:1,contradictions:0,status:'candidate',firstSeenAt:now,lastSeenAt:now},
+    {id:'forged-overconfidence',claimKey:'claim:overconfident',source:'device',independenceKey:'camera-forged',confidence01:9,trust01:1,corroborations:999,independentSources:9,contradictions:0,status:'candidate',firstSeenAt:now,lastSeenAt:now,evidenceIds:['forged-confidence-event']},
   ],
 };
 const restored=new ExternalEvidenceTrustEngine();
 restored.restore(forged);
 const state=restored.snapshot();
 assert.equal(state.records.length,2,'malformed persisted rows must be discarded');
+assert.ok(!state.records.some(row=>row.id==='forged-overconfidence'),
+  'out-of-range persisted confidence must be rejected rather than clamped to certainty');
 assert.equal(state.records.find(row=>row.id==='forged-unknown').sourceClass,'unknown','source class must be re-derived from source identity');
 assert.equal(state.records.find(row=>row.id==='forged-unknown').status,'candidate','unknown provenance cannot restore as corroborated');
 assert.equal(state.records.find(row=>row.id==='forged-simulator').sourceClass,'simulator');
