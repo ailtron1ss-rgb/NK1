@@ -431,6 +431,7 @@
     "test:big-pass-58": "node --experimental-strip-types tests/big-pass-58-system-fabric.mjs && node --experimental-strip-types tests/big-pass-58-system-contract.mjs",
     "audit:pass58": "npm run typecheck && npm run test:big-pass-58 && npm run audit:core-physical-ownership && npm run audit:architecture && npm run audit:contract && npm run audit:source-truth && npm run audit:hygiene && npm run audit:syntax && npm run audit:forensics",
     "test:big-pass-59": "node --experimental-strip-types tests/big-pass-59-system-contract-cache.mjs && node --experimental-strip-types tests/big-pass-59-projection-reuse.mjs",
+    "test:special-system-probes": "node --experimental-strip-types tests/cognitive-subsystem-port-probes-20261124.mjs",
     "audit:pass59": "npm run typecheck && npm run test:big-pass-59 && npm run audit:core-physical-ownership && npm run audit:architecture && npm run audit:contract && npm run audit:source-truth && npm run audit:hygiene && npm run audit:syntax && npm run audit:forensics && npm run test:big-pass-57-projection && npm run test:big-pass-58-system-fabric && npm run test:big-pass-52-memory-fabric && npm run test:big-pass-53 && npm run test:big-pass-54 && npm run test:big-pass-55",
     "test:big-pass-58-system-fabric": "node --experimental-strip-types tests/big-pass-58-system-fabric.mjs",
     "test:big-pass-60": "node --experimental-strip-types tests/big-pass-60-core-world-loop.mjs",
