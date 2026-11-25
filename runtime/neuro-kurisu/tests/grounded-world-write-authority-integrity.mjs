@@ -218,4 +218,29 @@ assert.ok(baseChair);
 assert.deepEqual(baseChair.sourceIds, [],
   'a synthetic world-context identity used for tracking must not be promoted into source provenance');
 
+
+const mixedEntity = semantic.entities.find(entity => entity.label === 'tracked-chair');
+assert.ok(mixedEntity);
+const mixedSemantic = {
+  ...semantic,
+  entities: [{
+    ...mixedEntity,
+    modalities: ['vision', 'sensor'],
+    modalityEvidenceKinds: { vision: 'model-output', sensor: 'observed' },
+    modalitySourceIds: { vision: ['camera-front'], sensor: ['host-sensor'] },
+  }],
+  events: [{
+    id: 'mixed-event-1', label: 'mixed-event', confidence01: .8,
+    modalities: ['vision', 'sensor'], startedAt: perceptionAt, lastAt: perceptionAt,
+    persistence01: .5, evidenceKind: 'observed',
+    modalityEvidenceKinds: { vision: 'model-output', sensor: 'observed' },
+  }],
+};
+const mixedWorld = new GroundedWorldState();
+const mixedContext = mixedWorld.integrate({ at: perceptionAt, perception: mixedSemantic });
+assert.equal(mixedContext.objects.find(object => object.label === 'tracked-chair')?.evidenceKind, 'model-output',
+  'aggregate world-context evidence must not upgrade model output because one modality is observed');
+assert.equal(mixedWorld.snapshot().events.find(event => event.id === 'mixed-event')?.evidenceKind, 'model-output',
+  'mixed-modality events must use the conservative evidence class');
+
 console.log('GROUNDED_WORLD_WRITE_AUTHORITY_INTEGRITY=PASS');
