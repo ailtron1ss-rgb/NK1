@@ -200,7 +200,7 @@ export class GroundedWorldState {
         const id=safeText(event.id,160),label=safeText(event.label,240);
         if(!id||!label)continue;
         const eventAt=Math.min(safeTimestamp(event.lastAt,lastAt),lastAt);
-        if(label.startsWith('external-receipt:')){
+        if(label.startsWith('external-receipt:')||label.startsWith('external-observation-receipt:')){
           quarantinedOutcomes.push({id,label:`restored-unverified:${label}`.slice(0,240),at:eventAt});
           continue;
         }
