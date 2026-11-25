@@ -143,4 +143,17 @@ test('ChatPanel consent polling cannot overwrite a newer user mutation', async (
   assert.ok(source.includes('proactiveConsentEpoch.current += 1'));
 });
 
+
+test('UTC quiet-hours controls persist through the proactive delivery API', async () => {
+  const api = await readFile(new URL('../src/neuro-kurisu/api.ts', import.meta.url), 'utf8');
+  const panel = await readFile(new URL('../src/components/ChatPanel.tsx', import.meta.url), 'utf8');
+  assert.ok(api.includes('/api/organism/proactive-quiet-hours'));
+  assert.ok(panel.includes('neuroApi.setProactiveQuietHours'));
+  assert.ok(panel.includes('quietHoursEnabled'));
+  assert.ok(panel.includes('quietStartHourUtc'));
+  assert.ok(panel.includes('quietEndHourUtc'));
+  assert.ok(panel.includes('Hours use UTC'));
+  assert.ok(panel.includes('quietHoursDirty'));
+});
+
 console.log('PROACTIVE_CHAT_DURABLE_ACK=PASS');
