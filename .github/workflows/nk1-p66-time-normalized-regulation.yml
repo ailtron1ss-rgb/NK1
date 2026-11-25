@@ -8,6 +8,7 @@ on:
       - "runtime/neuro-kurisu/src/organism/core/OrganismCore.ts"
       - "runtime/neuro-kurisu/src/organism/system/EmotionAppraisalEngine.ts"
       - "runtime/neuro-kurisu/tests/affect-mood-dynamics.mjs"
+      - "runtime/neuro-kurisu/tests/workpass610-emotion-appraisal-restore-integrity.mjs"
       - "runtime/neuro-kurisu/tests/p66-time-normalized-observation.mjs"
       - "runtime/neuro-kurisu/tests/p66-core-observation-provenance.mjs"
       - "runtime/neuro-kurisu/package.json"
@@ -19,6 +20,7 @@ on:
       - "runtime/neuro-kurisu/src/organism/core/OrganismCore.ts"
       - "runtime/neuro-kurisu/src/organism/system/EmotionAppraisalEngine.ts"
       - "runtime/neuro-kurisu/tests/affect-mood-dynamics.mjs"
+      - "runtime/neuro-kurisu/tests/workpass610-emotion-appraisal-restore-integrity.mjs"
       - "runtime/neuro-kurisu/tests/p66-time-normalized-observation.mjs"
       - "runtime/neuro-kurisu/tests/p66-core-observation-provenance.mjs"
       - "runtime/neuro-kurisu/package.json"
@@ -56,6 +58,9 @@ jobs:
       - name: Emotion/interoception time-normalized state
         working-directory: runtime/neuro-kurisu
         run: npm run test:affect-mood-dynamics
+      - name: Emotion outcome and persistence restore integrity
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:affect:restore-integrity
       - name: Emotion/interoception regression
         working-directory: runtime/neuro-kurisu
         run: npm run test:big-pass-172

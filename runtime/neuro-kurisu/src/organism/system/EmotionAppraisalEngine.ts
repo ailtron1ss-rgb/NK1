@@ -498,7 +498,6 @@ export class EmotionAppraisalEngine {
         arousal01:c(nudge(advanced.arousal01,arousalTarget,.10,.018)),
         stress01:c(nudge(advanced.stress01,stressTarget,.11,.026)),
         lastAt:at,lastOutcomeId:decisionId??previousMood.lastOutcomeId,
-        events:Math.min(Number.MAX_SAFE_INTEGER,advanced.events+1),
         outcomeUpdates:Math.min(Number.MAX_SAFE_INTEGER,advanced.outcomeUpdates+1),
         verifiedOutcomeUpdates:verified01>=.8?Math.min(Number.MAX_SAFE_INTEGER,advanced.verifiedOutcomeUpdates+1):advanced.verifiedOutcomeUpdates,
       };
@@ -558,7 +557,9 @@ export class EmotionAppraisalEngine {
     const learned=calibration&&calibration.attempts>=3?(calibration.meanBenefit01-.5)*.035*c((calibration.attempts-2)/4):0;
     const confidenceGate=c((e.confidence01-.45)/.40),attentionGate=c(.35+e.interoceptiveDelta.attentionCapture01*.65);
     const pressure=c(intero.regulationPressure01),m=this.state.mood,moodAge=Math.max(0,now-m.lastAt);
-    const moodEvidence=c((m.events*2+m.interoceptiveDurationMs/60_000)/8),moodFreshness=Math.exp(-moodAge/(24*60*60_000));
+    const unverifiedOutcomeEvidence=Math.max(0,m.outcomeUpdates-m.verifiedOutcomeUpdates)*.15;
+    const moodEvidence=c((m.events*2+m.verifiedOutcomeUpdates*2+unverifiedOutcomeEvidence+m.interoceptiveDurationMs/60_000)/8);
+    const moodFreshness=Math.exp(-moodAge/(24*60*60_000));
     const stress=c((m.stress01-.18)/.82),lowValence=c((.5-m.valence01)/.5);
     const moodPrior:Record<AffectAction,number>={respond:-.008*stress,explore:-.012*stress+.005*c((m.valence01-.5)/.5)*(1-stress),
       verify:.010*stress+.003*lowValence,rest:.014*stress,reflect:.008*stress+.003*lowValence,wait:.003*stress,defer:.003*stress};

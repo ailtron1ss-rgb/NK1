@@ -151,6 +151,8 @@ assert.ok(verifiedFailureMood.stress01>unverifiedFailureMood.stress01,
 assert.ok(verifiedFailureMood.valence01<unverifiedFailureMood.valence01);
 assert.equal(verifiedFailureMood.outcomeUpdates,1);
 assert.equal(verifiedFailureMood.verifiedOutcomeUpdates,1);
+assert.ok(failedVerified.actionBias('rest',outcomeAt+200)>failedUnverified.actionBias('rest',outcomeAt+200),
+  'only verified outcome evidence may earn full mood-derived action-bias weight');
 
 const beforeDuplicate=failedVerified.snapshot();
 const originalCalibration=failedVerified.outcomeCalibration('verify');
