@@ -5,12 +5,8 @@ on:
     paths:
       - 'runtime/neuro-kurisu/src/organism/persistence/DurableDeliveryOutbox.ts'
       - 'runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts'
-      - 'app/src/organism/chatCache.ts'
       - 'runtime/neuro-kurisu/src/server/server.mjs'
-      - 'app/src/organism/store.ts'
-      - 'app/scripts/proactive-chat-cache.test.mjs'
       - 'runtime/neuro-kurisu/tests/durable-delivery-outbox.mjs'
-      - 'runtime/neuro-kurisu/tests/autonomous-social-delivery-runtime.mjs'
       - 'runtime/neuro-kurisu/package.json'
       - 'docs/engineering/OPENCLAW_DURABLE_DELIVERY_OUTBOX_ADAPTATION_2026-11-25.md'
       - '.github/workflows/nk1-durable-delivery-outbox.yml'
@@ -33,10 +29,6 @@ jobs:
         run: npm ci --prefix runtime/neuro-kurisu --ignore-scripts --no-audit --no-fund
       - name: Durable delivery outbox contract
         run: npm --prefix runtime/neuro-kurisu run test:durable-delivery-outbox
-      - name: Proactive social initiative durable handoff
-        run: npm --prefix runtime/neuro-kurisu run test:autonomous-social-delivery-runtime
-      - name: Browser transcript-before-ACK and retry contract
-        run: npm --prefix runtime/neuro-kurisu run test:proactive-chat-durable-ack
       - name: Existing language invocation-order regression
         run: node --experimental-strip-types runtime/neuro-kurisu/tests/language-invoke-order-regression.mjs
       - name: Existing proactive delivery consent regression

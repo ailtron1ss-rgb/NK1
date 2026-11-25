@@ -38,8 +38,15 @@ assert.equal(outbox.acknowledge(created.record.id, 'sender-B', at + 3), false, '
 assert.equal(outbox.recordFailure(created.record.id, 'sender-A', 'transport-timeout', at + 4), true);
 const afterFailure = outbox.get(created.record.id);
 assert.ok(afterFailure, 'failed delivery remains addressable by its stable outbox ID');
-assert.equal(afterFailure.status, 'pending');
-assert.equal(afterFailure.nextAttemptAt, at + 1004, 'first retry uses bounded exponential backoff');
+assert.equal(afterFailure.status, 'reconciliation-required',
+  'a post-lease transport failure is ambiguous and cannot be retried from its error code');
+assert.equal(outbox.claimNext('sender-A', at + 500, 5000), null,
+  'an ambiguous send remains quarantined until the host checks the recipient');
+assert.equal(outbox.resolveReconciliation(created.record.id, 'confirmed-not-delivered', at + 4), true,
+  'only authoritative not-delivered evidence can authorize retry');
+const reconciledFailure = outbox.get(created.record.id);
+assert.equal(reconciledFailure?.status, 'pending');
+assert.equal(reconciledFailure?.nextAttemptAt, at + 1004, 'confirmed non-delivery uses bounded exponential backoff');
 
 assert.equal(outbox.claimNext('sender-A', at + 500, 5000), null, 'retry is not eligible before nextAttemptAt');
 const secondClaim = outbox.claimNext('sender-A', at + 1004, 5000);
@@ -48,12 +55,14 @@ assert.equal(outbox.acknowledge(created.record.id, 'sender-A', at + 1005), true)
 assert.equal(outbox.get(created.record.id)?.status, 'delivered');
 assert.equal(outbox.acknowledge(created.record.id, 'sender-A', at + 1006), false, 'delivery acknowledgement is one-shot');
 
-assert.throws(() => outbox.enqueue({
-  dedupeKey: 'initiative:22',
-  kind: 'initiative-message',
-  payloadRef: 'initiative-message:22',
-}, at + 1999), /delivery-outbox-kind-invalid/,
+for (const kind of ['initiative-message', 'social-initiative']) {
+  assert.throws(() => outbox.enqueue({
+    dedupeKey: `initiative:${kind}`,
+    kind,
+    payloadRef: `initiative-ref:${kind}`,
+  }, at + 1999), /delivery-outbox-kind-invalid/,
   'the generic outbox must not take ownership of social initiative message leases');
+}
 
 const leaseRow = outbox.enqueue({ dedupeKey: 'generic:lease:22', kind: 'custom', payloadRef: 'custom:lease-22' }, at + 2000);
 assert.ok(outbox.claim(leaseRow.record.id, 'crashed-sender', at + 2001, 1000));
@@ -103,6 +112,20 @@ const expiring = outbox.enqueue({
 assert.equal(outbox.reapExpiredLeases(at + 10), 1);
 assert.equal(outbox.get(expiring.record.id)?.status, 'cancelled');
 
+const ambiguousExpiry = outbox.enqueue({
+  dedupeKey: 'reminder:ambiguous-expiry',
+  kind: 'reminder',
+  payloadRef: 'reminder-ref:ambiguous-expiry',
+  expiresAt: at + 100,
+}, at);
+assert.ok(outbox.claim(ambiguousExpiry.record.id, 'sender-expiry', at + 1, 1000));
+assert.equal(outbox.recordFailure(ambiguousExpiry.record.id, 'sender-expiry', 'transport-timeout', at + 2), true);
+assert.equal(outbox.get(ambiguousExpiry.record.id)?.status, 'reconciliation-required',
+  'an expired reminder is not cancelled while its external outcome remains ambiguous');
+assert.equal(outbox.resolveReconciliation(ambiguousExpiry.record.id, 'confirmed-not-delivered', at + 101), true);
+assert.equal(outbox.get(ambiguousExpiry.record.id)?.status, 'cancelled',
+  'expiry is applied only after the host confirms that the recipient did not accept the send');
+
 const cancel = outbox.enqueue({ dedupeKey: 'notification:cancel', kind: 'notification', payloadRef: 'notification-ref:cancel' }, at);
 assert.equal(outbox.cancel(cancel.record.id, 'user-revoked-consent'), true);
 assert.equal(outbox.cancel(cancel.record.id, 'duplicate-cancel'), false);
@@ -114,6 +137,35 @@ assert.deepEqual(restored.snapshot(), outbox.snapshot(), 'state round-trips with
 const malformed = outbox.snapshot();
 malformed.records[0].status = 'sent';
 assert.throws(() => restored.restore(malformed), /delivery-outbox-enum-invalid/);
+
+const legacySocial = new DurableDeliveryOutbox({ maxRecords: 4 });
+legacySocial.restore({
+  version: 1,
+  sequence: 1,
+  records: [{
+    id: 'legacy-social-1',
+    dedupeKey: 'legacy-social:1',
+    kind: 'social-initiative',
+    payloadRef: 'nk1:social-initiative/legacy-1',
+    sourceTaskId: null,
+    initiativeId: 'legacy-1',
+    decisionId: null,
+    consentScopeVersion: null,
+    createdAt: at,
+    nextAttemptAt: at,
+    expiresAt: null,
+    attemptCount: 1,
+    status: 'reconciliation-required',
+    leaseOwner: null,
+    leaseUntil: 0,
+    deliveredAt: null,
+    lastErrorCode: 'delivery-lease-expired',
+  }],
+});
+assert.equal(legacySocial.pendingCandidate(at + 1), null,
+  'legacy social rows remain readable but are never leased by the generic outbox');
+assert.equal(legacySocial.resolveReconciliation('legacy-social-1', 'confirmed-not-delivered', at + 1), false,
+  'the generic outbox cannot settle a legacy social initiative owned by the social engine');
 
 const exhaustedPendingState = {
   version: 1,

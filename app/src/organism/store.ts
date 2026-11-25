@@ -3,21 +3,21 @@ import type { OrganismSnapshot } from "./types";
 import { emptySnapshot } from "./types";
 import { neuroApi } from "@/neuro-kurisu/api";
 import { toOrganismSnapshot } from "@/neuro-kurisu/normalize";
-import { CHAT_CACHE_KEY, persistChatCache, persistChatBeforeAcknowledge, retryPersistedProactiveAcks } from "./chatCache";
 
 type Tab = "mind" | "memory" | "lab" | "skills" | "evidence";
+const CHAT_KEY = "neuro-kurisu-chat-v2";
 let lastInitiativePollAt = 0;
 
 function loadChat(): OrganismSnapshot["chat"] {
   if (typeof window === "undefined") return [];
   try {
-    const raw = JSON.parse(localStorage.getItem(CHAT_CACHE_KEY) || "[]");
+    const raw = JSON.parse(localStorage.getItem(CHAT_KEY) || "[]");
     return Array.isArray(raw) ? raw.slice(-120) : [];
   } catch { return []; }
 }
 function saveChat(chat: OrganismSnapshot["chat"]) {
   if (typeof window === "undefined") return;
-  try { persistChatCache(window.localStorage, chat); } catch { /* quota-safe UI cache */ }
+  try { localStorage.setItem(CHAT_KEY, JSON.stringify(chat.slice(-120))); } catch { /* quota-safe UI cache */ }
 }
 
 interface KurisuStore {
@@ -93,8 +93,6 @@ export const useKurisu = create<KurisuStore>((set, get) => ({
       const now = Date.now();
       if (now - lastInitiativePollAt < 5_000) return;
       lastInitiativePollAt = now;
-      const storage = typeof window === "undefined" ? null : window.localStorage;
-      await retryPersistedProactiveAcks(storage, loadChat(), id => neuroApi.ackProactiveMessage(id));
       const pending = await neuroApi.proactiveMessage();
       const initiative = pending.initiative;
       if (!initiative?.id || !initiative.message?.trim()) return;
@@ -112,14 +110,12 @@ export const useKurisu = create<KurisuStore>((set, get) => ({
             backend: `autonomous-initiative:${initiative.kind}`,
           }].slice(-120);
       if (chat !== existing) {
+        saveChat(chat);
         set({ snap: { ...get().snap, chat } });
       }
-      await persistChatBeforeAcknowledge(
-        storage,
-        chat,
-        initiative.id,
-        id => neuroApi.ackProactiveMessage(id),
-      );
+      // ACK only after the message is safely in the browser's durable chat cache.
+      // If ACK fails, the stable turn id makes the next poll idempotent.
+      await neuroApi.ackProactiveMessage(initiative.id).catch(() => null);
     } catch (error) {
       set({ error: error instanceof Error ? error.message : String(error) });
     }

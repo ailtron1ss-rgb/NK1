@@ -3,12 +3,13 @@ import { types as nodeUtilTypes } from 'node:util';
 
 export type DurableDeliveryStatus = 'pending' | 'leased' | 'reconciliation-required' | 'delivered' | 'cancelled' | 'dead-letter';
 export type DurableDeliveryReconciliationOutcome = 'confirmed-delivered' | 'confirmed-not-delivered' | 'cancelled';
-export type DurableDeliveryKind = 'task-completion' | 'reminder' | 'notification' | 'social-initiative' | 'custom';
+export type DurableDeliveryKind = 'task-completion' | 'reminder' | 'notification' | 'custom';
+type StoredDurableDeliveryKind = DurableDeliveryKind | 'social-initiative';
 
 export interface DurableDeliveryRecord {
   id: string;
   dedupeKey: string;
-  kind: DurableDeliveryKind;
+  kind: StoredDurableDeliveryKind;
   payloadRef: string;
   sourceTaskId: string | null;
   initiativeId: string | null;
@@ -37,7 +38,6 @@ export interface DurableDeliveryEnqueueInput {
   /** Opaque host-owned pointer. Raw prompts, messages, credentials and file contents are forbidden. */
   payloadRef: string;
   sourceTaskId?: string | null;
-  initiativeId?: string | null;
   decisionId?: string | null;
   consentScopeVersion?: string | null;
   expiresAt?: number | null;
@@ -62,7 +62,8 @@ const RETRY_BASE_MS = 1000;
 const RETRY_MAX_MS = 60 * 60_000;
 const MAX_LEASE_MS = 30 * 60_000;
 const STATUSES = new Set<DurableDeliveryStatus>(['pending', 'leased', 'reconciliation-required', 'delivered', 'cancelled', 'dead-letter']);
-const KINDS = new Set<DurableDeliveryKind>(['task-completion', 'reminder', 'notification', 'social-initiative', 'custom']);
+const KINDS = new Set<StoredDurableDeliveryKind>(['task-completion', 'reminder', 'notification', 'social-initiative', 'custom']);
+const ENQUEUE_KINDS = new Set<DurableDeliveryKind>(['task-completion', 'reminder', 'notification', 'custom']);
 
 function plainRecord(value: unknown): value is Record<string, unknown> {
   if (!value || typeof value !== 'object' || Array.isArray(value) || nodeUtilTypes.isProxy(value)) return false;
@@ -168,7 +169,7 @@ export class DurableDeliveryOutbox {
       const dedupeKey = safeText(ownValue(row, 'dedupeKey'), 180, true)!;
       const kind = ownValue(row, 'kind');
       const status = ownValue(row, 'status');
-      if (!KINDS.has(kind as DurableDeliveryKind) || !STATUSES.has(status as DurableDeliveryStatus)) throw new Error('delivery-outbox-enum-invalid');
+      if (!KINDS.has(kind as StoredDurableDeliveryKind) || !STATUSES.has(status as DurableDeliveryStatus)) throw new Error('delivery-outbox-enum-invalid');
       if (ids.has(id) || dedupeKeys.has(dedupeKey)) throw new Error('delivery-outbox-duplicate-identity');
       ids.add(id);
       dedupeKeys.add(dedupeKey);
@@ -189,7 +190,7 @@ export class DurableDeliveryOutbox {
       records.push({
         id,
         dedupeKey,
-        kind: kind as DurableDeliveryKind,
+        kind: kind as StoredDurableDeliveryKind,
         payloadRef: safePayloadRef(ownValue(row, 'payloadRef')),
         sourceTaskId: safeText(ownValue(row, 'sourceTaskId'), 180),
         initiativeId: safeText(ownValue(row, 'initiativeId'), 180),
@@ -212,14 +213,14 @@ export class DurableDeliveryOutbox {
   enqueue(input: DurableDeliveryEnqueueInput, at = Date.now()): DurableDeliveryEnqueueResult {
     const inputRecord = input as unknown as Record<string, unknown>;
     if (!plainRecord(inputRecord) || Object.getOwnPropertySymbols(inputRecord).length > 0) throw new Error('delivery-outbox-input-invalid');
-    const allowedFields = new Set(['dedupeKey', 'kind', 'payloadRef', 'sourceTaskId', 'initiativeId', 'decisionId', 'consentScopeVersion', 'expiresAt', 'id']);
+    const allowedFields = new Set(['dedupeKey', 'kind', 'payloadRef', 'sourceTaskId', 'decisionId', 'consentScopeVersion', 'expiresAt', 'id']);
     if (Object.keys(inputRecord).some(key => !allowedFields.has(key))) throw new Error('delivery-outbox-input-field-unsupported');
     if (!Number.isSafeInteger(at) || at < 0) throw new Error('delivery-outbox-time-invalid');
     const dedupeKey = safeText(ownValue(inputRecord, 'dedupeKey'), 180, true)!;
     const existing = this.state.records.find(record => record.dedupeKey === dedupeKey);
     if (existing) return { record: cloneRecord(existing), duplicate: true };
     const kind = ownValue(inputRecord, 'kind');
-    if (!KINDS.has(kind as DurableDeliveryKind)) throw new Error('delivery-outbox-kind-invalid');
+    if (!ENQUEUE_KINDS.has(kind as DurableDeliveryKind)) throw new Error('delivery-outbox-kind-invalid');
     const payloadRef = safePayloadRef(ownValue(inputRecord, 'payloadRef'));
     const expiryInput = ownValue(inputRecord, 'expiresAt');
     const expiresAt = expiryInput === undefined ? null : safeTime(expiryInput, true);
@@ -255,7 +256,7 @@ export class DurableDeliveryOutbox {
   pendingCandidate(at = Date.now()): DurableDeliveryRecord | null {
     if (!Number.isSafeInteger(at) || at < 0) throw new Error('delivery-outbox-time-invalid');
     const candidate = this.state.records
-      .filter(record => record.status === 'pending' && record.attemptCount < this.maxAttempts && record.nextAttemptAt <= at && (record.expiresAt === null || record.expiresAt > at))
+      .filter(record => ENQUEUE_KINDS.has(record.kind as DurableDeliveryKind) && record.status === 'pending' && record.attemptCount < this.maxAttempts && record.nextAttemptAt <= at && (record.expiresAt === null || record.expiresAt > at))
       .sort((a, b) => a.nextAttemptAt - b.nextAttemptAt || a.createdAt - b.createdAt || a.id.localeCompare(b.id))[0];
     return candidate ? cloneRecord(candidate) : null;
   }
@@ -264,6 +265,8 @@ export class DurableDeliveryOutbox {
     if (!Number.isSafeInteger(at) || at < 0) throw new Error('delivery-outbox-time-invalid');
     let changed = 0;
     for (const record of this.state.records) {
+      // Legacy social rows are retained for snapshot compatibility but belong to the social engine, not this queue.
+      if (!ENQUEUE_KINDS.has(record.kind as DurableDeliveryKind)) continue;
       // An expired leased operation may already have reached its recipient.
       // Never turn that ambiguous outcome back into sendable pending work.
       if (record.status === 'leased'
@@ -285,7 +288,7 @@ export class DurableDeliveryOutbox {
   }
 
   /**
-   * Resolve an expired lease only after the host has reconciled the external
+   * Resolve an ambiguous leased operation only after the host has reconciled the external
    * ActionGateway/provider outcome using an authoritative idempotency lookup.
    * Unknown outcomes must remain quarantined and must never be retried.
    */
@@ -297,7 +300,7 @@ export class DurableDeliveryOutbox {
     const safeId = safeText(id, 180, true)!;
     if (!Number.isSafeInteger(at) || at < 0) return false;
     const record = this.state.records.find(item => item.id === safeId);
-    if (!record || record.status !== 'reconciliation-required' || at < record.createdAt) return false;
+    if (!record || !ENQUEUE_KINDS.has(record.kind as DurableDeliveryKind) || record.status !== 'reconciliation-required' || at < record.createdAt) return false;
 
     if (outcome === 'confirmed-delivered') {
       record.status = 'delivered';
@@ -336,7 +339,7 @@ export class DurableDeliveryOutbox {
     }
     this.reapExpiredLeases(at);
     const record = this.state.records.find(item => item.id === safeId);
-    if (!record || record.status !== 'pending' || record.attemptCount >= this.maxAttempts
+    if (!record || !ENQUEUE_KINDS.has(record.kind as DurableDeliveryKind) || record.status !== 'pending' || record.attemptCount >= this.maxAttempts
       || record.nextAttemptAt > at || (record.expiresAt !== null && record.expiresAt <= at)) return null;
     record.status = 'leased';
     record.leaseOwner = owner;
@@ -360,24 +363,17 @@ export class DurableDeliveryOutbox {
     return true;
   }
 
+  /**
+   * A failure reported after a lease is ambiguous: the recipient may have
+   * accepted the side effect before the sender lost its acknowledgement.
+   * Only resolveReconciliation may authorize another attempt.
+   */
   recordFailure(id: string, leaseOwner: string, errorCode: string, attemptedAt = Date.now()): boolean {
     const record = this.leasedRecord(id, leaseOwner);
     if (!record || !Number.isSafeInteger(attemptedAt) || attemptedAt < 0 || record.leaseUntil <= attemptedAt) return false;
     record.lastErrorCode = safeText(errorCode, 80, true)!;
     this.clearLease(record);
-    if (record.expiresAt !== null && record.expiresAt <= attemptedAt) {
-      record.status = 'cancelled';
-      record.lastErrorCode = 'delivery-expired';
-      return true;
-    }
-    if (record.attemptCount >= this.maxAttempts) {
-      record.status = 'dead-letter';
-      return true;
-    }
-    const exponent = Math.min(20, Math.max(0, record.attemptCount - 1));
-    const delay = Math.min(this.retryMaxMs, this.retryBaseMs * (2 ** exponent));
-    record.status = 'pending';
-    record.nextAttemptAt = addSafeTime(attemptedAt, delay);
+    record.status = 'reconciliation-required';
     return true;
   }
 
@@ -385,7 +381,7 @@ export class DurableDeliveryOutbox {
     const safeId = safeText(id, 180, true)!;
     const safeReason = safeText(reasonCode, 80, true)!;
     const record = this.state.records.find(item => item.id === safeId);
-    if (!record || record.status !== 'pending') return false;
+    if (!record || !ENQUEUE_KINDS.has(record.kind as DurableDeliveryKind) || record.status !== 'pending') return false;
     record.status = 'cancelled';
     record.lastErrorCode = safeReason;
     return true;
@@ -420,7 +416,7 @@ export class DurableDeliveryOutbox {
     const safeId = safeText(id, 180, true)!;
     const owner = safeText(leaseOwner, 120, true)!;
     const record = this.state.records.find(item => item.id === safeId);
-    return record && record.status === 'leased' && record.leaseOwner === owner ? record : null;
+    return record && ENQUEUE_KINDS.has(record.kind as DurableDeliveryKind) && record.status === 'leased' && record.leaseOwner === owner ? record : null;
   }
 
   private clearLease(record: DurableDeliveryRecord): void {

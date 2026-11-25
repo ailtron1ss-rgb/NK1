@@ -13,24 +13,21 @@ The OpenClaw durable outbox lifecycle is adapted as a TypeScript sidecar using N
 
 The outbox stores bounded delivery metadata, stable deduplication keys, opaque payload references, expiry, attempt counters, and lease/reconciliation state. It does not store raw chat messages, prompts, credentials, or file contents.
 
-## Integrated proactive-chat path
+## Ownership boundary
 
-1. AutonomousSocialInitiativeEngine remains the only owner of initiative generation, content, consent, and quiet-hours policy.
-2. OrganismRuntime.autonomousDialogueReady() writes a stable social-initiative obligation to DurableDeliveryOutbox before returning the existing API response shape.
-3. The trusted server deliveryAdmission callback re-checks the exact Core initiative ID and mayDeliverUserVisible at claim time. This host admits only social-initiative; other outbox kinds remain closed.
-4. DurableDeliveryOutbox is the single owner of delivery leases and attempt lifecycle. No competing retry/lease state is added to the social engine.
-5. The browser persists its stable ui-initiative-ID transcript before calling the existing ACK API. It records positive ACK IDs in a bounded local marker and retries lost ACK responses from the persisted transcript on later idle polls.
-6. An active lease suppresses another poll. After expiry, the same stable initiative ID can be re-exposed to the idempotent browser transcript; the transcript deduplicates the turn and its ACK resolves the ambiguous outbox record as delivered.
-7. Repeated ACKs are idempotent. If Core committed but a later persistence step or HTTP response failed, a repeat ACK repairs the Core/OpenLoop sidecar and settles the outbox row.
+- `AutonomousSocialInitiativeEngine` and PR #1181 are the sole owners of proactive social initiative claims, leases, retry timing, consent/quiet-hours policy and browser ACK.
+- This generic outbox does not enqueue, lease, acknowledge or reconcile `social-initiative` records. New `social-initiative` and `initiative-message` writes are rejected; legacy social rows remain readable but inert for snapshot compatibility.
+- The generic queue is reserved for task-completion, reminder, notification and custom obligations.
+- `OrganismRuntime` has no default generic delivery sender or admission policy. Without a host-injected `deliveryAdmission`, generic claims fail closed.
+- `ActionGateway` remains the only side-effect execution authority; this outbox does not start transports or contact recipients.
 
 ## Failure and safety boundaries
 
-- An expired lease becomes reconciliation-required, never directly pending.
-- Only the browser ACK for the stable initiative ID resolves this UI recipient's ambiguous lease as delivered.
-- Consent and quiet-hours are checked by the canonical social owner and again by host admission. Revoked consent suppresses future exposure.
-- Browser storage failure prevents ACK. The unacknowledged initiative remains eligible for same-ID replay after its lease expires; a repeat transcript write does not create a duplicate chat turn.
-- The outbox does not execute tools, contact third parties, send desktop notifications, or start voice delivery. This is a browser/API recipient integration only.
-- Generic task/reminder/notification delivery remains host-gated and fail-closed until a real consumer explicitly owns it.
+- Every failure reported after a generic delivery lease is acquired becomes `reconciliation-required`; an error string or timeout does not prove that the recipient did not accept the side effect.
+- Only authoritative host reconciliation may settle the row as confirmed-delivered, confirmed-not-delivered or cancelled.
+- Confirmed-not-delivered alone can authorize bounded backoff and a new attempt. If the obligation has expired by reconciliation time, it is cancelled; if the attempt ceiling is reached, it becomes dead-letter.
+- Unknown outcomes remain quarantined. Lease expiry follows the same rule.
+- Raw message bodies, prompts, credentials and file contents are not stored in the outbox.
 
 ## Donor boundaries
 
@@ -41,12 +38,11 @@ The outbox stores bounded delivery metadata, stable deduplication keys, opaque p
 
 ## Verification
 
-The PR workflow runs the generic outbox contract, a real OrganismRuntime proactive handoff contract, browser transcript-before-ACK/lost-ACK retry tests, existing proactive-consent and OpenLoop regressions, and runtime typecheck.
+The PR workflow is scoped to the generic outbox contract, existing language invocation-order and proactive-consent regressions, OpenLoop runtime integration, and runtime typecheck. Social initiative lease/ACK and browser transcript tests belong to PR #1181 and are not duplicated here.
 
 No local NK1 checkout was available in this session; local test execution is not claimed. GitHub Actions on the exact final PR head is the verification source. Draft status is retained pending exact-head checks.
 
-
-## Ambiguous failure semantics — required before merge
+## Ambiguous failure semantics — implemented contract
 
 A transport timeout, connection reset after request transmission, or lost response is not proof that the recipient did not perform the side effect. Therefore the word "failure" is not a sufficient retry disposition.
 
@@ -64,7 +60,7 @@ This requirement is based on established distributed-systems guidance:
 - Temporal, "Activity Definition": activities can execute multiple times, and partial side effects can repeat; downstream idempotency keys are required for effectful operations.
   https://docs.temporal.io/activity-definition
 
-A regression test was appended to tests/durable-delivery-outbox.mjs on the current branch head. It expects transport-timeout to become reconciliation-required, suppresses claimNext, and allows a new claim only after explicit confirmed-not-delivered reconciliation. This is a test-first guard, not yet an observed RED or a production fix: the current recordFailure implementation still returns a timed-out attempt to pending, and the exact-head GitHub Actions run is waiting for repository workflow approval.
+The focused contract now covers the full transition: a post-lease transport timeout becomes reconciliation-required; ordinary claiming stays suppressed; only confirmed-not-delivered reconciliation schedules bounded backoff. It also checks that an expired obligation with an ambiguous send is not cancelled until the host has confirmed non-delivery, and that legacy social rows remain outside the generic queue.
 
 
 ## Additional open-source implementation review
