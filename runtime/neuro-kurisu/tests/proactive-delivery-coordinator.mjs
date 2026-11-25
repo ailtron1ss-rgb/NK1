@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import { ProactiveDeliveryCoordinator } from "../src/server/proactive-delivery-coordinator.mjs";
 
 function fixture({ acknowledge = async () => true } = {}) {
@@ -111,6 +112,49 @@ function fixture({ acknowledge = async () => true } = {}) {
   };
   const coordinator = new ProactiveDeliveryCoordinator({ runtime: empty });
   assert.deepEqual(await coordinator.claim(), { status: 200, body: { ok: true, initiative: null } });
+}
+
+
+{
+  let attempts = 0;
+  const f = fixture({ acknowledge: async () => ++attempts > 1 });
+  const claim = await f.coordinator.claim();
+  const { id, deliveryToken } = claim.body.initiative;
+  assert.equal((await f.coordinator.acknowledge(id, deliveryToken)).status, 409,
+    "a runtime-level rejected receipt must not consume the current attempt token");
+  assert.equal((await f.coordinator.acknowledge(id, deliveryToken)).status, 200,
+    "a transient runtime rejection can be retried while the same engine lease is live");
+}
+
+{
+  let attempts = 0;
+  const f = fixture({
+    acknowledge: async () => {
+      attempts += 1;
+      if (attempts === 1) throw new Error("temporary checkpoint failure");
+      return true;
+    },
+  });
+  const claim = await f.coordinator.claim();
+  const { id, deliveryToken } = claim.body.initiative;
+  assert.equal((await f.coordinator.acknowledge(id, deliveryToken)).status, 503,
+    "transient checkpoint failure must be reported as retryable");
+  assert.equal((await f.coordinator.acknowledge(id, deliveryToken)).status, 200,
+    "a failed runtime ACK must leave a valid in-lease token for retry");
+}
+
+{
+  const f = fixture();
+  assert.equal((await f.coordinator.acknowledge(" bad-id ", "token")).status, 400);
+}
+
+{
+  const runtimeSource = await readFile(new URL("../src/organism/core/OrganismRuntime.ts", import.meta.url), "utf8");
+  const methodStart = runtimeSource.indexOf("async acknowledgeAutonomousDialogue");
+  const coreCommit = runtimeSource.indexOf("await this.core.flush()", methodStart);
+  const optionalProjection = runtimeSource.indexOf("persistOpenLoopMutation", methodStart);
+  assert.ok(methodStart >= 0 && coreCommit > methodStart && optionalProjection > coreCommit,
+    "the canonical Core delivery receipt must be persisted before the optional Open Loop projection");
 }
 
 console.log("PROACTIVE_DELIVERY_COORDINATOR=PASS");
