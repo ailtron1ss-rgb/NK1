@@ -81,9 +81,22 @@ export function MemoryExplorer() {
   }, [query, temporalMode, semantic]);
 
   useEffect(() => {
-    void runSearch({ query: "", temporalMode: "current", semantic: false });
+    const requestId = ++sequence.current;
+    setBusy(true);
+    void neuroApi.memoryInspector({ query: "", limit: 24, temporalMode: "current" })
+      .then((response) => {
+        if (requestId !== sequence.current) return;
+        setRawResponse(response);
+        setResult(parseMemoryExplorerResponse(response));
+      })
+      .catch((cause) => {
+        if (requestId === sequence.current) setError(cause instanceof Error ? cause.message : String(cause));
+      })
+      .finally(() => {
+        if (requestId === sequence.current) setBusy(false);
+      });
     return () => { sequence.current += 1; };
-  }, [runSearch]);
+  }, []);
 
   const exportResult = () => {
     if (rawResponse === null) return;
