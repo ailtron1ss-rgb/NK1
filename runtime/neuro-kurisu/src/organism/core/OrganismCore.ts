@@ -2674,6 +2674,8 @@ export class OrganismCore {
         return row;
     }
     worldCausalActionReadiness(action: string, minTrials = 6, matchedContextKey?: string) { return this.organismSystems.world.worldCausalCalibration.actionReadiness(action, minTrials, matchedContextKey); }
+    /** Read-only world evidence projection shared with planning; it never promotes a hypothesis to fact. */
+    worldCognitiveAttentionSignal() { return this.worldSubsystem.cognitiveAttentionSignal(); }
     activePerceptionPendingId() {
         return this.organismSystems.embodiment.activePerceptionExecutor.pendingRequestId();
     }

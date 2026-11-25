@@ -19,6 +19,22 @@ export interface Plan {
   createdAt: number;
   searchDepth: number;
   beamWidth: number;
+  /** World evidence receipt used to bound this plan; no raw world facts. */
+  worldEvidenceRevision?: number;
+  worldEvidenceClass?: 'observed'|'mixed'|'inferred'|'unknown';
+  worldVerificationPressure01?: number;
+}
+
+export interface PlanWorldEvidenceSignal {
+  revision: number;
+  evidenceClass: 'observed'|'mixed'|'inferred'|'unknown';
+  evidenceConfidence01: number;
+  uncertainty01: number;
+  changeMagnitude01: number;
+  conflict01: number;
+  unresolved01: number;
+  modelDisagreement01: number;
+  predictionError01: number;
 }
 
 const actionMap: Record<ActionKind, EnvironmentAction> = {
@@ -33,22 +49,34 @@ interface Node { state: EnvironmentSnapshot; actions: EnvironmentAction[]; rewar
 
 export interface ResidualRewardProvider { predict(action: EnvironmentAction | string, baseReward: number, context?: EnvironmentSnapshot): { predicted: number; confidence: number; samples?: number; uncertainty?: number; modelReady?: boolean }; }
 
+const worldVerificationPressure=(world?:PlanWorldEvidenceSignal):number=>world
+  ? clamp(Math.max(world.conflict01,world.modelDisagreement01*.9,world.unresolved01*.8,world.uncertainty01*.75,world.predictionError01*.65))
+  : 0;
+
+const worldEvidenceMetadata=(world:PlanWorldEvidenceSignal|undefined,pressure:number)=>({
+  worldEvidenceRevision:world&&Number.isSafeInteger(world.revision)&&world.revision>=0?world.revision:undefined,
+  worldEvidenceClass:world?.evidenceClass,
+  worldVerificationPressure01:pressure,
+});
+
 export class PlanEngine {
   private readonly environment: WorldEnvironment;
   private readonly residual?: ResidualRewardProvider;
   constructor(environment: WorldEnvironment, residual?: ResidualRewardProvider) { this.environment = environment; this.residual = residual; }
 
   /** Cheap, deterministic action estimate used when project planning is gated by the cognitive budget. */
-  buildBudgetFallback(goal: OrganismGoal | null, preferred: ActionKind, reason: string): Plan {
+  buildBudgetFallback(goal: OrganismGoal | null, preferred: ActionKind, reason: string, worldEvidence?: PlanWorldEvidenceSignal): Plan {
     const createdAt = Date.now();
+    const verificationPressure01 = worldVerificationPressure(worldEvidence);
+    const confidenceScale = 1 - Math.min(.28, verificationPressure01 * .28);
     const environmentAction = actionMap[preferred];
     const projection = this.environment.project(environmentAction);
     const boundedReward = Number.isFinite(projection.reward)
       ? Math.max(-1, Math.min(1, projection.reward * (projection.valid ? 1 : 0.1)))
       : 0.05;
-    const confidence = Number.isFinite(projection.confidence)
+    const confidence = (Number.isFinite(projection.confidence)
       ? Math.max(0.05, Math.min(0.99, projection.confidence))
-      : 0.4;
+      : 0.4) * confidenceScale;
     const safeReason = String(reason ?? 'budget-gated').replace(/[\x00-\x1f\x7f-\x9f]/gu, ' ').slice(0, 96);
     return {
       id: `plan-budget-fallback-${createdAt}-${preferred}`,
@@ -60,18 +88,24 @@ export class PlanEngine {
         environmentAction,
         predictedReward: boundedReward,
         confidence,
-        rationale: `single-step fallback; beam search skipped (${safeReason})`,
+        rationale: `single-step fallback; beam search skipped (${safeReason}); world verification pressure=${verificationPressure01.toFixed(2)}`,
       }],
       expectedValue: Number((boundedReward * confidence).toFixed(4)),
       createdAt,
       searchDepth: 1,
       beamWidth: 1,
+      ...worldEvidenceMetadata(worldEvidence, verificationPressure01),
     };
   }
 
-  build(goal: OrganismGoal | null, preferred: ActionKind, depth = 4, beamWidth = 4): Plan {
-    const searchDepth = Math.max(1, Math.min(6, Math.trunc(depth)));
-    const width = Math.max(2, Math.min(6, Math.trunc(beamWidth)));
+  build(goal: OrganismGoal | null, preferred: ActionKind, depth = 4, beamWidth = 4, worldEvidence?: PlanWorldEvidenceSignal): Plan {
+    const verificationPressure01 = worldVerificationPressure(worldEvidence);
+    const requestedDepth = Math.max(1, Math.min(6, Math.trunc(depth)));
+    const horizonReduction = verificationPressure01 >= .75 ? 2 : verificationPressure01 >= .45 ? 1 : 0;
+    const searchDepth = Math.max(1, requestedDepth - horizonReduction);
+    const requestedWidth = Math.max(2, Math.min(6, Math.trunc(beamWidth)));
+    const width = Math.max(2, requestedWidth - (verificationPressure01 >= .75 ? 1 : 0));
+    const confidenceScale = 1 - Math.min(.28, verificationPressure01 * .28);
     const preferredEnv = actionMap[preferred];
     const root: Node = { state: this.environment.snapshot(), actions: [], rewards: [], score: 0, confidence: 1 };
     let beam: Node[] = [root];
@@ -86,7 +120,7 @@ export class PlanEngine {
           const effectiveReward = projection.valid ? projection.reward : 0.05;
           const residual = this.residual?.predict(action, effectiveReward, projection.next);
           const learnedReward = residual ? residual.predicted : effectiveReward;
-          const learnedConfidence = residual ? (projection.confidence * (0.72 + residual.confidence * 0.28)) : projection.confidence;
+          const learnedConfidence = (residual ? (projection.confidence * (0.72 + residual.confidence * 0.28)) : projection.confidence) * confidenceScale;
           const stepScore = learnedReward * learnedConfidence * Math.pow(gamma, d) + preferenceBonus;
           const nextActions = [...node.actions, action];
           expanded.push({
@@ -94,7 +128,7 @@ export class PlanEngine {
             actions: nextActions,
             rewards: [...node.rewards, projection.reward],
             score: node.score + stepScore,
-            confidence: node.confidence * projection.confidence,
+            confidence: node.confidence * projection.confidence * confidenceScale,
           });
         }
       }
@@ -106,7 +140,7 @@ export class PlanEngine {
     const steps = best.actions.map((action, index) => {
       const projected = this.environment.projectSequence(best.actions.slice(0, index + 1));
       const reward = projected.rewards.at(-1) ?? 0;
-      const confidence = projected.confidences.at(-1) ?? 0.4;
+      const confidence = (projected.confidences.at(-1) ?? 0.4) * confidenceScale;
       const internalAction = reverseMap[action] ?? preferred;
       return {
         step: index + 1,
@@ -114,7 +148,7 @@ export class PlanEngine {
         environmentAction: action,
         predictedReward: this.residual ? this.residual.predict(action, reward * (projected.validities.at(-1) ?? true ? 1 : 0.1), projected.next).predicted : reward * (projected.validities.at(-1) ?? true ? 1 : 0.1),
         confidence: this.residual ? Math.max(0.18, confidence * (0.72 + this.residual.predict(action, reward, projected.next).confidence * 0.28)) : confidence,
-        rationale: `beam-search depth=${searchDepth} selected ${action}; predicted local reward=${reward.toFixed(2)}${action === preferredEnv ? ' with preferred-action bias' : ''}`,
+        rationale: `beam-search depth=${searchDepth} selected ${action}; predicted local reward=${reward.toFixed(2)}${action === preferredEnv ? ' with preferred-action bias' : ''}; world verification pressure=${verificationPressure01.toFixed(2)}`,
       };
     });
 
@@ -127,6 +161,7 @@ export class PlanEngine {
       createdAt: Date.now(),
       searchDepth,
       beamWidth: width,
+      ...worldEvidenceMetadata(worldEvidence, verificationPressure01),
     };
   }
 }
