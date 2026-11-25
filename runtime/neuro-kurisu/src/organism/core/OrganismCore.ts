@@ -10236,7 +10236,7 @@ export class OrganismCore {
                     });
                 }
                 const b273Current = this.developmentalNeural.autonomousGoalLifecycleB273.current();
-                const b273Learning = this.developmentalNeural.autonomousGoalLifecycleB273.learnFromOutcome({ tick: state.tick, action: trace.selected.action, plan: b273Current.plan, reward01: gatedReward01, predictionError01: state.predictionError, independentGain01: b272IndependentGain, personalityAlignment01: clamp(.55 + this.cognitiveRuntime.multiHypothesisPersonality.actionBias(trace.selected.action) * 8), externalEvidence01: projectEvidenceExternal ? 1 : 0 });
+                const b273Learning = this.developmentalNeural.autonomousGoalLifecycleB273.learnFromOutcome({ tick: state.tick, goalId: b273Current.goal?.id ?? null, plannedAction: b273Current.action, outcomeId: `b273:${state.tick}:${b273Current.goal?.id ?? 'none'}:${trace.selected.action}`, action: trace.selected.action, plan: b273Current.plan, reward01: gatedReward01, predictionError01: state.predictionError, independentGain01: b272IndependentGain, personalityAlignment01: clamp(.55 + this.cognitiveRuntime.multiHypothesisPersonality.actionBias(trace.selected.action) * 8), externalEvidence01: projectEvidenceExternal ? 1 : 0 });
                 if(this.organismSystems.agency.decisionReceipts.recordLearning(trace.tick,{
                     accepted:b273Learning.accepted,gain01:b273Learning.gain01,
                     note:b273Learning.completed?'goal-completed':b273Learning.abandoned?'goal-abandoned':b273Learning.revised?'goal-revised':b273Learning.accepted?'goal-progress-accepted':'goal-progress-rejected',
@@ -10529,6 +10529,9 @@ export class OrganismCore {
                 const b338Lifecycle = this.developmentalNeural.autonomousGoalLifecycleB273.current();
                 this.developmentalNeural.autonomousGoalLifecycleB273.learnFromOutcome({
                     tick: state.tick,
+                    goalId: b338Lifecycle.goal?.id ?? null,
+                    plannedAction: b338Lifecycle.action,
+                    outcomeId: `b273:${state.tick}:${b338Lifecycle.goal?.id ?? 'none'}:${trace.selected.action}`,
                     action: trace.selected.action,
                     plan: b338Lifecycle.plan,
                     reward01: gatedReward01,
