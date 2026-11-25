@@ -102,6 +102,8 @@ restored.restore({
       lastAt: Number.POSITIVE_INFINITY, persistence01: 4, evidenceKind: 'observed' },
     { id: 'old-unverified-receipt', label: 'external-receipt:explore:executed:device-telemetry',
       confidence01: 0, lastAt: 4_000, persistence01: 0, evidenceKind: 'derived' },
+    { id: 'old-host-verified-receipt', label: 'external-observation-receipt:explore',
+      confidence01: .99, lastAt: 4_500, persistence01: .99, evidenceKind: 'observed' },
   ],
   facts: ['valid fact', 7, '', 'f'.repeat(5000)],
   provenanceIds: ['source-1', 7, ''],
@@ -135,6 +137,10 @@ assert.equal(safe.events.some(event => event.id === 'old-unverified-receipt'), f
   'legacy unverified receipt events must be migrated out of canonical world history');
 assert.ok(safe.quarantinedOutcomes?.some(event => event.id === 'old-unverified-receipt'),
   'legacy unverified receipts must remain available in the diagnostic quarantine');
+assert.equal(safe.events.some(event => event.id === 'old-host-verified-receipt'), false,
+  'serialized host verifier receipts must lose in-process authority after restart');
+assert.ok(safe.quarantinedOutcomes?.some(event => event.id === 'old-host-verified-receipt'),
+  'serialized verified receipts must remain diagnostic only until re-attested live');
 assert.deepEqual(safe.facts, [], 'persisted free-form facts must not return as canonical grounded facts');
 assert.deepEqual(safe.quarantinedFacts, ['restored-unverified:valid fact'],
   'persisted fact text remains available in an explicitly unverified quarantine');
