@@ -86,4 +86,17 @@ const fractionalClockVerify = createContextBoundSkillShadowEvidenceVerifier(keys
 assert.equal(fractionalClockVerify(staleObservation, candidate, 'persisted-active'), false,
   'a fractional verifier clock must not bypass the persisted-active evidence-age exemption');
 
+
+const fractionalObservedAtPayload = { ...payload, observedAt: now - 500.5 };
+const fractionalObservedAtArtifact = signSkillShadowArtifactForFixture(fractionalObservedAtPayload, privatePem);
+const fractionalObservedAtObservation = {
+  runId: fractionalObservedAtPayload.runId,
+  evidenceFingerprint: skillShadowPayloadFingerprint(fractionalObservedAtPayload),
+  passed: fractionalObservedAtPayload.passed,
+  observedAt: fractionalObservedAtPayload.observedAt,
+  artifact: fractionalObservedAtArtifact,
+};
+assert.equal(verify(fractionalObservedAtObservation, candidate, 'record'), false,
+  'signed evidence timestamps must be integer UTC milliseconds, not fractional values');
+
 console.log('P23_SKILL_SHADOW_EVIDENCE_FRESHNESS=PASS');
