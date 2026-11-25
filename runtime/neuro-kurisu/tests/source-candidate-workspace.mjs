@@ -175,3 +175,67 @@ try {
 }
 
 console.log('SOURCE_CANDIDATE_WORKSPACE_V1=PASS');
+
+
+// Portable-path aliases must be rejected before host admission. Linux accepts
+// these spellings as distinct files, while common Windows/macOS filesystems may
+// resolve them to the same entry (case folding / Unicode normalization).
+{
+  const workspaceRoot = await mkdtemp(path.join(os.tmpdir(), 'nk1-source-candidate-portable-paths-'));
+  try {
+    let admissionCalls = 0;
+    const guarded = new SourceCandidateWorkspaceV1({
+      workspaceRoot: path.join(workspaceRoot, 'out'),
+      authorize: async request => {
+        admissionCalls += 1;
+        return accept(request);
+      },
+    });
+    const aliases = [
+      [
+        { path: 'src/Foo.ts', content: 'one' },
+        { path: 'src/foo.ts', content: 'two' },
+      ],
+      [
+        { path: 'src/café.ts', content: 'one' },
+        { path: 'src/cafe\u0301.ts', content: 'two' },
+      ],
+    ];
+    for (const files of aliases) {
+      const result = await guarded.prepare({
+        baseSha,
+        files,
+        edits: [{ path: 'src/new.ts', expectedBeforeSha256: null, createIfMissing: true, replacement: 'new' }],
+      });
+      assert.equal(result.created, false);
+      assert.equal(result.reason, 'source-path-alias-collision');
+    }
+    for (const badPath of [
+      'src/CON', 'src/nul.txt', 'src/LPT1.log',
+      'src/stream.txt:payload', 'src/trailing-dot./file.ts',
+      'src/trailing-space /file.ts',
+    ]) {
+      const result = await guarded.prepare({
+        baseSha,
+        files: original,
+        edits: [{ path: badPath, expectedBeforeSha256: null, createIfMissing: true, replacement: 'unsafe' }],
+      });
+      assert.equal(result.created, false, badPath);
+      assert.equal(result.reason, 'invalid-source-path', badPath);
+    }
+    const caseMismatch = await guarded.prepare({
+      baseSha,
+      files: original,
+      edits: [{
+        path: 'runtime/neuro-kurisu/src/Example.mjs',
+        expectedBeforeSha256: hashSourceCandidateTextV1(original[0].content),
+        replacement: 'case alias',
+      }],
+    });
+    assert.equal(caseMismatch.created, false);
+    assert.equal(caseMismatch.reason, 'source-edit-path-alias-mismatch');
+    assert.equal(admissionCalls, 0, 'portable path conflicts must be rejected before host admission');
+  } finally {
+    await rm(workspaceRoot, { recursive: true, force: true });
+  }
+}
