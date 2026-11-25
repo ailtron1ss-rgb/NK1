@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 // Keep the ASR action-tool ingress regressions inside the same focused CI entrypoint.
 import './neko-plugin-voice-runtime-wiring.mjs';
+import './universal-input-interpreter.mjs';
 import { PluginMessageIngress } from '../src/organism/integration/neko/PluginMessageIngress.ts';
 import { externalGoalForRuntimeInput, shouldInvokeLanguageForRuntimeStep } from '../src/organism/core/RuntimeInputPolicy.ts';
 
