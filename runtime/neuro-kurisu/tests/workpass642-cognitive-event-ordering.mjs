@@ -44,6 +44,16 @@ assert.throws(() => fabric.append({
   parentIds: [first.id], external: true,
 }), /cognitive-event-id-conflict/,
   'reusing an event ID with changed trust/source classification must be a conflict');
+assert.throws(() => fabric.append({
+  id: 'order:2', tick: 4, at: 9_999, stage: 'prediction', source: 'clock-fixture',
+  parentIds: [first.id], confidence01: .91,
+}), /cognitive-event-id-conflict/,
+  'reusing an event ID with changed confidence must be a conflict');
+assert.throws(() => fabric.append({
+  id: 'order:2', tick: -1, at: 9_999, stage: 'prediction', source: 'clock-fixture',
+  parentIds: [first.id],
+}), /invalid-cognitive-event-tick/,
+  'negative event ticks must be rejected instead of persisting a NaN/zero coercion');
 
 const snapshot = fabric.snapshot();
 assert.equal(snapshot.sequenceWatermark, 3);
