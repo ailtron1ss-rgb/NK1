@@ -136,7 +136,9 @@ export class ExternalEvidenceTrustEngine{
    const at=typeof input.at==='number'&&Number.isSafeInteger(input.at)&&input.at>=0?Math.min(input.at,now+5*60*1000):now;
    const claimKey=String(input.claimKey??'').trim().slice(0,180);
    const source=String(input.source||'unknown').trim().toLowerCase().slice(0,120)||'unknown';
-   const sourceClass=sourceClassOf(source); const confidence=clamp(input.confidence01??.5); const contradiction=clamp(input.contradiction01??0);
+   const sourceClass=sourceClassOf(source);
+   const confidence=typeof input.confidence01==='number'&&Number.isFinite(input.confidence01)&&input.confidence01>=0&&input.confidence01<=1?input.confidence01:.5;
+   const contradiction=typeof input.contradiction01==='number'&&Number.isFinite(input.contradiction01)&&input.contradiction01>=0&&input.contradiction01<=1?input.contradiction01:0;
    const independenceKey=String(input.independenceKey||source).trim().toLowerCase().slice(0,120)||source;
    const normalized=(value:string)=>String(value??'').trim().toLowerCase();
    const same=this.state.records.filter(r=>normalized(r.claimKey)===normalized(claimKey) && normalized(r.independenceKey)===normalized(independenceKey));
