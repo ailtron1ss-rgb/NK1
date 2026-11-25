@@ -60,6 +60,46 @@ const restoreP41ModalityEvidenceKinds=(value:unknown):Partial<Record<P41Modality
   for(const modality of modalities)if(row[modality]!==undefined)out[modality]=restoreP41EvidenceKind(row[modality]);
   return out;
 };
+const isP41Modality=(value:unknown):value is P41Modality=>
+  value==='text'||value==='vision'||value==='audio'||value==='sensor'||value==='world';
+const restoreP41Unit=(value:unknown,fallback=0):number=>
+  typeof value==='number'&&Number.isFinite(value)&&value>=0&&value<=1?value:fallback;
+const restoreP41Signed=(value:unknown,fallback=0):number=>
+  typeof value==='number'&&Number.isFinite(value)&&value>=-1&&value<=1?value:fallback;
+const restoreP41Count=(value:unknown,fallback=0,min=0):number=>
+  typeof value==='number'&&Number.isSafeInteger(value)&&value>=min?value:fallback;
+const restoreP41Time=(value:unknown,fallback=0):number=>
+  typeof value==='number'&&Number.isSafeInteger(value)&&value>=0&&value<=Date.now()+5*60_000?value:fallback;
+const restoreP41Text=(value:unknown,max=180,fallback=''):string=>{
+  if(typeof value!=='string')return fallback;
+  const text=value.normalize('NFKC').trim();
+  return text&&text.length<=max&&!/[\\u0000-\\u001f\\u007f-\\u009f]/u.test(text)?text:fallback;
+};
+const restoreP41Strings=(value:unknown,maxItems=32,maxLength=180):string[]=>{
+  if(!Array.isArray(value))return [];
+  return [...new Set(value.filter((item):item is string=>typeof item==='string')
+    .map(item=>restoreP41Text(item,maxLength)).filter(Boolean))].slice(0,maxItems);
+};
+const restoreP41Modalities=(value:unknown):P41Modality[]=>{
+  if(!Array.isArray(value))return [];
+  return [...new Set(value.filter(isP41Modality))];
+};
+const restoreP41Vector=(value:unknown):{x:number;y:number;z:number}|null=>{
+  if(!value||typeof value!=='object'||Array.isArray(value))return null;
+  const row=value as Record<string,unknown>;
+  if(![row.x,row.y,row.z].every(v=>typeof v==='number'&&Number.isFinite(v)&&Math.abs(v)<=1_000_000))return null;
+  return {x:Number(row.x),y:Number(row.y),z:Number(row.z)};
+};
+const restoreP41ModalityTimes=(value:unknown,capAt:number):Partial<Record<P41Modality,number>>=>{
+  if(!value||typeof value!=='object'||Array.isArray(value))return {};
+  const row=value as Record<string,unknown>;
+  const out:Partial<Record<P41Modality,number>>={};
+  for(const modality of ['text','vision','audio','sensor','world'] as P41Modality[]){
+    const at=restoreP41Time(row[modality],-1);
+    if(at>=0&&at<=capAt)out[modality]=at;
+  }
+  return out;
+};
 export type P41EntityKind = 'person'|'object'|'place'|'event'|'concept'|'body'|'unknown';
 export interface P41ImageBox {x:number;y:number;width:number;height:number;}
 
@@ -243,42 +283,164 @@ export class P41SemanticPerceptionEngine {
     const restored=raw===undefined||raw===null?{}:cloneInertSnapshot<unknown>(raw,{maxDepth:24,maxProperties:65_536});
     if(!restored||typeof restored!=='object'||Array.isArray(restored))throw new Error('p41-perception-snapshot-invalid');
     const r=restored as Partial<P41PerceptionState>;
-    this.state={...d,...r,
-      scene:{...d.scene,...(r.scene??{})},
-      ...(r.sceneEvidenceKind!==undefined?{sceneEvidenceKind:restoreP41EvidenceKind(r.sceneEvidenceKind)}:{}),
-      entities:Array.isArray(r.entities)?r.entities.slice(-192).map((entity:any)=>{
-        const imageBox=normalizedImageBox(entity?.imageBox);
-        const cameraId=Number.isSafeInteger(entity?.imageBoxCameraId)&&Number(entity.imageBoxCameraId)>=0?Number(entity.imageBoxCameraId):undefined;
-        const imageAt=Number.isFinite(entity?.imageBoxAt)&&Number(entity.imageBoxAt)>=0?Number(entity.imageBoxAt):undefined;
-        const boxConfidence=Number.isFinite(entity?.imageBoxConfidence01)&&Number(entity.imageBoxConfidence01)>=.42&&Number(entity.imageBoxConfidence01)<=1?Number(entity.imageBoxConfidence01):undefined;
-        const snapshotAt=Number(r.snapshots?.[0]?.at??entity?.lastSeenAt??0);
-        const validImageEvidence=Boolean(imageBox&&cameraId!==undefined&&imageAt!==undefined&&imageAt<=snapshotAt&&boxConfidence!==undefined);
-        return {
-          ...entity,
-          modalitySourceIds:safeModalitySourceIds(entity?.modalitySourceIds),
-          modalityEvidenceKinds:restoreP41ModalityEvidenceKinds(entity?.modalityEvidenceKinds),
-          ...(validImageEvidence?{imageBox,imageBoxCameraId:cameraId,imageBoxAt:imageAt,imageBoxConfidence01:boxConfidence}:{imageBox:undefined,imageBoxCameraId:undefined,imageBoxAt:undefined,imageBoxConfidence01:undefined}),
-        };
-      }):[],
-      relations:Array.isArray(r.relations)?r.relations.slice(-384).map((relation:any)=>({
-        ...relation,evidenceKind:restoreP41EvidenceKind(relation?.evidenceKind),
-      })):[],
-      events:Array.isArray(r.events)?r.events.slice(-128).map((event:any)=>({
-        ...event,
-        evidenceKind:restoreP41EvidenceKind(event?.evidenceKind),
-        modalityEvidenceKinds:restoreP41ModalityEvidenceKinds(event?.modalityEvidenceKinds),
-      })):[],
-      snapshots:Array.isArray(r.snapshots)?r.snapshots.slice(-128):[],
-      pending:Array.isArray(r.pending)?r.pending.slice(-64):[],
-      modalityReliability:Object.fromEntries((Object.keys(d.modalityReliability) as P41Modality[]).map(modality=>[
-        modality,{...d.modalityReliability[modality],...(r.modalityReliability?.[modality]??{})}
-      ])) as P41PerceptionState['modalityReliability'],
-      actionBias:{...d.actionBias,...(r.actionBias??{})},
-      metrics:{...d.metrics,...(r.metrics??{})},
-      calibrationEvidenceIds:Array.isArray(r.calibrationEvidenceIds)?r.calibrationEvidenceIds.filter((x):x is string=>typeof x==='string').slice(-256):[],
-      nextTrackSequence:Number.isSafeInteger(r.nextTrackSequence)&&Number(r.nextTrackSequence)>=0?Number(r.nextTrackSequence):0,
+    const rawScene=r.scene&&typeof r.scene==='object'?r.scene:d.scene;
+    const sceneAt=restoreP41Time(rawScene.at,d.scene.at);
+    const scene={
+      label:normalizePerceptualLabel(rawScene.label)||d.scene.label,
+      confidence01:restoreP41Unit(rawScene.confidence01,d.scene.confidence01),
+      stability01:restoreP41Unit(rawScene.stability01,d.scene.stability01),
+      at:sceneAt,
+    };
+    const entities:P41PerceptualEntity[]=Array.isArray(r.entities)?r.entities.slice(-192).flatMap((entity:any)=>{
+      if(!entity||typeof entity!=='object'||Array.isArray(entity))return [];
+      const id=restoreP41Text(entity.id,180);
+      const label=normalizePerceptualLabel(entity.label);
+      if(!id||!label)return [];
+      const firstSeenAt=restoreP41Time(entity.firstSeenAt,0);
+      const lastSeenAt=Math.max(firstSeenAt,restoreP41Time(entity.lastSeenAt,firstSeenAt));
+      const modalities=restoreP41Modalities(entity.modalities);
+      const modalityLastSeenAt=restoreP41ModalityTimes(entity.modalityLastSeenAt,lastSeenAt);
+      const imageBox=normalizedImageBox(entity.imageBox);
+      const cameraId=restoreP41Count(entity.imageBoxCameraId,-1);
+      const imageAt=restoreP41Time(entity.imageBoxAt,-1);
+      const boxConfidence=restoreP41Unit(entity.imageBoxConfidence01,-1);
+      const validImageEvidence=Boolean(imageBox&&cameraId>=0&&imageAt>=0&&imageAt<=lastSeenAt&&boxConfidence>=.42);
+      const kind:P41EntityKind=['person','object','place','event','concept','body','unknown'].includes(entity.kind)?entity.kind:'unknown';
+      const trackId=cleanTrackId(entity.trackId)||undefined;
+      const positionFrameId=cleanTrackId(entity.positionFrameId)||undefined;
+      const position=restoreP41Vector(entity.position);
+      const velocity=restoreP41Vector(entity.velocity);
+      const modalitySourceIds=safeModalitySourceIds(entity.modalitySourceIds);
+      const modalityEvidenceKinds=restoreP41ModalityEvidenceKinds(entity.modalityEvidenceKinds);
+      const trackAliases=restoreP41Strings(entity.trackAliases,16,120);
+      const confidence01=restoreP41Unit(entity.confidence01,0);
+      const salience01=restoreP41Unit(entity.salience01,0);
+      const present01=restoreP41Unit(entity.present01,0);
+      return [{
+        id,label,kind,
+        ...(trackId?{trackId}:{}),
+        ...(positionFrameId?{positionFrameId}:{}),
+        ...(trackAliases.length?{trackAliases}:{}),
+        confidence01,salience01,present01,
+        firstSeenAt,lastSeenAt,
+        observations:Math.max(1,restoreP41Count(entity.observations,1)),
+        modalities,
+        modalityLastSeenAt,
+        modalityEvidenceKinds,
+        modalitySourceIds,
+        position,
+        ...(validImageEvidence?{imageBox,imageBoxCameraId:cameraId,imageBoxAt:imageAt,imageBoxConfidence01:boxConfidence}:{}),
+        velocity,
+      } satisfies P41PerceptualEntity];
+    }):[];
+    const relations:P41PerceptualRelation[]=Array.isArray(r.relations)?r.relations.slice(-384).flatMap((relation:any)=>{
+      if(!relation||typeof relation!=='object'||Array.isArray(relation))return [];
+      const id=restoreP41Text(relation.id,180),from=normalizePerceptualLabel(relation.from),
+        relationLabel=restoreP41Text(relation.relation,80),to=normalizePerceptualLabel(relation.to);
+      if(!id||!from||!relationLabel||!to)return [];
+      const modality=isP41Modality(relation.modality)?relation.modality:'world';
+      const fromEntityId=restoreP41Text(relation.fromEntityId,180);
+      const toEntityId=restoreP41Text(relation.toEntityId,180);
+      return [{
+        id,from,relation:relationLabel,to,
+        ...(fromEntityId?{fromEntityId}:{}),...(toEntityId?{toEntityId}:{}),
+        confidence01:restoreP41Unit(relation.confidence01,0),
+        modality,evidenceKind:restoreP41EvidenceKind(relation.evidenceKind),
+        at:restoreP41Time(relation.at,0),
+      } satisfies P41PerceptualRelation];
+    }):[];
+    const events:P41PerceptualEvent[]=Array.isArray(r.events)?r.events.slice(-128).flatMap((event:any)=>{
+      if(!event||typeof event!=='object'||Array.isArray(event))return [];
+      const id=restoreP41Text(event.id,180),label=restoreP41Text(event.label,180);
+      if(!id||!label)return [];
+      const startedAt=restoreP41Time(event.startedAt,0);
+      const lastAt=Math.max(startedAt,restoreP41Time(event.lastAt,startedAt));
+      return [{
+        id,label,confidence01:restoreP41Unit(event.confidence01,0),
+        modalities:restoreP41Modalities(event.modalities),
+        startedAt,lastAt,persistence01:restoreP41Unit(event.persistence01,0),
+        evidenceKind:restoreP41EvidenceKind(event.evidenceKind),
+        modalityLastSeenAt:restoreP41ModalityTimes(event.modalityLastSeenAt,lastAt),
+        modalityEvidenceKinds:restoreP41ModalityEvidenceKinds(event.modalityEvidenceKinds),
+      } satisfies P41PerceptualEvent];
+    }):[];
+    const snapshots:P41PerceptualSnapshot[]=Array.isArray(r.snapshots)?r.snapshots.slice(-128).flatMap((snapshot:any)=>{
+      if(!snapshot||typeof snapshot!=='object'||Array.isArray(snapshot))return [];
+      const id=restoreP41Text(snapshot.id,180),snapshotScene=restoreP41Text(snapshot.scene,180);
+      if(!id||!snapshotScene)return [];
+      return [{
+        id,tick:restoreP41Count(snapshot.tick,0),at:restoreP41Time(snapshot.at,0),scene:snapshotScene,
+        entityIds:restoreP41Strings(snapshot.entityIds,32),
+        eventIds:restoreP41Strings(snapshot.eventIds,16),
+        relationIds:restoreP41Strings(snapshot.relationIds,32),
+        uncertainty01:restoreP41Unit(snapshot.uncertainty01,1),
+        coherence01:restoreP41Unit(snapshot.coherence01,0),
+        selfLocation:restoreP41Text(snapshot.selfLocation,120,'unknown'),
+      } satisfies P41PerceptualSnapshot];
+    }):[];
+    const pending:P41PendingPerception[]=Array.isArray(r.pending)?r.pending.slice(-64).flatMap((item:any)=>{
+      if(!item||typeof item!=='object'||Array.isArray(item)||!isP41Modality(item.modality))return [];
+      const id=restoreP41Text(item.id,180),query=restoreP41Text(item.query,240);
+      if(!id||!query)return [];
+      const createdAt=restoreP41Time(item.createdAt,0);
+      const expiresAt=Math.max(createdAt,restoreP41Time(item.expiresAt,createdAt));
+      const status=['pending','fulfilled','expired','rejected'].includes(item.status)?item.status:'rejected';
+      return [{
+        id,modality:item.modality,query,
+        expectedInformationGain01:restoreP41Unit(item.expectedInformationGain01,0),
+        estimatedCost01:restoreP41Unit(item.estimatedCost01,1),
+        priority01:restoreP41Unit(item.priority01,0),
+        createdAt,expiresAt,status,
+      } satisfies P41PendingPerception];
+    }):[];
+    const modalityReliability=Object.fromEntries((Object.keys(d.modalityReliability) as P41Modality[]).map(modality=>{
+      const rawReliability=r.modalityReliability?.[modality]??{};
+      const fallback=d.modalityReliability[modality];
+      return [modality,{
+        reliability01:restoreP41Unit(rawReliability.reliability01,fallback.reliability01),
+        observations:restoreP41Count(rawReliability.observations,0),
+        conflict01:restoreP41Unit(rawReliability.conflict01,fallback.conflict01),
+        latency01:restoreP41Unit(rawReliability.latency01,fallback.latency01),
+        reportedQuality01:restoreP41Unit(rawReliability.reportedQuality01,fallback.reportedQuality01),
+        serviceSuccess01:restoreP41Unit(rawReliability.serviceSuccess01,fallback.serviceSuccess01),
+        calibrationSamples:restoreP41Count(rawReliability.calibrationSamples,0),
+        calibrationMae01:restoreP41Unit(rawReliability.calibrationMae01,0),
+        calibrationBias01:restoreP41Signed(rawReliability.calibrationBias01,0),
+        lastVerifiedAt:restoreP41Time(rawReliability.lastVerifiedAt,0),
+      }];
+    })) as P41PerceptionState['modalityReliability'];
+    const actionBias=Object.fromEntries(ACTIONS.map(action=>[
+      action,restoreP41Signed(r.actionBias?.[action],0),
+    ])) as Record<ActionKind,number>;
+    const metrics={
+      grounding01:restoreP41Unit(r.metrics?.grounding01,d.metrics.grounding01),
+      temporalBinding01:restoreP41Unit(r.metrics?.temporalBinding01,d.metrics.temporalBinding01),
+      objectPermanence01:restoreP41Unit(r.metrics?.objectPermanence01,d.metrics.objectPermanence01),
+      crossModalAgreement01:restoreP41Unit(r.metrics?.crossModalAgreement01,d.metrics.crossModalAgreement01),
+      crossModalEvidenceCoverage01:restoreP41Unit(r.metrics?.crossModalEvidenceCoverage01,d.metrics.crossModalEvidenceCoverage01),
+      outcomeAlignment01:restoreP41Unit(r.metrics?.outcomeAlignment01,d.metrics.outcomeAlignment01),
+      activePerceptionUtility01:restoreP41Unit(r.metrics?.activePerceptionUtility01,d.metrics.activePerceptionUtility01),
+      unresolvedRate01:restoreP41Unit(r.metrics?.unresolvedRate01,d.metrics.unresolvedRate01),
+      updates:restoreP41Count(r.metrics?.updates,0),
+      sceneContinuity01:restoreP41Unit(r.metrics?.sceneContinuity01,d.metrics.sceneContinuity01),
+      temporalGrounding01:restoreP41Unit(r.metrics?.temporalGrounding01,d.metrics.temporalGrounding01),
+      evidenceTraceability01:restoreP41Unit(r.metrics?.evidenceTraceability01,d.metrics.evidenceTraceability01),
+      epistemicContradictions:restoreP41Count(r.metrics?.epistemicContradictions,0),
+    };
+    this.state={
+      ...d,
+      tick:restoreP41Count(r.tick,0),
+      scene,
+      sceneEvidenceKind:restoreP41EvidenceKind(r.sceneEvidenceKind??d.sceneEvidenceKind),
+      entities,relations,events,snapshots,pending,
+      modalityReliability,
+      actionBias,metrics,
+      calibrationEvidenceIds:restoreP41Strings(r.calibrationEvidenceIds,256),
+      nextTrackSequence:restoreP41Count(r.nextTrackSequence,0),
       continuity:d.continuity,
       epistemic:d.epistemic,
+      lastCheckpointAt:restoreP41Time(r.lastCheckpointAt,0),
+      lastHash:'',
     };
     this.continuity.restore(r.continuity as any);
     this.epistemic.restore(r.epistemic as any);
