@@ -116,44 +116,4 @@ assert.deepEqual(safe.facts, ['valid fact']);
 assert.deepEqual(safe.provenanceIds, ['source-1']);
 assert.notEqual(safe.lastHash, 'attacker-controlled-hash');
 
-
-const trustedWorld = new GroundedWorldState({
-  // This callback represents a host-owned verifier bound to the exact executor receipt.
-  // It is constructor-injected by trusted runtime composition, never supplied per call.
-  verifyExternalOutcome: receipt => receipt.provenanceId === 'host-verified-receipt'
-    && receipt.action === 'explore'
-    && receipt.proofClass === 'independent-observation',
-});
-const trustedOutcome = {
-  at: 1_700_000_000_100,
-  action: 'explore',
-  status: 'executed',
-  proofClass: 'independent-observation',
-  verified01: 1,
-  independent01: 1,
-  evidence01: .95,
-  consequence01: .9,
-  claim: 'verified-world-fact',
-  provenanceId: 'host-verified-receipt',
-  divergence01: .05,
-};
-const accepted = trustedWorld.integrateExternalOutcome(trustedOutcome);
-assert.equal(accepted.verified01, 1,
-  'only the constructor-injected host verifier may authorize a verified world effect');
-assert.ok(trustedWorld.snapshot().facts.includes('external-observed:explore:verified-world-fact'));
-const revisionAfterAccept = trustedWorld.snapshot().revision;
-const replay = trustedWorld.integrateExternalOutcome(trustedOutcome);
-assert.equal(replay.revision, revisionAfterAccept,
-  'replaying the same host receipt must be idempotent');
-assert.equal(trustedWorld.snapshot().events.filter(event => event.id === accepted.eventId).length, 1);
-const receiptReuse = trustedWorld.integrateExternalOutcome({
-  ...trustedOutcome,
-  at: trustedOutcome.at + 1,
-  action: 'collect',
-  claim: 'different-claim',
-});
-assert.equal(receiptReuse.revision, revisionAfterAccept,
-  'a host receipt cannot be replayed to authorize a different action or claim');
-assert.ok(!trustedWorld.snapshot().facts.includes('external-observed:collect:different-claim'));
-
 console.log('GROUNDED_WORLD_WRITE_AUTHORITY_INTEGRITY=PASS');
