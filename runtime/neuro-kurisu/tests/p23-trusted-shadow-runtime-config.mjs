@@ -25,14 +25,16 @@ const base = {
     surviveDir: '/tmp/nk1-shadow-survive',
     timeoutMs: 30_000,
     maxOutputBytes: 65536,
-    env: { NK1_TEST_MODE: '1' },
+    env: { NK1_TEST_MODE: '1', NK1_TEST_ACCESS_TOKEN: 'fixture-token' },
     inheritEnv: ['PATH'],
+    allowSensitiveEnv: ['NK1_TEST_ACCESS_TOKEN'],
   },
 };
 const config = parseTrustedShadowLearningScheduleConfig(JSON.stringify(base));
 assert.equal(config.enabled, true);
 assert.equal(config.candidateId, 'a'.repeat(64));
 assert.equal(config.command.args[0], '--version');
+assert.deepEqual(config.command.allowSensitiveEnv, ['NK1_TEST_ACCESS_TOKEN']);
 assert.equal(config.observationFileName, 'verified-skill-shadow-observation.json');
 
 for (const [name, altered, message] of [
@@ -40,6 +42,8 @@ for (const [name, altered, message] of [
   ['bad manifest', { ...base, manifestFingerprint: 'x' }, /SHA-256/],
   ['unsafe observation filename', { ...base, observationFileName: '../outside.json' }, /safe basename/],
   ['bad inherit-env', { ...base, command: { ...base.command, inheritEnv: ['PATH; touch /tmp/pwn'] } }, /environment variable names/],
+  ['duplicate sensitive grants', { ...base, command: { ...base.command, allowSensitiveEnv: ['NK1_TEST_ACCESS_TOKEN', 'NK1_TEST_ACCESS_TOKEN'] } }, /unique environment variable names/],
+  ['unbound sensitive grant', { ...base, command: { ...base.command, allowSensitiveEnv: ['DATABASE_URL'] } }, /bind to supplied command keys/],
   ['unknown property', { ...base, shell: true }, /unknown configuration fields/],
 ]) {
   assert.throws(() => parseTrustedShadowLearningScheduleConfig(JSON.stringify(altered)), message, name);

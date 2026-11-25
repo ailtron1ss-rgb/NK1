@@ -133,6 +133,7 @@ try {
           NK1_TEST_RUNTIME_VERSION: runtimeVersion,
           NK1_TEST_VERIFIER_ID: verifierId,
         },
+        allowSensitiveEnv: ['NK1_TEST_SHADOW_PRIVATE_KEY'],
       },
     },
   });
