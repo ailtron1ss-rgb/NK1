@@ -1906,7 +1906,10 @@ async function route(req, res) {
             const policy = await proactiveDelivery.setConsent(input.consentGranted);
             return json(res, 200, { ok: true, policy });
         }
-        if (req.method === 'GET' && url.pathname === '/api/organism/proactive-message') {
+        // POST is the canonical state-changing claim endpoint. GET remains as
+        // a compatibility alias for older clients but is not used by the app.
+        if ((req.method === 'POST' && url.pathname === '/api/organism/proactive-message/claim')
+            || (req.method === 'GET' && url.pathname === '/api/organism/proactive-message')) {
             if (!runtimeReady) return json(res, 503, { ok: false, error: 'organism-runtime-not-ready' });
             const result = await proactiveDelivery.claim();
             return json(res, result.status, result.body);
