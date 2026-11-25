@@ -2,7 +2,7 @@ name: NK1 N.E.K.O. plugin message ingress
 
 on:
   pull_request:
-    branches: [workpass70-source]
+    branches: [workpass70-source, "aspect/**"]
     paths:
       - "runtime/neuro-kurisu/src/organism/integration/neko/PluginMessageIngress.ts"
       - "runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts"
@@ -11,11 +11,12 @@ on:
       - "runtime/neuro-kurisu/tests/cognitive-immune-plugin-runtime-gate.mjs"
       - ".github/workflows/nk1-neko-plugin-message-ingress.yml"
   push:
-    branches: [workpass70-source, "aspect/**"]
+    branches: [workpass70-source]
     paths:
       - "runtime/neuro-kurisu/src/organism/integration/neko/PluginMessageIngress.ts"
       - "runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts"
       - "runtime/neuro-kurisu/tests/neko-plugin-message-ingress.mjs"
+      - "runtime/neuro-kurisu/tests/cognitive-immune-plugin-runtime-gate.mjs"
       - ".github/workflows/nk1-neko-plugin-message-ingress.yml"
 
 permissions:
