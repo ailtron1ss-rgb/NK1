@@ -143,4 +143,34 @@ function readyEngine(at = 1_000) {
     'a private thought must remain private after consent is granted and state is restored');
 }
 
+
+{
+  const { engine } = readyEngine(200_000);
+  assert.equal(engine.summary(200_001).deliveryClaimable, 1,
+    'a newly ready initiative must be visible as claimable');
+  const first = engine.claimReady(200_002, 1_000);
+  assert.equal(first?.deliveryAttemptCount, 1);
+  assert.equal(engine.summary(200_003).deliveryLeased, 1,
+    'an active lease must be observable as in-flight');
+  assert.equal(engine.summary(201_002).deliveryBackoff, 1,
+    'an expired lease must remain visible while retry backoff is active');
+  assert.equal(engine.summary(202_002).deliveryClaimable, 1,
+    'the item becomes claimable again when backoff expires');
+
+  let at = first.deliveryNextAttemptAt;
+  for (let attempt = 2; attempt <= 8; attempt += 1) {
+    const claim = engine.claimReady(at, 1_000);
+    assert.equal(claim?.deliveryAttemptCount, attempt,
+      'retry claims must expose monotonic attempt counts');
+    at = claim.deliveryNextAttemptAt;
+  }
+  assert.equal(engine.claimReady(at, 1_000), null,
+    'the delivery attempt budget must remain bounded');
+  const diagnostics = engine.summary(at);
+  assert.equal(diagnostics.deliveryExhausted, 1,
+    'exhausted deliveries must be observable instead of silently disappearing');
+  assert.equal(diagnostics.deliveryAttempts, 8);
+  assert.equal(diagnostics.deliveryClaimable, 0);
+}
+
 console.log('AUTONOMOUS_SOCIAL_DELIVERY_OUTBOX=PASS');
