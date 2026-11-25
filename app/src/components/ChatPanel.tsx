@@ -5,6 +5,11 @@ import { useKurisu } from "@/organism/store";
 import { emptySnapshot } from "@/organism/types";
 import { cn } from "@/lib/utils";
 import { draftAfterSend } from "@/organism/chatDraft";
+import { persistChatDraft, readPersistentChatDraft, type ChatDraftStorage } from "@/organism/chatDraftStorage";
+
+function chatDraftStorage(): ChatDraftStorage | null {
+  try { return typeof window === "undefined" ? null : window.localStorage; } catch { return null; }
+}
 
 export function ChatPanel() {
   const snap = useKurisu((s) => s.snap) ?? emptySnapshot();
@@ -19,13 +24,17 @@ export function ChatPanel() {
   const voiceInputStatus = useKurisu((s) => s.voiceInputStatus);
   const voiceInputError = useKurisu((s) => s.voiceInputError);
   const error = useKurisu((s) => s.error);
-  const [text, setText] = useState("");
+  const [text, setText] = useState(() => readPersistentChatDraft(chatDraftStorage()));
   const end = useRef<HTMLDivElement>(null);
   const composer = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     end.current?.scrollIntoView({ behavior: "smooth" });
   }, [snap.chat.length, busy]);
+
+  useEffect(() => {
+    persistChatDraft(chatDraftStorage(), text);
+  }, [text]);
 
   return (
     <section className="flex min-h-0 flex-1 flex-col rounded-xl border border-border bg-surface">
@@ -96,9 +105,10 @@ export function ChatPanel() {
           e.preventDefault();
           const submitted = text;
           if (!submitted.trim() || busy) return;
-          setText("");
           const delivered = await send(submitted);
-          setText((current) => draftAfterSend(current, submitted, delivered));
+          setText((current) => delivered && current === submitted
+            ? ""
+            : draftAfterSend(current, submitted, delivered));
         }}
       >
         <textarea
