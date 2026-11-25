@@ -155,6 +155,13 @@ function fixture({ acknowledge = async () => true } = {}) {
   const optionalProjection = runtimeSource.indexOf("persistOpenLoopMutation", methodStart);
   assert.ok(methodStart >= 0 && coreCommit > methodStart && optionalProjection > coreCommit,
     "the canonical Core delivery receipt must be persisted before the optional Open Loop projection");
+  assert.ok(runtimeSource.includes("acknowledgeAutonomousSocialInitiativeWithState"),
+    "Runtime must consume the Core ACK state-change receipt");
+  const readyStart = runtimeSource.indexOf("async autonomousDialogueReady()");
+  const readyClaim = runtimeSource.indexOf("claimAutonomousSocialInitiativeDelivery()", readyStart);
+  const readyCheckpoint = runtimeSource.indexOf("if (claim.stateChanged) await this.core.flush()", readyStart);
+  assert.ok(readyStart >= 0 && readyClaim > readyStart && readyCheckpoint > readyClaim,
+    "a null delivery poll must checkpoint only when claim processing changed durable state");
 }
 
 console.log("PROACTIVE_DELIVERY_COORDINATOR=PASS");
