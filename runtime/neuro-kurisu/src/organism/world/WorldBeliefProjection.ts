@@ -51,14 +51,16 @@ export function projectWorldCognitiveSignal(input: {
     ? [...new Set(snapshot.quarantinedFacts.slice(0, 192).filter((fact): fact is string =>
       typeof fact === 'string' && fact.trim().length > 0 && fact.length <= 512))]
     : [];
-  const quarantinedOutcomes = Array.isArray(snapshot.quarantinedOutcomes)
-    ? [...new Set(snapshot.quarantinedOutcomes.slice(0, 96).flatMap(item =>
-        isRecord(item) && typeof item.id === 'string' && item.id.trim().length > 0 &&
-        typeof item.label === 'string' && item.label.startsWith('external-receipt:')
-          ? [item.id]
-          : []))]
-    : [];
-  const quarantinedEvidenceCount = quarantinedFacts.length + quarantinedOutcomes.length;
+  const quarantinedOutcomeFreshWeight = Array.isArray(snapshot.quarantinedOutcomes)
+    ? snapshot.quarantinedOutcomes.slice(0, 96).reduce((total, item) => {
+        if (!isRecord(item) || typeof item.id !== 'string' || item.id.trim().length === 0
+          || typeof item.label !== 'string' || !item.label.startsWith('external-receipt:')) return total;
+        // Diagnostic operational receipts create only short-lived pressure. Persisted
+        // semantic facts remain in their own durable quarantine until re-attested.
+        return total + evidenceFreshness(item.at, nowAt, tauMs);
+      }, 0)
+    : 0;
+  const quarantinedEvidenceCount = quarantinedFacts.length + quarantinedOutcomeFreshWeight;
   const quarantinePressure01 = quarantinedEvidenceCount > 0
     ? Math.min(0.45, 0.12 + 0.03 * Math.log2(quarantinedEvidenceCount))
     : 0;
