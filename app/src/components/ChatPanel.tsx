@@ -24,6 +24,7 @@ export function ChatPanel() {
   const [proactiveConsentBusy, setProactiveConsentBusy] = useState(false);
   const [proactiveConsentError, setProactiveConsentError] = useState<string | null>(null);
   const proactiveConsentEpoch = useRef(0);
+  const quietHoursDirty = useRef(false);
   const end = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -41,9 +42,11 @@ export function ChatPanel() {
         if (!cancelled && epochAtStart === proactiveConsentEpoch.current) {
           setProactiveConsent(result.policy.consentGranted === true);
           setProactiveOutbox(result.policy.outbox);
-          setQuietHoursEnabled(result.policy.quietHoursEnabled === true);
-          setQuietStartHourUtc(result.policy.quietStartHourUtc);
-          setQuietEndHourUtc(result.policy.quietEndHourUtc);
+          if (!quietHoursDirty.current) {
+            setQuietHoursEnabled(result.policy.quietHoursEnabled === true);
+            setQuietStartHourUtc(result.policy.quietStartHourUtc);
+            setQuietEndHourUtc(result.policy.quietEndHourUtc);
+          }
           setProactiveConsentError(null);
         }
       }).catch((error) => {
@@ -61,7 +64,7 @@ export function ChatPanel() {
   }, []);
 
   const saveQuietHours = async () => {
-    if (quietHoursBusy || quietStartHourUtc < 0 || quietStartHourUtc > 23
+    if (quietHoursBusy || proactiveConsentBusy || quietStartHourUtc < 0 || quietStartHourUtc > 23
       || quietEndHourUtc < 0 || quietEndHourUtc > 23) return;
     proactiveConsentEpoch.current += 1;
     setQuietHoursBusy(true);
@@ -75,6 +78,7 @@ export function ChatPanel() {
       setQuietHoursEnabled(result.policy.quietHoursEnabled === true);
       setQuietStartHourUtc(result.policy.quietStartHourUtc);
       setQuietEndHourUtc(result.policy.quietEndHourUtc);
+      quietHoursDirty.current = false;
       setProactiveOutbox(result.policy.outbox);
     } catch (error) {
       setProactiveConsentError(error instanceof Error ? error.message : String(error));
@@ -85,7 +89,7 @@ export function ChatPanel() {
   };
 
   const toggleProactiveConsent = async () => {
-    if (proactiveConsent === null || proactiveConsentBusy) return;
+    if (proactiveConsent === null || proactiveConsentBusy || quietHoursBusy) return;
     proactiveConsentEpoch.current += 1;
     setProactiveConsentBusy(true);
     setProactiveConsentError(null);
@@ -114,16 +118,16 @@ export function ChatPanel() {
           <p className="mt-1 text-[11px] text-subtle">Internal reflection continues when unsolicited messages are paused.</p>
           <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-subtle">
             <label className="inline-flex items-center gap-1.5">
-              <input type="checkbox" checked={quietHoursEnabled} onChange={(event) => setQuietHoursEnabled(event.target.checked)} disabled={quietHoursBusy} />
+              <input type="checkbox" checked={quietHoursEnabled} onChange={(event) => { quietHoursDirty.current = true; setQuietHoursEnabled(event.target.checked); }} disabled={quietHoursBusy || proactiveConsentBusy} />
               Quiet hours (UTC)
             </label>
             <label className="inline-flex items-center gap-1">
               <span>From</span>
-              <input aria-label="Quiet hours start hour UTC" type="number" min={0} max={23} step={1} value={quietStartHourUtc} onChange={(event) => setQuietStartHourUtc(Math.max(0, Math.min(23, Number(event.target.value))))} disabled={quietHoursBusy} className="w-12 rounded border border-border bg-bg px-1 py-0.5 text-fg" />
+              <input aria-label="Quiet hours start hour UTC" type="number" min={0} max={23} step={1} value={quietStartHourUtc} onChange={(event) => { quietHoursDirty.current = true; setQuietStartHourUtc(Math.max(0, Math.min(23, Number(event.target.value)))); }} disabled={quietHoursBusy || proactiveConsentBusy} className="w-12 rounded border border-border bg-bg px-1 py-0.5 text-fg" />
             </label>
             <label className="inline-flex items-center gap-1">
               <span>To</span>
-              <input aria-label="Quiet hours end hour UTC" type="number" min={0} max={23} step={1} value={quietEndHourUtc} onChange={(event) => setQuietEndHourUtc(Math.max(0, Math.min(23, Number(event.target.value))))} disabled={quietHoursBusy} className="w-12 rounded border border-border bg-bg px-1 py-0.5 text-fg" />
+              <input aria-label="Quiet hours end hour UTC" type="number" min={0} max={23} step={1} value={quietEndHourUtc} onChange={(event) => { quietHoursDirty.current = true; setQuietEndHourUtc(Math.max(0, Math.min(23, Number(event.target.value)))); }} disabled={quietHoursBusy || proactiveConsentBusy} className="w-12 rounded border border-border bg-bg px-1 py-0.5 text-fg" />
             </label>
             <Button type="button" variant="ghost" size="sm" disabled={quietHoursBusy} onClick={() => void saveQuietHours()}>{quietHoursBusy ? "Saving…" : "Save hours"}</Button>
           </div>
