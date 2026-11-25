@@ -36,6 +36,8 @@ jobs:
         run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Read-only subsystem port probe contract
         run: npm run test:special-system-probes
+      - name: Legacy subsystem accessor contract
+        run: node --experimental-strip-types tests/big-pass-48-subsystem-ports.mjs
       - name: System contract cache and projection reuse
         run: npm run test:big-pass-59
       - name: Runtime type syntax validation
