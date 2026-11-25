@@ -24,7 +24,8 @@ export function ChatPanel() {
   const voiceInputStatus = useKurisu((s) => s.voiceInputStatus);
   const voiceInputError = useKurisu((s) => s.voiceInputError);
   const error = useKurisu((s) => s.error);
-  const [text, setText] = useState(() => readPersistentChatDraft(chatDraftStorage()));
+  const [text, setText] = useState("");
+  const [draftLoaded, setDraftLoaded] = useState(false);
   const end = useRef<HTMLDivElement>(null);
   const composer = useRef<HTMLTextAreaElement>(null);
 
@@ -33,8 +34,13 @@ export function ChatPanel() {
   }, [snap.chat.length, busy]);
 
   useEffect(() => {
-    persistChatDraft(chatDraftStorage(), text);
-  }, [text]);
+    setText((current) => current.trim() ? current : readPersistentChatDraft(chatDraftStorage()));
+    setDraftLoaded(true);
+  }, []);
+
+  useEffect(() => {
+    if (draftLoaded) persistChatDraft(chatDraftStorage(), text);
+  }, [draftLoaded, text]);
 
   return (
     <section className="flex min-h-0 flex-1 flex-col rounded-xl border border-border bg-surface">
