@@ -203,3 +203,12 @@ A fresh query of workflow runs associated with the exact current PR head SHAs re
 The exact-head refresh upgrades the evidence status for these six heads compared with the prior section's earlier cautious note. It does not remove independent review, stale dependency, overlapping-file, device-soak, or merge/release gates. In particular, #1170 and #1174 both pass their respective current matrices but still overlap in OrganismCore.ts and package.json; passing CI independently does not prove a correct combined result.
 
 No exact-head workflow run was returned for current #1164 head b78a525acaabe0a4de00fd807eefe87a44a93c75 or current #1182 head 176e3e8e98eb25fd691c6d3838888351bcdfa1eb. Their new regression tests remain unexecuted; no RED/green result is claimed.
+## Undo-First Core API continuation refresh — 2026-11-25
+
+- PR [#1178](https://github.com/ailtron1ss-rgb/NK1/pull/1178), existing branch `aspect/undo-first-core-registration-20261125`, was synchronized in place; no successor branch was created.
+- New branch head: `15ac8732911152be1a58df455cd94a3ab5cf017b`. Its first parent is canonical `workpass70-source@9008a8982a5173304456bee2c604bd0bc8665964`; the prior PR head `bad4d4adabfb71a293656cea914d93aeca77d983` is the second parent.
+- GitHub compare canonical source → new head: status `ahead`, `ahead_by=8`, `behind_by=0`; five changed files only: `OrganismCore.ts`, `OrganismRuntime.ts`, Undo-First workflow, `docs/OMESTRO_UNDO_FIRST.md`, and filesystem integration test.
+- The rebase preserved the canonical source tree and replayed only the PR's five-file delta. Core now exposes `executeUndoForKey()` on the public Core boundary; Runtime delegates through the serialized runtime queue and no longer casts to private `cognitiveRuntime` internals.
+- Exact-head synthetic PR merge run [#45621864080](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45621864080) — **SUCCESS**. Its `undo-first` job ran runtime typecheck, 11 ActionGateway cases, FileStateStore/filesystem integration (10 checks), action crash reconciliation, and archive/replay checks.
+- Typecheck evidence is limited: `TYPECHECK=PASS mode=node-strip-syntax-only files=746`; semantic TypeScript `tsc` was unavailable in that workflow. Filesystem Undo status explicitly returned `manual-intervention-required`; do not claim automatic reversal of all side effects.
+- This remains Draft/open/unmerged. No canonical source branch or Release ZIP was modified.
