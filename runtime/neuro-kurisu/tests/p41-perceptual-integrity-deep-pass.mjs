@@ -32,6 +32,10 @@ function semanticVision(objects, at, extra = {}) {
   assert.equal(chairs.length, 2);
   assert.equal(new Set(chairs.map(entity => entity.id)).size, 2);
   const originalIds = new Map(chairs.map(entity => [entity.trackId, entity.id]));
+  assert.ok(chairs.every(entity => entity.modalitySourceIds?.vision?.includes('detector')),
+    'a provider source ID must remain attached to its vision modality');
+  assert.ok(chairs.every(entity => !entity.modalitySourceIds?.vision?.some(id => ['vision','world','sensor','audio','text'].includes(id))),
+    'modality names must never be stored as provider source identities');
 
   const second = engine.ingest(semanticVision([
     { ...objects[1], x: 3.1 },
@@ -136,6 +140,9 @@ function semanticVision(objects, at, extra = {}) {
   assert.equal(lamps[0].trackId, 'vision:0:vision:lamp-v-1', 'the primary track key must not be overwritten by a cross-modal alias');
   assert.ok(lamps[0].trackAliases?.includes('world:world:lamp-world-1'));
   assert.ok(lamps[0].modalities.includes('vision') && lamps[0].modalities.includes('world'));
+  assert.ok(!lamps[0].modalitySourceIds?.vision?.includes('vision'));
+  assert.ok(!lamps[0].modalitySourceIds?.world?.includes('world'),
+    'cross-modal track namespaces must not become evidence source identities');
   assert.ok(second.metrics.crossModalEvidenceCoverage01 > 0);
 
   const ambiguous = new P41SemanticPerceptionEngine();
