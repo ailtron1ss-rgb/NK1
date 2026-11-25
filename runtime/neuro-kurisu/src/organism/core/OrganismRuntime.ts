@@ -2504,6 +2504,15 @@ export class OrganismRuntime {
     return this.enqueue(async () => {
       this.embodiment.externalEvent(detail, importance);
       const body = this.embodiment.snapshot();
+      // Keep the original external stimulus in the canonical multimodal stream.
+      // It is a UI/device sensor observation, not a verified physical touch.
+      this.core.recordMultimodalObservation({
+        modality: 'sensor',
+        summary: detail,
+        confidence: 0.72,
+        salience: importance,
+        evidence: ['human-interface-event', 'source-unverified'],
+      });
       await this.core.observe({
         worldEvent:{ type:'external_event', importance, payload:{ detail } },
         novelty:importance,
@@ -2520,7 +2529,10 @@ export class OrganismRuntime {
         },
       });
       await this.core.setEmbodiment(body, this.embodiment.eventLog());
-      return this.core.perceptionSnapshot();
+      return {
+        ...this.core.perceptionSnapshot(),
+        multimodal: this.core.multimodalSnapshot(),
+      };
     });
   }
   adaptiveDevelopmentSnapshot(){ return this.core.adaptiveDevelopmentSnapshot(); }
