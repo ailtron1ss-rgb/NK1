@@ -14,7 +14,7 @@ type EvidenceKind = 'observed' | 'model-output' | 'derived' | 'conflict' | 'unre
 type UnknownRecord = Record<string, unknown>;
 interface WorldEntityEvidence {
   confidence01?: unknown; lastSeenAt?: unknown; observationCount?: unknown;
-  sourceIds?: unknown; modalities?: unknown; modalityEvidenceKinds?: unknown;
+  sourceIds?: unknown; modalities?: unknown; modalityEvidenceKinds?: unknown; modalitySourceIds?: unknown;
   presenceStatus?: unknown; absenceEvidence01?: unknown;
 }
 interface GroundedWorldSnapshotLike {
@@ -69,7 +69,6 @@ export function projectWorldCognitiveSignal(input: {
     : 0;
   let rawWeight = 0, freshWeight = 0, observedWeight = 0, inferredWeight = 0;
   let conflictWeight = 0, unresolvedWeight = 0, staleWeight = 0, fadingChange = 0;
-  const independentSources = new Set<string>();
   for (const entity of entities) {
     if (!isRecord(entity)) continue;
     const confidence = unit(entity.confidence01, 0.35);
@@ -78,15 +77,29 @@ export function projectWorldCognitiveSignal(input: {
     const repeatSupport = 0.75 + 0.25 * Math.min(1, Math.log2(observationCount + 1) / 4);
     const baseWeight = confidence * repeatSupport;
     const freshness = evidenceFreshness(entity.lastSeenAt, nowAt, tauMs);
-    const sourceIds = Array.isArray(entity.sourceIds) ? entity.sourceIds.filter((id): id is string =>
-      typeof id === 'string' && id.trim().length > 0 && id.length <= 180 && !MODALITY_NAMES.has(id.trim().toLowerCase())) : [];
-    for (const sourceId of sourceIds) independentSources.add(sourceId.trim());
-    const kinds = isRecord(entity.modalityEvidenceKinds) ? Object.values(entity.modalityEvidenceKinds) : [];
-    const evidenceKinds: EvidenceKind[] = kinds.filter((kind): kind is EvidenceKind =>
-      typeof kind === 'string' && EVIDENCE_KINDS.has(kind as EvidenceKind));
-    if (evidenceKinds.length === 0 && Array.isArray(entity.modalities) && entity.modalities.length > 0) evidenceKinds.push('unresolved');
-    for (const rawKind of evidenceKinds) {
-      const kind: EvidenceKind = rawKind === 'observed' && sourceIds.length === 0 ? 'unresolved' : rawKind;
+    const sourceMap = isRecord(entity.modalitySourceIds) ? entity.modalitySourceIds : {};
+    const kinds = isRecord(entity.modalityEvidenceKinds) ? Object.entries(entity.modalityEvidenceKinds) : [];
+    const evidenceEntries: Array<{ modality: string; kind: EvidenceKind }> = [];
+    for (const [modality, rawKind] of kinds) {
+      if (typeof rawKind === 'string' && EVIDENCE_KINDS.has(rawKind as EvidenceKind)) {
+        evidenceEntries.push({ modality, kind: rawKind as EvidenceKind });
+      }
+    }
+    if (evidenceEntries.length === 0 && Array.isArray(entity.modalities)) {
+      for (const modality of entity.modalities.slice(0, 12)) {
+        if (typeof modality === 'string') evidenceEntries.push({ modality, kind: 'unresolved' });
+      }
+    }
+    for (const entry of evidenceEntries) {
+      const rawSources = sourceMap[entry.modality];
+      const modalitySources = Array.isArray(rawSources) ? rawSources.filter((id): id is string =>
+        typeof id === 'string' && id.trim().length > 0 && id.length <= 180
+          && !MODALITY_NAMES.has(id.trim().toLowerCase())) : [];
+      // An observed label is valid only with source identity attached to that
+      // exact modality. Aggregate/legacy sourceIds cannot be safely attributed
+      // across modalities and therefore do not attest an observation.
+      const kind: EvidenceKind = entry.kind === 'observed' && modalitySources.length === 0
+        ? 'unresolved' : entry.kind;
       const weighted = baseWeight * freshness;
       rawWeight += baseWeight; freshWeight += weighted; staleWeight += baseWeight * (1 - freshness);
       if (kind === 'observed') observedWeight += weighted;
@@ -111,9 +124,11 @@ export function projectWorldCognitiveSignal(input: {
   const evidenceClass: WorldCognitiveSignalV1['evidenceClass'] =
     observedWeight > 0.05 && (inferredWeight > 0.05 || conflict01 > 0.05 || unresolved01 > 0.05) ? 'mixed'
       : observedWeight > 0.05 ? 'observed' : inferredWeight > 0.05 ? 'inferred' : 'unknown';
-  const sourceFactor = 0.8 + 0.2 * Math.min(1, independentSources.size / 2);
   const evidenceQuality = totalFresh > 0 ? clamp01((observedWeight + inferredWeight * 0.45) / totalFresh) : 0;
-  const evidenceConfidence01 = clamp01(unit(snapshot.confidence01) * freshnessCoverage * evidenceQuality * sourceFactor);
+  // Opaque source IDs establish provenance identity, not independence. A
+  // corroboration bonus must come from the dedicated trust/attestation layer;
+  // this projection does not promote confidence based on the number of strings.
+  const evidenceConfidence01 = clamp01(unit(snapshot.confidence01) * freshnessCoverage * evidenceQuality);
   const uncertainty01 = clamp01(Math.max(
     unit(snapshot.uncertainty01, 0.5),
     conflict01 * 0.65 + unresolved01 * 0.5 + modelDisagreement01 * 0.25,
