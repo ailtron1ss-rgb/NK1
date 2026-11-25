@@ -43,7 +43,7 @@ export class P81PredictiveAttention {
   const d=defaultP81();
   const unit=(value:unknown,fallback:number)=>typeof value==='number'&&Number.isFinite(value)?clamp(value):fallback;
   const count=(value:unknown)=>typeof value==='number'&&Number.isSafeInteger(value)&&value>=0?Math.min(value,Number.MAX_SAFE_INTEGER):d.cycles;
-  const label=(value:unknown,fallback:string)=>typeof value==='string'&&value.length>0&&value.length<=96&&!/[\\u0000-\\u001f\\u007f-\\u009f]/u.test(value)?value:fallback;
+  const label=(value:unknown,fallback:string)=>typeof value==='string'&&value.length>0&&value.length<=96&&!/[\u0000-\u001f\u007f-\u009f]/u.test(value)?value:fallback;
   const evidenceClass=raw.worldEvidenceClass==='observed'||raw.worldEvidenceClass==='mixed'||raw.worldEvidenceClass==='inferred'||raw.worldEvidenceClass==='unknown'
     ? raw.worldEvidenceClass : d.worldEvidenceClass;
   this.state={
@@ -56,7 +56,7 @@ export class P81PredictiveAttention {
    exploitation01:unit(raw.exploitation01,d.exploitation01),
    exploration01:unit(raw.exploration01,d.exploration01),
    uncertainty01:unit(raw.uncertainty01,d.uncertainty01),
-   recentFocus:Array.isArray(raw.recentFocus)?raw.recentFocus.filter((x):x is string=>typeof x==='string'&&x.length>0&&x.length<=96&&!/[\\u0000-\\u001f\\u007f-\\u009f]/u.test(x)).slice(-24):[],
+   recentFocus:Array.isArray(raw.recentFocus)?raw.recentFocus.filter((x):x is string=>typeof x==='string'&&x.length>0&&x.length<=96&&!/[\u0000-\u001f\u007f-\u009f]/u.test(x)).slice(-24):[],
    worldRevision:Number.isSafeInteger(raw.worldRevision)&&Number(raw.worldRevision)>=0?Number(raw.worldRevision):d.worldRevision,
    worldEvidenceClass:evidenceClass,
    worldConflict01:unit(raw.worldConflict01,d.worldConflict01),
