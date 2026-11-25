@@ -1924,6 +1924,7 @@
     "build:memory:bilingual-holdout": "node --experimental-strip-types scripts/build-bilingual-holdout-from-wikipedia.mjs",
     "test:workpass613:metacognitive-episodes": "node --experimental-strip-types tests/metacognitive-episode-contract-workpass613.mjs && node --experimental-strip-types tests/metacognitive-episode-runtime-workpass613.mjs",
     "test:workpass83:cognitive-stage-evidence": "node --experimental-strip-types tests/cognitive-stage-evidence-workpass83.mjs",
-    "test:cognitive-stage-attention-pair": "node --experimental-strip-types tests/cognitive-stage-attention-pair-workpass83.mjs"
+    "test:cognitive-stage-attention-pair": "node --experimental-strip-types tests/cognitive-stage-attention-pair-workpass83.mjs",
+    "test:p66:time-normalized-observation": "node --experimental-strip-types tests/p66-time-normalized-observation.mjs"
   }
 }

@@ -1,0 +1,50 @@
+name: NK1 P66 time-normalized interoceptive regulation
+
+on:
+  pull_request:
+    branches: [workpass70-source]
+    paths:
+      - "runtime/neuro-kurisu/src/organism/cognition/P66InteroceptiveHomeostasis.ts"
+      - "runtime/neuro-kurisu/tests/p66-time-normalized-observation.mjs"
+      - "runtime/neuro-kurisu/package.json"
+      - ".github/workflows/nk1-p66-time-normalized-regulation.yml"
+  push:
+    branches: [workpass70-source, aspect/affect-history-aggregate-reconciliation-20261119]
+    paths:
+      - "runtime/neuro-kurisu/src/organism/cognition/P66InteroceptiveHomeostasis.ts"
+      - "runtime/neuro-kurisu/tests/p66-time-normalized-observation.mjs"
+      - "runtime/neuro-kurisu/package.json"
+      - ".github/workflows/nk1-p66-time-normalized-regulation.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nk1-p66-time-normalized-regulation-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  p66-temporal-regulation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22.14.0"
+          cache: npm
+          cache-dependency-path: runtime/neuro-kurisu/package-lock.json
+      - name: Install runtime dependencies
+        working-directory: runtime/neuro-kurisu
+        run: npm ci
+      - name: Runtime TypeScript check
+        working-directory: runtime/neuro-kurisu
+        run: npm run typecheck
+      - name: P66 elapsed-time regression
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:p66:time-normalized-observation
+      - name: Emotion/interoception regression
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:big-pass-172
+      - name: P66/P68 homeostatic goal integration
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:p66:p68
