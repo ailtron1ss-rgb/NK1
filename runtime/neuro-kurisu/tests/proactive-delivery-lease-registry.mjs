@@ -85,4 +85,29 @@ import { ProactiveDeliveryLeaseRegistry } from "../src/server/proactive-delivery
   assert.equal(leases.matches("soc:bad-clock", "token-bad-clock-0001", Number.NaN), false);
 }
 
+
+{
+  const leases = new ProactiveDeliveryLeaseRegistry();
+  leases.issue("soc:receipt", 1, 1_000, "committed-token-00001", 1);
+  assert.equal(leases.complete("soc:receipt", "committed-token-00001", 1_001), true,
+    "a successful Core ACK may finish just after the lease deadline");
+  assert.equal(leases.attemptCountFor("soc:receipt", "committed-token-00001", 1_002), null);
+  assert.equal(leases.completedAttemptCountFor("soc:receipt", "committed-token-00001", 1_002), 1,
+    "the committed receipt remains replayable for the bounded idempotency window");
+  assert.equal(leases.completedAttemptCountFor("soc:receipt", "committed-token-00001", 601_001), null,
+    "completed receipt records expire after their retention window");
+}
+
+{
+  const leases = new ProactiveDeliveryLeaseRegistry();
+  leases.issue("soc:retry-receipt", 1, 1_000, "old-completed-token-01", 1);
+  leases.complete("soc:retry-receipt", "old-completed-token-01", 2);
+  leases.issue("soc:retry-receipt", 2, 2_000, "new-attempt-token-001", 3);
+  assert.equal(leases.completedAttemptCountFor("soc:retry-receipt", "old-completed-token-01", 4), null,
+    "a newer engine attempt invalidates the older completed receipt");
+  assert.equal(leases.attemptCountFor("soc:retry-receipt", "new-attempt-token-001", 4), 2);
+  leases.clear();
+  assert.equal(leases.completedAttemptCountFor("soc:retry-receipt", "old-completed-token-01", 5), null);
+}
+
 console.log("PROACTIVE_DELIVERY_LEASE_REGISTRY=PASS");
