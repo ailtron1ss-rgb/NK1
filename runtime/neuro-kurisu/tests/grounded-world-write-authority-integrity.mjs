@@ -66,6 +66,10 @@ assert.equal(legacy.verified01, 0,
   'the former scalar proof contract must no longer authorize world writes');
 assert.deepEqual(legacyWorld.snapshot().facts, [],
   'legacy caller-supplied fields must not create world facts');
+assert.equal(legacy.quarantined,true);
+assert.equal(legacyWorld.snapshot().revision,0,
+  'legacy caller-supplied proof fields must not mutate canonical revision');
+assert.equal(legacyWorld.snapshot().quarantinedOutcomes?.length,1);
 
 
 // Persisted world snapshots are untrusted input. Normalize the complete state,
@@ -92,8 +96,12 @@ restored.restore({
     absenceEvidence01: -1, observationCount: Number.POSITIVE_INFINITY,
   }],
   relations: [{ id: 'bad', from: '', relation: 'x'.repeat(500), to: '', confidence01: Number.NaN, at: -1 }],
-  events: [{ id: 'event-1', label: 'event', confidence01: Number.POSITIVE_INFINITY,
-    lastAt: Number.POSITIVE_INFINITY, persistence01: 4, evidenceKind: 'observed' }],
+  events: [
+    { id: 'event-1', label: 'event', confidence01: Number.POSITIVE_INFINITY,
+      lastAt: Number.POSITIVE_INFINITY, persistence01: 4, evidenceKind: 'observed' },
+    { id: 'old-unverified-receipt', label: 'external-receipt:explore:executed:device-telemetry',
+      confidence01: 0, lastAt: 4_000, persistence01: 0, evidenceKind: 'derived' },
+  ],
   facts: ['valid fact', 7, '', 'f'.repeat(5000)],
   provenanceIds: ['source-1', 7, ''],
   lastHash: 'attacker-controlled-hash',
@@ -122,6 +130,10 @@ assert.equal(safe.events[0].confidence01, 0);
 assert.equal(safe.events[0].lastAt, 0);
 assert.equal(safe.events[0].persistence01, 0,
   'out-of-range event persistence must fail closed');
+assert.equal(safe.events.some(event => event.id === 'old-unverified-receipt'), false,
+  'legacy unverified receipt events must be migrated out of canonical world history');
+assert.ok(safe.quarantinedOutcomes?.some(event => event.id === 'old-unverified-receipt'),
+  'legacy unverified receipts must remain available in the diagnostic quarantine');
 assert.deepEqual(safe.facts, [], 'persisted free-form facts must not return as canonical grounded facts');
 assert.deepEqual(safe.quarantinedFacts, ['restored-unverified:valid fact'],
   'persisted fact text remains available in an explicitly unverified quarantine');
