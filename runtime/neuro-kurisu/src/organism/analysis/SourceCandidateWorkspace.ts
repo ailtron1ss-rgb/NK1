@@ -14,6 +14,7 @@ const MAX_REPLACEMENT_BYTES = 8 * 1024 * 1024;
 const MAX_EDIT_BYTES = 32 * 1024 * 1024;
 const RESERVED_SEGMENTS = new Set(['.git', 'node_modules', '__pycache__', '.pytest_cache', '.next', '.cache']);
 const RECEIPT_NAME = 'candidate-receipt.json';
+const RESERVED_ROOT_PREFIXES = ['.candidate-receipt-'];
 
 export interface SourceCandidateFileV1 {
   path: string;
@@ -113,7 +114,7 @@ interface NormalizedEdit {
 }
 
 function sha256(value: string): string {
-  return createHash('sha256').update(value, 'utf8').digest('hex');
+  return createHash('sha256').update(value).digest('hex');
 }
 
 export function hashSourceCandidateTextV1(value: string): string {
@@ -128,6 +129,10 @@ function safePath(value: unknown): string | null {
   const parts = value.split('/');
   if (parts.some(part => part.length === 0 || part === '.' || part === '..' || RESERVED_SEGMENTS.has(part.toLowerCase()))) {
     return null;
+  }
+  if (parts.length === 1) {
+    const rootName = parts[0].toLowerCase();
+    if (rootName === RECEIPT_NAME || RESERVED_ROOT_PREFIXES.some(prefix => rootName.startsWith(prefix))) return null;
   }
   return parts.join('/');
 }
@@ -175,14 +180,18 @@ function ownDenseArray(value: unknown, maxLength: number): unknown[] | null {
   }
 }
 
+function comparePath(left: string, right: string): number {
+  return left < right ? -1 : left > right ? 1 : 0;
+}
+
 function treeHash(files: readonly NormalizedFile[]): string {
-  const rows = [...files].sort((a, b) => a.path.localeCompare(b.path))
+  const rows = [...files].sort((a, b) => comparePath(a.path, b.path))
     .map(file => [file.path, file.sha256]);
   return sha256(JSON.stringify(rows));
 }
 
 function editSetHash(edits: readonly NormalizedEdit[]): string {
-  const rows = [...edits].sort((a, b) => a.path.localeCompare(b.path))
+  const rows = [...edits].sort((a, b) => comparePath(a.path, b.path))
     .map(edit => ({
       path: edit.path,
       expectedBeforeSha256: edit.expectedBeforeSha256,
@@ -357,7 +366,7 @@ export class SourceCandidateWorkspaceV1 {
         expectedBeforeSha256: edit.expectedBeforeSha256,
         afterSha256: edit.replacementSha256,
         createIfMissing: edit.createIfMissing,
-      })).sort((a, b) => a.path.localeCompare(b.path));
+      })).sort((a, b) => comparePath(a.path, b.path));
       let decision: SourceCandidateAuthorizationDecisionV1;
       try {
         decision = await this.authorize({
@@ -403,7 +412,7 @@ export class SourceCandidateWorkspaceV1 {
           sha256: edit.replacementSha256,
         });
       }
-      for (const file of [...resultingFiles.values()].sort((a, b) => a.path.localeCompare(b.path))) {
+      for (const file of [...resultingFiles.values()].sort((a, b) => comparePath(a.path, b.path))) {
         await writeCandidateFile(candidateRoot, file.path, file.content);
       }
       const candidateTreeSha256 = treeHash([...resultingFiles.values()]);

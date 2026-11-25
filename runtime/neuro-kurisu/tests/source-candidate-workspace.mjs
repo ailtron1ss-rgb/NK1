@@ -65,6 +65,16 @@ try {
   assert.equal(collision.created, false);
   assert.equal(collision.reason, 'candidate-workspace-already-exists');
   assert.equal(await readFile(path.join(result.candidateRoot, 'runtime/neuro-kurisu/src/example.mjs'), 'utf8'), updated);
+
+  // Input ordering must not change the content-addressed candidate identity.
+  const reordered = await workspace.prepare({
+    baseSha,
+    files: [...original].reverse(),
+    edits: [...edits].reverse(),
+  });
+  assert.equal(reordered.created, false);
+  assert.equal(reordered.reason, 'candidate-workspace-already-exists');
+  assert.equal(reordered.candidateId, result.candidateId);
 } finally {
   await rm(temp, { recursive: true, force: true });
 }
@@ -100,6 +110,25 @@ try {
       assert.equal(result.created, false, badPath);
       assert.equal(result.reason, 'invalid-source-path', badPath);
     }
+    for (const reservedPath of ['candidate-receipt.json', '.candidate-receipt-shadow.tmp']) {
+      let admissionCalls = 0;
+      const guarded = new SourceCandidateWorkspaceV1({
+        workspaceRoot: path.join(workspaceRoot, 'reserved-' + reservedPath.length),
+        authorize: async request => {
+          admissionCalls += 1;
+          return accept(request);
+        },
+      });
+      const result = await guarded.prepare({
+        baseSha,
+        files: [...original, { path: reservedPath, content: 'must-not-shadow-the-manifest' }],
+        edits,
+      });
+      assert.equal(result.created, false, reservedPath);
+      assert.equal(result.reason, 'invalid-source-path', reservedPath);
+      assert.equal(admissionCalls, 0, 'reserved source paths must be rejected before host admission');
+    }
+
     const duplicate = await workspace.prepare({
       baseSha,
       files: original,
