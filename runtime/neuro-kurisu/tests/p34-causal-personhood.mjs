@@ -25,6 +25,41 @@ const consent=e.recordConsent({action:'safe-test',risk01:.9,actor:'creator',deci
 assert.ok(consent.id);
 const rel=e.recordRelationship({personId:'creator',kind:'support',valence01:.95,trustDelta:.08,summary:'совместное развитие'});
 assert.ok(rel.id);
+
+const approvalConsentOne=e.recordConsent({
+  action:'tool:http.voice.speak',risk01:.9,actor:'creator',decision:'approved',
+  reason:'one-shot tool approval ticket one',referenceId:'approval-ticket-one',
+});
+const approvalConsentTwo=e.recordConsent({
+  action:'tool:http.voice.speak',risk01:.9,actor:'creator',decision:'approved',
+  reason:'one-shot tool approval ticket two',referenceId:'approval-ticket-two',
+});
+assert.equal(approvalConsentOne.referenceId,'approval-ticket-one',
+  'P34 must retain the exact ActionGateway approval ticket as structured provenance');
+assert.equal(approvalConsentTwo.referenceId,'approval-ticket-two');
+assert.notEqual(approvalConsentOne.id,approvalConsentTwo.id,
+  'separate approval tickets must remain separate consent-history events even for the same action/actor/decision');
+const consentRestore=new P34CausalPersonhoodEngine();
+const legacyConsent={id:'legacy-consent-1',action:'tool:legacy',risk01:.5,actor:'creator',decision:'approved',reason:'legacy row',at:123};
+consentRestore.restore({
+  ...d,
+  consentHistory:[
+    approvalConsentOne,
+    approvalConsentTwo,
+    legacyConsent,
+    {...legacyConsent,id:'invalid-consent',actor:'untrusted-actor'},
+    {...legacyConsent,id:'invalid-reference',referenceId:{ticket:'forged'}},
+  ],
+});
+const restoredConsents=consentRestore.snapshot().consentHistory;
+assert.deepEqual(restoredConsents.map(row=>row.id),[
+  approvalConsentOne.id,approvalConsentTwo.id,legacyConsent.id,
+],'restore must keep valid consent history and reject malformed actors or references');
+assert.equal(restoredConsents[0].referenceId,'approval-ticket-one');
+assert.equal(restoredConsents[1].referenceId,'approval-ticket-two');
+assert.equal(restoredConsents[2].referenceId,undefined,
+  'legacy consent history must remain valid without inventing an approval reference');
+
 const branch=e.createContinuationBranch('перед переносом на другой host');
 assert.equal(branch.status,'preserved');
 const diag=e.diagnostics();
