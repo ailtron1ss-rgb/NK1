@@ -19,7 +19,6 @@ import { EmbodimentRuntime, type VoiceInputResult } from '../body/EmbodimentRunt
 import { Mem0PlatformAdapter, type Mem0Candidate } from '../integration/mem0/Mem0PlatformAdapter.ts';
 import { buildCognitiveProposalPrompt, parseCognitiveProposal } from '../language/LanguageOrgan.ts';
 import { OperationalJournal } from '../persistence/OperationalJournal.ts';
-import type { EmotionAffectFrameV1 } from '../system/EmotionAppraisalEngine.ts';
 import type { JsonStateStore } from '../persistence/FileStateStore.ts';
 import { choosePhonePolicyDelay, type PhonePolicyConfig } from '../system/PhoneRuntimePolicy.ts';
 import { RuntimeClockScheduler, type RuntimeClockDecision } from '../system/RuntimeClockScheduler.ts';
@@ -288,7 +287,7 @@ export interface RuntimeStepOptions {
   externalSource?: RuntimeExternalPluginSource;
 }
 
-export type VoiceEmotionContext=EmotionAffectFrameV1;
+export type VoiceEmotionContext=ReturnType<OrganismCore['emotionAffectFrameSnapshot']>;
 /** Canonical revision-bound frame is owned and projected by OrganismCore. */
 
 export interface RuntimeStep { cycle: OrganismCycleResult; worldAction: EnvironmentAction; language?: LanguageResponse; embodiedAction?: EmbodiedActionResult; }
