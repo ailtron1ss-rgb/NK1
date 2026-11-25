@@ -23,6 +23,15 @@ export type ActionApprovalCard = {
   outcome?: string;
 };
 
+export class ActionDeclinedError extends Error {
+  readonly status = 403;
+  readonly code = "ACTION_DECLINED";
+  constructor() {
+    super("Action declined by the owner; no action was resumed.");
+    this.name = "ActionDeclinedError";
+  }
+}
+
 type InternalContinuation = {
   card: ActionApprovalCard;
   execute: (approved: boolean) => Promise<unknown>;
@@ -142,7 +151,7 @@ export async function decideActionApproval(id: string, approved: boolean): Promi
     if (!approved) {
       entry.card.stage = "declined";
       entry.card.outcome = "Declined. No side effect was resumed.";
-      entry.reject(new Error("Action declined by the owner; no action was resumed."));
+      entry.reject(new ActionDeclinedError());
     } else {
       entry.card.stage = "completed";
       entry.card.outcome = "Approval accepted and the original request was retried once.";
