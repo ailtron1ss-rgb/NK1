@@ -109,5 +109,6 @@ jobs:
             ${{ runner.temp }}/avatar-contact-app.log
             ${{ runner.temp }}/avatar-contact-runtime.log
             ${{ runner.temp }}/avatar-contact-health.json
+            ${{ runner.temp }}/avatar-contact-debug.png
           if-no-files-found: warn
           retention-days: 14
