@@ -240,4 +240,27 @@ function fixture({ acknowledge = async () => true } = {}) {
   }
 }
 
+
+{
+  let finishAck;
+  const f = fixture({
+    acknowledge: () => new Promise((resolve) => { finishAck = resolve; }),
+  });
+  const claim = await f.coordinator.claim();
+  const { id, deliveryToken } = claim.body.initiative;
+  const first = f.coordinator.acknowledge(id, deliveryToken);
+  await Promise.resolve();
+  f.setTime(15_001);
+  const duplicateWhilePending = await f.coordinator.acknowledge(id, deliveryToken);
+  assert.equal(duplicateWhilePending.status, 409,
+    "a duplicate ACK while the same request is in flight must not prune its token at lease expiry");
+  finishAck(true);
+  assert.equal((await first).status, 200);
+  const replayAfterCommit = await f.coordinator.acknowledge(id, deliveryToken);
+  assert.deepEqual(replayAfterCommit, {
+    status: 200,
+    body: { ok: true, acknowledged: true, id, idempotentReplay: true },
+  }, "a committed receipt can be replayed even when its HTTP response arrives after lease expiry");
+}
+
 console.log("PROACTIVE_DELIVERY_COORDINATOR=PASS");
