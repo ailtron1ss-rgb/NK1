@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { DurableDeliveryOutbox } from '../src/organism/system/DurableDeliveryOutbox.ts';
+import { DurableDeliveryOutbox } from '../src/organism/persistence/DurableDeliveryOutbox.ts';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
