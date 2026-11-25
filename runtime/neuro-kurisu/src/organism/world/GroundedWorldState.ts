@@ -1,8 +1,40 @@
 import type { WorldContext } from '../core/types.ts';
 import type { P41PerceptionState } from '../cognition/P41SemanticPerception.ts';
 import type { PerceptualEvidenceState } from '../body/PerceptualEvidenceCompiler.ts';
+import type { EmbodiedActionResult } from '../body/EmbodiedActionExecutor.ts';
+import type { OutcomeVerification } from '../system/OutcomeVerificationService.ts';
+import { isTrustedEmbodiedOutcomeVerification } from '../system/ExternalPostconditionVerifier.ts';
 
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
+const safeUnit=(value:unknown,fallback=0):number=>typeof value==='number'&&Number.isFinite(value)?clamp(value):fallback;
+const safeInteger=(value:unknown,fallback=0,min=0,max=Number.MAX_SAFE_INTEGER):number=>
+  typeof value==='number'&&Number.isSafeInteger(value)&&value>=min&&value<=max?value:fallback;
+const safeTimestamp=(value:unknown,fallback=0):number=>{
+  const n=safeInteger(value,fallback,0,Number.MAX_SAFE_INTEGER);
+  return n>Date.now()+5*60_000?fallback:n;
+};
+const safeText=(value:unknown,max:number):string|undefined=>{
+  if(typeof value!=='string')return undefined;
+  const text=value.normalize('NFKC').trim();
+  return text&&text.length<=max&&!/[\\u0000-\\u001f\\u007f-\\u009f]/u.test(text)?text:undefined;
+};
+const safeStringArray=(value:unknown,maxItems:number,maxLength:number):string[]=>{
+  if(!Array.isArray(value))return [];
+  const out:string[]=[];
+  for(const item of value){
+    const text=safeText(item,maxLength);
+    if(text&&!out.includes(text))out.push(text);
+    if(out.length>=maxItems)break;
+  }
+  return out;
+};
+const safeVector=(value:unknown):{x:number;y:number;z:number}|null=>{
+  if(!value||typeof value!=='object'||Array.isArray(value))return null;
+  const v=value as Record<string,unknown>;
+  if(![v.x,v.y,v.z].every(n=>typeof n==='number'&&Number.isFinite(n)&&Math.abs(n)<=1_000_000))return null;
+  return {x:Number(v.x),y:Number(v.y),z:Number(v.z)};
+};
+const consumedWorldOutcomeVerifications=new WeakSet<object>();
 type GroundedEvidenceKind='observed'|'model-output'|'derived'|'conflict'|'unresolved';
 const restoredEvidenceKind=(value:unknown):GroundedEvidenceKind=>{
   // Persisted snapshots are data, not a live host attestation.
@@ -119,154 +151,144 @@ export class GroundedWorldState {
   }
   restore(raw?:Partial<GroundedWorldStateSnapshot>|null){
     const d=defaultGroundedWorldState();
-    const r=(raw&&typeof raw==='object'&&!Array.isArray(raw)?raw:{}) as Partial<GroundedWorldStateSnapshot> & Record<string,unknown>;
+    const r=raw&&typeof raw==='object'&&!Array.isArray(raw)?raw as Record<string,unknown>:{};
     const lastAt=safeTimestamp(r.lastAt,0);
-    const entities=Array.isArray(r.entities)?r.entities.slice(0,128).flatMap((value:any)=>{
-      if(!value||typeof value!=='object'||Array.isArray(value))return [];
-      const id=safeText(value.id,180);
-      const label=safeText(value.label,180);
-      const kind=safeText(value.kind,60,'unknown');
-      if(!id||!label)return [];
-      const firstSeenAt=safeTimestamp(value.firstSeenAt,0);
-      const lastSeenAt=Math.max(firstSeenAt,safeTimestamp(value.lastSeenAt,firstSeenAt));
-      const modalities=safeStrings(value.modalities,8,24).filter(x=>['text','vision','audio','sensor','world'].includes(x));
-      const trackId=safeText(value.trackId,120);
-      const trackAliases=safeStrings(value.trackAliases,16,120);
-      const sourceIds=safeStrings(value.sourceIds,16,120);
-      const position=safeVec3(value.position);
-      const velocity=safeVec3(value.velocity);
-      const imageBox=normalizeImageBox(value.imageBox);
-      const imageBoxCameraId=Number.isSafeInteger(value.imageBoxCameraId)&&Number(value.imageBoxCameraId)>=0?Number(value.imageBoxCameraId):undefined;
-      const imageBoxAt=safeTimestamp(value.imageBoxAt,-1);
-      const imageBoxConfidence01=typeof value.imageBoxConfidence01==='number'&&Number.isFinite(value.imageBoxConfidence01)&&value.imageBoxConfidence01>=.42&&value.imageBoxConfidence01<=1?value.imageBoxConfidence01:undefined;
-      const validImageEvidence=Boolean(imageBox&&imageBoxCameraId!==undefined&&imageBoxAt>=0&&imageBoxAt<=lastSeenAt&&imageBoxConfidence01!==undefined);
-      const valueKnown=value.valueKnown===true&&typeof value.value==='number'&&Number.isFinite(value.value);
-      const positionFrameId=safeText(value.positionFrameId,120);
-      return [{
-        id,label,kind,
-        confidence01:safeUnit(value.confidence01,0),
-        present01:safeUnit(value.present01,0),
-        firstSeenAt,lastSeenAt,
-        modalities,
-        ...(trackId?{trackId}:{}),
-        trackAliases,
-        ...(positionFrameId?{positionFrameId}:{}),
-        position,velocity,
-        ...(validImageEvidence?{imageBox,imageBoxCameraId,imageBoxAt,imageBoxConfidence01}:{}),
-        modalityEvidenceKinds:restoredModalityEvidence(value.modalityEvidenceKinds),
-        sourceIds,
-        ...(typeof value.value==='number'&&Number.isFinite(value.value)?{value:value.value}:{}),
-        valueKnown,
-        visibilityKnown:value.visibilityKnown===true,
-        collectionKnown:value.collectionKnown===true,
-        presenceStatus:['visible','fading','unknown'].includes(value.presenceStatus)?value.presenceStatus:'unknown',
-        persistence01:safeUnit(value.persistence01,0),
-        absenceEvidence01:safeUnit(value.absenceEvidence01,0),
-        observationCount:Math.max(1,safeInteger(value.observationCount,1)),
-      } satisfies GroundedEntity];
-    }):[];
-    const relations=Array.isArray(r.relations)?r.relations.slice(0,256).flatMap((value:any)=>{
-      if(!value||typeof value!=='object'||Array.isArray(value))return [];
-      const id=safeText(value.id,180),from=safeText(value.from,120),relation=safeText(value.relation,120),to=safeText(value.to,120);
-      if(!id||!from||!relation||!to)return [];
-      const fromEntityId=safeText(value.fromEntityId,180),toEntityId=safeText(value.toEntityId,180);
-      return [{
-        id,from,relation,to,
-        ...(fromEntityId?{fromEntityId}:{}),...(toEntityId?{toEntityId}:{}),
-        confidence01:safeUnit(value.confidence01,0),
-        at:safeTimestamp(value.at,0),
-      } satisfies GroundedRelation];
-    }):[];
-    const events=Array.isArray(r.events)?r.events.slice(0,96).flatMap((value:any)=>{
-      if(!value||typeof value!=='object'||Array.isArray(value))return [];
-      const id=safeText(value.id,180),label=safeText(value.label,180);
-      if(!id||!label)return [];
-      return [{
-        id,label,
-        confidence01:safeUnit(value.confidence01,0),
-        lastAt:safeTimestamp(value.lastAt,0),
-        persistence01:safeUnit(value.persistence01,0),
-        evidenceKind:restoredEvidenceKind(value.evidenceKind),
-        modalityEvidenceKinds:restoredModalityEvidence(value.modalityEvidenceKinds),
-      } satisfies GroundedEvent];
-    }):[];
-    const facts=safeStrings(r.facts,192,512);
-    const provenanceIds=safeStrings(r.provenanceIds,128,180);
+    const revision=safeInteger(r.revision,0);
+    const location=safeText(r.location,256)??'unknown';
+    const entities:Array<GroundedEntity>=[];
+    if(Array.isArray(r.entities)){
+      for(const rawEntity of r.entities.slice(0,128)){
+        if(!rawEntity||typeof rawEntity!=='object'||Array.isArray(rawEntity))continue;
+        const e=rawEntity as Record<string,unknown>;
+        const id=safeText(e.id,128),label=safeText(e.label,120),kind=safeText(e.kind,64);
+        if(!id||!label||!kind)continue;
+        const lastSeenAt=safeTimestamp(e.lastSeenAt,lastAt);
+        const firstSeenAt=Math.min(safeTimestamp(e.firstSeenAt,lastSeenAt),lastSeenAt);
+        const imageBox=normalizeImageBox(e.imageBox);
+        const imageBoxCameraId=safeInteger(e.imageBoxCameraId,-1,0,1_000_000);
+        const imageBoxAt=safeTimestamp(e.imageBoxAt,-1);
+        const imageBoxConfidence01=safeUnit(e.imageBoxConfidence01,-1);
+        const validImageEvidence=Boolean(imageBox&&imageBoxCameraId>=0&&imageBoxAt>=0&&imageBoxConfidence01>=.42);
+        const value=typeof e.value==='number'&&Number.isFinite(e.value)&&Math.abs(e.value)<=1_000_000_000?e.value:undefined;
+        const trackId=safeText(e.trackId,180);
+        const positionFrameId=safeText(e.positionFrameId,120);
+        const position=safeVector(e.position);
+        const velocity=safeVector(e.velocity);
+        const presenceStatus=e.presenceStatus==='visible'||e.presenceStatus==='fading'||e.presenceStatus==='unknown'?e.presenceStatus:'unknown';
+        entities.push({
+          id,label,kind,
+          confidence01:safeUnit(e.confidence01),
+          present01:safeUnit(e.present01),
+          firstSeenAt,lastSeenAt,
+          modalities:safeStringArray(e.modalities,12,32),
+          ...(trackId?{trackId}:{}),
+          trackAliases:safeStringArray(e.trackAliases,16,180),
+          ...(positionFrameId?{positionFrameId}:{}),
+          position,velocity,
+          ...(validImageEvidence?{imageBox,imageBoxCameraId,imageBoxAt,imageBoxConfidence01}:{}),
+          modalityEvidenceKinds:restoredModalityEvidence(e.modalityEvidenceKinds),
+          sourceIds:safeStringArray(e.sourceIds,16,180),
+          ...(value!==undefined?{value}:{}),
+          valueKnown:e.valueKnown===true&&value!==undefined,
+          visibilityKnown:e.visibilityKnown===true,
+          collectionKnown:e.collectionKnown===true,
+          presenceStatus,
+          persistence01:safeUnit(e.persistence01),
+          absenceEvidence01:safeUnit(e.absenceEvidence01),
+          observationCount:safeInteger(e.observationCount,1,1,10_000),
+        });
+      }
+    }
+    const relations:GroundedRelation[]=[];
+    if(Array.isArray(r.relations)){
+      for(const rawRelation of r.relations.slice(0,256)){
+        if(!rawRelation||typeof rawRelation!=='object'||Array.isArray(rawRelation))continue;
+        const row=rawRelation as Record<string,unknown>;
+        const id=safeText(row.id,160),from=safeText(row.from,160),relation=safeText(row.relation,120),to=safeText(row.to,160);
+        const at=safeTimestamp(row.at,-1);
+        if(!id||!from||!relation||!to||at<0||at>lastAt)continue;
+        const fromEntityId=safeText(row.fromEntityId,128),toEntityId=safeText(row.toEntityId,128);
+        relations.push({id,from,relation,to,...(fromEntityId?{fromEntityId}:{}),...(toEntityId?{toEntityId}:{}),confidence01:safeUnit(row.confidence01),at});
+      }
+    }
+    const events:GroundedEvent[]=[];
+    if(Array.isArray(r.events)){
+      for(const rawEvent of r.events.slice(0,96)){
+        if(!rawEvent||typeof rawEvent!=='object'||Array.isArray(rawEvent))continue;
+        const event=rawEvent as Record<string,unknown>;
+        const id=safeText(event.id,160),label=safeText(event.label,240);
+        if(!id||!label)continue;
+        const eventAt=safeTimestamp(event.lastAt,lastAt);
+        events.push({
+          id,label,confidence01:safeUnit(event.confidence01),lastAt:eventAt,
+          persistence01:safeUnit(event.persistence01),
+          ...(event.evidenceKind!==undefined?{evidenceKind:restoredEvidenceKind(event.evidenceKind)}:{}),
+          ...(event.modalityEvidenceKinds!==undefined?{modalityEvidenceKinds:restoredModalityEvidence(event.modalityEvidenceKinds)}:{}),
+        });
+      }
+    }
     this.state={
-      version:1,
-      revision:safeInteger(r.revision,0,Number.MAX_SAFE_INTEGER),
-      lastAt,
-      location:safeText(r.location,256,'unknown'),
+      ...d,version:1,revision,lastAt,location,
       uncertainty01:safeUnit(r.uncertainty01,.5),
-      confidence01:safeUnit(r.confidence01,0),
-      entities,relations,events,facts,provenanceIds,lastHash:'',
+      confidence01:safeUnit(r.confidence01),
+      entities,relations,events,
+      facts:safeStringArray(r.facts,192,512),
+      provenanceIds:safeStringArray(r.provenanceIds,128,256),
+      lastHash:'',
     };
-    // Never trust a checkpoint-supplied digest. Recompute over the sanitized state.
-    this.state.lastHash=stableHash(JSON.stringify({...this.state,lastHash:''}));
+    const digest=`${this.state.location}|${this.state.revision}|${this.state.facts.slice(-24).join('|')}|${this.state.events.slice(0,8).map(x=>x.id).join('|')}`;
+    this.state.lastHash=stableHash(digest);
   }
   snapshot(){return structuredClone(this.state);}
 
-  /** P2841: commit only externally evidenced consequences into the canonical grounded world. */
-  integrateExternalOutcome(input:ExternalWorldOutcomeInput){
-    const row=input&&typeof input==='object'?input as Record<string,unknown>:{};
-    const at=safeTimestamp(row.at,Date.now());
-    const action=safeText(row.action,128,'unknown-action');
-    const status=safeText(row.status,48,'unknown');
-    const proofClass=safeText(row.proofClass,64,'unverified');
-    const claim=safeText(row.claim,180,'');
-    const provenanceId=safeText(row.provenanceId,180,'missing-provenance');
-    const eventId=`gw-external-${stableHash(provenanceId)}`;
-    // Provenance IDs are one-use receipts. A repeated ID cannot reapply a consequence,
-    // even when a caller changes the timestamp/action/claim on replay.
-    if(this.state.provenanceIds.includes(provenanceId)){
-      const prior=this.state.events.find(event=>event.id===eventId);
-      const previouslyVerified=Boolean(prior?.label.startsWith('external-observed:'));
-      return {
-        revision:this.state.revision,eventId,
-        confidence01:prior?.confidence01??0,
-        verified01:previouslyVerified?1:0,
-        independent01:previouslyVerified?1:0,
-        lastHash:this.state.lastHash,
-      };
+  /**
+   * Record an embodied outcome only from the exact executor result and the
+   * decision-bound OutcomeVerificationService token. A device sample is a
+   * traceable observation receipt, not permission to invent semantic world facts.
+   */
+  integrateExternalOutcome(input:{result:unknown;verification:unknown}){
+    const rawResult=input?.result&&typeof input.result==='object'&&!Array.isArray(input.result)
+      ?input.result as Record<string,unknown>:{};
+    const trusted=isTrustedEmbodiedOutcomeVerification(input?.verification,input?.result);
+    const result=trusted?input.result as EmbodiedActionResult:null;
+    const verification=trusted?input.verification as OutcomeVerification:null;
+    const action=safeText(rawResult.action,64)??'unknown';
+    const status=safeText(rawResult.status,32)??'unverified';
+    const realityClass=safeText(rawResult.realityClass,48)??'untrusted';
+    const eventAt=safeTimestamp(rawResult.at,this.state.lastAt);
+    const executionId=safeText(rawResult.executionId,100);
+    const observationId=trusted?safeText(verification?.observationId,180):undefined;
+    const eventIdentity=executionId??`${eventAt}:${action}:${status}:${realityClass}`;
+    const eventId=`gw-external-${stableHash(eventIdentity)}`;
+    if(trusted&&input.verification&&typeof input.verification==='object'&&consumedWorldOutcomeVerifications.has(input.verification as object)){
+      return {revision:this.state.revision,eventId,confidence01:0,verified01:0,independent01:0,lastHash:this.state.lastHash,duplicate:true};
     }
-    const evidence01=safeUnit(row.evidence01,0);
-    const requestedVerified01=safeUnit(row.verified01,0);
-    const requestedIndependent01=safeUnit(row.independent01,0);
-    const consequence01=safeUnit(row.consequence01,0);
-    const divergence01=safeUnit(row.divergence01,0);
-    const verifierInput=Object.freeze({
-      at,action,status,proofClass,
-      verified01:requestedVerified01,independent01:requestedIndependent01,
-      evidence01,consequence01,claim,provenanceId,divergence01,
-    }) satisfies Readonly<ExternalWorldOutcomeInput>;
-    let hostVerified=false;
-    try { hostVerified=this.verifyExternalOutcome?.(verifierInput)===true; }
-    catch { hostVerified=false; }
-    // Caller-provided labels and scalar scores are not credentials. Without the
-    // constructor-injected host verifier, treat the event as an audit-only receipt.
-    const verifiedWorldEffect=hostVerified&&proofClass==='independent-observation'
-      &&requestedVerified01>=.8&&requestedIndependent01>=.8;
-    const verified=verifiedWorldEffect?requestedVerified01:0;
-    const independent=verifiedWorldEffect?requestedIndependent01:0;
-    const confidence=verifiedWorldEffect?clamp(.48*evidence01+.30*verified+.22*independent):0;
-    const eventLabel=norm(`${verifiedWorldEffect?'external-observed':'external-receipt'}:${action}:${status}:${proofClass}`);
-    const fact=verifiedWorldEffect?norm(`external-observed:${action}:${claim}`):'';
-    const divergenceFact=verifiedWorldEffect?norm(`shadow-divergence:${action}:${divergence01.toFixed(3)}`):'';
-    const events=new Map(this.state.events.map(x=>[x.id,{...x}]));
-    events.set(eventId,{
-      id:eventId,label:eventLabel,confidence01:confidence,lastAt:at,
-      persistence01:verifiedWorldEffect?clamp(.12+.28*confidence+.18*consequence01):0,
-    });
-    const facts=[...this.state.facts,fact,divergenceFact].filter(Boolean);
-    const provenance=[provenanceId,...this.state.provenanceIds].filter(Boolean);
-    const eventRows=[...events.values()].sort((a,b)=>b.lastAt-a.lastAt).slice(0,96);
-    const nextConfidence=verifiedWorldEffect?clamp(this.state.confidence01*.82+confidence*.18):this.state.confidence01;
-    this.state={...this.state,revision:this.state.revision+1,lastAt:at,confidence01:nextConfidence,uncertainty01:clamp(1-nextConfidence),events:eventRows,facts:[...new Set(facts)].slice(-192),provenanceIds:[...new Set(provenance)].slice(0,128)};
+    if(this.state.events.some(event=>event.id===eventId)){
+      return {revision:this.state.revision,eventId,confidence01:0,verified01:0,independent01:0,lastHash:this.state.lastHash,duplicate:true};
+    }
+    if(trusted&&input.verification&&typeof input.verification==='object')consumedWorldOutcomeVerifications.add(input.verification as object);
+    const label=trusted?`external-observation-receipt:${action}`:`external-receipt:${action}:${status}:${realityClass}`;
+    const event:GroundedEvent={
+      id:eventId,label,confidence01:trusted?safeUnit(verification?.confidence01):0,lastAt:eventAt,
+      persistence01:trusted?safeUnit(verification?.confidence01):0,
+      ...(trusted?{evidenceKind:'observed' as const}:{evidenceKind:'derived' as const}),
+    };
+    const provenanceId=trusted&&observationId?observationId:executionId?`unverified-execution:${executionId}`:undefined;
+    this.state={
+      ...this.state,
+      revision:this.state.revision+1,
+      lastAt:Math.max(this.state.lastAt,eventAt),
+      events:[event,...this.state.events].slice(0,96),
+      provenanceIds:provenanceId?[provenanceId,...this.state.provenanceIds.filter(value=>value!==provenanceId)].slice(0,128):this.state.provenanceIds,
+    };
     const digest=`${this.state.location}|${this.state.revision}|${this.state.facts.slice(-24).join('|')}|${this.state.events.slice(0,8).map(x=>x.id).join('|')}`;
     this.state.lastHash=stableHash(digest);
-    return {revision:this.state.revision,eventId,confidence01:confidence,verified01:verified,independent01:independent,lastHash:this.state.lastHash};
+    return {
+      revision:this.state.revision,eventId,
+      confidence01:trusted?safeUnit(verification?.confidence01):0,
+      verified01:trusted?1:0,independent01:trusted?1:0,lastHash:this.state.lastHash,duplicate:false,
+    };
   }
-
   integrate(input:{at:number;base?:WorldContext|null;perception?:P41PerceptionState|null;evidence?:PerceptualEvidenceState|null;}):WorldContext{
     const at=input.at; const base=input.base; const p=input.perception; const e=input.evidence;
     const rows:GroundedEntity[]=this.state.entities.map(row=>({...row,modalities:[...row.modalities],trackAliases:[...(row.trackAliases??[])],sourceIds:[...(row.sourceIds??[])],modalityEvidenceKinds:{...(row.modalityEvidenceKinds??{})}}));
