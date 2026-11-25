@@ -48,6 +48,17 @@ restored.observe(base);
 assert.equal(restored.snapshot().cycles, 2, 'restored P66 must retain the body sample replay window');
 assert.equal(restored.snapshot().duplicateObservations, 2);
 
+const feedbackEmotionIndex = core.indexOf('const feedbackEmotion = this.cognitiveRuntime.emotionAppraisal.appraise(');
+assert.notEqual(feedbackEmotionIndex, -1, 'world feedback must create an emotional appraisal');
+const feedbackStart = core.lastIndexOf('const feedbackAt = Date.now();', feedbackEmotionIndex);
+assert.notEqual(feedbackStart, -1, 'feedback receipt must capture a fresh monotonic wall-clock timestamp');
+const feedbackEnd = core.indexOf('const nextWorldContext01', feedbackEmotionIndex);
+const feedbackBlock = core.slice(feedbackStart, feedbackEnd);
+assert.ok(feedbackBlock.includes('at: feedbackAt'), 'both the feedback appraisal and outcome learner must use feedback receipt time');
+assert.ok(feedbackBlock.includes('decisionId: feedbackTraceId'), 'the same causal decision ID must reach exactly-once mood learning');
+assert.ok(feedbackBlock.includes('verified01: verifiedPolicyOutcome ? 1 : 0'), 'mood learning strength must derive from verified world/external postconditions');
+assert.ok(!feedbackBlock.includes('at: state.at'), 'stale cognitive snapshot timestamps must not be reused for the feedback outcome');
+
 console.log('P66_CORE_OBSERVATION_PROVENANCE=PASS', JSON.stringify({
   cycles: restored.snapshot().cycles,
   bodyTelemetryObservations: restored.snapshot().bodyTelemetryObservations,
