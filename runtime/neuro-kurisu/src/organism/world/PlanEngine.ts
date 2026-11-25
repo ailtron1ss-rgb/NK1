@@ -45,6 +45,8 @@ const reverseMap: Partial<Record<EnvironmentAction, ActionKind>> = {
 };
 const envActions: EnvironmentAction[] = ['observe', 'inspect', 'move', 'collect', 'rest', 'communicate'];
 
+const clamp = (value: number, min = 0, max = 1): number => Math.max(min, Math.min(max, Number.isFinite(value) ? value : min));
+
 interface Node { state: EnvironmentSnapshot; actions: EnvironmentAction[]; rewards: number[]; score: number; confidence: number; }
 
 export interface ResidualRewardProvider { predict(action: EnvironmentAction | string, baseReward: number, context?: EnvironmentSnapshot): { predicted: number; confidence: number; samples?: number; uncertainty?: number; modelReady?: boolean }; }
