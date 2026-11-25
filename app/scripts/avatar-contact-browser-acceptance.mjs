@@ -12,6 +12,16 @@ const browser = await chromium.launch({
 
 try {
   const page = await browser.newPage({ viewport: { width: 1280, height: 900 }, deviceScaleFactor: 1 });
+  await page.addInitScript(() => {
+    window.__nkAvatarSpriteDraws = [];
+    const drawImage = CanvasRenderingContext2D.prototype.drawImage;
+    CanvasRenderingContext2D.prototype.drawImage = function (image, ...args) {
+      if (image instanceof HTMLImageElement && image.src.includes("/sprites/")) {
+        window.__nkAvatarSpriteDraws.push({ args });
+      }
+      return drawImage.call(this, image, ...args);
+    };
+  });
   await page.route("**/api/organism/event", async (route) => {
     observedEvents.push(route.request().postDataJSON());
     await route.fulfill({
@@ -47,8 +57,8 @@ try {
   await page.waitForFunction(() => document.body.innerText.includes("касание зарегистрировано организмом"), null, { timeout: timeoutMs });
 
   assert.deepEqual(observedEvents, [
-    { detail: "Пользователь коснулся области головы аватара Курису через экранный интерфейс.", importance: 0.24 },
-    { detail: "Пользователь коснулся области корпуса аватара Курису через экранный интерфейс.", importance: 0.24 },
+    { detail: "Пользователь коснулся области головы аватара Курису через экранный интерфейс.", importance: 0.24, interaction: { protocolVersion: 1, kind: "avatar-contact", zone: "head" } },
+    { detail: "Пользователь коснулся области корпуса аватара Курису через экранный интерфейс.", importance: 0.24, interaction: { protocolVersion: 1, kind: "avatar-contact", zone: "body" } },
   ], "desktop head/body clicks must reach the canonical organism event client with low salience");
 
   await page.setViewportSize({ width: 390, height: 844 });
@@ -63,11 +73,41 @@ try {
   const allEventsDeadline = Date.now() + timeoutMs;
   while (observedEvents.length < 4 && Date.now() < allEventsDeadline) await page.waitForTimeout(50);
   assert.deepEqual(observedEvents, [
-    { detail: "Пользователь коснулся области головы аватара Курису через экранный интерфейс.", importance: 0.24 },
-    { detail: "Пользователь коснулся области корпуса аватара Курису через экранный интерфейс.", importance: 0.24 },
-    { detail: "Пользователь коснулся области головы аватара Курису через экранный интерфейс.", importance: 0.24 },
-    { detail: "Пользователь коснулся области корпуса аватара Курису через экранный интерфейс.", importance: 0.24 },
+    { detail: "Пользователь коснулся области головы аватара Курису через экранный интерфейс.", importance: 0.24, interaction: { protocolVersion: 1, kind: "avatar-contact", zone: "head" } },
+    { detail: "Пользователь коснулся области корпуса аватара Курису через экранный интерфейс.", importance: 0.24, interaction: { protocolVersion: 1, kind: "avatar-contact", zone: "body" } },
+    { detail: "Пользователь коснулся области головы аватара Курису через экранный интерфейс.", importance: 0.24, interaction: { protocolVersion: 1, kind: "avatar-contact", zone: "head" } },
+    { detail: "Пользователь коснулся области корпуса аватара Курису через экранный интерфейс.", importance: 0.24, interaction: { protocolVersion: 1, kind: "avatar-contact", zone: "body" } },
   ], "desktop and mobile head/body clicks must reach the canonical organism event client with low salience");
+
+  // Legacy stills have no deformable rig. Hit-test the actual painted sprite bounds
+  // and send the same canonical contact protocol rather than inventing a second path.
+  await page.getByRole("button", { name: "Переключить на режим Legacy" }).click();
+  const legacyCanvas = page.getByLabel("Курису. Нажмите на голову или корпус, чтобы передать сенсорное событие.");
+  await legacyCanvas.waitFor({ state: "visible", timeout: timeoutMs });
+  await page.waitForFunction(() => document.body.innerText.includes("legacy deck"), null, { timeout: timeoutMs });
+  // The shared recorder intentionally throttles across renderer modes.
+  await page.waitForTimeout(1_600);
+  const spriteDrawDeadline = Date.now() + timeoutMs;
+  let spriteDraw = null;
+  while (!spriteDraw && Date.now() < spriteDrawDeadline) {
+    spriteDraw = await page.evaluate(() => window.__nkAvatarSpriteDraws?.at(-1) ?? null);
+    if (!spriteDraw) await page.waitForTimeout(50);
+  }
+  assert.ok(spriteDraw?.args?.length >= 4, "Legacy must expose the current painted sprite bounds for hit testing");
+  const [spriteX, spriteY, spriteWidth, spriteHeight] = spriteDraw.args;
+  await legacyCanvas.click({ position: { x: spriteX + spriteWidth * 0.5, y: spriteY + spriteHeight * 0.22 } });
+  const legacyHeadDeadline = Date.now() + timeoutMs;
+  while (observedEvents.length < 5 && Date.now() < legacyHeadDeadline) await page.waitForTimeout(50);
+  assert.equal(observedEvents[4]?.interaction?.zone, "head", "Legacy sprite head hit must use the canonical social contact protocol");
+  await page.waitForTimeout(1_600);
+  await legacyCanvas.click({ position: { x: spriteX + spriteWidth * 0.5, y: spriteY + spriteHeight * 0.64 } });
+  const legacyBodyDeadline = Date.now() + timeoutMs;
+  while (observedEvents.length < 6 && Date.now() < legacyBodyDeadline) await page.waitForTimeout(50);
+  assert.equal(observedEvents[5]?.interaction?.zone, "body", "Legacy sprite body hit must use the canonical social contact protocol");
+  assert.deepEqual(observedEvents.slice(4).map((event) => event.interaction), [
+    { protocolVersion: 1, kind: "avatar-contact", zone: "head" },
+    { protocolVersion: 1, kind: "avatar-contact", zone: "body" },
+  ]);
 
   console.log(JSON.stringify({ ok: true, origin, readiness: "recovered-without-synthetic-message", viewports: ["1280x900", "390x844"], contactEvents: observedEvents.length, events: observedEvents }, null, 2));
 } finally {

@@ -314,7 +314,9 @@ export class SocialMindKernel{
     const id=String(personId??'').normalize('NFKC').trim().slice(0,120);
     const kind=String(action??'').normalize('NFKC').trim().toLowerCase().slice(0,100);
     if(!id||!kind||!Number.isFinite(at)||at<0) throw new Error('valid personId, action and timestamp are required');
-    const canonicalId=this.ensurePerson(id,at).id;
+    const person=this.ensurePerson(id,at);
+    person.observationCount+=1;
+    const canonicalId=person.id;
     const evidence:SocialEvidence={
       id:stable('user-action',`${canonicalId}:${kind}:${at}:${this.state.evidence.length}`),
       personId:canonicalId,source,claim:`user-action:${kind}`,confidence01:clamp(confidence01),
@@ -462,9 +464,14 @@ export class SocialMindKernel{
   }
 
   private ensurePerson(id:string,at:number){
-    this.observePerson({id,at,confidence01:id==='user'?.9:.55,visible01:id==='user'?1:.6,source:'interaction'});
-    const person=this.state.persons.find(p=>p.id===id||p.aliases.includes(id));
-    if(!person)throw new Error('social person registration failed');
+    let person=this.state.persons.find(p=>p.id===id||p.aliases.includes(id));
+    if(!person){
+      // Social interaction / inferred outcome is not evidence of visual presence.
+      // Only observePerson() may create or refresh visible presence from vision.
+      person={id,displayName:id,continuityConfidence01:.25,observationCount:0,firstSeenAt:at,lastSeenAt:at,visible01:0,trust01:.5,predictability01:.5,warmth01:.5,guardedness01:.35,intentUncertainty01:.65,relationshipStrength01:.15,relationshipUpdatedAt:at,knownClaims:[],recentIntent:null,aliases:[],roleSelfModel01:.5,perceivedAgency01:.5,expectedResponseUncertainty01:.65};
+      this.state.persons.unshift(person);
+    }
+    this.applyRelationalTether(person,at);
     return person;
   }
   private applyRelationalTether(person:SocialPersonState,at:number){

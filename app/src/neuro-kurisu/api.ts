@@ -57,7 +57,7 @@ function safeApprovalPreview(value: unknown): Record<string, unknown> {
     }
     if (typeof rawValue === "string") {
       output[key] = rawValue
-        .replace(/(bearer\s+)[a-z0-9._~+\/-]+=*/ig, "$1[redacted]")
+        .replace(/(bearer\s+)[a-z0-9._~+/-]+=*/ig, "$1[redacted]")
         .replace(/([?&](?:access[_-]?token|refresh[_-]?token|token|key|secret|password|api[_-]?key|client[_-]?secret)=)[^&\s]+/ig, "$1[redacted]")
         .replace(/(https?:\/\/)[^:/@\s]+:[^/@\s]+@/ig, "$1[redacted]@")
         .replace(/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/ig, "[email]")
@@ -185,9 +185,13 @@ export const neuroApi = {
     method: "POST",
     body: JSON.stringify({ message, deliberate, speak, ...(approvalId ? { approvalId } : {}) }),
   }),
-  recordExternalEvent: (detail: string, importance = 0.4) => request<{ ok: boolean; perception?: Record<string, unknown> }>("/api/organism/event", {
+  recordExternalEvent: (
+    detail: string,
+    importance = 0.4,
+    interaction?: { protocolVersion: 1; kind: "avatar-contact"; zone: "head" | "body" },
+  ) => request<{ ok: boolean; perception?: Record<string, unknown> }>("/api/organism/event", {
     method: "POST",
-    body: JSON.stringify({ detail, importance }),
+    body: JSON.stringify({ detail, importance, ...(interaction ? { interaction } : {}) }),
   }),
   proactiveMessage: () => request<{ ok: boolean; initiative: null | { id: string; kind: string; topic: string; message: string; createdAt: number; tick?: number; priority01: number; status: string } }>("/api/organism/proactive-message"),
   ackProactiveMessage: (id: string) => request<{ ok: boolean; acknowledged: boolean }>("/api/organism/proactive-message/ack", { method: "POST", body: JSON.stringify({ id }) }),

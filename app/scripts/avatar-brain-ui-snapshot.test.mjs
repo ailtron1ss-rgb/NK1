@@ -78,3 +78,29 @@ test("normalization rejects malformed or unbounded renderer channels", () => {
   const normalized = toOrganismSnapshot(remote, []);
   assert.equal(normalized.avatarBrain, null);
 });
+
+
+test("normalization preserves a fresh canonical avatar contact pulse", () => {
+  const remote = backendSnapshot();
+  remote.avatarInteraction = {
+    schemaVersion: 1,
+    kind: "avatar-contact",
+    zone: "head",
+    at: 900,
+    confidence01: 0.72,
+    evidenceId: "user-action-head-1",
+  };
+  const normalized = toOrganismSnapshot(remote, []);
+  assert.deepEqual(normalized.avatarInteraction, remote.avatarInteraction);
+});
+
+test("normalization rejects stale or malformed contact pulses", () => {
+  const stale = backendSnapshot();
+  stale.at = 5_000;
+  stale.avatarInteraction = { schemaVersion: 1, kind: "avatar-contact", zone: "head", at: 1, confidence01: 0.72, evidenceId: "old" };
+  assert.equal(toOrganismSnapshot(stale, []).avatarInteraction, null);
+
+  const malformed = backendSnapshot();
+  malformed.avatarInteraction = { schemaVersion: 1, kind: "avatar-contact", zone: "feet", at: 999, confidence01: 0.72, evidenceId: "bad" };
+  assert.equal(toOrganismSnapshot(malformed, []).avatarInteraction, null);
+});

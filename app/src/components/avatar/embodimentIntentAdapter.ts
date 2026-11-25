@@ -234,7 +234,11 @@ export type Live2DTapRecordStatus = "recording" | "recorded" | "error";
 export type Live2DTapRecordOutcome = "recorded" | "failed" | "invalid" | "throttled";
 
 export interface Live2DTapRecorderOptions {
-  recordExternalEvent: (detail: string, importance: number) => Promise<unknown>;
+  recordExternalEvent: (
+    detail: string,
+    importance: number,
+    interaction: { protocolVersion: 1; kind: "avatar-contact"; zone: "head" | "body" },
+  ) => Promise<unknown>;
   onStatus: (status: Live2DTapRecordStatus) => void;
   now?: () => number;
 }
@@ -273,7 +277,11 @@ export function createLive2DTapRecorder(options: Live2DTapRecorderOptions) {
       const area = event.zone === "head" ? "головы" : "корпуса";
       const detail = `Пользователь коснулся области ${area} аватара Курису через экранный интерфейс.`;
       try {
-        const result = await options.recordExternalEvent(detail, LIVE2D_TAP_IMPORTANCE);
+        const result = await options.recordExternalEvent(detail, LIVE2D_TAP_IMPORTANCE, {
+          protocolVersion: 1,
+          kind: "avatar-contact",
+          zone: event.zone,
+        });
         if (result === null || typeof result !== "object" || Array.isArray(result)
           || (result as Record<string, unknown>).ok !== true) {
           options.onStatus("error");

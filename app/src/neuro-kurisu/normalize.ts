@@ -56,6 +56,31 @@ function normalizeAvatarBrain(value: unknown, tick: number): AvatarBrainEnvelope
   return value as unknown as AvatarBrainEnvelopeV1;
 }
 
+function normalizeAvatarInteraction(value: unknown, snapshotAt: number): OrganismSnapshot["avatarInteraction"] {
+  if (!isRecord(value)
+    || value.schemaVersion !== 1
+    || value.kind !== "avatar-contact"
+    || (value.zone !== "head" && value.zone !== "body")
+    || !Number.isFinite(value.at)
+    || Number(value.at) < 0
+    || !Number.isFinite(snapshotAt)
+    || !Number.isFinite(value.confidence01)
+    || typeof value.evidenceId !== "string"
+    || value.evidenceId.length < 1
+    || value.evidenceId.length > 180) return null;
+  const at = Number(value.at);
+  const ageMs = snapshotAt - at;
+  if (!Number.isFinite(ageMs) || ageMs < 0 || ageMs > 3_200) return null;
+  return {
+    schemaVersion: 1,
+    kind: "avatar-contact",
+    zone: value.zone,
+    at,
+    confidence01: clamp(value.confidence01),
+    evidenceId: value.evidenceId,
+  };
+}
+
 export function toOrganismSnapshot(remote: BackendUiSnapshot, chat: OrganismSnapshot["chat"]): OrganismSnapshot {
   const last = remote.lastDecision;
   const memories: MemoryRecord[] = remote.memories.map((m) => ({
@@ -106,6 +131,7 @@ export function toOrganismSnapshot(remote: BackendUiSnapshot, chat: OrganismSnap
     at: Number(remote.at),
     awake: Boolean(remote.awake),
     avatarBrain: normalizeAvatarBrain(remote.avatarBrain, Number(remote.tick)),
+    avatarInteraction: normalizeAvatarInteraction(remote.avatarInteraction, Number(remote.at)),
     needs: remote.state.needs,
     emotion: {
       label: emotion(remote.emotion.label),

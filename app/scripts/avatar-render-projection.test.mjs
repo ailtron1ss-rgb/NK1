@@ -103,3 +103,54 @@ test("organism rest and wake state are reflected by the shared plan for every re
   assert.equal(projection.motorPlan.motionGroup, "Idle");
   assert.equal(projection.motorPlan.gesture, false);
 });
+
+test("a recent canonical avatar contact adds a bounded non-emotional motor acknowledgment", () => {
+  const input = baseInput({ speaking: false, hasFreshTurn: false, speechPhase: "idle", speechEventId: null, audioClockId: null });
+  input.snapshot.at = 11_000;
+  const baseline = buildAvatarRenderProjection(input);
+  input.snapshot.avatarInteraction = {
+    schemaVersion: 1,
+    kind: "avatar-contact",
+    zone: "head",
+    at: 10_000,
+    confidence01: 0.72,
+    evidenceId: "user-action-head-1",
+  };
+
+  const touched = buildAvatarRenderProjection(input);
+  assert.equal(touched.interaction?.zone, "head");
+  assert.equal(touched.interaction?.evidenceId, "user-action-head-1");
+  assert.ok(touched.interaction?.pulse01 > 0 && touched.interaction?.pulse01 < 1);
+  assert.ok(touched.motorPlan.headTilt > baseline.motorPlan.headTilt, "head contact should produce a bounded renderer-neutral head acknowledgment");
+  assert.equal(touched.expression, baseline.expression, "contact must not fabricate a new emotion");
+  assert.equal(touched.expressionIntensity, baseline.expressionIntensity, "contact must not force facial affect intensity");
+});
+
+test("expired or malformed avatar contact never leaks into a fresh renderer frame", () => {
+  const input = baseInput({ speaking: false, hasFreshTurn: false, speechPhase: "idle", speechEventId: null, audioClockId: null });
+  input.snapshot.at = 20_000;
+  const baseline = buildAvatarRenderProjection(input);
+  input.snapshot.avatarInteraction = {
+    schemaVersion: 1,
+    kind: "avatar-contact",
+    zone: "head",
+    at: 10_000,
+    confidence01: 0.72,
+    evidenceId: "old-contact",
+  };
+  const expired = buildAvatarRenderProjection(input);
+  assert.equal(expired.interaction, null);
+  assert.equal(expired.motorPlan.headTilt, baseline.motorPlan.headTilt);
+
+  input.snapshot.avatarInteraction = {
+    schemaVersion: 1,
+    kind: "avatar-contact",
+    zone: "unknown",
+    at: 19_900,
+    confidence01: 0.72,
+    evidenceId: "malformed-contact",
+  };
+  const malformed = buildAvatarRenderProjection(input);
+  assert.equal(malformed.interaction, null);
+  assert.equal(malformed.motorPlan.headTilt, baseline.motorPlan.headTilt);
+});

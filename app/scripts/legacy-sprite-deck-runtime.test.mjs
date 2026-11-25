@@ -85,3 +85,22 @@ test("legacy sprite loading exposes a terminal error instead of remaining stuck 
   assert.match(source, /role="status" aria-live="polite"/);
   assert.match(source, /предыдущий кадр сохранён/);
 });
+
+test("legacy deck renders the shared short-lived contact pulse without pretending still sprites are rigged", () => {
+  assert.match(source, /interaction\?: \{ zone: "head" \| "body"; pulse01: number; evidenceId: string \} \| null/);
+  assert.match(source, /const interactionRef = useRef\(interaction\)/);
+  assert.match(source, /interactionRef\.current = interaction/);
+  assert.match(source, /if \(d && touch && Number\.isFinite\(touch\.pulse01\) && touch\.pulse01 > 0\)/);
+  assert.match(source, /touch\.zone === "head" \? \.22 : \.64/);
+  assert.match(source, /ctx\.arc\(cx, contactY/);
+  assert.match(source, /still illustrations, not mouth-rigged frames/);
+});
+
+test("legacy contact hit testing only accepts points inside the current rendered sprite", () => {
+  assert.match(source, /const imageLayoutRef = useRef<\{ left: number; top: number; width: number; height: number \} \| null>\(null\)/);
+  assert.match(source, /const handleCanvasPointerUp = \(event: ReactPointerEvent<HTMLCanvasElement>\)/);
+  assert.match(source, /if \(x < layout\.left \|\| x > layout\.left \+ layout\.width \|\| y < layout\.top \|\| y > layout\.top \+ layout\.height\) return/);
+  assert.match(source, /withinSpriteY <= \.43 \? "head" : "body"/);
+  assert.match(source, /onPointerUp=\{handleCanvasPointerUp\}/);
+  assert.match(source, /onContact\(\{ zone: withinSpriteY/);
+});

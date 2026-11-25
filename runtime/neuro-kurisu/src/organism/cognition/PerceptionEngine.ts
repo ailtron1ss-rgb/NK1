@@ -181,7 +181,7 @@ export class PerceptionEngine {
     const prev = this.lastWorld ?? input.previousWorld ?? null;
     if (input.externalEvent) {
       this.state.externalEvents += 1;
-      this.state = push(this.state, { kind:'world-surprise', salience:clamp(input.externalEvent.importance ?? 0.65), novelty:clamp(input.externalEvent.importance ?? 0.55), confidence:0.92, source:input.externalEvent.source ?? 'world', detail:boundedText(input.externalEvent.detail) || 'external event', evidence:['external-event'] });
+      this.state = push(this.state, { kind:input.externalEvent.source === 'social' ? 'social-input' : 'world-surprise', salience:clamp(input.externalEvent.importance ?? 0.65), novelty:clamp(input.externalEvent.importance ?? 0.55), confidence:0.92, source:input.externalEvent.source ?? 'world', detail:boundedText(input.externalEvent.detail) || 'external event', evidence:input.externalEvent.source === 'social' ? ['external-event','social-interaction'] : ['external-event'] });
       return this.state.lastEvent!;
     }
     if (input.text?.trim()) {

@@ -6,6 +6,8 @@ export interface AvatarModelFitBounds {
   source: "skinned-meshes" | "character-meshes";
   includedMeshes: number;
   excludedEnvironmentMeshes: number;
+  /** Exact character surfaces used for both fitting and safe pointer picking. */
+  meshes: any[];
 }
 
 const ENVIRONMENT_NAME = /(^|_)(?:env_)?(?:floor|ground|background|backdrop|stagefloor)(?:_|$)/;
@@ -79,5 +81,16 @@ export function resolveAvatarModelFitBounds(root: any): AvatarModelFitBounds {
     source,
     includedMeshes: included.length,
     excludedEnvironmentMeshes,
+    meshes: included,
   };
+}
+
+/** Classify a world-space ray hit against the same character-only vertical bounds. */
+export function resolveAvatarContactZone(worldY: number, bounds: Box3): "head" | "body" | null {
+  if (!Number.isFinite(worldY) || !bounds || bounds.isEmpty()) return null;
+  const height = bounds.max.y - bounds.min.y;
+  if (!Number.isFinite(height) || height <= 1e-4) return null;
+  const normalizedHeight = (worldY - bounds.min.y) / height;
+  if (!Number.isFinite(normalizedHeight) || normalizedHeight < -0.015 || normalizedHeight > 1.015) return null;
+  return normalizedHeight >= 0.72 ? "head" : "body";
 }

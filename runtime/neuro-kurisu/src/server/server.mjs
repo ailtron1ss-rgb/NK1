@@ -1059,6 +1059,27 @@ async function route(req, res) {
                 // A projection failure must not take down the UI snapshot; clients keep their renderer-local fallback.
                 avatarBrain = null;
             }
+            const socialEvidence = snapshot.facets?.advanced?.socialMind?.evidence;
+            const latestAvatarContact = Array.isArray(socialEvidence)
+                ? socialEvidence.find((item) => {
+                    const claim = String(item?.claim ?? '');
+                    return (claim === 'user-action:avatar-contact-head' || claim === 'user-action:avatar-contact-body')
+                        && item?.source === 'interaction'
+                        && item?.evidenceKind === 'observed'
+                        && Number.isFinite(item?.observedAt)
+                        && avatarNow >= Number(item.observedAt)
+                        && avatarNow - Number(item.observedAt) <= 3200
+                        && typeof item?.id === 'string';
+                })
+                : null;
+            const avatarInteraction = latestAvatarContact ? {
+                schemaVersion: 1,
+                kind: 'avatar-contact',
+                zone: latestAvatarContact.claim.endsWith('-head') ? 'head' : 'body',
+                at: Number(latestAvatarContact.observedAt),
+                confidence01: Number(latestAvatarContact.confidence01 ?? 0),
+                evidenceId: String(latestAvatarContact.id),
+            } : null;
             return json(res, 200, { ok: true, version: RELEASE_CONTRACT.application, organismCore: RELEASE_CONTRACT.organismCore, schemaVersion: RELEASE_CONTRACT.stateSchema, at: state.at, tick: state.tick, awake: body.awake,
                 state: { needs: { ...state.needs, sleepPressure: Number(p48?.interoception?.sleepPressure01 ?? (body.awake ? .15 : .85)) }, predictionError: state.predictionError, selfPredictionError: state.selfPredictionError, attentionBudget: state.attentionBudget, lastAction: state.lastAction, lastReward01: lastReward01, autonomyScore: state.autonomyScore, predictedNextAction: state.predictedNextAction, lastPredictionConfidence: state.lastPredictionConfidence, worldContextVersion: state.worldContextVersion },
                 emotion: { label: scoreLabel, valence: Number(field.valence01 ?? .5), arousal: Number(field.arousal01 ?? .2), dominance: Number(field.coherence01 ?? .5), tendency: String(state.lastAction), cause: String(field.rationale ?? 'cognitive-field') },
@@ -1076,6 +1097,7 @@ async function route(req, res) {
                 language: { calls: languageCallCount, backend: lastLanguageBackend, degraded: lastLanguageBackend === 'deterministic-policy-fallback', lastFailure: lastLanguageFailure || undefined },
                 voice: { speaking: Boolean(voiceSnapshot?.state?.speaking), listening: Boolean(voiceSnapshot?.state?.listening), ttsAvailable: Boolean(body.ttsAvailable), sttAvailable: Boolean(body.sttAvailable) },
                 avatarBrain,
+                avatarInteraction,
                 will: { schemaVersion: runtime.core.willIntegrationDiagnostics().schemaVersion, agency: runtime.core.willIntegrationDiagnostics().agency, vector: runtime.core.willIntegrationDiagnostics().vector, integrity: runtime.core.willIntegrationDiagnostics().recordChain.integrity }
             });
         }
@@ -2196,7 +2218,17 @@ async function route(req, res) {
             if (!detail)
                 return json(res, 400, { ok: false, error: 'empty-detail' });
             const importance = Math.max(0, Math.min(1, Number(input.importance ?? 0.5)));
-            const perception = await runtime.injectExternalEvent(detail, importance);
+            let observedUserAction;
+            if (input.interaction != null) {
+                const interaction = input.interaction;
+                if (!interaction || typeof interaction !== 'object' || Array.isArray(interaction)
+                    || interaction.protocolVersion !== 1 || interaction.kind !== 'avatar-contact'
+                    || (interaction.zone !== 'head' && interaction.zone !== 'body')) {
+                    return json(res, 400, { ok: false, error: 'invalid-avatar-contact-interaction' });
+                }
+                observedUserAction = interaction.zone === 'head' ? 'avatar-contact-head' : 'avatar-contact-body';
+            }
+            const perception = await runtime.injectExternalEvent(detail, importance, observedUserAction ? { observedUserAction } : {});
             return json(res, 200, { ok: true, perception });
         }
         if (req.method === 'POST' && url.pathname === '/api/organism/vision/capture') {

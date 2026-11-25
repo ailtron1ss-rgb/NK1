@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import * as THREE from "three";
-import { resolveAvatarModelFitBounds } from "../src/components/avatar/avatarModelFitBounds.ts";
+import * as avatarFit from "../src/components/avatar/avatarModelFitBounds.ts";
+const { resolveAvatarModelFitBounds } = avatarFit;
 
 function mesh(name, geometry, type = "static") {
   const material = new THREE.MeshBasicMaterial();
@@ -84,4 +85,26 @@ test("fit bounds fail closed when a model has no usable character meshes", () =>
   const root = new THREE.Group();
   root.add(mesh("ENV_floor", new THREE.PlaneGeometry(200, 200)));
   assert.throws(() => resolveAvatarModelFitBounds(root), /no usable character mesh bounds/i);
+});
+
+
+test("fit bounds expose only the character meshes selected for safe contact raycasting", () => {
+  const root = new THREE.Group();
+  const body = mesh("BODY_torso", new THREE.BoxGeometry(0.7, 1.75, 0.34), "skinned");
+  const head = mesh("HEAD_face", new THREE.BoxGeometry(0.29, 0.37, 0.25), "skinned");
+  const floor = mesh("ENV_floor", new THREE.PlaneGeometry(200, 200));
+  root.add(body, head, floor);
+
+  const result = resolveAvatarModelFitBounds(root);
+  assert.deepEqual(result.meshes, [body, head], "raycasting must use the same rigged character mesh set as fit bounds");
+});
+
+test("3D contact picking maps the upper character to head and the rest to body", () => {
+  assert.equal(typeof avatarFit.resolveAvatarContactZone, "function", "the shared 3D contact classifier must be exported");
+  const bounds = new THREE.Box3(new THREE.Vector3(-0.3, 0, -0.2), new THREE.Vector3(0.3, 2, 0.2));
+  assert.equal(avatarFit.resolveAvatarContactZone(1.6, bounds), "head");
+  assert.equal(avatarFit.resolveAvatarContactZone(1.25, bounds), "body");
+  assert.equal(avatarFit.resolveAvatarContactZone(0, bounds), "body");
+  assert.equal(avatarFit.resolveAvatarContactZone(2.2, bounds), null, "hits outside the character bounds must be rejected");
+  assert.equal(avatarFit.resolveAvatarContactZone(Number.NaN, bounds), null);
 });

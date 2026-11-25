@@ -179,12 +179,22 @@ export interface AvatarBrainEnvelopeV1 {
   frame: AvatarBrainProjectionV1;
 }
 
+export interface AvatarInteractionSnapshotV1 {
+  schemaVersion: 1;
+  kind: "avatar-contact";
+  zone: "head" | "body";
+  at: number;
+  confidence01: number;
+  evidenceId: string;
+}
+
 export interface OrganismSnapshot {
   version: number;
   tick: number;
   at: number;
   awake: boolean;
   avatarBrain?: AvatarBrainEnvelopeV1 | null;
+  avatarInteraction: AvatarInteractionSnapshotV1 | null;
   needs: Needs;
   emotion: EmotionState;
   identity: IdentityPublic;
@@ -226,6 +236,7 @@ export function emptySnapshot(): OrganismSnapshot {
     at: 0,
     awake: true,
     avatarBrain: null,
+    avatarInteraction: null,
     needs: {
       energy: 0.72,
       cognitiveLoad: 0.22,

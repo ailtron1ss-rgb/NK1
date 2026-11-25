@@ -15,13 +15,18 @@ test("records avatar contact through the organism external-event perception rout
     });
   };
   try {
-    const result = await neuroApi.recordExternalEvent?.("Пользователь коснулся головы аватара Курису через экранный интерфейс.", 0.24);
+    const result = await neuroApi.recordExternalEvent?.("Пользователь коснулся головы аватара Курису через экранный интерфейс.", 0.24, {
+      protocolVersion: 1,
+      kind: "avatar-contact",
+      zone: "head",
+    });
     assert.equal(captured?.url, "/api/organism/event", "contact must reach the canonical organism event route");
     assert.equal(captured?.init?.method, "POST");
     assert.equal(captured?.init?.headers?.["content-type"], "application/json");
     assert.deepEqual(JSON.parse(captured?.init?.body ?? "null"), {
       detail: "Пользователь коснулся головы аватара Курису через экранный интерфейс.",
       importance: 0.24,
+      interaction: { protocolVersion: 1, kind: "avatar-contact", zone: "head" },
     });
     assert.deepEqual(result, { ok: true, perception: { modality: "sensor", accepted: true } });
   } finally {
@@ -49,8 +54,8 @@ test("turns verified Live2D head and body taps into low-salience organism observ
   const createRecorder = intentAdapter.createLive2DTapRecorder;
   const recorder = typeof createRecorder === "function" ? createRecorder({
     now: () => now,
-    recordExternalEvent: async (detail, importance) => {
-      calls.push({ detail, importance });
+    recordExternalEvent: async (detail, importance, interaction) => {
+      calls.push({ detail, importance, interaction });
       return { ok: true, perception: { modality: "sensor" } };
     },
     onStatus: (status) => statuses.push(status),
@@ -63,8 +68,8 @@ test("turns verified Live2D head and body taps into low-salience organism observ
   assert.equal(headResult, "recorded");
   assert.equal(bodyResult, "recorded");
   assert.deepEqual(calls, [
-    { detail: "Пользователь коснулся области головы аватара Курису через экранный интерфейс.", importance: 0.24 },
-    { detail: "Пользователь коснулся области корпуса аватара Курису через экранный интерфейс.", importance: 0.24 },
+    { detail: "Пользователь коснулся области головы аватара Курису через экранный интерфейс.", importance: 0.24, interaction: { protocolVersion: 1, kind: "avatar-contact", zone: "head" } },
+    { detail: "Пользователь коснулся области корпуса аватара Курису через экранный интерфейс.", importance: 0.24, interaction: { protocolVersion: 1, kind: "avatar-contact", zone: "body" } },
   ]);
   assert.deepEqual(statuses, ["recording", "recorded", "recording", "recorded"]);
 });
