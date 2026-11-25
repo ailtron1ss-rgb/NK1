@@ -1,0 +1,56 @@
+name: NK1 N.E.K.O. action permission modes
+
+on:
+  pull_request:
+    branches: [workpass70-source, "aspect/**"]
+    paths:
+      - "runtime/neuro-kurisu/src/organism/system/ActionGateway.ts"
+      - "runtime/neuro-kurisu/tests/neko-action-permission-modes.mjs"
+      - "runtime/neuro-kurisu/tests/action-gateway-idempotency-workpass37.mjs"
+      - "runtime/neuro-kurisu/tests/action-gateway-restore-boundary-workpass647.mjs"
+      - "runtime/neuro-kurisu/package.json"
+      - ".github/workflows/nk1-neko-action-permission-modes.yml"
+  push:
+    branches: [workpass70-source, "aspect/**"]
+    paths:
+      - "runtime/neuro-kurisu/src/organism/system/ActionGateway.ts"
+      - "runtime/neuro-kurisu/tests/neko-action-permission-modes.mjs"
+      - "runtime/neuro-kurisu/tests/action-gateway-idempotency-workpass37.mjs"
+      - "runtime/neuro-kurisu/tests/action-gateway-restore-boundary-workpass647.mjs"
+      - "runtime/neuro-kurisu/package.json"
+      - ".github/workflows/nk1-neko-action-permission-modes.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nk1-neko-action-permission-modes-${{ github.event.pull_request.number || github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
+
+jobs:
+  permission-modes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: runtime/neuro-kurisu/package-lock.json
+      - name: Install locked runtime dependencies
+        working-directory: runtime/neuro-kurisu
+        run: npm ci
+      - name: N.E.K.O. category permission mode regression
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:neko-action-permission-modes
+      - name: Existing ActionGateway idempotency and approval regressions
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:action-gateway-idempotency-workpass37
+      - name: Existing ActionGateway restore boundary regression
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/action-gateway-restore-boundary-workpass647.mjs
+      - name: Runtime typecheck
+        if: always()
+        working-directory: runtime/neuro-kurisu
+        run: npm run typecheck
