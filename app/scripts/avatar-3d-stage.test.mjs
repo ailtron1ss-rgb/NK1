@@ -324,10 +324,11 @@ test("3D pointer picking declares the Three.js raycaster and vector types",async
  assert.match(threeTypes,/export const Raycaster:any/);
 });
 
-test("3D remote-import controls stay collapsed by default so they cannot intercept avatar contact",async()=>{
+test("3D model tools stay inside a collapsed disclosure so the avatar canvas remains tappable",async()=>{
  const stage=await readFile(stagePath,"utf8");
- assert.match(stage,/const \[remoteImportOpen\s*,\s*setRemoteImportOpen\]\s*=\s*useState\(false\)/);
- assert.match(stage,/aria-expanded=\{remoteImportOpen\}/);
- assert.match(stage,/aria-controls="avatar-3d-remote-import"/);
- assert.match(stage,/\{remoteImportOpen\s*\?\s*<div id="avatar-3d-remote-import"/);
+ assert.match(stage,/const \[controlsOpen\s*,\s*setControlsOpen\]\s*=\s*useState\(false\)/);
+ assert.match(stage,/aria-expanded=\{controlsOpen\}/);
+ assert.match(stage,/aria-controls="avatar-3d-controls"/);
+ assert.match(stage,/\{controlsOpen\s*\?\s*<div id="avatar-3d-controls"/);
+ assert.match(stage,/Настройки 3D/);
 });
