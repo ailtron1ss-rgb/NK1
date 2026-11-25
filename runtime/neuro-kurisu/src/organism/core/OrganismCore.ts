@@ -12397,6 +12397,14 @@ export class OrganismCore {
         return { ok: allOk, verified: allVerified, id, results, skill: compoundRecord, idempotentReplay: replayedExecutions > 0 && freshExecutions === 0 };
     }
     registerActionTool(def: import('../system/ActionGateway.ts').ToolDefinition) { this.cognitiveRuntime.actionGateway.registerTool(def); }
+    /** Public recovery boundary for the canonical ActionGateway; callers never reach into cognitiveRuntime internals. */
+    executeUndoForKey(
+        idempotencyKey: string,
+        reason = 'undo-request',
+        options: import('../system/ActionGateway.ts').ActionUndoExecutionOptions = {},
+    ): Promise<import('../system/ActionGateway.ts').ActionUndoExecutionResult> {
+        return this.cognitiveRuntime.actionGateway.executeUndoForKey(idempotencyKey, reason, options);
+    }
     actionExecutionLedgerMetrics() { return this.cognitiveRuntime.actionGateway.executionLedgerMetrics(); }
     actionRecoveryQueueSnapshot(limit = 32) { return this.cognitiveRuntime.actionGateway.unresolvedExecutionSnapshot(limit); }
     actionToolsSnapshot() { return this.cognitiveRuntime.actionGateway.listTools(); }
