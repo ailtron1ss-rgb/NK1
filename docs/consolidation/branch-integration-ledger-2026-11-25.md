@@ -110,3 +110,25 @@ These two neighbouring aspect PRs are existing work by their respective branch a
 - Dedicated exact-head P23 workflow [45607764358](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45607764358) completed **SUCCESS** for PR head `27c74e0502264f4a10959ad9f7cd49acfcd221c5` (GitHub merge head `e4e154aa4985f2ac9f2fe5103938570fb1e6adb5`). Focused freshness, signed-evidence, candidate-store and approval-request/default-deny tests passed. Runtime validation was Node strip-syntax-only for 746 files; semantic `tsc` was unavailable, so no semantic typecheck is claimed. Historical 63/63 checks belonged to the older base/head and are not reused as current proof.
 - PR remains Draft/open/unmerged. No canonical source, `main`, Release tag or Release ZIP was changed. No skill-quality uplift, recall improvement, or live production verification is claimed.
 - Full engineering record: [NK1_P23_SKILL_SHADOW_EVIDENCE_FRESHNESS_2026-11-25.md](../engineering/NK1_P23_SKILL_SHADOW_EVIDENCE_FRESHNESS_2026-11-25.md).
+
+
+## Durable delivery ownership and crash reconciliation — 2026-11-25
+
+### Social initiative delivery — existing PR #1181
+- Branch `aspect/social-delivery-outbox-lease-20261125`, head `c92c734cc785fc4d36ba1cc9e9d471d0cf7c0436`, base canonical `workpass70-source@9008a8982a5173304456bee2c604bd0bc8665964`.
+- Exact-head GitHub Actions: **46/46 SUCCESS**, including unified organism runtime and clean prototype startup.
+- This state machine remains the exclusive owner of proactive social initiative leasing, retry scheduling, consent/quiet-hours re-check, stable UI turn identity and durable chat-before-ACK.
+
+### Generic durable obligations — existing PR #1182
+- Branch `aspect/openclaw-durable-delivery-outbox-20261125`, current PR head `b65bc0bbcb8596d9fc30922960b94f4703d923a9`, base `9008a898...`; compare: **27 commits ahead / 0 behind**, seven intended paths. A documentation-only commit followed code head `46c5b4aceda81585ebdd07c80d09a7abf0c3e176`.
+- The generic outbox accepts task-completion, reminder, notification and custom obligations; it explicitly rejects `initiative-message`, avoiding a second queue/lease/ACK owner for the social-delivery domain in #1181.
+- Its new `reconciliation-required` state quarantines expired leased deliveries. Unknown external outcome remains quarantined. Only host-authoritative `confirmed-delivered`, `confirmed-not-delivered` or `cancelled` reconciliation can settle/retry/terminate. Requeue after confirmed-not-delivered observes backoff and the attempt ceiling.
+- Outbox was moved beneath `organism/persistence`, exposed through the existing `FileStateStore` persistence facade, and its direct import from central `OrganismRuntime` was removed. The architecture budget was **not** raised.
+- Exact code-head audit [45610617629](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45610617629): **SUCCESS**; 65/65 dependency rules, zero budget violations, zero cycles, zero missing imports, zero boundary violations; semantic `tsc` also **PASS**. Transitive import audit [45610616775](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45610616775): **SUCCESS**.
+- Dedicated current-head outbox contract workflow [45611057409](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45611057409) is queued. Do not claim the focused contract / proactive-consent / OpenLoop tests as passed until it finishes. Intermediate failures were fixed: an invalid TS non-null assertion in an `.mjs` test and the extra direct Runtime dependency that exceeded 45.
+- PR #1182 remains Draft/open/unmerged; no source/main/Release change.
+
+### P23 evidence freshness — #1177 exact-head CI
+- Current head `27c74e0502264f4a10959ad9f7cd49acfcd221c5`; dedicated freshness workflow passed. The full exact-head check matrix completed **65/65 SUCCESS**. Runtime syntax/type verification in that matrix used node strip-syntax; semantic TSC was unavailable there. (The separate #1182 architecture workflow above did run semantic `tsc` successfully.)
+
+All three aspect PRs are still Draft and unmerged. This checkpoint is a status/evidence handoff only and does not claim their code is integrated into canonical source.
