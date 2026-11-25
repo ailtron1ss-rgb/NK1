@@ -10,6 +10,8 @@ const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
 const finiteAt=(x:unknown):x is number=>typeof x==='number'&&Number.isFinite(x)&&x>=0;
 const counter=(x:unknown)=>typeof x==='number'&&Number.isSafeInteger(x)&&x>=0?x:0;
 const timeAlpha=(elapsedMs:number,tauMs:number)=>1-Math.exp(-Math.max(0,elapsedMs)/tauMs);
+const MAX_ELAPSED_MS=24*60*60_000;
+const MAX_STABLE_GAP_MS=60_000;
 export type P66Mode='recover'|'protect'|'balance'|'engage'|'explore';
 export type P66ObservationSource='body-telemetry'|'cognitive-cycle'|'unspecified';
 type P66HistoryRow={at:number;tick:number;error01:number;stress01:number;mode:P66Mode;energy01:number;thermal01:number;capacity01:number;source?:P66ObservationSource;sampleId?:string};
@@ -39,7 +41,7 @@ export class P66InteroceptiveHomeostasis {
       modeCounts:{...d.modeCounts,...(r.modeCounts??{})},
       setpoints:{...d.setpoints,...(r.setpoints??{})},
       history,
-      lastAt:finiteAt(r.lastAt)?Number(r.lastAt):0,
+      lastAt:finiteAt(r.lastAt)&&r.lastAt<=Date.now()+250?Number(r.lastAt):0,
       lastPressure01:clamp(Number(r.lastPressure01??d.lastPressure01)),
       recoveryDebt01:clamp(Number(r.recoveryDebt01??d.recoveryDebt01)),
       stableCycles:counter(r.stableCycles),
@@ -101,8 +103,9 @@ export class P66InteroceptiveHomeostasis {
     const stressAlpha=timeAlpha(elapsedMs,30_000);
     const capacityAlpha=timeAlpha(elapsedMs,60_000);
     const stable=pressure<.28;
+    const stableContinuityValid=this.state.cycles===0||elapsedMs<=MAX_STABLE_GAP_MS;
     const stableElapsedMs=this.state.cycles===0?0:elapsedMs;
-    const stableDurationMs=stable?Math.min(Number.MAX_SAFE_INTEGER,this.state.stableDurationMs+stableElapsedMs):0;
+    const stableDurationMs=stable&&stableContinuityValid?Math.min(Number.MAX_SAFE_INTEGER,this.state.stableDurationMs+stableElapsedMs):0;
     this.state.cycles=Math.min(Number.MAX_SAFE_INTEGER,this.state.cycles+1);
     this.state.modeCounts[mode]=Math.min(Number.MAX_SAFE_INTEGER,(this.state.modeCounts[mode]??0)+1);
     if(source==='body-telemetry')this.state.bodyTelemetryObservations=Math.min(Number.MAX_SAFE_INTEGER,this.state.bodyTelemetryObservations+1);
@@ -125,14 +128,14 @@ export class P66InteroceptiveHomeostasis {
     this.state.history=[{at:input.at,tick:input.tick,error01:error,stress01:stress,mode,energy01:e,thermal01:t,capacity01:capacity,source,...(sampleId?{sampleId}:{})},...this.state.history].slice(0,128);
     this.state.lastPressure01=pressure;
     this.state.recoveryDebt01=proposedRecoveryDebt;
-    this.state.stableCycles=stable?this.state.stableCycles+1:0;
+    this.state.stableCycles=stable?(stableContinuityValid?this.state.stableCycles+1:1):0;
     this.state.stableDurationMs=stableDurationMs;
     return {mode,error01:error,stress01:stress,capacity01:capacity,pressure01:pressure};
   }
 
   private elapsed(at:number):number{
     if(this.state.cycles===0)return 1_000;
-    return Math.min(5*60_000,Math.max(0,at-this.state.lastAt));
+    return Math.min(MAX_ELAPSED_MS,Math.max(0,at-this.state.lastAt));
   }
   private timeNormalizedDebt(pressure:number,elapsedMs:number):number{
     const target=clamp((pressure-.22)/.55);
