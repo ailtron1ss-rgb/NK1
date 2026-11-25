@@ -19,6 +19,7 @@ export function ChatPanel() {
   const [proactiveOutbox, setProactiveOutbox] = useState<{ pending: number; deadLettered: number; leased: number; backoff: number; claimable: number; exhausted: number } | null>(null);
   const [proactiveConsentBusy, setProactiveConsentBusy] = useState(false);
   const [proactiveConsentError, setProactiveConsentError] = useState<string | null>(null);
+  const proactiveConsentEpoch = useRef(0);
   const end = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -27,18 +28,20 @@ export function ChatPanel() {
 
   useEffect(() => {
     let cancelled = false;
-    let initialized = false;
+    let refreshInFlight = false;
     const refreshPolicy = () => {
+      if (refreshInFlight) return;
+      refreshInFlight = true;
+      const epochAtStart = proactiveConsentEpoch.current;
       void neuroApi.proactiveDeliveryPolicy().then((result) => {
-        if (!cancelled) {
-          if (!initialized) {
-            setProactiveConsent(result.policy.consentGranted === true);
-            initialized = true;
-          }
+        if (!cancelled && epochAtStart === proactiveConsentEpoch.current) {
+          setProactiveConsent(result.policy.consentGranted === true);
           setProactiveOutbox(result.policy.outbox);
         }
       }).catch((error) => {
         if (!cancelled) setProactiveConsentError(error instanceof Error ? error.message : String(error));
+      }).finally(() => {
+        refreshInFlight = false;
       });
     };
     refreshPolicy();
@@ -51,6 +54,7 @@ export function ChatPanel() {
 
   const toggleProactiveConsent = async () => {
     if (proactiveConsent === null || proactiveConsentBusy) return;
+    proactiveConsentEpoch.current += 1;
     setProactiveConsentBusy(true);
     setProactiveConsentError(null);
     try {
@@ -60,6 +64,9 @@ export function ChatPanel() {
     } catch (error) {
       setProactiveConsentError(error instanceof Error ? error.message : String(error));
     } finally {
+      // Invalidate policy reads that raced this mutation; the next poll will
+      // reconcile the committed server state, including ambiguous HTTP failures.
+      proactiveConsentEpoch.current += 1;
       setProactiveConsentBusy(false);
     }
   };
