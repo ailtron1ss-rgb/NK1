@@ -3,6 +3,7 @@ import type { P41PerceptionState } from '../cognition/P41SemanticPerception.ts';
 import type { PerceptualEvidenceState } from '../body/PerceptualEvidenceCompiler.ts';
 import type { OutcomeVerification } from '../system/OutcomeVerificationService.ts';
 import { isTrustedEmbodiedOutcomeVerification } from '../system/ExternalPostconditionVerifier.ts';
+import { cloneInertSnapshot } from '../core/InertSnapshot.ts';
 
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
 const safeUnit=(value:unknown,fallback=0):number=>typeof value==='number'&&Number.isFinite(value)&&value>=0&&value<=1?value:fallback;
@@ -136,7 +137,13 @@ export class GroundedWorldState {
   private state=defaultGroundedWorldState();
   restore(raw?:Partial<GroundedWorldStateSnapshot>|null){
     const d=defaultGroundedWorldState();
-    const r=raw&&typeof raw==='object'&&!Array.isArray(raw)?raw as Record<string,unknown>:{};
+    const restored = raw === undefined || raw === null
+      ? {}
+      : cloneInertSnapshot<unknown>(raw, { maxDepth: 16, maxProperties: 65_536 });
+    if (!restored || typeof restored !== 'object' || Array.isArray(restored)) {
+      throw new Error('grounded-world-snapshot-invalid');
+    }
+    const r = restored as Record<string,unknown>;
     const lastAt=safeTimestamp(r.lastAt,0);
     const revision=safeInteger(r.revision,0);
     const location=safeText(r.location,256)??'unknown';
