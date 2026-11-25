@@ -9,7 +9,7 @@ import {
 
 test("an explicit owner decline rejects the original request with a typed 403 outcome", async () => {
   const id = "approval-test-decline-0001";
-  let attempted: boolean | null = null;
+  let attempted = null;
   const pending = waitForActionApproval({
     id,
     toolId: "http.voice.listen",
