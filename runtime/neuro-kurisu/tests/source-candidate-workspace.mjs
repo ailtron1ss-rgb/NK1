@@ -239,3 +239,46 @@ console.log('SOURCE_CANDIDATE_WORKSPACE_V1=PASS');
     await rm(workspaceRoot, { recursive: true, force: true });
   }
 }
+
+
+// File/directory prefix collisions cannot be represented in a materialized tree.
+// Reject both malformed snapshots and edits that introduce an ancestor collision.
+{
+  const workspaceRoot = await mkdtemp(path.join(os.tmpdir(), 'nk1-source-candidate-ancestor-paths-'));
+  try {
+    let admissionCalls = 0;
+    const guarded = new SourceCandidateWorkspaceV1({
+      workspaceRoot: path.join(workspaceRoot, 'out'),
+      authorize: async request => {
+        admissionCalls += 1;
+        return accept(request);
+      },
+    });
+    const snapshotCollision = await guarded.prepare({
+      baseSha,
+      files: [
+        { path: 'src/module', content: 'file' },
+        { path: 'src/module/index.ts', content: 'child' },
+      ],
+      edits: [{ path: 'src/new.ts', expectedBeforeSha256: null, createIfMissing: true, replacement: 'new' }],
+    });
+    assert.equal(snapshotCollision.created, false);
+    assert.equal(snapshotCollision.reason, 'source-path-ancestor-collision');
+
+    const editCollision = await guarded.prepare({
+      baseSha,
+      files: [{ path: 'src/module/index.ts', content: 'child' }],
+      edits: [{
+        path: 'src/module',
+        expectedBeforeSha256: null,
+        createIfMissing: true,
+        replacement: 'file replacing directory',
+      }],
+    });
+    assert.equal(editCollision.created, false);
+    assert.equal(editCollision.reason, 'candidate-path-ancestor-collision');
+    assert.equal(admissionCalls, 0, 'unmaterializable path trees must be rejected before host admission');
+  } finally {
+    await rm(workspaceRoot, { recursive: true, force: true });
+  }
+}
