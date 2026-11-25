@@ -168,4 +168,4 @@ try {
   await fs.rm(runtimeDirectory, { recursive: true, force: true });
 }
 
-console.log(JSON.stringify({ test: 'durable-delivery-outbox', assertions: 46, status: 'PASS' }));
+console.log(JSON.stringify({ test: 'durable-delivery-outbox', assertions: 45, status: 'PASS' }));
