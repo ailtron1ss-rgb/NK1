@@ -61,6 +61,10 @@ assert.equal(outbox.get(leaseRow.record.id)?.status, 'reconciliation-required',
   'an expired lease is quarantined because the external side effect may have happened');
 assert.equal(outbox.claim(leaseRow.record.id, 'sender-B', at + 3002, 1000), null,
   'an expired ambiguous lease must not be retried without host reconciliation');
+assert.equal(outbox.resolveReconciliation(leaseRow.record.id, 'unknown', at + 3002), false,
+  'an unknown provider result must remain quarantined');
+assert.equal(outbox.diagnostics().reconciliationRequired, 1,
+  'diagnostics expose quarantined external outcomes');
 assert.equal(outbox.pendingCandidate(at + 3002), null,
   'reconciliation-required records are not visible as ordinary pending work');
 assert.equal(outbox.resolveReconciliation(leaseRow.record.id, 'confirmed-not-delivered', at + 3002), true,
@@ -109,6 +113,32 @@ assert.deepEqual(restored.snapshot(), outbox.snapshot(), 'state round-trips with
 const malformed = outbox.snapshot();
 malformed.records[0].status = 'sent';
 assert.throws(() => restored.restore(malformed), /delivery-outbox-enum-invalid/);
+
+const exhaustedPendingState = {
+  version: 1,
+  sequence: 1,
+  records: [{
+    id: 'exhausted-pending',
+    dedupeKey: 'exhausted-pending',
+    kind: 'custom',
+    payloadRef: 'custom:exhausted-pending',
+    sourceTaskId: null,
+    initiativeId: null,
+    decisionId: null,
+    consentScopeVersion: null,
+    createdAt: at,
+    nextAttemptAt: at,
+    expiresAt: null,
+    attemptCount: 2,
+    status: 'pending',
+    leaseOwner: null,
+    leaseUntil: 0,
+    deliveredAt: null,
+    lastErrorCode: null,
+  }],
+};
+assert.throws(() => restored.restore(exhaustedPendingState), /delivery-outbox-attempts-exhausted-pending/,
+  'a restored pending row at the attempt ceiling cannot be claimed again');
 
 const accessorRoot = { version: 1, sequence: 0, records: [] };
 Object.defineProperty(accessorRoot, 'records', { enumerable: true, get: () => [] });
