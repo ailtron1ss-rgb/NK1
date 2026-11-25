@@ -16,6 +16,7 @@ export function ChatPanel() {
   const error = useKurisu((s) => s.error);
   const [text, setText] = useState("");
   const [proactiveConsent, setProactiveConsent] = useState<boolean | null>(null);
+  const [proactiveOutbox, setProactiveOutbox] = useState<{ pending: number; leased: number; backoff: number; claimable: number; exhausted: number } | null>(null);
   const [proactiveConsentBusy, setProactiveConsentBusy] = useState(false);
   const [proactiveConsentError, setProactiveConsentError] = useState<string | null>(null);
   const end = useRef<HTMLDivElement>(null);
@@ -27,7 +28,11 @@ export function ChatPanel() {
   useEffect(() => {
     let cancelled = false;
     void neuroApi.proactiveDeliveryPolicy().then((result) => {
-      if (!cancelled) setProactiveConsent(result.policy.consentGranted === true);
+      if (!cancelled) {
+        setProactiveConsent(result.policy.consentGranted === true);
+      setProactiveOutbox(result.policy.outbox);
+        setProactiveOutbox(result.policy.outbox);
+      }
     }).catch((error) => {
       if (!cancelled) setProactiveConsentError(error instanceof Error ? error.message : String(error));
     });
@@ -57,6 +62,7 @@ export function ChatPanel() {
             {snap.lastDecision?.reason ?? "waiting for observation"}
           </p>
           <p className="mt-1 text-[11px] text-subtle">Internal reflection continues when unsolicited messages are paused.</p>
+          {proactiveOutbox ? <p className="mt-1 text-[10px] text-subtle" aria-live="polite">Outbox: {proactiveOutbox.pending} pending · {proactiveOutbox.leased} leased · {proactiveOutbox.backoff} retry · {proactiveOutbox.claimable} ready · {proactiveOutbox.exhausted} exhausted</p> : null}
         </div>
         <div className="flex flex-wrap items-center justify-end gap-1">
           <Button type="button" variant="outline" size="sm" disabled={proactiveConsent === null || proactiveConsentBusy} aria-pressed={proactiveConsent === true} onClick={() => void toggleProactiveConsent()}>
