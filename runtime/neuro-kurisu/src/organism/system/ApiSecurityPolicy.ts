@@ -1,4 +1,11 @@
 export interface ApiSecurityDecision { allowed: boolean; status: number; reason: string; }
+export type ApiApprovalActor = 'api-token-owner'|'loopback-owner';
+/** Map only server-verified authorization outcomes to audit principals. */
+export function apiApprovalActor(reason: string): ApiApprovalActor {
+  if (reason === 'authenticated') return 'api-token-owner';
+  if (reason === 'loopback-research-mode') return 'loopback-owner';
+  throw new Error('api-approval-actor-unavailable');
+}
 const LOOPBACK = new Set(['127.0.0.1','::1','localhost']);
 export function isLoopbackHost(host: string): boolean { return LOOPBACK.has(String(host||'').trim().toLowerCase()); }
 export function authorizeApiRequest(host: string, path: string, authorization?: string, expectedToken = process.env.NEURO_API_TOKEN || ''): ApiSecurityDecision {

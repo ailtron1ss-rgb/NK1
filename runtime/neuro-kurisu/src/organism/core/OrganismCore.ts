@@ -12435,8 +12435,8 @@ export class OrganismCore {
     async requestActionToolApproval(toolId:string, input:Record<string,unknown>={}, reason='user-request', options:import('../system/ActionGateway.ts').ActionGatewayExecutionOptions={}, operation:import('../system/ActionGateway.ts').ActionToolApprovalOperation='execute') {
         return this.cognitiveRuntime.actionGateway.requestToolApproval(toolId,input,reason,options,operation);
     }
-    async resolveActionToolApproval(requestId:string, approved:boolean) {
-        const result=await this.cognitiveRuntime.actionGateway.resolveToolApproval(requestId,approved,'owner');
+    async resolveActionToolApproval(requestId:string, approved:boolean, actor:import('../system/ActionGateway.ts').ActionToolApprovalActor='owner') {
+        const result=await this.cognitiveRuntime.actionGateway.resolveToolApproval(requestId,approved,actor);
         if(result.ok && result.request) {
             this.p34RecordConsent({ action:`tool:${result.request.toolId}`, risk01:.9, actor:'creator', decision:approved?'approved':'declined', reason:`one-shot tool approval ${result.request.id}` });
             await this.checkpoint(true);
