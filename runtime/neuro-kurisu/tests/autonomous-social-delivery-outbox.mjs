@@ -125,4 +125,15 @@ function readyEngine(at = 1_000) {
     'legacy snapshots without an explicit consent decision must restore fail-closed');
 }
 
+{
+  const engine = new AutonomousSocialInitiativeEngine();
+  const privatePlan = engine.cycle(makeInput(70_000)).initiative;
+  assert.ok(privatePlan?.internalOnly);
+  engine.setConsent(true);
+  const restored = new AutonomousSocialInitiativeEngine();
+  restored.restore(engine.snapshot());
+  assert.equal(restored.latestPlanned(70_001), null,
+    'a private thought must remain private after consent is granted and state is restored');
+}
+
 console.log('AUTONOMOUS_SOCIAL_DELIVERY_OUTBOX=PASS');
