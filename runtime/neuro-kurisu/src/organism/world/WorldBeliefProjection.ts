@@ -55,7 +55,7 @@ export function projectWorldCognitiveSignal(input: {
   const quarantinedOutcomeFreshWeight = Array.isArray(snapshot.quarantinedOutcomes)
     ? snapshot.quarantinedOutcomes.slice(0, 96).reduce((total, item) => {
         if (!isRecord(item) || typeof item.id !== 'string' || item.id.trim().length === 0
-          || typeof item.label !== 'string' || !item.label.startsWith('external-receipt:')
+          || typeof item.label !== 'string' || !(item.label.startsWith('external-receipt:') || item.label.startsWith('restored-unverified:external-receipt:'))
           || seenQuarantinedOutcomeIds.has(item.id)) return total;
         seenQuarantinedOutcomeIds.add(item.id);
         // Diagnostic operational receipts create only short-lived pressure. Persisted
