@@ -54,7 +54,15 @@ import { ProactiveDeliveryLeaseRegistry } from "../src/server/proactive-delivery
   assert.ok(server.includes("new ProactiveDeliveryCoordinator({ runtime })"),
     "the HTTP server must use the lifecycle coordinator");
   assert.ok(server.includes("proactiveDelivery.claim()"),
-    "the GET delivery route must delegate claiming to the coordinator");
+    "the delivery route must delegate claiming to the coordinator");
+  assert.ok(server.includes("/api/organism/proactive-message/claim"),
+    "a canonical POST claim endpoint must exist for the state-changing operation");
+  assert.ok(server.includes("req.method === 'GET' && url.pathname === '/api/organism/proactive-message'"),
+    "the legacy GET claim path remains available as a compatibility alias");
+  assert.ok(coordinator.includes("this.leases.complete("),
+    "successful ACKs must move into the idempotent receipt ledger");
+  assert.ok(coordinator.includes("completedAttemptCountFor("),
+    "duplicate ACKs must replay the stored receipt without a second Core call");
   assert.ok(server.includes("proactiveDelivery.acknowledge("),
     "the ACK route must delegate receipt validation to the coordinator");
   assert.ok(coordinator.includes("acknowledgementsInFlight"),
