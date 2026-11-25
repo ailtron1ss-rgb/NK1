@@ -337,6 +337,11 @@ test("3D model tools stay inside a collapsed disclosure so the avatar canvas rem
 test("3D avatar contact picking includes static head meshes and classifies against complete character bounds", async () => {
  const THREE = await import("three");
  const { resolveAvatarModelFitBounds, resolveAvatarContactZone } = await import("../src/components/avatar/avatarModelFitBounds.ts");
+ const stage = await readFile(stagePath, "utf8");
+ assert.match(stage, /raycaster\.intersectObjects\(fit\.pickMeshes,true\)/,
+   "the production pointer raycast must include every eligible character surface");
+ assert.match(stage, /resolveAvatarContactZone\(hit\.point\.y,fit\.contactBounds\)/,
+   "the production contact classifier must use the full character envelope");
  const root = new THREE.Group();
  const material = new THREE.MeshBasicMaterial();
  const torso = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1.2, 0.5), material);
