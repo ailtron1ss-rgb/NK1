@@ -140,7 +140,7 @@ numericP41.restore({
     modalityEvidenceKinds: { vision: 'observed' },
     modalitySourceIds: { vision: ['detector-1'] },
     position: { x: 1e12, y: 0, z: 0 },
-    velocity: { x: 0, y: Number.POSITIVE_INFINITY, z: 0 },
+    velocity: { x: 0, y: 7e12, z: 0 },
   }],
   modalityReliability: {
     vision: {
