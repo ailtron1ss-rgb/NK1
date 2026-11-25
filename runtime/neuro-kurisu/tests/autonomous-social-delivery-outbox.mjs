@@ -33,6 +33,8 @@ function readyEngine(at = 1_000) {
 
 {
   const { engine, initiative } = readyEngine();
+  assert.equal(engine.acknowledge(initiative.id, 1_002), false,
+    'an unclaimed ready message must not be ACKed by an arbitrary caller');
   const first = engine.claimReady(1_002, 5_000);
   assert.equal(first?.id, initiative.id);
   assert.equal(first?.deliveryAttemptCount, 1);
@@ -53,6 +55,8 @@ function readyEngine(at = 1_000) {
   assert.equal(second?.deliveryLeaseUntil, 12_002);
   assert.equal(second?.deliveryNextAttemptAt, 14_002);
 
+  assert.equal(restored.acknowledge(initiative.id, 12_003), false,
+    'an expired delivery lease must not accept a late ACK');
   assert.equal(restored.acknowledge(initiative.id, 7_003), true);
   assert.equal(restored.acknowledge(initiative.id, 7_004), false);
   assert.equal(restored.claimReady(20_000, 5_000), null,
