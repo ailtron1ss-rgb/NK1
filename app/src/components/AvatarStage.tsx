@@ -556,7 +556,7 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
 
   return (
     <div className="relative overflow-hidden rounded-xl bg-elevated">
-      <div role="toolbar" aria-label="Управление аватаром" className={cn(mode === "3d" || mode === "legacy" ? "relative z-30 flex w-full flex-wrap items-center gap-2 border-b border-border bg-black/70 p-2 backdrop-blur" : "absolute left-3 top-3 z-30 flex max-w-[calc(100%-1.5rem)] flex-wrap gap-1 rounded-md border border-border bg-black/60 p-1 backdrop-blur")}>
+      <div role="toolbar" aria-label="Управление аватаром" className={cn(mode === "3d" || mode === "legacy" || mode === "original" ? "relative z-30 flex w-full flex-wrap items-center gap-2 border-b border-border bg-black/70 p-2 backdrop-blur" : "absolute left-3 top-3 z-30 flex max-w-[calc(100%-1.5rem)] flex-wrap gap-1 rounded-md border border-border bg-black/60 p-1 backdrop-blur")}>
         <div role="group" aria-label="Режим отображения персонажа" className="flex flex-wrap items-center gap-1">
           <button type="button" aria-label="Переключить на режим Live2D" aria-pressed={mode === "live2d"} onClick={() => setMode("live2d")} className={cn("min-h-9 rounded px-3 py-2 text-xs font-mono focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent", mode === "live2d" ? "bg-accent text-accent-fg" : "text-white/80")}>Live2D</button>
           <button type="button" aria-label="Переключить на режим Legacy" aria-pressed={mode === "legacy"} onClick={() => setMode("legacy")} className={cn("min-h-9 rounded px-3 py-2 text-xs font-mono focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent", mode === "legacy" ? "bg-accent text-accent-fg" : "text-white/80")}>Legacy</button>
