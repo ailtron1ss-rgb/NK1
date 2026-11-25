@@ -1899,20 +1899,26 @@ async function route(req, res) {
             if (!runtimeReady) return json(res, 503, { ok: false, error: 'organism-runtime-not-ready' });
             const input = await body(req);
             if (typeof input.consentGranted !== 'boolean') return json(res, 400, { ok: false, error: 'consent-granted-must-be-boolean' });
-            const policy = runtime.core.setAutonomousInitiativeConsent(input.consentGranted);
-            await runtime.core.flush();
+            const policy = await runtime.setAutonomousDialogueConsent(input.consentGranted);
             return json(res, 200, { ok: true, policy });
         }
         if (req.method === 'GET' && url.pathname === '/api/organism/proactive-message') {
+            if (!runtimeReady) return json(res, 503, { ok: false, error: 'organism-runtime-not-ready' });
             const initiative = await runtime.autonomousDialogueReady();
             return json(res, 200, { ok: true, initiative });
         }
         if (req.method === 'POST' && url.pathname === '/api/organism/proactive-message/ack') {
+            if (!runtimeReady) return json(res, 503, { ok: false, error: 'organism-runtime-not-ready' });
             const input = await body(req);
-            const id = String(input.id || '').trim().slice(0, 160);
-            if (!id) return json(res, 400, { ok: false, error: 'missing-initiative-id' });
+            const rawId = input?.id;
+            if (typeof rawId !== 'string') return json(res, 400, { ok: false, error: 'initiative-id-must-be-string' });
+            const id = rawId.trim();
+            if (!id || id.length > 160 || rawId !== id) return json(res, 400, { ok: false, error: 'invalid-initiative-id' });
             const acknowledged = await runtime.acknowledgeAutonomousDialogue(id);
-            return json(res, 200, { ok: true, acknowledged });
+            if (!acknowledged) {
+                return json(res, 409, { ok: false, acknowledged: false, error: 'proactive-delivery-ack-rejected' });
+            }
+            return json(res, 200, { ok: true, acknowledged: true, id });
         }
         if (req.method === 'POST' && url.pathname === '/api/organism/chat') {
             const input = await body(req);
