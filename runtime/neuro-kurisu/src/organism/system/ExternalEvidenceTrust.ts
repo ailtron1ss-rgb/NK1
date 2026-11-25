@@ -85,7 +85,7 @@ export class ExternalEvidenceTrustEngine{
         ||typeof r.claimKey!=='string'||!r.claimKey.trim()||r.claimKey.length>180
         ||typeof r.source!=='string'||!r.source.trim()||r.source.length>120
         ||typeof r.independenceKey!=='string'||!r.independenceKey.trim()||r.independenceKey.length>120
-        ||typeof r.confidence01!=='number'||!Number.isFinite(r.confidence01)
+        ||typeof r.confidence01!=='number'||!Number.isFinite(r.confidence01)||r.confidence01<0||r.confidence01>1
         ||typeof r.trust01!=='number'||!Number.isFinite(r.trust01)
         ||!validStatus(r.status)
         ||!Number.isSafeInteger(r.firstSeenAt)||Number(r.firstSeenAt)<0
