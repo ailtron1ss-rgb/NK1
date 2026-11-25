@@ -37,6 +37,7 @@ export function ChatPanel() {
         if (!cancelled && epochAtStart === proactiveConsentEpoch.current) {
           setProactiveConsent(result.policy.consentGranted === true);
           setProactiveOutbox(result.policy.outbox);
+          setProactiveConsentError(null);
         }
       }).catch((error) => {
         if (!cancelled) setProactiveConsentError(error instanceof Error ? error.message : String(error));
