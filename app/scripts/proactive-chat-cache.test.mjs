@@ -134,4 +134,13 @@ test('the production client uses POST for the state-changing claim operation', a
   assert.ok(source.includes('method: "POST", body: "{}"'));
 });
 
+
+test('ChatPanel consent polling cannot overwrite a newer user mutation', async () => {
+  const source = await readFile(new URL('../src/components/ChatPanel.tsx', import.meta.url), 'utf8');
+  assert.ok(source.includes('proactiveConsentEpoch'));
+  assert.ok(source.includes('epochAtStart === proactiveConsentEpoch.current'));
+  assert.ok(source.includes('if (refreshInFlight) return'));
+  assert.ok(source.includes('proactiveConsentEpoch.current += 1'));
+});
+
 console.log('PROACTIVE_CHAT_DURABLE_ACK=PASS');
