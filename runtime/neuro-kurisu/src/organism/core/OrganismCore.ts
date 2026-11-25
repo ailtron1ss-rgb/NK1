@@ -2995,14 +2995,16 @@ export class OrganismCore {
     }
     pendingAutonomousSocialInitiativeMessage() {
         const initiative = this.organismSystems.agency.autonomousSocialInitiative.claimReady();
-        if (initiative) {
-            this.persisted.system.autonomousSocialInitiative = this.organismSystems.agency.autonomousSocialInitiative.snapshot();
-        }
+        // claimReady also expires stale plans and dead-letters exhausted retries.
+        // Persist the owner snapshot even when no user-visible message is returned.
+        this.persisted.system.autonomousSocialInitiative = this.organismSystems.agency.autonomousSocialInitiative.snapshot();
         return initiative;
     }
     acknowledgeAutonomousSocialInitiative(id: string, at = Date.now()) {
         const acknowledged = this.organismSystems.agency.autonomousSocialInitiative.acknowledge(id, at);
-        if (acknowledged) this.persisted.system.autonomousSocialInitiative = this.organismSystems.agency.autonomousSocialInitiative.snapshot();
+        // acknowledge may reject an expired lease after converting the ready item
+        // to a terminal deferred state; that state transition must also be durable.
+        this.persisted.system.autonomousSocialInitiative = this.organismSystems.agency.autonomousSocialInitiative.snapshot();
         return acknowledged;
     }
     deferAutonomousSocialInitiative(id: string, at = Date.now()) {
