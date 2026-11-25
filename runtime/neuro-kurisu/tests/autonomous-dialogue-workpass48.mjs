@@ -28,8 +28,10 @@ assert.equal(engine.cycle(inputs(2002)).initiative, null, 'a pending item must p
 assert.equal(engine.stageMessage(selected.initiative.id, 'Есть любопытная связь между намерением, причиной и доказанным результатом.', 2002), true);
 assert.equal(engine.stageMessage(selected.initiative.id, 'duplicate'), false, 'a message can only be staged once');
 assert.equal(engine.latestReady(2002)?.message, 'Есть любопытная связь между намерением, причиной и доказанным результатом.');
-assert.equal(engine.acknowledge(selected.initiative.id, 2100), true);
-assert.equal(engine.acknowledge(selected.initiative.id, 2101), false, 'ack must be idempotent');
+assert.equal(engine.acknowledge(selected.initiative.id, 2100), false, 'ACK without an acquired delivery lease must be rejected');
+assert.equal(engine.claimReady(2100)?.id, selected.initiative.id);
+assert.equal(engine.acknowledge(selected.initiative.id, 2101), true);
+assert.equal(engine.acknowledge(selected.initiative.id, 2102), false, 'ack must be idempotent');
 assert.equal(engine.summary().executed, 1);
 assert.equal(engine.snapshot().reciprocity01, .54, 'UI delivery is not evidence of reciprocal response or positive reception');
 
