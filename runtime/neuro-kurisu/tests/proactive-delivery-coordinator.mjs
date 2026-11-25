@@ -5,19 +5,21 @@ import { ProactiveDeliveryCoordinator } from "../src/server/proactive-delivery-c
 function fixture({ acknowledge = async () => true } = {}) {
   let clock = 10_000;
   let claims = 0;
+  let activeAttempt = 0;
   const runtime = {
     async autonomousDialogueReady() {
       claims += 1;
+      activeAttempt = claims;
       return {
         id: "soc:coordinator:1",
-        deliveryAttemptCount: claims,
+        deliveryAttemptCount: activeAttempt,
         deliveryLeaseUntil: clock + 5_000,
         message: "A grounded proactive thought",
         status: "ready",
       };
     },
-    async acknowledgeAutonomousDialogue(id) {
-      return acknowledge(id);
+    async acknowledgeAutonomousDialogue(id, expectedAttemptCount) {
+      return acknowledge(id, expectedAttemptCount, () => expectedAttemptCount === activeAttempt);
     },
     async autonomousDialogueDeliveryPolicy() {
       return { consentGranted: true, mayDeliverUserVisible: true };
@@ -162,6 +164,37 @@ function fixture({ acknowledge = async () => true } = {}) {
   const readyCheckpoint = runtimeSource.indexOf("if (claim.stateChanged) await this.core.flush()", readyStart);
   assert.ok(readyStart >= 0 && readyClaim > readyStart && readyCheckpoint > readyClaim,
     "a null delivery poll must checkpoint only when claim processing changed durable state");
+}
+
+
+{
+  const delayed = [];
+  const f = fixture({
+    acknowledge: (id, expectedAttemptCount, isCurrentAttempt) => new Promise((resolve) => {
+      delayed.push(() => resolve(isCurrentAttempt()));
+    }),
+  });
+  const firstClaim = await f.coordinator.claim();
+  const firstToken = firstClaim.body.initiative.deliveryToken;
+  const firstAck = f.coordinator.acknowledge("soc:coordinator:1", firstToken);
+  await Promise.resolve();
+
+  // The durable engine lease has expired; the second claim replaces its token.
+  f.setTime(15_000);
+  const secondClaim = await f.coordinator.claim();
+  const secondToken = secondClaim.body.initiative.deliveryToken;
+  assert.notEqual(secondToken, firstToken);
+  const secondAck = f.coordinator.acknowledge("soc:coordinator:1", secondToken);
+  await Promise.resolve();
+  assert.equal(delayed.length, 2,
+    "a new engine attempt may progress while an older attempt ACK is still queued");
+
+  delayed[0]();
+  assert.equal((await firstAck).status, 409,
+    "an old ACK queued before retry must fail its engine attempt-count fence");
+  delayed[1]();
+  assert.equal((await secondAck).status, 200,
+    "the current attempt's ACK remains eligible after stale ACK rejection");
 }
 
 console.log("PROACTIVE_DELIVERY_COORDINATOR=PASS");
