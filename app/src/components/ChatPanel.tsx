@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ArrowUp, Moon, Sun, RotateCcw, Mic, MicOff, LoaderCircle } from "lucide-react";
+import { ArrowUp, Moon, Sun, RotateCcw, Mic, MicOff, LoaderCircle, Copy, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useKurisu } from "@/organism/store";
 import { emptySnapshot } from "@/organism/types";
@@ -21,6 +21,7 @@ export function ChatPanel() {
   const error = useKurisu((s) => s.error);
   const [text, setText] = useState("");
   const end = useRef<HTMLDivElement>(null);
+  const composer = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     end.current?.scrollIntoView({ behavior: "smooth" });
@@ -39,9 +40,18 @@ export function ChatPanel() {
           <Button variant="ghost" size="icon" aria-label={snap.awake ? "Sleep" : "Wake"} onClick={snap.awake ? sleep : wake} disabled={connection.status !== "connected" || busy}>
             {snap.awake ? <Moon className="size-4" /> : <Sun className="size-4" />}
           </Button>
-          <Button variant="ghost" size="icon" aria-label="Clear UI chat history" onClick={reset} disabled={busy}>
-            <RotateCcw className="size-4" />
-          </Button>
+          <Button variant="ghost" size="icon" aria-label="Export UI chat history" title="Export chat" onClick={() => {
+            const blob = new Blob([JSON.stringify({ exportedAt: new Date().toISOString(), turns: snap.chat }, null, 2)], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            const anchor = document.createElement("a");
+            anchor.href = url;
+            anchor.download = "neurocore-chat-history.json";
+            anchor.click();
+            URL.revokeObjectURL(url);
+          }}><Download className="size-4" /></Button>
+          <Button variant="ghost" size="icon" aria-label="Clear UI chat history" onClick={() => {
+            if (window.confirm("Clear only this browser chat transcript? Canonical memory will not be changed.")) reset();
+          }} disabled={busy}><RotateCcw className="size-4" /></Button>
         </div>
       </header>
       {connection.status !== "connected" ? (
@@ -71,18 +81,17 @@ export function ChatPanel() {
                 {m.delivery === "sending" ? "Sending…" : m.delivery === "sent" ? "Sent" : m.delivery === "rejected" ? "Not accepted · correct the request before resending" : "Outcome not confirmed · check the conversation before retrying"}
               </p>
             ) : null}
-            {m.role === "kurisu" ? (
-              <p className="mt-1 text-xs uppercase tracking-wider text-subtle">
-                {m.backend ?? "local"} · {m.emotion} · {m.option}
-              </p>
-            ) : null}
+            <div className="mt-1 flex flex-wrap items-center justify-between gap-2">
+              <span className="text-[9px] tabular-nums text-subtle">{Number.isFinite(m.at) ? new Date(m.at).toLocaleTimeString() : ""}</span>
+              {m.role === "kurisu" ? <span className="flex items-center gap-2"><span className="text-[10px] uppercase tracking-wider text-subtle">{m.backend ?? "canonical"} · {m.emotion ?? "unknown"} · {m.option ?? "unknown"}</span><button type="button" className="rounded p-1 text-subtle hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent" aria-label="Copy assistant reply" title="Copy reply" onClick={() => { void navigator.clipboard?.writeText(m.text); }}><Copy className="size-3.5" /></button></span> : null}
+            </div>
           </article>
         ))}
         {busy ? <p className="text-xs text-muted">Canonical runtime is processing…</p> : null}
         <div ref={end} />
       </div>
       <form
-        className="flex gap-2 border-t border-border p-3"
+        className="flex items-end gap-2 border-t border-border p-3"
         onSubmit={async (e) => {
           e.preventDefault();
           const submitted = text;
@@ -92,21 +101,30 @@ export function ChatPanel() {
           setText((current) => draftAfterSend(current, submitted, delivered));
         }}
       >
-        <input
+        <textarea
+          ref={composer}
           value={text}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
+              event.preventDefault();
+              event.currentTarget.form?.requestSubmit();
+            }
+          }}
           onChange={(e) => setText(e.target.value)}
-          placeholder={connection.status === "connected" ? "Write to Kurisu…" : "Write a message — it will remain recoverable if the runtime is offline…"}
+          placeholder={connection.status === "connected" ? "Write to Kurisu… (Enter to send, Shift+Enter for a new line)" : "Write a message — it will remain recoverable if the runtime is offline…"}
           aria-label="Message to Kurisu"
+          aria-describedby="chat-composer-hint"
+          rows={2}
           maxLength={4000}
-          className="h-11 flex-1 rounded-md border border-border bg-bg px-3 text-sm text-fg placeholder:text-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+          className="min-h-11 max-h-32 min-w-0 flex-1 resize-y rounded-md border border-border bg-bg px-3 py-2 text-sm text-fg placeholder:text-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
         />
         <Button
           type="button"
           size="icon"
           variant="outline"
           aria-label={voiceInputStatus === "listening" || voiceInputStatus === "stop-unconfirmed" ? "Stop microphone capture" : "Start microphone input"}
-          title={voiceInputStatus === "listening" ? "Stop listening" : voiceInputStatus === "stop-unconfirmed" ? "Retry stop confirmation" : "Listen"}
-          disabled={voiceInputStatus === "stopping" || (voiceInputStatus !== "listening" && voiceInputStatus !== "stop-unconfirmed" && (busy || connection.status !== "connected" || !snap.voice.sttAvailable))}
+          title={voiceInputStatus === "listening" ? "Stop listening" : voiceInputStatus === "requesting" ? "Waiting for microphone approval or capture" : voiceInputStatus === "stop-unconfirmed" ? "Retry stop confirmation" : "Listen"}
+          disabled={voiceInputStatus === "requesting" || voiceInputStatus === "stopping" || (voiceInputStatus !== "listening" && voiceInputStatus !== "stop-unconfirmed" && (busy || connection.status !== "connected" || !snap.voice.sttAvailable))}
           onClick={() => {
             if (voiceInputStatus === "listening" || voiceInputStatus === "stop-unconfirmed") {
               void stopListening();
@@ -118,19 +136,17 @@ export function ChatPanel() {
             });
           }}
         >
-          {voiceInputStatus === "listening" || voiceInputStatus === "stopping" || voiceInputStatus === "stop-unconfirmed"
-            ? voiceInputStatus === "stopping" ? <LoaderCircle className="size-4 animate-spin" /> : <MicOff className="size-4" />
+          {voiceInputStatus === "requesting" || voiceInputStatus === "listening" || voiceInputStatus === "stopping" || voiceInputStatus === "stop-unconfirmed"
+            ? voiceInputStatus === "requesting" || voiceInputStatus === "stopping" ? <LoaderCircle className="size-4 animate-spin" /> : <MicOff className="size-4" />
             : <Mic className="size-4" />}
         </Button>
         <Button type="submit" size="icon" disabled={busy || !text.trim()} aria-label="Send">
           <ArrowUp className="size-4" />
         </Button>
       </form>
-      {voiceInputStatus === "listening" ? (
-        <p className="border-t border-border px-3 py-2 text-xs text-muted" role="status" aria-live="polite">
-          Listening through the configured runtime. The transcript will be inserted for review; it will not be sent automatically.
-        </p>
-      ) : null}
+      <p id="chat-composer-hint" className="px-3 text-[10px] text-subtle">Enter sends · Shift+Enter adds a line · microphone transcripts are not sent automatically</p>
+      {voiceInputStatus === "requesting" ? <p className="border-t border-border px-3 py-2 text-xs text-muted" role="status" aria-live="polite">Waiting for microphone approval or the runtime to confirm an active capture.</p> : null}
+      {voiceInputStatus === "listening" ? <p className="border-t border-border px-3 py-2 text-xs text-muted" role="status" aria-live="polite">Runtime confirmed active microphone capture. The transcript will be inserted for review; it will not be sent automatically.</p> : null}
       {voiceInputStatus === "stopping" ? (
         <p className="border-t border-border px-3 py-2 text-xs text-muted" role="status">Requesting microphone stop confirmation…</p>
       ) : null}
