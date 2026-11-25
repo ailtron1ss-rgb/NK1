@@ -1,7 +1,8 @@
 import { randomUUID } from 'node:crypto';
 import { types as nodeUtilTypes } from 'node:util';
 
-export type DurableDeliveryStatus = 'pending' | 'leased' | 'delivered' | 'cancelled' | 'dead-letter';
+export type DurableDeliveryStatus = 'pending' | 'leased' | 'reconciliation-required' | 'delivered' | 'cancelled' | 'dead-letter';
+export type DurableDeliveryReconciliationOutcome = 'confirmed-delivered' | 'confirmed-not-delivered' | 'cancelled';
 export type DurableDeliveryKind = 'task-completion' | 'reminder' | 'notification' | 'custom';
 
 export interface DurableDeliveryRecord {
@@ -60,7 +61,7 @@ const MAX_ATTEMPTS = 8;
 const RETRY_BASE_MS = 1000;
 const RETRY_MAX_MS = 60 * 60_000;
 const MAX_LEASE_MS = 30 * 60_000;
-const STATUSES = new Set<DurableDeliveryStatus>(['pending', 'leased', 'delivered', 'cancelled', 'dead-letter']);
+const STATUSES = new Set<DurableDeliveryStatus>(['pending', 'leased', 'reconciliation-required', 'delivered', 'cancelled', 'dead-letter']);
 const KINDS = new Set<DurableDeliveryKind>(['task-completion', 'reminder', 'notification', 'custom']);
 
 function plainRecord(value: unknown): value is Record<string, unknown> {
@@ -111,6 +112,12 @@ function cloneRecord(record: DurableDeliveryRecord): DurableDeliveryRecord {
 
 function terminal(status: DurableDeliveryStatus): boolean {
   return status === 'delivered' || status === 'cancelled' || status === 'dead-letter';
+}
+
+function addSafeTime(base: number, delta: number): number {
+  const result = base + delta;
+  if (!Number.isSafeInteger(result) || result < base) throw new Error('delivery-outbox-time-overflow');
+  return result;
 }
 
 /**
@@ -250,27 +257,68 @@ export class DurableDeliveryOutbox {
     if (!Number.isSafeInteger(at) || at < 0) throw new Error('delivery-outbox-time-invalid');
     let changed = 0;
     for (const record of this.state.records) {
-      if (record.expiresAt !== null && record.expiresAt <= at && !terminal(record.status)) {
-        record.status = 'cancelled';
-        record.lastErrorCode = 'delivery-expired';
+      // An expired leased operation may already have reached its recipient.
+      // Never turn that ambiguous outcome back into sendable pending work.
+      if (record.status === 'leased'
+        && (record.leaseUntil <= at || (record.expiresAt !== null && record.expiresAt <= at))) {
         this.clearLease(record);
+        record.status = 'reconciliation-required';
+        record.lastErrorCode = 'delivery-lease-expired';
         changed += 1;
         continue;
       }
-      if (record.status === 'leased' && record.leaseUntil <= at) {
-        this.clearLease(record);
-        if (record.attemptCount >= this.maxAttempts) {
-          record.status = 'dead-letter';
-          record.lastErrorCode = 'delivery-lease-expired';
-        } else {
-          record.status = 'pending';
-          record.nextAttemptAt = at;
-          record.lastErrorCode = 'delivery-lease-expired';
-        }
+      // Only never-claimed work can be silently expired/cancelled.
+      if (record.status === 'pending' && record.expiresAt !== null && record.expiresAt <= at) {
+        record.status = 'cancelled';
+        record.lastErrorCode = 'delivery-expired';
         changed += 1;
       }
     }
     return changed;
+  }
+
+  /**
+   * Resolve an expired lease only after the host has reconciled the external
+   * ActionGateway/provider outcome using an authoritative idempotency lookup.
+   * Unknown outcomes must remain quarantined and must never be retried.
+   */
+  resolveReconciliation(
+    id: string,
+    outcome: DurableDeliveryReconciliationOutcome,
+    at = Date.now(),
+  ): boolean {
+    const safeId = safeText(id, 180, true)!;
+    if (!Number.isSafeInteger(at) || at < 0) return false;
+    const record = this.state.records.find(item => item.id === safeId);
+    if (!record || record.status !== 'reconciliation-required' || at < record.createdAt) return false;
+
+    if (outcome === 'confirmed-delivered') {
+      record.status = 'delivered';
+      record.deliveredAt = at;
+      record.lastErrorCode = null;
+      return true;
+    }
+    if (outcome === 'cancelled') {
+      record.status = 'cancelled';
+      record.lastErrorCode = 'delivery-reconciled-cancelled';
+      return true;
+    }
+    if (outcome !== 'confirmed-not-delivered') return false;
+    if (record.expiresAt !== null && record.expiresAt <= at) {
+      record.status = 'cancelled';
+      record.lastErrorCode = 'delivery-expired';
+      return true;
+    }
+    record.lastErrorCode = 'delivery-reconciled-not-delivered';
+    if (record.attemptCount >= this.maxAttempts) {
+      record.status = 'dead-letter';
+      return true;
+    }
+    const exponent = Math.min(20, Math.max(0, record.attemptCount - 1));
+    const delay = Math.min(this.retryMaxMs, this.retryBaseMs * (2 ** exponent));
+    record.nextAttemptAt = addSafeTime(at, delay);
+    record.status = 'pending';
+    return true;
   }
 
   claim(id: string, leaseOwner: string, at = Date.now(), leaseMs = 30_000): DurableDeliveryRecord | null {
@@ -284,7 +332,7 @@ export class DurableDeliveryOutbox {
     if (!record || record.status !== 'pending' || record.nextAttemptAt > at || (record.expiresAt !== null && record.expiresAt <= at)) return null;
     record.status = 'leased';
     record.leaseOwner = owner;
-    record.leaseUntil = at + leaseMs;
+    record.leaseUntil = addSafeTime(at, leaseMs);
     record.attemptCount = Math.min(this.maxAttempts, record.attemptCount + 1);
     return cloneRecord(record);
   }
@@ -321,7 +369,7 @@ export class DurableDeliveryOutbox {
     const exponent = Math.min(20, Math.max(0, record.attemptCount - 1));
     const delay = Math.min(this.retryMaxMs, this.retryBaseMs * (2 ** exponent));
     record.status = 'pending';
-    record.nextAttemptAt = attemptedAt + delay;
+    record.nextAttemptAt = addSafeTime(attemptedAt, delay);
     return true;
   }
 
@@ -342,7 +390,7 @@ export class DurableDeliveryOutbox {
   }
 
   diagnostics() {
-    const counts = { pending: 0, leased: 0, delivered: 0, cancelled: 0, deadLetter: 0 };
+    const counts = { pending: 0, leased: 0, reconciliationRequired: 0, delivered: 0, cancelled: 0, deadLetter: 0 };
     let attempts = 0;
     for (const record of this.state.records) {
       if (record.status === 'dead-letter') counts.deadLetter += 1;
