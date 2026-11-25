@@ -108,10 +108,12 @@ export interface GroundedWorldStateSnapshot {
   relations:GroundedRelation[];
   events:GroundedEvent[];
   facts:string[];
+  /** Persisted facts cannot retain live verifier authority across process restarts. */
+  quarantinedFacts?:string[];
   provenanceIds:string[];
   lastHash:string;
 }
-export const defaultGroundedWorldState=():GroundedWorldStateSnapshot=>({version:1,revision:0,lastAt:0,location:'unknown',uncertainty01:.5,confidence01:0,entities:[],relations:[],events:[],facts:[],provenanceIds:[],lastHash:''});
+export const defaultGroundedWorldState=():GroundedWorldStateSnapshot=>({version:1,revision:0,lastAt:0,location:'unknown',uncertainty01:.5,confidence01:0,entities:[],relations:[],events:[],facts:[],quarantinedFacts:[],provenanceIds:[],lastHash:''});
 
 export class GroundedWorldState {
   private state=defaultGroundedWorldState();
@@ -184,7 +186,7 @@ export class GroundedWorldState {
         const event=rawEvent as Record<string,unknown>;
         const id=safeText(event.id,160),label=safeText(event.label,240);
         if(!id||!label)continue;
-        const eventAt=safeTimestamp(event.lastAt,lastAt);
+        const eventAt=Math.min(safeTimestamp(event.lastAt,lastAt),lastAt);
         events.push({
           id,label,confidence01:safeUnit(event.confidence01),lastAt:eventAt,
           persistence01:safeUnit(event.persistence01),
@@ -193,12 +195,20 @@ export class GroundedWorldState {
         });
       }
     }
+    const restoredFacts=safeStringArray(r.facts,192,512);
+    const quarantinedFacts=[...new Set([
+      ...safeStringArray(r.quarantinedFacts,192,512),
+      ...restoredFacts.map(fact=>`restored-unverified:${fact}`.slice(0,512)),
+    ])].slice(-192);
     this.state={
       ...d,version:1,revision,lastAt,location,
-      uncertainty01:safeUnit(r.uncertainty01,.5),
-      confidence01:safeUnit(r.confidence01),
+      // Persisted aggregate confidence is not a current observation receipt.
+      // Start conservatively and let fresh, live inputs rebuild the world signal.
+      uncertainty01:Math.max(.5,safeUnit(r.uncertainty01,.5)),
+      confidence01:0,
       entities,relations,events,
-      facts:safeStringArray(r.facts,192,512),
+      facts:[],
+      quarantinedFacts,
       provenanceIds:safeStringArray(r.provenanceIds,128,256),
       lastHash:'',
     };
@@ -475,7 +485,7 @@ export class GroundedWorldState {
     const location=norm(base?.location||p?.scene.label||this.state.location||'unknown');
     const provenance=[`grounded:${at}`,...freshEvidence.slice(0,16).map(x=>x.id)];
     const digest=`${location}|${uncertainty.toFixed(3)}|${entities.slice(0,24).map(x=>`${x.id}:${x.kind}:${x.label}:${x.confidence01.toFixed(2)}`).join('|')}|${relations.slice(0,16).map(x=>x.id).join('|')}|${eventList.slice(0,8).map(x=>x.id).join('|')}`;
-    this.state={version:1,revision:this.state.revision+1,lastAt:at,location,uncertainty01:uncertainty,confidence01:confidence,entities,relations,events:eventList,facts,provenanceIds:[...new Set(provenance)].slice(0,128),lastHash:stableHash(digest)};
+    this.state={version:1,revision:this.state.revision+1,lastAt:at,location,uncertainty01:uncertainty,confidence01:confidence,entities,relations,events:eventList,facts,quarantinedFacts:this.state.quarantinedFacts??[],provenanceIds:[...new Set(provenance)].slice(0,128),lastHash:stableHash(digest)};
     return {
       tick:base?.tick??0,location,energy:base?.energy??.8,attention:base?.attention??.7,
       uncertainty,facts,
@@ -504,5 +514,5 @@ export class GroundedWorldState {
       events:eventList.slice(0,32).map(x=>x.label),
     };
   }
-  summary(){return {revision:this.state.revision,location:this.state.location,confidence01:this.state.confidence01,uncertainty01:this.state.uncertainty01,entities:this.state.entities.length,relations:this.state.relations.length,events:this.state.events.length,facts:this.state.facts.length,lastHash:this.state.lastHash,objectPermanence01:clamp(this.state.entities.length?this.state.entities.reduce((s,e)=>s+e.persistence01,0)/this.state.entities.length:0),liveEntities:this.state.entities.filter(e=>e.presenceStatus==='visible').length,fadingEntities:this.state.entities.filter(e=>e.presenceStatus==='fading').length,unknownPresenceEntities:this.state.entities.filter(e=>e.presenceStatus==='unknown').length};}
+  summary(){return {revision:this.state.revision,location:this.state.location,confidence01:this.state.confidence01,uncertainty01:this.state.uncertainty01,entities:this.state.entities.length,relations:this.state.relations.length,events:this.state.events.length,facts:this.state.facts.length,quarantinedFacts:this.state.quarantinedFacts?.length??0,lastHash:this.state.lastHash,objectPermanence01:clamp(this.state.entities.length?this.state.entities.reduce((s,e)=>s+e.persistence01,0)/this.state.entities.length:0),liveEntities:this.state.entities.filter(e=>e.presenceStatus==='visible').length,fadingEntities:this.state.entities.filter(e=>e.presenceStatus==='fading').length,unknownPresenceEntities:this.state.entities.filter(e=>e.presenceStatus==='unknown').length};}
 }
