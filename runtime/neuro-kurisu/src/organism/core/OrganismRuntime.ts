@@ -625,6 +625,54 @@ export class OrganismRuntime {
    * synchronous and isolated: plugin transport failures cannot delay or steer the
    * current cognitive turn, and no plugin action result is consumed here.
    */
+  /** Admit ASR text as untrusted sensor evidence before wake-up, observation or cognition. */
+  private async admitExternalSpeechTranscript(text: string, evidence: string[]): Promise<boolean> {
+    const transcript = typeof text === 'string' ? text.trim().slice(0, 4000) : '';
+    if (!transcript) return false;
+    let admission: ReturnType<NonNullable<RuntimeCognitiveHealthMonitor['inspect']>> | undefined;
+    try {
+      const inspect = this.cognitiveImmuneSystem?.inspect;
+      if (typeof inspect === 'function') {
+        admission = inspect.call(this.cognitiveImmuneSystem, 'unknown', {
+          modality: 'speech',
+          summary: transcript.slice(0, 220),
+          content: transcript,
+          evidence: evidence.slice(0, 12),
+        }, 'world');
+      }
+    } catch {
+      // A failed inspection is a failed admission; voice input cannot bypass the gate.
+    }
+    const admitted = admission?.accepted === true && Number.isFinite(admission.trust) &&
+      admission.trust >= 0 && admission.trust <= 1 && typeof admission.reason === 'string';
+    if (admitted) return true;
+
+    const reason = typeof admission?.reason === 'string' ? admission.reason.slice(0, 96) :
+      typeof this.cognitiveImmuneSystem?.inspect === 'function'
+        ? 'cognitive-input-inspection-failed' : 'cognitive-input-inspector-unavailable';
+    const payloadHash = admission?.record?.payloadHash ??
+      createHash('sha256').update(JSON.stringify({ modality: 'speech', transcript, evidence })).digest('hex');
+    const tick = this.core.operationalStatusSnapshot().tick + 1;
+    this.cognitiveEventFabric.append({
+      id: 'cef:speech-quarantine:' + randomUUID(),
+      tick,
+      stage: 'external-evidence',
+      source: 'cognitive-immune-system',
+      external: true,
+      confidence01: clamp01(Number(admission?.trust ?? 0)),
+      payload: { admission: 'quarantined', modality: 'speech', reason, payloadHash: String(payloadHash).slice(0, 64) },
+    });
+    this.core.setRuntimeCognitiveEventFabric(this.cognitiveEventFabric.snapshot());
+    await this.cognitiveImmuneStore.save(this.cognitiveImmuneSystem?.snapshot() ?? {}).catch(async error => {
+      await this.journal.write('error', 'runtime.speech-input.quarantine-persist-failed', {
+        tick, reason,
+        message: String((error as any)?.message ?? error).slice(0, 160),
+      }).catch(() => {});
+    });
+    await this.journal.write('warn', 'runtime.speech-input.quarantined', { tick, reason }).catch(() => {});
+    return false;
+  }
+
   private publishNekoPluginVoiceTranscriptFinal(text: string): void {
     const bridge = this.nekoPluginVoiceTranscriptBridge;
     const transcript = typeof text === 'string' ? text.trim().slice(0, 4000) : '';
@@ -2839,15 +2887,17 @@ export class OrganismRuntime {
       const input = await readVoiceInput(this.embodiment);
       const text = input?.text ?? null;
       if(text && input){
-        this.embodiment.userActivity();
         const clean=text.trim().slice(0,4000);
+        const evidence=speechObservationEvidence(input);
+        if (!await this.admitExternalSpeechTranscript(clean, evidence)) return null;
+        this.embodiment.userActivity();
         this.publishNekoPluginVoiceTranscriptFinal(clean);
         this.core.recordMultimodalObservation({
           modality:'speech',
           summary:clean.slice(0,220),
           confidence:input.confidence01 ?? .86,
           salience:.68,
-          evidence:speechObservationEvidence(input),
+          evidence,
           content:clean,
         });
       }
@@ -2862,10 +2912,14 @@ export class OrganismRuntime {
       const input = await readVoiceInput(this.embodiment);
       const text = input?.text ?? null;
       if(!text) return {text:null,step:null,spoken:false,voice:this.embodiment.voiceSnapshot()};
-      this.embodiment.userActivity();
       const clean=text.trim().slice(0,4000);
+      const evidence=input ? speechObservationEvidence(input,'voice-turn') : ['termux-speech-to-text','voice-turn'];
+      if (!await this.admitExternalSpeechTranscript(clean, evidence)) {
+        return {text:null,step:null,spoken:false,voice:this.embodiment.voiceSnapshot()};
+      }
+      this.embodiment.userActivity();
       this.publishNekoPluginVoiceTranscriptFinal(clean);
-      this.core.recordMultimodalObservation({modality:'speech',summary:clean.slice(0,220),confidence:input?.confidence01 ?? .86,salience:.74,evidence:input ? speechObservationEvidence(input,'voice-turn') : ['termux-speech-to-text','voice-turn'],content:clean});
+      this.core.recordMultimodalObservation({modality:'speech',summary:clean.slice(0,220),confidence:input?.confidence01 ?? .86,salience:.74,evidence,content:clean});
       await this.core.beginBatch();
       try {
         const step=await this.stepInternal(clean,{deliberate:Boolean(options.deliberate)});
