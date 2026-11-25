@@ -58,6 +58,17 @@ export class ExternalEvidenceTrustEngine{
     const finiteCount=(value:unknown,fallback=0)=>typeof value==='number'&&Number.isSafeInteger(value)&&value>=0?Math.min(value,1_000_000):fallback;
     const validStatus=(value:unknown):value is EvidenceStatus=>value==='candidate'||value==='corroborated'||value==='contested'||value==='expired';
     const rows=Array.isArray(raw?.records)?raw!.records.slice(-256):[];
+    // An event receipt may belong to exactly one persisted source/claim row.
+    // If a checkpoint reuses an ID across rows, remove that ID from every claimant.
+    const evidenceIdUseCount=new Map<string,number>();
+    for(const value of rows){
+      if(!value||typeof value!=='object'||Array.isArray(value))continue;
+      const ids=(value as Partial<ExternalEvidenceRecord>).evidenceIds;
+      if(!Array.isArray(ids))continue;
+      for(const id of new Set(ids.filter((item):item is string=>typeof item==='string'&&Boolean(item.trim())&&item.length<=180))){
+        evidenceIdUseCount.set(id,(evidenceIdUseCount.get(id)??0)+1);
+      }
+    }
     const records:ExternalEvidenceRecord[]=[];
     for(const value of rows){
       if(!value||typeof value!=='object'||Array.isArray(value))continue;
@@ -76,7 +87,8 @@ export class ExternalEvidenceTrustEngine{
       const firstSeenAt=Math.min(Number(r.firstSeenAt),now+5*60*1000);
       const lastSeenAt=Math.max(firstSeenAt,Math.min(Number(r.lastSeenAt),now+5*60*1000));
       const evidenceIds=Array.isArray(r.evidenceIds)
-        ?[...new Set(r.evidenceIds.filter((id):id is string=>typeof id==='string'&&Boolean(id.trim())&&id.length<=180))].slice(-64)
+        ?[...new Set(r.evidenceIds.filter((id):id is string=>typeof id==='string'&&Boolean(id.trim())&&id.length<=180))]
+          .filter(id=>evidenceIdUseCount.get(id)===1).slice(-64)
         :[];
       records.push({
         id:r.id,claimKey:r.claimKey.trim(),source,sourceClass,
@@ -84,7 +96,7 @@ export class ExternalEvidenceTrustEngine{
         confidence01:clamp(r.confidence01),trust01:0,
         // Only bounded, unique event receipts survive restore. Persisted aggregate
         // counters are attacker-controlled summaries, not corroboration evidence.
-        corroborations:Math.max(1,evidenceIds.length),
+        corroborations:evidenceIds.length,
         independentSources:1,contradictions:0,
         status:'candidate',firstSeenAt,lastSeenAt,evidenceIds,
       });
@@ -104,7 +116,7 @@ export class ExternalEvidenceTrustEngine{
         -record.contradictions*.12);
       const eligibleSource=record.sourceClass!=='simulator'&&record.sourceClass!=='unknown'&&record.sourceClass!=='organism';
       record.status=record.contradictions>=2?'contested'
-        :eligibleSource&&record.independentSources>=2&&record.trust01>=.72?'corroborated'
+        :eligibleSource&&record.evidenceIds?.length>0&&record.independentSources>=2&&record.trust01>=.72?'corroborated'
         :'candidate';
     }
     this.state={...d,records};
