@@ -261,6 +261,10 @@ try {
       ['GOOGLE_APPLICATION_CREDENTIALS', '/home/nk1/gcp-service-account.json'],
       ['AWS_PROFILE', 'production'],
       ['DOCKER_HOST', 'unix:///var/run/docker.sock'],
+      ['NODE_OPTIONS', '--require=/tmp/host-preload.cjs'],
+      ['LD_PRELOAD', '/tmp/host-inject.so'],
+      ['PYTHONPATH', '/home/nk1/.local/lib/python3'],
+      ['RUBYOPT', '-r/tmp/host-preload.rb'],
     ]) {
       await assert.rejects(
         () => runLearningProcess(run, 'b'.repeat(64), {
