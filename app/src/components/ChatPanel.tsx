@@ -129,7 +129,7 @@ export function ChatPanel() {
               <span>To</span>
               <input aria-label="Quiet hours end hour UTC" type="number" min={0} max={23} step={1} value={quietEndHourUtc} onChange={(event) => { quietHoursDirty.current = true; setQuietEndHourUtc(Math.max(0, Math.min(23, Number(event.target.value)))); }} disabled={quietHoursBusy || proactiveConsentBusy} className="w-12 rounded border border-border bg-bg px-1 py-0.5 text-fg" />
             </label>
-            <Button type="button" variant="ghost" size="sm" disabled={quietHoursBusy} onClick={() => void saveQuietHours()}>{quietHoursBusy ? "Saving…" : "Save hours"}</Button>
+            <Button type="button" variant="ghost" size="sm" disabled={quietHoursBusy || proactiveConsentBusy} onClick={() => void saveQuietHours()}>{quietHoursBusy ? "Saving…" : "Save hours"}</Button>
           </div>
           <p className="mt-1 text-[10px] text-subtle">Hours use UTC: the start hour is included and the end hour is excluded (for example, 22–08 blocks 22:00 through 07:59). Equal start and end hours pause delivery for the full day.</p>
           {proactiveOutbox ? <p className="mt-1 text-[10px] text-subtle" aria-live="polite">Outbox: {proactiveOutbox.pending} pending · {proactiveOutbox.leased} leased · {proactiveOutbox.backoff} retry · {proactiveOutbox.claimable} ready · {proactiveOutbox.exhausted} exhausted · {proactiveOutbox.deadLettered} dead-lettered</p> : null}
