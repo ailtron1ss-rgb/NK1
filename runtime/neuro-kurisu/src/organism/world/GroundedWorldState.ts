@@ -55,25 +55,6 @@ const cleanIdentity=(value:unknown)=>{
   return value.normalize('NFKC').replace(/[\r\n\t]+/g,' ').trim().slice(0,120);
 };
 const stableHash=(s:string)=>{let h=2166136261;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619);}return (h>>>0).toString(16).padStart(8,'0');};
-const safeUnit=(value:unknown,fallback=0):number=>typeof value==='number'&&Number.isFinite(value)?clamp(value):fallback;
-const safeInteger=(value:unknown,fallback=0,max=1_000_000):number=>typeof value==='number'&&Number.isSafeInteger(value)&&value>=0?Math.min(value,max):fallback;
-const safeTimestamp=(value:unknown,fallback=0):number=>typeof value==='number'&&Number.isSafeInteger(value)&&value>=0?value:fallback;
-const safeText=(value:unknown,max=180,fallback=''):string=>{
-  if(typeof value!=='string')return fallback;
-  const normalized=value.normalize('NFKC').replace(/[\u0000-\u001f\u007f-\u009f]/g,' ').trim();
-  return normalized&&normalized.length<=max?normalized:fallback;
-};
-const safeStrings=(value:unknown,maxItems:number,maxLength:number):string[]=>{
-  if(!Array.isArray(value))return [];
-  return [...new Set(value.filter((item):item is string=>typeof item==='string')
-    .map(item=>safeText(item,maxLength)).filter(Boolean))].slice(0,maxItems);
-};
-const safeVec3=(value:unknown):{x:number;y:number;z:number}|null=>{
-  if(!value||typeof value!=='object'||Array.isArray(value))return null;
-  const v=value as Record<string,unknown>;
-  if(![v.x,v.y,v.z].every(x=>typeof x==='number'&&Number.isFinite(x)&&Math.abs(x)<=1_000_000))return null;
-  return {x:Number(v.x),y:Number(v.y),z:Number(v.z)};
-};
 const normalizeImageBox=(value:unknown)=>{
   if(!value||typeof value!=='object')return undefined;
   const box=value as Record<string,unknown>;
@@ -133,22 +114,8 @@ export interface GroundedWorldStateSnapshot {
 }
 export const defaultGroundedWorldState=():GroundedWorldStateSnapshot=>({version:1,revision:0,lastAt:0,location:'unknown',uncertainty01:.5,confidence01:0,entities:[],relations:[],events:[],facts:[],provenanceIds:[],lastHash:''});
 
-export interface ExternalWorldOutcomeInput {
-  at:number; action:string; status:string; proofClass:string; verified01:number; independent01:number;
-  evidence01:number; consequence01:number; claim:string; provenanceId:string; divergence01:number;
-}
-export type ExternalWorldOutcomeVerifier=(input:Readonly<ExternalWorldOutcomeInput>)=>boolean;
-export interface GroundedWorldStateOptions {
-  /** Injected by trusted runtime composition; never supplied as per-event caller metadata. */
-  verifyExternalOutcome?:ExternalWorldOutcomeVerifier;
-}
-
 export class GroundedWorldState {
   private state=defaultGroundedWorldState();
-  private readonly verifyExternalOutcome?:ExternalWorldOutcomeVerifier;
-  constructor(options:GroundedWorldStateOptions={}){
-    this.verifyExternalOutcome=typeof options.verifyExternalOutcome==='function'?options.verifyExternalOutcome:undefined;
-  }
   restore(raw?:Partial<GroundedWorldStateSnapshot>|null){
     const d=defaultGroundedWorldState();
     const r=raw&&typeof raw==='object'&&!Array.isArray(raw)?raw as Record<string,unknown>:{};
