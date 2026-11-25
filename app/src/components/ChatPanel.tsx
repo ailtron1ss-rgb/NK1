@@ -135,7 +135,7 @@ export function ChatPanel() {
           {proactiveOutbox ? <p className="mt-1 text-[10px] text-subtle" aria-live="polite">Outbox: {proactiveOutbox.pending} pending · {proactiveOutbox.leased} leased · {proactiveOutbox.backoff} retry · {proactiveOutbox.claimable} ready · {proactiveOutbox.exhausted} exhausted · {proactiveOutbox.deadLettered} dead-lettered</p> : null}
         </div>
         <div className="flex flex-wrap items-center justify-end gap-1">
-          <Button type="button" variant="outline" size="sm" disabled={proactiveConsent === null || proactiveConsentBusy} aria-pressed={proactiveConsent === true} onClick={() => void toggleProactiveConsent()}>
+          <Button type="button" variant="outline" size="sm" disabled={proactiveConsent === null || proactiveConsentBusy || quietHoursBusy} aria-pressed={proactiveConsent === true} onClick={() => void toggleProactiveConsent()}>
             {proactiveConsent === null ? "Proactive consent: loading" : proactiveConsent ? "Pause proactive messages" : "Enable proactive messages"}
           </Button>
           <Button variant="ghost" size="icon" aria-label={snap.awake ? "Sleep" : "Wake"} onClick={snap.awake ? sleep : wake}>
