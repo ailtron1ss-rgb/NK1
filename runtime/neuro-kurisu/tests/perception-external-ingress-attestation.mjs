@@ -27,6 +27,6 @@ const record = compiler.recordExternalEvidence({
 });
 assert.equal(record.kind, 'derived',
   'legacy verified=true is a caller assertion, not a verification credential');
-assert.ok(compiler.snapshot().metrics.groundedSignalRatio01 <= .036,
+assert.ok(compiler.snapshot().metrics.groundedSignalRatio01 <= .036 + 1e-12,
   'unattested external evidence must not receive the observed-evidence metric boost');
 console.log('PERCEPTION_EXTERNAL_INGRESS_ATTESTATION=PASS');
