@@ -71,7 +71,7 @@ Production-исправление clock validation внесено в `b43d5b6406
 - versioned candidate store;
 - freshness regression tests.
 
-Dedicated exact-head workflow для `27c74e0...` ожидает runner: [45607764358](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45607764358). Остальные PR workflows на этом HEAD были частично queued/in progress на момент записи. Исторические 63/63 checks относились к более раннему HEAD и старому base; они не считаются проверкой текущего состояния.
+Dedicated exact-head workflow для `27c74e0...` завершился **SUCCESS**: [45607764358](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45607764358), merge head `e4e154aa4985f2ac9f2fe5103938570fb1e6adb5`. Прошли все шаги focused freshness regression, signed evidence, candidate-store lifecycle и approval-request/default-deny test. Runtime type validation завершилась в режиме `node-strip-syntax-only` для 746 файлов; semantic `tsc` не запускался, так как компилятор не установлен. Исторические 63/63 checks относились к прежнему HEAD и старой базе; они не считаются доказательством текущего состояния.
 
 ## 6. Статус и ограничения
 
