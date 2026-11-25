@@ -1,0 +1,89 @@
+name: NK1 Avatar Contact Browser Acceptance
+
+on:
+  pull_request:
+    branches: [workpass70-source]
+    paths:
+      - "app/src/components/Avatar3DStage.tsx"
+      - "app/src/components/AvatarStage.tsx"
+      - "app/src/components/avatar/avatarModelFitBounds.ts"
+      - "app/scripts/avatar-contact-browser-acceptance.mjs"
+      - "app/scripts/avatar-contact-event.test.mjs"
+      - "app/scripts/avatar-contact-perception-route.test.mjs"
+      - "runtime/neuro-kurisu/src/organism/cognition/SocialMindKernel.ts"
+      - "runtime/neuro-kurisu/src/server/server.mjs"
+      - ".github/workflows/nk1-avatar-contact-browser-acceptance.yml"
+  push:
+    branches:
+      - workpass70-source
+      - aspect/avatar-visual-prototype-polish-20261124
+    paths:
+      - "app/src/components/Avatar3DStage.tsx"
+      - "app/src/components/AvatarStage.tsx"
+      - "app/src/components/avatar/avatarModelFitBounds.ts"
+      - "app/scripts/avatar-contact-browser-acceptance.mjs"
+      - "app/scripts/avatar-contact-event.test.mjs"
+      - "app/scripts/avatar-contact-perception-route.test.mjs"
+      - "runtime/neuro-kurisu/src/organism/cognition/SocialMindKernel.ts"
+      - "runtime/neuro-kurisu/src/server/server.mjs"
+      - ".github/workflows/nk1-avatar-contact-browser-acceptance.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nk1-avatar-contact-browser-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  avatar-contact:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          package-manager-cache: false
+      - name: Install locked runtime dependencies
+        run: npm ci --prefix runtime/neuro-kurisu --ignore-scripts --no-audit --no-fund
+      - name: Install locked app dependencies
+        run: npm ci --prefix app --ignore-scripts --no-audit --no-fund
+      - name: Install headless Chromium
+        working-directory: app
+        run: npx playwright install --with-deps chromium
+      - name: App typecheck
+        run: npm --prefix app run typecheck
+      - name: Verify contact recorder and canonical event payload
+        run: node --experimental-strip-types --test app/scripts/avatar-contact-event.test.mjs
+      - name: Verify real runtime perception and SocialMind evidence
+        run: node --experimental-strip-types app/scripts/avatar-contact-perception-route.test.mjs
+      - name: Build app and hydrate canonical avatar assets
+        run: npm --prefix app run build:dev
+      - name: Start production preview server
+        working-directory: app
+        run: |
+          set -euo pipefail
+          npm run preview -- --host 127.0.0.1 --port 8081 > "$RUNNER_TEMP/avatar-contact-preview.log" 2>&1 &
+          echo $! > "$RUNNER_TEMP/avatar-contact-preview.pid"
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent "http://127.0.0.1:8081/" > /dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+          cat "$RUNNER_TEMP/avatar-contact-preview.log"
+          exit 1
+      - name: Verify Live2D, 3D and Legacy head/body contacts on desktop and mobile
+        working-directory: app
+        env:
+          AVATAR_CONTACT_TIMEOUT_MS: "30000"
+        run: node scripts/avatar-contact-browser-acceptance.mjs http://127.0.0.1:8081
+      - name: Upload browser preview log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nk1-avatar-contact-browser-acceptance
+          path: ${{ runner.temp }}/avatar-contact-preview.log
+          if-no-files-found: warn
+          retention-days: 14
