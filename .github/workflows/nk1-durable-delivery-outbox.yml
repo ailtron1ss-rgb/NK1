@@ -5,6 +5,9 @@ on:
     paths:
       - 'runtime/neuro-kurisu/src/organism/persistence/DurableDeliveryOutbox.ts'
       - 'runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts'
+      - 'app/src/organism/chatCache.ts'
+      - 'app/src/organism/store.ts'
+      - 'app/scripts/proactive-chat-cache.test.mjs'
       - 'runtime/neuro-kurisu/tests/durable-delivery-outbox.mjs'
       - 'runtime/neuro-kurisu/tests/autonomous-social-delivery-runtime.mjs'
       - 'runtime/neuro-kurisu/package.json'
@@ -15,6 +18,9 @@ on:
     paths:
       - 'runtime/neuro-kurisu/src/organism/persistence/DurableDeliveryOutbox.ts'
       - 'runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts'
+      - 'app/src/organism/chatCache.ts'
+      - 'app/src/organism/store.ts'
+      - 'app/scripts/proactive-chat-cache.test.mjs'
       - 'runtime/neuro-kurisu/tests/durable-delivery-outbox.mjs'
       - 'runtime/neuro-kurisu/package.json'
       - '.github/workflows/nk1-durable-delivery-outbox.yml'
@@ -39,6 +45,8 @@ jobs:
         run: npm --prefix runtime/neuro-kurisu run test:durable-delivery-outbox
       - name: Proactive social initiative durable handoff
         run: npm --prefix runtime/neuro-kurisu run test:autonomous-social-delivery-runtime
+      - name: Browser transcript-before-ACK and retry contract
+        run: npm --prefix runtime/neuro-kurisu run test:proactive-chat-durable-ack
       - name: Existing proactive delivery consent regression
         run: npm --prefix runtime/neuro-kurisu run test:self-motivation:delivery-consent
       - name: Existing OpenLoop runtime integration
