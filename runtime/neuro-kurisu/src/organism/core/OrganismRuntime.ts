@@ -3164,6 +3164,15 @@ export class OrganismRuntime {
     });
   }
 
+  /** Configure UTC quiet hours for proactive delivery on the serialized Runtime queue. */
+  async setAutonomousDialogueQuietHours(input: { enabled: boolean; startHourUtc: number; endHourUtc: number }) {
+    return this.enqueue(async () => {
+      const policy = this.core.setAutonomousInitiativeQuietHours(input);
+      await this.core.flush();
+      return policy;
+    });
+  }
+
   /** Mark a proactive chat turn delivered exactly once after the UI has stored it. */
   async acknowledgeAutonomousDialogue(id: string, expectedAttemptCount?: number): Promise<boolean> {
     return this.enqueue(async () => {
