@@ -110,6 +110,34 @@ export function resolveAvatarModelFitBounds(root: any): AvatarModelFitBounds {
   };
 }
 
+/**
+ * Refresh cached CPU-side bounds for animated SkinnedMesh nodes before raycasting.
+ * Three.js computes a SkinnedMesh bounding sphere lazily and does not keep it in
+ * sync with later bone animation. Its bounding box is also explicitly app-owned.
+ * Refresh the skeleton matrices first, then recompute both bounds from the current
+ * deformed vertices so pointer picking follows the pose that is actually rendered.
+ */
+export function refreshAvatarRaycastBounds(root: any): number {
+  if (!root || typeof root.traverse !== "function") return 0;
+
+  const meshes: any[] = [];
+  const skeletons = new Set<any>();
+  root.traverse((node: any) => {
+    if (!node?.isSkinnedMesh || !node.geometry || !isEffectivelyVisible(node)) return;
+    meshes.push(node);
+    if (node.skeleton && typeof node.skeleton.update === "function") {
+      skeletons.add(node.skeleton);
+    }
+  });
+
+  for (const skeleton of skeletons) skeleton.update();
+  for (const mesh of meshes) {
+    mesh.computeBoundingBox?.();
+    mesh.computeBoundingSphere?.();
+  }
+  return meshes.length;
+}
+
 /** Classify a world-space ray hit against the same character-only vertical bounds. */
 export function resolveAvatarContactZone(worldY: number, bounds: Box3): "head" | "body" | null {
   if (!Number.isFinite(worldY) || !bounds || bounds.isEmpty()) return null;
