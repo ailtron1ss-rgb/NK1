@@ -32,8 +32,13 @@ export class ProactiveDeliveryLeaseRegistry {
     if (!Number.isSafeInteger(attemptCount) || attemptCount < 1 || attemptCount > MAX_ATTEMPTS) return null;
     if (!Number.isFinite(leaseUntil) || leaseUntil <= now) return null;
     if (typeof token !== "string" || token.length < 16 || token.length > MAX_TOKEN_LENGTH) return null;
+    const current = this.entries.get(id);
+    if (current && current.leaseUntil > now && attemptCount <= current.attemptCount) {
+      // Never rotate or replay a token inside the same active engine attempt.
+      return null;
+    }
 
-    if (!this.entries.has(id) && this.entries.size >= this.maxEntries) {
+    if (!current && this.entries.size >= this.maxEntries) {
       const oldestId = this.entries.keys().next().value;
       if (typeof oldestId === "string") this.entries.delete(oldestId);
     }
