@@ -3003,15 +3003,15 @@ export class OrganismCore {
     pendingAutonomousSocialInitiativeMessage() {
         return this.claimAutonomousSocialInitiativeDelivery().initiative;
     }
-    acknowledgeAutonomousSocialInitiativeWithState(id: string, at = Date.now()) {
-        const result = this.organismSystems.agency.autonomousSocialInitiative.acknowledgeWithState(id, at);
+    acknowledgeAutonomousSocialInitiativeWithState(id: string, at = Date.now(), expectedAttemptCount?: number) {
+        const result = this.organismSystems.agency.autonomousSocialInitiative.acknowledgeWithState(id, at, expectedAttemptCount);
         if (result.stateChanged) {
             this.persisted.system.autonomousSocialInitiative = this.organismSystems.agency.autonomousSocialInitiative.snapshot();
         }
         return result;
     }
-    acknowledgeAutonomousSocialInitiative(id: string, at = Date.now()) {
-        return this.acknowledgeAutonomousSocialInitiativeWithState(id, at).acknowledged;
+    acknowledgeAutonomousSocialInitiative(id: string, at = Date.now(), expectedAttemptCount?: number) {
+        return this.acknowledgeAutonomousSocialInitiativeWithState(id, at, expectedAttemptCount).acknowledged;
     }
     deferAutonomousSocialInitiative(id: string, at = Date.now()) {
         const deferred = this.organismSystems.agency.autonomousSocialInitiative.defer(id, at);
