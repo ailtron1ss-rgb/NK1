@@ -264,7 +264,7 @@ try {
 
   await runtime.stop();
   const persistedImmuneState = await new FileStateStore(stateFile + '.cognitive-health.json').load();
-  assert.equal(persistedImmuneState?.rejectedCount, 4,
+  assert.equal(persistedImmuneState?.rejectedCount, 5,
     'the content inspector must persist the hostile-message rejection');
   assert.ok(persistedImmuneState?.validatedCount >= 1,
     'the content inspector must persist the admitted safe plugin message');
@@ -280,9 +280,9 @@ try {
   });
   await restartedRuntime.init();
   const restored = restoredImmuneSystem.snapshot();
-  assert.equal(restored.rejectedCount, 4);
+  assert.equal(restored.rejectedCount, 5);
   assert.equal(restored.validatedCount, persistedImmuneState.validatedCount);
-  assert.equal(restored.quarantine.length, 4);
+  assert.equal(restored.quarantine.length, 5);
   assert.equal(restored.quarantine[0].reason, 'prompt-injection-pattern');
   await restartedRuntime.stop();
 
