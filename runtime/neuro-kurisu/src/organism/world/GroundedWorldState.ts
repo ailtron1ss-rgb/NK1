@@ -429,7 +429,11 @@ export class GroundedWorldState {
         velocity:x.velocity?{...x.velocity}:null,
         ...(x.imageBox?{imageBox:{...x.imageBox},imageBoxCameraId:x.imageBoxCameraId,imageBoxAt:x.imageBoxAt,imageBoxConfidence01:x.imageBoxConfidence01}:{}),
         modalityEvidenceKinds:evidenceKinds,
-        sourceIds:[...new Set(x.modalities)],
+        // Modality names describe channels, not source identity. Preserve only
+        // provider/source IDs explicitly carried by the corresponding modality.
+        sourceIds:[...new Set(Object.values(x.modalitySourceIds??{}).flatMap(ids=>Array.isArray(ids)?ids:[])
+          .filter(sourceId=>typeof sourceId==='string'&&sourceId.trim().length>0&&sourceId.length<=180
+            &&!['text','vision','audio','sensor','world'].includes(sourceId.trim().toLowerCase())))].slice(-16),
         visibilityKnown:x.modalities.includes('vision'),
         presenceStatus:x.modalities.includes('vision')?(x.present01>.52?'visible':'fading'):'unknown',
         persistence01:clamp(Math.min(1,x.observations/12)),
