@@ -1,9 +1,10 @@
-import { useEffect, useId, useState } from "react";
+import { type PointerEvent as ReactPointerEvent, useEffect, useId, useRef, useState } from "react";
 import type { ActionKind, EmotionLabel, AvatarBrainChannelsV1 } from "@/organism/types";
 import { readAvatarPreference, writeAvatarPreference } from "@/legacy/avatar/safeLocalStorage";
 import type { MouthPose } from "./avatar/embodimentTimeline";
 import type { AvatarMotorIntentPlan } from "./avatar/motorIntent";
 import { originalStageChannelOffsets, type BodyChannels } from "./avatar/originalStageChannels";
+import { resolveOriginalStageContactPoint } from "./avatar/originalStageContact";
 
 type Outfit = "lab" | "casual" | "night";
 type EyeTone = "ice" | "violet" | "teal";
@@ -113,6 +114,8 @@ export interface KurisuOriginalStageProps {
   bodyChannels?: BodyChannels;
   /** Canonical brain face channels; stale frames retain the deterministic fallback. */
   avatarBrainChannels?: AvatarBrainChannelsV1;
+  /** Optional head/body contact sent through the canonical organism interaction protocol. */
+  onContact?: (contact: { zone: "head" | "body"; nx: number; ny: number }) => void;
 }
 
 /**
@@ -121,7 +124,7 @@ export interface KurisuOriginalStageProps {
  * organism state and audio-timed mouth signal, and is intended to be the art
  * direction + switchable UI while a production PSD/Cubism rig is authored.
  */
-export function KurisuOriginalStage({ emotion, action, valence, arousal, gazeX, gazeY, speaking, mouthPose, thinking, motorPlan, motorSignals, bodyChannels, avatarBrainChannels }: KurisuOriginalStageProps) {
+export function KurisuOriginalStage({ emotion, action, valence, arousal, gazeX, gazeY, speaking, mouthPose, thinking, motorPlan, motorSignals, bodyChannels, avatarBrainChannels, onContact }: KurisuOriginalStageProps) {
   // SVG paint-server IDs must be unique when multiple avatar previews are mounted.
   const instanceId = useId().replace(/:/g, "");
   const svgIds = {
@@ -143,6 +146,7 @@ export function KurisuOriginalStage({ emotion, action, valence, arousal, gazeX, 
     return Number.isFinite(saved) && saved >= 0.85 && saved <= 1.15 ? saved : 1;
   });
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const contactPointerStartRef = useRef<{ pointerId: number; x: number; y: number } | null>(null);
   const hair = HAIR.find((choice) => choice.id === hairTone) ?? HAIR[0];
   const eyes = EYES.find((choice) => choice.id === eyeTone) ?? EYES[0];
   const accent = ACCENTS.find((choice) => choice.id === accentTone) ?? ACCENTS[0];
@@ -185,6 +189,27 @@ export function KurisuOriginalStage({ emotion, action, valence, arousal, gazeX, 
   const shirt = isNight ? "#c4d7db" : "#f4f0e9";
   const tie = isNight ? "#67d6d3" : "#b52b43";
   const motionDuration = motion === "soft" ? "5.2s" : "3.1s";
+  const handleSvgPointerDown = (event: ReactPointerEvent<SVGSVGElement>) => {
+    if (!onContact || event.button !== 0 || !event.isPrimary) return;
+    contactPointerStartRef.current = { pointerId: event.pointerId, x: event.clientX, y: event.clientY };
+    try { event.currentTarget.setPointerCapture(event.pointerId); } catch { /* Pointer capture is optional in embedded browsers. */ }
+  };
+  const handleSvgPointerUp = (event: ReactPointerEvent<SVGSVGElement>) => {
+    const start = contactPointerStartRef.current;
+    contactPointerStartRef.current = null;
+    if (!onContact || !start || start.pointerId !== event.pointerId) return;
+    if (Math.hypot(event.clientX - start.x, event.clientY - start.y) > 8) return;
+    const rect = event.currentTarget.getBoundingClientRect();
+    if (rect.width <= 0 || rect.height <= 0) return;
+    const contact = resolveOriginalStageContactPoint(
+      (event.clientX - rect.left) / rect.width,
+      (event.clientY - rect.top) / rect.height,
+    );
+    if (contact) onContact(contact);
+  };
+  const handleSvgPointerCancel = (event: ReactPointerEvent<SVGSVGElement>) => {
+    if (contactPointerStartRef.current?.pointerId === event.pointerId) contactPointerStartRef.current = null;
+  };
 
   return (
     <div className="relative min-h-[320px] overflow-hidden rounded-xl border border-border bg-[#07131b] md:min-h-[420px]" data-testid="kurisu-original-stage" data-organism-action={action}>
@@ -203,7 +228,7 @@ export function KurisuOriginalStage({ emotion, action, valence, arousal, gazeX, 
         @media (prefers-reduced-motion: reduce) { .nk-float,.nk-hair,.nk-breath,.nk-scanner,.nk-eye { animation: none !important; } }
       `}</style>
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_36%,rgba(38,113,133,.35),transparent_47%),linear-gradient(180deg,#0a1b25,#050b12)]" />
-      <svg viewBox="0 0 420 560" role="img" aria-label={`NK1 Original — Курису, ${moodLabel[emotion]}, ${OUTFITS.find((item) => item.id === outfit)?.label}`} className="relative z-10 h-[320px] w-full md:h-[420px]" preserveAspectRatio="xMidYMid meet" style={{ transform: `scale(${scale})`, transformOrigin: "50% 55%", transition: "transform 180ms ease" }}>
+      <svg viewBox="0 0 420 560" role="img" aria-label={`NK1 Original — Курису, ${moodLabel[emotion]}, ${OUTFITS.find((item) => item.id === outfit)?.label}`} onPointerDown={handleSvgPointerDown} onPointerUp={handleSvgPointerUp} onPointerCancel={handleSvgPointerCancel} className="relative z-10 h-[320px] w-full touch-manipulation md:h-[420px]" preserveAspectRatio="xMidYMid meet" style={{ transform: `scale(${scale})`, transformOrigin: "50% 55%", transition: "transform 180ms ease" }}>
         <defs>
           <linearGradient id={svgIds.hair} x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stopColor={hair.main}/><stop offset="54%" stopColor="#c86645"/><stop offset="100%" stopColor={hair.shade}/></linearGradient>
           <linearGradient id={svgIds.coat} x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stopColor={coatShadow}/><stop offset="48%" stopColor={coat}/><stop offset="100%" stopColor={coatShadow}/></linearGradient>
