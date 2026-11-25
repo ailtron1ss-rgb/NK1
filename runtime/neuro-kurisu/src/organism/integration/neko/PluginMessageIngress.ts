@@ -239,6 +239,7 @@ export class PluginMessageIngress {
   private readonly receiptStore?: PluginMessageIngressReceiptStore;
   private initialized: boolean;
   private persistenceTail: Promise<void> = Promise.resolve();
+  private initializePromise?: Promise<number>;
   private readonly completed = new Map<string, CachedResult>();
   private readonly pendingReceipts = new Map<string, PendingReceipt>();
   private readonly inFlight = new Map<string, { fingerprint: string; promise: Promise<PluginMessageIngressResult> }>();
@@ -269,11 +270,20 @@ export class PluginMessageIngress {
   /** Restore before transport ingress is opened. Invalid checkpoints fail closed. */
   async initialize(): Promise<number> {
     if (this.initialized) return this.completed.size + this.pendingReceipts.size;
-    const raw = await this.receiptStore!.load();
-    if (raw !== null && raw !== undefined) this.restore(raw);
-    else { this.completed.clear(); this.pendingReceipts.clear(); }
-    this.initialized = true;
-    return this.completed.size + this.pendingReceipts.size;
+    if (this.initializePromise) return this.initializePromise;
+    const operation = (async () => {
+      const raw = await this.receiptStore!.load();
+      if (raw !== null && raw !== undefined) this.restore(raw);
+      else { this.completed.clear(); this.pendingReceipts.clear(); }
+      this.initialized = true;
+      return this.completed.size + this.pendingReceipts.size;
+    })();
+    this.initializePromise = operation;
+    try {
+      return await operation;
+    } finally {
+      if (this.initializePromise === operation) this.initializePromise = undefined;
+    }
   }
 
   /** Export a bounded checkpoint containing hashes and terminal receipts, never message text. */
@@ -344,7 +354,7 @@ export class PluginMessageIngress {
 
   receiptDiagnostics() {
     return {
-      persistent: Boolean(this.receiptStore), initialized: this.initialized,
+      persistent: Boolean(this.receiptStore), initialized: this.initialized, initializing: Boolean(this.initializePromise),
       completed: this.completed.size, pendingRecovery: this.pendingReceipts.size,
       inFlight: this.inFlight.size, capacity: this.maxRememberedMessages,
     };

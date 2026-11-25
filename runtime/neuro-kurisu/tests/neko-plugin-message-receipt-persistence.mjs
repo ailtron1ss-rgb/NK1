@@ -45,6 +45,22 @@ try {
   assert.equal(notReadyCalls.steps.length, 0,
     'a host cannot receive plugin events before its receipt checkpoint is restored');
 
+  let concurrentLoadCalls = 0;
+  let releaseConcurrentLoad;
+  const concurrentLoadGate = new Promise(resolve => { releaseConcurrentLoad = resolve; });
+  const concurrentStore = {
+    load: async () => { concurrentLoadCalls += 1; await concurrentLoadGate; return null; },
+    save: async () => {},
+  };
+  const concurrentInit = makeIngress(concurrentStore, { steps: [] });
+  const initA = concurrentInit.initialize();
+  const initB = concurrentInit.initialize();
+  releaseConcurrentLoad();
+  const initResults = await Promise.all([initA, initB]);
+  assert.deepEqual(initResults, [0, 0]);
+  assert.equal(concurrentLoadCalls, 1,
+    'concurrent host boot hooks must share one receipt restore operation');
+
   const store = new FileStateStore(statePath);
   const firstCalls = { steps: [] };
   const first = makeIngress(store, firstCalls);
@@ -151,7 +167,7 @@ try {
   assert.equal((await corruptIngress.handle(request('corrupt-1'))).errorCode, 'receipt-store-not-initialized',
     'corrupt receipt state must block ingress instead of silently clearing replay guards');
 
-  console.log('NEKO_PLUGIN_MESSAGE_RECEIPT_PERSISTENCE=PASS cases=9');
+  console.log('NEKO_PLUGIN_MESSAGE_RECEIPT_PERSISTENCE=PASS cases=10');
 } finally {
   await rm(dir, { recursive: true, force: true });
 }
