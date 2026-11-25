@@ -701,6 +701,8 @@ export class AutonomousSocialInitiativeEngine {
     this.expirePending(acknowledgedAt);
     const item = this.state.initiatives.find(i => i.id === id);
     if (!item || item.internalOnly === true || !this.mayDeliverUserVisible(acknowledgedAt) || item.status !== 'ready' || typeof item.stagedAt !== 'number'
+      || !Number.isSafeInteger(item.deliveryAttemptCount) || item.deliveryAttemptCount < 1
+      || typeof item.deliveryLeaseUntil !== 'number' || item.deliveryLeaseUntil < acknowledgedAt
       || acknowledgedAt < item.stagedAt || acknowledgedAt < item.createdAt
       || acknowledgedAt - item.createdAt > INITIATIVE_PENDING_TTL_MS) return false;
     item.status = 'executed';
