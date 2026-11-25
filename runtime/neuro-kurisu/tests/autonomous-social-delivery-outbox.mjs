@@ -235,4 +235,22 @@ function readyEngine(at = 1_000) {
     'a truly empty poll must not require a durable checkpoint');
 }
 
+
+{
+  const { engine, initiative } = readyEngine(700_000);
+  const firstAttempt = engine.claimReady(700_002, 1_000);
+  assert.equal(firstAttempt?.deliveryAttemptCount, 1);
+  const secondAttempt = engine.claimReady(702_002, 1_000);
+  assert.equal(secondAttempt?.id, initiative.id);
+  assert.equal(secondAttempt?.deliveryAttemptCount, 2);
+  const stale = engine.acknowledgeWithState(initiative.id, 702_003, firstAttempt.deliveryAttemptCount);
+  assert.equal(stale.acknowledged, false,
+    'a delayed first-attempt ACK cannot acknowledge the stable ID after retry attempt 2 is current');
+  assert.equal(stale.stateChanged, false);
+  assert.equal(engine.snapshot().initiatives[0].status, 'ready');
+  const current = engine.acknowledgeWithState(initiative.id, 702_004, secondAttempt.deliveryAttemptCount);
+  assert.equal(current.acknowledged, true,
+    'the current attempt count is accepted while its lease remains live');
+}
+
 console.log('AUTONOMOUS_SOCIAL_DELIVERY_OUTBOX=PASS');
