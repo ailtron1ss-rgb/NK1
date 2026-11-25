@@ -274,6 +274,10 @@ try {
       ['LD_PRELOAD', '/tmp/host-inject.so'],
       ['PYTHONPATH', '/home/nk1/.local/lib/python3'],
       ['RUBYOPT', '-r/tmp/host-preload.rb'],
+      ['HOME', '/home/nk1'],
+      ['USERPROFILE', 'C:\\Users\\nk1'],
+      ['XDG_CONFIG_HOME', '/home/nk1/.config'],
+      ['GNUPGHOME', '/home/nk1/.gnupg'],
     ]) {
       await assert.rejects(
         () => runLearningProcess(run, 'b'.repeat(64), {
