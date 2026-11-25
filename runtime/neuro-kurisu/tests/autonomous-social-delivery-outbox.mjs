@@ -184,6 +184,8 @@ function readyEngine(at = 1_000) {
     'terminalized delivery payloads must be removed from durable state');
   assert.equal(engine.summary(at).deliveryPending, 0,
     'a dead-letter item must not remain in the ready queue');
+  assert.equal(engine.summary(at).deliveryDeadLettered, 1,
+    'dead-letter history must remain visible in bounded diagnostics');
 }
 
 
