@@ -256,6 +256,10 @@ export class PluginMessageIngress {
         (!options.receiptStore || typeof options.receiptStore.load !== 'function' || typeof options.receiptStore.save !== 'function')) {
       throw new Error('neko-message-ingress-invalid-receipt-store');
     }
+    // A production transport must never silently fall back to process-local replay memory.
+    if (process.env.NODE_ENV === 'production' && options.receiptStore === undefined) {
+      throw new Error('neko-message-ingress-production-requires-durable-receipt-store');
+    }
     this.allowedPlugins = new Set(options.allowedPlugins);
     this.authorize = options.authorize;
     this.runtime = options.runtime;
