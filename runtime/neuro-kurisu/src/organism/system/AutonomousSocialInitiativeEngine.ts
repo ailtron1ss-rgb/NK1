@@ -381,8 +381,9 @@ export class AutonomousSocialInitiativeEngine {
       }};
   }
 
-  private expirePending(at: number): void {
-    if (!Number.isFinite(at) || at < 0) return;
+  private expirePending(at: number): boolean {
+    if (!Number.isFinite(at) || at < 0) return false;
+    let changed = false;
     for (const item of this.state.initiatives) {
       const expired = (item.status === 'planned' || item.status === 'ready')
         && at >= item.createdAt && at - item.createdAt > INITIATIVE_PENDING_TTL_MS;
@@ -403,7 +404,9 @@ export class AutonomousSocialInitiativeEngine {
       item.deliveryLeaseUntil = undefined;
       item.deliveryNextAttemptAt = undefined;
       this.state.deferred = Math.min(MAX_SOCIAL_COUNTER, this.state.deferred + 1);
+      changed = true;
     }
+    return changed;
   }
 
   /**
@@ -694,11 +697,14 @@ export class AutonomousSocialInitiativeEngine {
    * has durably recorded the stable initiative ID. Expired leases become
    * eligible again after bounded backoff; repeated claims keep the same ID.
    */
-  claimReady(now = Date.now(), requestedLeaseMs = DEFAULT_SOCIAL_DELIVERY_LEASE_MS): SocialInitiative | null {
+  claimReadyWithState(
+    now = Date.now(),
+    requestedLeaseMs = DEFAULT_SOCIAL_DELIVERY_LEASE_MS,
+  ): { initiative: SocialInitiative | null; stateChanged: boolean } {
     const at = safeTime(now);
-    if (at === undefined) return null;
-    this.expirePending(at);
-    if (!this.mayDeliverUserVisible(at)) return null;
+    if (at === undefined) return { initiative: null, stateChanged: false };
+    let stateChanged = this.expirePending(at);
+    if (!this.mayDeliverUserVisible(at)) return { initiative: null, stateChanged };
     const leaseMs = Number.isSafeInteger(requestedLeaseMs)
       ? Math.max(MIN_SOCIAL_DELIVERY_LEASE_MS, Math.min(MAX_SOCIAL_DELIVERY_LEASE_MS, requestedLeaseMs))
       : DEFAULT_SOCIAL_DELIVERY_LEASE_MS;
@@ -712,26 +718,37 @@ export class AutonomousSocialInitiativeEngine {
       && safeCounter(i.deliveryAttemptCount, 0, MAX_SOCIAL_DELIVERY_ATTEMPTS) < MAX_SOCIAL_DELIVERY_ATTEMPTS
       && (i.deliveryLeaseUntil === undefined || i.deliveryLeaseUntil <= at)
       && (i.deliveryNextAttemptAt === undefined || i.deliveryNextAttemptAt <= at));
-    if (!item) return null;
+    if (!item) return { initiative: null, stateChanged };
     const attempt = safeCounter(item.deliveryAttemptCount, 0, MAX_SOCIAL_DELIVERY_ATTEMPTS) + 1;
     const leaseUntil = at + leaseMs;
     item.deliveryAttemptCount = attempt;
     item.deliveryLastAttemptAt = at;
     item.deliveryLeaseUntil = leaseUntil;
     item.deliveryNextAttemptAt = leaseUntil + socialDeliveryBackoffMs(attempt);
-    return structuredClone(item);
+    stateChanged = true;
+    return { initiative: structuredClone(item), stateChanged };
   }
 
-  acknowledge(id: string, at = Date.now()): boolean {
+  /** Compatibility surface for callers that need only the claimed initiative. */
+  claimReady(now = Date.now(), requestedLeaseMs = DEFAULT_SOCIAL_DELIVERY_LEASE_MS): SocialInitiative | null {
+    return this.claimReadyWithState(now, requestedLeaseMs).initiative;
+  }
+
+  acknowledgeWithState(
+    id: string,
+    at = Date.now(),
+  ): { acknowledged: boolean; stateChanged: boolean } {
     const acknowledgedAt = safeTime(at);
-    if (acknowledgedAt === undefined) return false;
-    this.expirePending(acknowledgedAt);
+    if (acknowledgedAt === undefined) return { acknowledged: false, stateChanged: false };
+    let stateChanged = this.expirePending(acknowledgedAt);
     const item = this.state.initiatives.find(i => i.id === id);
     if (!item || item.internalOnly === true || !this.mayDeliverUserVisible(acknowledgedAt) || item.status !== 'ready' || typeof item.stagedAt !== 'number'
       || typeof item.deliveryAttemptCount !== 'number' || !Number.isSafeInteger(item.deliveryAttemptCount) || item.deliveryAttemptCount < 1
       || typeof item.deliveryLeaseUntil !== 'number' || item.deliveryLeaseUntil <= acknowledgedAt
       || acknowledgedAt < item.stagedAt || acknowledgedAt < item.createdAt
-      || acknowledgedAt - item.createdAt > INITIATIVE_PENDING_TTL_MS) return false;
+      || acknowledgedAt - item.createdAt > INITIATIVE_PENDING_TTL_MS) {
+      return { acknowledged: false, stateChanged };
+    }
     item.status = 'executed';
     item.resolvedAt = acknowledgedAt;
     item.deliveryLeaseUntil = undefined;
@@ -739,7 +756,13 @@ export class AutonomousSocialInitiativeEngine {
     this.state.executed = Math.min(MAX_SOCIAL_COUNTER, this.state.executed + 1);
     // Delivery proves only that the UI received a message. It is not evidence of
     // reciprocity or a positive social outcome, so relationship learning stays unchanged.
-    return true;
+    stateChanged = true;
+    return { acknowledged: true, stateChanged };
+  }
+
+  /** Compatibility surface for callers that need only the acknowledgement result. */
+  acknowledge(id: string, at = Date.now()): boolean {
+    return this.acknowledgeWithState(id, at).acknowledged;
   }
 
   defer(id: string, at = Date.now()): boolean {
