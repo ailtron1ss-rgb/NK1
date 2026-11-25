@@ -30,10 +30,13 @@ import { ProactiveDeliveryLeaseRegistry } from "../src/server/proactive-delivery
   const leases = new ProactiveDeliveryLeaseRegistry({ maxEntries: 2 });
   leases.issue("soc:a", 1, 50_000, "token-a-0000000001", 1);
   leases.issue("soc:b", 1, 50_000, "token-b-0000000001", 1);
-  leases.issue("soc:c", 1, 50_000, "token-c-0000000001", 1);
+  assert.equal(leases.issue("soc:c", 1, 50_000, "token-c-0000000001", 1), null,
+    "the active-token capacity must apply backpressure instead of evicting a live ACK token");
   assert.equal(leases.size(2), 2, "the ephemeral token registry must remain bounded");
-  assert.equal(leases.matches("soc:a", "token-a-0000000001", 2), false,
-    "capacity eviction must fail closed");
+  assert.equal(leases.matches("soc:a", "token-a-0000000001", 2), true,
+    "capacity pressure must preserve the older active receipt");
+  assert.equal(leases.matches("soc:b", "token-b-0000000001", 2), true,
+    "capacity pressure must preserve every already-issued active receipt");
   leases.clear();
   assert.equal(leases.size(3), 0);
 }
