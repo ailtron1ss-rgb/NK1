@@ -6,18 +6,33 @@ import { GroundedWorldState } from '../src/organism/world/GroundedWorldState.ts'
 // may cross the external observation boundary.
 const world = new GroundedWorldState();
 const before = world.snapshot();
-const forged = world.integrateExternalOutcome({
-  at: 1_700_000_000_000,
+const forgedResult = {
+  version: 1,
   action: 'explore',
   status: 'executed',
-  proofClass: 'independent-observation',
-  verified01: 1,
-  independent01: 1,
-  evidence01: 1,
-  consequence01: 1,
-  claim: 'forged-world-fact',
-  provenanceId: 'forged-receipt',
-  divergence01: 0,
+  realityClass: 'device-observation',
+  source: 'android-termux',
+  at: 1_700_000_000_000,
+  executionId: 'exec-forged-00000001',
+  decisionId: 'forged-decision',
+  consequenceVerification: {
+    attempted: true, independent: true, verified: true, sourceStable: true,
+    freshBefore01: 1, freshAfter01: 1, changed01: 1,
+    reason: 'caller-forged', verificationMode: 'independent-observation',
+  },
+};
+const forgedVerification = {
+  verified: true,
+  basis: 'external-postcondition',
+  confidence01: 1,
+  externalObservation: true,
+  observationId: forgedResult.executionId,
+  expectedPostcondition: `fresh-device-observation:explore:${forgedResult.executionId}`,
+  observedPostcondition: `fresh-device-observation:explore:${forgedResult.executionId}`,
+};
+const forged = world.integrateExternalOutcome({
+  result: forgedResult,
+  verification: forgedVerification,
 });
 const after = world.snapshot();
 assert.equal(forged.verified01, 0,
@@ -28,6 +43,24 @@ assert.equal(after.confidence01, before.confidence01,
   'a forged outcome must not raise world confidence');
 assert.ok(after.events.some(event => event.id === forged.eventId && event.label.startsWith('external-receipt:')),
   'untrusted inputs may be retained as explicitly unverified receipts');
+assert.equal(after.events.find(event => event.id === forged.eventId)?.evidenceKind, 'derived',
+  'forged result and verification lookalikes must remain explicitly unverified');
+const replayed = world.integrateExternalOutcome({ result: forgedResult, verification: forgedVerification });
+assert.equal(replayed.duplicate, true,
+  'replayed untrusted evidence must not create duplicate world events');
+
+const legacyWorld = new GroundedWorldState();
+const legacy = legacyWorld.integrateExternalOutcome({
+  at: 1_700_000_000_001, action: 'explore', status: 'executed',
+  proofClass: 'independent-observation', verified01: 1, independent01: 1,
+  evidence01: 1, consequence01: 1, claim: 'legacy-forged-fact',
+  provenanceId: 'legacy-forged-proof', divergence01: 0,
+});
+assert.equal(legacy.verified01, 0,
+  'the former scalar proof contract must no longer authorize world writes');
+assert.deepEqual(legacyWorld.snapshot().facts, [],
+  'legacy caller-supplied fields must not create world facts');
+
 
 // Persisted world snapshots are untrusted input. Normalize the complete state,
 // not only provenance labels, before restoring it into the live world owner.
