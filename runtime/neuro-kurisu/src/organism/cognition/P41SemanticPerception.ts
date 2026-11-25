@@ -36,7 +36,7 @@ const safeModalitySourceIds=(value:unknown):Partial<Record<P41Modality,string[]>
   if(!value||typeof value!=='object'||Array.isArray(value))return {};
   const row=value as Record<string,unknown>;
   const out:Partial<Record<P41Modality,string[]>>={};
-  const modalities:P41Modality[]=['text','vision','audio','sensor','world'];
+  const modalities:P41Modality[]=['text','speech','audio','vision','sensor','world','semantic'];
   for(const modality of modalities){
     const raw=row[modality];
     const candidates=Array.isArray(raw)?raw:typeof raw==='string'?[raw]:[];
@@ -433,7 +433,8 @@ export class P41SemanticPerceptionEngine {
     const key=normalizePerceptualLabel(label); if(!key) return null;
     const explicitTrackId=cleanTrackId(suppliedTrackId);
     const safePositionFrameId=cleanTrackId(positionFrameId);
-    const safeSourceId=cleanTrackId(sourceId);
+    const candidateSourceId=cleanTrackId(sourceId);
+    const safeSourceId=candidateSourceId&&!['text','speech','audio','vision','sensor','world','semantic'].includes(candidateSourceId.toLowerCase())?candidateSourceId:'';
     let e=explicitTrackId?this.state.entities.find(x=>x.trackId===explicitTrackId||x.trackAliases?.includes(explicitTrackId)):undefined;
     // Cross-modal association is allowed only when there is exactly one recent
     // same-label candidate that has not already been observed by this modality.
