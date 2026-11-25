@@ -98,4 +98,23 @@ assert.equal(receiptlessRestore.snapshot().acceptedCount,0,
   'persisted aggregate counters without durable event receipts cannot restore corroboration');
 assert.ok(receiptlessRestore.snapshot().records.every(row=>row.corroborations===0));
 
+
+const receiptlessLive = new ExternalEvidenceTrustEngine();
+const receiptlessFirst = receiptlessLive.observe({
+  claimKey:'claim:receiptless-live',source:'device',independenceKey:'camera-no-receipt',
+  confidence01:.99,at:now,
+});
+const receiptlessSecond = receiptlessLive.observe({
+  claimKey:'claim:receiptless-live',source:'web',independenceKey:'publisher-no-receipt',
+  confidence01:.99,at:now+1,
+});
+assert.equal(receiptlessFirst.status,'candidate');
+assert.equal(receiptlessSecond.status,'candidate',
+  'distinct source labels without exact event receipts cannot corroborate a claim');
+assert.equal(receiptlessLive.snapshot().acceptedCount,0);
+assert.equal(receiptlessLive.independenceCount('claim:receiptless-live'),0,
+  'receiptless sources must not be counted as independent witnesses');
+assert.equal(receiptlessLive.scoreClaim('claim:receiptless-live'),0,
+  'receiptless source claims must not contribute a positive evidence score');
+
 console.log('EXTERNAL_EVIDENCE_TRUST_RESTORE_INTEGRITY=PASS');
