@@ -489,26 +489,27 @@ export class CognitiveEventFabric {
       return payload;
     };
     const parents=(...eventIds:(string|undefined)[])=>eventIds.filter((id):id is string=>Boolean(id));
+    // Validate both owner receipts and source bindings before the first append.
+    // A malformed later stage must not leave a partial operational cycle behind.
+    const validateOwnerReceipt=(phase:OperationalCyclePhaseInput|undefined,stage:'attention'|'memory')=>{
+      if(!phase?.receipt)return undefined;
+      const result=validateCognitiveStageReceipt(phase.receipt,{tick:input.tick,stage});
+      if(!result.ok)throw new Error(`invalid-stage-owner-receipt:${stage}:${result.issues.join(',')}`);
+      if(phase.source&&phase.source!==result.receipt.owner)throw new Error(`invalid-stage-owner-receipt:${stage}:owner-source-mismatch`);
+      return result.receipt;
+    };
+    const attentionOwnerReceipt=validateOwnerReceipt(input.attention,'attention');
+    const memoryOwnerReceipt=validateOwnerReceipt(input.memory,'memory');
     if(input.observation){const e=this.append({tick:input.tick,stage:'observation',source:input.observation.source??'runtime',external:input.observation.external,confidence01:input.observation.confidence01,payload:payloadFor(input.observation),at:input.at});ids.observation=e.id;}
     if(input.prediction){const e=this.append({tick:input.tick,stage:'prediction',source:input.prediction.source??'prediction',parentIds:parents(ids.observation),confidence01:input.prediction.confidence01,payload:payloadFor(input.prediction),at:input.at});ids.prediction=e.id;}
     if(input.appraisal){const e=this.append({tick:input.tick,stage:'appraisal',source:input.appraisal.source??'appraisal',parentIds:parents(ids.observation,ids.prediction),confidence01:input.appraisal.confidence01,payload:payloadFor(input.appraisal),at:input.at});ids.appraisal=e.id;}
     if(input.attention){
-      const receipt = input.attention.receipt
-        ? validateCognitiveStageReceipt(input.attention.receipt,{tick:input.tick,stage:'attention'})
-        : undefined;
-      if(receipt && !receipt.ok) throw new Error(`invalid-stage-owner-receipt:attention:${receipt.issues.join(',')}`);
-      if(receipt?.ok && input.attention.source && input.attention.source !== receipt.receipt.owner) throw new Error('invalid-stage-owner-receipt:attention:owner-source-mismatch');
-      const ownerReceipt = receipt?.ok ? receipt.receipt : undefined;
+      const ownerReceipt = attentionOwnerReceipt;
       const payload = {...payloadFor(input.attention),...(ownerReceipt?{ownerReceipt}:{})};
       const e=this.append({tick:input.tick,stage:'attention',source:input.attention.source??ownerReceipt?.owner??'attention',parentIds:parents(ids.appraisal,ids.prediction),confidence01:input.attention.confidence01,payload,at:input.at});ids.attention=e.id;
     }
     if(input.memory){
-      const receipt = input.memory.receipt
-        ? validateCognitiveStageReceipt(input.memory.receipt,{tick:input.tick,stage:'memory'})
-        : undefined;
-      if(receipt && !receipt.ok) throw new Error(`invalid-stage-owner-receipt:memory:${receipt.issues.join(',')}`);
-      if(receipt?.ok && input.memory.source && input.memory.source !== receipt.receipt.owner) throw new Error('invalid-stage-owner-receipt:memory:owner-source-mismatch');
-      const ownerReceipt = receipt?.ok ? receipt.receipt : undefined;
+      const ownerReceipt = memoryOwnerReceipt;
       const payload = {...payloadFor(input.memory),...(ownerReceipt?{ownerReceipt}:{})};
       const e=this.append({tick:input.tick,stage:'memory',source:input.memory.source??ownerReceipt?.owner??'memory',parentIds:parents(ids.attention,ids.observation),confidence01:input.memory.confidence01,payload,at:input.at});ids.memory=e.id;
     }
