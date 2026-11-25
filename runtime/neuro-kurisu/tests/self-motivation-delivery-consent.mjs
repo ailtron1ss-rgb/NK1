@@ -20,7 +20,7 @@ const quiet = engine.cycle(runtimeInput(atHourUtc(23)));
 assert.equal(quiet.shouldInitiate, false, 'quiet hours suppress unsolicited user-visible delivery');
 assert.equal(engine.deliveryPolicy().suppressedByQuietHours, 1);
 assert.equal(engine.deliveryPolicy().suppressedByConsent, 0);
-assert.equal(engine.cycle(runtimeInput(atHourUtc(12, 1)).topics ? { ...runtimeInput(atHourUtc(12, 1)), topics: [{ topic: 'A different unresolved question about project architecture and evidence', source: 'reflection', salience01: .9, freshness01: .9, interestFit01: .7, affectFit01: .6 }] } : runtimeInput(atHourUtc(12, 1))).shouldInitiate, true,
+assert.equal(engine.cycle({ ...runtimeInput(atHourUtc(12, 1)), topics: [{ topic: 'A different unresolved question about project architecture and evidence', source: 'reflection', salience01: .9, freshness01: .9, interestFit01: .7, affectFit01: .6 }] }).shouldInitiate, true,
   'internal initiative can resume outside the quiet window');
 
 const noConsent = new AutonomousSocialInitiativeEngine();
