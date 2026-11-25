@@ -105,7 +105,7 @@ export class ExternalEvidenceTrustEngine{
     // aggregate counters and statuses are never authority to promote evidence.
     for(const record of records){
       const sameClaim=records.filter(other=>other.claimKey===record.claimKey);
-      const eligible=sameClaim.filter(other=>other.sourceClass!=='simulator'&&other.sourceClass!=='unknown'&&other.sourceClass!=='organism');
+      const eligible=sameClaim.filter(other=>isIndependentWitness(other.sourceClass)&&(other.evidenceIds?.length??0)>0);
       record.independentSources=isIndependentWitness(record.sourceClass)
         ?new Set(eligible.map(other=>other.independenceKey)).size
         :0;
@@ -114,7 +114,7 @@ export class ExternalEvidenceTrustEngine{
         +Math.min(1,record.corroborations/4)*.10
         +Math.min(1,record.independentSources/3)*.18
         -record.contradictions*.12);
-      const eligibleSource=record.sourceClass!=='simulator'&&record.sourceClass!=='unknown'&&record.sourceClass!=='organism';
+      const eligibleSource=isIndependentWitness(record.sourceClass);
       record.status=record.contradictions>=2?'contested'
         :eligibleSource&&(record.evidenceIds?.length??0)>0&&record.independentSources>=2&&record.trust01>=.72?'corroborated'
         :'candidate';
@@ -144,18 +144,22 @@ export class ExternalEvidenceTrustEngine{
    }
    const evidenceIds=prior?.evidenceIds??[];
    const eligibleSource=isIndependentWitness(sourceClass);
-   const independentSources=eligibleSource
-     ?new Set([...distinct.filter(r=>isIndependentWitness(r.sourceClass)).map(r=>r.independenceKey),independenceKey]).size
+   const hasReceipt=Boolean(evidenceId||(prior?.evidenceIds?.length??0)>0);
+   const independentSources=eligibleSource&&hasReceipt
+     ?new Set([
+       ...distinct.filter(r=>isIndependentWitness(r.sourceClass)&&(r.evidenceIds?.length??0)>0).map(r=>r.independenceKey),
+       independenceKey,
+     ]).size
      :0;
    const record:ExternalEvidenceRecord={
      id:prior?.id??stableId(claimKey,source,at), claimKey, source, sourceClass, independenceKey,
-     confidence01:confidence, trust01:0, corroborations:(prior?.corroborations??0)+1, independentSources,
+     confidence01:confidence, trust01:0, corroborations:(prior?.corroborations??0)+(evidenceId?1:0), independentSources,
      contradictions:(prior?.contradictions??0)+(contradiction>.5?1:0), status:'candidate', firstSeenAt:prior?.firstSeenAt??at, lastSeenAt:Math.max(prior?.lastSeenAt??0,at),
      ...(evidenceId?{evidenceIds:[...evidenceIds.filter(id=>id!==evidenceId),evidenceId].slice(-64)}:prior?.evidenceIds?{evidenceIds:evidenceIds.slice(-64)}:{}),
    };
    const trust=clamp(baseTrust(sourceClass)*.55+confidence*.2+Math.min(1,record.corroborations/4)*.10+Math.min(1,record.independentSources/3)*.18-record.contradictions*.12);
    record.trust01=trust;
-   record.status=record.contradictions>=2?'contested':eligibleSource&&record.independentSources>=2 && trust>=.72?'corroborated':'candidate';
+   record.status=record.contradictions>=2?'contested':eligibleSource&&(record.evidenceIds?.length??0)>0&&record.independentSources>=2 && trust>=.72?'corroborated':'candidate';
    this.state.records=[record,...this.state.records.filter(r=>r.id!==record.id)].slice(0,256);
    this.recompute();
    return structuredClone(record);
@@ -168,6 +172,6 @@ export class ExternalEvidenceTrustEngine{
    this.state.expiredCount=this.state.records.filter(r=>r.status==='expired').length;
    this.state.meanTrust01=this.state.records.length?clamp(this.state.records.reduce((s,r)=>s+r.trust01,0)/this.state.records.length):.5;
  }
- independenceCount(claimKey:string){return new Set(this.state.records.filter(r=>r.claimKey===claimKey && r.status!=='expired' && isIndependentWitness(r.sourceClass)).map(r=>r.independenceKey)).size;}
-  scoreClaim(claimKey:string){const rs=this.state.records.filter(r=>r.claimKey===claimKey && r.status!=='expired' && isIndependentWitness(r.sourceClass));if(!rs.length)return 0;const independent=this.independenceCount(claimKey);const corroborated=rs.filter(r=>r.status==='corroborated').length;return clamp(Math.max(...rs.map(r=>r.trust01))*.55 + Math.min(1,independent/3)*.25 + Math.min(1,corroborated/2)*.20);}
+ independenceCount(claimKey:string){return new Set(this.state.records.filter(r=>r.claimKey===claimKey && r.status!=='expired' && isIndependentWitness(r.sourceClass) && (r.evidenceIds?.length??0)>0).map(r=>r.independenceKey)).size;}
+  scoreClaim(claimKey:string){const rs=this.state.records.filter(r=>r.claimKey===claimKey && r.status!=='expired' && isIndependentWitness(r.sourceClass) && (r.evidenceIds?.length??0)>0);if(!rs.length)return 0;const independent=this.independenceCount(claimKey);const corroborated=rs.filter(r=>r.status==='corroborated').length;return clamp(Math.max(...rs.map(r=>r.trust01))*.55 + Math.min(1,independent/3)*.25 + Math.min(1,corroborated/2)*.20);}
 }
