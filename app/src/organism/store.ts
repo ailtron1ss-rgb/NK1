@@ -3,17 +3,14 @@ import type { OrganismSnapshot } from "./types";
 import { emptySnapshot } from "./types";
 import { neuroApi } from "@/neuro-kurisu/api";
 import { toOrganismSnapshot } from "@/neuro-kurisu/normalize";
-import { CHAT_CACHE_KEY, persistChatCache, persistChatBeforeAcknowledge } from "./chatCache";
+import { CHAT_CACHE_KEY, persistChatCache, persistChatBeforeAcknowledge, restoreChatCache } from "./chatCache";
 
 type Tab = "mind" | "memory" | "lab" | "skills" | "evidence";
 let lastInitiativePollAt = 0;
 
 function loadChat(): OrganismSnapshot["chat"] {
   if (typeof window === "undefined") return [];
-  try {
-    const raw = JSON.parse(localStorage.getItem(CHAT_CACHE_KEY) || "[]");
-    return Array.isArray(raw) ? raw.slice(-120) : [];
-  } catch { return []; }
+  return restoreChatCache(localStorage.getItem(CHAT_CACHE_KEY));
 }
 function saveChat(chat: OrganismSnapshot["chat"]): boolean {
   if (typeof window === "undefined") return false;
