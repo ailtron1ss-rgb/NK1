@@ -357,6 +357,13 @@ test("3D avatar contact picking includes static head meshes and classifies again
  floor.name = "Environment_Floor";
  floor.position.y = -0.05;
  root.add(floor);
+ const hiddenRigBranch = new THREE.Group();
+ hiddenRigBranch.visible = false;
+ const hiddenAccessory = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.3, 0.3), material);
+ hiddenAccessory.name = "HiddenHeadAccessory";
+ hiddenAccessory.position.y = 3.1;
+ hiddenRigBranch.add(hiddenAccessory);
+ root.add(hiddenRigBranch);
 
  const fit = resolveAvatarModelFitBounds(root);
  const camera = new THREE.PerspectiveCamera(31, 1, 0.1, 100);
@@ -373,4 +380,8 @@ test("3D avatar contact picking includes static head meshes and classifies again
    "head contact must be classified against full character bounds, not torso-only fit bounds");
  assert.equal(fit.source, "skinned-meshes", "camera fitting must retain its skinned-mesh preference");
  assert.ok(!fit.pickMeshes.includes(floor), "scene floors must never become contact targets");
+ assert.ok(!fit.pickMeshes.includes(hiddenAccessory),
+   "meshes under an invisible parent must never become pointer contact targets");
+ assert.ok(fit.contactBounds.max.y < hiddenAccessory.position.y,
+   "invisible rig branches must not distort the contact envelope");
 });
