@@ -61,7 +61,7 @@ export function CommandPalette() {
 
   if (!open) {
     return (
-      <button type="button" onClick={() => { setOpen(true); setQuery(""); }} className="fixed right-3 top-20 z-40 hidden items-center gap-2 rounded-full border border-border bg-surface/90 px-3 py-2 text-[10px] text-muted shadow-lg backdrop-blur md:flex" aria-label="Open command palette">
+      <button type="button" onClick={() => { setOpen(true); setQuery(""); }} className="fixed right-3 top-20 z-40 flex items-center gap-2 rounded-full border border-border bg-surface/90 px-3 py-2 text-[10px] text-muted shadow-lg backdrop-blur" aria-label="Open command palette">
         <Command className="size-3.5" /> Quick commands <kbd className="rounded border border-border px-1.5 py-0.5">Ctrl K</kbd>
       </button>
     );
