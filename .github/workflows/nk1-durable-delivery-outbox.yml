@@ -1,0 +1,44 @@
+name: NK1 durable delivery outbox
+on:
+  pull_request:
+    branches: [workpass70-source]
+    paths:
+      - 'runtime/neuro-kurisu/src/organism/system/DurableDeliveryOutbox.ts'
+      - 'runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts'
+      - 'runtime/neuro-kurisu/tests/durable-delivery-outbox.mjs'
+      - 'runtime/neuro-kurisu/package.json'
+      - 'docs/engineering/OPENCLAW_DURABLE_DELIVERY_OUTBOX_ADAPTATION_2026-11-25.md'
+      - '.github/workflows/nk1-durable-delivery-outbox.yml'
+  push:
+    branches: [aspect/openclaw-durable-delivery-outbox-20261125]
+    paths:
+      - 'runtime/neuro-kurisu/src/organism/system/DurableDeliveryOutbox.ts'
+      - 'runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts'
+      - 'runtime/neuro-kurisu/tests/durable-delivery-outbox.mjs'
+      - 'runtime/neuro-kurisu/package.json'
+      - '.github/workflows/nk1-durable-delivery-outbox.yml'
+permissions:
+  contents: read
+concurrency:
+  group: nk1-durable-delivery-outbox
+  cancel-in-progress: true
+jobs:
+  delivery-outbox:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          package-manager-cache: false
+      - name: Install locked runtime dependencies
+        run: npm ci --prefix runtime/neuro-kurisu --ignore-scripts --no-audit --no-fund
+      - name: Durable delivery outbox contract
+        run: npm --prefix runtime/neuro-kurisu run test:durable-delivery-outbox
+      - name: Existing proactive delivery consent regression
+        run: npm --prefix runtime/neuro-kurisu run test:self-motivation:delivery-consent
+      - name: Existing OpenLoop runtime integration
+        run: npm --prefix runtime/neuro-kurisu run test:open-loop-radar-runtime
+      - name: Runtime semantic typecheck
+        run: npm --prefix runtime/neuro-kurisu run typecheck
