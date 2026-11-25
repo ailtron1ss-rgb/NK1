@@ -54,9 +54,6 @@ jobs:
       - name: Filesystem Undo-First integration through OrganismRuntime and FileStateStore
         working-directory: runtime/neuro-kurisu
         run: node --experimental-strip-types tests/filesystem-undo-first-integration.mjs
-      - name: Public Core and Runtime Undo-First recovery boundary
-        working-directory: runtime/neuro-kurisu
-        run: node --experimental-strip-types tests/filesystem-undo-first-integration.mjs
       - name: Preserve existing action crash and receipt reconciliation regression
         working-directory: runtime/neuro-kurisu
         run: node --experimental-strip-types tests/big-pass-380-action-crash-reconciliation.mjs
