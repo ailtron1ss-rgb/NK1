@@ -27,10 +27,14 @@ export function ChatPanel() {
 
   useEffect(() => {
     let cancelled = false;
+    let initialized = false;
     const refreshPolicy = () => {
       void neuroApi.proactiveDeliveryPolicy().then((result) => {
         if (!cancelled) {
-          setProactiveConsent(result.policy.consentGranted === true);
+          if (!initialized) {
+            setProactiveConsent(result.policy.consentGranted === true);
+            initialized = true;
+          }
           setProactiveOutbox(result.policy.outbox);
         }
       }).catch((error) => {
