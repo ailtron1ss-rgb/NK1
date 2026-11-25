@@ -22,7 +22,8 @@ export class ProactiveDeliveryCoordinator {
       throw new TypeError("proactive-delivery-runtime-contract-invalid");
     }
     if (!leases || typeof leases.issue !== "function" || typeof leases.matches !== "function"
-      || typeof leases.consume !== "function" || typeof leases.clear !== "function") {
+      || typeof leases.consume !== "function" || typeof leases.attemptCountFor !== "function"
+      || typeof leases.clear !== "function") {
       throw new TypeError("proactive-delivery-lease-registry-contract-invalid");
     }
     if (typeof tokenFactory !== "function" || typeof now !== "function") {
@@ -75,7 +76,10 @@ export class ProactiveDeliveryCoordinator {
     if (typeof id !== "string" || !id.trim() || id !== id.trim() || id.length > 160) {
       return { status: 400, body: { ok: false, acknowledged: false, error: "invalid-initiative-id" } };
     }
-    if (typeof token !== "string" || !this.leases.matches(id, token, this.now())) {
+    const attemptCount = typeof token === "string"
+      ? this.leases.attemptCountFor(id, token, this.now())
+      : null;
+    if (attemptCount === null) {
       return { status: 409, body: { ok: false, acknowledged: false, error: "proactive-delivery-lease-token-invalid" } };
     }
     const inFlightKey = JSON.stringify([id, token]);
@@ -85,7 +89,7 @@ export class ProactiveDeliveryCoordinator {
 
     this.acknowledgementsInFlight.add(inFlightKey);
     try {
-      const acknowledged = await this.runtime.acknowledgeAutonomousDialogue(id);
+      const acknowledged = await this.runtime.acknowledgeAutonomousDialogue(id, attemptCount);
       if (!acknowledged) {
         return { status: 409, body: { ok: false, acknowledged: false, error: "proactive-delivery-ack-rejected" } };
       }
