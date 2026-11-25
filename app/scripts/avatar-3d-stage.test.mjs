@@ -306,7 +306,7 @@ test("3D fitting uses rigged character meshes instead of the scene environment f
 
 test("3D renderer mode keeps the global avatar toolbar outside the model viewport",async()=>{
  const avatarStage=await readFile(path.join(root,"src/components/AvatarStage.tsx"),"utf8");
- assert.match(avatarStage,/mode === "3d" \? "relative z-30 flex w-full flex-wrap items-center gap-2 border-b border-border bg-black\/70 p-2 backdrop-blur"\s*:\s*"absolute left-3 top-3 z-30/);
+ assert.match(avatarStage,/mode === "3d" \|\| mode === "legacy" \? "relative z-30 flex w-full flex-wrap items-center gap-2 border-b border-border bg-black\/70 p-2 backdrop-blur"\s*:\s*"absolute left-3 top-3 z-30/);
 });
 
 
