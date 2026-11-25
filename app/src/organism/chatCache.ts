@@ -30,8 +30,10 @@ export async function persistChatBeforeAcknowledge(
 ): Promise<boolean> {
   if (!persistChatCache(storage, chat)) return false;
   try {
-    await acknowledge();
-    return true;
+    const receipt = await acknowledge();
+    if (!receipt || typeof receipt !== "object") return false;
+    const result = receipt as { ok?: unknown; acknowledged?: unknown };
+    return result.ok === true && result.acknowledged === true;
   } catch {
     return false;
   }
