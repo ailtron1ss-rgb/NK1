@@ -17,6 +17,8 @@
 |---|---|---:|---|
 | [#1179](https://github.com/ailtron1ss-rgb/NK1/pull/1179) | `a33e889900a6575160cb8b5b96ab6b8d1cf61de1` | 11/11 SUCCESS | Independent review |
 | [#1180](https://github.com/ailtron1ss-rgb/NK1/pull/1180) | `9c13acd0287314992a0d8a421c50533d2798231a` | 74/74 SUCCESS | Independent review; host verifier remains a separate future capability |
+| [#1175](https://github.com/ailtron1ss-rgb/NK1/pull/1175) | `b1bce60c5d2ea79e24707597b77935764fc14cd1` | 51/51 SUCCESS | Draft; independent review / merge gate |
+| [#1173](https://github.com/ailtron1ss-rgb/NK1/pull/1173) | `b7b6a6d76141010677af36a8a8453fe7a3b52b86` | 95/95 SUCCESS | Draft; visual/avatar-device validation and review |
 | [#1174](https://github.com/ailtron1ss-rgb/NK1/pull/1174) | `e1f83557bc8f5e7d9b304f943f8fce8d9c9b6192` | 76/76 SUCCESS, 0 failures, 0 pending | Independent review, semantic runtime TSC and real device power-loss soak |
 | [#1170](https://github.com/ailtron1ss-rgb/NK1/pull/1170) | `bdcad2c34a5dd9ffa0443c4cca8b56d989cc43e6` | 83/83 Actions SUCCESS | Independent review; semantic TSC check and Android/Termux soak |
 

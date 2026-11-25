@@ -90,8 +90,12 @@ PR [#1157 — Verify SelfAuthorship through decision-bound receipts](https://git
 |---|---|---|
 | [#1179](https://github.com/ailtron1ss-rgb/NK1/pull/1179) | `a33e889900a6575160cb8b5b96ab6b8d1cf61de1` | Metacognitive Neural Substrate alignment; 11/11 exact-head checks SUCCESS |
 | [#1180](https://github.com/ailtron1ss-rgb/NK1/pull/1180) | `9c13acd0287314992a0d8a421c50533d2798231a` | P53 fail-closed self-promotion and v2→v3 legacy quarantine; 74/74 exact-head checks SUCCESS |
+| [#1175](https://github.com/ailtron1ss-rgb/NK1/pull/1175) | `b1bce60c5d2ea79e24707597b77935764fc14cd1` | Grounded World→Appraisal/Attention→Goals/Planning; 51/51 exact-head checks SUCCESS |
+| [#1173](https://github.com/ailtron1ss-rgb/NK1/pull/1173) | `b7b6a6d76141010677af36a8a8453fe7a3b52b86` | Canonical affect/mood frame and P66 temporal regulation; 95/95 exact-head checks SUCCESS |
 | [#1174](https://github.com/ailtron1ss-rgb/NK1/pull/1174) | `e1f83557bc8f5e7d9b304f943f8fce8d9c9b6192` | Current-source continuity durability port; 76/76 checks SUCCESS, 0 failures, 0 pending; dedicated 11-step continuity acceptance workflow passed |
 
 PR #1174 was updated in place: its existing aspect branch now includes the canonical source commit as a merge parent, without force-push or a successor branch. The compare from canonical source to the updated aspect head is 11 commits ahead / 0 behind and still contains nine intended files.
 
 Previously open PR #1170 remains Draft with its 83/83 Actions matrix passing. Independent review and target-device/power-loss soak remain open. The current published Release/ZIP and legal blockers are unchanged.
+
+These two neighbouring aspect PRs are existing work by their respective branch authors, not code changes from this pass. They were rechecked on their current exact HEADs after the above work and are recorded to preserve the whole cognitive chain in the handoff. Both remain Draft and unmerged.
