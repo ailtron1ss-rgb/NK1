@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import './neko-plugin-voice-runtime-wiring.mjs';
 import './universal-input-interpreter.mjs';
 import './cognitive-immune-language-threat-signatures.mjs';
+import './cognitive-immune-plugin-runtime-gate.mjs';
 import { PluginMessageIngress } from '../src/organism/integration/neko/PluginMessageIngress.ts';
 import { externalGoalForRuntimeInput, shouldInvokeLanguageForRuntimeStep } from '../src/organism/core/RuntimeInputPolicy.ts';
 
