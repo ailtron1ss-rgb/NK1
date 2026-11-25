@@ -1606,11 +1606,11 @@ export class OrganismRuntime {
       shadowSurprise01:clamp01(shadowTransition.surprise),
     });
     if (grounded.source==='external') {
+      // Preserve the exact executor object + verifier capability. Never flatten
+      // authorization into caller-controlled proof labels or confidence scalars.
       this.core.recordGroundedExternalOutcome({
-        at:cycle.state.at, action:String(embodiedAction.action), status:embodiedAction.status, proofClass:grounded.proofClass,
-        verified01:grounded.verified01, independent01:grounded.independent01, evidence01:grounded.evidence01,
-        consequence01:grounded.consequence01, claim:postcondition.notes??grounded.reason, provenanceId:`outcome:${cycle.state.tick}:${embodiedAction.executionId}`,
-        divergence01:shadowResolution.divergence01,
+        result:embodiedAction,
+        verification:postcondition,
       });
     }
     if(shadowResolution.commitShadow){
