@@ -673,6 +673,54 @@ export class OrganismRuntime {
     return false;
   }
 
+  /** One canonical route for every ASR consumer: screen first, then wake, observe and publish. */
+  private async readAdmittedVoiceInput(
+    salience: number,
+    evidenceSuffix?: string,
+  ): Promise<{ rawText: string; cleanText: string } | null> {
+    const input = await readVoiceInput(this.embodiment);
+    const rawText = input?.text ?? null;
+    if (!rawText || !input) return null;
+    const cleanText = rawText.trim().slice(0, 4000);
+    if (!cleanText) return null;
+    const evidence = speechObservationEvidence(input, evidenceSuffix);
+    if (!await this.admitExternalSpeechTranscript(cleanText, evidence)) return null;
+
+    // Quarantined speech never reaches any of these side effects.
+    this.embodiment.userActivity();
+    this.publishNekoPluginVoiceTranscriptFinal(cleanText);
+    this.core.recordMultimodalObservation({
+      modality: 'speech',
+      summary: cleanText.slice(0, 220),
+      confidence: input.confidence01 ?? .86,
+      salience,
+      evidence,
+      content: cleanText,
+    });
+    return { rawText, cleanText };
+  }
+
+  /** Register the agent-facing microphone tool through the same ASR admission path as listen()/voiceTurn(). */
+  private registerAndroidListenActionTool(): void {
+    this.core.registerActionTool({
+      id: 'android.listen',
+      capability: 'android.stt',
+      destructive: false,
+      inputContract: { type: 'object', properties: {}, required: [], additionalProperties: false, maxProperties: 0 },
+      outputContract: {
+        type: 'object',
+        properties: { ok: { type: 'boolean' } },
+        required: ['ok'],
+        additionalProperties: true,
+        maxProperties: 2,
+      },
+      execute: async () => {
+        const admitted = await this.readAdmittedVoiceInput(.68);
+        return { ok: admitted !== null, text: admitted?.cleanText ?? null };
+      },
+    });
+  }
+
   private publishNekoPluginVoiceTranscriptFinal(text: string): void {
     const bridge = this.nekoPluginVoiceTranscriptBridge;
     const transcript = typeof text === 'string' ? text.trim().slice(0, 4000) : '';
@@ -819,8 +867,7 @@ export class OrganismRuntime {
       const snap = this.core.snapshot();
       await this.embodiment.init(snap.facets.embodiment?.body);
       this.embodiedRecovery.restore(snap.facets.embodiment?.embodiedRecovery);
-      // Security regression coverage: this sensor action must cross the shared ASR admission boundary.
-      this.core.registerActionTool({ id:'android.listen', capability:'android.stt', destructive:false, inputContract:{type:'object',properties:{},required:[],additionalProperties:false,maxProperties:0}, outputContract:{type:'object',properties:{ok:{type:'boolean'}},required:['ok'],additionalProperties:true,maxProperties:2}, execute:async()=>{ const text=await this.embodiment.listen(); return {ok:text!=null,text:text?.slice(0,4000) ?? null}; } });
+      this.registerAndroidListenActionTool();
       this.core.registerActionTool({ id:'organism.project.device', capability:'project.device.read', destructive:false, projectAllowed:true, inputContract:{type:'object',properties:{},required:[],additionalProperties:false,maxProperties:0}, outputContract:{type:'object',properties:{ok:{type:'boolean'},verified:{type:'boolean'},evidenceSource:{type:'string',enum:['device','host-fallback']},independenceKey:{type:'string',minLength:1,maxLength:180},battery01:{type:'number',minimum:0,maximum:1},thermal01:{type:'number',minimum:0,maximum:1},cpuLoad01:{type:'number',minimum:0,maximum:1},ramPressure01:{type:'number',minimum:0,maximum:1},awake:{type:'boolean'},sampledAt:{type:'number',minimum:0},staleMs:{type:'number',minimum:0},error:{type:'string',minLength:1,maxLength:80}},required:['ok','verified','evidenceSource','independenceKey'],additionalProperties:false,maxProperties:12}, execute:async()=>{ const b=this.embodiment.snapshot(); const sampleAt=b.telemetry.sampledAt; const fresh=b.telemetry.source==='android-termux' && b.telemetry.staleMs===0 && Number.isFinite(sampleAt) && sampleAt>0; return {ok:fresh,verified:fresh,evidenceSource:fresh?'device':'host-fallback',independenceKey:`device:${Number.isFinite(sampleAt)?sampleAt:'unavailable'}`,...(Number.isFinite(b.telemetry.battery01)?{battery01:b.telemetry.battery01}:{}),...(Number.isFinite(b.telemetry.thermalPressure01)?{thermal01:b.telemetry.thermalPressure01}:{}),...(Number.isFinite(b.telemetry.cpuLoad01)?{cpuLoad01:b.telemetry.cpuLoad01}:{}),...(Number.isFinite(b.telemetry.ramPressure01)?{ramPressure01:b.telemetry.ramPressure01}:{}),...(typeof b.awake==='boolean'?{awake:b.awake}:{}),...(Number.isFinite(sampleAt)?{sampledAt:sampleAt}:{}),...(Number.isFinite(b.telemetry.staleMs)?{staleMs:b.telemetry.staleMs}:{}),...(fresh?{}:{error:'android-telemetry-not-fresh'})}; } });
       this.core.registerActionTool({ id:'organism.project.world', capability:'project.world.read', destructive:false, projectAllowed:true, inputContract:{type:'object',properties:{},required:[],additionalProperties:false,maxProperties:0}, outputContract:{type:'object',properties:{ok:{type:'boolean',enum:[true]},evidenceSource:{type:'string',enum:['simulator']},independenceKey:{type:'string',minLength:1,maxLength:180},tick:{type:'integer',minimum:0}},required:['ok','evidenceSource','independenceKey','tick'],additionalProperties:true,maxProperties:16}, execute:async()=>{ const c=this.environment.observationContext(); return {ok:true,evidenceSource:'simulator',independenceKey:`sim-world:${c.tick}`,tick:c.tick,location:c.location,energy:c.energy,attention:c.attention,uncertainty:c.uncertainty,facts:c.facts.slice(-12),objects:c.objects.slice(-12),events:c.events.slice(-12)}; } });
       this.embodiment.setSpeechGatewayDispatcher(async(text,ttsOptions,speechEventId)=>{
@@ -2885,24 +2932,8 @@ export class OrganismRuntime {
   }
   async listen(): Promise<string | null> {
     return this.enqueue(async () => {
-      const input = await readVoiceInput(this.embodiment);
-      const text = input?.text ?? null;
-      if(text && input){
-        const clean=text.trim().slice(0,4000);
-        const evidence=speechObservationEvidence(input);
-        if (!await this.admitExternalSpeechTranscript(clean, evidence)) return null;
-        this.embodiment.userActivity();
-        this.publishNekoPluginVoiceTranscriptFinal(clean);
-        this.core.recordMultimodalObservation({
-          modality:'speech',
-          summary:clean.slice(0,220),
-          confidence:input.confidence01 ?? .86,
-          salience:.68,
-          evidence,
-          content:clean,
-        });
-      }
-      return text;
+      const admitted = await this.readAdmittedVoiceInput(.68);
+      return admitted?.rawText ?? null;
     });
   }
   async voiceStatus(){ return this.enqueue(async ()=>({voice:this.embodiment.voiceSnapshot(),body:this.embodiment.snapshot(),multimodal:this.core.multimodalSnapshot()})); }
@@ -2910,17 +2941,9 @@ export class OrganismRuntime {
   async interruptVoice(reason='manual'): Promise<boolean> { return this.embodiment.markVoiceInterruption(reason); }
   async voiceTurn(options:{deliberate?:boolean;speak?:boolean}={}){
     return this.enqueue(async ()=>{
-      const input = await readVoiceInput(this.embodiment);
-      const text = input?.text ?? null;
-      if(!text) return {text:null,step:null,spoken:false,voice:this.embodiment.voiceSnapshot()};
-      const clean=text.trim().slice(0,4000);
-      const evidence=input ? speechObservationEvidence(input,'voice-turn') : ['termux-speech-to-text','voice-turn'];
-      if (!await this.admitExternalSpeechTranscript(clean, evidence)) {
-        return {text:null,step:null,spoken:false,voice:this.embodiment.voiceSnapshot()};
-      }
-      this.embodiment.userActivity();
-      this.publishNekoPluginVoiceTranscriptFinal(clean);
-      this.core.recordMultimodalObservation({modality:'speech',summary:clean.slice(0,220),confidence:input?.confidence01 ?? .86,salience:.74,evidence,content:clean});
+      const admitted = await this.readAdmittedVoiceInput(.74, 'voice-turn');
+      if(!admitted) return {text:null,step:null,spoken:false,voice:this.embodiment.voiceSnapshot()};
+      const clean = admitted.cleanText;
       await this.core.beginBatch();
       try {
         const step=await this.stepInternal(clean,{deliberate:Boolean(options.deliberate)});
