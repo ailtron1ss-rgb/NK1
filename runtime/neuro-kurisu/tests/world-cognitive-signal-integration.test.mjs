@@ -464,7 +464,7 @@ test('B273 credits a multi-step skill only after every planned action has a matc
     'learned skill must contain only the exact, fully executed action sequence');
 });
 
-test('B273 rejects off-plan actions without positive goal or skill credit', () => {
+test('B273 does not credit a plan-derived skill when governance selects an off-plan action', () => {
   const lifecycle = new B273AutonomousGoalLifecycle();
   const step = lifecycle.step(stableLifecycleInput(10));
   const wrongAction = ['respond', 'explore', 'verify', 'rest', 'reflect', 'wait', 'defer']
@@ -477,10 +477,12 @@ test('B273 rejects off-plan actions without positive goal or skill credit', () =
   const after = lifecycle.snapshot();
 
   assert.equal(result.offPlan, true);
-  assert.equal(after.learningUpdates, before.learningUpdates);
-  assert.equal(after.goals.find(g => g.id === step.goalId).progress01,
-    before.goals.find(g => g.id === step.goalId).progress01);
-  assert.equal(after.skills.length, 0);
+  assert.equal(after.learningUpdates, before.learningUpdates + 1,
+    'the actual outcome may inform the same active goal, but not the abandoned plan');
+  assert.equal(after.outcomeHistory.length, before.outcomeHistory.length + 1);
+  assert.equal(after.outcomeHistory.at(-1).onPlan, false);
+  assert.equal(after.skills.length, 0,
+    'an off-plan action must never certify the unexecuted planned sequence');
   assert.equal(after.offPlanOutcomes, before.offPlanOutcomes + 1);
   assert.equal(after.planExecution, null);
 });
