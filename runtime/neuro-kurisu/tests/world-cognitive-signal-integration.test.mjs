@@ -86,11 +86,12 @@ test('world conflict and prediction disagreement modulate appraisal without repl
 
 test('WorldSubsystemRuntime exports a read-only provenance-aware cognitive signal', () => {
   const runtime = new WorldSubsystemRuntime();
+  const now = Date.now();
   const initial = defaultGroundedWorldState();
   const snapshot = {
     ...initial,
     revision: 17,
-    lastAt: 200,
+    lastAt: now,
     location: 'lab',
     uncertainty01: .40,
     confidence01: .60,
@@ -100,8 +101,8 @@ test('WorldSubsystemRuntime exports a read-only provenance-aware cognitive signa
       kind: 'object',
       confidence01: .8,
       present01: 1,
-      firstSeenAt: 100,
-      lastSeenAt: 200,
+      firstSeenAt: now - 100,
+      lastSeenAt: now,
       modalities: ['vision', 'semantic'],
       trackId: 'door-1',
       trackAliases: [],
@@ -117,7 +118,7 @@ test('WorldSubsystemRuntime exports a read-only provenance-aware cognitive signa
       id: 'event-17',
       label: 'door-transition',
       confidence01: .7,
-      lastAt: 200,
+      lastAt: now,
       persistence01: .5,
       evidenceKind: 'conflict',
       modalityEvidenceKinds: { vision: 'observed', predictor: 'conflict' },
