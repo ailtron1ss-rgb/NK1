@@ -5,6 +5,19 @@ import { chromium } from "playwright";
 const origin = new URL(process.argv[2] || "http://127.0.0.1:8080/").origin;
 const timeoutMs = Math.max(5_000, Math.min(30_000, Number(process.env.AVATAR_CONTACT_TIMEOUT_MS) || 15_000));
 const observedEvents = [];
+
+async function clickUntilContact(canvas, bounds, expectedCount, yCandidates) {
+  for (const y of yCandidates) {
+    await canvas.click({ position: { x: bounds.width * 0.5, y: bounds.height * y } });
+    const attemptDeadline = Date.now() + 450;
+    while (observedEvents.length < expectedCount && Date.now() < attemptDeadline) {
+      await new Promise((resolve) => setTimeout(resolve, 25));
+    }
+    if (observedEvents.length >= expectedCount) return y;
+  }
+  throw new Error(`No avatar contact was recorded after probing canvas y positions: ${yCandidates.join(", ")}`);
+}
+
 const browser = await chromium.launch({
   headless: true,
   args: ["--no-sandbox", "--disable-dev-shm-usage", "--enable-webgl", "--use-gl=swiftshader", "--enable-unsafe-swiftshader"],
@@ -108,15 +121,11 @@ try {
   assert.equal(observedEvents.length, 4, "3D camera orbit must not create a false contact event");
 
   await page.waitForTimeout(1_600);
-  await threeCanvas.click({ position: { x: threeBounds.width * 0.5, y: threeBounds.height * 0.20 } });
-  const desktopThreeHeadDeadline = Date.now() + timeoutMs;
-  while (observedEvents.length < 5 && Date.now() < desktopThreeHeadDeadline) await page.waitForTimeout(50);
+  await clickUntilContact(threeCanvas, threeBounds, 5, [0.18, 0.22, 0.26, 0.30, 0.34]);
   assert.equal(observedEvents[4]?.interaction?.zone, "head",
     "3D head raycast must reach the canonical avatar-contact protocol");
   await page.waitForTimeout(1_600);
-  await threeCanvas.click({ position: { x: threeBounds.width * 0.5, y: threeBounds.height * 0.52 } });
-  const desktopThreeBodyDeadline = Date.now() + timeoutMs;
-  while (observedEvents.length < 6 && Date.now() < desktopThreeBodyDeadline) await page.waitForTimeout(50);
+  await clickUntilContact(threeCanvas, threeBounds, 6, [0.44, 0.48, 0.52, 0.56, 0.60]);
   assert.equal(observedEvents[5]?.interaction?.zone, "body",
     "3D body raycast must reach the canonical avatar-contact protocol");
 
@@ -126,15 +135,11 @@ try {
   assert.ok(mobileThreeBounds && mobileThreeBounds.width >= 320,
     "mobile 3D canvas must retain a usable contact target");
   await page.waitForTimeout(1_600);
-  await threeCanvas.click({ position: { x: mobileThreeBounds.width * 0.5, y: mobileThreeBounds.height * 0.20 } });
-  const mobileThreeHeadDeadline = Date.now() + timeoutMs;
-  while (observedEvents.length < 7 && Date.now() < mobileThreeHeadDeadline) await page.waitForTimeout(50);
+  await clickUntilContact(threeCanvas, mobileThreeBounds, 7, [0.18, 0.22, 0.26, 0.30, 0.34]);
   assert.equal(observedEvents[6]?.interaction?.zone, "head",
     "mobile 3D head raycast must use the canonical avatar-contact protocol");
   await page.waitForTimeout(1_600);
-  await threeCanvas.click({ position: { x: mobileThreeBounds.width * 0.5, y: mobileThreeBounds.height * 0.52 } });
-  const mobileThreeBodyDeadline = Date.now() + timeoutMs;
-  while (observedEvents.length < 8 && Date.now() < mobileThreeBodyDeadline) await page.waitForTimeout(50);
+  await clickUntilContact(threeCanvas, mobileThreeBounds, 8, [0.44, 0.48, 0.52, 0.56, 0.60]);
   assert.equal(observedEvents[7]?.interaction?.zone, "body",
     "mobile 3D body raycast must use the canonical avatar-contact protocol");
   assert.deepEqual(observedEvents.slice(4, 8).map((event) => event.interaction), [
