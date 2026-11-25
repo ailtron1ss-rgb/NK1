@@ -101,7 +101,8 @@ export class P66InteroceptiveHomeostasis {
     const stressAlpha=timeAlpha(elapsedMs,30_000);
     const capacityAlpha=timeAlpha(elapsedMs,60_000);
     const stable=pressure<.28;
-    const stableDurationMs=stable?Math.min(Number.MAX_SAFE_INTEGER,this.state.stableDurationMs+elapsedMs):0;
+    const stableElapsedMs=this.state.cycles===0?0:elapsedMs;
+    const stableDurationMs=stable?Math.min(Number.MAX_SAFE_INTEGER,this.state.stableDurationMs+stableElapsedMs):0;
     this.state.cycles=Math.min(Number.MAX_SAFE_INTEGER,this.state.cycles+1);
     this.state.modeCounts[mode]=Math.min(Number.MAX_SAFE_INTEGER,(this.state.modeCounts[mode]??0)+1);
     if(source==='body-telemetry')this.state.bodyTelemetryObservations=Math.min(Number.MAX_SAFE_INTEGER,this.state.bodyTelemetryObservations+1);

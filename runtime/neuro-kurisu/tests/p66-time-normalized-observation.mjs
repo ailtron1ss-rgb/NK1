@@ -42,7 +42,8 @@ assert.equal(dedup.snapshot().invalidTimestampObservations, 1);
 const stable = new P66InteroceptiveHomeostasis();
 const calm = { ...stressed, energy01: .68, thermal01: .2, capacity01: .72, load01: .2, uncertainty01: .1, predictionError01: .1 };
 for (let at = 1_000; at <= 11_000; at += 1_000) stable.observe({ tick: at / 1000, at, ...calm, awake: true, source: 'cognitive-cycle' });
-assert.ok(stable.snapshot().stableDurationMs >= 9_000, 'stable duration must accumulate wall-clock time, not just count cycles');
+assert.equal(stable.snapshot().stableDurationMs, 10_000,
+  'the first stable observation establishes a baseline; only the ten elapsed one-second intervals count');
 
 const legacy = new P66InteroceptiveHomeostasis();
 const old = { ...afterFirst };
