@@ -3150,6 +3150,15 @@ export class OrganismRuntime {
     });
   }
 
+  /** Update proactive-delivery consent on the serialized runtime command queue. */
+  async setAutonomousDialogueConsent(consentGranted: boolean) {
+    return this.enqueue(async () => {
+      const policy = this.core.setAutonomousInitiativeConsent(consentGranted);
+      await this.core.flush();
+      return policy;
+    });
+  }
+
   /** Mark a proactive chat turn delivered exactly once after the UI has stored it. */
   async acknowledgeAutonomousDialogue(id: string): Promise<boolean> {
     return this.enqueue(async () => {
