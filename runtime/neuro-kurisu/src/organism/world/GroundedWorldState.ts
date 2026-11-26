@@ -239,17 +239,35 @@ export class GroundedWorldState {
     postconditionVerification:OutcomeVerification;
     divergence01?:number;
   }){
-    const actionResult=input?.embodiedAction;
-    const verification=input?.postconditionVerification;
-    const at=Number.isSafeInteger(actionResult?.at)&&actionResult.at>=0?actionResult.at:this.state.lastAt;
-    const action=typeof actionResult?.action==='string'?actionResult.action.trim().slice(0,80)||'unknown':'unknown';
-    const status=typeof actionResult?.status==='string'?actionResult.status.slice(0,32):'unknown';
-    const realityClass=typeof actionResult?.realityClass==='string'?actionResult.realityClass.slice(0,40):'unknown';
-    const executionId=typeof actionResult?.executionId==='string'?actionResult.executionId.slice(0,100):'unbound';
-    const trusted=isTrustedEmbodiedOutcomeVerification(verification,actionResult);
-    const verifiedWorldEffect=trusted&&verification.verified===true&&verification.externalObservation===true&&verification.basis==='external-postcondition';
-    const confidence=verifiedWorldEffect?clamp(verification.confidence01):0;
-    const divergence=clamp(Number(input?.divergence01??0));
+    // This public boundary may receive caller-controlled JavaScript values.
+    // Inspect own data descriptors first; a Proxy/accessor can never become
+    // an executable evidence source merely because it resembles a host receipt.
+    if(!isPlainDataRecord(input)){
+      return {revision:this.state.revision,eventId:'',confidence01:0,verified01:0,independent01:0,lastHash:this.state.lastHash};
+    }
+    const rawAction=ownDataValue(input,'embodiedAction');
+    const actionResult=isPlainDataRecord(rawAction)?rawAction as unknown as EmbodiedActionResult:null;
+    const rawVerification=ownDataValue(input,'postconditionVerification');
+    const verification=isPlainDataRecord(rawVerification)?rawVerification as unknown as OutcomeVerification:null;
+    const atRaw=actionResult?ownDataValue(actionResult,'at'):undefined;
+    const at=typeof atRaw==='number'&&Number.isSafeInteger(atRaw)&&atRaw>=0?atRaw:this.state.lastAt;
+    const rawActionName=actionResult?ownDataValue(actionResult,'action'):undefined;
+    const action=typeof rawActionName==='string'?rawActionName.trim().slice(0,80)||'unknown':'unknown';
+    const rawStatus=actionResult?ownDataValue(actionResult,'status'):undefined;
+    const status=typeof rawStatus==='string'?rawStatus.slice(0,32):'unknown';
+    const rawRealityClass=actionResult?ownDataValue(actionResult,'realityClass'):undefined;
+    const realityClass=typeof rawRealityClass==='string'?rawRealityClass.slice(0,40):'unknown';
+    const rawExecutionId=actionResult?ownDataValue(actionResult,'executionId'):undefined;
+    const executionId=typeof rawExecutionId==='string'?rawExecutionId.slice(0,100):'unbound';
+    const trusted=Boolean(actionResult&&verification&&isTrustedEmbodiedOutcomeVerification(verification,actionResult));
+    const verifiedWorldEffect=Boolean(
+      trusted&&verification
+      &&ownDataValue(verification,'verified')===true
+      &&ownDataValue(verification,'externalObservation')===true
+      &&ownDataValue(verification,'basis')==='external-postcondition',
+    );
+    const confidence=verifiedWorldEffect&&verification?clamp(Number(ownDataValue(verification,'confidence01')??0)):0;
+    const divergence=clamp(Number(ownDataValue(input,'divergence01')??0));
     // The executor ID is the idempotency key; timestamps are metadata, not identity.
     const eventId='gw-external-'+stableHash(executionId==='unbound'?at+':'+action:executionId);
     const existing=this.state.events.find(row=>row.id===eventId);
@@ -264,7 +282,8 @@ export class GroundedWorldState {
       };
     }
     const eventLabel=norm((verifiedWorldEffect?'external-observed':'external-receipt')+':'+action+':'+status+':'+realityClass);
-    const fact=verifiedWorldEffect?norm('external-observed:'+action+':'+(verification.observedPostcondition??'postcondition')):'';
+    const observedPostcondition=verification?ownDataValue(verification,'observedPostcondition'):undefined;
+    const fact=verifiedWorldEffect?norm('external-observed:'+action+':'+(typeof observedPostcondition==='string'?observedPostcondition:'postcondition')):'';
     const divergenceFact=verifiedWorldEffect?norm('shadow-divergence:'+action+':'+divergence.toFixed(3)):'';
     const events=new Map(this.state.events.map(row=>[row.id,{...row}]));
     events.set(eventId,{
