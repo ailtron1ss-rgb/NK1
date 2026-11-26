@@ -328,3 +328,44 @@ console.log('ORGANISM_RUNTIME_MODULE_INTEGRATION=PASS');
   assert.equal(flushCalls, 1, 'continuity ledger flush must be attempted despite checkpoint failure');
   assert.equal(closeCalls, 1, 'continuity ledger close must still be attempted after flush failure');
 }
+
+
+// Optional extension initialization failure must not abort canonical Core boot.
+// The failed module remains visible in health and diagnostics for recovery.
+{
+  const { OrganismRuntime } = await import('../src/organism/core/OrganismRuntime.ts');
+  const durable = backingStore();
+  const events = [];
+  const broken = fixture(events);
+  broken.module.initialize = () => {
+    events.push('initialize-failed');
+    throw new Error('optional-module-init-offline');
+  };
+  const host = new CognitiveModuleRuntime({ hostApiVersion: 1, grants: {} });
+  host.register({
+    manifest: manifest('memory.optional-extension'),
+    factory: () => broken.module,
+  });
+  const organism = new OrganismRuntime({
+    stateFile: `/tmp/nk1-optional-extension-${process.pid}.json`,
+    stateStore: durable,
+    autoRun: false,
+    enableLanguage: false,
+    cognitiveModuleRuntime: host,
+  });
+
+  await organism.init();
+  assert.equal(organism.cognitiveModuleDiagnostics().enabled, true);
+  assert.match(
+    organism.cognitiveModuleDiagnostics().activationError ?? '',
+    /module-initialize-failed/,
+  );
+  assert.equal(organism.core.operationalStatusSnapshot().tick, 0,
+    'canonical Core must remain initialized when an optional module fails');
+  const health = await organism.cognitiveModuleHealth();
+  assert.equal(health.ok, false);
+  assert.equal(health.modules[0].status, 'failed');
+  assert.match(health.modules[0].reason ?? '', /optional-module-init-offline/);
+  assert.ok(events.includes('initialize-failed'));
+  await organism.stop();
+}
