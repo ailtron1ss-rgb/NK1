@@ -567,6 +567,43 @@ export class CognitiveModuleRuntime {
     return this.list();
   }
 
+  /**
+   * Capture active module state into the configured store without quiescing or
+   * stopping modules. Each module is isolated: a failed snapshot is reported
+   * while the last successfully persisted envelope remains available.
+   */
+  async snapshotAll(): Promise<{ captured: string[]; failed: Array<{ id: string; reason: string }> }> {
+    const captured: string[] = [];
+    const failed: Array<{ id: string; reason: string }> = [];
+    for (const id of this.topologicalOrder()) {
+      const record = this.records.get(id);
+      if (record?.status !== 'active' || !record.module) continue;
+      try {
+        const state = clonePlainData(await record.module.snapshot());
+        const capturedAt = this.clock();
+        if (!Number.isFinite(capturedAt) || capturedAt < 0) {
+          throw fail('module-state-time-invalid', id);
+        }
+        const envelope: CognitiveModuleStateEnvelopeV1 = {
+          schemaVersion: 1,
+          moduleId: record.manifest.id,
+          moduleVersion: record.manifest.version,
+          stateSchemaVersion: record.manifest.stateSchemaVersion,
+          capturedAt,
+          state,
+        };
+        if (this.stateStore) await this.stateStore.save(envelope);
+        captured.push(id);
+      } catch (error) {
+        failed.push({
+          id,
+          reason: String(error instanceof Error ? error.message : error).slice(0, 180),
+        });
+      }
+    }
+    return { captured, failed };
+  }
+
   async health(): Promise<CognitiveModuleRuntimeHealth> {
     const modules: CognitiveModuleHealthRow[] = [];
     for (const record of this.records.values()) {
