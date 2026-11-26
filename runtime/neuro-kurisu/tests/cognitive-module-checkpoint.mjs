@@ -72,6 +72,8 @@ function persisted() {
   firstModule.state.counter = 42;
 
   await checkpoint.save(persisted());
+  assert.equal(checkpoint.diagnostics().capturedAt, 100,
+    'checkpoint diagnostics must report the durable capture time, not the read time');
   const durableState = durable.inspect();
   assert.equal(durableState.system.cognitiveModuleRuntime.schemaVersion, 1);
   assert.equal(durableState.system.cognitiveModuleRuntime.modules.length, 1);
@@ -80,8 +82,10 @@ function persisted() {
   assert.equal(events.includes('quiesce'), false);
   assert.equal(events.includes('shutdown'), false);
 
-  const restoredCheckpoint = new CognitiveModuleCheckpointStore(durable);
+  const restoredCheckpoint = new CognitiveModuleCheckpointStore(durable, () => 200);
   await restoredCheckpoint.load();
+  assert.equal(restoredCheckpoint.diagnostics().capturedAt, 100,
+    'restart diagnostics must retain the persisted module checkpoint time');
   const restoredEvents = [];
   const restoredModule = fixture(restoredEvents);
   const restoredHost = new CognitiveModuleRuntime({
