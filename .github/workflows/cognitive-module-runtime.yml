@@ -7,7 +7,10 @@ on:
     paths:
       - 'runtime/neuro-kurisu/src/organism/index.ts'
       - 'runtime/neuro-kurisu/src/organism/core/CognitiveModuleRuntime.ts'
+      - 'runtime/neuro-kurisu/src/organism/core/CognitiveModuleRuntimePersistence.ts'
+      - 'runtime/neuro-kurisu/src/organism/core/CognitiveModuleCheckpointStore.ts'
       - 'runtime/neuro-kurisu/tests/cognitive-module-runtime.mjs'
+      - 'runtime/neuro-kurisu/tests/cognitive-module-runtime-persistence.mjs'
       - '.github/workflows/cognitive-module-runtime.yml'
   pull_request:
     branches:
@@ -43,6 +46,9 @@ jobs:
       - name: Run cognitive module lifecycle contract
         working-directory: runtime/neuro-kurisu
         run: node --experimental-sqlite --experimental-strip-types tests/cognitive-module-runtime.mjs
+      - name: Run canonical persistence wiring integration
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-sqlite --experimental-strip-types tests/cognitive-module-runtime-persistence.mjs
       - name: Typecheck runtime
         run: npm --prefix runtime/neuro-kurisu run typecheck
       - name: Audit architecture boundaries
