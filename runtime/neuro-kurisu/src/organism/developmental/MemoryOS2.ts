@@ -2355,7 +2355,9 @@ export class MemoryOS2{
    // `valueAdjustment` lets an external policy re-weight retention value per item
    // (e.g. channel reliability from the assimilated write policy). It is clamped so a
    // caller can nudge eviction order but never invert a clearly valuable memory.
-   const adjust=(m:MemoryItem2)=>{if(!options.valueAdjustment)return 1;const raw=Number(options.valueAdjustment(m));return clamp(Number.isFinite(raw)?raw:1,.5,1.5);};
+      // Local bound: the module-level `clamp` normalizes to 0..1, which would silently turn every
+   // protective weight (>1) into 1 and leave only demotion working.
+   const adjust=(m:MemoryItem2)=>{if(!options.valueAdjustment)return 1;const raw=Number(options.valueAdjustment(m));return Math.max(.5,Math.min(1.5,Number.isFinite(raw)?raw:1));};
    const density=(m:MemoryItem2)=>{const bytes=Math.max(96,estimateMemoryBytes(m));return clamp(Math.max(0,scoreValue(m)-.30*harm(m)+.05*clamp(Number(m.sourceAuthority01??.5)))*Math.sqrt(512/bytes)*adjust(m));};
    while(this.state.estimatedBytes>budget){
      const candidates=this.state.items.filter(m=>!protectedIds.has(m.id)&&m.epistemicStatus!=='quarantined'&&m.kind!=='identity'&&m.kind!=='autobiographical');
