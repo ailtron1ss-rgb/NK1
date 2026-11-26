@@ -162,3 +162,16 @@ After reconciliation, rerun the full required exact-head Actions matrix and sema
 - Canonical source / release: **not merged / not released**.
 
 No device performance or physical durability claim is made.
+
+
+---
+
+## Restart-shutdown regression closure — 2026-11-26
+
+- A fresh exact-head matrix run on `2657857b88640ddf63d56408081a9134898c7fce` exposed `runtime-checkpoint-envelope-input-invalid` in the legacy `big-pass-155-restart-persistence.mjs` restart scenario ([run 45795721115](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45795721115)).
+- Inspection showed that the test invoked asynchronous `r1.stop()` and `r2.stop()` without awaiting shutdown. That allowed the next runtime to be opened before the previous runtime had completed its durable shutdown, while both instances used the same journal paths.
+- The test now awaits both shutdowns before creating the next runtime and before removing temporary files. Change: `3025a35a950365fc4d371e6a6b79dd9c7538593b`.
+- Focused workflow [NK1 P0 ActionGateway receipt to SelfAuthorship recovery #567](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45796275596) completed **SUCCESS** on exact code head `3025a35a950365fc4d371e6a6b79dd9c7538593b`. The formerly failing `Real process restart persistence` step now reports `BIG_PASS_155_RESTART=PASS cycles=1 decisions=1 digestRestored=true`; all preceding persistence/action-recovery steps also passed.
+- This focused runner reports syntax-only validation of 748 TypeScript files because its workflow does not install the TypeScript compiler. Semantic `tsc` remains separately required from the checkpoint-specific and module-audit workflows.
+- This closes the observed test-order/shutdown regression on the focused run. It does not prove multi-process journal locking or physical power-loss safety.
+- The full PR matrix for the latest head must still complete with no failures; source synchronization, joint #1170/#1174 integration, independent review and Android/Termux soak remain open.
