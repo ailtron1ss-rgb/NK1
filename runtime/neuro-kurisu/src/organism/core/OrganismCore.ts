@@ -9113,14 +9113,8 @@ export class OrganismCore {
             (typeof outcome.outcomeId !== 'string' || !outcome.outcomeId.trim() ||
                 outcome.outcomeId.trim().length > 180 || /[\u0000-\u001f\u007f]/.test(outcome.outcomeId)))
             throw new Error('invalid-feedback-outcome-id');
-        const feedbackOutcomeId = outcome.outcomeId === undefined
-            ? `feedback:${trace?.id ?? state.tick}`
-            : outcome.outcomeId.trim();
-        const feedbackEventKey = sha256Stable({ decisionId: trace?.id ?? null, outcomeId: feedbackOutcomeId });
-        const feedbackOutcomeEventId = `cef:outcome:${feedbackEventKey.slice(0, 56)}`;
-        const feedbackInputFingerprint = sha256Stable({
+        const feedbackContentFingerprint = sha256Stable({
             decisionId: trace?.id ?? null,
-            outcomeId: feedbackOutcomeId,
             success: outcome.success ?? null,
             reward: outcome.reward ?? null,
             surprise: outcome.surprise ?? null,
@@ -9132,6 +9126,19 @@ export class OrganismCore {
             evaluationContextFamily: outcome.evaluationContextFamily ?? null,
             evaluationPhase: outcome.evaluationPhase ?? null,
             observation: outcome.observation ?? null,
+        });
+        // When the caller omits outcomeId, derive a stable ID from the payload.
+        // Identical retries remain idempotent, while a genuinely new observation
+        // about the same decision is allowed as a separate outcome.
+        const feedbackOutcomeId = outcome.outcomeId === undefined
+            ? `feedback:${trace?.id ?? state.tick}:${feedbackContentFingerprint.slice(0, 24)}`
+            : outcome.outcomeId.trim();
+        const feedbackEventKey = sha256Stable({ decisionId: trace?.id ?? null, outcomeId: feedbackOutcomeId });
+        const feedbackOutcomeEventId = `cef:outcome:${feedbackEventKey.slice(0, 56)}`;
+        const feedbackInputFingerprint = sha256Stable({
+            decisionId: trace?.id ?? null,
+            outcomeId: feedbackOutcomeId,
+            contentFingerprint: feedbackContentFingerprint,
         });
         const feedbackFinalizationEventId = `cef:feedback-finalized:${feedbackEventKey.slice(0, 48)}`;
         const priorFeedbackFinalization = this.cognitiveRuntime.cognitiveEventFabric.findById(feedbackFinalizationEventId);
