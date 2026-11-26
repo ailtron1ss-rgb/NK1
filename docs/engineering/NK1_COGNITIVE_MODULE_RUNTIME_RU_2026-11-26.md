@@ -58,8 +58,9 @@ Host выдаёт grants отдельно от манифеста:
       grants: {
         'memory.visual-index': ['memory.read', 'memory.index.write'],
       },
-      stateStore: moduleStateStore,
     });
+
+При подключении через `OrganismRuntime` host автоматически привязывается к `CognitiveModuleCheckpointStore`; вручную передавать отдельный долговременный store не требуется. Показанный ниже `stateStore` остаётся допустимым для изолированных unit-тестов и standalone-host сценариев.
 
 Модуль активируется только если каждая объявленная capability присутствует в host grants. В его контекст попадает пересечение двух наборов: запрошенные capabilities ∩ разрешённые host capabilities. Незаявленные host grants не раскрываются модулю.
 
@@ -100,14 +101,16 @@ Host выдаёт grants отдельно от манифеста:
 
 ## 6. Состояние и миграции
 
-Host принимает инъецируемый адаптер:
+Host использует тот же `JsonStateStore<PersistedOrganism>`, который уже принадлежит `OrganismCore`. `CognitiveModuleCheckpointStore` оборачивает его и размещает envelopes в `PersistedOrganism.system.cognitiveModuleRuntime` внутри того же durable payload. Это не отдельный JSON-файл, не вторая база и не второй владелец истины.
 
-    interface CognitiveModuleStateStore {
-      load(moduleId: string): Promise<CognitiveModuleStateEnvelopeV1 | null>;
-      save(envelope: CognitiveModuleStateEnvelopeV1): Promise<void>;
-    }
+`OrganismRuntime` автоматически:
+1. загружает module envelopes вместе с каноническим состоянием организма;
+2. привязывает host к in-memory `CognitiveModuleStateStore` адаптеру;
+3. активирует модули после восстановления Core и embodiment, но до запуска scheduler/autonomy;
+4. при каждом полном durable checkpoint вызывает `snapshotAll()` для активных модулей без quiesce/shutdown;
+5. при остановке дренирует очередь, останавливает модули в обратном порядке и включает их финальные snapshots в единый `core.flush()`.
 
-Это adapter contract, а не требование создать отдельную базу. В рабочей конфигурации он должен использовать существующий canonical persistence/checkpoint boundary NK1, чтобы не образовать второй независимый источник истины.
+`CognitiveModuleRuntime.bindStateStore()` разрешён только до активации. Это защищает от разделения состояния между разными persistence owners. `CognitiveModuleCheckpointStore` сохраняет последнюю успешную версию envelope, если текущий snapshot конкретного модуля не удался; ошибка фиксируется в `snapshotFailures`, а checkpoint самого организма продолжается.
 
 Envelope связывает module ID и module version, state schema version, timestamp и snapshot state.
 
@@ -122,7 +125,8 @@ Envelope связывает module ID и module version, state schema version, t
 | Нет dependency / цикл | Не вызывает factory и не начинает активацию |
 | Capability отсутствует | Fail-closed до factory |
 | Ошибка load / migration / restore / initialize | Модуль получает статус failed |
-| Ошибка quiesce / snapshot / durable save | Вызывает resume; остаётся active только если resume прошёл |
+| Ошибка quiesce / snapshot / durable save при штатной остановке | Вызывает resume; остаётся active только если resume прошёл |
+| Ошибка `snapshotAll()` на обычном checkpoint | Сохраняет последний успешный envelope, фиксирует `snapshotFailures`, не останавливает модуль и не блокирует checkpoint организма |
 | Ошибка resume после неудачной остановки | Статус failed |
 | Ошибка shutdown после сохранения | Состояние уже сохранено; экземпляр помечается failed, его нельзя объявлять active |
 | Ошибка health | Health result unhealthy, runtime не скрывает ошибку |
@@ -136,11 +140,17 @@ Envelope связывает module ID и module version, state schema version, t
       factory: () => new MemoryVisualIndexModule(),
     });
 
-    await host.activateAll();
-    const health = await host.health();
+    const organism = new OrganismRuntime({
+      stateFile: './nk1-state.json',
+      cognitiveModuleRuntime: host,
+      autoRun: false,
+    });
+    await organism.init();
+    const health = await organism.cognitiveModuleHealth();
+    const diagnostics = organism.cognitiveModuleDiagnostics();
 
-    // graceful stop: dependents stop before dependencies
-    await host.stopAll();
+    // The organism owns orderly shutdown and the final canonical checkpoint.
+    await organism.stop();
 
 Регистрация сама по себе не вызывает factory. Для изолированного включения отдельного модуля его dependencies должны уже быть active. activateAll() проверяет весь граф и активирует его в правильном порядке; при ошибке пытается остановить уже активированные в этом проходе модули в обратном порядке.
 
@@ -152,9 +162,9 @@ Envelope связывает module ID и module version, state schema version, t
 - автоматически исполняемое самопереписывание;
 - внешний marketplace / каталог;
 - promotion модулей без независимого holdout, host admission и rollback;
-- отдельный state store, дублирующий canonical NK1 persistence.
+- отдельная долговременная база или sidecar для module state; state хранится внутри canonical organism checkpoint.
 
-После прототипа эти функции можно добавлять поверх того же manifest/lifecycle contract отдельными этапами.
+После прототипа можно отдельно проектировать hot swap, подписи, sandbox и promotion gates.
 
 ## 10. Проверки и границы доказательств
 
@@ -168,6 +178,11 @@ Envelope связывает module ID и module version, state schema version, t
 - rollback/resume при неудачной записи;
 - quiesce/shutdown failure states;
 - JSON-safe snapshot, __proto__ как обычный ключ и запрет getter execution;
-- health degradation.
+- health degradation;
+- non-disruptive `snapshotAll()` для активных модулей;
+- rebinding state store только до активации;
+- canonical checkpoint round-trip через новый host;
+- сохранение последнего хорошего module snapshot при ошибке одного модуля;
+- фактический `OrganismRuntime.init → flush → stop → restart` integration path.
 
-CI включает pinned TypeScript 5.8.3 semantic typecheck, module lifecycle regression, architecture dependency budget и core ownership audit. Это подтверждает локальный контракт модуля, но не является доказательством полного Android/Termux power-loss soak, внешней sandbox isolation, hot swap или готовности всего NK1 к первому запуску.
+CI включает pinned TypeScript 5.8.3 semantic typecheck, оба module lifecycle/checkpoint regression suite, architecture dependency budget и core ownership audit. Это подтверждает интеграцию на CI, но не является доказательством полного Android/Termux power-loss soak, внешней sandbox isolation, hot swap или готовности всего NK1 к первому запуску.
