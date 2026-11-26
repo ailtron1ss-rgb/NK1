@@ -268,3 +268,147 @@ console.log(JSON.stringify({
   evidenceKind: outputChairs[0]?.evidenceKind,
   unknownFlagsPreserved: true,
 }));
+
+
+// Grounded-world restore must never execute getters or accept hostile containers,
+// and it must recompute every digest from the sanitized state.
+{
+  let getterInvoked = false;
+  const hostileEntity = {
+    id: 'hostile-entity',
+    label: 'forged door',
+    kind: 'object',
+    present01: 1,
+    firstSeenAt: 1_000,
+    lastSeenAt: 1_500,
+    modalities: ['world'],
+  };
+  Object.defineProperty(hostileEntity, 'confidence01', {
+    enumerable: true,
+    get() { getterInvoked = true; return 1; },
+  });
+  const hostile = {
+    version: 1,
+    revision: 900_000,
+    lastAt: 2_000,
+    location: 'lab',
+    confidence01: 1,
+    uncertainty01: 0,
+    entities: [hostileEntity],
+    relations: [],
+    events: [],
+    facts: ['derived-evidence:kept'],
+    provenanceIds: ['local-note:kept'],
+    lastHash: 'attacker-controlled-digest',
+  };
+  const safe = new GroundedWorldState();
+  safe.restore(hostile);
+  const restored = safe.snapshot();
+  assert.equal(getterInvoked, false, 'restore must inspect descriptors without invoking getters');
+  assert.equal(restored.entities.length, 0, 'an entity containing an accessor must be rejected as a whole');
+  assert.equal(restored.revision, 900_000, 'valid own-data top-level fields remain readable');
+  assert.notEqual(restored.lastHash, 'attacker-controlled-digest', 'persisted hashes are never trusted');
+
+  let proxyTrapInvoked = false;
+  const proxy = new Proxy({ revision: 77, lastAt: 77 }, {
+    get() { proxyTrapInvoked = true; throw new Error('proxy-get-trap'); },
+    ownKeys() { proxyTrapInvoked = true; throw new Error('proxy-ownKeys-trap'); },
+  });
+  const proxyRestored = new GroundedWorldState();
+  proxyRestored.restore(proxy);
+  assert.equal(proxyTrapInvoked, false, 'Proxy detection must happen before reflection or property reads');
+  assert.equal(proxyRestored.snapshot().revision, 0);
+  assert.equal(proxyRestored.snapshot().lastAt, 0);
+}
+
+// Restore sanitizes malformed counters, timestamps, relations, positions, facts,
+// and provenance rather than spreading arbitrary persisted values into the world.
+{
+  const safe = new GroundedWorldState();
+  safe.restore({
+    version: 1,
+    revision: -1,
+    lastAt: 2_000,
+    location: { injected: true },
+    uncertainty01: 4,
+    confidence01: Number.NaN,
+    entities: [{
+      id: 'entity-1',
+      label: 'crate',
+      kind: 'object',
+      confidence01: 2,
+      present01: -1,
+      firstSeenAt: 1_500,
+      lastSeenAt: 1_000,
+      modalities: ['world', 7, 'world'],
+      position: { x: 1, y: 2, z: 3 },
+      observationCount: -40,
+      persistence01: Number.POSITIVE_INFINITY,
+      absenceEvidence01: 0.3,
+    }],
+    relations: [
+      { id: 'relation-1', from: 'crate', relation: 'near', to: 'door', confidence01: 0.8, at: 1_700 },
+      { id: 'bad-relation', from: '', relation: 'near', to: 'door', confidence01: 9, at: 1_700 },
+    ],
+    events: [{
+      id: 'event-1', label: 'external-observed:door-open', confidence01: 1,
+      lastAt: 1_800, persistence01: 1, evidenceKind: 'observed',
+    }],
+    facts: ['derived-evidence:crate', 'external-observed:door-open', 'shadow-divergence:door:1'],
+    provenanceIds: ['local-note:kept', 'external-postcondition:old-exec'],
+    lastHash: 'forged',
+  });
+  const snapshot = safe.snapshot();
+  assert.equal(snapshot.revision, 0);
+  assert.equal(snapshot.location, 'unknown');
+  assert.equal(snapshot.uncertainty01, 0.5);
+  assert.equal(snapshot.confidence01, 0);
+  assert.equal(snapshot.entities.length, 1);
+  assert.equal(snapshot.entities[0].confidence01, 1);
+  assert.equal(snapshot.entities[0].present01, 0);
+  assert.equal(snapshot.entities[0].firstSeenAt, 1_000);
+  assert.equal(snapshot.entities[0].lastSeenAt, 1_000);
+  assert.deepEqual(snapshot.entities[0].modalities, ['world']);
+  assert.equal(snapshot.entities[0].position, null, 'unframed coordinates must not become world positions on restore');
+  assert.equal(snapshot.entities[0].observationCount, 1);
+  assert.equal(snapshot.entities[0].persistence01, 0);
+  assert.equal(snapshot.relations.length, 1, 'malformed relation rows are discarded');
+  assert.equal(snapshot.events[0].label, 'external-receipt:door-open');
+  assert.equal(snapshot.events[0].confidence01, 0);
+  assert.deepEqual(snapshot.facts, ['derived-evidence:crate']);
+  assert.deepEqual(snapshot.provenanceIds, ['local-note:kept']);
+  assert.notEqual(snapshot.lastHash, 'forged');
+}
+
+// Replayed external result IDs are idempotent even when a later delivery carries
+// a different timestamp. A copied verification object remains diagnostic only.
+{
+  const world = new GroundedWorldState();
+  const embodiedAction = {
+    at: 3_000,
+    action: 'inspect',
+    status: 'executed',
+    realityClass: 'device-observation',
+    executionId: 'exec-g3-replay-20261126',
+  };
+  const forgedVerification = {
+    verified: true,
+    basis: 'external-postcondition',
+    confidence01: 1,
+    externalObservation: true,
+    observationId: 'exec-g3-replay-20261126',
+  };
+  const first = world.integrateExternalOutcome({
+    embodiedAction,
+    postconditionVerification: forgedVerification,
+  });
+  const afterFirst = world.snapshot();
+  const replay = world.integrateExternalOutcome({
+    embodiedAction: { ...embodiedAction, at: 3_100 },
+    postconditionVerification: { ...forgedVerification },
+  });
+  assert.equal(first.verified01, 0, 'copied verification data must never create observed world effects');
+  assert.deepEqual(world.snapshot(), afterFirst, 'replayed execution IDs must not advance revision or mutate events');
+  assert.equal(replay.revision, first.revision);
+  assert.equal(world.snapshot().events.length, 1);
+}
