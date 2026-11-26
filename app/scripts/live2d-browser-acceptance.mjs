@@ -159,7 +159,10 @@ async function mountProfile(page, profile, screenshotPath) {
       height: canvas?.height || 0,
       hasWebGL: Boolean(gl),
       hasPixiLive2D: Boolean(window.PIXI?.live2d?.Live2DModel),
-      visiblePixels,
+      // This buffer readback is diagnostic only: preserveDrawingBuffer=false can make it empty.
+      // The compositor screenshot pixel sample above is the authoritative rendered-frame check.
+      webglReadbackAlphaPixels: visiblePixels,
+      webglReadbackMayBeEmpty: true,
     };
   });
   render.screenshotPixels = screenshotPixels;
