@@ -2,7 +2,7 @@ import type { WorldContext } from '../core/types.ts';
 import type { P41PerceptionState } from '../cognition/P41SemanticPerception.ts';
 import type { PerceptualEvidenceState } from '../body/PerceptualEvidenceCompiler.ts';
 import type { EmbodiedActionResult } from '../body/EmbodiedActionExecutor.ts';
-import { countOr, finiteOr, isPlainDataArray, isPlainDataRecord, ownDataValue, stringOr, timestampOr, unitOr } from '../body/RestoreSanitizers.ts';
+import { countOr, isPlainDataArray, isPlainDataRecord, ownDataValue, stringOr, timestampOr, unitOr } from '../body/RestoreSanitizers.ts';
 import { isTrustedEmbodiedOutcomeVerification } from '../system/ExternalPostconditionVerifier.ts';
 import type { OutcomeVerification } from '../system/OutcomeVerificationService.ts';
 
