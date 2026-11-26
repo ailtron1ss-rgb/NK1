@@ -167,8 +167,31 @@ test('cross-modality disagreement through the live core is preserved', async () 
   const core = await makeCore();
   core.setObservationConsent('vision', true);
   core.setObservationConsent('audio', true);
-  core.admitObservation(observation({ modality: 'vision', sourceId: 'cam-0', payload: { subject: 'door', claim: 'open' } }));
-  core.admitObservation(observation({ modality: 'audio', sourceId: 'mic-0', sourceKind: 'microphone', payload: { subject: 'door', claim: 'closed' } }));
+  const visionCapture = buildCameraCaptureObservation({
+    evidence: {
+      evidenceKind: 'camera-capture',
+      at: Date.now(),
+      cameraId: 0,
+      byteLength: 512,
+      sha256: 'd'.repeat(64),
+      captureQuality01: 0.9,
+      novelty01: 0.6,
+    },
+    executionId: 'cross-modal-door-execution',
+    providerReceiptId: 'cross-modal-door-provider-receipt',
+    sessionId: 'e2e-session',
+    receiptVerified: true,
+    consentGranted: true,
+  });
+  assert.ok(visionCapture);
+  visionCapture.payload.subject = 'door';
+  visionCapture.payload.claim = 'open';
+  core.admitObservation(visionCapture);
+  core.admitObservation(observation({
+    modality: 'audio', sourceId: 'mic-0', sourceKind: 'microphone',
+    provenance: 'provider-model-output',
+    payload: { subject: 'door', claim: 'closed' },
+  }));
 
   const conflicts = core.observationConflicts();
   assert.equal(conflicts.length, 1);
