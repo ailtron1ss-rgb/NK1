@@ -28,6 +28,17 @@ try {
   assert.ok(evidence, 'OrganismCycleResult must expose current-cycle owner evidence');
   assert.equal(evidence.tick, cycle.state.tick);
   assert.ok(Array.isArray(evidence.receipts), 'cycle evidence must include typed owner receipts');
+  assert.ok(Array.isArray(evidence.subsystemReceipts), 'cycle evidence must include seven subsystem invocation receipts');
+  assert.equal(evidence.subsystemReceipts.length, 7);
+  assert.deepEqual(evidence.subsystemReceipts.map(receipt => receipt.system).sort(), ['agency','embodiment','governance','memory','research','self','world']);
+  for (const receipt of evidence.subsystemReceipts) {
+    assert.equal(receipt.cycleId, evidence.cycleId);
+    assert.equal(receipt.tick, cycle.state.tick);
+    assert.equal(receipt.id, evidence.cycleId + ':' + receipt.system);
+    assert.match(receipt.outputHash, /^[a-f0-9]{64}$/);
+    assert.ok(Number.isSafeInteger(receipt.durationMs) && receipt.durationMs >= 0);
+    assert.ok(['completed','completed_empty','skipped'].includes(receipt.status));
+  }
 
   const attentionReceipt = evidence.receipts.find((receipt) => receipt.stage === 'attention');
   const memoryReceipt = evidence.receipts.find((receipt) => receipt.stage === 'memory');
@@ -114,7 +125,9 @@ try {
   assert.ok(riskBus.parentIds.includes(observationBus.id), 'risk-controller evidence must descend from observation');
   assert.ok(outcomeBus.parentIds.includes(actionBus.id), 'outcome evidence must descend from the actual action event');
   assert.ok(outcomeBus.parentIds.includes(predictionBus.id), 'outcome evidence must preserve its prediction comparison');
-  assert.equal(runtime.unifiedCognitiveCycleSnapshot().lastFullComplete, true, 'full-cycle admission must include cross-fabric evidence verification');
+  assert.equal(runtime.unifiedCognitiveCycleSnapshot().lastFullComplete, true, 'full-cycle admission must include cross-fabric evidence and seven-owner receipt verification');
+  const persistedCefCycle = events.find(event => event.stage === 'self-update');
+  assert.equal(persistedCefCycle.payload.subsystemReceipts.length, 7, 'the same CEF self-update node must persist all owner receipts');
 
   const beforeDiagnostics = {
     evidenceTotal: runtime.evidenceSnapshot().total,

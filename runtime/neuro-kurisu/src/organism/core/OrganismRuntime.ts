@@ -1855,13 +1855,14 @@ export class OrganismRuntime {
       outcome:{source:grounded.source==='external'?'external-device':'shadow-simulator',external:grounded.source==='external',confidence01:grounded.evidence01,payload:{evidenceId:outcomeEvidence.id,reward01:grounded.reward01,surprise:grounded.surprise01,error01:resolvedPrediction?.error01 ?? null,verified01:grounded.verified01}},
       learning:{source:'core.feedback',confidence01:clamp01((1-(resolvedPrediction?.error01??0.5))*learningGate.learningScale01),payload:{predictionError01:resolvedPrediction?.error01??null,realitySource:grounded.source,learningPriority01:grounded.learningPriority01,learningScale01:learningGate.learningScale01}},
       selfUpdate:{source:'core.lifecycle',confidence01:this.core.consciousnessSnapshot().identityContinuity.continuity,payload:{identityContinuity01:this.core.consciousnessSnapshot().identityContinuity.continuity}},
+      subsystemReceipts:cycle.stageEvidence?.subsystemReceipts,
       at:cycle.state.at,
     });
     const fabricSnapshot = this.cognitiveEventFabric.snapshot();
     this.core.setRuntimeCognitiveEventFabric(fabricSnapshot);
     const cycleStageMap = {observation:cycleStageIds.observation,prediction:cycleStageIds.prediction,appraisal:cycleStageIds.appraisal,attention:cycleStageIds.attention,memory:cycleStageIds.memory,goal:cycleStageIds.goal,plan:cycleStageIds.plan,action:cycleStageIds.action,outcome:cycleStageIds.outcome,learning:cycleStageIds.learning,'self-update':cycleStageIds.selfUpdate};
     const cycleEvidenceEvents = [observationEvidence, predictionEvidence, riskEvidence, actionEvidence, outcomeEvidence];
-    const cycleLineage = this.cognitiveEventFabric.verifyOperationalCycle(cycleStageMap, cycle.stageEvidence?.receipts, cycleEvidenceEvents);
+    const cycleLineage = this.cognitiveEventFabric.verifyOperationalCycle(cycleStageMap, cycle.stageEvidence?.receipts, cycleEvidenceEvents, cycle.stageEvidence?.subsystemReceipts);
     const cycleVerification = this.unifiedCycle.evaluate({tick:cycle.state.tick,stageIds:cycleStageMap,parentIntegrity01:cycleLineage.coreIntegrity01,coreLineageComplete:cycleLineage.coreComplete,fullLineageComplete:cycleLineage.fullComplete && cycleLineage.ownerEvidenceComplete,fullIntegrity01:cycleLineage.fullIntegrity01});
     this.core.setRuntimeUnifiedCognitiveCycle(this.unifiedCycle.snapshot());
     this.core.recordRealityEvidence({tick:cycle.state.tick,realityClass:'derived',claim:'cognitive-cycle-completeness',confidence01:cycleVerification.complete ? .95 : .35,independenceKey:`cycle:${cycle.state.tick}`,parentIds:Object.values(cycleStageIds).filter(Boolean) as string[]});
