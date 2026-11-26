@@ -23,7 +23,9 @@ const validId = (value, max) => value === null || (typeof value === "string" && 
 
 /** Strict protocol-v1 validation, including the motion groups actually shipped with the rig. */
 export function isEmbodimentIntentV1(value) {
-  if (!exactKeys(value, TOP_KEYS)) return false;
+  const hasFrameTick = Object.hasOwn(value, "frameTick");
+  if (!exactKeys(value, hasFrameTick ? [...TOP_KEYS, "frameTick"] : TOP_KEYS)) return false;
+  if (hasFrameTick && (!Number.isSafeInteger(value.frameTick) || value.frameTick < 0)) return false;
   if (value.type !== "kurisu_embodiment_intent" || value.protocolVersion !== 1) return false;
   if (!Number.isSafeInteger(value.stateVersion) || value.stateVersion < 1) return false;
   if (!finiteBetween(value.sentAtEpochMs, 0, Number.MAX_SAFE_INTEGER)) return false;
@@ -65,6 +67,7 @@ export function normalizeEmbodimentIntentV1(value) {
   const speaking = value.speechPhase === "speaking";
   return {
     stateVersion: value.stateVersion,
+    frameTick: value.frameTick ?? null,
     expression: value.expression,
     expressionIntensity: value.expressionIntensity,
     speaking,
