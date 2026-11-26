@@ -93,8 +93,8 @@ test('rejects a single frame that cannot fit in the bounded journal', async () =
 test('repairs a complete-looking uncommitted append from a durable marker after process restart', async () => {
   const file = path.join(directory, 'restart-rollback.jsonl');
   const marker = file + '.rollback';
-  const committed = [makeFrame(20), makeFrame(21)].map(row => JSON.stringify(row)).join('\\n') + '\\n';
-  const uncertain = JSON.stringify(makeFrame(22)) + '\\n';
+  const committed = [makeFrame(20), makeFrame(21)].map(row => JSON.stringify(row)).join('\n') + '\n';
+  const uncertain = JSON.stringify(makeFrame(22)) + '\n';
   const rollbackSize = Buffer.byteLength(committed, 'utf8');
   await writeFile(file, committed + uncertain);
   await writeFile(marker, JSON.stringify({ version: 1, rollbackSize }), { mode: 0o600 });
@@ -102,7 +102,7 @@ test('repairs a complete-looking uncommitted append from a durable marker after 
   const restarted = new ContinuityLedger(file, 1024 * 1024, 1);
   try {
     await restarted.record(makeFrame(23));
-    const lines = (await readFile(file, 'utf8')).trimEnd().split('\\n').map(line => JSON.parse(line));
+    const lines = (await readFile(file, 'utf8')).trimEnd().split('\n').map(line => JSON.parse(line));
     assert.deepEqual(lines.map(row => row.tick), [20, 21, 23],
       'restart must discard the entire uncertain append, even when it ended with a newline');
     assert.equal(restarted.diagnostics().recoveredTailBytes, Buffer.byteLength(uncertain, 'utf8'),
@@ -115,7 +115,7 @@ test('repairs a complete-looking uncommitted append from a durable marker after 
 test('fails closed when the persisted rollback marker is malformed', async () => {
   const file = path.join(directory, 'invalid-rollback-marker.jsonl');
   const marker = file + '.rollback';
-  const original = JSON.stringify(makeFrame(30)) + '\\n';
+  const original = JSON.stringify(makeFrame(30)) + '\n';
   await writeFile(file, original);
   await writeFile(marker, JSON.stringify({ version: 1, rollbackSize: -1 }), { mode: 0o600 });
 
