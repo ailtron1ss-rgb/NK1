@@ -2199,7 +2199,8 @@ export class OrganismCore {
             this.persisted.system.integrity = finalIntegrity;
             throw new Error(`Organism final integrity violation: ${finalIntegrity.violations.map(v => `${v.code}@${v.path}`).join(', ')}`);
         }
-        if (fullProjection && this.runtimeCheckpointContributor) {
+        if (fullProjection)
+            this.commitPersistentContinuity('durable-checkpoint');        if (fullProjection && this.runtimeCheckpointContributor) {
             const snapshots = await this.runtimeCheckpointContributor(this.persisted.state.tick);
             const previousGeneration = this.persisted.system.runtimeCheckpointEnvelope?.generation ?? 0;
             const envelope = createRuntimeCheckpointEnvelope({
@@ -2211,8 +2212,7 @@ export class OrganismCore {
             });
             this.persisted.system.runtimeCheckpointEnvelope = envelope;
         }
-        if (fullProjection)
-            this.commitPersistentContinuity('durable-checkpoint');
+
         // Stamp once after the final durable-state mutations. The canonical hash excludes
         // `system`, so certificate metadata can be added afterwards without changing it.
         t = Date.now();
@@ -2577,6 +2577,7 @@ export class OrganismCore {
     setRuntimeEvidence(snapshot: import('../system/RuntimeEvidenceBus.ts').RuntimeEvidenceSnapshot): void { this.persisted.system.runtimeEvidence = snapshot; }
     setCognitiveEventFabric(snapshot: import('../system/CognitiveEventFabric.ts').CognitiveEventFabricSnapshot): void { this.persisted.system.cognitiveEventFabric = snapshot; }
     setRuntimeCognitiveEventFabric(snapshot: import('../system/CognitiveEventFabric.ts').CognitiveEventFabricSnapshot): void { this.persisted.system.runtimeCognitiveEventFabric = snapshot; }
+
     /** Runtime contributes its bounded sidecar bundle immediately before a durable Core save. */
     setRuntimeCheckpointContributor(provider: ((coreTick:number)=>RuntimeCheckpointOwnerSnapshots|Promise<RuntimeCheckpointOwnerSnapshots>) | null): void {
         this.runtimeCheckpointContributor = provider;
@@ -12473,7 +12474,7 @@ export class OrganismCore {
     async resolveActionToolApproval(requestId:string, approved:boolean) {
         const result=await this.cognitiveRuntime.actionGateway.resolveToolApproval(requestId,approved,'owner');
         if(result.ok && result.request) {
-            this.p34RecordConsent({ action:`tool:${result.request.toolId}`, risk01:.9, actor:'creator', decision:approved?'approved':'declined', reason:`one-shot tool approval ${result.request.id}` });
+            this.p34RecordConsent({ action:`tool:${result.request.toolId}`, risk01:.9, actor:'creator', decision:approved?'approved':'declined', reason:`one-shot tool approval ${result.request.id}`, referenceId:result.request.id });
             await this.checkpoint(true);
         }
         return result;
