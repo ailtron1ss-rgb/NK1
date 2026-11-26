@@ -69,3 +69,60 @@ No modifications to `main`, Release assets, `gearonone.zip`, or `workpass70-sour
 - [ ] Later canonical integration in a separate reviewed step.
 
 **Do not merge or release yet.** Full regression validation, independent review and device gates remain open. This branch is an integration candidate only.
+
+---
+
+## Final exact-head verification — 2026-11-26
+
+This section is authoritative for the current integration checkpoint and supersedes earlier intermediate matrix counts and pending statuses above.
+
+### Exact source identities
+
+- Canonical source: workpass70-source@7e601680c765d6dc94e51e4c8f5e729b48a6f56e (unchanged).
+- Integration branch: aspect/p0-persistence-integration-20261126.
+- Exact tested integration head: eb1d8a68aae1f8160fde55c2c0915a6453683a80.
+- PR: [#1198](https://github.com/ailtron1ss-rgb/NK1/pull/1198), OPEN / DRAFT; GitHub reports mergeable/clean.
+- Branch contains seven commits ahead of canonical source and zero behind; canonical was not modified.
+- PR #1170 and #1174 remain as original Draft source PRs. Their implementations are reconciled on this branch; neither was merged.
+- 27 changed files in the PR, including the final CI harness and test-fixture hardening.
+
+### Final exact-head Actions matrix
+
+**78/78 completed SUCCESS; zero failures, zero cancelled, zero queued or running.**
+
+Selected exact-head runs:
+- [Cognitive Core Consolidation #45801839912](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45801839912) — joint save/Watchdog/envelope/sidecar test, envelope restore/fault matrix, ContinuityLedger durability, restart, active-information regression and semantic runtime TypeScript tsc.
+- [Continuity runtime durability #45801839323](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45801839323) — formal durability gate, durable process restart, FileStateStore crash recovery, kill/resume, longitudinal continuity and persistent continuity integration.
+- [NeuroCore core regression validation #45801839882](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45801839882) — app build/typecheck, runtime typecheck, memory, evidence fusion, CEF, Hexis, causal spine, UserModel, local language, speech, avatar and Live2D regressions.
+- [Clean prototype startup smoke #45801839667](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45801839667) — clean production quickstart and development mode both PASS.
+- [WorkPass79 cognitive runtime regression #45801842646](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45801842646) — provider boundaries, timeout/payload bounds, client-disconnect abort, real HTTP provider path, causal attribution and safety interrupt/wake routing PASS.
+- [Unified organism runtime #45801843081](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45801843081) — PASS.
+- [Paired cluster-bootstrap memory retrieval integrity #45801842985](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45801842985) — PASS.
+- [Independent evidence and memory evaluation #45801839742](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45801839742) — sanitized evidence export/digest, isolated bilingual MemoryOS2 A/B, HMAC-only per-query trace, independent scorers and Inspect AI task PASS.
+- [Module Dependency Audit #45801839580](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45801839580) — PASS.
+- [ActionGateway receipt to SelfAuthorship recovery #45801843022](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45801843022) — PASS.
+- [Embodiment / voice / cognitive context #45801839543](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45801839543) — PASS.
+
+### Regression fixes completed in this integration branch
+
+1. Speculative checkpoint generation rollback: initial joint test failed with in-memory generation 2 instead of committed generation 1. Production fix restores the previous envelope together with RecoveryWatchdog state when Core save fails. Sidecar observer runs only after canonical save succeeds. Subsequent successful commit advances exactly one generation.
+2. Asynchronous restart fixture lifecycle: legacy big-pass-155 and big-pass-324 restart tests now await runtime stop() before reopening shared journal/state paths.
+3. Clean-start harness race: startup smoke now waits for the supervisor's own final readiness banner before making an external gateway request; clean production quickstart and development mode both pass.
+4. WorkPass82 cancellation fixture port collision: runtime test server now gets a distinct OS-assigned ephemeral loopback port after the fake provider binds. The formerly failing end-to-end client-disconnect cancellation scenario passes.
+
+### Master Plan X acceptance status
+
+- [x] Integrated current-source checkpoint envelope v2, OperationalJournal cursor and five-owner restore/repair.
+- [x] Integrated durable ContinuityLedger rollback marker and RecoveryWatchdog commit semantics.
+- [x] Single Core durable-save boundary with owner envelope and Watchdog checkpoint.
+- [x] Joint red/green regression: failed Core save rolls back envelope generation and Watchdog success marker; no sidecar projection occurs; next successful save advances one generation.
+- [x] Focused and full exact-head Actions matrix: 78/78 SUCCESS.
+- [x] Semantic runtime TypeScript typecheck and module dependency audit.
+- [x] Clean production startup and development startup.
+- [x] Broad NeuroCore, Unified organism, memory, voice, avatar, CEF, local inference and causal runtime regressions.
+- [ ] Independent code review of PR #1198.
+- [ ] Android/Termux soak: cold restart, storage interruption/power loss, checkpoint latency p50/p95, payload bytes and peak heap.
+- [ ] Integrate into workpass70-source after review and device acceptance.
+- [ ] Release ZIP / tag verification and legal approval.
+
+**Decision:** PR #1198 remains Draft. Code and exact-head CI are green, but independent review and physical-device durability/performance acceptance are not complete. Do not merge or release on CI evidence alone.
