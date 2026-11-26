@@ -126,18 +126,17 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
   const speechPhaseRef = useRef<SpeechPhase>("idle");
   const [live, setLive] = useState(false);
   const [viewerReadyRevision, setViewerReadyRevision] = useState(0);
-  // Native speech is opt-in. Opening the app never starts speaking historical chat.
-  const [voiceEnabled, setVoiceEnabled] = useState(() => readAvatarPreference("kurisu-avatar-voice-enabled") === "true");
-  const [voiceName, setVoiceName] = useState(() => readAvatarPreference("kurisu-avatar-voice-name") ?? "");
+  // First render must be identical on the server and in the browser. Browser-only
+  // preferences are restored after hydration, never inside a useState initializer.
+  const [preferencesLoaded, setPreferencesLoaded] = useState(false);
+  const [voiceEnabled, setVoiceEnabled] = useState(false);
+  const [voiceName, setVoiceName] = useState("");
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
-  const [voiceStatus, setVoiceStatus] = useState<"off" | "ready" | "unsupported" | "speaking" | "unknown">(() => typeof window !== "undefined" && "speechSynthesis" in window ? "off" : "unsupported");
+  const [voiceStatus, setVoiceStatus] = useState<"off" | "ready" | "unsupported" | "speaking" | "unknown">("off");
   const [mouthPose, setMouthPose] = useState<MouthPose>(CLOSED_MOUTH);
   const [nativeSpeechProviderEvent, setNativeSpeechProviderEvent] = useState<NativeSpeechProviderEvent | null>(null);
   const [nativeSpeechConnection, setNativeSpeechConnection] = useState<NativeSpeechProviderConnection>("connecting");
-  const [mode, setMode] = useState<ViewMode>(() => {
-    const saved = readAvatarPreference("kurisu-avatar-mode");
-    return saved === "legacy" || saved === "original" || saved === "3d" ? saved : "live2d";
-  });
+  const [mode, setMode] = useState<ViewMode>("live2d");
   const live2dPresentation = avatarRendererPresentation("live2d");
   const legacyPresentation = avatarRendererPresentation("legacy");
   const originalPresentation = avatarRendererPresentation("original");
@@ -257,11 +256,21 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
   }, []);
 
   useEffect(() => {
+    const savedMode = readAvatarPreference("kurisu-avatar-mode");
+    if (savedMode === "legacy" || savedMode === "original" || savedMode === "3d") setMode(savedMode);
+    setVoiceEnabled(readAvatarPreference("kurisu-avatar-voice-enabled") === "true");
+    setVoiceName(readAvatarPreference("kurisu-avatar-voice-name") ?? "");
+    setVoiceStatus("speechSynthesis" in window ? "off" : "unsupported");
+    setPreferencesLoaded(true);
+  }, []);
+
+  useEffect(() => {
+    if (!preferencesLoaded) return;
     // Each preference is best-effort: a blocked storage write must not prevent avatar/voice controls.
     writeAvatarPreference("kurisu-avatar-mode", mode);
     writeAvatarPreference("kurisu-avatar-voice-enabled", String(voiceEnabled));
     writeAvatarPreference("kurisu-avatar-voice-name", voiceName);
-  }, [mode, voiceEnabled, voiceName]);
+  }, [mode, voiceEnabled, voiceName, preferencesLoaded]);
 
   useEffect(() => { latestSnapRef.current = snap; mouthPoseRef.current = mouthPose; }, [snap, mouthPose]);
 
