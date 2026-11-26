@@ -21,6 +21,13 @@ on:
       - 'runtime/neuro-kurisu/tests/memory-encode-overflow-projection-reconcile.mjs'
       - 'runtime/neuro-kurisu/tests/memory-restore-duplicate-identity.mjs'
       - 'runtime/neuro-kurisu/tests/memory-restore-shape-hardening.mjs'
+      - 'runtime/neuro-kurisu/tests/memory-maintenance-projection-reconcile.mjs'
+      - 'runtime/neuro-kurisu/tests/memory-dedupe.mjs'
+      - 'runtime/neuro-kurisu/tests/p2690-memory-signal-fusion.mjs'
+      - 'runtime/neuro-kurisu/tests/p2690-retrieval-audit-links.mjs'
+      - 'runtime/neuro-kurisu/tests/p2855-r5-memory-lifecycle-ablation.mjs'
+      - 'runtime/neuro-kurisu/tests/memoryos2-metadata-retrieval.mjs'
+      - 'runtime/neuro-kurisu/tests/memory-semantic-vector-integrity.mjs'
       - 'runtime/neuro-kurisu/tests/cognitive-subsystem-port-probes-20261124.mjs'
       - '.github/workflows/nk1-cognitive-port-readonly-regression.yml'
 permissions:
@@ -66,3 +73,13 @@ jobs:
         run: npm run test:memoryos2-capacity-lifecycle-integrity
       - name: Memory encode overflow and projection reconciliation
         run: npm run test:memory-encode-overflow-projection-reconcile
+      - name: Memory maintenance projection reconciliation
+        run: npm run test:memory-maintenance-projection-reconcile
+      - name: Memory duplicate and lifecycle authority regression
+        run: npm run test:r5:memory-authority-regression
+      - name: Memory lifecycle ablation guard
+        run: npm run test:r5:memory-lifecycle-ablation
+      - name: MemoryOS2 metadata retrieval integrity
+        run: npm run test:memoryos2-metadata-retrieval
+      - name: Memory semantic vector integrity
+        run: npm run test:memory-semantic-vector-integrity
