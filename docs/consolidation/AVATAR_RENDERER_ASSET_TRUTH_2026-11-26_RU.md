@@ -165,3 +165,5 @@ app/src/legacy/avatar/LegacySpriteDeck.tsx использует new Image() и c
 - GLB/VRM preflight, switch contract + app typecheck, cognitive-affect motor coupling + typecheck, Original 2D asset contract — success.
 - Avatar Contact Browser Acceptance — failure на первом Original SVG face tap (ожидался zone=head, наблюдаемого event не было); 3D browser stage в этом запуске не был достигнут.
 - На новом HEAD 2c87d22110b356ce973ca78a6a815dbd97aa6c2a включены capture-handler fix, его тест, rig/selection schema v2 и проверки. Exact-head workflows поставлены на повторную проверку; их результаты нельзя наследовать от предыдущего SHA.
+
+Дополнительная диагностика browser gate добавлена в commit 0cd7c70d28e80344b49848190113703cd87b3b68: при отсутствии Original SVG contact событие pointerdown/up/cancel, pointerId/type, SVG/stage bounds, нормализованные координаты и фактический elementFromPoint записываются в лог; снимается full-page screenshot. Это нужно для однозначной диагностики, если перенос обработчика на stage capture не закроет проблему.
