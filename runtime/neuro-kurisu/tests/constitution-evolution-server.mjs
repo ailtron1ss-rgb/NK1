@@ -98,7 +98,7 @@ try {
   assert.equal(reviewResponse.data.proposal.status, 'awaiting-ratification');
 
   const ratificationChallenge = await post(`/api/organism/constitution/proposals/${encodeURIComponent(proposal.id)}/ratify`, {});
-  assert.equal(ratificationChallenge.status, 403);
+  assert.equal(ratificationChallenge.status, 403, JSON.stringify(ratificationChallenge.data));
   assert.equal(ratificationChallenge.data.approvalRequired, true);
   assert.equal(ratificationChallenge.data.approvalRequest.toolId, 'nk1.system.constitution.ratify');
   assert.equal(ratificationChallenge.data.approvalRequest.permissionClass, 'system');
