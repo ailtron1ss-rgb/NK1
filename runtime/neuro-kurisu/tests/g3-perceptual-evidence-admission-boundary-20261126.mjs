@@ -105,3 +105,35 @@ assert.equal(recoveredEvidence.metrics.groundedSignalRatio01, 0, 'owner restore 
 assert.notEqual(recoveredEvidence.lastHash, '');
 
 console.log('G3_PERCEPTUAL_EVIDENCE_ADMISSION_BOUNDARY=PASS');
+
+
+// External evidence admission itself must reject accessors and Proxies before
+// consulting any producer-controlled property.
+{
+  const guarded = new PerceptualEvidenceCompiler();
+  let getterInvoked = false;
+  const hostile = { at: 1_800_000_000_010, confidence01: 1, claim: 'hostile claim' };
+  Object.defineProperty(hostile, 'claim', {
+    enumerable: true,
+    get() { getterInvoked = true; return 'forged claim'; },
+  });
+  assert.throws(
+    () => guarded.recordExternalEvidence(hostile),
+    /external-perceptual-evidence-input-invalid/,
+  );
+  assert.equal(getterInvoked, false);
+
+  let proxyTrapInvoked = false;
+  const proxy = new Proxy({ at: 1_800_000_000_011, confidence01: 1, claim: 'proxy claim' }, {
+    get() { proxyTrapInvoked = true; throw new Error('external-evidence-proxy-get'); },
+    ownKeys() { proxyTrapInvoked = true; throw new Error('external-evidence-proxy-ownKeys'); },
+  });
+  assert.throws(
+    () => guarded.recordExternalEvidence(proxy),
+    /external-perceptual-evidence-input-invalid/,
+  );
+  assert.equal(proxyTrapInvoked, false);
+  assert.equal(guarded.snapshot().evidence.length, 0);
+}
+
+console.log('G3_EXTERNAL_EVIDENCE_HOSTILE_INPUT=PASS');
