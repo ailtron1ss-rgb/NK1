@@ -655,3 +655,39 @@ console.log('COGNITIVE_MODULE_CHECKPOINT_ATOMICITY=PASS');
   );
   await host.stopAll();
 }
+
+
+// stopAll must serialize behind an in-flight activation. A module cannot become
+// active after the host has already reported a completed shutdown.
+{
+  const events = [];
+  const host = runtime();
+  const fixture = moduleFixture('core.racing-activation', events);
+  let releaseInitialize;
+  let notifyInitializeStarted;
+  const initializeGate = new Promise(resolve => { releaseInitialize = resolve; });
+  const initializeStarted = new Promise(resolve => { notifyInitializeStarted = resolve; });
+  fixture.module.initialize = async () => {
+    events.push('initialize-start:core.racing-activation');
+    notifyInitializeStarted();
+    await initializeGate;
+    events.push('initialize-end:core.racing-activation');
+  };
+  host.register({
+    manifest: manifest('core.racing-activation'),
+    factory: () => fixture.module,
+  });
+
+  const activating = host.activateAll();
+  await initializeStarted;
+  const stopping = host.stopAll();
+  releaseInitialize();
+  await Promise.all([activating, stopping]);
+
+  assert.equal(
+    statusOf(host, 'core.racing-activation'),
+    'stopped',
+    'stopAll must wait for activation and then stop the module',
+  );
+  assert.ok(events.includes('shutdown:core.racing-activation'));
+}
