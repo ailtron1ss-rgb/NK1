@@ -830,8 +830,8 @@ export class CognitiveEventFabric {
         // The observation envelope is deliberately runtime-owned even when a
         // plugin supplied the original user message. Other linked phase sources
         // must match their CEF phase owner exactly.
-        const expectedSource = stage === 'observation' ? 'runtime' : node.source;
-        if (linked.source !== expectedSource) {
+        const expectedSource = stage === 'observation' ? 'runtime' : node?.source;
+        if (typeof expectedSource !== 'string' || linked.source !== expectedSource) {
           invalidEvidenceRefs.push(stage + ':source-mismatch');
           continue;
         }
