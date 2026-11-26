@@ -1744,7 +1744,7 @@ export class OrganismRuntime {
         at:cycle.state.at,
         modality:embodiedAction.realityClass==='camera-artifact'?'vision':embodiedAction.realityClass==='device-observation'?'sensor':'world',
         claim:embodiedAction.realityClass==='camera-artifact'
-          ? `camera-frame:${embodiedAction.artifact?.cameraId ?? '?'}:${embodiedAction.artifact?.hash ?? 'missing-hash'}:${embodiedAction.artifact?.captureNonce ?? 'missing-nonce'}`
+          ? `android-camera-frame:${embodiedAction.artifact?.cameraId ?? '?'}:${embodiedAction.artifact?.hash ?? 'missing-hash'}:${embodiedAction.artifact?.size ?? 0}:${embodiedAction.artifact?.captureNonce ?? 'missing-nonce'}`
           : `external-outcome:${embodiedAction.action}:verified=${grounded.verified01.toFixed(2)}:independent=${grounded.independent01.toFixed(2)}:consequence=${grounded.consequence01.toFixed(2)}:shadowDivergence=${shadowResolution.divergence01.toFixed(2)}`,
         confidence01:grounded.evidence01, verification:postcondition, embodiedAction, parents:[outcomeEvidence.id,actionEvidence.id],
       });
@@ -2575,9 +2575,11 @@ export class OrganismRuntime {
       size: Number(result.size ?? 0), hash: typeof result.hash === 'string' ? result.hash : undefined,
     };
     let evidence: CameraEvidence = cameraEvidenceFromResult(successResult, normalizedCameraId, this.core.cameraEvidenceSnapshot().last?.sha256 ?? '', Date.now());
+    let payloadInspectionVerified=false;
     if (successResult.path) {
       try {
         evidence = await inspectCameraFile({ path: successResult.path, cameraId: normalizedCameraId, previousHash: this.core.cameraEvidenceSnapshot().last?.sha256 ?? '', at: Date.now() });
+        payloadInspectionVerified=Boolean(successResult.hash && evidence.sha256.toLowerCase()===successResult.hash.toLowerCase());
       } catch {
         // Metadata-only fallback is retained; missing decoding is not upgraded into fake semantic vision.
       }
@@ -2586,7 +2588,7 @@ export class OrganismRuntime {
     let semantic = null as Awaited<ReturnType<VisionSemanticBackend['analyze']>> | null;
     let trackingMetrics: ReturnType<TemporalObjectTracker['update']>['metrics'] | null = null;
     if (this.config.visionBackend) this.core.setSemanticVisionAvailability(true);
-    if (this.config.visionBackend && evidence.path) {
+    if (this.config.visionBackend && evidence.path && payloadInspectionVerified) {
       const started = Date.now();
       try {
         semantic = await this.config.visionBackend.analyze({
@@ -2630,7 +2632,7 @@ export class OrganismRuntime {
       sourceId: typeof result.sourceId === 'string' ? result.sourceId : undefined,
       retained: result.retained === true,
       decisionId: typeof result.decisionId === 'string' ? result.decisionId : undefined,
-      evidence, cameraEvidence: this.core.cameraEvidenceSnapshot(), semanticVision: semantic?.semantic === true,
+      evidence, cameraEvidence: this.core.cameraEvidenceSnapshot(), semanticVision: semantic?.semantic === true && payloadInspectionVerified,
       semanticBackend: semantic?.backend ?? null, semanticResult: semantic, tracking: trackingMetrics,
     };
   }
