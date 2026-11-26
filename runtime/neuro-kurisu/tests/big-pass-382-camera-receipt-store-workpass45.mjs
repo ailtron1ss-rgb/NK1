@@ -3,7 +3,7 @@ import { mkdtemp, mkdir, writeFile, readFile, rm } from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
 import { createHash } from 'node:crypto';
-import { lookupCameraCaptureReceipt, persistCameraCaptureReceipt, CameraCaptureOutcomeUncertainError } from '../src/organism/body/AndroidEmbodimentBridge.ts';
+import { lookupCameraCaptureReceipt, persistCameraCaptureReceipt, CameraCaptureOutcomeUncertainError, isTrustedCameraCaptureReceipt } from '../src/organism/body/AndroidEmbodimentBridge.ts';
 
 const root = await mkdtemp(path.join(os.tmpdir(), 'workpass45-camera-receipts-'));
 const token = 'a'.repeat(64);
@@ -13,28 +13,33 @@ try {
   const captureBytes = Buffer.from('synthetic-camera-frame-for-receipt-contract');
   const noRetention = await persistCameraCaptureReceipt({
     idempotencyToken: token, cameraId: 0, retain: false, receiptDir: root,
-    result: { ok: true, size: captureBytes.length, hash: sha(captureBytes) }, capturedAt: 123456,
+    executionId: 'exec-camera-store-0001', decisionId: 'camera-store-decision', captureNonce: 'camera-store-nonce-0001',
+    result: { ok: true, size: captureBytes.length, hash: sha(captureBytes) }, captureStartedAt: 123400, capturedAt: 123456,
   });
   assert.equal(noRetention.ok, true);
   assert.equal(noRetention.verified, true);
   assert.equal(noRetention.providerReceiptId, noRetention.receiptId);
   assert.equal(noRetention.retained, false);
   assert.equal(noRetention.path, undefined);
+  assert.equal(noRetention.sourceId, 'android-termux.camera');
+  assert.equal(noRetention.executionId, 'exec-camera-store-0001');
+  assert.equal(isTrustedCameraCaptureReceipt(noRetention), false, 'direct metadata persistence cannot mint a live camera capability');
   const restored = await lookupCameraCaptureReceipt(token, 0, false, root);
   assert.equal(restored.status, 'found');
   if (restored.status === 'found') {
     assert.equal(restored.result.hash, sha(captureBytes));
     assert.equal(restored.result.capturedAt, 123456);
+    assert.equal(isTrustedCameraCaptureReceipt(restored.result), false, 'restored JSON receipts cannot restore ephemeral observation authority');
   }
   assert.equal((await lookupCameraCaptureReceipt(token, 1, false, root)).status, 'unknown', 'camera identity mismatch must fail closed');
   assert.equal((await lookupCameraCaptureReceipt(token, 0, true, root)).status, 'unknown', 'retention policy mismatch must fail closed');
   assert.equal((await lookupCameraCaptureReceipt('b'.repeat(64), 0, false, root)).status, 'unknown', 'missing receipt is ambiguous, not confirmed absence');
 
   // Exact idempotent re-persist is harmless; key reuse with a different payload is a conflict.
-  const same = await persistCameraCaptureReceipt({ idempotencyToken: token, cameraId: 0, retain: false, receiptDir: root, result: { ok: true, size: captureBytes.length, hash: sha(captureBytes) }, capturedAt: 999999 });
+  const same = await persistCameraCaptureReceipt({ idempotencyToken: token, cameraId: 0, retain: false, receiptDir: root, executionId: 'exec-camera-store-0001', decisionId: 'camera-store-decision', captureNonce: 'camera-store-nonce-0001', result: { ok: true, size: captureBytes.length, hash: sha(captureBytes) }, captureStartedAt: 999900, capturedAt: 999999 });
   assert.equal(same.hash, noRetention.hash);
   await assert.rejects(
-    () => persistCameraCaptureReceipt({ idempotencyToken: token, cameraId: 0, retain: false, receiptDir: root, result: { ok: true, size: captureBytes.length + 1, hash: sha(Buffer.from('changed-frame')) } }),
+    () => persistCameraCaptureReceipt({ idempotencyToken: token, cameraId: 0, retain: false, receiptDir: root, executionId: 'exec-camera-store-0001', decisionId: 'camera-store-decision', captureNonce: 'camera-store-nonce-0001', result: { ok: true, size: captureBytes.length + 1, hash: sha(Buffer.from('changed-frame')) } }),
     error => error instanceof CameraCaptureOutcomeUncertainError && /key-conflict/.test(error.message),
   );
 
@@ -45,7 +50,7 @@ try {
   const imagePath = path.join(cameraDir, 'capture.jpg');
   const retainedBytes = Buffer.from([0xff, 0xd8, 0xff, 0x10, 0x20, 0x30, 0xff, 0xd9]);
   await writeFile(imagePath, retainedBytes);
-  const retained = await persistCameraCaptureReceipt({ idempotencyToken: token2, cameraId: 1, retain: true, receiptDir: root, result: { ok: true, size: retainedBytes.length, hash: sha(retainedBytes), path: imagePath } });
+  const retained = await persistCameraCaptureReceipt({ idempotencyToken: token2, cameraId: 1, retain: true, receiptDir: root, executionId: 'exec-camera-store-0002', decisionId: 'camera-retain-decision', captureNonce: 'camera-retain-nonce-0002', result: { ok: true, size: retainedBytes.length, hash: sha(retainedBytes), path: imagePath } });
   assert.equal(retained.retained, true);
   assert.equal((await lookupCameraCaptureReceipt(token2, 1, true, root)).status, 'found');
   await writeFile(imagePath, Buffer.from('corrupted'));
