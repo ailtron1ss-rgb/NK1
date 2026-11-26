@@ -53,6 +53,14 @@ assert.deepEqual(replay.mask, plan.mask, 'identical batches must route identical
 assert.ok(policy.diagnostics().deepWorkBatch.passes >= 2);
 assert.equal(policy.diagnostics().deepWorkBatch.candidates, batch.length * 2);
 
+// A batch with no internal differences must not send everything down the expensive path: the
+// relative threshold is strict, so the selector falls back to the minimum fraction instead.
+const flat = Array.from({ length: 4 }, (_, index) => ({ id: `flat-${index}`, predictionError01: 0.4, uncertainty01: 0.3 }));
+const flatPlan = policy.planDeepWork(flat);
+assert.equal(flatPlan.deepCount, 1, `identically difficult batch must route the minimum, got ${flatPlan.deepCount}`);
+assert.equal(flatPlan.reason, 'raised-to-minimum');
+assert.ok(plan.deepFraction01 > 0.25 && plan.deepFraction01 < 0.95, `varied batch must be split, got ${plan.deepFraction01}`);
+
 // --- the runtime feeds both streams from real cycles ---
 const cfg = { enableLanguage: false, checkpointMinIntervalMs: 0, checkpointMaxDirtyCycles: 1, cycleResultMode: 'operational', performanceProfile: 'mobile', enableWorldModel: true, enableSelfProjects: true, enableAgencyModel: true, enableLifelongLearning: true };
 const store = new MemoryStateStore();

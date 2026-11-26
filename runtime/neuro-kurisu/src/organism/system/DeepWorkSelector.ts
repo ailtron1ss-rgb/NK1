@@ -20,13 +20,15 @@ export interface DeepWorkConfig {
   minimumDeepFraction01?: number;
   maximumDeepFraction01?: number;
   forceFirstDeep?: boolean;
+  relativeToBatch?: boolean;
+  minimumBatchForRelative?: number;
 }
 
 export interface DeepWorkSelection {
   mask: boolean[];
   deepCount: number;
   deepFraction01: number;
-  reason: 'empty' | 'forced' | 'threshold' | 'raised-to-minimum' | 'capped-at-maximum';
+  reason: 'empty' | 'forced' | 'threshold' | 'relative-threshold' | 'raised-to-minimum' | 'capped-at-maximum';
 }
 
 const clamp01 = (x: number) => Math.max(0, Math.min(1, Number.isFinite(x) ? x : 0));
@@ -38,6 +40,8 @@ export class DeepWorkSelector {
   private readonly minimumFraction: number;
   private readonly maximumFraction: number;
   private readonly forceFirstDeep: boolean;
+  private readonly relativeToBatch: boolean;
+  private readonly minimumBatchForRelative: number;
 
   constructor(config: DeepWorkConfig = {}) {
     this.threshold = clamp01(Number(config.shallowThreshold01 ?? 0.22));
@@ -51,6 +55,8 @@ export class DeepWorkSelector {
     this.minimumFraction = Math.min(min, max);
     this.maximumFraction = Math.max(min, max);
     this.forceFirstDeep = config.forceFirstDeep ?? true;
+    this.relativeToBatch = config.relativeToBatch ?? false;
+    this.minimumBatchForRelative = Math.max(2, Math.floor(Number(config.minimumBatchForRelative ?? 3)));
   }
 
   /**
@@ -73,11 +79,16 @@ export class DeepWorkSelector {
     if (options.forceDeep && this.forceFirstDeep) {
       return { mask: values.map(() => true), deepCount: batch, deepFraction01: 1, reason: 'forced' };
     }
-    let mask = values.map(value => value >= this.threshold);
+    const relative = this.relativeToBatch && batch >= this.minimumBatchForRelative;
+    const threshold = relative ? this.median(values) : this.threshold;
+    // Relative mode means "the harder half of *this* batch": strict comparison, so a batch of
+    // identical difficulties selects nothing and falls through to the minimum fraction instead
+    // of sending everything down the expensive path.
+    let mask = relative ? values.map(value => value > threshold) : values.map(value => value >= threshold);
     let count = mask.filter(Boolean).length;
     const maxCount = this.maximumFraction > 0 ? Math.max(1, Math.floor(batch * this.maximumFraction)) : 0;
     const minCount = Math.min(Math.ceil(batch * this.minimumFraction), maxCount);
-    let reason: DeepWorkSelection['reason'] = 'threshold';
+    let reason: DeepWorkSelection['reason'] = relative ? 'relative-threshold' : 'threshold';
     if (count < minCount) {
       mask = this.topK(values, minCount);
       count = minCount;
@@ -90,6 +101,12 @@ export class DeepWorkSelector {
     return { mask, deepCount: count, deepFraction01: count / batch, reason };
   }
 
+  private median(values: number[]): number {
+    const sorted = [...values].sort((a, b) => a - b);
+    const middle = Math.floor(sorted.length / 2);
+    return sorted.length % 2 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2;
+  }
+
   /** Deterministic top-k: higher difficulty first, lower index wins ties. */
   private topK(values: number[], k: number): boolean[] {
     const order = values.map((value, index) => ({ value, index })).sort((a, b) => (b.value - a.value) || (a.index - b.index));
@@ -98,13 +115,15 @@ export class DeepWorkSelector {
     return mask;
   }
 
-  diagnostics(): { threshold01: number; deltaWeight: number; entropyWeight: number; minimumDeepFraction01: number; maximumDeepFraction01: number } {
+  diagnostics(): { threshold01: number; deltaWeight: number; entropyWeight: number; minimumDeepFraction01: number; maximumDeepFraction01: number; relativeToBatch: boolean; minimumBatchForRelative: number } {
     return {
       threshold01: this.threshold,
       deltaWeight: this.deltaWeight,
       entropyWeight: this.entropyWeight,
       minimumDeepFraction01: this.minimumFraction,
       maximumDeepFraction01: this.maximumFraction,
+      relativeToBatch: this.relativeToBatch,
+      minimumBatchForRelative: this.minimumBatchForRelative,
     };
   }
 }

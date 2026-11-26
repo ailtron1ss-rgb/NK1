@@ -108,7 +108,9 @@ export class MemoryWritePolicy {
   private readonly uncertainty = new UncertaintyWriteGate();
   private readonly hippo = new HippoLegsCredit();
   private readonly fastSlow = new FastSlowConsolidationGate();
-  private readonly deepWork = new DeepWorkSelector();
+  // Relative thresholding keeps batch routing discriminating: an absolute 0.22 cut sends almost
+  // every candidate deep when live prediction errors sit around 0.35.
+  private readonly deepWork = new DeepWorkSelector({ relativeToBatch: true });
   private decisions = 0;
   private shadowDecisions = 0;
   private activeDecisions = 0;
