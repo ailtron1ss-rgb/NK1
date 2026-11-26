@@ -252,7 +252,7 @@ export class WorldSubsystemRuntime {
    * when several candidates share the same action/state.
    */
   predictForDecision(action:ActionKind, baseReward:number, uncertainty01:number, organismState?:import('./types.ts').OrganismState){
-    const integrated=this.predictIntegrated(action,baseReward,uncertainty01,undefined,organismState,true);
+    const integrated=this.predictIntegrated(action,baseReward,uncertainty01,undefined,organismState,false);
     const auroraDecision=this.evaluateAuroraDecision({
       prediction:{action,utility01:integrated.reward01,confidence01:integrated.confidence01,uncertainty01:integrated.uncertainty01},
       budget:{
@@ -260,12 +260,31 @@ export class WorldSubsystemRuntime {
         energy01:organismState?.needs?.energy??.5,
       },
     });
+    // Bind AURORA's selected horizon to the exact canonical ticket that later outcome
+    // resolution consumes. The advisory decision never executes or bypasses arbitration.
+    const canonicalPrediction=this.unifiedLatentWorldState.registerPrediction({
+      action,
+      predicted01:integrated.reward01,
+      confidence01:integrated.confidence01,
+      uncertainty01:integrated.uncertainty01,
+      predictedNextVector:integrated.p10.predictedState
+        ? this.unifiedLatentWorldState.encodePredictionState(integrated.p10.predictedState as any)
+        : undefined,
+      horizon:auroraDecision.recommendedHorizon,
+      sourcePredictionId:integrated.sourcePredictionId,
+    });
+    const decisionFrame={...integrated,predictionId:canonicalPrediction.id,canonicalPrediction};
+    this.canonicalPredictionFrames.set(canonicalPrediction.id,decisionFrame);
+    if(this.canonicalPredictionFrames.size>64){
+      const oldest=this.canonicalPredictionFrames.keys().next().value;
+      if(oldest)this.canonicalPredictionFrames.delete(oldest);
+    }
     return {
       action,
       utility:auroraDecision.adjustedUtility01,
       confidence:auroraDecision.effectiveConfidence01,
       uncertainty:clamp(integrated.uncertainty01*.7+auroraDecision.epistemicPressure01*.3),
-      predictionId:integrated.predictionId,
+      predictionId:canonicalPrediction.id,
       sourcePredictionId:integrated.sourcePredictionId,
       modelAgreement01:integrated.modelAgreement01,
       reasons:['integrated-world-model',`aurora-${auroraDecision.directive}`],

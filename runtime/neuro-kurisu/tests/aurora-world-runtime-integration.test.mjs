@@ -36,6 +36,10 @@ test('the canonical decision prediction carries AURORA confidence and planning g
   assert.ok(Number.isFinite(result.recommendedHorizon));
   assert.ok(result.auroraDecision);
   assert.ok(result.reasons.some(reason => reason.startsWith('aurora-')));
+  const ticket = runtime.unifiedLatentWorldState.snapshot().predictions.find(item => item.id === result.predictionId);
+  assert.ok(ticket);
+  assert.equal(ticket.horizon, result.recommendedHorizon);
+  assert.equal(ticket.sourcePredictionId, result.sourcePredictionId);
   assert.equal(runtime.auroraKernel.snapshot().decisions, 1);
 });
 
