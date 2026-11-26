@@ -49,6 +49,6 @@ jobs:
       - name: Active-information closed-loop regression
         run: npm run test:p2675:information
       - name: Install pinned TypeScript compiler for semantic runtime typecheck
-        run: npm install --no-save --package-lock=false --ignore-scripts --no-audit --no-fund typescript@5.9.3 @types/node@26.6.6
+        run: npm install --no-save --package-lock=false --ignore-scripts --no-audit --no-fund typescript@5.8.3 @types/node@22.20.5
       - name: Runtime typecheck
         run: npm run typecheck
