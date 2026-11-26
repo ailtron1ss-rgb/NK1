@@ -40,7 +40,7 @@ async function withRuntime(options, run) {
   runtime.core.flush = options.coreFlush ?? (async () => {});
   runtime.clockScheduler.stop = () => {};
   runtime.clockScheduler.drain = async () => {};
-  runtime.continuityLedger.flush = async () => {};
+  runtime.continuityLedger.flush = options.continuityLedgerFlush ?? (async () => {});
   runtime.continuityLedger.close = async () => {};
 
   try {
@@ -107,5 +107,27 @@ test('stop remains fail-fast when the canonical World checkpoint fails', async (
     await assert.rejects(runtime.stop(), /simulated world disk failure/);
     assert.equal(worldWrites.length, 1, 'World checkpoint must be attempted');
     assert.equal(entries.some(entry => entry.event === 'runtime.stop.durable' || entry.event === 'runtime.stop.partial'), false);
+  });
+});
+
+test('stop records partial durability when the diagnostic continuity ledger flush fails', async () => {
+  await withRuntime({
+    continuityLedgerFlush: async () => { throw new Error('simulated continuity ledger disk failure'); },
+  }, async ({ runtime, entries, worldWrites }) => {
+    await runtime.stop();
+
+    assert.equal(worldWrites.length, 1, 'core and world persistence should still finish');
+    const stop = entries.find(entry => entry.event === 'runtime.stop.partial');
+    assert.ok(stop, 'a failed continuity ledger flush must not be reported as fully durable');
+    assert.equal(stop.level, 'warn');
+    assert.deepEqual(stop.data.durability, {
+      core: 'durable',
+      world: 'durable',
+      cognitiveSpine: 'durable',
+      riskAwareRecovery: 'durable',
+      continuityLedger: 'failed',
+    });
+    assert.equal(stop.data.overall, 'partial');
+    assert.equal(entries.some(entry => entry.event === 'runtime.stop.durable'), false);
   });
 });
