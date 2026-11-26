@@ -232,3 +232,48 @@ console.log('ORGANISM_RUNTIME_MODULE_INTEGRATION=PASS');
   assert.equal(organism.core.operationalStatusSnapshot().tick, 0);
   await organism.stop();
 }
+
+
+// Corrupt module-extension metadata is quarantined without failing the
+// canonical organism-store load. Modules fail closed on their own restore path;
+// subsequent Core checkpoints preserve the quarantined extension payload.
+{
+  const durable = backingStore();
+  const damaged = persisted();
+  damaged.system.cognitiveModuleRuntime = {
+    schemaVersion: 99,
+    modules: [],
+  };
+  await durable.save(damaged);
+
+  const checkpoint = new CognitiveModuleCheckpointStore(durable);
+  const loaded = await assert.doesNotReject(
+    checkpoint.load(),
+    'invalid optional-module metadata must not prevent loading canonical organism state',
+  );
+  assert.equal(loaded.system.cognitiveModuleRuntime.schemaVersion, 99);
+  assert.match(checkpoint.diagnostics().checkpointLoadError ?? '', /checkpoint-invalid/);
+
+  const events = [];
+  const host = new CognitiveModuleRuntime({
+    hostApiVersion: 1,
+    grants: {},
+    stateStore: checkpoint.moduleStateStore,
+  });
+  const item = fixture(events);
+  host.register({ manifest: manifest('memory.restore-quarantine'), factory: () => item.module });
+  checkpoint.bindSnapshotProvider(() => host.snapshotAll());
+  await assert.rejects(
+    host.activateAll(),
+    /cognitive-module-checkpoint-restore-failed/,
+    'a module must not initialize from a silently discarded corrupt checkpoint',
+  );
+  assert.equal(host.list()[0].status, 'failed');
+
+  await checkpoint.save(loaded);
+  assert.equal(
+    durable.inspect().system.cognitiveModuleRuntime.schemaVersion,
+    99,
+    'ordinary Core checkpointing must preserve quarantined module metadata for recovery',
+  );
+}
