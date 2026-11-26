@@ -6,6 +6,7 @@ const settingsPath = new URL("../src/components/SettingsPanel.tsx", import.meta.
 
 test("Settings voice and avatar controls use Russian labels and descriptions", async () => {
   const settings = await readFile(settingsPath, "utf8");
+  const connection = await readFile(new URL("../src/components/ConnectionStatus.tsx", import.meta.url), "utf8");
 
   for (const phrase of [
     ">Голос<",
@@ -18,6 +19,10 @@ test("Settings voice and avatar controls use Russian labels and descriptions", a
     "Общие настройки главного экрана и панели аватара",
     "Подключение runtime",
     "2.5D · не включён",
+    "Подключение",
+    "Подключено",
+    "Показан последний подтверждённый снимок.",
+    "Повторить",
   ]) {
     assert.ok(settings.includes(phrase), `missing localized settings copy: ${phrase}`);
   }
@@ -40,4 +45,8 @@ test("Settings voice and avatar controls use Russian labels and descriptions", a
   assert.match(settings, /aria-describedby="voice-replies-description"/,
     "the speech switch must expose its safety/behavior description");
   assert.match(settings, /id="voice-replies-description"/);
+  for (const stale of ["Connecting", "Connected", "Degraded", "Offline", "Language fallback", "Retry", "Refresh canonical runtime connection"]) {
+    assert.ok(!connection.includes(stale), `stale English connection status remains: ${stale}`);
+  }
+  assert.match(connection, /aria-label="Повторить подключение к каноническому runtime"/);
 });
