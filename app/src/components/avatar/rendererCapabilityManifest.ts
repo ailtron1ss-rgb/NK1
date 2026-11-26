@@ -215,12 +215,11 @@ export class BodyRendererRegistry {
       ?? candidates[0]!;
   }
 
-  /** Resolve a body that the UI may offer as a selectable option. */
+  /** Resolve a production-approved renderer; preview-only candidates are excluded. */
   resolveSelectableByMode(mode: EmbodimentMode): BodyRendererCapabilityManifest | null {
     const candidates = this.selectable().filter((manifest) => manifest.mode === mode);
     if (!candidates.length) return null;
     return candidates.find((manifest) => manifest.selectionRole === "primary") ?? candidates[0]!;
-
   }
 }
 
