@@ -1,3 +1,5 @@
+import { countOr, isPlainDataArray, isPlainDataRecord, ownDataValue, stringOr, timestampOr, unitOr } from '../body/RestoreSanitizers.ts';
+
 const clamp=(n:number)=>Math.max(0,Math.min(1,Number.isFinite(n)?n:0));
 export interface SceneEpisode { id:string; label:string; firstAt:number; lastAt:number; visits:number; stability01:number; transitions:number; }
 export interface ContinuityState { version:1; scenes:SceneEpisode[]; transitions:number; stableTransitions:number; objectPersistence01:number; sceneContinuity01:number; temporalGrounding01:number; lastScene:string; lastAt:number; }
@@ -5,8 +7,38 @@ export const defaultPerceptualContinuityState=():ContinuityState=>({version:1,sc
 export class PerceptualContinuityModel {
  private state=defaultPerceptualContinuityState();
  restore(raw?:Partial<ContinuityState>|null){
-  const d=defaultPerceptualContinuityState(); const r=raw??{};
-  this.state={...d,...r,scenes:Array.isArray(r.scenes)?r.scenes.slice(-64):[]};
+  const d=defaultPerceptualContinuityState();
+  const r=isPlainDataRecord(raw)?raw:{};
+  const lastAt=timestampOr(ownDataValue(r,'lastAt'),0);
+  const scenes:SceneEpisode[]=[];
+  const rawScenes=ownDataValue(r,'scenes');
+  if(isPlainDataArray(rawScenes,256)){
+    for(const candidate of rawScenes.slice(-64)){
+      if(!isPlainDataRecord(candidate))continue;
+      const id=stringOr(ownDataValue(candidate,'id'),'').trim().slice(0,120);
+      const label=stringOr(ownDataValue(candidate,'label'),'').trim().slice(0,120);
+      if(!id||!label)continue;
+      const last= Math.min(lastAt||timestampOr(ownDataValue(candidate,'lastAt'),0),timestampOr(ownDataValue(candidate,'lastAt'),0));
+      const first=Math.min(timestampOr(ownDataValue(candidate,'firstAt'),last),last);
+      scenes.push({
+        id,label,firstAt:first,lastAt:last,
+        visits:Math.max(1,Math.min(1_000_000_000,countOr(ownDataValue(candidate,'visits'),1))),
+        stability01:unitOr(ownDataValue(candidate,'stability01'),0),
+        transitions:Math.min(1_000_000_000,countOr(ownDataValue(candidate,'transitions'),0)),
+      });
+    }
+  }
+  this.state={
+    version:1,
+    scenes,
+    transitions:Math.min(1_000_000_000,countOr(ownDataValue(r,'transitions'),0)),
+    stableTransitions:Math.min(1_000_000_000,countOr(ownDataValue(r,'stableTransitions'),0)),
+    objectPersistence01:unitOr(ownDataValue(r,'objectPersistence01'),d.objectPersistence01),
+    sceneContinuity01:unitOr(ownDataValue(r,'sceneContinuity01'),d.sceneContinuity01),
+    temporalGrounding01:unitOr(ownDataValue(r,'temporalGrounding01'),d.temporalGrounding01),
+    lastScene:stringOr(ownDataValue(r,'lastScene'),d.lastScene,120),
+    lastAt,
+  };
  }
  snapshot(){return structuredClone(this.state);}
  observe(input:{scene:string;at:number;entityIds:string[];previousEntityIds?:string[]}){
