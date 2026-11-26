@@ -580,7 +580,7 @@ export async function captureCameraPhotoWithReceipt(
     });
     // Concurrent duplicate keys return a previously persisted clone and are
     // deliberately not re-attested as a new physical observation.
-    if (receipt.captureNonce === captureNonce && receipt.executionId === executionId && receipt.decisionId === decisionId) {
+    if (decisionId && receipt.captureNonce === captureNonce && receipt.executionId === executionId && receipt.decisionId === decisionId) {
       Object.freeze(receipt);
       trustedCameraCaptureReceipts.add(receipt);
     }
