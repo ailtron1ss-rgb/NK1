@@ -7,6 +7,8 @@ on:
     paths:
       - 'runtime/neuro-kurisu/src/organism/index.ts'
       - 'runtime/neuro-kurisu/src/organism/core/CognitiveModuleRuntime.ts'
+      - 'runtime/neuro-kurisu/src/organism/core/index.ts'
+      - 'runtime/neuro-kurisu/src/organism/core/StableSerialization.ts'
       - 'runtime/neuro-kurisu/src/organism/core/CognitiveModuleCheckpointStore.ts'
       - 'runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts'
       - 'runtime/neuro-kurisu/tests/cognitive-module-checkpoint.mjs'
@@ -19,6 +21,8 @@ on:
     paths:
       - 'runtime/neuro-kurisu/src/organism/index.ts'
       - 'runtime/neuro-kurisu/src/organism/core/CognitiveModuleRuntime.ts'
+      - 'runtime/neuro-kurisu/src/organism/core/index.ts'
+      - 'runtime/neuro-kurisu/src/organism/core/StableSerialization.ts'
       - 'runtime/neuro-kurisu/src/organism/core/CognitiveModuleCheckpointStore.ts'
       - 'runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts'
       - 'runtime/neuro-kurisu/tests/cognitive-module-checkpoint.mjs'
