@@ -110,3 +110,71 @@ function assertSingleParentPerAdjudication() {
 
 assertSingleParentPerAdjudication();
 console.log('MEMORY_CONFLICT_SINGLE_PARENT=PASS');
+
+
+// Transaction-time corrections may advance a historical predecessor's
+// recordedFromAt beyond its successor. The immutable creation order still
+// defines the revision edge, so restore must not discard that valid lineage.
+function assertImmutableCreationOrderSurvivesTransactionTimeCorrection() {
+  const base = 3_000_000;
+  const memory = new MemoryOS2({ embeddingProvider: null, metadataRecallEnabled: true });
+  const parent = memory.encode({
+    content: 'the service policy was initially configured for the staging cluster',
+    kind: 'semantic',
+    source: 'revision-order-regression',
+    observedAt: base,
+    validFromAt: base,
+  });
+  const child = memory.encode({
+    content: 'the service policy was later configured for the production cluster',
+    kind: 'semantic',
+    source: 'revision-order-regression',
+    observedAt: base + 1_000,
+    validFromAt: base + 1_000,
+  });
+  const snapshot = structuredClone(memory.snapshot());
+  const parentRow = snapshot.items.find((item) => item.id === parent.id);
+  const childRow = snapshot.items.find((item) => item.id === child.id);
+  assert.ok(parentRow && childRow, 'both revision records must exist in the fixture');
+
+  Object.assign(parentRow, {
+    createdAt: base,
+    observedAt: base,
+    recordedFromAt: base + 3_000,
+    recordedUntilAt: null,
+    validFromAt: base,
+    validUntilAt: base + 1_000,
+    revisionGroupId: 'transaction-time-corrected-lineage',
+    revisionSequence: 1,
+    supersedesId: null,
+    supersededById: child.id,
+  });
+  Object.assign(childRow, {
+    createdAt: base + 1_000,
+    observedAt: base + 1_000,
+    recordedFromAt: base + 1_000,
+    recordedUntilAt: null,
+    validFromAt: base + 1_000,
+    validUntilAt: null,
+    revisionGroupId: 'transaction-time-corrected-lineage',
+    revisionSequence: 2,
+    supersedesId: parent.id,
+    supersededById: null,
+  });
+
+  const restored = new MemoryOS2({ embeddingProvider: null, metadataRecallEnabled: true });
+  restored.restore(snapshot);
+  const rows = restored.snapshot().items;
+  const restoredParent = rows.find((item) => item.id === parent.id);
+  const restoredChild = rows.find((item) => item.id === child.id);
+  assert.ok(restoredParent && restoredChild, 'both records must survive restore');
+  assert.ok(restoredParent.createdAt < restoredChild.createdAt, 'fixture must retain immutable creation order');
+  assert.ok(restoredParent.recordedFromAt > restoredChild.recordedFromAt, 'fixture must advance only the predecessor transaction time');
+  assert.equal(restoredParent.supersededById, child.id, 'restore must preserve the parent-to-child edge');
+  assert.equal(restoredChild.supersedesId, parent.id, 'restore must preserve the reciprocal child-to-parent edge');
+  assert.equal((restoredParent.revisionIntegrityIssues ?? []).includes('invalid-supersedes-edge'), false);
+  assert.equal((restoredChild.revisionIntegrityIssues ?? []).includes('invalid-supersedes-edge'), false);
+  console.log('MEMORY_REVISION_IMMUTABLE_CREATION_ORDER=PASS');
+}
+
+assertImmutableCreationOrderSurvivesTransactionTimeCorrection();
