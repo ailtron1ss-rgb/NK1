@@ -39,4 +39,4 @@ jobs:
           node-version: '22.12.0'
       - name: Run cognitive module lifecycle contract
         working-directory: runtime/neuro-kurisu
-        run: node --experimental-strip-types tests/cognitive-module-runtime.mjs
+        run: node --experimental-sqlite --experimental-strip-types tests/cognitive-module-runtime.mjs
