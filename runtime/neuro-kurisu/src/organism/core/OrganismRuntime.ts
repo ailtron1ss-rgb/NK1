@@ -1726,7 +1726,7 @@ export class OrganismRuntime {
         at:cycle.state.at,
         modality:embodiedAction.realityClass==='device-observation'?'sensor':'world',
         claim:`external-outcome:${embodiedAction.action}:verified=${grounded.verified01.toFixed(2)}:independent=${grounded.independent01.toFixed(2)}:consequence=${grounded.consequence01.toFixed(2)}:shadowDivergence=${shadowResolution.divergence01.toFixed(2)}`,
-        confidence01:grounded.evidence01, verified:grounded.verified01>.5, parents:[outcomeEvidence.id,actionEvidence.id],
+        confidence01:grounded.evidence01, verification:postcondition, embodiedAction, parents:[outcomeEvidence.id,actionEvidence.id],
       });
     }
 
