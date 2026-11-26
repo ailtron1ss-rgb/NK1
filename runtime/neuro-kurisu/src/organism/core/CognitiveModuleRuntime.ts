@@ -79,6 +79,8 @@ interface ModuleRecord {
   module: CognitiveModule | null;
   context: CognitiveModuleContext;
   status: CognitiveModuleStatus;
+  /** In-flight checkpoint capture; shutdown must wait for this durable adapter write. */
+  snapshotInFlight?: Promise<void>;
   lastError?: string;
 }
 
@@ -509,11 +511,20 @@ export class CognitiveModuleRuntime {
     }
 
     const module = record.module;
+    // Move out of active synchronously so no new checkpoint can start. A snapshot
+    // that already entered the module is allowed to finish before quiesce mutates it.
     record.status = 'quiescing';
     let quiesceAttempted = false;
     let shutdownStarted = false;
     let envelope: CognitiveModuleStateEnvelopeV1 | null = null;
     try {
+      const inFlightSnapshot = record.snapshotInFlight;
+      if (inFlightSnapshot) {
+        // The checkpoint caller owns the diagnostic for a failed background
+        // capture. Shutdown retries its own snapshot after quiescing.
+        await inFlightSnapshot.catch(() => undefined);
+      }
+
       quiesceAttempted = true;
       try {
         await module.quiesce(record.context);
@@ -601,8 +612,23 @@ export class CognitiveModuleRuntime {
     for (const id of this.topologicalOrder()) {
       const record = this.records.get(id);
       if (record?.status !== 'active' || !record.module) continue;
-      try {
-        const state = cloneBoundedState(await record.module.snapshot(), this.maxStateBytes);
+      const existingCapture = record.snapshotInFlight;
+      if (existingCapture) {
+        try {
+          await existingCapture;
+          captured.push(id);
+        } catch (error) {
+          failed.push({
+            id,
+            reason: String(error instanceof Error ? error.message : error).slice(0, 180),
+          });
+        }
+        continue;
+      }
+
+      const module = record.module;
+      const capture = (async (): Promise<void> => {
+        const state = cloneBoundedState(await module.snapshot(), this.maxStateBytes);
         const capturedAt = this.clock();
         if (!Number.isFinite(capturedAt) || capturedAt < 0) {
           throw fail('module-state-time-invalid', id);
@@ -616,12 +642,20 @@ export class CognitiveModuleRuntime {
           state,
         };
         if (this.stateStore) await this.stateStore.save(envelope);
+      })();
+      // Publish the promise before yielding: concurrent snapshots share this
+      // capture, and deactivate() observes it before invoking quiesce().
+      record.snapshotInFlight = capture;
+      try {
+        await capture;
         captured.push(id);
       } catch (error) {
         failed.push({
           id,
           reason: String(error instanceof Error ? error.message : error).slice(0, 180),
         });
+      } finally {
+        if (record.snapshotInFlight === capture) record.snapshotInFlight = undefined;
       }
     }
     return { captured, failed };
