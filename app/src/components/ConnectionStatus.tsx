@@ -33,7 +33,7 @@ export function ConnectionStatus() {
           {new Date(connection.lastSyncedAt).toLocaleTimeString()}
         </span>
       ) : null}
-      <Button type="button" size="sm" variant="ghost" className="h-8 px-2" onClick={() => void refresh()} disabled={connection.status === "connecting"} aria-label="Повторить подключение к каноническому runtime">
+      <Button type="button" size="sm" variant="ghost" className="min-h-11 px-3" onClick={() => void refresh()} disabled={connection.status === "connecting"} aria-label="Повторить подключение к каноническому runtime">
         <RefreshCw className="mr-1.5 size-3.5" aria-hidden="true" />
         Повторить
       </Button>
