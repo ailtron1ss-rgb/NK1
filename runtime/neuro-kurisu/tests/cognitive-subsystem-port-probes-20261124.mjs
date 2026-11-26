@@ -64,7 +64,7 @@ function createAccessors(overrides = {}) {
 // All declared snapshot owners are probed; errors and malformed values are contained.
 {
   const { accessors, calls } = createAccessors();
-  accessors.p71Snapshot = () => { calls.p71Snapshot += 1; throw new Error('SECRET_TOKEN_must_not_escape'); };
+  accessors.p71Snapshot = () => { calls.p71Snapshot += 1; const error = new Error('SECRET_TOKEN_must_not_escape'); error.name = 'SECRET_TOKEN_custom_error_class'; throw error; };
   accessors.predictionDebtSnapshot = () => [];
   accessors.externalEvidenceSnapshot = () => undefined;
   accessors.evidenceFirewallSnapshot = () => 'primitive';
