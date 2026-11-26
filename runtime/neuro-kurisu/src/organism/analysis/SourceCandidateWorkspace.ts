@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
-import { chmod, lstat, mkdir, realpath, rename, rm, writeFile } from 'node:fs/promises';
+import { chmodSync } from 'node:fs';
+import { lstat, mkdir, realpath, rename, rm, writeFile } from 'node:fs/promises';
 import { isAbsolute, relative, resolve, sep } from 'node:path';
 import { types as nodeUtilTypes } from 'node:util';
 
@@ -236,7 +237,7 @@ async function ensureDirectoryWithoutSymlink(path: string): Promise<void> {
   const info = await lstat(path);
   if (!info.isDirectory() || info.isSymbolicLink()) throw new Error('candidate-workspace-path-not-directory');
   // Candidate content is private staging data; do not inherit broad umask-derived access.
-  await chmod(path, 0o700);
+  chmodSync(path, 0o700);
 }
 
 async function writeCandidateFile(root: string, relativePath: string, content: string): Promise<void> {
@@ -388,7 +389,7 @@ export class SourceCandidateWorkspaceV1 {
       const rootInfo = await lstat(this.configuredWorkspaceRoot);
       if (!rootInfo.isDirectory() || rootInfo.isSymbolicLink()) return reject('candidate-workspace-root-not-directory', candidateId);
       const workspaceRoot = await realpath(this.configuredWorkspaceRoot);
-      await chmod(workspaceRoot, 0o700);
+      chmodSync(workspaceRoot, 0o700);
       candidateRoot = resolve(workspaceRoot, candidateId);
       const rootRelative = relative(workspaceRoot, candidateRoot);
       if (rootRelative === '..' || rootRelative.startsWith('..' + sep) || isAbsolute(rootRelative)) {
@@ -437,7 +438,7 @@ export class SourceCandidateWorkspaceV1 {
         // is the only signal that a candidate is fully materialized.
         await mkdir(candidateRoot, { mode: 0o700 });
         ownsCandidateDirectory = true;
-        await chmod(candidateRoot, 0o700);
+        chmodSync(candidateRoot, 0o700);
       } catch (error) {
         if ((error as NodeJS.ErrnoException)?.code === 'EEXIST') {
           return reject('candidate-workspace-already-exists', candidateId);
