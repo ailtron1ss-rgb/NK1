@@ -92,8 +92,10 @@ duplicateReceiptRestore.restore({version:1,records:[
 ]});
 assert.equal(duplicateReceiptRestore.snapshot().acceptedCount,0,
   'one persisted event receipt cannot be replayed across two source identities');
-assert.equal(duplicateReceiptRestore.independenceCount('claim:duplicate'),2,
-  'source identity count remains diagnostic, but duplicate receipts cannot promote the records');
+assert.equal(duplicateReceiptRestore.independenceCount('claim:duplicate'),0,
+  'source identities with a duplicated event receipt cannot count as independent witnesses');
+assert.equal(duplicateReceiptRestore.snapshot().records.length, 2,
+  'source rows remain available for diagnostics even when neither has a usable unique event receipt');
 assert.ok(duplicateReceiptRestore.snapshot().records.every(row=>row.corroborations===0),
   'duplicate receipts must be removed from every claimant');
 
