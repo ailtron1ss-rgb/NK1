@@ -2757,6 +2757,7 @@ export class OrganismRuntime {
       await this.core.flush();
       const cognitiveSpineDurability = await this.persistCognitiveSpineSchedule();
       const riskAwareRecoveryDurability = await this.persistRiskAwareRecovery();
+      const cognitiveHealthDurability = await this.persistCognitiveHealth();
       await this.checkpointWorld(true);
       // The continuity ledger is diagnostic rather than canonical organism state,
       // but its buffered frames are still a persisted sidecar and must be reported.
@@ -2775,9 +2776,11 @@ export class OrganismRuntime {
         world: 'durable',
         cognitiveSpine: cognitiveSpineDurability,
         riskAwareRecovery: riskAwareRecoveryDurability,
+        cognitiveHealth: cognitiveHealthDurability,
         continuityLedger: continuityLedgerDurability,
       } as const;
-      const complete = Object.values(durability).every(status => status === 'durable');
+      // Optional but configured stores are explicit; absence is not a durability failure.
+      const complete = Object.values(durability).every(status => status !== 'failed');
       await this.journal.write(
         complete ? 'info' : 'warn',
         complete ? 'runtime.stop.durable' : 'runtime.stop.partial',
@@ -2816,6 +2819,20 @@ export class OrganismRuntime {
     } catch (error) {
       await this.journal.write('warn', 'runtime.risk-aware-recovery.persist-failed', {
         tick: this.unifiedCycle.riskAwareRecoverySnapshot().tick,
+        message: String((error as any)?.message ?? error).slice(0, 180),
+      }).catch(() => {});
+      return 'failed';
+    }
+  }
+
+  private async persistCognitiveHealth(): Promise<'durable' | 'failed' | 'not-configured'> {
+    const system = this.cognitiveImmuneSystem;
+    if (!system) return 'not-configured';
+    try {
+      await this.cognitiveImmuneStore.save(system.snapshot());
+      return 'durable';
+    } catch (error) {
+      await this.journal.write('warn', 'runtime.cognitive-health.persist-failed', {
         message: String((error as any)?.message ?? error).slice(0, 180),
       }).catch(() => {});
       return 'failed';
