@@ -10,6 +10,7 @@ export interface WorkspaceCandidateV2 {
 export interface WorkspaceDecisionCreditCandidate {
   id: string;
   source: string;
+  candidateAction: string | null;
   weight01: number;
   features: number[];
   eligible: boolean;
@@ -146,6 +147,7 @@ export class GlobalWorkspaceSubstrateV2 {
       decisionReceipts: (() => {
         const receipts = Array.isArray(r.decisionReceipts) ? r.decisionReceipts.slice(-64) : [];
         const seen = new Set<string>();
+        const seenOutcomeIds = new Set<string>();
         const clean: WorkspaceDecisionCreditReceipt[] = [];
         for (const raw of receipts) {
           if (!raw || typeof raw !== 'object' || typeof (raw as any).decisionId !== 'string' ||
@@ -156,23 +158,46 @@ export class GlobalWorkspaceSubstrateV2 {
               !action || action.length > 80 || /[\\u0000-\\u001f\\u007f]/.test(action) || seen.has(decisionId)) continue;
           const coalition = Array.isArray((raw as any).coalition) ? (raw as any).coalition.slice(0, d.capacity).flatMap((candidate: any) => {
             if (!candidate || typeof candidate.id !== 'string' || typeof candidate.source !== 'string') return [];
+            const id = candidate.id.trim();
+            const source = candidate.source.trim().slice(0, 64);
+            const candidateAction = typeof candidate.candidateAction === 'string' &&
+              candidate.candidateAction.trim().length > 0 &&
+              candidate.candidateAction.trim().length <= 80 &&
+              !/[\\u0000-\\u001f\\u007f]/.test(candidate.candidateAction)
+              ? candidate.candidateAction.trim()
+              : null;
             return [{
-              id: candidate.id.slice(0, 180),
-              source: candidate.source.slice(0, 64),
+              id: id.slice(0, 180),
+              source,
+              candidateAction,
               weight01: clamp01(Number(candidate.weight01)),
               features: vector(candidate.features, d.featureDim),
-              eligible: candidate.eligible === true,
+              // Persisted flags are hints only. Recompute eligibility from the
+              // source owner and the immutable action identity in the envelope.
+              eligible: source === 'decision' && candidateAction === action,
             }];
           }) : [];
+          const outcomeIds: string[] = [];
+          if (Array.isArray((raw as any).outcomeIds)) {
+            for (const rawId of (raw as any).outcomeIds) {
+              if (typeof rawId !== 'string') continue;
+              const id = rawId.trim();
+              if (!id || id.length > 180 || /[\\u0000-\\u001f\\u007f]/.test(id) ||
+                  seenOutcomeIds.has(id) || outcomeIds.includes(id)) continue;
+              seenOutcomeIds.add(id);
+              outcomeIds.push(id);
+            }
+          }
+          const rawTick = Number((raw as any).tick ?? 0);
+          const rawAt = Number((raw as any).at ?? 0);
+          const rawLastOutcomeAt = Number((raw as any).lastOutcomeAt ?? 0);
           clean.push({
             decisionId, action,
-            tick: Math.max(0, Math.floor(Number((raw as any).tick ?? 0))),
-            at: Math.max(0, Number((raw as any).at ?? 0)),
+            tick: Number.isFinite(rawTick) ? Math.max(0, Math.floor(rawTick)) : 0,
+            at: Number.isFinite(rawAt) ? Math.max(0, rawAt) : 0,
             coalition,
-            outcomeIds: Array.isArray((raw as any).outcomeIds)
-              ? (raw as any).outcomeIds.filter((id: unknown) => typeof id === 'string' && id.length > 0 && id.length <= 180).slice(-8)
-              : [],
-            lastOutcomeAt: Math.max(0, Number((raw as any).lastOutcomeAt ?? 0)),
+            outcomeIds: outcomeIds.slice(-8),
+            lastOutcomeAt: Number.isFinite(rawLastOutcomeAt) ? Math.max(0, rawLastOutcomeAt) : 0,
           });
           seen.add(decisionId);
         }
@@ -394,8 +419,10 @@ export class GlobalWorkspaceSubstrateV2 {
         !action || action.length > 80 || /[\\u0000-\\u001f\\u007f]/.test(action)) {
       return { recorded: false as const, replayed: false, reason: 'invalid-decision-identity' };
     }
-    const tick = Math.max(0, Math.floor(Number(input.tick ?? 0)));
-    const at = Math.max(0, Number(input.at ?? Date.now()));
+    const rawTick = Number(input.tick ?? 0);
+    const rawAt = Number(input.at ?? Date.now());
+    const tick = Number.isFinite(rawTick) ? Math.max(0, Math.floor(rawTick)) : 0;
+    const at = Number.isFinite(rawAt) ? Math.max(0, rawAt) : Date.now();
     const existing = this.state.decisionReceipts.find(receipt => receipt.decisionId === decisionId);
     if (existing) {
       if (existing.tick !== tick || existing.action !== action) {
@@ -413,6 +440,9 @@ export class GlobalWorkspaceSubstrateV2 {
       return [{
         id: row.candidate.id,
         source: row.candidate.source,
+        candidateAction: typeof row.candidate.content?.action === 'string'
+          ? row.candidate.content.action.slice(0, 80)
+          : null,
         weight01: clamp01(row.weight01),
         features: vector(row.candidate.features, this.state.featureDim),
         eligible: row.candidate.source === 'decision' && row.candidate.content?.action === action,
