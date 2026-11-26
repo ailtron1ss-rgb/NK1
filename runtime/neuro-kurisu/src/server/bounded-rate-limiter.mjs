@@ -2,6 +2,32 @@
  * Bounded in-memory fixed-window rate limiter.
  * LRU eviction caps memory when many distinct transport peers connect.
  */
+
+/**
+ * Parse an optional decimal environment setting without allowing malformed
+ * values to poison runtime initialization or unbounded rate-limit settings.
+ * Invalid and absent values use the safe default; valid values are clamped.
+ */
+export function parseRateLimitSetting(rawValue, { fallback, minimum, maximum }) {
+  if (!Number.isSafeInteger(fallback)
+    || !Number.isSafeInteger(minimum)
+    || !Number.isSafeInteger(maximum)
+    || minimum < 1
+    || maximum < minimum
+    || fallback < minimum
+    || fallback > maximum) {
+    throw new Error('invalid-rate-setting-bounds');
+  }
+
+  if (typeof rawValue !== 'string') return fallback;
+  const normalized = rawValue.trim();
+  if (!/^\d+$/.test(normalized)) return fallback;
+
+  const parsed = Number(normalized);
+  if (!Number.isSafeInteger(parsed)) return fallback;
+  return Math.min(maximum, Math.max(minimum, parsed));
+}
+
 export class BoundedRateLimiter {
   constructor({ windowMs, limit, maxKeys = 512 }) {
     if (!Number.isSafeInteger(windowMs) || windowMs < 1) throw new Error('invalid-rate-window');

@@ -22,7 +22,7 @@ import { LocalLanguageBackendPolicy } from './local-language-backend-policy.mjs'
 import { RELEASE_CONTRACT } from '../organism/system/ReleaseContract.ts';
 import { resolvePhonePolicyConfig } from '../organism/system/PhoneRuntimePolicy.ts';
 import { authorizeApiRequest } from '../organism/system/ApiSecurityPolicy.ts';
-import { BoundedRateLimiter } from './bounded-rate-limiter.mjs';
+import { BoundedRateLimiter, parseRateLimitSetting } from './bounded-rate-limiter.mjs';
 import { GeminiVisionSemanticBackend } from '../organism/body/GeminiVisionSemanticBackend.ts';
 import { OpenAICompatibleLocalChatProvider } from '../organism/integration/local/OpenAICompatibleLocalChatProvider.ts';
 import { NeuroPlasticInferenceAdapter } from '../organism/integration/local/NeuroPlasticInferenceAdapter.ts';
@@ -123,8 +123,8 @@ let languageCallCount = 0;
 let lastUserModelPreferenceEventTick = 0;
 let lastLanguageBackend = 'none';
 let lastLanguageFailure = '';
-const RATE_WINDOW_MS = Math.max(10000, Number(process.env.NEURO_RATE_WINDOW_MS || 60000));
-const RATE_LIMIT = Math.max(30, Number(process.env.NEURO_RATE_LIMIT || 240));
+const RATE_WINDOW_MS = parseRateLimitSetting(process.env.NEURO_RATE_WINDOW_MS, { fallback: 60000, minimum: 10000, maximum: 86_400_000 });
+const RATE_LIMIT = parseRateLimitSetting(process.env.NEURO_RATE_LIMIT, { fallback: 240, minimum: 30, maximum: 100_000 });
 const API_RATE_LIMITER = new BoundedRateLimiter({ windowMs: RATE_WINDOW_MS, limit: RATE_LIMIT, maxKeys: 512 });
 function consumeRateLimit(req, pathName) {
     if (pathName === '/health' || pathName === '/api/health')
