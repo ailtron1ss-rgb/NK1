@@ -77,6 +77,33 @@ assert.ok(supportRows.filter(row => row.selected).every(row => row.delta > 0 && 
 assert.ok(supportRows.filter(row => !row.selected).every(row => Math.abs(row.delta) < 0.000001),
   'non-selected candidates must not receive global workspace coalition support');
 
+
+const firstDecisionTrace = core.persisted.traces[0];
+assert.ok(firstDecisionTrace?.id && firstDecisionTrace.selected,
+  'the real OrganismCore cycle must emit a selected decision trace');
+const firstDecisionReceipt = core.cognitiveRuntime.globalWorkspace.snapshot().decisionReceipts
+  .find(receipt => receipt.decisionId === firstDecisionTrace.id);
+assert.ok(firstDecisionReceipt,
+  'the real OrganismCore cycle must freeze its workspace coalition against the decision ID');
+const firstDecisionId = firstDecisionTrace.id;
+await core.observe({
+  text: 'Run a second cognitive cycle before the first decision receives its delayed result.',
+  novelty: 0.22,
+  uncertainty: 0.68,
+});
+assert.notEqual(core.persisted.traces[0]?.id, firstDecisionId,
+  'the second observation must produce a distinct later decision');
+await core.feedback({
+  decisionId: firstDecisionId,
+  outcomeId: 'workspace-late-feedback-1',
+  success: .92,
+  reward: .88,
+  evidenceSource: 'device',
+});
+assert.ok(core.cognitiveRuntime.canonicalTemporalCredit.snapshot().recentAssignments
+  .some(assignment => assignment.decisionId === firstDecisionId && assignment.delayTicks > 0),
+  'delayed Core feedback must resolve against its exact historical decision rather than the newest trace');
+
 console.log('NK1_COGNITIVE_WORKSPACE_PREARBITRATION=PASS', JSON.stringify({
   order,
   ignition01: competed.ignition01,
