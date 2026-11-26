@@ -86,6 +86,7 @@ const defaultState = (): GlobalWorkspaceSubstrateState => ({
  */
 export class GlobalWorkspaceSubstrateV2 {
   private state = defaultState();
+  private lastAdmission = { inputCount: 0, uniqueCount: 0, admittedCount: 0, duplicateCount: 0, invalidCount: 0, overflowCount: 0 };
 
   snapshot() { return structuredClone(this.state); }
 
@@ -143,7 +144,47 @@ export class GlobalWorkspaceSubstrateV2 {
   }
 
   compete(candidates: WorkspaceCandidateV2[], context: number[] = []) {
-    const usable = candidates.slice(0, 64).map(c => ({ ...c, features: vector(c.features, this.state.featureDim), salience: clamp01(c.salience) }));
+    // Admission is bounded and score-ranked rather than input-order-ranked.
+    // This prevents a noisy/high-volume source from occupying the first 64 slots
+    // merely because it emitted its candidates earlier in the array.
+    const inputCount = Array.isArray(candidates) ? candidates.length : 0;
+    const boundedInput = Array.isArray(candidates) ? candidates.slice(0, 512) : [];
+    const byId = new Map<string, { c: WorkspaceCandidateV2; score: number }>();
+    let invalidCount = 0;
+    let duplicateCount = 0;
+    for (const raw of boundedInput) {
+      if (!raw || typeof raw.id !== 'string' || !raw.id.trim()) {
+        invalidCount++;
+        continue;
+      }
+      const c: WorkspaceCandidateV2 = {
+        ...raw,
+        id: raw.id.trim(),
+        source: typeof raw.source === 'string' && raw.source.trim() ? raw.source.trim().slice(0, 64) : 'unknown',
+        features: vector(raw.features, this.state.featureDim),
+        salience: clamp01(raw.salience),
+      };
+      const score = this.score(c, context);
+      const previous = byId.get(c.id);
+      if (previous) {
+        duplicateCount++;
+        if (score > previous.score) byId.set(c.id, { c, score });
+      } else {
+        byId.set(c.id, { c, score });
+      }
+    }
+    const rankedAll = [...byId.values()].sort((a, b) =>
+      b.score - a.score || a.c.id.localeCompare(b.c.id));
+    const admitted = rankedAll.slice(0, 64);
+    this.lastAdmission = {
+      inputCount,
+      uniqueCount: byId.size,
+      admittedCount: admitted.length,
+      duplicateCount,
+      invalidCount,
+      overflowCount: Math.max(0, rankedAll.length - admitted.length) + Math.max(0, inputCount - boundedInput.length),
+    };
+    const usable = admitted.map(x => x.c);
     if (!usable.length) {
       this.state.selectedIds = [];
       this.state.weights = [];
@@ -153,12 +194,11 @@ export class GlobalWorkspaceSubstrateV2 {
       this.state.cycles++;
       return this.snapshot();
     }
-    const scored = usable.map(c => ({ c, score: this.score(c, context) }));
-    const max = Math.max(...scored.map(x => x.score));
-    const exp = scored.map(x => this.state.lesion.competition ? 1 : Math.exp(Math.max(-8, Math.min(8, (x.score - max) / this.state.temperature))));
+    const max = Math.max(...admitted.map(x => x.score));
+    const exp = admitted.map(x => this.state.lesion.competition ? 1 : Math.exp(Math.max(-8, Math.min(8, (x.score - max) / this.state.temperature))));
     const denom = exp.reduce((s, x) => s + x, 0);
     const probs = exp.map(x => x / Math.max(1e-9, denom));
-    const ranked = scored.map((x, i) => ({ ...x, p: probs[i] })).sort((a, b) => b.p - a.p);
+    const ranked = admitted.map((x, i) => ({ ...x, p: probs[i] }));
     const coalition = ranked.slice(0, this.state.capacity);
     const coalitionWeights = coalition.map(x => x.p / Math.max(1e-9, coalition.reduce((s, y) => s + y.p, 0)));
     const nextLatent = this.updateLatent(coalition.map(x => x.c), coalitionWeights);
@@ -233,6 +273,7 @@ export class GlobalWorkspaceSubstrateV2 {
   diagnostics() {
     return {
       cycles: this.state.cycles,
+      admission: { ...this.lastAdmission },
       selectedCount: this.state.selectedIds.length,
       ignition01: this.state.ignition01,
       recurrence01: this.state.recurrence01,
