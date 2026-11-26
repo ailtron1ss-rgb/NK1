@@ -16,7 +16,6 @@ type EpisodeProjection = {
   at: number;
   parentIds: string[];
   cycleIdHash: string;
-  decisionId: string | null;
   actionEventId: string;
   observationEventId: string | null;
   predictionEventId: string | null;
@@ -78,7 +77,6 @@ function readEpisode(raw: unknown): EpisodeProjection | null {
 
   const fields = {
     cycleIdHash: ownData(payload, 'cycleIdHash'),
-    decisionId: ownData(payload, 'decisionId'),
     actionEventId: ownData(payload, 'actionEventId'),
     observationEventId: ownData(payload, 'observationEventId'),
     predictionEventId: ownData(payload, 'predictionEventId'),
@@ -97,7 +95,6 @@ function readEpisode(raw: unknown): EpisodeProjection | null {
     fields.decisionRationaleHash, fields.projectionHash].every(value => typeof value === 'string' && HASH.test(value))
     || ![fields.actionEventId, fields.outcomeEventId, fields.learningEventId].every(value =>
       typeof value === 'string' && value.length > 0 && value.length <= 180)
-    || (fields.decisionId !== undefined && (typeof fields.decisionId !== 'string' || !fields.decisionId.trim() || fields.decisionId !== fields.decisionId.trim() || fields.decisionId.length > 180 || /[\u0000-\u001f\u007f]/u.test(fields.decisionId)))
     || typeof fields.predictionError01 !== 'number' || !Number.isFinite(fields.predictionError01)
     || fields.predictionError01 < 0 || fields.predictionError01 > 1
     || typeof fields.confidence01 !== 'number' || !Number.isFinite(fields.confidence01)
@@ -116,7 +113,6 @@ function readEpisode(raw: unknown): EpisodeProjection | null {
   return {
     id, tick: tick as number, at, parentIds,
     cycleIdHash: fields.cycleIdHash as string,
-    decisionId: typeof fields.decisionId === 'string' ? fields.decisionId : null,
     actionEventId: fields.actionEventId as string,
     observationEventId,
     predictionEventId,
@@ -205,7 +201,7 @@ export function persistMetacognitiveEpisode(
       cycleIdHash: episode.cycleIdHash,
       actionEventId: episode.actionEventId,
       observationId: episode.observationEventId ?? '',
-      ...(episode.decisionId ? { decisionId: episode.decisionId } : {}),
+      decisionId: episode.actionEventId,
       outcomeDirection: episode.predictionError01 >= 0.5 ? 'prediction-mismatch' : 'prediction-aligned',
       predictionEventId: episode.predictionEventId ?? '',
       outcomeEventId: episode.outcomeEventId,

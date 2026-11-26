@@ -14,6 +14,10 @@ export type CognitiveStage = 'observation'|'prediction'|'appraisal'|'attention'|
 
 export interface CognitiveEventNode {
   id: string;
+  /** Monotonic local append order; independent of wall-clock movement. */
+  sequence?: number;
+  /** Lamport-style logical time advanced beyond the local clock and known parents. */
+  logicalTime?: number;
   tick: number;
   at: number;
   stage: CognitiveStage;
@@ -33,12 +37,8 @@ export interface OperationalCycleLineageCheck {
   /** Legacy-compatible six-stage verdict. */
   complete: boolean;
   coreComplete: boolean;
-  /** Strict eleven-stage verdict, including one-decision identity for new cycles. */
+  /** Strict eleven-stage verdict. */
   fullComplete: boolean;
-  /** Canonical Core decision identity shared by every stage, when the cycle is annotated. */
-  decisionId?: string;
-  decisionLineageComplete: boolean;
-  decisionLineageIssues: string[];
   integrity01: number;
   coreIntegrity01: number;
   fullIntegrity01: number;
@@ -76,6 +76,10 @@ export interface CognitiveEventFabricSnapshot {
   version: 1;
   capacity: number;
   total: number;
+  /** Monotonic append-order watermark persisted independently of the bounded event buffer. */
+  sequenceWatermark?: number;
+  /** Lamport-style clock watermark persisted across restarts. */
+  logicalClock?: number;
   buffered: number;
   linkedParentEvents: number;
   danglingParentLinks: number;
@@ -100,10 +104,6 @@ const ownData=(value:unknown,key:string):unknown=>{
   const descriptor=Object.getOwnPropertyDescriptor(value,key);
   return descriptor&&Object.prototype.hasOwnProperty.call(descriptor,'value')?descriptor.value:undefined;
 };
-const hasControlCharacters=(value:string):boolean=>Array.from(value).some(character=>{
-  const code=character.charCodeAt(0);
-  return code<=31||code===127;
-});
 const ownArray=(value:unknown,max:number):unknown[]=>{
   if(!Array.isArray(value))return [];
   const length=ownData(value,'length');
@@ -147,6 +147,8 @@ export class CognitiveEventFabric {
   private readonly capacity:number;
   private events:CognitiveEventNode[]=[];
   private total=0;
+  private sequenceWatermark=0;
+  private logicalClock=0;
   private readonly receiptProjectionIndex=new Map<string,ToolReceiptProjectionIndexEntry>();
 
   constructor(capacity=512){this.capacity=Math.max(128,Math.min(4096,Math.floor(capacity)));}
@@ -155,7 +157,19 @@ export class CognitiveEventFabric {
     const recentRows=ownArray(ownData(raw,'recent'),this.capacity);
     const receiptEvents=ownArray(ownData(raw,'receiptEvents'),this.capacity);
     const rows=[...recentRows,...receiptEvents];
+    const rawTotal=ownData(raw,'total');
+    const legacyTotal=typeof rawTotal==='number'&&Number.isSafeInteger(rawTotal)&&rawTotal>=0
+      ? rawTotal : rows.length;
+    const rawSequenceWatermark=ownData(raw,'sequenceWatermark');
+    const rawLogicalClock=ownData(raw,'logicalClock');
+    let fallbackSequence=Math.max(
+      legacyTotal,
+      rows.length,
+      typeof rawSequenceWatermark==='number'&&Number.isSafeInteger(rawSequenceWatermark)&&rawSequenceWatermark>=0
+        ? rawSequenceWatermark : 0,
+    );
     const seen=new Set<string>();
+    const seenSequences=new Set<number>();
     const restored:CognitiveEventNode[]=[];
     for(const value of rows){
       if(!isRecord(value))continue;
@@ -164,7 +178,25 @@ export class CognitiveEventFabric {
       const stage=typeof rawStage==='string'?rawStage as CognitiveStage:undefined;
       // Causal ticks must be actual finite JSON numbers, never numeric-string coercions.
       if(!id||!COGNITIVE_STAGES.has(stage as CognitiveStage)||typeof tick!=='number'||!Number.isFinite(tick)||tick<0||seen.has(id))continue;
+      const rawSequence=ownData(value,'sequence');
+      let sequence:number;
+      if(rawSequence===undefined){
+        while(fallbackSequence>0&&seenSequences.has(fallbackSequence))fallbackSequence-=1;
+        if(fallbackSequence<=0)fallbackSequence=Math.max(1,seenSequences.size+1);
+        sequence=fallbackSequence;
+        fallbackSequence-=1;
+      }else{
+        if(typeof rawSequence!=='number'||!Number.isSafeInteger(rawSequence)||rawSequence<1||seenSequences.has(rawSequence))continue;
+        sequence=rawSequence;
+      }
+      const rawLogicalTime=ownData(value,'logicalTime');
+      const logicalTime=rawLogicalTime===undefined
+        ? sequence
+        : typeof rawLogicalTime==='number'&&Number.isSafeInteger(rawLogicalTime)&&rawLogicalTime>=1
+          ? rawLogicalTime : undefined;
+      if(logicalTime===undefined)continue;
       seen.add(id);
+      seenSequences.add(sequence);
       const rawAt=ownData(value,'at');
       const at=typeof rawAt==='number'&&Number.isFinite(rawAt)&&rawAt>=0?rawAt:0;
       const parentIds=ownArray(ownData(value,'parentIds'),12)
@@ -172,7 +204,7 @@ export class CognitiveEventFabric {
         .map(parent=>parent.trim().slice(0,180));
       const rawSource=ownData(value,'source'),rawExternal=ownData(value,'external'),rawConfidence=ownData(value,'confidence01');
       restored.push({
-        id,stage:stage as CognitiveStage,tick:Math.floor(tick),at,
+        id,sequence,logicalTime,stage:stage as CognitiveStage,tick:Math.floor(tick),at,
         source:typeof rawSource==='string'?rawSource.slice(0,120):'restored-unknown',
         parentIds,external:typeof rawExternal==='boolean'?rawExternal:false,
         confidence01:clamp01(typeof rawConfidence==='number'&&Number.isFinite(rawConfidence)?rawConfidence:.5),
@@ -180,6 +212,9 @@ export class CognitiveEventFabric {
       });
       if(restored.length>=this.capacity)break;
     }
+    // Persisted sequence is the canonical order. Snapshot array order is only a
+    // serialization detail and may differ after transport, compaction or merge.
+    restored.sort((a,b)=>(b.sequence??0)-(a.sequence??0));
     this.events=restored;
     this.receiptProjectionIndex.clear();
     const restoredById=new Map(this.events.map(event=>[event.id,event] as const));
@@ -229,31 +264,65 @@ export class CognitiveEventFabric {
         ...(receiptRevisions.length?{receiptRevisions:receiptRevisions.map(ref=>({revisionId:ref.observationId,eventId:ref.eventId,projectionHash:ref.projectionHash,projectedAt:ref.projectedAt}))}:{}),
       });
     }
-    const rawTotal=ownData(raw,'total');
-    this.total=Math.max(this.events.length,typeof rawTotal==='number'&&Number.isFinite(rawTotal)?Math.max(0,Math.floor(rawTotal)):this.events.length);
+    this.total=Math.max(this.events.length,legacyTotal);
+    const maxSequence=this.events.reduce((value,event)=>Math.max(value,event.sequence??0),0);
+    const maxLogicalTime=this.events.reduce((value,event)=>Math.max(value,event.logicalTime??0),0);
+    this.sequenceWatermark=Math.max(
+      this.total,maxSequence,
+      typeof rawSequenceWatermark==='number'&&Number.isSafeInteger(rawSequenceWatermark)&&rawSequenceWatermark>=0
+        ? rawSequenceWatermark : 0,
+    );
+    this.logicalClock=Math.max(
+      maxLogicalTime,
+      typeof rawLogicalClock==='number'&&Number.isSafeInteger(rawLogicalClock)&&rawLogicalClock>=0
+        ? rawLogicalClock : 0,
+    );
   }
   append(input:{id?:string;tick:number;stage:CognitiveStage;source:string;parentIds?:string[];external?:boolean;confidence01?:number;payload?:Record<string,unknown>;at?:number}):CognitiveEventNode{
     const at=Number.isFinite(input.at)?Number(input.at):Date.now();
     const suppliedId=typeof input.id==='string'?input.id.trim():'';
     if(input.id!==undefined&&(!suppliedId||suppliedId.length>180||/[\u0000-\u001f\u007f]/.test(suppliedId))) throw new Error('invalid-cognitive-event-id');
+    if(typeof input.tick!=='number'||!Number.isFinite(input.tick)||input.tick<0) throw new Error('invalid-cognitive-event-tick');
+    if(!COGNITIVE_STAGES.has(input.stage)) throw new Error('invalid-cognitive-event-stage');
+    const tick=Math.max(0,Math.floor(input.tick));
+    const source=String(input.source||'unknown').slice(0,120);
+    const parentIds=[...(input.parentIds??[])].map(String).slice(0,12);
+    const external=Boolean(input.external);
+    const confidence01=clamp01(input.confidence01??0.5);
+    const payload=cleanPayload(input.payload);
+    const contentFingerprint=sha256Stable({tick,stage:input.stage,source,parentIds,external,confidence01,payload});
     if(suppliedId){
       const prior=this.events.find(event=>event.id===suppliedId);
       if(prior){
-        if(prior.tick!==Math.max(0,Math.floor(input.tick))||prior.stage!==input.stage||prior.source!==String(input.source||'unknown').slice(0,120))
-          throw new Error('cognitive-event-id-conflict');
+        const priorFingerprint=sha256Stable({
+          tick:prior.tick,stage:prior.stage,source:prior.source,parentIds:prior.parentIds,
+          external:prior.external,confidence01:prior.confidence01,payload:prior.payload,
+        });
+        if(priorFingerprint!==contentFingerprint) throw new Error('cognitive-event-id-conflict');
+        // Wall-clock timestamp is intentionally excluded: replaying the same causal
+        // event later must preserve its original time and ordering receipt.
         return {...prior,parentIds:[...prior.parentIds],payload:{...prior.payload}};
       }
     }
+    const knownParentClock=parentIds.reduce((value,parentId)=>{
+      const parent=this.events.find(event=>event.id===parentId);
+      return Math.max(value,parent?.logicalTime??0);
+    },0);
+    const sequence=Math.max(this.sequenceWatermark,this.total)+1;
+    const logicalTime=Math.max(this.logicalClock,knownParentClock)+1;
     const event:CognitiveEventNode={
-      id:suppliedId||`cef:${at}:${Math.max(0,Math.floor(input.tick))}:${Math.random().toString(16).slice(2)}`,
-      tick:Math.max(0,Math.floor(input.tick)), at,
-      stage:input.stage, source:String(input.source||'unknown').slice(0,120),
-      parentIds:[...(input.parentIds??[])].map(String).slice(0,12),
-      external:Boolean(input.external), confidence01:clamp01(input.confidence01??0.5), payload:cleanPayload(input.payload),
+      id:suppliedId||('cef:'+at+':'+tick+':'+Math.random().toString(16).slice(2)),
+      sequence,logicalTime,
+      tick, at,
+      stage:input.stage, source,
+      parentIds,
+      external, confidence01, payload,
     };
     this.events.unshift(event);
     if(this.events.length>this.capacity)this.events=this.events.slice(0,this.capacity);
     this.total+=1;
+    this.sequenceWatermark=sequence;
+    this.logicalClock=logicalTime;
     this.pruneReceiptProjectionIndex();
     return {...event,parentIds:[...event.parentIds],payload:{...event.payload}};
   }
@@ -311,7 +380,8 @@ export class CognitiveEventFabric {
         if(candidateNodes.some(Boolean))throw new Error('tool-receipt-trace-incomplete-reconciliation-required');
       } else {
         const storedMatches=action!.payload.tool===normalized.toolId&&
-          action!.payload.decisionId===(normalized.decisionId??null)&&
+          (action!.payload.decisionId===(normalized.decisionId??null)||
+            (action!.payload.decisionId==null&&action!.payload.decisionLinked===false&&typeof normalized.decisionId==='string'))&&
           outcome!.tick===normalized.tick&&outcome!.payload.tool===normalized.toolId&&outcome!.payload.ok===normalized.ok&&
           outcome!.payload.verified===normalized.verified&&outcome!.payload.outcomeClass===normalized.outcomeClass&&
           Math.abs(clamp01(Number(outcome!.confidence01))-normalized.confidence01)<1e-9&&
@@ -329,7 +399,7 @@ export class CognitiveEventFabric {
     const action=this.append({
       tick:input.tick,stage:'tool-action',source:'action-gateway',
       parentIds:decision?[decision.id]:[],external:false,confidence01:input.verified?Math.max(.5,clamp01(input.confidence01)):.5,at,
-      payload:{executionId,tool:safeTool,decisionId:decision?.id??null,decisionLinked:Boolean(decision)},
+      payload:{executionId,tool:safeTool,decisionId:decisionId??null,decisionLinked:Boolean(decision)},
     });
     const outcome=this.append({
       tick:input.tick,stage:'tool-outcome',source:'action-gateway-outcome',
@@ -452,8 +522,6 @@ export class CognitiveEventFabric {
 
   recordOperationalCycle(input:{
     tick:number;
-    /** Canonical decision selected by OrganismCore for this complete cycle. */
-    decisionId?:string;
     observation?:OperationalCyclePhaseInput;
     prediction?:OperationalCyclePhaseInput;
     appraisal?:OperationalCyclePhaseInput;
@@ -468,57 +536,36 @@ export class CognitiveEventFabric {
     at?:number;
   }){
     const ids:Partial<Record<'observation'|'prediction'|'appraisal'|'attention'|'memory'|'goal'|'plan'|'action'|'outcome'|'learning'|'selfUpdate',string>>={};
-    if (input.decisionId !== undefined && typeof input.decisionId !== 'string')
-      throw new Error('cognitive-cycle-decision-id-invalid');
-    const decisionId = input.decisionId?.trim();
-    if (input.decisionId !== undefined && (
-      !decisionId ||
-      decisionId.length > 180 ||
-      hasControlCharacters(decisionId)
-    )) throw new Error('cognitive-cycle-decision-id-invalid');
-    const phases = [input.observation,input.prediction,input.appraisal,input.attention,input.memory,input.goal,input.plan,input.action,input.outcome,input.learning,input.selfUpdate];
-    if (decisionId !== undefined && phases.some(phase => {
-      const payload = phase?.payload;
-      return payload !== undefined &&
-        Object.prototype.hasOwnProperty.call(payload,'decisionId') &&
-        ownData(payload,'decisionId') !== decisionId;
-    })) throw new Error('cognitive-cycle-decision-id-conflict');
-    const payloadFor = (phase?:OperationalCyclePhaseInput):Record<string,unknown> => {
-      const payload = {...(phase?.payload ?? {})};
-      if (decisionId !== undefined) payload.decisionId = decisionId;
-      return payload;
-    };
     const parents=(...eventIds:(string|undefined)[])=>eventIds.filter((id):id is string=>Boolean(id));
-    // Validate both owner receipts and source bindings before the first append.
-    // A malformed later stage must not leave a partial operational cycle behind.
-    const validateOwnerReceipt=(phase:OperationalCyclePhaseInput|undefined,stage:'attention'|'memory')=>{
-      if(!phase?.receipt)return undefined;
-      const result=validateCognitiveStageReceipt(phase.receipt,{tick:input.tick,stage});
-      if(!result.ok)throw new Error(`invalid-stage-owner-receipt:${stage}:${result.issues.join(',')}`);
-      if(phase.source&&phase.source!==result.receipt.owner)throw new Error(`invalid-stage-owner-receipt:${stage}:owner-source-mismatch`);
-      return result.receipt;
-    };
-    const attentionOwnerReceipt=validateOwnerReceipt(input.attention,'attention');
-    const memoryOwnerReceipt=validateOwnerReceipt(input.memory,'memory');
-    if(input.observation){const e=this.append({tick:input.tick,stage:'observation',source:input.observation.source??'runtime',external:input.observation.external,confidence01:input.observation.confidence01,payload:payloadFor(input.observation),at:input.at});ids.observation=e.id;}
-    if(input.prediction){const e=this.append({tick:input.tick,stage:'prediction',source:input.prediction.source??'prediction',parentIds:parents(ids.observation),confidence01:input.prediction.confidence01,payload:payloadFor(input.prediction),at:input.at});ids.prediction=e.id;}
-    if(input.appraisal){const e=this.append({tick:input.tick,stage:'appraisal',source:input.appraisal.source??'appraisal',parentIds:parents(ids.observation,ids.prediction),confidence01:input.appraisal.confidence01,payload:payloadFor(input.appraisal),at:input.at});ids.appraisal=e.id;}
+    if(input.observation){const e=this.append({tick:input.tick,stage:'observation',source:input.observation.source??'runtime',external:input.observation.external,confidence01:input.observation.confidence01,payload:input.observation.payload,at:input.at});ids.observation=e.id;}
+    if(input.prediction){const e=this.append({tick:input.tick,stage:'prediction',source:input.prediction.source??'prediction',parentIds:parents(ids.observation),confidence01:input.prediction.confidence01,payload:input.prediction.payload,at:input.at});ids.prediction=e.id;}
+    if(input.appraisal){const e=this.append({tick:input.tick,stage:'appraisal',source:input.appraisal.source??'appraisal',parentIds:parents(ids.observation,ids.prediction),confidence01:input.appraisal.confidence01,payload:input.appraisal.payload,at:input.at});ids.appraisal=e.id;}
     if(input.attention){
-      const ownerReceipt = attentionOwnerReceipt;
-      const payload = {...payloadFor(input.attention),...(ownerReceipt?{ownerReceipt}:{})};
+      const receipt = input.attention.receipt
+        ? validateCognitiveStageReceipt(input.attention.receipt,{tick:input.tick,stage:'attention'})
+        : undefined;
+      if(receipt && !receipt.ok) throw new Error(`invalid-stage-owner-receipt:attention:${receipt.issues.join(',')}`);
+      if(receipt?.ok && input.attention.source && input.attention.source !== receipt.receipt.owner) throw new Error('invalid-stage-owner-receipt:attention:owner-source-mismatch');
+      const ownerReceipt = receipt?.ok ? receipt.receipt : undefined;
+      const payload = {...(input.attention.payload??{}),...(ownerReceipt?{ownerReceipt}:{})};
       const e=this.append({tick:input.tick,stage:'attention',source:input.attention.source??ownerReceipt?.owner??'attention',parentIds:parents(ids.appraisal,ids.prediction),confidence01:input.attention.confidence01,payload,at:input.at});ids.attention=e.id;
     }
     if(input.memory){
-      const ownerReceipt = memoryOwnerReceipt;
-      const payload = {...payloadFor(input.memory),...(ownerReceipt?{ownerReceipt}:{})};
+      const receipt = input.memory.receipt
+        ? validateCognitiveStageReceipt(input.memory.receipt,{tick:input.tick,stage:'memory'})
+        : undefined;
+      if(receipt && !receipt.ok) throw new Error(`invalid-stage-owner-receipt:memory:${receipt.issues.join(',')}`);
+      if(receipt?.ok && input.memory.source && input.memory.source !== receipt.receipt.owner) throw new Error('invalid-stage-owner-receipt:memory:owner-source-mismatch');
+      const ownerReceipt = receipt?.ok ? receipt.receipt : undefined;
+      const payload = {...(input.memory.payload??{}),...(ownerReceipt?{ownerReceipt}:{})};
       const e=this.append({tick:input.tick,stage:'memory',source:input.memory.source??ownerReceipt?.owner??'memory',parentIds:parents(ids.attention,ids.observation),confidence01:input.memory.confidence01,payload,at:input.at});ids.memory=e.id;
     }
-    if(input.goal){const e=this.append({tick:input.tick,stage:'goal',source:input.goal.source??'goal',parentIds:parents(ids.appraisal,ids.memory,ids.prediction),confidence01:input.goal.confidence01,payload:payloadFor(input.goal),at:input.at});ids.goal=e.id;}
-    if(input.plan){const e=this.append({tick:input.tick,stage:'plan',source:input.plan.source??'plan',parentIds:parents(ids.goal,ids.prediction),confidence01:input.plan.confidence01,payload:payloadFor(input.plan),at:input.at});ids.plan=e.id;}
-    if(input.action){const e=this.append({tick:input.tick,stage:'action',source:input.action.source??'action',parentIds:parents(ids.plan,ids.prediction,ids.observation),confidence01:input.action.confidence01,payload:payloadFor(input.action),at:input.at});ids.action=e.id;}
-    if(input.outcome){const e=this.append({tick:input.tick,stage:'outcome',source:input.outcome.source??'outcome',parentIds:parents(ids.action,ids.prediction),external:input.outcome.external,confidence01:input.outcome.confidence01,payload:payloadFor(input.outcome),at:input.at});ids.outcome=e.id;}
-    if(input.learning){const e=this.append({tick:input.tick,stage:'learning',source:input.learning.source??'learning',parentIds:parents(ids.outcome,ids.action),confidence01:input.learning.confidence01,payload:payloadFor(input.learning),at:input.at});ids.learning=e.id;}
-    if(input.selfUpdate){const e=this.append({tick:input.tick,stage:'self-update',source:input.selfUpdate.source??'self-update',parentIds:parents(ids.learning,ids.outcome),confidence01:input.selfUpdate.confidence01,payload:payloadFor(input.selfUpdate),at:input.at});ids.selfUpdate=e.id;}
+    if(input.goal){const e=this.append({tick:input.tick,stage:'goal',source:input.goal.source??'goal',parentIds:parents(ids.appraisal,ids.memory,ids.prediction),confidence01:input.goal.confidence01,payload:input.goal.payload,at:input.at});ids.goal=e.id;}
+    if(input.plan){const e=this.append({tick:input.tick,stage:'plan',source:input.plan.source??'plan',parentIds:parents(ids.goal,ids.prediction),confidence01:input.plan.confidence01,payload:input.plan.payload,at:input.at});ids.plan=e.id;}
+    if(input.action){const e=this.append({tick:input.tick,stage:'action',source:input.action.source??'action',parentIds:parents(ids.plan,ids.prediction,ids.observation),confidence01:input.action.confidence01,payload:input.action.payload,at:input.at});ids.action=e.id;}
+    if(input.outcome){const e=this.append({tick:input.tick,stage:'outcome',source:input.outcome.source??'outcome',parentIds:parents(ids.action,ids.prediction),external:input.outcome.external,confidence01:input.outcome.confidence01,payload:input.outcome.payload,at:input.at});ids.outcome=e.id;}
+    if(input.learning){const e=this.append({tick:input.tick,stage:'learning',source:input.learning.source??'learning',parentIds:parents(ids.outcome,ids.action),confidence01:input.learning.confidence01,payload:input.learning.payload,at:input.at});ids.learning=e.id;}
+    if(input.selfUpdate){const e=this.append({tick:input.tick,stage:'self-update',source:input.selfUpdate.source??'self-update',parentIds:parents(ids.learning,ids.outcome),confidence01:input.selfUpdate.confidence01,payload:input.selfUpdate.payload,at:input.at});ids.selfUpdate=e.id;}
     return ids;
   }
 
@@ -531,7 +578,7 @@ export class CognitiveEventFabric {
    * user content, model chain-of-thought or free-form reflection text.
    */
   recordMetacognitiveEpisode(input:{
-    tick:number;cycleId:string;decisionId?:string;actionEventId:string;outcomeEventId:string;learningEventId:string;observationEventId?:string;predictionEventId?:string;
+    tick:number;cycleId:string;actionEventId:string;outcomeEventId:string;learningEventId:string;observationEventId?:string;predictionEventId?:string;
     predictedOutcomeHash:string;observedOutcomeHash:string;decisionRationaleHash:string;
     predictionError01:number;confidence01:number;
     reflectionKind:'none'|'calibration'|'contradiction'|'limitation'|'insight';
@@ -541,8 +588,6 @@ export class CognitiveEventFabric {
     if(!Number.isSafeInteger(input.tick)||input.tick<0)return{resolved:false,replayed:false,reason:'tick-invalid'};
     const cycleId=String(input.cycleId??'').trim().slice(0,180);
     if(!cycleId)return{resolved:false,replayed:false,reason:'cycle-id-required'};
-    const decisionId=input.decisionId===undefined?undefined:input.decisionId;
-    if(input.decisionId!==undefined&&(typeof decisionId!=='string'||!decisionId.trim()||decisionId!==decisionId.trim()||decisionId.length>180||hasControlCharacters(decisionId)))return{resolved:false,replayed:false,reason:'decision-id-invalid'};
     const hashes=[input.predictedOutcomeHash,input.observedOutcomeHash,input.decisionRationaleHash];
     if(hashes.some(value=>typeof value!=='string'||!/^[a-f0-9]{64}$/i.test(value)))return{resolved:false,replayed:false,reason:'evidence-hash-invalid'};
     if(typeof input.predictionError01!=='number'||!Number.isFinite(input.predictionError01)||input.predictionError01<0||input.predictionError01>1)return{resolved:false,replayed:false,reason:'prediction-error-invalid'};
@@ -566,21 +611,17 @@ export class CognitiveEventFabric {
     if(action.tick!==input.tick||outcome.tick!==input.tick||learning.tick!==input.tick)return{resolved:false,replayed:false,reason:'causal-parent-tick-mismatch'};
     if(!outcome.parentIds.includes(action.id)||!learning.parentIds.includes(outcome.id))return{resolved:false,replayed:false,reason:'causal-lineage-broken'};
     let cycleParentIds:string[]|null=null;
-    let cycleDecisionId:string|undefined;
     if(input.cycleStageIds){
       const cycle=this.verifyOperationalCycle(input.cycleStageIds);
       if(!cycle.fullComplete||cycle.tick!==input.tick)return{resolved:false,replayed:false,reason:'cycle-lineage-incomplete'};
-      cycleDecisionId=cycle.decisionId;
-      if(decisionId!==undefined&&cycleDecisionId!==undefined&&decisionId!==cycleDecisionId)return{resolved:false,replayed:false,reason:'decision-id-mismatch'};
       const orderedStages:readonly OperationalCycleStageName[]=['observation','prediction','appraisal','attention','memory','goal','plan','action','outcome','learning','self-update'];
       const ordered=orderedStages.map(stage=>input.cycleStageIds?.[stage]);
       if(ordered.some(id=>typeof id!=='string'||!id.trim())||new Set(ordered).size!==orderedStages.length)return{resolved:false,replayed:false,reason:'cycle-parent-set-invalid'};
       if(ordered[0]!==observation?.id||ordered[1]!==prediction?.id||ordered[7]!==action.id||ordered[8]!==outcome.id||ordered[9]!==learning.id)return{resolved:false,replayed:false,reason:'cycle-parent-anchor-mismatch'};
       cycleParentIds=ordered as string[];
     }
-    const canonicalDecisionId=decisionId??cycleDecisionId;
     const normalized={
-      tick:input.tick,cycleIdHash:sha256Stable(cycleId),...(canonicalDecisionId?{decisionId:canonicalDecisionId}:{}),actionEventId:action.id,outcomeEventId:outcome.id,learningEventId:learning.id,
+      tick:input.tick,cycleIdHash:sha256Stable(cycleId),actionEventId:action.id,outcomeEventId:outcome.id,learningEventId:learning.id,
       observationEventId:observation?.id??null,predictionEventId:prediction?.id??null,
       predictedOutcomeHash:input.predictedOutcomeHash.toLowerCase(),observedOutcomeHash:input.observedOutcomeHash.toLowerCase(),
       decisionRationaleHash:input.decisionRationaleHash.toLowerCase(),predictionError01:input.predictionError01,
@@ -593,17 +634,10 @@ export class CognitiveEventFabric {
     if(prior){
       if(prior.stage!=='metacognition')throw new Error('metacognitive-episode-id-conflict');
       if(prior.payload.projectionHash===projectionHash)return{resolved:true,replayed:true,eventId,projectionHash};
-      // Earlier projections had the same deterministic identity but no decisionId.
-      // Keep them replayable without inventing or rewriting their historical lineage.
-      const withoutDecisionIdentity={...normalized};
-      delete (withoutDecisionIdentity as {decisionId?:string}).decisionId;
-      const decisionLegacyHash=sha256Stable(withoutDecisionIdentity);
-      if(prior.payload.projectionHash===decisionLegacyHash){
-        return{resolved:true,replayed:true,eventId,projectionHash:decisionLegacyHash};
-      }
-      // Pre-full-cycle snapshots also lacked cycleParentIds. Preserve that older format.
+      // Pre-full-cycle snapshots used the same deterministic episode ID but did not
+      // include cycleParentIds. Preserve replay compatibility without rewriting history.
       if(!Array.isArray(prior.payload.cycleParentIds)){
-        const legacyNormalized={...withoutDecisionIdentity};
+        const legacyNormalized={...normalized};
         delete (legacyNormalized as {cycleParentIds?:string[]}).cycleParentIds;
         const legacyProjectionHash=sha256Stable(legacyNormalized);
         if(prior.payload.projectionHash===legacyProjectionHash){
@@ -647,40 +681,6 @@ export class CognitiveEventFabric {
       if (event.tick !== cycleTick) { invalidStages.push(stage + ':tick-mismatch'); continue; }
       found.set(stage, event);
     }
-
-    const operationalStageOrder: readonly OperationalCycleStageName[] = [
-      'observation','prediction','appraisal','attention','memory','goal','plan','action','outcome','learning','self-update',
-    ];
-    const hasDecisionIdentity = operationalStageOrder.some(stage => {
-      const event = found.get(stage);
-      return Boolean(event && Object.prototype.hasOwnProperty.call(event.payload,'decisionId'));
-    });
-    const decisionLineageIssues: string[] = [];
-    let decisionId: string | undefined;
-    if (hasDecisionIdentity) {
-      for (const stage of operationalStageOrder) {
-        const event = found.get(stage);
-        if (!event) continue;
-        if (!Object.prototype.hasOwnProperty.call(event.payload,'decisionId')) {
-          decisionLineageIssues.push(stage + ':decision-id-missing');
-          continue;
-        }
-        const rawDecisionId = ownData(event.payload,'decisionId');
-        if (typeof rawDecisionId !== 'string' ||
-            !rawDecisionId.trim() ||
-            rawDecisionId !== rawDecisionId.trim() ||
-            rawDecisionId.length > 180 ||
-            hasControlCharacters(rawDecisionId)) {
-          decisionLineageIssues.push(stage + ':decision-id-invalid');
-          continue;
-        }
-        if (decisionId === undefined) decisionId = rawDecisionId;
-        else if (rawDecisionId !== decisionId) decisionLineageIssues.push(stage + ':decision-id-mismatch');
-      }
-    }
-    // Historical event snapshots contain no decision IDs. They remain readable;
-    // once a cycle opts into the contract, every retained stage must agree.
-    const decisionLineageComplete = decisionLineageIssues.length === 0;
 
     const requiredOwnerStages: readonly CognitiveStageOwnerName[] = ['attention','memory'];
     const missingOwnerEvidenceStages: string[] = [];
@@ -818,22 +818,15 @@ export class CognitiveEventFabric {
     }
     const fullStageCoverage = (11 - fullMissingStages.length) / 11;
     const fullEdgeCoverage = fullValidEdges / fullEdges.length;
-    const fullIntegrity01 = clamp01(
-      .50 * fullStageCoverage + .50 * fullEdgeCoverage -
-      (decisionLineageComplete ? 0 : .15)
-    );
+    const fullIntegrity01 = clamp01(.50 * fullStageCoverage + .50 * fullEdgeCoverage);
     const coreComplete = missingStages.length === 0 && !coreInvalid && coreMissingEdges.length === 0;
-    const fullComplete = fullMissingStages.length === 0 && invalidStages.length === 0 &&
-      fullMissingEdges.length === 0 && decisionLineageComplete;
+    const fullComplete = fullMissingStages.length === 0 && invalidStages.length === 0 && fullMissingEdges.length === 0;
 
     return {
       tick: cycleTick,
       complete,
       coreComplete,
       fullComplete,
-      ...(decisionId !== undefined ? {decisionId} : {}),
-      decisionLineageComplete,
-      decisionLineageIssues,
       integrity01: complete ? 1 : integrity01,
       coreIntegrity01,
       fullIntegrity01: fullComplete ? 1 : fullIntegrity01,
@@ -887,6 +880,6 @@ export class CognitiveEventFabric {
     // sanitized receipt nodes that still have live replay guards so restart restore
     // can retain exact causal links even when a receipt falls outside that window.
     const receiptEvents=this.events.filter(event=>receiptIds.has(event.id)&&!recentIds.has(event.id)).map(event=>({...event,parentIds:[...event.parentIds],payload:{...event.payload}}));
-    return{version:1,capacity:this.capacity,total:this.total,buffered:this.events.length,linkedParentEvents:linked,danglingParentLinks:dangling,lineageIntegrity01:clamp01(linked/Math.max(1,totalParentRefs)),cycleCoverage01:coreCoverage,coreCycleCoverage01:coreCoverage,fullCycleCoverage01:fullCoverage,causalDensity01:clamp01(linked/Math.max(1,this.events.length*2)),recentTicks,recent,receiptEvents,receiptProjectionIndex:[...this.receiptProjectionIndex.values()]};
+    return{version:1,capacity:this.capacity,total:this.total,sequenceWatermark:this.sequenceWatermark,logicalClock:this.logicalClock,buffered:this.events.length,linkedParentEvents:linked,danglingParentLinks:dangling,lineageIntegrity01:clamp01(linked/Math.max(1,totalParentRefs)),cycleCoverage01:coreCoverage,coreCycleCoverage01:coreCoverage,fullCycleCoverage01:fullCoverage,causalDensity01:clamp01(linked/Math.max(1,this.events.length*2)),recentTicks,recent,receiptEvents,receiptProjectionIndex:[...this.receiptProjectionIndex.values()]};
   }
 }

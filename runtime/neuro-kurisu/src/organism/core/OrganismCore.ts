@@ -2398,7 +2398,6 @@ export class OrganismCore {
             context: {
                 episodeId: episode.id,
                 cycleId: episode.cycleId,
-                ...(episode.decisionId ? { decisionId: episode.decisionId } : {}),
                 sourceTick: String(episode.tick),
                 selectedAction: episode.selection.action,
                 selectedGoalId: episode.selection.goalId ?? '',
@@ -2471,12 +2470,9 @@ export class OrganismCore {
         const safeLimit = Math.max(1, Math.min(32, Math.floor(Number.isFinite(limit) ? limit : 12)));
         const episodes = rows.slice(-safeLimit).reverse().map(event => {
             const episode = (event.payload as any)?.episode ?? {};
-            const canonicalMemory = this.memorySubsystem.memoryOS.snapshot({ clone: false }).items.find(item => item.id === `metacognitive-cycle-${event.tick}`);
             return {
                 episodeId: event.id,
                 tick: event.tick,
-                decisionId: typeof episode.decisionId === 'string' ? episode.decisionId : null,
-                memoryDecisionId: typeof canonicalMemory?.context?.decisionId === 'string' ? canonicalMemory.context.decisionId : null,
                 action: episode.selection?.action ?? 'unknown',
                 goalPresent: Boolean(episode.selection?.goalId),
                 predictionConfidence01: Number(episode.prediction?.confidence01 ?? 0),
@@ -3761,6 +3757,7 @@ export class OrganismCore {
             await this.feedbackSpineOnly(observation);
         }
         const state = this.persisted.state;
+        const externalRequest = Boolean(observation.text || observation.externalGoal);
         const previous: OrganismState = { ...state, needs: { ...state.needs } };
         const at = now();
         state.at = at;
@@ -4134,7 +4131,7 @@ export class OrganismCore {
             tick: state.tick, energy01: state.needs.energy, thermal01: thermal, capacity01: body?.cognitiveCapacity01 ?? (1 - state.needs.cognitiveLoad),
             identity01: this.persisted.facets.consciousness.identityContinuity.continuity, realityGap01: 0,
             uncertainty01: state.needs.uncertainty, novelty01: state.needs.novelty, socialNeed01: state.needs.socialNeed, attention01: state.attentionBudget,
-            homeostaticPressure01: clamp((1 - state.needs.energy) * .45 + state.needs.cognitiveLoad * .35 + thermal * .20), candidates, requestedAction: userRequestedAction, userPresent: Boolean(observation.text), upstreamMode: 'spine-only',
+            homeostaticPressure01: clamp((1 - state.needs.energy) * .45 + state.needs.cognitiveLoad * .35 + thermal * .20), candidates, requestedAction: userRequestedAction, userPresent: externalRequest, upstreamMode: 'spine-only',
         });
         // Distributional policy: B299 remains a policy writer, so selection is a deterministic
         // softmax sample rather than a pure argmax. The seed is the organism tick, making the
@@ -4163,7 +4160,7 @@ export class OrganismCore {
         }
         state.predictedNextAction = selected?.action ?? 'wait';
         state.lastPredictionConfidence = selected?.confidence ?? 0;
-        state.autonomyScore = observation.text ? clamp(state.autonomyScore * .9 + .1 * .25) : clamp(state.autonomyScore * .9 + .1 * .85);
+        state.autonomyScore = externalRequest ? clamp(state.autonomyScore * .9 + .1 * .25) : clamp(state.autonomyScore * .9 + .1 * .85);
         this.persisted.system.causalPersonalityDevelopmentB299 = this.developmentalNeural.causalPersonalityDevelopmentB299.snapshot();
         const predictedOutcomes: PredictedActionOutcome[] = candidates.map(c => {
             const world = this.config.enableWorldModel
@@ -4202,13 +4199,19 @@ export class OrganismCore {
                 b391IntegratedConfidence01: clamp(b391Decision.integratedConfidence01),
                 worldCalibrationUsed01: selected && this.organismSystems.world.worldCausalCalibration.calibratedConfidence(selected.action, selected.confidence, worldContextKey) !== selected.confidence ? 1 : 0,
             },
-            userRequestedAction: userRequestedAction ?? null, autonomousOverride: !Boolean(observation.text), predictedOutcomes, worldContextKey,
+            userRequestedAction: userRequestedAction ?? null, autonomousOverride: !externalRequest, predictedOutcomes, worldContextKey,
         };
         decision.semanticEvidence = buildDecisionSemanticEvidence({ stateBefore: previous, candidates, selected, worldContextKey });
         this.persisted.traces = [decision, ...this.persisted.traces].slice(0, 64);
-        if (observation.reward !== undefined || observation.success !== undefined) {
-            decision.outcome = { success: clamp(observation.success ?? (observation.reward == null ? .5 : .5 + observation.reward * .5)), reward: observation.reward, surprise: observation.surprise, notes: 'spine-only-inline-feedback', at: Date.now() };
-        }
+        this.selfSubsystem.selfAuthorship.observeDecision({
+            decisionId: decision.id,
+            action: selected?.action ?? 'wait',
+            autonomous: !externalRequest,
+            externalRequest,
+            goalTitle: active?.title,
+            reason: active?.reason ?? 'spine-only-cycle',
+        });
+        this.persisted.facets.learning.selfAuthorship = this.selfSubsystem.selfAuthorship.snapshot();
         const workspace: WorkspaceFrame = { tick: state.tick, broadcastId: `spine:${state.tick}`, selected: selected ? [selected.action] : [], content: { mode: 'SPINE_ONLY', b299LearningUpdates: this.developmentalNeural.causalPersonalityDevelopmentB299.snapshot().learningUpdates, b269Cycles: b269Snapshot.cycles, b269Prediction01: b269Prediction01, b269FiringRate01: b269Frame.firingRate01, b269Plasticity01: b269Frame.plasticity01 }, recurrentCycles: 1 };
         this.markPersistenceDirty();
         const checkpointCadence = Math.max(64, Math.floor(Number(this.config.checkpointMaxDirtyCycles || 64)));
@@ -4236,6 +4239,15 @@ export class OrganismCore {
         state.needs.uncertainty = clamp(state.needs.uncertainty * .82 + surprise * .18);
         const reward01 = clamp(outcome.reward ?? success);
         const verified = Boolean(outcome.worldTransition) || Boolean(outcome.evidenceSource && ['os', 'device', 'user', 'external-api'].includes(String(outcome.evidenceSource).toLowerCase()));
+        const selectedGoalTitle = this.persisted.goals.find(goal => goal.id === trace.selected?.goalId)?.title ?? null;
+        this.selfSubsystem.selfAuthorship.observeOutcome({
+            decisionId: trace.id,
+            executed: verified,
+            success,
+            surprise,
+            selectedGoal: selectedGoalTitle,
+        });
+        this.persisted.facets.learning.selfAuthorship = this.selfSubsystem.selfAuthorship.snapshot();
         const b269AfterPrediction = this.developmentalNeural.spikingPlasticNeuralB269.snapshot().lastPrediction01;
         const neuralPredictionError = clamp(Math.abs(reward01 - b269AfterPrediction));
         const b269Learning = this.developmentalNeural.spikingPlasticNeuralB269.learnFromOutcome({ reward01, predictionError01: neuralPredictionError, tick: state.tick, action: trace.selected.action });
@@ -8077,7 +8089,6 @@ export class OrganismCore {
         }
         const agencyRecord = this.config.enableAgencyModel ? this.agencySubsystem.deliberation.record({ requestedAction: userRequestedAction, chosenAction: selectedIntent?.action ?? 'wait', externalPressure: observation.text ? 0.62 : 0, intrinsicPressure: activeProject ? activeProjectScore : intrinsicState.overall, reason: activeProject ? `active-self-project:${activeProject.title}` : `intrinsic:${intrinsicState.dominant}`, autonomous: autonomousOverride || !Boolean(observation.text) }) : null;
         const governanceRecord = this.config.enableAgencyModel ? this.governanceSubsystem.selfGovernance.recordDecision({ requestedAction: userRequestedAction, chosenAction: selectedIntent?.action ?? 'wait', autonomous: autonomousOverride || !Boolean(observation.text), internalPressure: internalPressureForAgency, commitmentPressure: governedCandidates.filter(c => c.goalId && goals.some(g => g.id === c.goalId && g.status === 'active')).length / Math.max(1, governedCandidates.length), regretPressure: regretPressureForAgency, reason: activeProject ? `project:${activeProject.title}` : `goal:${active?.title ?? 'none'}` }) : null;
-        this.selfSubsystem.selfAuthorship.observeDecision({ action: selectedIntent?.action ?? 'wait', autonomous: autonomousOverride || !Boolean(observation.text), externalRequest: Boolean(observation.text), goalTitle: active?.title, reason: active?.reason });
         this.cognitiveRuntime.futureSelf.resolve(selectedIntent?.action ?? null);
         const futureForecast = this.cognitiveRuntime.futureSelf.forecast(state, goals, governedCandidates[0]?.action ?? selectedIntent?.action ?? 'wait', governedCandidates[0]?.confidence ?? 0.35, 4);
         if (selectedIntent) {
@@ -8354,6 +8365,15 @@ export class OrganismCore {
         }
         const previousTrace = this.persisted.traces[0];
         this.persisted.traces.unshift(decision);
+        this.selfSubsystem.selfAuthorship.observeDecision({
+            decisionId: decision.id,
+            action: selectedIntent?.action ?? 'wait',
+            autonomous: autonomousOverride || !Boolean(observation.text || observation.externalGoal),
+            externalRequest: Boolean(observation.text || observation.externalGoal),
+            goalTitle: active?.title,
+            reason: active?.reason,
+        });
+        this.persisted.facets.learning.selfAuthorship = this.selfSubsystem.selfAuthorship.snapshot();
         const receiptDrives={
             epistemic:clamp(state.needs.uncertainty),
             novelty:clamp(state.needs.novelty),
@@ -9156,7 +9176,6 @@ export class OrganismCore {
                 {
                     tick: state.tick,
                     cycleId: 'nk1-cycle:' + state.tick + ':' + metacognitiveActionEventId,
-                    decisionId: trace?.id,
                     observationEventId: metacognitiveObservationEventId,
                     predictionEventId: metacognitivePredictionEventId,
                     actionEventId: metacognitiveActionEventId,
@@ -9373,7 +9392,14 @@ export class OrganismCore {
             if (person?.openCommitments.includes(goalId))
                 this.cognitiveRuntime.socialDevelopment.repairCommitment('user', goalId, 'low-outcome on a shared commitment', 're-evaluate plan and communicate the correction');
         }
-        this.selfSubsystem.selfAuthorship.observeOutcome({ success: gatedSuccess01, surprise: gatedSurprise01, selectedGoal: selectedGoalTitle });
+        this.selfSubsystem.selfAuthorship.observeOutcome({
+            decisionId: trace?.id ?? '',
+            executed: Boolean(outcome.worldTransition) || projectEvidenceExternal,
+            success: gatedSuccess01,
+            surprise: gatedSurprise01,
+            selectedGoal: selectedGoalTitle,
+        });
+        this.persisted.facets.learning.selfAuthorship = this.selfSubsystem.selfAuthorship.snapshot();
         if (trace?.selected) {
             const trajectoryTrust = projectEvidenceExternal ? 1 : outcome.worldTransition ? .78 : .55;
             this.cognitiveRuntime.identityTrajectory.observeOutcome({
@@ -12412,7 +12438,7 @@ export class OrganismCore {
     async resolveActionToolApproval(requestId:string, approved:boolean) {
         const result=await this.cognitiveRuntime.actionGateway.resolveToolApproval(requestId,approved,'owner');
         if(result.ok && result.request) {
-            this.p34RecordConsent({ action:`tool:${result.request.toolId}`, risk01:.9, actor:'creator', decision:approved?'approved':'declined', reason:`one-shot tool approval ${result.request.id}` });
+            this.p34RecordConsent({ action:`tool:${result.request.toolId}`, risk01:.9, actor:'creator', decision:approved?'approved':'declined', reason:`one-shot tool approval ${result.request.id}`, referenceId:result.request.id });
             await this.checkpoint(true);
         }
         return result;
@@ -12794,6 +12820,25 @@ export class OrganismCore {
             this.persisted.facets.embodiment.toolAudit = this.cognitiveRuntime.actionGateway.snapshot();
             return;
         }
+        // This attestation is process-local and binds the exact provider postcondition,
+        // full action input, execution identity and a real selected decision trace.
+        // Settle only after all causal projections have succeeded, alongside the
+        // completed ActionGateway receipt persistence boundary.
+        const settleVerifiedSelfAuthorship = (): void => {
+            if (!decisionLinkedExternalPostcondition || !matchingDecisionTrace ||
+                result.ok !== true || result.verified !== true || result.verification.verified !== true) return;
+            const selectedGoalTitle = matchingDecisionTrace.selected?.goalId
+                ? this.persisted.goals.find(goal => goal.id === matchingDecisionTrace.selected?.goalId)?.title ?? null
+                : null;
+            this.selfSubsystem.selfAuthorship.observeOutcome({
+                decisionId: suppliedDecisionId,
+                executed: true,
+                success: 1,
+                surprise: 0,
+                selectedGoal: selectedGoalTitle,
+            });
+            this.persisted.facets.learning.selfAuthorship = this.selfSubsystem.selfAuthorship.snapshot();
+        };
         // If an earlier terminal outcome was already projected, an authoritative
         // provider receipt is an append-only evidence revision for that same execution.
         // If the first attempt stayed pending because acceptance was ambiguous, there
@@ -12867,6 +12912,7 @@ export class OrganismCore {
             this.persisted.system.causalAccountability = outcomeSnapshot.causal;
             this.persisted.system.cognitiveEventFabric = this.cognitiveRuntime.cognitiveEventFabric.snapshot();
             this.persisted.facets.embodiment.toolAudit = this.cognitiveRuntime.actionGateway.snapshot();
+            settleVerifiedSelfAuthorship();
             return;
         }
         const projected = this.cognitiveRuntime.outcomeCognition.project({ tick: this.persisted.state.tick, tool: id, ok: result.ok, verification: result.verification, reason, inputKeys, predictedAction: this.persisted.state.predictedNextAction, predictionConfidence01: this.persisted.state.lastPredictionConfidence, executionId: result.executionId, outcomeClass: result.outcomeClass });
@@ -12926,6 +12972,7 @@ export class OrganismCore {
         }
         this.persisted.system.cognitiveEventFabric = this.cognitiveRuntime.cognitiveEventFabric.snapshot();
         this.persisted.facets.embodiment.toolAudit = this.cognitiveRuntime.actionGateway.snapshot();
+        settleVerifiedSelfAuthorship();
     }
 
     private async integrateVerifiedToolObservation(
