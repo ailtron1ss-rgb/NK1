@@ -223,7 +223,29 @@ export class GlobalWorkspaceSubstrateV2 {
     const denom = exp.reduce((s, x) => s + x, 0);
     const probs = exp.map(x => x / Math.max(1e-9, denom));
     const ranked = admitted.map((x, i) => ({ ...x, p: probs[i] }));
-    const coalition = ranked.slice(0, this.state.capacity);
+    // The final broadcast coalition is also source-balanced. Admission fairness
+    // alone is insufficient if the top-k selector immediately collapses back to
+    // the highest-volume/highest-salience producer.
+    const coalitionSourceCount = new Set(ranked.map(x => x.c.source)).size;
+    const coalitionQuota = Math.max(1, Math.ceil(this.state.capacity / Math.max(1, coalitionSourceCount)));
+    const coalition: typeof ranked = [];
+    const coalitionSourceCounts = new Map<string, number>();
+    for (const item of ranked) {
+      const count = coalitionSourceCounts.get(item.c.source) ?? 0;
+      if (count >= coalitionQuota) continue;
+      coalition.push(item);
+      coalitionSourceCounts.set(item.c.source, count + 1);
+      if (coalition.length === this.state.capacity) break;
+    }
+    if (coalition.length < this.state.capacity) {
+      const selected = new Set(coalition.map(x => x.c.id));
+      for (const item of ranked) {
+        if (coalition.length === this.state.capacity) break;
+        if (selected.has(item.c.id)) continue;
+        coalition.push(item);
+        selected.add(item.c.id);
+      }
+    }
     const coalitionWeights = coalition.map(x => x.p / Math.max(1e-9, coalition.reduce((s, y) => s + y.p, 0)));
     const nextLatent = this.updateLatent(coalition.map(x => x.c), coalitionWeights);
     const similarity = cosine(this.state.latent, nextLatent);

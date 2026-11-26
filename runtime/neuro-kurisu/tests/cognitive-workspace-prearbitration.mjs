@@ -122,6 +122,9 @@ const sourceBalancedCandidates = [
 ];
 sourceBalancedWorkspace.compete(sourceBalancedCandidates);
 const sourceAdmission = sourceBalancedWorkspace.diagnostics().admission.admittedBySource;
+const sourceById = new Map(sourceBalancedCandidates.map(candidate => [candidate.id, candidate.source]));
+assert.ok(sourceBalancedWorkspace.snapshot().selectedIds.some(id => sourceById.get(id) === 'perception'),
+  'the final attention coalition must preserve at least one lower-volume source, not only admit it');
 assert.equal(sourceAdmission.memory, 52,
   'after reserving admission for other sources, remaining capacity may be filled by the strongest candidates');
 assert.equal(sourceAdmission.perception, 12,

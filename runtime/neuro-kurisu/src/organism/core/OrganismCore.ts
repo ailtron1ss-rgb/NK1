@@ -7057,12 +7057,62 @@ export class OrganismCore {
             predictionError01: state.predictionError, uncertainty01: n.uncertainty, novelty01: n.novelty, identity01: identityContinuity.continuity,
             bodyEnergy01: n.energy, thermal01: observation.embodiment?.thermalStrain01 ?? .2, memoryPressure01: clamp(memorySizeNow / 1600), realityGap01: p57RealitySummary.meanRealityGap01,
         });
-        const globalWorkspace = this.cognitiveRuntime.globalWorkspace.compete(governedCandidates.slice(0, 8).map(c => ({
+        const decisionWorkspaceCandidates = governedCandidates.slice(0, 8).map(c => ({
             id: c.id, source: 'decision', salience: clamp(c.score),
             features: [c.score, c.predictedUtility, c.predictedNeedRelief, c.predictedCost, c.confidence, state.predictionError,
                 state.needs.uncertainty, state.needs.novelty, state.needs.cognitiveLoad, state.needs.energy, socialNeuralFrame.higherOrderBelief01, socialNeuralFrame.confidence01],
             content: { action: c.action, goalId: c.goalId ?? null },
-        })), [state.needs.uncertainty, state.needs.novelty, state.predictionError, state.attentionBudget, ...centralBrainFrame.broadcast]);
+        }));
+        // Admit compact, typed signals from the other live cognitive domains into
+        // the same workspace pass. These are summaries, not factual memory writes
+        // or executable actions; decision ownership remains with the coordinator.
+        const workspaceSignalFeatures = [
+            n.novelty, n.uncertainty, state.predictionError, p51Summary.groundingQuality01,
+            p50Summary.selfWorldAlignment01, p57RealitySummary.meanRealityGap01,
+            identityContinuity.continuity, n.energy, state.needs.cognitiveLoad,
+            socialNeuralFrame.confidence01, socialNeuralFrame.higherOrderBelief01, state.attentionBudget,
+        ];
+        const cognitiveSignalCandidates = [
+            {
+                id: `workspace:perception:${state.tick}`, source: 'perception',
+                salience: clamp(n.novelty * .35 + n.uncertainty * .3 + state.predictionError * .2 + state.attentionBudget * .15),
+                features: workspaceSignalFeatures, content: { signal: 'perception-summary' },
+            },
+            {
+                id: `workspace:memory-grounding:${state.tick}`, source: 'memory-grounding',
+                salience: clamp(p51Summary.groundingQuality01),
+                features: workspaceSignalFeatures, content: { signal: 'memory-grounding-summary' },
+            },
+            {
+                id: `workspace:world-model:${state.tick}`, source: 'world-model',
+                salience: clamp(p50Summary.selfWorldAlignment01 * .65 + (1 - p57RealitySummary.meanRealityGap01) * .35),
+                features: workspaceSignalFeatures, content: { signal: 'world-model-summary' },
+            },
+            {
+                id: `workspace:motivation:${state.tick}`, source: 'motivation',
+                salience: clamp(state.needs.novelty * .3 + state.needs.uncertainty * .2 + state.needs.cognitiveLoad * .15 + (1 - state.needs.energy) * .35),
+                features: workspaceSignalFeatures, content: { signal: 'motivation-summary' },
+            },
+            {
+                id: `workspace:social:${state.tick}`, source: 'social',
+                salience: clamp(socialNeuralFrame.higherOrderBelief01 * .5 + socialNeuralFrame.confidence01 * .5),
+                features: workspaceSignalFeatures, content: { signal: 'social-summary' },
+            },
+            {
+                id: `workspace:self-model:${state.tick}`, source: 'self-model',
+                salience: clamp(identityContinuity.continuity),
+                features: workspaceSignalFeatures, content: { signal: 'identity-continuity-summary' },
+            },
+            {
+                id: `workspace:embodiment:${state.tick}`, source: 'embodiment',
+                salience: clamp(n.energy * .55 + (1 - (observation.embodiment?.thermalStrain01 ?? .2)) * .45),
+                features: workspaceSignalFeatures, content: { signal: 'embodiment-summary' },
+            },
+        ];
+        const globalWorkspace = this.cognitiveRuntime.globalWorkspace.compete(
+            [...decisionWorkspaceCandidates, ...cognitiveSignalCandidates],
+            [state.needs.uncertainty, state.needs.novelty, state.predictionError, state.attentionBudget, ...centralBrainFrame.broadcast],
+        );
         this.persisted.facets.cognition.globalWorkspace = globalWorkspace;
         // Workspace ignition is the aggregate broadcast; this bounded per-candidate
         // support carries coalition membership into the same arbitration pass.
