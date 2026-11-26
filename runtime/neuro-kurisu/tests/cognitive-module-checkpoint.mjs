@@ -56,7 +56,7 @@ function persisted() {
 // live under PersistedOrganism.system and survive a complete host reconstruction.
 {
   const durable = backingStore();
-  const checkpoint = new CognitiveModuleCheckpointStore(durable);
+  const checkpoint = new CognitiveModuleCheckpointStore(durable, () => 100);
   await checkpoint.load();
   const events = [];
   const firstModule = fixture(events);
