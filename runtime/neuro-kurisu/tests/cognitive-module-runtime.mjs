@@ -1,0 +1,301 @@
+import assert from 'node:assert/strict';
+import * as organismApi from '../src/organism/index.ts';
+
+const CognitiveModuleRuntime = organismApi.CognitiveModuleRuntime;
+assert.equal(
+  typeof CognitiveModuleRuntime,
+  'function',
+  'the canonical organism API must expose the lifecycle-managed cognitive module runtime',
+);
+
+function manifest(id, overrides = {}) {
+  return {
+    schemaVersion: 1,
+    id,
+    version: '1.0.0',
+    runtimeApiVersion: 1,
+    stateSchemaVersion: 1,
+    dependencies: [],
+    capabilities: [],
+    ...overrides,
+  };
+}
+
+function memoryStore(seed = []) {
+  const rows = new Map(seed.map(row => [row.moduleId, structuredClone(row)]));
+  return {
+    rows,
+    async load(moduleId) {
+      const row = rows.get(moduleId);
+      return row ? structuredClone(row) : null;
+    },
+    async save(envelope) {
+      rows.set(envelope.moduleId, structuredClone(envelope));
+    },
+  };
+}
+
+function moduleFixture(id, events, options = {}) {
+  const state = { value: options.initialValue ?? 0 };
+  const contextLog = [];
+  return {
+    state,
+    contextLog,
+    module: {
+      initialize(context) {
+        events.push(`initialize:${id}`);
+        contextLog.push(context);
+        if (options.failInitialize) throw new Error('fixture-init-failure');
+      },
+      health() {
+        return { healthy: options.healthy !== false };
+      },
+      snapshot() {
+        events.push(`snapshot:${id}`);
+        return structuredClone(state);
+      },
+      restore(snapshot) {
+        events.push(`restore:${id}`);
+        Object.assign(state, snapshot);
+      },
+      migrateState(snapshot, fromVersion, toVersion) {
+        events.push(`migrate:${id}:${fromVersion}->${toVersion}`);
+        return { ...snapshot, value: Number(snapshot.value ?? 0) + 1 };
+      },
+      quiesce() {
+        events.push(`quiesce:${id}`);
+      },
+      resume() {
+        events.push(`resume:${id}`);
+      },
+      shutdown() {
+        events.push(`shutdown:${id}`);
+      },
+    },
+  };
+}
+
+function runtime(options = {}) {
+  return new CognitiveModuleRuntime({
+    hostApiVersion: 1,
+    grants: {},
+    ...options,
+  });
+}
+
+function statusOf(host, id) {
+  return host.list().find(row => row.manifest.id === id)?.status;
+}
+
+async function expectReject(promise, pattern) {
+  await assert.rejects(promise, error => {
+    assert.match(String(error?.message ?? error), pattern);
+    return true;
+  });
+}
+
+// A module is code already trusted by the host. The registry only receives a
+// factory; it never loads, evaluates, or executes a path supplied by a manifest.
+{
+  const host = runtime();
+  const events = [];
+  const fixture = moduleFixture('memory.index', events);
+  host.register({ manifest: manifest('memory.index'), factory: () => fixture.module });
+  assert.equal(statusOf(host, 'memory.index'), 'registered');
+  assert.deepEqual(host.list().map(row => row.manifest.id), ['memory.index']);
+  assert.equal(events.length, 0, 'registration must not execute the module factory');
+}
+
+// Invalid identity/version metadata and duplicate IDs must be rejected before
+// the factory is ever called.
+{
+  const host = runtime();
+  let factoryCalls = 0;
+  const factory = () => {
+    factoryCalls += 1;
+    return moduleFixture('invalid', []).module;
+  };
+  assert.throws(
+    () => host.register({ manifest: manifest('../escape'), factory }),
+    /invalid-module-id/,
+  );
+  assert.throws(
+    () => host.register({ manifest: manifest('memory.index', { version: 'latest' }), factory }),
+    /invalid-module-version/,
+  );
+  host.register({ manifest: manifest('memory.index'), factory });
+  assert.throws(
+    () => host.register({ manifest: manifest('memory.index'), factory }),
+    /duplicate-module-id/,
+  );
+  assert.equal(factoryCalls, 0);
+}
+
+// A module cannot obtain capabilities merely by declaring them. The host grant
+// is checked before creation/initialization, and the context only exposes the
+// granted set.
+{
+  const host = runtime({ grants: { 'world.sensor': ['world.read'] } });
+  const events = [];
+  const granted = moduleFixture('world.sensor', events);
+  let forbiddenFactoryCalls = 0;
+  host.register({
+    manifest: manifest('world.sensor', { capabilities: ['world.read', 'camera.capture'] }),
+    factory: () => {
+      forbiddenFactoryCalls += 1;
+      return granted.module;
+    },
+  });
+  await expectReject(host.activate('world.sensor'), /capability-not-granted:camera\.capture/);
+  assert.equal(forbiddenFactoryCalls, 0);
+  assert.equal(statusOf(host, 'world.sensor'), 'failed');
+  assert.equal(events.length, 0);
+}
+
+// Dependencies activate before dependents and stop in reverse order. A
+// dependency cannot be stopped while an active module still depends on it.
+{
+  const events = [];
+  const host = runtime();
+  const core = moduleFixture('core.memory', events);
+  const search = moduleFixture('memory.search', events);
+  host.register({ manifest: manifest('memory.search', { dependencies: ['core.memory'] }), factory: () => search.module });
+  host.register({ manifest: manifest('core.memory'), factory: () => core.module });
+  assert.deepEqual(host.topologicalOrder(), ['core.memory', 'memory.search']);
+  await host.activateAll();
+  assert.deepEqual(events.filter(x => x.startsWith('initialize:')), ['initialize:core.memory', 'initialize:memory.search']);
+  assert.equal(statusOf(host, 'core.memory'), 'active');
+  assert.equal(statusOf(host, 'memory.search'), 'active');
+  await expectReject(host.deactivate('core.memory'), /active-dependent:memory\.search/);
+  await host.stopAll();
+  assert.deepEqual(
+    events.filter(x => x.startsWith('shutdown:')),
+    ['shutdown:memory.search', 'shutdown:core.memory'],
+  );
+  assert.equal(statusOf(host, 'memory.search'), 'stopped');
+  assert.equal(statusOf(host, 'core.memory'), 'stopped');
+}
+
+// Missing dependencies and cycles must be rejected before any factory or
+// initialize method is run.
+{
+  const missing = runtime();
+  const events = [];
+  const dependent = moduleFixture('plan.engine', events);
+  missing.register({
+    manifest: manifest('plan.engine', { dependencies: ['world.model'] }),
+    factory: () => dependent.module,
+  });
+  await expectReject(missing.activateAll(), /missing-module-dependency:plan\.engine:world\.model/);
+  assert.equal(events.length, 0);
+
+  const cyclic = runtime();
+  cyclic.register({ manifest: manifest('cycle.a', { dependencies: ['cycle.b'] }), factory: () => moduleFixture('cycle.a', []).module });
+  cyclic.register({ manifest: manifest('cycle.b', { dependencies: ['cycle.a'] }), factory: () => moduleFixture('cycle.b', []).module });
+  assert.throws(() => cyclic.topologicalOrder(), /module-dependency-cycle/);
+}
+
+// State is saved after quiesce and before shutdown, then restored before the
+// module becomes active in a new host instance.
+{
+  const store = memoryStore();
+  const firstEvents = [];
+  const first = runtime({ stateStore: store });
+  const firstFixture = moduleFixture('memory.autobiography', firstEvents);
+  first.register({ manifest: manifest('memory.autobiography'), factory: () => firstFixture.module });
+  await first.activate('memory.autobiography');
+  firstFixture.state.value = 41;
+  const envelope = await first.deactivate('memory.autobiography');
+  assert.equal(envelope.state.value, 41);
+  assert.equal(store.rows.get('memory.autobiography').state.value, 41);
+  assert.ok(firstEvents.indexOf('quiesce:memory.autobiography') < firstEvents.indexOf('snapshot:memory.autobiography'));
+  assert.ok(firstEvents.indexOf('snapshot:memory.autobiography') < firstEvents.indexOf('shutdown:memory.autobiography'));
+
+  const secondEvents = [];
+  const second = runtime({ stateStore: store });
+  const secondFixture = moduleFixture('memory.autobiography', secondEvents);
+  second.register({ manifest: manifest('memory.autobiography'), factory: () => secondFixture.module });
+  await second.activate('memory.autobiography');
+  assert.equal(secondFixture.state.value, 41);
+  assert.ok(secondEvents.indexOf('restore:memory.autobiography') < secondEvents.indexOf('initialize:memory.autobiography'));
+}
+
+// State schema upgrades are module-owned and explicit. No implicit coercion or
+// silent discard is permitted.
+{
+  const seeded = {
+    schemaVersion: 1,
+    moduleId: 'memory.index',
+    moduleVersion: '1.0.0',
+    stateSchemaVersion: 1,
+    capturedAt: 100,
+    state: { value: 9 },
+  };
+  const store = memoryStore([seeded]);
+  const events = [];
+  const host = runtime({ stateStore: store });
+  const fixture = moduleFixture('memory.index', events);
+  host.register({
+    manifest: manifest('memory.index', { stateSchemaVersion: 2 }),
+    factory: () => fixture.module,
+  });
+  await host.activate('memory.index');
+  assert.equal(fixture.state.value, 10);
+  assert.ok(events.includes('migrate:memory.index:1->2'));
+  assert.ok(events.includes('restore:memory.index'));
+}
+
+{
+  const seeded = {
+    schemaVersion: 1,
+    moduleId: 'memory.index',
+    moduleVersion: '1.0.0',
+    stateSchemaVersion: 1,
+    capturedAt: 100,
+    state: { value: 9 },
+  };
+  const host = runtime({ stateStore: memoryStore([seeded]) });
+  host.register({
+    manifest: manifest('memory.index', { stateSchemaVersion: 2 }),
+    factory: () => ({
+      initialize() {}, health: () => ({ healthy: true }), snapshot: () => ({}),
+      restore() {}, quiesce() {}, resume() {}, shutdown() {},
+    }),
+  });
+  await expectReject(host.activate('memory.index'), /module-state-migration-required/);
+  assert.equal(statusOf(host, 'memory.index'), 'failed');
+}
+
+// A failed durable write must resume the still-running module and must never
+// report a successful stop.
+{
+  const events = [];
+  const store = {
+    async load() { return null; },
+    async save() { throw new Error('disk-full'); },
+  };
+  const host = runtime({ stateStore: store });
+  const fixture = moduleFixture('memory.index', events);
+  host.register({ manifest: manifest('memory.index'), factory: () => fixture.module });
+  await host.activate('memory.index');
+  await expectReject(host.deactivate('memory.index'), /module-state-save-failed/);
+  assert.equal(statusOf(host, 'memory.index'), 'active');
+  assert.ok(events.includes('resume:memory.index'));
+  assert.ok(!events.includes('shutdown:memory.index'));
+}
+
+{
+  const host = runtime();
+  const events = [];
+  const healthy = moduleFixture('world.model', events, { healthy: true });
+  const degraded = moduleFixture('speech.input', events, { healthy: false });
+  host.register({ manifest: manifest('world.model'), factory: () => healthy.module });
+  host.register({ manifest: manifest('speech.input'), factory: () => degraded.module });
+  await host.activateAll();
+  const health = await host.health();
+  assert.equal(health.ok, false);
+  assert.deepEqual(health.modules.filter(row => !row.healthy).map(row => row.id), ['speech.input']);
+  await host.stopAll();
+}
+
+console.log('COGNITIVE_MODULE_RUNTIME=PASS');
