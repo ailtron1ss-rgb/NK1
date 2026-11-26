@@ -7057,9 +7057,30 @@ export class OrganismCore {
             predictionError01: state.predictionError, uncertainty01: n.uncertainty, novelty01: n.novelty, identity01: identityContinuity.continuity,
             bodyEnergy01: n.energy, thermal01: observation.embodiment?.thermalStrain01 ?? .2, memoryPressure01: clamp(memorySizeNow / 1600), realityGap01: p57RealitySummary.meanRealityGap01,
         });
+        const globalWorkspace = this.cognitiveRuntime.globalWorkspace.compete(governedCandidates.slice(0, 8).map(c => ({
+            id: c.id, source: 'decision', salience: clamp(c.score),
+            features: [c.score, c.predictedUtility, c.predictedNeedRelief, c.predictedCost, c.confidence, state.predictionError,
+                state.needs.uncertainty, state.needs.novelty, state.needs.cognitiveLoad, state.needs.energy, socialNeuralFrame.higherOrderBelief01, socialNeuralFrame.confidence01],
+            content: { action: c.action, goalId: c.goalId ?? null },
+        })), [state.needs.uncertainty, state.needs.novelty, state.predictionError, state.attentionBudget, ...centralBrainFrame.broadcast]);
+        this.persisted.facets.cognition.globalWorkspace = globalWorkspace;
+        // Workspace ignition is the aggregate broadcast; this bounded per-candidate
+        // support carries coalition membership into the same arbitration pass.
+        const workspaceCoalitionSupportById = new Map<string, number>();
+        globalWorkspace.selectedIds.forEach((candidateId, index) => {
+            workspaceCoalitionSupportById.set(
+                candidateId,
+                Math.min(0.03, clamp(Number(globalWorkspace.weights[index] ?? 0)) * 0.06),
+            );
+        });
+        for (const candidate of governedCandidates) {
+            const support = workspaceCoalitionSupportById.get(candidate.id) ?? 0;
+            if (support > 0)
+                candidate.score = clamp(candidate.score + support);
+        }
         const integrationSignals = {
             identity01: identityContinuity.continuity,
-            workspace01: this.persisted.facets.consciousness.workspaceIgnition.ignitionStrength,
+            workspace01: globalWorkspace.ignition01,
             metacognitive01: clamp(this.persisted.facets.consciousness.metacognition.metacognitiveAccuracy * .55 + metacognitiveNeuralFrame.predictionCalibration01 * .45),
             predictionError01: state.predictionError, uncertainty01: n.uncertainty, novelty01: n.novelty,
             grounding01: p51Summary.groundingQuality01, causal01: p50Summary.selfWorldAlignment01,
@@ -8109,13 +8130,6 @@ export class OrganismCore {
         const wsItems = candidates.slice(0, 8).map(c => ({ id: c.id, source: 'decision', content: { action: c.action, goalId: c.goalId, score: c.score }, salience: c.score, createdAt: state.at }));
         const ws2 = this.memorySubsystem.workspaceV2.compete(wsItems, state.tick);
         this.persisted.facets.memory.workspace = ws2;
-        const globalWorkspace = this.cognitiveRuntime.globalWorkspace.compete(candidates.slice(0, 8).map(c => ({
-            id: c.id, source: 'decision', salience: clamp(c.score),
-            features: [c.score, c.predictedUtility, c.predictedNeedRelief, c.predictedCost, c.confidence, state.predictionError,
-                state.needs.uncertainty, state.needs.novelty, state.needs.cognitiveLoad, state.needs.energy, socialNeuralFrame.higherOrderBelief01, socialNeuralFrame.confidence01],
-            content: { action: c.action, goalId: c.goalId ?? null },
-        })), [state.needs.uncertainty, state.needs.novelty, state.predictionError, state.attentionBudget, ...centralBrainFrame.broadcast]);
-        this.persisted.facets.cognition.globalWorkspace = globalWorkspace;
         const p48Awareness = this.p48Awareness.step({
             now: state.at,
             attention01: state.attentionBudget,
