@@ -4,6 +4,7 @@ import { MultimodalSituationModel, defaultMultimodalSituation } from '../src/org
 import { PerceptualEvidenceCompiler, defaultPerceptualEvidence } from '../src/organism/body/PerceptualEvidenceCompiler.ts';
 import { DeviceEvidenceLedger, defaultDeviceEvidence } from '../src/organism/body/DeviceEvidenceLedger.ts';
 import { EmbodimentSubsystemRuntime } from '../src/organism/core/EmbodimentSubsystemRuntime.ts';
+import { OrganismSystemFabric } from '../src/organism/core/OrganismSystemFabric.ts';
 import { P35SemanticWorldBodyEngine, defaultP35SemanticWorldBody } from '../src/organism/body/P35SemanticWorldBody.ts';
 import { P37EmbodiedSensoriumEngine, defaultP37EmbodiedSensorium } from '../src/organism/body/P37EmbodiedSensorium.ts';
 import { EmbodiedRecoveryController } from '../src/organism/body/EmbodiedRecoveryController.ts';
@@ -379,3 +380,18 @@ console.log('EMBODIMENT_RESTORE_SANITIZATION_INTEGRITY=PASS');
 }
 
 console.log('EMBODIMENT_SNAPSHOT_RESTORE_KEY_PARITY=PASS');
+
+
+// The composition-root restore is the first entry point for persisted owner
+// state. A hostile Proxy must be rejected before any property or reflection trap.
+{
+  const fabric = new OrganismSystemFabric();
+  let proxyTrapInvoked = false;
+  const proxy = new Proxy({}, {
+    get() { proxyTrapInvoked = true; throw new Error('fabric-persisted-get'); },
+    ownKeys() { proxyTrapInvoked = true; throw new Error('fabric-persisted-ownKeys'); },
+    getPrototypeOf() { proxyTrapInvoked = true; throw new Error('fabric-persisted-prototype'); },
+  });
+  assert.doesNotThrow(() => fabric.restoreFromPersisted(proxy));
+  assert.equal(proxyTrapInvoked, false, 'composition-root restore must reject a top-level Proxy before reflection');
+}
