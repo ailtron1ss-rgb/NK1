@@ -39,6 +39,20 @@ export function isTrustedPerceptualEvidenceSnapshot(value:unknown):value is Perc
   return Boolean(value&&typeof value==='object'&&!Array.isArray(value)&&trustedPerceptualEvidenceSnapshots.has(value as object));
 }
 
+function deepFreezeEvidenceSnapshot<T>(value:T,seen=new WeakSet<object>()):T{
+  if(value===null||typeof value!=='object')return value;
+  const object=value as unknown as object;
+  if(seen.has(object))return value;
+  seen.add(object);
+  for(const key of Reflect.ownKeys(object)){
+    let child:unknown;
+    try{child=(object as Record<PropertyKey,unknown>)[key];}catch{continue;}
+    deepFreezeEvidenceSnapshot(child,seen);
+  }
+  Object.freeze(value);
+  return value;
+}
+
 function normalizeUnattestedEvidenceKind(value:unknown):PerceptualEvidenceKind{
   if(value==='observed')return 'derived';
   return value==='model-output'||value==='derived'||value==='conflict'||value==='unresolved'?value:'unresolved';
@@ -89,7 +103,7 @@ export class PerceptualEvidenceCompiler{
     const evidenceCount=Math.max(1,evidence.length);
     const meanConfidence=evidence.length?evidence.reduce((sum,row)=>sum+row.confidence01,0)/evidence.length:0;
     const metrics={
-      grounding01:clamp(meanConfidence*.45),
+      grounding01:evidence.length?clamp(meanConfidence*.45):d.metrics.grounding01,
       semanticCoverage01:Math.min(1,evidence.length/32),
       crossModalAgreement01:d.metrics.crossModalAgreement01,
       temporalBinding01:d.metrics.temporalBinding01,
@@ -121,7 +135,7 @@ export class PerceptualEvidenceCompiler{
     this.state.lastHash=stableHash(digest);
   }
   snapshot(){
-    const snapshot=structuredClone(this.state);
+    const snapshot=deepFreezeEvidenceSnapshot(structuredClone(this.state));
     trustedPerceptualEvidenceSnapshots.add(snapshot);
     return snapshot;
   }
