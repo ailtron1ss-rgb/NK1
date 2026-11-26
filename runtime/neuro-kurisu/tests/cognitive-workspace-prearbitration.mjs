@@ -86,6 +86,9 @@ const firstDecisionReceipt = core.cognitiveRuntime.globalWorkspace.snapshot().de
 assert.ok(firstDecisionReceipt,
   'the real OrganismCore cycle must freeze its workspace coalition against the decision ID');
 const firstDecisionId = firstDecisionTrace.id;
+const firstDecisionEventAnchors = firstDecisionTrace.cognitiveEventAnchors;
+assert.ok(firstDecisionEventAnchors?.action && firstDecisionEventAnchors?.prediction,
+  'the decision trace must persist its own observation/prediction/action CEF anchors');
 await core.observe({
   text: 'Run a second cognitive cycle before the first decision receives its delayed result.',
   novelty: 0.22,
@@ -93,6 +96,7 @@ await core.observe({
 });
 assert.notEqual(core.persisted.traces[0]?.id, firstDecisionId,
   'the second observation must produce a distinct later decision');
+const secondCycleEventAnchors = structuredClone(core.cognitiveCycleAnchors);
 await core.feedback({
   decisionId: firstDecisionId,
   outcomeId: 'workspace-late-feedback-1',
@@ -103,6 +107,16 @@ await core.feedback({
 assert.ok(core.cognitiveRuntime.canonicalTemporalCredit.snapshot().recentAssignments
   .some(assignment => assignment.decisionId === firstDecisionId && assignment.delayTicks > 0),
   'delayed Core feedback must resolve against its exact historical decision rather than the newest trace');
+const delayedOutcomeEvent = core.cognitiveRuntime.cognitiveEventFabric.recent(128)
+  .find(event => event.stage === 'outcome' && event.payload?.decisionId === firstDecisionId);
+assert.ok(delayedOutcomeEvent,
+  'delayed feedback must append a CEF outcome linked to the explicit historical decision');
+assert.ok(delayedOutcomeEvent.parentIds.includes(firstDecisionEventAnchors.action),
+  'the delayed outcome must parent the original decision action event');
+assert.ok(delayedOutcomeEvent.parentIds.includes(firstDecisionEventAnchors.prediction),
+  'the delayed outcome must parent the original decision prediction event');
+assert.equal(core.cognitiveCycleAnchors.action, secondCycleEventAnchors.action,
+  'delayed feedback must not clear or overwrite the newer active cognitive cycle anchors');
 
 console.log('NK1_COGNITIVE_WORKSPACE_PREARBITRATION=PASS', JSON.stringify({
   order,
