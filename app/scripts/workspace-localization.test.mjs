@@ -6,6 +6,7 @@ const read = (path) => readFile(new URL(path, import.meta.url), "utf8");
 
 test("Chat keeps send, sleep/wake, export and microphone feedback in Russian", async () => {
   const chat = await read("../src/components/ChatPanel.tsx");
+  const labels = await read("../src/organism/uiLabels.ts");
   for (const phrase of [
     "Цикл общения",
     "Ожидаем наблюдение",
@@ -26,29 +27,32 @@ test("Chat keeps send, sleep/wake, export and microphone feedback in Russian", a
   ]) {
     assert.ok(chat.includes(phrase), `missing localized chat copy: ${phrase}`);
   }
+  assert.match(chat, /UI_CONNECTION_STATUS_LABELS/);
+  assert.match(chat, /UI_EMOTION_LABELS/);
+  assert.match(chat, /UI_ACTION_LABELS/);
+  assert.match(labels, /connecting: "Подключение"/);
 });
 
 test("Mind HUD translates canonical snapshot, needs, identity and policy labels", async () => {
   const hud = await read("../src/components/MindHud.tsx");
+  const labels = await read("../src/organism/uiLabels.ts");
   for (const phrase of [
     "Снимок состояния",
     "Потребности",
     "Идентичность",
     "Рабочее пространство",
     "Политика выбора",
-    "Энергия",
-    "Когнитивная нагрузка",
-    "Неопределённость",
-    "Социальная потребность",
-    "Новизна",
-    "Давление сна",
-    "Согласованность идентичности",
-    "Давление цели",
     "Ошибка предсказания",
     "Последний подтверждённый снимок",
   ]) {
     assert.ok(hud.includes(phrase), `missing localized HUD copy: ${phrase}`);
   }
+  for (const phrase of ["Энергия", "Когнитивная нагрузка", "Неопределённость", "Социальная потребность", "Новизна", "Давление сна", "Согласованность идентичности", "Давление цели"]) {
+    assert.ok(labels.includes(phrase), `missing shared Russian HUD label: ${phrase}`);
+  }
+  assert.match(hud, /UI_NEED_LABELS/);
+  assert.match(hud, /UI_EMOTION_LABELS/);
+  assert.match(hud, /UI_ACTION_LABELS/);
 });
 
 test("Labs tabs and empty states use readable Russian labels", async () => {
@@ -71,6 +75,7 @@ test("Labs tabs and empty states use readable Russian labels", async () => {
 
 test("Motivation explains goals and homeostatic drives in Russian", async () => {
   const motivation = await read("../src/components/MotivationPanel.tsx");
+  const labels = await read("../src/organism/uiLabels.ts");
   for (const phrase of [
     "Текущие цели",
     "Цели берутся из подтверждённого снимка канонического runtime.",
@@ -87,6 +92,11 @@ test("Motivation explains goals and homeostatic drives in Russian", async () => 
   ]) {
     assert.ok(motivation.includes(phrase), `missing localized motivation copy: ${phrase}`);
   }
+  for (const phrase of ["Энергия", "Когнитивная нагрузка", "Социальная потребность", "Давление сна", "Согласованность идентичности"]) {
+    assert.ok(labels.includes(phrase), `missing shared Russian motivation label: ${phrase}`);
+  }
+  assert.match(motivation, /UI_NEED_LABELS/);
+  assert.match(motivation, /UI_CONNECTION_STATUS_LABELS/);
 });
 
 test("Runtime health translates controls and section labels while keeping raw diagnostics intact", async () => {
