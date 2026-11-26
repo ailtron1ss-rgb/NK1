@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { AvatarStage } from "@/components/AvatarStage";
 import { DEFAULT_RENDERER_MANIFESTS } from "@/components/avatar/rendererRegistryDefaults";
+import type { AvatarAssetKind } from "@/components/avatar/rendererCapabilityManifest";
 import { ChatPanel } from "@/components/ChatPanel";
 import { CompactStatus, MindHud } from "@/components/MindHud";
 import { Labs } from "@/components/Labs";
@@ -23,7 +24,7 @@ import { ConstitutionEvolutionConsole } from "@/components/ConstitutionEvolution
 
 export const Route = createFileRoute("/")({ component: Home });
 
-const RENDERER_ASSET_LABELS: Record<string, string> = {
+const RENDERER_ASSET_LABELS: Record<AvatarAssetKind, string> = {
   "cubism-model": "Деформируемый риг Cubism",
   "svg-vector": "SVG-вектор",
   "sprite-sheet": "Набор статичных PNG-поз",
@@ -90,7 +91,7 @@ function Home() {
               <span className="size-24 shrink-0 overflow-hidden rounded-lg border border-border bg-elevated">
                 <img
                   src="/sprites/kurisu/thinking_chin.png"
-                  alt="Kurisu in a thoughtful pose"
+                  alt="Курису в задумчивой позе"
                   loading="lazy"
                   className="h-full w-full object-cover object-center"
                 />
