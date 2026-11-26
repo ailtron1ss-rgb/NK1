@@ -922,3 +922,43 @@ console.log('COGNITIVE_MODULE_CHECKPOINT_ATOMICITY=PASS');
   assert.equal((await host.health()).ok, true);
   await host.stopAll();
 }
+
+
+// A failed non-disruptive snapshot degrades module health without changing its
+// lifecycle status. A later successful snapshot clears the diagnostic.
+{
+  const events = [];
+  const fixture = moduleFixture('memory.snapshot-health', events);
+  let failSnapshot = true;
+  fixture.module.snapshot = () => {
+    if (failSnapshot) throw new Error('snapshot-health-offline');
+    return structuredClone(fixture.state);
+  };
+  const host = runtime();
+  host.register({
+    manifest: manifest('memory.snapshot-health'),
+    factory: () => fixture.module,
+  });
+  await host.activate('memory.snapshot-health');
+
+  const failedCapture = await host.snapshotAll();
+  assert.deepEqual(failedCapture, {
+    captured: [],
+    failed: [{ id: 'memory.snapshot-health', reason: 'snapshot-health-offline' }],
+  });
+  assert.equal(statusOf(host, 'memory.snapshot-health'), 'active',
+    'a checkpoint capture failure must not silently change lifecycle status');
+  const degraded = await host.health();
+  assert.equal(degraded.ok, false);
+  assert.equal(degraded.modules[0].healthy, false);
+  assert.equal(degraded.modules[0].reason, 'snapshot-health-offline');
+
+  failSnapshot = false;
+  const recoveredCapture = await host.snapshotAll();
+  assert.deepEqual(recoveredCapture, { captured: ['memory.snapshot-health'], failed: [] });
+  const recovered = await host.health();
+  assert.equal(recovered.ok, true);
+  assert.equal(recovered.modules[0].healthy, true);
+  assert.equal(recovered.modules[0].reason, undefined);
+  await host.stopAll();
+}
