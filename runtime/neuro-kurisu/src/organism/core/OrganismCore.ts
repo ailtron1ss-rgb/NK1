@@ -2112,8 +2112,6 @@ export class OrganismCore {
         });
         projectionDecisionMs = Date.now() - t;
         const fullProjection = force || projectionDecision.full || (this.persistence.dirtyCycles > 0 && this.persistence.dirtyCycles >= this.effectiveCheckpointDirtyCycles());
-        if (fullProjection)
-            this.persistence.advancedProjectionScheduler.begin(this.persisted.state.tick);
         // Runtime-owned neural states are projected once per durable checkpoint. Keeping
         // them duplicated in `persisted` after every hot mutation created detached snapshots
         // that were not durable until this checkpoint anyway.
@@ -2212,6 +2210,7 @@ export class OrganismCore {
             this.persistence.persistenceFullCheckpointCount += 1;
             t = Date.now();
             await this.store.save(this.persisted);
+            this.persistence.persistenceProjectionCoordinator.commitMaterialization(projectionContext, this.persisted.state.tick);
             saveMs = Date.now() - t;
             const persistedMetrics = this.persistenceMetrics();
             this.persistence.persistenceDurabilityGovernor.recordCheckpoint({
