@@ -79,7 +79,8 @@ test("AvatarStage targets the frontend viewer whose ACK contract is covered abov
   assert.match(avatar, /partial ACK is never a renderer receipt/);
   assert.match(avatar, /latestIntentStateVersionRef\.current = intent\.stateVersion/);
   assert.match(avatar, /frameTick: currentProjection\.tick/);
-  assert.match(avatar, /createAvatarPresentationReceipt\("live2d", ev\.data\.frameTick/);
+  assert.match(avatar, /typeof frameTick === "number" && Number\.isSafeInteger\(frameTick\) && frameTick >= 0/);
+  assert.match(avatar, /createAvatarPresentationReceipt\("live2d", frameTick/);
 });
 
 test("runtime protocol-v1 normalizer preserves the canonical tick without breaking older intents", () => {
