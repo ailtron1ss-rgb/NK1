@@ -13,3 +13,4 @@ export * from './EmbodimentSubsystemRuntime.ts';
 export * from './SubsystemFlightRecorder.ts';
 export * from './OrganismSystemFabric.ts';
 export * from './CognitiveModuleRuntime.ts';
+export * from './CognitiveModuleRuntimePersistence.ts';
