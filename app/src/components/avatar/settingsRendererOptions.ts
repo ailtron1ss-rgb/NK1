@@ -1,6 +1,6 @@
 import type { AvatarViewMode } from "@/organism/store";
 import type { AvatarAssetKind, BodyRendererCapabilityManifest } from "./rendererCapabilityManifest";
-import { DEFAULT_RENDERER_MANIFESTS } from "./rendererRegistryDefaults";
+import { DEFAULT_RENDERER_MANIFESTS } from "./rendererRegistryDefaults.ts";
 
 /**
  * UI identifiers are deliberately distinct from the coarse embodiment mode:
