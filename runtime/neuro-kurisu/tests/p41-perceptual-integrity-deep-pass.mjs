@@ -32,6 +32,10 @@ function semanticVision(objects, at, extra = {}) {
   assert.equal(chairs.length, 2);
   assert.equal(new Set(chairs.map(entity => entity.id)).size, 2);
   const originalIds = new Map(chairs.map(entity => [entity.trackId, entity.id]));
+  assert.ok(chairs.every(entity => entity.modalitySourceIds?.vision?.includes('detector')),
+    'a provider source ID must remain attached to its vision modality');
+  assert.ok(chairs.every(entity => !entity.modalitySourceIds?.vision?.some(id => ['vision','world','sensor','audio','text'].includes(id))),
+    'modality names must never be stored as provider source identities');
 
   const second = engine.ingest(semanticVision([
     { ...objects[1], x: 3.1 },
@@ -136,6 +140,9 @@ function semanticVision(objects, at, extra = {}) {
   assert.equal(lamps[0].trackId, 'vision:0:vision:lamp-v-1', 'the primary track key must not be overwritten by a cross-modal alias');
   assert.ok(lamps[0].trackAliases?.includes('world:world:lamp-world-1'));
   assert.ok(lamps[0].modalities.includes('vision') && lamps[0].modalities.includes('world'));
+  assert.ok(!lamps[0].modalitySourceIds?.vision?.includes('vision'));
+  assert.ok(!lamps[0].modalitySourceIds?.world?.includes('world'),
+    'cross-modal track namespaces must not become evidence source identities');
   assert.ok(second.metrics.crossModalEvidenceCoverage01 > 0);
 
   const ambiguous = new P41SemanticPerceptionEngine();
@@ -255,10 +262,19 @@ function semanticVision(objects, at, extra = {}) {
     id: 'legacy-chair', label: 'chair', kind: 'object', confidence01: 0.7, salience01: 0.5,
     present01: 0.8, firstSeenAt: 1, lastSeenAt: 2, observations: 2, modalities: ['vision'],
     position: null,
+    modalitySourceIds:{
+      vision:['vision','detector'],
+      audio:['speech','microphone'],
+      speech:['speech-channel'],
+      semantic:['semantic-channel'],
+    },
   }];
   const restored = new P41SemanticPerceptionEngine();
   restored.restore(legacy);
   assert.equal(restored.snapshot().entities[0].id, 'legacy-chair');
+  assert.deepEqual(restored.snapshot().entities[0].modalitySourceIds,
+    {vision:['detector'],audio:['microphone']},
+    'legacy restore must keep canonical modality source IDs and drop modality-name aliases');
   assert.equal(restored.snapshot().modalityReliability.vision.calibrationSamples, 0);
   assert.equal(restored.snapshot().metrics.crossModalEvidenceCoverage01, 0);
 }

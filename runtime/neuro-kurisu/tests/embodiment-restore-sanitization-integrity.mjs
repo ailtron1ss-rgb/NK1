@@ -92,16 +92,21 @@ evidence.restore({
   updates: 'bad',
   scene: 42,
   metrics: { grounding01: 'x', conflict01: 99, unresolved01: -1 },
-  evidence: [{ bogus: true }, 'not-a-record'],
+  evidence: [
+    { id: 'restored-conflict', at: 1, modality: 'vision', claim: 'door state is contested', confidence01: 0.8, uncertainty01: 0.2, kind: 'conflict', parents: [] },
+    { id: 'restored-derived', at: 2, modality: 'sensor', claim: 'motion signal received', confidence01: 0.7, uncertainty01: 0.3, kind: 'derived', parents: [] },
+    { bogus: true }, 'not-a-record',
+  ],
   activeQuery: { id: 5, modality: 6, query: null, priority01: 9 },
 });
 const pe = evidence.snapshot();
 assert.equal(pe.updates, 0);
 assert.equal(pe.scene, defaultPerceptualEvidence().scene);
 assert.equal(pe.metrics.grounding01, defaultPerceptualEvidence().metrics.grounding01, 'string metric falls back');
-assert.equal(pe.metrics.conflict01, 1, 'metric above 1 clamps to 1');
+assert.equal(pe.metrics.conflict01, 0.5,
+  'conflict ratio is rebuilt from sanitized evidence; persisted aggregate 99 is not trusted');
 assert.equal(pe.metrics.unresolved01, 0, 'negative metric clamps to 0');
-assert.equal(pe.evidence.length, 1, 'only plain-record evidence rows survive; primitives are dropped');
+assert.equal(pe.evidence.length, 2, 'only valid plain-record evidence rows survive; malformed rows are dropped');
 assert.equal(pe.activeQuery.modality, 'unknown');
 assert.equal(pe.activeQuery.priority01, 1);
 
@@ -111,7 +116,19 @@ evidenceSource.recordExternalEvidence({ at: 10, claim: 'sensor:door-open', confi
 const evidenceSnapshot = evidenceSource.snapshot();
 const evidenceRestored = new PerceptualEvidenceCompiler();
 evidenceRestored.restore(evidenceSnapshot);
-assert.deepEqual(evidenceRestored.snapshot(), evidenceSnapshot, 'valid evidence snapshot must round-trip');
+const restoredEvidenceSnapshot = evidenceRestored.snapshot();
+assert.deepEqual(restoredEvidenceSnapshot.evidence, evidenceSnapshot.evidence,
+  'durable evidence rows must round-trip without changing their provenance');
+assert.equal(restoredEvidenceSnapshot.lastAt, evidenceSnapshot.lastAt);
+assert.equal(restoredEvidenceSnapshot.updates, evidenceSnapshot.updates);
+assert.equal(restoredEvidenceSnapshot.metrics.groundedSignalRatio01, 0,
+  'process-local observation authority must be cleared during restore');
+assert.equal(restoredEvidenceSnapshot.metrics.grounding01, defaultPerceptualEvidence().metrics.grounding01,
+  'persisted aggregate grounding is rebuilt conservatively, not trusted');
+const restoredDerivedHash = restoredEvidenceSnapshot.lastHash;
+evidenceRestored.restore(restoredEvidenceSnapshot);
+assert.equal(evidenceRestored.snapshot().lastHash, restoredDerivedHash,
+  'the derived state hash must be stable after the restore normalization pass');
 
 // --- DeviceEvidenceLedger -----------------------------------------------------
 const ledger = new DeviceEvidenceLedger();
@@ -163,7 +180,18 @@ assert.deepEqual(proxyRestored.snapshot(), defaultMultimodalState(), 'a hostile 
 // --- Defaults for null/undefined ----------------------------------------------
 const emptyRestored = new PerceptualEvidenceCompiler();
 emptyRestored.restore(undefined);
-assert.deepEqual(emptyRestored.snapshot(), defaultPerceptualEvidence());
+const emptySnapshot = emptyRestored.snapshot();
+const emptyDefaults = defaultPerceptualEvidence();
+const { lastHash: _actualProjectionHash, ...emptySnapshotWithoutHash } = emptySnapshot;
+const { lastHash: _defaultProjectionHash, ...emptyDefaultsWithoutHash } = emptyDefaults;
+assert.deepEqual(emptySnapshotWithoutHash, emptyDefaultsWithoutHash,
+  'restoring an empty perceptual evidence state must preserve conservative default metrics');
+assert.match(emptySnapshot.lastHash, /^[a-f0-9]{8}$/,
+  'restore must emit a deterministic projection fingerprint, even for empty state');
+const repeatedEmptyRestore = new PerceptualEvidenceCompiler();
+repeatedEmptyRestore.restore(undefined);
+assert.equal(repeatedEmptyRestore.snapshot().lastHash, emptySnapshot.lastHash,
+  'identical empty restore projections must produce the same digest');
 
 // --- P35 semantic world/body --------------------------------------------------
 const p35 = new P35SemanticWorldBodyEngine();

@@ -17,11 +17,26 @@ import { P52CounterfactualDevelopmentMind } from '../world/P52CounterfactualDeve
 import { P57RealityFirstObservatory } from '../system/P57RealityFirstObservatory.ts';
 import { P79EmbodiedSituationModel } from '../world/P79EmbodiedSituationModel.ts';
 import { GroundedWorldState } from '../world/GroundedWorldState.ts';
+import { projectWorldCognitiveSignal } from '../world/WorldBeliefProjection.ts';
 import { P83PersistentRealityModel } from '../world/P83PersistentRealityModel.ts';
 import { WorldCausalCalibration, defaultWorldCausalCalibration } from '../system/WorldCausalCalibration.ts';
 import { WorldAgencyLearningCausalBridge, defaultWorldAgencyLearning } from '../system/WorldAgencyLearningCausalBridge.ts';
 import { DerivedWorldPreviewCache } from '../system/DerivedWorldPreviewCache.ts';
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
+
+export interface WorldCognitiveSignalV1 {
+  version: 1;
+  revision: number;
+  evidenceClass: 'observed' | 'mixed' | 'inferred' | 'unknown';
+  evidenceConfidence01: number;
+  uncertainty01: number;
+  changeMagnitude01: number;
+  conflict01: number;
+  unresolved01: number;
+  modelDisagreement01: number;
+  predictionError01: number;
+}
+
 
 function isWorldContext(value: unknown): value is WorldContext {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
@@ -271,6 +286,21 @@ export class WorldSubsystemRuntime {
     return { ...trained, brain:brainTrained, unifiedAfter, canonicalResolution, predictionBefore:{candidates,usedStoredPrediction:resolution.resolved,predictionId:resolution.predictionId ?? predictionId,worldModel2:worldModelResolution}, candidates };
   }
 
+  /** Read-only, provenance-aware projection for Appraisal and attention. It never mutates canonical world or promotes hypotheses. */
+  /** Read-only, freshness-aware projection for appraisal and attention. */
+  cognitiveAttentionSignal(): WorldCognitiveSignalV1 {
+    const model = this.worldModel2.snapshot({ clone: false });
+    const latestModelError = Array.isArray(model.predictionErrors) && model.predictionErrors.length > 0
+      ? model.predictionErrors[model.predictionErrors.length - 1]
+      : 0;
+    return projectWorldCognitiveSignal({
+      snapshot: this.groundedWorld.snapshot(),
+      learningStats: this.worldLearningStats,
+      latestModelError,
+      at: Date.now(),
+    });
+  }
+
   worldModelAgreement(){
     const s=this.worldModel2.snapshot({clone:false});
     const p27=this.p27NeuralWorld.snapshot().world.predictionError01;
@@ -313,13 +343,14 @@ export class WorldSubsystemRuntime {
     this.groundedWorld.restore(advanced.groundedWorld);
     this.p83PersistentReality.restore(advanced.p83PersistentRealityModel);
     this.worldModelEnsemble.restore(advanced.worldModelEnsemble);
-    this.worldLearningRestore(advanced.worldLearning);
     this.lastWorldLatentId=this.lastWorldLatentId ?? this.worldModel2.snapshot({clone:false}).latentState?.id ?? null;
     this.lastWorldContext=null;
-    this.lastP27Latent=this.p27NeuralWorld.snapshot().latent;
     this.p24WorldIdentity.restore(advanced.p24);
     this.p27NeuralWorld.restore(cognition.p27);
     this.brainSubstrate.restore(cognition.brainSubstrate);
+    // Restore the canonical world-learning projection only after P27 so its
+    // fallback latent is the restored model state, never the constructor default.
+    this.worldLearningRestore(advanced.worldLearning);
     this.p44PredictiveWorld.restore(learning.p44PredictiveWorld);
     this.p50CausalSelfWorld.restore(advanced.p50CausalSelfWorld);
     this.p51GroundedCausalWorkspace.restore(advanced.p51GroundedCausalWorkspace);

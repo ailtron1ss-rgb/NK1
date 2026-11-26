@@ -1,0 +1,207 @@
+import assert from 'node:assert/strict';
+import testCase from 'node:test';
+import { projectWorldCognitiveSignal } from '../src/organism/world/WorldBeliefProjection.ts';
+const baseSnapshot = (entityOverrides = {}, snapshotOverrides = {}) => ({
+  revision: 7, confidence01: 0.9, uncertainty01: 0.1,
+  entities: [{
+    id: 'entity-1', confidence01: 0.9, lastSeenAt: 99_000, observationCount: 3,
+    modalities: ['vision'], modalityEvidenceKinds: { vision: 'observed' },
+    sourceIds: ['camera:front'], modalitySourceIds: { vision: ['camera:front'] }, presenceStatus: 'visible', absenceEvidence01: 0,
+    ...entityOverrides,
+  }],
+  ...snapshotOverrides,
+});
+testCase('fresh sourced observations produce an observed, confidence-bearing signal', () => {
+  const signal = projectWorldCognitiveSignal({ snapshot: baseSnapshot(), at: 100_000 });
+  assert.equal(signal.evidenceClass, 'observed'); assert.ok(signal.evidenceConfidence01 > 0.5);
+  assert.ok(signal.uncertainty01 < 0.5); assert.equal(signal.revision, 7);
+});
+testCase('stale observations lose confidence and become unresolved rather than remaining current facts', () => {
+  const signal = projectWorldCognitiveSignal({ snapshot: baseSnapshot({ lastSeenAt: 0 }), at: 3_600_000 });
+  assert.equal(signal.evidenceClass, 'unknown'); assert.ok(signal.evidenceConfidence01 < 1e-20,
+    'stale evidence confidence should decay to numerical zero');
+  assert.ok(signal.unresolved01 > 0.7); assert.ok(signal.uncertainty01 >= 0.65);
+});
+testCase('model output is inferred evidence and never becomes observed evidence', () => {
+  const signal = projectWorldCognitiveSignal({ snapshot: baseSnapshot({ modalityEvidenceKinds: { vision: 'model-output' }, sourceIds: ['model:vision'] }), at: 100_000 });
+  assert.equal(signal.evidenceClass, 'inferred'); assert.ok(signal.evidenceConfidence01 > 0);
+});
+testCase('an observed label without source provenance is downgraded to unresolved', () => {
+  const signal = projectWorldCognitiveSignal({ snapshot: baseSnapshot({ sourceIds: [], modalitySourceIds: {} }), at: 100_000 });
+  assert.equal(signal.evidenceClass, 'unknown'); assert.ok(signal.unresolved01 > 0.9); assert.equal(signal.evidenceConfidence01, 0);
+});
+testCase('aggregate or cross-modal source IDs cannot attest an observed modality', () => {
+  const aggregateOnly = projectWorldCognitiveSignal({
+    snapshot: baseSnapshot({ modalitySourceIds: {}, sourceIds: ['unbound-camera-source'] }),
+    at: 100_000,
+  });
+  const wrongModality = projectWorldCognitiveSignal({
+    snapshot: baseSnapshot({ modalitySourceIds: { audio: ['speaker:front'] } }),
+    at: 100_000,
+  });
+  assert.equal(aggregateOnly.evidenceClass, 'unknown');
+  assert.equal(aggregateOnly.evidenceConfidence01, 0);
+  assert.equal(wrongModality.evidenceClass, 'unknown');
+  assert.equal(wrongModality.evidenceConfidence01, 0);
+});
+
+testCase('opaque source ID counts do not create independent-corroboration confidence bonuses', () => {
+  const singleObservedSource = projectWorldCognitiveSignal({
+    snapshot: baseSnapshot({ modalitySourceIds: { vision: ['camera:front'] } }),
+    at: 100_000,
+  });
+  const multipleObservedSourceLabels = projectWorldCognitiveSignal({
+    snapshot: baseSnapshot({ modalitySourceIds: { vision: ['camera:front', 'claimed-independent:model-2', 'claimed-independent:cloud'] } }),
+    at: 100_000,
+  });
+  assert.equal(multipleObservedSourceLabels.evidenceConfidence01, singleObservedSource.evidenceConfidence01,
+    'opaque identifiers are provenance labels, not cryptographic proof of independent corroboration');
+
+  const singleModelSource = projectWorldCognitiveSignal({
+    snapshot: baseSnapshot({ modalityEvidenceKinds: { vision: 'model-output' }, modalitySourceIds: { vision: ['model:one'] } }),
+    at: 100_000,
+  });
+  const multipleModelSourceLabels = projectWorldCognitiveSignal({
+    snapshot: baseSnapshot({ modalityEvidenceKinds: { vision: 'model-output' }, modalitySourceIds: { vision: ['model:one', 'model:two'] } }),
+    at: 100_000,
+  });
+  assert.equal(multipleModelSourceLabels.evidenceConfidence01, singleModelSource.evidenceConfidence01,
+    'multiple caller-supplied model source IDs cannot increase confidence');
+});
+
+testCase('conflicting modalities remain explicit and increase epistemic uncertainty', () => {
+  const signal = projectWorldCognitiveSignal({ snapshot: baseSnapshot({ modalityEvidenceKinds: { vision: 'observed', audio: 'conflict' } }), at: 100_000 });
+  assert.equal(signal.evidenceClass, 'mixed'); assert.ok(signal.conflict01 > 0.2); assert.ok(signal.uncertainty01 > 0.2);
+});
+testCase('future timestamps beyond the clock-skew allowance cannot create fresh observations', () => {
+  const signal = projectWorldCognitiveSignal({ snapshot: baseSnapshot({ lastSeenAt: 900_000 }), at: 100_000 });
+  assert.equal(signal.evidenceClass, 'unknown'); assert.equal(signal.evidenceConfidence01, 0); assert.ok(signal.unresolved01 > 0.7);
+});
+testCase('model disagreement is ignored until at least one model comparison exists', () => {
+  const cold = projectWorldCognitiveSignal({ snapshot: baseSnapshot(), learningStats: { observations: 0, modelAgreement01: 0 }, at: 100_000 });
+  const measured = projectWorldCognitiveSignal({ snapshot: baseSnapshot(), learningStats: { observations: 2, modelAgreement01: 0.2 }, at: 100_000 });
+  assert.equal(cold.modelDisagreement01, 0); assert.ok(measured.modelDisagreement01 > 0.7);
+});
+testCase('fading entities contribute change pressure without asserting confirmed absence', () => {
+  const signal = projectWorldCognitiveSignal({ snapshot: baseSnapshot({ presenceStatus: 'fading', absenceEvidence01: 0.8 }), at: 100_000 });
+  assert.ok(signal.changeMagnitude01 > 0.4); assert.equal(signal.evidenceClass, 'observed');
+});
+
+testCase('quarantined persisted facts create bounded re-verification pressure without confidence promotion', () => {
+  const baseline = projectWorldCognitiveSignal({ snapshot: baseSnapshot(), at: 100_000 });
+  const quarantined = projectWorldCognitiveSignal({
+    snapshot: baseSnapshot({}, {
+      quarantinedFacts: ['restored-unverified:door-was-open'],
+    }),
+    at: 100_000,
+  });
+  assert.equal(quarantined.evidenceClass, 'mixed',
+    'fresh evidence plus quarantined history must expose unresolved epistemic state');
+  assert.ok(quarantined.unresolved01 > baseline.unresolved01 + .05);
+  assert.ok(quarantined.uncertainty01 > baseline.uncertainty01);
+  assert.ok(quarantined.evidenceConfidence01 <= baseline.evidenceConfidence01,
+    'quarantined historical facts must never increase world evidence confidence');
+});
+
+testCase('quarantined external receipts create bounded re-verification pressure without canonical confidence', () => {
+  const baseline = projectWorldCognitiveSignal({ snapshot: baseSnapshot(), at: 100_000 });
+  const quarantined = projectWorldCognitiveSignal({
+    snapshot: baseSnapshot({}, {
+      quarantinedOutcomes: [
+        { id: 'receipt-1', label: 'external-receipt:explore:executed:device-telemetry', at: 99_000 },
+        { id: 'receipt-2', label: 'external-receipt:respond:executed:device-actuation', at: 99_500 },
+      ],
+    }),
+    at: 100_000,
+  });
+  assert.equal(quarantined.evidenceClass, 'mixed');
+  assert.ok(quarantined.unresolved01 > baseline.unresolved01 + .05);
+  assert.ok(quarantined.uncertainty01 > baseline.uncertainty01);
+  assert.ok(quarantined.evidenceConfidence01 <= baseline.evidenceConfidence01,
+    'unverified external receipts cannot increase canonical evidence confidence');
+
+  const saturated = projectWorldCognitiveSignal({
+    snapshot: baseSnapshot({}, {
+      quarantinedOutcomes: Array.from({ length: 96 }, (_, index) => ({
+        id: `receipt-${index}`, label: 'external-receipt:explore:executed:device-telemetry', at: 99_000,
+      })),
+    }),
+    at: 100_000,
+  });
+  assert.ok(saturated.unresolved01 <= 0.45,
+    'quarantine pressure must remain bounded under receipt flooding');
+  const singleReceipt = projectWorldCognitiveSignal({
+    snapshot: baseSnapshot({}, {
+      quarantinedOutcomes: [
+        { id: 'same-receipt', label: 'external-receipt:explore:executed:device-telemetry', at: 99_000 },
+      ],
+    }),
+    at: 100_000,
+  });
+  const duplicateReceipt = projectWorldCognitiveSignal({
+    snapshot: baseSnapshot({}, {
+      quarantinedOutcomes: [
+        { id: 'same-receipt', label: 'external-receipt:explore:executed:device-telemetry', at: 99_000 },
+        { id: 'same-receipt', label: 'external-receipt:explore:executed:device-telemetry', at: 99_000 },
+      ],
+    }),
+    at: 100_000,
+  });
+  assert.equal(duplicateReceipt.unresolved01, singleReceipt.unresolved01,
+    'duplicate diagnostic receipt IDs must not multiply verification pressure');
+});
+
+
+
+testCase('restored unverified receipt labels retain pressure after quarantine migration', () => {
+  const baseline = projectWorldCognitiveSignal({ snapshot: baseSnapshot(), at: 100_000 });
+  const restored = projectWorldCognitiveSignal({
+    snapshot: baseSnapshot({}, {
+      quarantinedOutcomes: [
+        { id: 'restored-receipt', label: 'restored-unverified:external-receipt:explore:executed:device-telemetry', at: 99_000 },
+      ],
+    }),
+    at: 100_000,
+  });
+  assert.ok(restored.unresolved01 > baseline.unresolved01 + .05,
+    'quarantined receipt pressure must survive restore-time label prefixing');
+  assert.ok(restored.evidenceConfidence01 <= baseline.evidenceConfidence01);
+});
+
+testCase('stale quarantined receipts decay and future-dated receipts cannot create current pressure', () => {
+  const baseline = projectWorldCognitiveSignal({ snapshot: baseSnapshot(), at: 100_000 });
+  const stale = projectWorldCognitiveSignal({
+    snapshot: baseSnapshot({ lastSeenAt: 3_599_000 }, {
+      quarantinedOutcomes: [
+        { id: 'old-receipt', label: 'external-receipt:explore:executed:device-telemetry', at: 0 },
+      ],
+    }),
+    at: 3_600_000,
+  });
+  const future = projectWorldCognitiveSignal({
+    snapshot: baseSnapshot({}, {
+      quarantinedOutcomes: [
+        { id: 'future-receipt', label: 'external-receipt:explore:executed:device-telemetry', at: 900_000 },
+      ],
+    }),
+    at: 100_000,
+  });
+  assert.ok(stale.unresolved01 <= baseline.unresolved01 + .001,
+    'stale operational receipts must decay instead of permanently holding attention');
+  assert.ok(future.unresolved01 <= baseline.unresolved01 + .001,
+    'future-dated diagnostic receipts must not create current re-verification pressure');
+});
+
+testCase('every projected scalar remains finite and bounded for malformed numeric state', () => {
+  const signal = projectWorldCognitiveSignal({
+    snapshot: baseSnapshot({ confidence01: Number.NaN, lastSeenAt: Number.POSITIVE_INFINITY, observationCount: -1, absenceEvidence01: Number.NaN },
+      { confidence01: Number.NaN, uncertainty01: Number.POSITIVE_INFINITY, revision: -1 }),
+    learningStats: { observations: Number.NaN, modelAgreement01: Number.NaN, lastPassiveError01: Number.POSITIVE_INFINITY, lastActionError01: -1 },
+    latestModelError: Number.NaN, at: 100_000,
+  });
+  for (const key of ['evidenceConfidence01', 'uncertainty01', 'changeMagnitude01', 'conflict01', 'unresolved01', 'modelDisagreement01', 'predictionError01']) {
+    assert.ok(Number.isFinite(signal[key]), key + ' must be finite');
+    assert.ok(signal[key] >= 0 && signal[key] <= 1, key + ' must stay within [0, 1]');
+  }
+  assert.equal(signal.revision, 0);
+});

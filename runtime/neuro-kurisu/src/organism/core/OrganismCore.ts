@@ -2674,6 +2674,8 @@ export class OrganismCore {
         return row;
     }
     worldCausalActionReadiness(action: string, minTrials = 6, matchedContextKey?: string) { return this.organismSystems.world.worldCausalCalibration.actionReadiness(action, minTrials, matchedContextKey); }
+    /** Read-only world evidence projection shared with planning; it never promotes a hypothesis to fact. */
+    worldCognitiveAttentionSignal() { return this.worldSubsystem.cognitiveAttentionSignal(); }
     activePerceptionPendingId() {
         return this.organismSystems.embodiment.activePerceptionExecutor.pendingRequestId();
     }
@@ -4609,6 +4611,7 @@ export class OrganismCore {
         }
         state.predictionError = clamp(state.predictionError * 0.82 + effectiveSurprise * 0.30);
         const attentionTarget = normalizedObservation.worldContext?.location || (activeGoalPressureFallback(this.persisted.goals));
+        const earlyWorldCognitiveSignal = this.worldSubsystem.cognitiveAttentionSignal();
         state.attentionBudget = clamp(1 - n.cognitiveLoad * 0.52 - (1 - n.energy) * 0.28);
         const bodyTelemetry = { energy01: n.energy, thermal01: observation.embodiment?.thermalStrain01 ?? .2, capacity01: observation.embodiment?.cognitiveCapacity01 ?? (1 - n.cognitiveLoad), load01: n.cognitiveLoad };
         const p66Homeostasis = this.p66InteroceptiveHomeostasis.observe({ tick: state.tick + 1, at: Date.now(), ...bodyTelemetry, awake: observation.embodiment?.awake ?? true, uncertainty01: n.uncertainty, predictionError01: state.predictionError, novelty01: state.needs.novelty });
@@ -4622,15 +4625,18 @@ export class OrganismCore {
           : attentionTarget || 'internal-state';
         const attentionReason = interoceptiveFrame.controlPressure01 > .55
           ? `interoceptive-${interoceptiveFrame.precisionAllocation01.dominantChannel}`
-          : surprise > 0.45 ? 'prediction-error' : novelty > 0.35 ? 'novelty' : 'goal-pressure';
-        this.persisted.facets.memory.attention = attend({ target: internalAttentionTarget, reason: attentionReason, salience: Math.max(surprise, novelty, n.goalPressure, interoceptiveFrame.salience01), confidence: state.attentionBudget, budget: state.attentionBudget });
+          : earlyWorldCognitiveSignal.conflict01 > .35 ? 'world-conflict'
+            : earlyWorldCognitiveSignal.modelDisagreement01 > .45 ? 'world-model-disagreement'
+              : earlyWorldCognitiveSignal.changeMagnitude01 > .55 ? 'world-change'
+                : surprise > 0.45 ? 'prediction-error' : novelty > 0.35 ? 'novelty' : 'goal-pressure';
+        this.persisted.facets.memory.attention = attend({ target: internalAttentionTarget, reason: attentionReason, salience: Math.max(surprise, novelty, n.goalPressure, interoceptiveFrame.salience01, earlyWorldCognitiveSignal.changeMagnitude01, earlyWorldCognitiveSignal.conflict01, earlyWorldCognitiveSignal.modelDisagreement01), confidence: state.attentionBudget, budget: state.attentionBudget });
         this.persisted.system.interoceptiveState = this.organismSystems.embodiment.interoceptiveStateEstimator.persistenceSnapshot();
         const predictiveAllostasis = this.cognitiveRuntime.predictiveAllostasis.observe({ tick: state.tick + 1, at: state.at, energy01: bodyTelemetry.energy01, thermal01: bodyTelemetry.thermal01, capacity01: bodyTelemetry.capacity01, load01: bodyTelemetry.load01, awake: observation.embodiment?.awake ?? true, uncertainty01: n.uncertainty, predictionError01: state.predictionError, novelty01: n.novelty, pressure01: p66Homeostasis.pressure01, recoveryDebt01: this.p66InteroceptiveHomeostasis.summary().recoveryDebt01, mode: p66Homeostasis.mode });
         const multiHorizonAllostasis = this.cognitiveRuntime.multiHorizonAllostasis.observe({ tick: state.tick + 1, at: state.at, energy01: bodyTelemetry.energy01, thermal01: bodyTelemetry.thermal01, capacity01: bodyTelemetry.capacity01, load01: bodyTelemetry.load01, arousal01: clamp(1 - n.cognitiveLoad), recoveryDebt01: this.p66InteroceptiveHomeostasis.summary().recoveryDebt01, pressure01: p66Homeostasis.pressure01, awake: observation.embodiment?.awake ?? true, uncertainty01: n.uncertainty, predictionError01: state.predictionError });
         if (predictiveAllostasis.interventionUrgency01 > .72)
             this.cognitiveRuntime.cognitiveField.addPressure('goal', 'predictive-allostatic-intervention', predictiveAllostasis.interventionUrgency01, [], .025);
         const interoceptiveAffect = this.cognitiveRuntime.emotionAppraisal.observeInteroception({ ...bodyTelemetry, homeostaticPressure01: p66Homeostasis.pressure01 });
-        const emotionEpisode = this.cognitiveRuntime.emotionAppraisal.appraise({ tick: state.tick + 1, at: Date.now(), goalPressure01: n.goalPressure, goalCongruence01: state.lastActionSuccess ?? .5, controllability01: 1 - n.uncertainty, novelty01: n.novelty, selfRelevance01: n.identityCoherence, socialMeaning01: n.socialNeed, uncertainty01: n.uncertainty, predictionError01: state.predictionError, homeostaticPressure01: p66Homeostasis.pressure01, energy01: n.energy, success01: state.lastActionSuccess ?? .5, external: hasExternalSignal });
+        const emotionEpisode = this.cognitiveRuntime.emotionAppraisal.appraise({ tick: state.tick + 1, at: Date.now(), goalPressure01: n.goalPressure, goalCongruence01: state.lastActionSuccess ?? .5, controllability01: 1 - n.uncertainty, novelty01: n.novelty, selfRelevance01: n.identityCoherence, socialMeaning01: n.socialNeed, uncertainty01: n.uncertainty, predictionError01: state.predictionError, homeostaticPressure01: p66Homeostasis.pressure01, energy01: n.energy, success01: state.lastActionSuccess ?? .5, worldChange01: earlyWorldCognitiveSignal.changeMagnitude01, worldConflict01: earlyWorldCognitiveSignal.conflict01, worldDisagreement01: earlyWorldCognitiveSignal.modelDisagreement01, worldUncertainty01: earlyWorldCognitiveSignal.uncertainty01, worldEvidenceConfidence01: earlyWorldCognitiveSignal.evidenceConfidence01, external: hasExternalSignal });
         const feelingEpisode = this.cognitiveRuntime.emotionAppraisal.inferFeeling(emotionEpisode, { energy01: n.energy, cognitiveLoad01: n.cognitiveLoad, uncertainty01: n.uncertainty, selfFocus01: n.identityCoherence });
         this.organismSystems.memory.causalLifeGraph.recordCycle({ tick: state.tick + 1, at: Date.now(), experience: { id: `obs:${state.tick + 1}`, label: String(observation.text ?? 'sensory-experience').slice(0, 120), confidence01: hasExternalSignal ? .8 : .5, external01: hasExternalSignal ? 1 : 0 }, emotion: { id: emotionEpisode.id, label: emotionEpisode.label, confidence01: emotionEpisode.confidence01, external01: hasExternalSignal ? 1 : 0 } }, { snapshot: false });
         this.persisted.system.emotionAppraisal = this.cognitiveRuntime.emotionAppraisal.snapshot();
@@ -5487,6 +5493,7 @@ export class OrganismCore {
                 tick: state.tick,
                 selfLatent: b270PostGerminalState.selfLatent,
                 worldLatent: p27Latent.vector,
+                worldEvidence: earlyWorldCognitiveSignal,
                 needs: { energy01: state.needs.energy, uncertainty01: state.needs.uncertainty, novelty01: state.needs.novelty, goalPressure01: state.needs.goalPressure, socialNeed01: state.needs.socialNeed },
                 traits: b270PostAutonomousState.traitValues,
                 predictionError01: state.predictionError,
@@ -5542,6 +5549,7 @@ export class OrganismCore {
             traits: b270PostAutonomousState.traitValues,
             predictionError01: state.predictionError, identityContinuity01: p80Now.continuity01, autobiographicalContinuity01: b271NeuralAuto.autobiographicalContinuity01,
             independentEvaluatorGain01: clamp((state.lastActionSuccess ?? .5) - .5),
+            worldEvidence: earlyWorldCognitiveSignal,
         });
         this.persisted.system.autonomousGoalLifecycleB273 = this.developmentalNeural.autonomousGoalLifecycleB273.snapshot();
         const b262Plans = state.tick % 64 === 0 ? this.developmentalNeural.multiTimescaleWorldModelB262.planHierarchical(p27Latent.vector, 8, 4) : this.developmentalNeural.multiTimescaleWorldModelB262.plan(p27Latent.vector, 3);
@@ -7265,7 +7273,8 @@ export class OrganismCore {
             const b270AutonomyWeight = candidate.action === b270Action.proposedAction ? b270Action.autonomy01 * 0.045 : 0;
             candidate.score = clamp(candidate.score + b270AutonomyWeight);
         }
-        const p81Attention = this.organismSystems.self.p81PredictiveAttention.evaluate({ tick: state.tick, candidates: governedCandidates.map(c => ({ action: c.action, score: c.score, predictedUtility: c.predictedUtility, confidence: c.confidence })), uncertainty01: n.uncertainty, predictionError01: state.predictionError, goalPressure01: effectiveGoalPressure, noveltyPressure01: p80Self.noveltyPressure01, attentionBudget01: state.attentionBudget, externalInput: Boolean(observation.text) });
+        const lateWorldCognitiveSignal = this.worldSubsystem.cognitiveAttentionSignal();
+        const p81Attention = this.organismSystems.self.p81PredictiveAttention.evaluate({ tick: state.tick, candidates: governedCandidates.map(c => ({ action: c.action, score: c.score, predictedUtility: c.predictedUtility, confidence: c.confidence })), uncertainty01: n.uncertainty, predictionError01: state.predictionError, goalPressure01: effectiveGoalPressure, noveltyPressure01: p80Self.noveltyPressure01, attentionBudget01: state.attentionBudget, externalInput: Boolean(observation.text), worldState: lateWorldCognitiveSignal });
         // B315: keep canonical B285 scar warnings context-aware without creating a second memory owner.
         const b315ScarContextKey = this.cognitiveRuntime.adaptivePolicy.contextKey(state, state.needs.goalPressure);
         this.developmentalNeural.neuralLifeConsolidationB285.setScarContext(b315ScarContextKey);
@@ -10227,7 +10236,7 @@ export class OrganismCore {
                     });
                 }
                 const b273Current = this.developmentalNeural.autonomousGoalLifecycleB273.current();
-                const b273Learning = this.developmentalNeural.autonomousGoalLifecycleB273.learnFromOutcome({ tick: state.tick, action: trace.selected.action, plan: b273Current.plan, reward01: gatedReward01, predictionError01: state.predictionError, independentGain01: b272IndependentGain, personalityAlignment01: clamp(.55 + this.cognitiveRuntime.multiHypothesisPersonality.actionBias(trace.selected.action) * 8), externalEvidence01: projectEvidenceExternal ? 1 : 0 });
+                const b273Learning = this.developmentalNeural.autonomousGoalLifecycleB273.learnFromOutcome({ tick: state.tick, goalId: b273Current.goal?.id ?? null, plannedAction: b273Current.action, outcomeId: `b273:${state.tick}:${b273Current.goal?.id ?? 'none'}:${trace.selected.action}`, action: trace.selected.action, plan: b273Current.plan, reward01: gatedReward01, predictionError01: state.predictionError, independentGain01: b272IndependentGain, personalityAlignment01: clamp(.55 + this.cognitiveRuntime.multiHypothesisPersonality.actionBias(trace.selected.action) * 8), externalEvidence01: projectEvidenceExternal ? 1 : 0 });
                 if(this.organismSystems.agency.decisionReceipts.recordLearning(trace.tick,{
                     accepted:b273Learning.accepted,gain01:b273Learning.gain01,
                     note:b273Learning.completed?'goal-completed':b273Learning.abandoned?'goal-abandoned':b273Learning.revised?'goal-revised':b273Learning.accepted?'goal-progress-accepted':'goal-progress-rejected',
@@ -10520,6 +10529,9 @@ export class OrganismCore {
                 const b338Lifecycle = this.developmentalNeural.autonomousGoalLifecycleB273.current();
                 this.developmentalNeural.autonomousGoalLifecycleB273.learnFromOutcome({
                     tick: state.tick,
+                    goalId: b338Lifecycle.goal?.id ?? null,
+                    plannedAction: b338Lifecycle.action,
+                    outcomeId: `b273:${state.tick}:${b338Lifecycle.goal?.id ?? 'none'}:${trace.selected.action}`,
                     action: trace.selected.action,
                     plan: b338Lifecycle.plan,
                     reward01: gatedReward01,

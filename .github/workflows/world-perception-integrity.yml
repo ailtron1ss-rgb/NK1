@@ -11,7 +11,18 @@ on:
       - "runtime/neuro-kurisu/src/organism/cognition/PerceptualEpistemicGraph.ts"
       - "runtime/neuro-kurisu/src/organism/cognition/P41SemanticPerception.ts"
       - "runtime/neuro-kurisu/src/organism/world/GroundedWorldState.ts"
+      - "runtime/neuro-kurisu/src/organism/core/InertSnapshot.ts"
+      - "runtime/neuro-kurisu/src/organism/world/WorldBeliefProjection.ts"
+      - "runtime/neuro-kurisu/tests/world-belief-projection.test.mjs"
       - "runtime/neuro-kurisu/src/organism/body/PerceptualEvidenceCompiler.ts"
+      - "runtime/neuro-kurisu/src/organism/system/ExternalEvidenceTrust.ts"
+      - "runtime/neuro-kurisu/tests/external-evidence-trust-restore-integrity.mjs"
+      - "runtime/neuro-kurisu/tests/perception-external-ingress-attestation.mjs"
+      - "runtime/neuro-kurisu/tests/grounded-world-restore-provenance.mjs"
+      - "runtime/neuro-kurisu/tests/grounded-world-write-authority-integrity.mjs"
+      - "runtime/neuro-kurisu/tests/p2841-postcondition-grounded-world.mjs"
+      - "runtime/neuro-kurisu/tests/p2841-runtime-external-grounding.mjs"
+      - "runtime/neuro-kurisu/src/organism/system/ExternalPostconditionVerifier.ts"
       - "runtime/neuro-kurisu/src/organism/body/GeminiVisionSemanticBackend.ts"
       - "runtime/neuro-kurisu/src/organism/body/TemporalObjectTracker.ts"
       - "runtime/neuro-kurisu/tests/temporal-object-tracker.mjs"
@@ -28,6 +39,8 @@ on:
       - "runtime/neuro-kurisu/tests/world-perception-runtime-ingress.mjs"
       - "runtime/neuro-kurisu/package.json"
       - ".github/workflows/world-perception-integrity.yml"
+      - "runtime/neuro-kurisu/src/organism/core/WorldSubsystemRuntime.ts"
+      - "runtime/neuro-kurisu/tests/world-cognitive-signal-integration.test.mjs"
   pull_request:
     paths:
       - "runtime/neuro-kurisu/src/organism/cognition/PerceptionEngine.ts"
@@ -35,11 +48,20 @@ on:
       - "runtime/neuro-kurisu/src/organism/core/OrganismCore.ts"
       - "runtime/neuro-kurisu/tests/p41-integration.mjs"
       - "runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts"
+      - "runtime/neuro-kurisu/src/organism/core/InertSnapshot.ts"
+      - "runtime/neuro-kurisu/tests/grounded-world-write-authority-integrity.mjs"
+      - "runtime/neuro-kurisu/tests/p2841-postcondition-grounded-world.mjs"
+      - "runtime/neuro-kurisu/tests/p2841-runtime-external-grounding.mjs"
+      - "runtime/neuro-kurisu/src/organism/system/ExternalPostconditionVerifier.ts"
       - "runtime/neuro-kurisu/src/organism/body/VisionSemanticBackend.ts"
       - "runtime/neuro-kurisu/src/organism/cognition/PerceptualEpistemicGraph.ts"
       - "runtime/neuro-kurisu/src/organism/cognition/P41SemanticPerception.ts"
       - "runtime/neuro-kurisu/src/organism/world/GroundedWorldState.ts"
+      - "runtime/neuro-kurisu/src/organism/world/WorldBeliefProjection.ts"
+      - "runtime/neuro-kurisu/tests/world-belief-projection.test.mjs"
       - "runtime/neuro-kurisu/src/organism/body/PerceptualEvidenceCompiler.ts"
+      - "runtime/neuro-kurisu/src/organism/system/ExternalEvidenceTrust.ts"
+      - "runtime/neuro-kurisu/tests/external-evidence-trust-restore-integrity.mjs"
       - "runtime/neuro-kurisu/src/organism/body/GeminiVisionSemanticBackend.ts"
       - "runtime/neuro-kurisu/src/organism/body/TemporalObjectTracker.ts"
       - "runtime/neuro-kurisu/tests/temporal-object-tracker.mjs"
@@ -53,6 +75,8 @@ on:
       - "runtime/neuro-kurisu/tests/world-perception-delta-integrity.mjs"
       - "runtime/neuro-kurisu/package.json"
       - ".github/workflows/world-perception-integrity.yml"
+      - "runtime/neuro-kurisu/src/organism/core/WorldSubsystemRuntime.ts"
+      - "runtime/neuro-kurisu/tests/world-cognitive-signal-integration.test.mjs"
 
 permissions:
   contents: read
@@ -102,6 +126,24 @@ jobs:
       - name: Run P41 independent-evidence truthfulness regression
         working-directory: runtime/neuro-kurisu
         run: npm run test:p41:truthfulness
+      - name: Verify persisted world snapshots cannot self-attest observations
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/grounded-world-restore-provenance.mjs
+      - name: Verify grounded-world write authority and full restore integrity
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/grounded-world-write-authority-integrity.mjs
+      - name: Verify executor-bound grounded outcome receipt contract
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/p2841-postcondition-grounded-world.mjs
+      - name: Verify runtime external grounding integration
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/p2841-runtime-external-grounding.mjs
+      - name: Verify caller labels cannot self-attest external perception
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/perception-external-ingress-attestation.mjs
+      - name: Verify restored external evidence trust cannot self-promote
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/external-evidence-trust-restore-integrity.mjs
       - name: Verify grounded object identity and evidence provenance
         working-directory: runtime/neuro-kurisu
         run: node --experimental-strip-types tests/world-perception-grounded-identity-provenance.mjs
@@ -114,6 +156,12 @@ jobs:
       - name: Exercise canonical runtime camera capture and tracking
         working-directory: runtime/neuro-kurisu
         run: node --experimental-strip-types tests/world-perception-camera-runtime-tracking.mjs
+      - name: Verify freshness-aware grounded world projection
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types --test tests/world-belief-projection.test.mjs
+      - name: Verify world latent and observation continuity across restart
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types --test tests/world-cognitive-signal-integration.test.mjs
       - name: Type-check canonical runtime
         if: always()
         working-directory: runtime/neuro-kurisu

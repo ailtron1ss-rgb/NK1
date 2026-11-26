@@ -1417,18 +1417,19 @@ export class OrganismRuntime {
       ? this.core.cognitiveBudgetSpend('planning',undefined,cycle.state.needs.uncertainty,'action-planning')
       : { accepted: false };
     const selectedGoal = cycle.goals.find(g => g.id === cycle.decision.selected?.goalId) ?? null;
+    const worldPlanningSignal = this.core.worldCognitiveAttentionSignal();
     const plan = riskRecoveryApplied
-      ? this.plans.buildBudgetFallback(selectedGoal, internalAction, 'risk-aware-recovery-override')
+      ? this.plans.buildBudgetFallback(selectedGoal, internalAction, 'risk-aware-recovery-override', worldPlanningSignal)
       : planningBudget.accepted && projectAllowed
-        ? this.plans.build(selectedGoal, internalAction, 4, 4)
-        : this.plans.buildBudgetFallback(selectedGoal, internalAction, projectAllowed ? 'planning-budget-exhausted' : 'planner-project-gated');
+        ? this.plans.build(selectedGoal, internalAction, 4, 4, worldPlanningSignal)
+        : this.plans.buildBudgetFallback(selectedGoal, internalAction, projectAllowed ? 'planning-budget-exhausted' : 'planner-project-gated', worldPlanningSignal);
     const worldRolloutAllowed = executionPlan?.run?.['world-rollout'] !== false && spineDecision.run['world-rollout'];
     const shadowPassAllowed = executionPlan?.run?.shadow !== false && spineDecision.run.shadow;
     const simBudget = worldRolloutAllowed && shadowPassAllowed
       ? this.core.cognitiveBudgetSpend('simulation',undefined,cycle.state.needs.uncertainty,'counterfactual-rollout')
       : { accepted: false };
     const branches = simBudget.accepted && worldRolloutAllowed && shadowPassAllowed
-      ? this.counterfactuals.imagine(plan.steps[0]?.environmentAction, resourceAllocation.maxCounterfactualBranches, 4)
+      ? this.counterfactuals.imagine(plan.steps[0]?.environmentAction, Math.max(1, Math.min(4, plan.searchDepth)), resourceAllocation.maxCounterfactualBranches)
       : [];
     await this.core.recordCounterfactuals(branches);
     const worldAction = plan.steps[0]?.environmentAction ?? 'observe';
@@ -1605,11 +1606,11 @@ export class OrganismRuntime {
       shadowSurprise01:clamp01(shadowTransition.surprise),
     });
     if (grounded.source==='external') {
+      // Preserve the exact executor object + verifier capability. Never flatten
+      // authorization into caller-controlled proof labels or confidence scalars.
       this.core.recordGroundedExternalOutcome({
-        at:cycle.state.at, action:String(embodiedAction.action), status:embodiedAction.status, proofClass:grounded.proofClass,
-        verified01:grounded.verified01, independent01:grounded.independent01, evidence01:grounded.evidence01,
-        consequence01:grounded.consequence01, claim:postcondition.notes??grounded.reason, provenanceId:`outcome:${cycle.state.tick}:${embodiedAction.executionId}`,
-        divergence01:shadowResolution.divergence01,
+        result:embodiedAction,
+        verification:postcondition,
       });
     }
     if(shadowResolution.commitShadow){

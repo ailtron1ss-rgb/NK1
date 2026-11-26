@@ -5,6 +5,33 @@ import type { MultimodalState } from './MultimodalPerception.ts';
 import { countOr, isPlainDataArray, isPlainDataRecord, ownDataValue, stringOr, timestampOr, unitOr } from './RestoreSanitizers.ts';
 
 const clamp=(n:number)=>Math.max(0,Math.min(1,Number.isFinite(n)?n:0));
+const EVIDENCE_MODALITIES=new Set(['text','vision','audio','sensor','world','fusion']);
+const restoreEvidenceKind=(value:unknown):PerceptualEvidenceKind=>
+  value==='observed'?'model-output'
+    :value==='model-output'||value==='derived'||value==='conflict'||value==='unresolved'?value:'unresolved';
+const restoreEvidenceRow=(value:unknown):PerceptualEvidenceRecord|null=>{
+  if(!isPlainDataRecord(value))return null;
+  const id=stringOr(ownDataValue(value,'id'),'',180);
+  const claim=stringOr(ownDataValue(value,'claim'),'',512);
+  const modality=stringOr(ownDataValue(value,'modality'),'',16);
+  if(!id||!claim||!EVIDENCE_MODALITIES.has(modality))return null;
+  const confidence01=unitOr(ownDataValue(value,'confidence01'),0);
+  const uncertainty01=unitOr(ownDataValue(value,'uncertainty01'),1-confidence01);
+  const rawParents=ownDataValue(value,'parents');
+  const parents=isPlainDataArray(rawParents,64)
+    ?[...new Set(rawParents.filter((item):item is string=>typeof item==='string'&&Boolean(item.trim())&&item.length<=180))].slice(0,8)
+    :[];
+  return {
+    id,
+    at:timestampOr(ownDataValue(value,'at'),0),
+    modality:modality as PerceptualEvidenceRecord['modality'],
+    claim,
+    confidence01,
+    uncertainty01,
+    kind:restoreEvidenceKind(ownDataValue(value,'kind')),
+    parents,
+  };
+};
 const stableHash=(value:string)=>{let h=2166136261;for(let i=0;i<value.length;i++){h^=value.charCodeAt(i);h=Math.imul(h,16777619);}return (h>>>0).toString(16).padStart(8,'0');};
 
 export type PerceptualEvidenceKind='observed'|'model-output'|'derived'|'conflict'|'unresolved';
@@ -52,17 +79,20 @@ export class PerceptualEvidenceCompiler{
     const r=isPlainDataRecord(raw)?raw:{};
     const rawEvidence=ownDataValue(r,'evidence');
     const evidence=isPlainDataArray(rawEvidence,512)
-      ? rawEvidence.filter((row)=>isPlainDataRecord(row)).slice(0,96) as unknown as PerceptualEvidenceRecord[]
+      ? rawEvidence.slice(0,96).map(restoreEvidenceRow).filter((row):row is PerceptualEvidenceRecord=>row!==null)
       : [];
-    const rawMetrics=ownDataValue(r,'metrics');
+    // Persisted aggregate metrics are not verifier receipts. Rebuild them from
+    // sanitized evidence, with the restored observed ratio forced to zero because
+    // in-process observation authority cannot survive serialization.
+    const evidenceCount=Math.max(1,evidence.length);
     const metrics={
-      grounding01:unitOr(ownDataValue(rawMetrics,'grounding01'),d.metrics.grounding01),
-      semanticCoverage01:unitOr(ownDataValue(rawMetrics,'semanticCoverage01'),d.metrics.semanticCoverage01),
-      crossModalAgreement01:unitOr(ownDataValue(rawMetrics,'crossModalAgreement01'),d.metrics.crossModalAgreement01),
-      temporalBinding01:unitOr(ownDataValue(rawMetrics,'temporalBinding01'),d.metrics.temporalBinding01),
-      groundedSignalRatio01:unitOr(ownDataValue(rawMetrics,'groundedSignalRatio01'),d.metrics.groundedSignalRatio01),
-      conflict01:unitOr(ownDataValue(rawMetrics,'conflict01'),d.metrics.conflict01),
-      unresolved01:unitOr(ownDataValue(rawMetrics,'unresolved01'),d.metrics.unresolved01),
+      grounding01:d.metrics.grounding01,
+      semanticCoverage01:Math.min(1,evidence.length/32),
+      crossModalAgreement01:d.metrics.crossModalAgreement01,
+      temporalBinding01:d.metrics.temporalBinding01,
+      groundedSignalRatio01:0,
+      conflict01:evidence.filter(row=>row.kind==='conflict').length/evidenceCount,
+      unresolved01:evidence.filter(row=>row.kind==='unresolved').length/evidenceCount,
     };
     const rawQuery=ownDataValue(r,'activeQuery');
     const activeQuery=isPlainDataRecord(rawQuery)?{
@@ -81,8 +111,10 @@ export class PerceptualEvidenceCompiler{
       evidence,
       activeQuery,
       metrics,
-      lastHash:typeof ownDataValue(r,'lastHash')==='string'?(ownDataValue(r,'lastHash') as string).slice(0,64):d.lastHash,
+      lastHash:'',
     };
+    const digest=`${this.state.scene}|${this.state.evidence.slice(0,24).map(row=>`${row.modality}:${row.claim}:${row.confidence01.toFixed(2)}:${row.kind}`).join('|')}|${JSON.stringify(this.state.metrics)}`;
+    this.state.lastHash=stableHash(digest);
   }
   snapshot(){return structuredClone(this.state);}
 
@@ -92,16 +124,18 @@ export class PerceptualEvidenceCompiler{
     const record:PerceptualEvidenceRecord={
       id:`pe-external-${stableHash(`${input.at}:${input.claim}:${confidence.toFixed(3)}`)}`,
       at:input.at, modality:input.modality??'sensor', claim:String(input.claim).slice(0,240),
-      confidence01:confidence, uncertainty01:1-confidence, kind:input.verified?'observed':'derived', parents:[...(input.parents??[])].slice(0,8),
+      confidence01:confidence, uncertainty01:1-confidence, kind:'derived', parents:[...(input.parents??[])].slice(0,8),
     };
     const existing=this.state.evidence.findIndex(x=>x.id===record.id);
     if(existing<0) this.state.evidence=[record,...this.state.evidence].slice(0,96);
     this.state.lastAt=input.at; this.state.updates++;
-    const observedBoost=input.verified?1:.45;
+    // A caller-provided boolean is not a provenance credential. External records remain derived
+    // until a host-owned verifier writes an independently attested observation.
+    const observedBoost=.45;
     this.state.metrics.groundedSignalRatio01=clamp(this.state.metrics.groundedSignalRatio01*.92+.08*observedBoost);
     this.state.metrics.grounding01=clamp(this.state.metrics.grounding01*.94+.06*confidence*observedBoost);
-    this.state.metrics.temporalBinding01=clamp(this.state.metrics.temporalBinding01*.94+.06*(input.verified?1:.55));
-    const digest=`${this.state.scene}|${this.state.evidence.slice(0,24).map(e=>`${e.modality}:${e.claim}:${e.confidence01.toFixed(2)}`).join('|')}|${JSON.stringify(this.state.metrics)}`;
+    this.state.metrics.temporalBinding01=clamp(this.state.metrics.temporalBinding01*.94+.06*.55);
+    const digest=`${this.state.scene}|${this.state.evidence.slice(0,24).map(e=>`${e.modality}:${e.claim}:${e.confidence01.toFixed(2)}:${e.kind}`).join('|')}|${JSON.stringify(this.state.metrics)}`;
     this.state.lastHash=stableHash(digest);
     return structuredClone(record);
   }

@@ -113,26 +113,30 @@ assert.equal(lateRow?.proofClass,'none');
 const world=new GroundedWorldState();
 const before=world.snapshot();
 const telemetryRow=world.integrateExternalOutcome({
-  at:telemetry.at,action:'explore',status:'executed',proofClass:'device-telemetry',
-  verified01:0,independent01:0,evidence01:0,consequence01:0,
-  claim:'fresh device telemetry only',provenanceId:`telemetry:${telemetry.executionId}`,divergence01:.42,
+  result:telemetry,
+  verification:telemetryVerification,
 });
 const after=world.snapshot();
 assert.equal(telemetryRow.verified01,0);
 assert.deepEqual(after.facts,before.facts);
 assert.equal(after.confidence01,before.confidence01);
-assert.ok(after.events.some(x=>x.id===telemetryRow.eventId && x.label.startsWith('external-receipt:explore')));
+assert.equal(telemetryRow.quarantined,true);
+assert.ok(after.quarantinedOutcomes?.some(x=>x.id===telemetryRow.eventId && x.label.startsWith('external-receipt:explore')));
+assert.equal(after.events.some(x=>x.id===telemetryRow.eventId),false,
+  'unverified device telemetry must not enter canonical world events');
 
 const receiptWorld=new GroundedWorldState();
 const receiptBefore=receiptWorld.snapshot();
 const receiptRow=receiptWorld.integrateExternalOutcome({
-  at:receipt.at,action:'respond',status:'executed',proofClass:'stable-device-receipt',
-  verified01:0,independent01:0,evidence01:.26,consequence01:.18,
-  claim:'command accepted; effect unverified',provenanceId:`receipt:${receipt.executionId}`,divergence01:.7,
+  result:receipt,
+  verification:receiptVerification,
 });
 const receiptAfter=receiptWorld.snapshot();
 assert.deepEqual(receiptAfter.facts,receiptBefore.facts);
 assert.equal(receiptAfter.confidence01,receiptBefore.confidence01);
-assert.ok(receiptAfter.events.some(x=>x.id===receiptRow.eventId && x.label.startsWith('external-receipt:respond')));
+assert.equal(receiptRow.quarantined,true);
+assert.ok(receiptAfter.quarantinedOutcomes?.some(x=>x.id===receiptRow.eventId && x.label.startsWith('external-receipt:respond')));
+assert.equal(receiptAfter.events.some(x=>x.id===receiptRow.eventId),false,
+  'device actuation receipts must remain outside canonical world events');
 
 console.log(JSON.stringify({ok:true,telemetryVerification,cameraVerification,receiptVerification,holdout:{early,ready}}));
