@@ -2730,7 +2730,8 @@ export class OrganismRuntime {
     // stores to persist the final in-memory cycle.  On mobile this is especially
     // dangerous because checkpoint cadence is deliberately throttled.
     this.stopping = true;
-    this.clockScheduler.stop();
+    try {
+      this.clockScheduler.stop();
     await this.clockScheduler.drain();
     await this.trustedShadowLearningScheduler?.drain();
     await this.queue.catch(() => undefined);
@@ -2774,10 +2775,12 @@ export class OrganismRuntime {
           durability,
         },
       ).catch(() => {});
-    });
-
-    await this.continuityLedger.flush().catch(() => {});
-    await this.continuityLedger.close();
+      });
+    } finally {
+      // The diagnostic ledger owns a live file handle and may still hold buffered
+      // continuity frames. Close it on success and on every failed shutdown path.
+      await this.continuityLedger.close();
+    }
   }
 
   private async persistCognitiveSpineSchedule(): Promise<'durable' | 'failed'> {
