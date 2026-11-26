@@ -143,7 +143,11 @@ Envelope связывает module ID и module version, state schema version, t
 
 Неопределённый результат остановки не трактуется как успешный shutdown. Успешный save предшествует shutdown; это не заменяет атомарный durable checkpoint всей системы — такой checkpoint остаётся обязанностью общей Persistence/Continuity линии.
 
-\n\nКаждый health probe ограничен отдельным deadline: по умолчанию **750 ms**, допустимая настройка `healthTimeoutMs` — **1–10 000 ms**. Таймаут возвращает unhealthy с причиной `module-health-timeout`, но не меняет lifecycle status активного модуля. Runtime не может принудительно отменить произвольный Promise провайдера, поэтому реализация `health()` должна быть read-only и самостоятельно ограничивать сторонние операции.\n\nLifecycle barrier сериализует одиночную активацию, полный `activateAll()`, checkpoint, `deactivate()` и `stopAll()`. Поэтому зависимость нельзя остановить, пока зависимый модуль находится в `initializing` или уже `active`; проверка графа выполняется после завершения предшествующей lifecycle-операции.
+
+
+Каждый health probe ограничен отдельным deadline: по умолчанию **750 ms**, допустимая настройка `healthTimeoutMs` — **1–10 000 ms**. Таймаут возвращает unhealthy с причиной `module-health-timeout`, но не меняет lifecycle status активного модуля. Runtime не может принудительно отменить произвольный Promise провайдера, поэтому реализация `health()` должна быть read-only и самостоятельно ограничивать сторонние операции.
+
+Lifecycle barrier сериализует одиночную активацию, полный `activateAll()`, checkpoint, `deactivate()` и `stopAll()`. Поэтому зависимость нельзя остановить, пока зависимый модуль находится в `initializing` или уже `active`; проверка графа выполняется после завершения предшествующей lifecycle-операции.
 
 `stopAll()` идёт в обратном топологическом порядке и продолжает обработку независимых модулей после ошибки. Если остановить один или несколько модулей не удалось, host выбрасывает `module-stop-incomplete:<ids>` с массивом `failures` (module ID + причина). Зависимость активного модуля остаётся активной: ошибка одного dependent не должна заставить host выключить его prerequisite. После успешного `deactivate()` возвращается defensive copy sealed envelope, а не изменяемая ссылка на объект, которым владеет canonical checkpoint store.
 
