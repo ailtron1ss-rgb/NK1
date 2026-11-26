@@ -10,7 +10,7 @@ test("Settings voice and avatar controls use Russian labels and descriptions", a
 
   for (const phrase of [
     ">Голос<",
-    "Синтез речи браузером",
+    "Синтез речи средствами браузера",
     "Озвучивать новые ответы",
     "Голосовой профиль",
     "Автоматически по языку",
