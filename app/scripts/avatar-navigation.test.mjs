@@ -32,3 +32,19 @@ test("avatar is a first-class mobile navigation section", async () => {
   assert.doesNotMatch(homeSection[1], /<AvatarStage/,
     "the heavyweight avatar renderer must not mount on Home as well");
 });
+
+
+test("primary mobile navigation uses concise Russian labels and a localized landmark", async () => {
+  const navigation = await readFile(new URL("components/AppNavigation.tsx", root), "utf8");
+  const route = await readFile(new URL("routes/index.tsx", root), "utf8");
+
+  assert.match(navigation, /aria-label="Основная навигация"/);
+  for (const label of ["Домой", "Аватар", "Память", "Настройки", "Ещё"]) {
+    assert.ok(navigation.includes(`label: "${label}"`), `missing Russian navigation label: ${label}`);
+  }
+  assert.match(route, /aria-label="Главная"/);
+  assert.match(route, /Нейропамять и знания/);
+  assert.match(route, /Мотивация/);
+  assert.match(route, /Инструменты и диагностика/);
+  assert.doesNotMatch(navigation, /label: "(?:Home|Avatar|Brain|Settings|More)"/);
+});
