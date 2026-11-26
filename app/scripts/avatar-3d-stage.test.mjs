@@ -238,7 +238,8 @@ test("3D viewport exposes bounded zoom, pointer-wheel zoom and one-tap camera re
  assert.match(stage,/addEventListener\("wheel",wheel/);
  assert.match(stage,/removeEventListener\("wheel",wheel/);
  assert.match(stage,/resetCameraView/);
- assert.match(stage,/min-h-9/);
+ assert.match(stage,/min-h-11/);
+ assert.match(stage,/min-w-11/);
 });
 
 
