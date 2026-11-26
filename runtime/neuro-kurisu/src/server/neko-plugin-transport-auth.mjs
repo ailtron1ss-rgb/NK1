@@ -118,11 +118,23 @@ export async function handleAuthenticatedNekoPluginPush({
     return { status: 409, body: { ok: false, error: 'neko-plugin-presentation-transport-not-configured' } };
   }
 
-  const result = await ingress.handle(input);
+  let result;
+  try {
+    result = await ingress.handle(input);
+  } catch {
+    return { status: 503, body: { ok: false, error: 'neko-plugin-ingress-unavailable' } };
+  }
+  if (!result || typeof result !== 'object' || typeof result.accepted !== 'boolean') {
+    return { status: 503, body: { ok: false, error: 'neko-plugin-ingress-invalid-result' } };
+  }
   const status = result.accepted ? 200
     : result.errorCode === 'message-id-conflict' || result.errorCode === 'message-recovery-required' ? 409
     : result.errorCode === 'plugin-not-allowed' || result.errorCode === 'policy-denied' ? 403
-    : result.errorCode === 'receipt-ledger-full' || result.errorCode === 'message-processing-failed' ? 503
+    : result.errorCode === 'receipt-ledger-full'
+      || result.errorCode === 'message-processing-failed'
+      || result.errorCode === 'runtime-processing-failed'
+      || result.errorCode === 'presentation-failed'
+      || result.errorCode === 'receipt-store-not-initialized' ? 503
     : 400;
   return { status, body: { ok: result.accepted, ...result } };
 }
