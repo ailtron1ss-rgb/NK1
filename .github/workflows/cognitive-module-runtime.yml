@@ -38,6 +38,8 @@ jobs:
         with:
           node-version: 24
           package-manager-cache: false
+      - name: Install pinned semantic typecheck tools
+        run: npm install --no-save --no-package-lock --prefix runtime/neuro-kurisu typescript@5.8.3 @types/node@22
       - name: Run cognitive module lifecycle contract
         working-directory: runtime/neuro-kurisu
         run: node --experimental-sqlite --experimental-strip-types tests/cognitive-module-runtime.mjs
