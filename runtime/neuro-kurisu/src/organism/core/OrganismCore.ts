@@ -10110,7 +10110,7 @@ export class OrganismCore {
                 const temporalAutonomous = !Boolean(trace.userRequestedAction) || Boolean(trace.autonomousOverride);
                 const temporalResolution = this.cognitiveRuntime.canonicalTemporalCredit.resolveOutcome({
                     decisionId: trace.id,
-                    outcomeId: outcome.outcomeId ?? `feedback:${trace.id}`,
+                    outcomeId: feedbackOutcomeId,
                     tick: state.tick,
                     reward01: gatedReward01,
                     predictionError01: gatedSurprise01,
