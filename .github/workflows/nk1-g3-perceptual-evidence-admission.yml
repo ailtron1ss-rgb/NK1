@@ -1,0 +1,42 @@
+name: NK1 G3 perceptual evidence admission boundary
+
+on:
+  pull_request:
+    branches: [workpass70-source]
+    paths:
+      - 'runtime/neuro-kurisu/src/organism/body/PerceptualEvidenceCompiler.ts'
+      - 'runtime/neuro-kurisu/src/organism/core/EmbodimentSubsystemRuntime.ts'
+      - 'runtime/neuro-kurisu/tests/g3-perceptual-evidence-admission-boundary-20261126.mjs'
+      - '.github/workflows/nk1-g3-perceptual-evidence-admission.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nk1-g3-perceptual-evidence-admission-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  observation-admission:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: runtime/neuro-kurisu
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: runtime/neuro-kurisu/package-lock.json
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Caller-controlled admission and hostile restore regression
+        run: node --experimental-strip-types tests/g3-perceptual-evidence-admission-boundary-20261126.mjs
+      - name: Reality boundary regressions
+        run: node --experimental-strip-types tests/p2840-reality-boundary.mjs
+      - name: Postcondition and grounded-world regressions
+        run: node --experimental-strip-types tests/p2841-postcondition-grounded-world.mjs
+      - name: Active perception runtime regression
+        run: node --experimental-strip-types tests/p2842-active-perception-runtime.mjs
+      - name: Runtime typecheck
+        run: npm run typecheck
