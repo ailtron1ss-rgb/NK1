@@ -235,6 +235,11 @@ async function expectReject(promise, pattern) {
   const events = [];
   const host = runtime({ stateStore: store });
   const fixture = moduleFixture('memory.index', events);
+  const restore = fixture.module.restore.bind(fixture.module);
+  fixture.module.restore = (state, schemaVersion) => {
+    events.push(`restore-schema:memory.index:${schemaVersion}`);
+    return restore(state, schemaVersion);
+  };
   host.register({
     manifest: manifest('memory.index', { stateSchemaVersion: 2 }),
     factory: () => fixture.module,
@@ -243,6 +248,7 @@ async function expectReject(promise, pattern) {
   assert.equal(fixture.state.value, 10);
   assert.ok(events.includes('migrate:memory.index:1->2'));
   assert.ok(events.includes('restore:memory.index'));
+  assert.ok(events.includes('restore-schema:memory.index:2'));
 }
 
 {
