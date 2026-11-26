@@ -1,6 +1,7 @@
 import type { JsonStateStore, StateStoreMetrics } from '../persistence/FileStateStore.ts';
 import type { PersistedOrganism } from './OrganismCore.ts';
 import type {
+  CognitiveModuleRuntime,
   CognitiveModuleStateEnvelopeV1,
   CognitiveModuleStateStore,
 } from './CognitiveModuleRuntime.ts';
@@ -178,4 +179,25 @@ export class CognitiveModuleCheckpointStore implements JsonStateStore<PersistedO
       snapshotFailures: this.lastSnapshotFailures.map(row => ({ ...row })),
     };
   }
+}
+
+
+/** The narrow host surface needed to bind module state to the canonical organism store. */
+export type CognitiveModuleRuntimeHost = Pick<
+  CognitiveModuleRuntime,
+  'bindStateStore' | 'snapshotAll' | 'activateAll' | 'health' | 'stopAll' | 'list'
+>;
+
+/**
+ * Assemble the module checkpoint adapter once, before OrganismRuntime.init().
+ * The organism's existing store remains the only durable writer.
+ */
+export function connectCognitiveModuleRuntimeCheckpoint(
+  runtime: CognitiveModuleRuntimeHost,
+  delegate: JsonStateStore<PersistedOrganism>,
+): CognitiveModuleCheckpointStore {
+  const checkpoint = new CognitiveModuleCheckpointStore(delegate);
+  runtime.bindStateStore(checkpoint.moduleStateStore);
+  checkpoint.bindSnapshotProvider(() => runtime.snapshotAll());
+  return checkpoint;
 }
