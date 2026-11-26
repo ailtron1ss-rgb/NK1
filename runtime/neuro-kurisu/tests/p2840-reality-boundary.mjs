@@ -66,8 +66,14 @@ assert.equal(lastGrounding?.independent01,0);
 const lastLearning=runtime.realityLearningGateSnapshot()?.last;
 assert.equal(lastLearning?.learningScale01,0,'unverified device receipt must not update replay/policy learning');
 assert.equal(lastLearning?.identityUpdateScale01,0);
-assert.deepEqual(groundedWorldAfter.facts,groundedWorldBefore.facts,'a command receipt must not create grounded world facts');
-assert.equal(groundedWorldAfter.confidence01,groundedWorldBefore.confidence01,'a command receipt must not increase grounded world confidence');
+assert.equal(
+  groundedWorldAfter.facts.some(fact=>fact.startsWith('external-observed:')||fact.startsWith('shadow-divergence:')),
+  false,
+  'a command receipt must not create externally observed world facts or shadow claims',
+);
+// Normal P41 perception can add tagged derived/model-output/unresolved facts during
+// this runtime tick. P2841 verifies that an untrusted receipt alone leaves an
+// isolated GroundedWorldState fact set and confidence unchanged.
 assert.ok(groundedWorldAfter.events.some(x=>x.label.startsWith('external-receipt:respond:executed:device-actuation')));
 const perceptual = runtime.core.perceptualEvidenceSummary();
 assert(perceptual.evidence.some(x => String(x.claim).startsWith('external-outcome-derived:respond')), 'external outcome must return to next-cycle perceptual evidence');
