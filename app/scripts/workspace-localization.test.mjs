@@ -145,3 +145,25 @@ test("Research Dock uses Russian approvals and preserves one-time consent before
   assert.match(research, /resolveToolPermission\(approvalRequest\.id,false\)/,
     "declining a probe must preserve the one-time permission gate");
 });
+
+
+test("primary mobile controls preserve minimum 44px touch targets", async () => {
+  const [chat, settings, connection, avatar, navigation] = await Promise.all([
+    read("../src/components/ChatPanel.tsx"),
+    read("../src/components/SettingsPanel.tsx"),
+    read("../src/components/ConnectionStatus.tsx"),
+    read("../src/components/AvatarStage.tsx"),
+    read("../src/components/AppNavigation.tsx"),
+  ]);
+
+  assert.match(chat, /min-h-11 min-w-11/,
+    "chat icon controls must retain at least 44px targets");
+  assert.match(settings, /min-h-11 min-w-16/,
+    "the browser speech switch must remain easy to tap");
+  assert.match(connection, /min-h-11/,
+    "runtime refresh must remain a large mobile action");
+  assert.match(avatar, /min-h-11 rounded px-3 py-2/,
+    "avatar renderer selector buttons must remain touch friendly");
+  assert.match(navigation, /min-h-16/,
+    "the bottom navigation must preserve its larger safe tap area");
+});
