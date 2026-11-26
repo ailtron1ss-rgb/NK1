@@ -592,3 +592,40 @@ console.log(JSON.stringify({
   assert.equal(continuityState.objectPersistence01, 0);
   assert.equal(continuityState.sceneContinuity01, 0);
 }
+
+
+// The public GroundedWorldState external-outcome ingress must not dereference
+// hostile top-level or nested Proxy/accessor payloads before validating them.
+{
+  const world = new GroundedWorldState();
+  let topTrap = false;
+  const topProxy = new Proxy({}, {
+    get() { topTrap = true; throw new Error('world-outcome-top-proxy'); },
+    ownKeys() { topTrap = true; throw new Error('world-outcome-top-proxy-keys'); },
+  });
+  assert.doesNotThrow(() => world.integrateExternalOutcome(topProxy));
+  assert.equal(topTrap, false);
+  assert.equal(world.snapshot().revision, 0);
+
+  let actionTrap = false;
+  const actionProxy = new Proxy({}, {
+    get() { actionTrap = true; throw new Error('world-outcome-action-proxy'); },
+    ownKeys() { actionTrap = true; throw new Error('world-outcome-action-proxy-keys'); },
+  });
+  assert.doesNotThrow(() => world.integrateExternalOutcome({
+    embodiedAction: actionProxy,
+    postconditionVerification: {},
+  }));
+  assert.equal(actionTrap, false);
+  assert.equal(world.snapshot().revision, 0);
+
+  let accessorInvoked = false;
+  const hostileInput = {};
+  Object.defineProperty(hostileInput, 'embodiedAction', {
+    enumerable: true,
+    get() { accessorInvoked = true; return {}; },
+  });
+  assert.doesNotThrow(() => world.integrateExternalOutcome(hostileInput));
+  assert.equal(accessorInvoked, false);
+  assert.equal(world.snapshot().revision, 0);
+}
