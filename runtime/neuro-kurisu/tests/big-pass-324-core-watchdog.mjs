@@ -16,7 +16,7 @@ await r1.flush();
 const w1 = r1.core.recoveryWatchdogSnapshot();
 assert.equal(w1.recoveryCount, 0);
 assert(w1.lastTick >= 0);
-r1.stop();
+await r1.stop(); // Complete the durable shutdown before reopening the same journal paths.
 
 const r2 = make();
 await r2.init();
@@ -30,7 +30,7 @@ const w3 = r2.core.recoveryWatchdogSnapshot();
 assert.equal(w3.status, 'healthy');
 assert.equal(w3.recoveryCount, 1);
 assert(w3.lastTick >= w2.lastTick);
-r2.stop();
+await r2.stop();
 
 for (const suffix of ['.json','.world.json','.continuity.jsonl','.operational.jsonl','.json.bak','.world.json.bak','.world.json.tmp']) await rm(base+suffix,{force:true});
 console.log(JSON.stringify({
