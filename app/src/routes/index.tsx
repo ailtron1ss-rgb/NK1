@@ -170,7 +170,7 @@ function Home() {
       ) : null}
 
       {section === "memory" ? (
-        <section className="mx-auto max-w-7xl space-y-3" aria-label="Memory">
+        <section className="mx-auto max-w-7xl space-y-3" aria-label="Нейропамять и знания">
           <div><h2 className="font-display text-2xl text-fg">Нейропамять и знания</h2><p className="text-sm text-muted">Поиск и просмотр воспоминаний, убеждений и знаний, опубликованных каноническим runtime.</p></div>
           <Labs snap={snap} />
         </section>
