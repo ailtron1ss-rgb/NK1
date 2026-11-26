@@ -92,16 +92,21 @@ evidence.restore({
   updates: 'bad',
   scene: 42,
   metrics: { grounding01: 'x', conflict01: 99, unresolved01: -1 },
-  evidence: [{ bogus: true }, 'not-a-record'],
+  evidence: [
+    { id: 'restored-conflict', at: 1, modality: 'vision', claim: 'door state is contested', confidence01: 0.8, uncertainty01: 0.2, kind: 'conflict', parents: [] },
+    { id: 'restored-derived', at: 2, modality: 'sensor', claim: 'motion signal received', confidence01: 0.7, uncertainty01: 0.3, kind: 'derived', parents: [] },
+    { bogus: true }, 'not-a-record',
+  ],
   activeQuery: { id: 5, modality: 6, query: null, priority01: 9 },
 });
 const pe = evidence.snapshot();
 assert.equal(pe.updates, 0);
 assert.equal(pe.scene, defaultPerceptualEvidence().scene);
 assert.equal(pe.metrics.grounding01, defaultPerceptualEvidence().metrics.grounding01, 'string metric falls back');
-assert.equal(pe.metrics.conflict01, 1, 'metric above 1 clamps to 1');
+assert.equal(pe.metrics.conflict01, 0.5,
+  'conflict ratio is rebuilt from sanitized evidence; persisted aggregate 99 is not trusted');
 assert.equal(pe.metrics.unresolved01, 0, 'negative metric clamps to 0');
-assert.equal(pe.evidence.length, 1, 'only plain-record evidence rows survive; primitives are dropped');
+assert.equal(pe.evidence.length, 2, 'only valid plain-record evidence rows survive; malformed rows are dropped');
 assert.equal(pe.activeQuery.modality, 'unknown');
 assert.equal(pe.activeQuery.priority01, 1);
 
