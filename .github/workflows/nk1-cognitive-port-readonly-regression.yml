@@ -7,6 +7,8 @@ on:
       - 'runtime/neuro-kurisu/src/organism/core/CognitiveSubsystemPorts.ts'
       - 'runtime/neuro-kurisu/src/organism/core/CognitiveSubsystemFacade.ts'
       - 'runtime/neuro-kurisu/src/organism/core/OrganismCore.ts'
+      - 'runtime/neuro-kurisu/src/organism/core/OrganismAspectFabric.ts'
+      - 'runtime/neuro-kurisu/tests/aspect-fabric-integration.mjs'
       - 'runtime/neuro-kurisu/src/organism/core/MemorySubsystemRuntime.ts'
       - 'runtime/neuro-kurisu/src/organism/memory/MemoryFabric.ts'
       - 'runtime/neuro-kurisu/src/organism/developmental/MemorySubstrateCoordinator.ts'
@@ -61,6 +63,8 @@ jobs:
         run: node --experimental-strip-types tests/cognitive-subsystem-port-probes-20261124.mjs
       - name: Legacy subsystem accessor contract
         run: node --experimental-strip-types tests/big-pass-48-subsystem-ports.mjs
+      - name: Seven-system graph and subsystem health aggregation
+        run: npm run test:aspect-fabric
       - name: System contract cache and projection reuse
         run: npm run test:big-pass-59
       - name: Runtime typecheck
