@@ -12,9 +12,22 @@
 import type { BodyChannel, EmbodimentMode, ExpressionChannel } from "./embodimentSwitch.ts";
 
 export type AvatarAssetKind = "none" | "sprite-sheet" | "svg-vector" | "cubism-model" | "layered-depth-rig" | "gltf" | "vrm";
+export type AvatarRigClass =
+  | "none"
+  | "static-poses"
+  | "vector-driven"
+  | "cubism-deform"
+  | "layered-depth-puppet"
+  | "humanoid-skeleton";
+export type RendererSelectionRole = "primary" | "fallback" | "preview-only";
 
 export interface BodyRendererCapabilityManifest {
-  schemaVersion: 1;
+  /** Schema v1 remains readable; schema v2 requires rig and selection metadata. */
+  schemaVersion: 1 | 2;
+  /** Required by schema v2: the rig that actually drives this body. */
+  rigClass?: AvatarRigClass;
+  /** Required by schema v2: primary, fallback, or preview-only candidate. */
+  selectionRole?: RendererSelectionRole;
   /** Precise adapter identity; two 2D renderers must not share this. */
   rendererId: string;
   label: string;
@@ -41,6 +54,10 @@ export interface RendererCapabilityIssue {
 }
 
 const MODES: ReadonlySet<EmbodimentMode> = new Set(["live2d", "depth2d", "vrm3d"]);
+const RIG_CLASSES: ReadonlySet<AvatarRigClass> = new Set([
+  "none", "static-poses", "vector-driven", "cubism-deform", "layered-depth-puppet", "humanoid-skeleton",
+]);
+const SELECTION_ROLES: ReadonlySet<RendererSelectionRole> = new Set(["primary", "fallback", "preview-only"]);
 const ASSET_KINDS: ReadonlySet<AvatarAssetKind> = new Set([
   "none", "sprite-sheet", "svg-vector", "cubism-model", "layered-depth-rig", "gltf", "vrm",
 ]);
@@ -87,7 +104,24 @@ export function validateRendererCapabilityManifest(manifest: BodyRendererCapabil
   if (!manifest || typeof manifest !== "object") {
     return [{ code: "invalid-manifest", message: "manifest must be an object" }];
   }
-  if (manifest.schemaVersion !== 1) issues.push({ code: "unsupported-schema-version", message: "schemaVersion must be 1" });
+  if (manifest.schemaVersion !== 1 && manifest.schemaVersion !== 2) {
+    issues.push({ code: "unsupported-schema-version", message: "schemaVersion must be 1 or 2" });
+  }
+  if (manifest.schemaVersion === 2) {
+    if (!RIG_CLASSES.has(manifest.rigClass as AvatarRigClass)) {
+      issues.push({ code: "invalid-rig-class", message: "schema v2 requires a known rigClass" });
+    }
+    if (!SELECTION_ROLES.has(manifest.selectionRole as RendererSelectionRole)) {
+      issues.push({ code: "invalid-selection-role", message: "schema v2 requires primary | fallback | preview-only" });
+    }
+  } else if (manifest.rigClass !== undefined || manifest.selectionRole !== undefined) {
+    if (manifest.rigClass !== undefined && !RIG_CLASSES.has(manifest.rigClass)) {
+      issues.push({ code: "invalid-rig-class", message: "unknown rigClass" });
+    }
+    if (manifest.selectionRole !== undefined && !SELECTION_ROLES.has(manifest.selectionRole)) {
+      issues.push({ code: "invalid-selection-role", message: "unknown selectionRole" });
+    }
+  }
   if (!isBoundedNonBlank(manifest.rendererId, 96)) issues.push({ code: "invalid-renderer-id", message: "rendererId must be a non-blank string <= 96 chars" });
   if (!isBoundedNonBlank(manifest.label, 96)) issues.push({ code: "invalid-label", message: "label must be a non-blank string <= 96 chars" });
   if (!MODES.has(manifest.mode)) issues.push({ code: "invalid-mode", message: "mode must be live2d | depth2d | vrm3d" });
@@ -107,6 +141,30 @@ export function validateRendererCapabilityManifest(manifest: BodyRendererCapabil
   // Honesty invariants: a manifest that cannot be true is rejected.
   if (manifest.assetKind === "none" && manifest.productionReady) {
     issues.push({ code: "inconsistent-production-ready", message: "a renderer with no asset cannot be productionReady" });
+  }
+  if (manifest.schemaVersion === 2) {
+    const role = manifest.selectionRole;
+    if (role === "preview-only" && manifest.productionReady) {
+      issues.push({ code: "preview-cannot-be-selectable", message: "preview-only renderers must not set productionReady true" });
+    }
+    if ((role === "primary" || role === "fallback")
+      && (!manifest.productionReady || manifest.assetKind === "none")) {
+      issues.push({ code: "selectable-role-needs-asset", message: "primary/fallback roles require an existing selectable asset" });
+    }
+    const expectedRig: Partial<Record<AvatarRigClass, readonly AvatarAssetKind[]>> = {
+      "static-poses": ["sprite-sheet"],
+      "vector-driven": ["svg-vector"],
+      "cubism-deform": ["cubism-model"],
+      "layered-depth-puppet": ["layered-depth-rig"],
+      "humanoid-skeleton": ["gltf", "vrm"],
+    };
+    const compatibleAssets = expectedRig[manifest.rigClass as AvatarRigClass];
+    if (compatibleAssets && !compatibleAssets.includes(manifest.assetKind)) {
+      issues.push({ code: "rig-asset-mismatch", message: "rigClass does not match assetKind" });
+    }
+    if (manifest.rigClass === "none" && manifest.assetKind !== "none") {
+      issues.push({ code: "rig-asset-mismatch", message: "rigClass none is only valid without a body asset" });
+    }
   }
   if (manifest.supportsClothingLayers && Array.isArray(manifest.channels) && manifest.channels.length === 0) {
     issues.push({ code: "inconsistent-clothing", message: "clothing layers require at least one driven channel" });
@@ -141,14 +199,28 @@ export class BodyRendererRegistry {
 
   /** Selectable renderers that actually have a body, in stable registration order. */
   selectable(): BodyRendererCapabilityManifest[] {
-    return this.list().filter((manifest) => manifest.productionReady && manifest.assetKind !== "none");
+    return this.list().filter((manifest) =>
+      manifest.productionReady
+      && manifest.assetKind !== "none"
+      && manifest.selectionRole !== "preview-only",
+    );
   }
 
   /** Resolve a renderer by coarse mode, preferring a production-ready body. */
   resolveByMode(mode: EmbodimentMode): BodyRendererCapabilityManifest | null {
     const candidates = this.list().filter((manifest) => manifest.mode === mode);
     if (!candidates.length) return null;
-    return candidates.find((manifest) => manifest.productionReady) ?? candidates[0]!;
+    return candidates.find((manifest) => manifest.selectionRole === "primary")
+      ?? candidates.find((manifest) => manifest.productionReady && manifest.selectionRole !== "preview-only")
+      ?? candidates[0]!;
+  }
+
+  /** Resolve a body that the UI may offer as a selectable option. */
+  resolveSelectableByMode(mode: EmbodimentMode): BodyRendererCapabilityManifest | null {
+    const candidates = this.selectable().filter((manifest) => manifest.mode === mode);
+    if (!candidates.length) return null;
+    return candidates.find((manifest) => manifest.selectionRole === "primary") ?? candidates[0]!;
+
   }
 }
 
