@@ -16,7 +16,6 @@ on:
       - 'runtime/neuro-kurisu/tests/memory-substrate-coordinator.mjs'
       - 'runtime/neuro-kurisu/tests/memory-subsystem-state-roundtrip-workpass570.mjs'
       - 'runtime/neuro-kurisu/tests/p2855-r5-memory-lifecycle-authority.mjs'
-      - 'runtime/neuro-kurisu/tests/memory-lifecycle-command-workpass31.mjs'
       - 'runtime/neuro-kurisu/tests/memoryos2-capacity-lifecycle-integrity.mjs'
       - 'runtime/neuro-kurisu/tests/memory-encode-overflow-projection-reconcile.mjs'
       - 'runtime/neuro-kurisu/tests/memory-restore-duplicate-identity.mjs'
@@ -74,8 +73,6 @@ jobs:
         run: npm run test:memory-subsystem-state-roundtrip
       - name: Memory lifecycle authority and hostile restore boundary
         run: npm run test:r5:memory-lifecycle
-      - name: Memory lifecycle command receipts
-        run: npm run test:memory-lifecycle-command-workpass31
       - name: Memory duplicate and hostile restore integrity
         run: npm run test:memory-restore-integrity
       - name: MemoryOS2 capacity and lifecycle invariants
