@@ -426,7 +426,7 @@ export class CognitiveModuleRuntime {
               throw fail('module-state-migration-failed', error instanceof Error ? error.message : id);
             }
           }
-          await created.restore(state, stored.stateSchemaVersion);
+          await created.restore(state, record.manifest.stateSchemaVersion);
         }
       }
 
