@@ -2754,38 +2754,55 @@ export class OrganismRuntime {
       });
       this.core.setRuntimeClosure(this.runtimeClosure.snapshot());
       await this.core.flush();
-      await this.persistCognitiveSpineSchedule();
-      await this.persistRiskAwareRecovery();
+      const cognitiveSpineDurability = await this.persistCognitiveSpineSchedule();
+      const riskAwareRecoveryDurability = await this.persistRiskAwareRecovery();
       await this.checkpointWorld(true);
-      await this.journal.write('info', 'runtime.stop.durable', {
-        tick: runtimeView.tick,
-        worldTick: this.environment.snapshot().tick,
-      }).catch(() => {});
+      const durability = {
+        core: 'durable',
+        world: 'durable',
+        cognitiveSpine: cognitiveSpineDurability,
+        riskAwareRecovery: riskAwareRecoveryDurability,
+      } as const;
+      const complete = Object.values(durability).every(status => status === 'durable');
+      await this.journal.write(
+        complete ? 'info' : 'warn',
+        complete ? 'runtime.stop.durable' : 'runtime.stop.partial',
+        {
+          tick: runtimeView.tick,
+          worldTick: this.environment.snapshot().tick,
+          overall: complete ? 'durable' : 'partial',
+          durability,
+        },
+      ).catch(() => {});
     });
 
     await this.continuityLedger.flush().catch(() => {});
     await this.continuityLedger.close();
   }
 
-  private async persistCognitiveSpineSchedule(): Promise<void> {
+  private async persistCognitiveSpineSchedule(): Promise<'durable' | 'failed'> {
     try {
       await this.cognitiveSpineStore.save(this.cognitiveSpineScheduler.snapshot());
+      return 'durable';
     } catch (error) {
       await this.journal.write('warn', 'runtime.cognitive-spine.persist-failed', {
         tick: this.cognitiveSpineScheduler.snapshot().lastTick,
         message: String((error as any)?.message ?? error).slice(0, 180),
       }).catch(() => {});
+      return 'failed';
     }
   }
 
-  private async persistRiskAwareRecovery(): Promise<void> {
+  private async persistRiskAwareRecovery(): Promise<'durable' | 'failed'> {
     try {
       await this.riskAwareRecoveryStore.save(this.unifiedCycle.riskAwareRecoverySnapshot());
+      return 'durable';
     } catch (error) {
       await this.journal.write('warn', 'runtime.risk-aware-recovery.persist-failed', {
         tick: this.unifiedCycle.riskAwareRecoverySnapshot().tick,
         message: String((error as any)?.message ?? error).slice(0, 180),
       }).catch(() => {});
+      return 'failed';
     }
   }
 
