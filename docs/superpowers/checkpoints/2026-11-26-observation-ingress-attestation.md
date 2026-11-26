@@ -83,3 +83,36 @@ The runtime Android test injects a fresh `android-termux` sample through the hos
 5. Re-run exact-head CI after current-source reconciliation and release only through the project's source/release parity gates.
 
 No claim of `DEVICE_VERIFIED`, `PROVEN`, `PRODUCTION_READY`, or `RELEASED` is made.
+
+
+## T3-013 — host-admitted physical capture counter (2026-11-26)
+
+A second provenance defect was found in the multimodal metrics path:
+
+- `MultimodalPerception.observe()` previously incremented `visionCaptures` for every event with `modality === "vision"`.
+- Public `OrganismCore.recordMultimodalObservation()` accepts ordinary vision inference/model events, so caller-created inference events could inflate the physical camera capture counter.
+- `OrganismCore.recordCameraEvidence()` also emitted a generic vision event before the canonical observation intake had made its consent/admission decision.
+
+### Fix
+
+- Generic `observe()` continues to count `modalities.vision` and retain the event for fusion, but it no longer increments `visionCaptures`.
+- Added `recordAdmittedHostVisionCapture()` as a separate counter transition.
+- The only caller is now the canonical `OrganismCore.admitObservation()` success branch, and only when the accepted observation has modality `vision` and the intake gate has returned `isRealCapture === true`. This means host attestation, freshness, consent, deduplication and admission all precede the physical counter.
+- Multimodal state schema advanced from v1 to v2. Restoring a v1 snapshot resets the unprovenanced legacy `visionCaptures` value to zero; v2 retains the counter. This prevents historic caller/model events from remaining mislabeled forever.
+
+### Regression-first evidence
+
+- RED test commit: `96770b98598047a6afe5a702623d204b02a6fc06`.
+- [RED workflow 45794771551](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45794771551) failed exactly at the new assertion: public vision inference incremented the physical camera count (`actual: 1`, `expected: 0`). The first 18 perception workflow stages passed; the failure was isolated to the camera-runtime metrics step.
+- GREEN production code: multimodal owner `e033e7f49e1d711619a13bc1436fc305d43a50af`; canonical admission `b81d74eacd37df8be49591cd4051f3a895cec574`.
+- Added explicit v1→v2 migration assertions in test commit `da037f94938f32c18a6436eb69480e029cd0ef23`: v1 value 99 resets to 0; v2 value 3 remains 3.
+- Latest exact test head: `da037f94938f32c18a6436eb69480e029cd0ef23`.
+- [World perception integrity run 45795109363](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45795109363) — SUCCESS. All 20 functional steps plus canonical runtime semantic TypeScript typecheck passed, including runtime Android ingress, P41 and cross-modal regressions, hostile observation admission/privacy, grounded world durable restore, object provenance, camera MIME/spatial evidence, temporal tracking, and canonical runtime camera capture/tracking.
+- [WorkPass287-288 cognitive contracts run 45795032017](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45795032017) — SUCCESS at production code head `b81d74e…`, including unified cognitive cycle, eleven-stage completeness/event lineage, motivation-goal integration, canonical evidence ownership/migration/restart recovery, persistence order and cognitive immune checks.
+
+## Updated integration boundary
+
+- Latest branch head: `da037f94938f32c18a6436eb69480e029cd0ef23`.
+- Canonical source remains `workpass70-source@7e601680c765d6dc94e51e4c8f5e729b48a6f56e`.
+- Current compare from common ancestor `9008a8982a5173304456bee2c604bd0bc8665964`: perception branch 32 commits ahead / 15 behind; GitHub still reports conflicts/non-mergeable.
+- Latest head check-run: 1/1 SUCCESS. The code-head workflow cited above ran on that exact test head; there is no merge or device validation.
