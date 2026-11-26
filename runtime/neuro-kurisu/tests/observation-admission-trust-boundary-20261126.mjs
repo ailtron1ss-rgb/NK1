@@ -150,7 +150,7 @@ const staleCameraAction=await createTrustedEmbodiedActionFixture('explore',{
   cameraCaptureExecutionId:staleCameraExecutionId,cameraCaptureVerification:staleCameraVerification,
   cameraCaptureVerificationInput:cameraInput,cameraHash,cameraSize:4,cameraCapturedAt:staleCameraAt,
   cameraNonce:staleCameraNonce,cameraRetained:true,semanticVision:true,cameraSourceId:'android-termux.camera',
-}));
+});
 const staleCameraProof=await new ExternalPostconditionVerifier().assess(staleCameraAction);
 assert.equal(isTrustedEmbodiedOutcomeVerification(staleCameraProof,staleCameraAction),false,
   'stale camera evidence cannot be promoted to observed');
