@@ -117,12 +117,13 @@ function readyEngine(at = 1_000) {
   assert.equal(engine.deliveryPolicy().consentGranted, false,
     'fresh installs must not grant unsolicited delivery consent by default');
   const result = engine.cycle(makeInput(50_000));
-  assert.ok(result.initiative, 'internal initiative planning must continue without delivery consent');
-  assert.equal(result.initiative.internalOnly, true,
+  assert.ok(result.internalPlan, 'internal initiative planning must continue without delivery consent');
+  assert.equal(result.initiative, null, 'internal plans must not be returned through the delivery-facing field');
+  assert.equal(result.internalPlan.internalOnly, true,
     'a plan created without consent must be permanently private');
   assert.equal(engine.latestPlanned(50_001), null,
     'private plans must never enter the user-facing generation lane');
-  assert.equal(engine.stageMessage(result.initiative.id, message, 50_002), false,
+  assert.equal(engine.stageMessage(result.internalPlan.id, message, 50_002), false,
     'private plans must not be stageable as user-facing messages');
   const restored = new AutonomousSocialInitiativeEngine();
   const legacy = engine.snapshot();
