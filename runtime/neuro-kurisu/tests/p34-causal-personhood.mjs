@@ -25,6 +25,72 @@ const consent=e.recordConsent({action:'safe-test',risk01:.9,actor:'creator',deci
 assert.ok(consent.id);
 const rel=e.recordRelationship({personId:'creator',kind:'support',valence01:.95,trustDelta:.08,summary:'совместное развитие'});
 assert.ok(rel.id);
+
+const approvalConsentOne=e.recordConsent({
+  action:'tool:http.voice.speak',risk01:.9,actor:'creator',decision:'approved',
+  reason:'one-shot tool approval ticket one',referenceId:'approval-ticket-one',
+});
+const approvalConsentTwo=e.recordConsent({
+  action:'tool:http.voice.speak',risk01:.9,actor:'creator',decision:'approved',
+  reason:'one-shot tool approval ticket two',referenceId:'approval-ticket-two',
+});
+assert.equal(approvalConsentOne.referenceId,'approval-ticket-one',
+  'P34 must retain the exact ActionGateway approval ticket as structured provenance');
+assert.equal(approvalConsentTwo.referenceId,'approval-ticket-two');
+assert.notEqual(approvalConsentOne.id,approvalConsentTwo.id,
+  'separate approval tickets must remain separate consent-history events even for the same action/actor/decision');
+const consentRestore=new P34CausalPersonhoodEngine();
+const legacyConsent={id:'legacy-consent-1',action:'tool:legacy',risk01:.5,actor:'creator',decision:'approved',reason:'legacy row',at:123};
+consentRestore.restore({
+  ...d,
+  consentHistory:[
+    approvalConsentOne,
+    approvalConsentTwo,
+    legacyConsent,
+    {...legacyConsent,id:'invalid-consent',actor:'untrusted-actor'},
+    {...legacyConsent,id:'invalid-reference',referenceId:{ticket:'forged'}},
+  ],
+});
+const restoredConsents=consentRestore.snapshot().consentHistory;
+assert.deepEqual(restoredConsents.map(row=>row.id),[
+  approvalConsentOne.id,approvalConsentTwo.id,legacyConsent.id,
+],'restore must keep valid consent history and reject malformed actors or references');
+assert.equal(restoredConsents[0].referenceId,'approval-ticket-one');
+assert.equal(restoredConsents[1].referenceId,'approval-ticket-two');
+assert.equal(restoredConsents[2].referenceId,undefined,
+  'legacy consent history must remain valid without inventing an approval reference');
+let consentGetterCalls=0;
+const accessorConsent={...legacyConsent,id:'accessor-consent'};
+Object.defineProperty(accessorConsent,'referenceId',{
+  enumerable:true,
+  get(){consentGetterCalls+=1;throw new Error('consent getter must not execute during restore');},
+});
+const proxyConsent=new Proxy({...legacyConsent,id:'proxy-consent'},{
+  get(){throw new Error('proxy get trap must not execute during restore');},
+});
+const descriptorTrapConsent=new Proxy({...legacyConsent,id:'descriptor-trap-consent'},{
+  getOwnPropertyDescriptor(){throw new Error('proxy descriptor trap');},
+});
+const accessorConsentArray=[approvalConsentOne,accessorConsent,legacyConsent,proxyConsent,descriptorTrapConsent];
+Object.defineProperty(accessorConsentArray,'2',{
+  enumerable:true,configurable:true,
+  get(){consentGetterCalls+=1;throw new Error('array getter must not execute during restore');},
+});
+const hostileConsentRestore=new P34CausalPersonhoodEngine();
+hostileConsentRestore.restore({...d,consentHistory:accessorConsentArray});
+assert.deepEqual(hostileConsentRestore.snapshot().consentHistory.map(row=>row.id),[
+  approvalConsentOne.id,'proxy-consent',
+],'restore must read own data descriptors only and reject accessor-backed rows/array entries');
+assert.equal(consentGetterCalls,0,'restore must never execute consent-history getters');
+const hostileConsentArray=new Proxy([legacyConsent],{
+  getOwnPropertyDescriptor(){throw new Error('hostile array descriptor trap');},
+});
+const hostileArrayRestore=new P34CausalPersonhoodEngine();
+hostileArrayRestore.restore({...d,consentHistory:hostileConsentArray});
+assert.deepEqual(hostileArrayRestore.snapshot().consentHistory,[],
+  'a proxy-backed consent array that throws during descriptor inspection must fail closed');
+
+
 const branch=e.createContinuationBranch('перед переносом на другой host');
 assert.equal(branch.status,'preserved');
 const diag=e.diagnostics();

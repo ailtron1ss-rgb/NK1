@@ -3726,14 +3726,9 @@ export class OrganismCore {
         // The digest preserves the previous comparison semantics (equality of the first 1600
         // characters) while keeping each closure record small.
         const fingerprint = (value: unknown) => {
+            // Compact equality marker over the existing 1600-character comparison window.
             const text = JSON.stringify(value).slice(0, 1600);
-            let h1 = 0x811c9dc5, h2 = 0x9e3779b9;
-            for (let i = 0; i < text.length; i++) {
-                const code = text.charCodeAt(i);
-                h1 = Math.imul(h1 ^ code, 16777619) >>> 0;
-                h2 = Math.imul(h2 ^ (code + i), 2246822507) >>> 0;
-            }
-            return `f${h1.toString(16).padStart(8, '0')}${h2.toString(16).padStart(8, '0')}${text.length.toString(36)}`;
+            return createHash('sha256').update(text).digest('hex');
         };
         const memoryEvents = this.persisted.facets.memory.eventLog ?? [];
         const memoryCount = this.memorySubsystem.events.size() + this.memorySubsystem.memories.snapshot({ clone: false }).length;

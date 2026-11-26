@@ -22,6 +22,7 @@ import { LocalLanguageBackendPolicy } from './local-language-backend-policy.mjs'
 import { RELEASE_CONTRACT } from '../organism/system/ReleaseContract.ts';
 import { resolvePhonePolicyConfig } from '../organism/system/PhoneRuntimePolicy.ts';
 import { authorizeApiRequest } from '../organism/system/ApiSecurityPolicy.ts';
+import { BoundedRateLimiter, parseRateLimitSetting } from './bounded-rate-limiter.mjs';
 import { GeminiVisionSemanticBackend } from '../organism/body/GeminiVisionSemanticBackend.ts';
 import { OpenAICompatibleLocalChatProvider } from '../organism/integration/local/OpenAICompatibleLocalChatProvider.ts';
 import { NeuroPlasticInferenceAdapter } from '../organism/integration/local/NeuroPlasticInferenceAdapter.ts';
@@ -31,7 +32,7 @@ import { WillSdkFacade } from '../organism/integration/will/WillSdkFacade.ts';
 import { WillMcpJsonRpcServer } from '../organism/integration/will/WillMcpJsonRpc.ts';
 import { WillChannelAdapter } from '../organism/integration/will/WillChannelAdapter.ts';
 import { startNativeSpeechSseStream } from './native-speech-sse.mjs';
-import { createRequestContext, formatAccessLog, parseOriginAllowlist, parseToggle, resolveCorsOrigin } from './http-request-context.mjs';
+import { createRequestContext, formatAccessLog, parseAddressAllowlist, parseOriginAllowlist, parseToggle, resolveCorsOrigin } from './http-request-context.mjs';
 import { parseTrustedConstitutionReviewKeys, createAuthenticatedConstitutionReviewVerifier, constitutionReviewAuthoritySnapshot } from '../organism/cognition/evolution/ConstitutionReviewAuthority.ts';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '../..');
@@ -123,26 +124,16 @@ let languageCallCount = 0;
 let lastUserModelPreferenceEventTick = 0;
 let lastLanguageBackend = 'none';
 let lastLanguageFailure = '';
-const RATE_WINDOW_MS = Math.max(10000, Number(process.env.NEURO_RATE_WINDOW_MS || 60000));
-const RATE_LIMIT = Math.max(30, Number(process.env.NEURO_RATE_LIMIT || 240));
-const TRUST_PROXY = parseToggle(process.env.NEURO_TRUST_PROXY, false);
+const RATE_WINDOW_MS = parseRateLimitSetting(process.env.NEURO_RATE_WINDOW_MS, { fallback: 60000, minimum: 10000, maximum: 86400000 });
+const RATE_LIMIT = parseRateLimitSetting(process.env.NEURO_RATE_LIMIT, { fallback: 240, minimum: 30, maximum: 100000 });
+const TRUSTED_PROXY_ADDRESSES = parseAddressAllowlist(process.env.NEURO_TRUSTED_PROXY_ADDRESSES);
+const TRUST_PROXY = parseToggle(process.env.NEURO_TRUST_PROXY, false) && TRUSTED_PROXY_ADDRESSES.size > 0;
 const ACCESS_LOG_ENABLED = parseToggle(process.env.NEURO_ACCESS_LOG, true);
 const CORS_ALLOWLIST = parseOriginAllowlist(process.env.NEURO_CORS_ORIGINS);
-const rateBuckets = new Map();
+const API_RATE_LIMITER = new BoundedRateLimiter({ windowMs: RATE_WINDOW_MS, limit: RATE_LIMIT, maxKeys: 512 });
 function consumeRateLimit(clientAddress, pathName) {
-    if (pathName === '/health' || pathName === '/api/health')
-        return { allowed: true };
-    const now = Date.now();
-    const key = String(clientAddress || 'unknown');
-    const current = rateBuckets.get(key);
-    const bucket = !current || now - current.startedAt >= RATE_WINDOW_MS ? { startedAt: now, count: 0 } : current;
-    bucket.count++;
-    rateBuckets.set(key, bucket);
-    if (rateBuckets.size > 512)
-        for (const [k, v] of rateBuckets)
-            if (now - v.startedAt >= RATE_WINDOW_MS)
-                rateBuckets.delete(k);
-    return bucket.count <= RATE_LIMIT ? { allowed: true, remaining: RATE_LIMIT - bucket.count } : { allowed: false, retryAfterSec: Math.ceil((bucket.startedAt + RATE_WINDOW_MS - now) / 1000) };
+    if (pathName === '/health' || pathName === '/api/health') return { allowed: true };
+    return API_RATE_LIMITER.consume(String(clientAddress || 'unknown'));
 }
 function applyCorsHeaders(req, res) {
     const origin = resolveCorsOrigin(req.headers.origin, CORS_ALLOWLIST);
@@ -675,12 +666,18 @@ async function generateLanguage(request) {
 }
 async function route(req, res) {
     const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
-    const context = createRequestContext(req, { trustProxy: TRUST_PROXY });
+    const context = createRequestContext(req, { trustProxy: TRUST_PROXY, trustedProxyAddresses: TRUSTED_PROXY_ADDRESSES });
     res.setHeader('x-request-id', context.requestId);
     if (ACCESS_LOG_ENABLED)
         res.on('finish', () => console.log('[access] ' + formatAccessLog({ ...context, status: res.statusCode, durationMs: Date.now() - context.startedAt })));
     try {
         applyCorsHeaders(req, res);
+        // Rate-limit before auth so failed credentials and preflights consume the same budget.
+        const rate = consumeRateLimit(context.clientAddress, url.pathname);
+        if (!rate.allowed) {
+            res.setHeader('retry-after', String(rate.retryAfterSec));
+            return json(res, 429, { ok: false, error: 'rate-limit-exceeded', retryAfterSec: rate.retryAfterSec, requestId: context.requestId });
+        }
         if (req.method === 'OPTIONS') {
             res.writeHead(204);
             return res.end();
@@ -692,11 +689,6 @@ async function route(req, res) {
         });
         if (url.pathname.startsWith('/api/') && !auth.allowed)
             return json(res, auth.status, { ok: false, error: 'api-authorization-required', reason: auth.reason, requestId: context.requestId });
-        const rate = consumeRateLimit(context.clientAddress, url.pathname);
-        if (!rate.allowed) {
-            res.setHeader('retry-after', String(rate.retryAfterSec));
-            return json(res, 429, { ok: false, error: 'rate-limit-exceeded', retryAfterSec: rate.retryAfterSec, requestId: context.requestId });
-        }
         if (url.pathname === '/health' || url.pathname === '/api/health') {
             return json(res, 200, { ok: true, ready: runtimeReady, service: 'neuro-kurisu', version: RELEASE_CONTRACT.application, organismCore: RELEASE_CONTRACT.organismCore, schemaVersion: RELEASE_CONTRACT.stateSchema, tick: runtimeReady ? runtime.core.operationalStatusSnapshot().tick : 0, uptimeSec: Math.round(process.uptime()), bodySource: runtimeReady ? runtime.embodiment.snapshot().telemetry.source : 'initializing', actionLedger: runtimeReady ? runtime.core.actionExecutionLedgerMetrics() : null, language: languageCapabilitySnapshot() });
         }

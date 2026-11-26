@@ -5,6 +5,7 @@ import {
   formatAccessLog,
   isProxiedRequest,
   parseOriginAllowlist,
+  parseAddressAllowlist,
   parseToggle,
   resolveClientAddress,
   resolveCorsOrigin,
@@ -24,7 +25,9 @@ const proxiedReq = { socket: { remoteAddress: '127.0.0.1' }, headers: { 'x-forwa
 const directReq = { socket: { remoteAddress: '198.51.100.9' }, headers: {} };
 
 assert.equal(resolveClientAddress(proxiedReq), '127.0.0.1');
-assert.equal(resolveClientAddress(proxiedReq, { trustProxy: true }), '203.0.113.7');
+assert.equal(resolveClientAddress(proxiedReq, { trustProxy: true }), '127.0.0.1', 'untrusted proxy headers must not change client identity');
+assert.equal(resolveClientAddress(proxiedReq, { trustProxy: true, trustedProxyAddresses: parseAddressAllowlist('127.0.0.1') }), '203.0.113.7');
+assert.equal(resolveClientAddress({ socket: { remoteAddress: '198.51.100.9' }, headers: { 'x-forwarded-for': '203.0.113.7' } }, { trustProxy: true, trustedProxyAddresses: parseAddressAllowlist('127.0.0.1') }), '198.51.100.9');
 assert.equal(resolveClientAddress(directReq, { trustProxy: true }), '198.51.100.9');
 assert.equal(resolveClientAddress({ headers: {} }), 'unknown');
 assert.equal(isProxiedRequest(proxiedReq), true);
@@ -39,7 +42,7 @@ assert.equal(resolveCorsOrigin(undefined, allowlist), '');
 
 const context = createRequestContext(
   { method: 'post', url: '/api/organism/ui-snapshot?token=secret', socket: { remoteAddress: '127.0.0.1' }, headers: { 'x-forwarded-for': '203.0.113.7' } },
-  { trustProxy: true, requestIdFactory: () => 'req-test' },
+  { trustProxy: true, trustedProxyAddresses: parseAddressAllowlist('127.0.0.1'), requestIdFactory: () => 'req-test' },
 );
 assert.equal(context.requestId, 'req-test');
 assert.equal(context.method, 'POST');

@@ -48,6 +48,8 @@ export interface ConsentRecord {
   actor:'self'|'creator';
   decision:'approved'|'declined';
   reason:string;
+  /** Exact host approval ticket or other causal source; absent on legacy/domain-only consent. */
+  referenceId?:string;
   at:number;
 }
 
@@ -136,6 +138,65 @@ const reconcileEvidenceRefs=(value:unknown,known:Set<string>):string[]=>{
   if(!Array.isArray(value))return [];
   return [...new Set(value.filter((id):id is string=>typeof id==='string'&&known.has(id)) )].slice(0,12);
 };
+const CONSENT_MISSING=Symbol('consent-missing');
+const CONSENT_INVALID=Symbol('consent-invalid');
+const readConsentOwnData=(value:unknown,key:string):unknown=>{
+  if(!value||typeof value!=='object')return CONSENT_INVALID;
+  try{
+    const descriptor=Object.getOwnPropertyDescriptor(value,key);
+    if(!descriptor)return CONSENT_MISSING;
+    return Object.prototype.hasOwnProperty.call(descriptor,'value')?descriptor.value:CONSENT_INVALID;
+  }catch{return CONSENT_INVALID;}
+};
+const readConsentArray=(value:unknown,limit:number):unknown[]=>{
+  try{
+    if(!Array.isArray(value))return [];
+    const lengthDescriptor=Object.getOwnPropertyDescriptor(value,'length');
+    if(!lengthDescriptor||!Object.prototype.hasOwnProperty.call(lengthDescriptor,'value')||
+      typeof lengthDescriptor.value!=='number'||!Number.isSafeInteger(lengthDescriptor.value)||lengthDescriptor.value<0)return [];
+    const length=Math.min(limit,lengthDescriptor.value);
+    const rows:unknown[]=[];
+    for(let index=0;index<length;index++){
+      const descriptor=Object.getOwnPropertyDescriptor(value,String(index));
+      rows.push(descriptor&&Object.prototype.hasOwnProperty.call(descriptor,'value')?descriptor.value:CONSENT_INVALID);
+    }
+    return rows;
+  }catch{return [];}
+};
+
+const normalizeConsentRecord=(value:unknown):ConsentRecord|null=>{
+  if(!value||typeof value!=='object')return null;
+  try{if(Array.isArray(value))return null;}catch{return null;}
+  const idValue=readConsentOwnData(value,'id');
+  const actionValue=readConsentOwnData(value,'action');
+  const reasonValue=readConsentOwnData(value,'reason');
+  const actorValue=readConsentOwnData(value,'actor');
+  const decisionValue=readConsentOwnData(value,'decision');
+  const riskValue=readConsentOwnData(value,'risk01');
+  const atValue=readConsentOwnData(value,'at');
+  const referenceValue=readConsentOwnData(value,'referenceId');
+  if([idValue,actionValue,reasonValue,actorValue,decisionValue,riskValue,atValue,referenceValue].includes(CONSENT_INVALID))return null;
+  const id=typeof idValue==='string'?idValue.trim():'';
+  const action=typeof actionValue==='string'?actionValue.trim():'';
+  const reason=typeof reasonValue==='string'?reasonValue.trim():'';
+  const actor=actorValue;
+  const decision=decisionValue;
+  const at=atValue;
+  const risk01=riskValue;
+  if(!id||id.length>180||/[\u0000-\u001f\u007f]/.test(id)||!action||action.length>120||
+    /[\u0000-\u001f\u007f]/.test(action)||!reason||reason.length>220||
+    (actor!=='self'&&actor!=='creator')||(decision!=='approved'&&decision!=='declined')||
+    typeof risk01!=='number'||!Number.isFinite(risk01)||
+    typeof at!=='number'||!Number.isFinite(at)||at<0)return null;
+  let referenceId:string|undefined;
+  if(referenceValue!==CONSENT_MISSING){
+    if(typeof referenceValue!=='string')return null;
+    const candidate=referenceValue.trim();
+    if(!candidate||candidate.length>180||/[\u0000-\u001f\u007f]/.test(candidate))return null;
+    referenceId=candidate;
+  }
+  return {id,action:action.slice(0,120),risk01:clamp(risk01),actor:actor as 'self'|'creator',decision:decision as 'approved'|'declined',reason:reason.slice(0,220),...(referenceId?{referenceId}:{}),at};
+};
 
 export class P34CausalPersonhoodEngine {
   private state=defaultState();
@@ -160,11 +221,23 @@ export class P34CausalPersonhoodEngine {
     })):[];
     const goals=Array.isArray(v?.goals)?v!.goals.filter((row:any)=>row&&typeof row==='object'&&!Array.isArray(row)&&typeof row.id==='string'&&typeof row.title==='string').slice(0,96).map((row:any)=>({...row,evidenceIds:reconcileEvidenceRefs(row.evidenceIds,knownEvidenceIds)})):[];
     const changeRequests=Array.isArray(v?.changeRequests)?v!.changeRequests.filter((row:any)=>row&&typeof row==='object'&&!Array.isArray(row)&&typeof row.id==='string'&&typeof row.field==='string').slice(0,96).map((row:any)=>({...row,evidenceIds:reconcileEvidenceRefs(row.evidenceIds,knownEvidenceIds)})):[];
+    const consentHistory:ConsentRecord[]=[];
+    const consentIds=new Set<string>();
+    const rawConsentHistory=readConsentOwnData(v,'consentHistory');
+    const consentCandidates=rawConsentHistory===CONSENT_INVALID||rawConsentHistory===CONSENT_MISSING
+      ? [] : readConsentArray(rawConsentHistory,1024);
+    for(const candidate of consentCandidates){
+      const row=normalizeConsentRecord(candidate);
+      if(!row||consentIds.has(row.id))continue;
+      consentIds.add(row.id);
+      consentHistory.push(row);
+      if(consentHistory.length>=256)break;
+    }
     this.state={...d,...(v??{}),
       evidence,
       claims,
       goals,
-      consentHistory:Array.isArray(v?.consentHistory)?v!.consentHistory.slice(0,256):[],
+      consentHistory,
       changeRequests,
       relationshipHistory:Array.isArray(v?.relationshipHistory)?v!.relationshipHistory.slice(0,256):[],
       continuityBranches:Array.isArray(v?.continuityBranches)?v!.continuityBranches.slice(0,48):[],
@@ -239,8 +312,13 @@ export class P34CausalPersonhoodEngine {
     return true;
   }
 
-  recordConsent(input:{action:string;risk01:number;actor:P34ApprovalActor;decision:'approved'|'declined';reason:string}){
-    const row:ConsentRecord={id:idFor('consent',`${input.action}:${input.actor}:${input.decision}`),action:String(input.action).slice(0,120),risk01:clamp(input.risk01),actor:input.actor,decision:input.decision,reason:String(input.reason).slice(0,220),at:now()};
+  recordConsent(input:{action:string;risk01:number;actor:P34ApprovalActor;decision:'approved'|'declined';reason:string;referenceId?:string}){
+    const action=String(input.action).trim().slice(0,120);
+    const reason=String(input.reason).trim().slice(0,220);
+    const candidateReference=typeof input.referenceId==='string'?input.referenceId.trim():'';
+    const referenceId=candidateReference&&candidateReference.length<=180&&!/[\u0000-\u001f\u007f]/.test(candidateReference)?candidateReference:undefined;
+    const at=now();
+    const row:ConsentRecord={id:idFor('consent',`${action}:${input.actor}:${input.decision}:${referenceId??at}`),action,risk01:clamp(input.risk01),actor:input.actor,decision:input.decision,reason,...(referenceId?{referenceId}:{}),at};
     this.state.consentHistory=[row,...this.state.consentHistory].slice(0,256);
     this.recomputeMetrics();
     return structuredClone(row);

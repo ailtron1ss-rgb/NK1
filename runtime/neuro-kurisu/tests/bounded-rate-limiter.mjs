@@ -1,0 +1,20 @@
+import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+import { BoundedRateLimiter, parseRateLimitSetting } from '../src/server/bounded-rate-limiter.mjs';
+const win={fallback:60000,minimum:10000,maximum:86400000},lim={fallback:240,minimum:30,maximum:100000};
+for(const invalid of [undefined,'','  ','invalid','NaN','Infinity','1.5','-10','9007199254740992']){assert.equal(parseRateLimitSetting(invalid,win),60000);assert.equal(parseRateLimitSetting(invalid,lim),240);}
+assert.equal(parseRateLimitSetting('120000',win),120000);assert.equal(parseRateLimitSetting('9',win),10000);
+assert.equal(parseRateLimitSetting('999999999999',win),86400000);assert.equal(parseRateLimitSetting('500',lim),500);
+assert.equal(parseRateLimitSetting('0',lim),30);assert.equal(parseRateLimitSetting('999999999999',lim),100000);
+assert.throws(()=>parseRateLimitSetting('1',{fallback:0,minimum:1,maximum:10}),/invalid-rate-setting-bounds/);
+const limiter=new BoundedRateLimiter({windowMs:10000,limit:2,maxKeys:3});
+assert.equal(limiter.consume('peer-a',1000).allowed,true);assert.equal(limiter.consume('peer-a',1001).allowed,true);assert.equal(limiter.consume('peer-a',1002).allowed,false);
+limiter.consume('peer-b',1003);limiter.consume('peer-c',1004);assert.equal(limiter.size,3);
+assert.equal(limiter.consume('peer-d',1005).allowed,true);assert.equal(limiter.consume('peer-e',1006).allowed,false);
+assert.equal(limiter.consume('peer-a',1007).allowed,false);assert.equal(limiter.consume('peer-b',1008).allowed,true);
+assert.equal(limiter.size,3);assert.equal(limiter.consume('peer-a',11100).allowed,true);assert.equal(limiter.size<=3,true);
+assert.equal(limiter.consume('peer-clock-rollback',500).allowed,true);
+const source=await readFile(new URL('../src/server/server.mjs',import.meta.url),'utf8');
+const route=source.slice(source.indexOf('async function route(req, res)'));
+assert.ok(route.indexOf('const rate = consumeRateLimit(context.clientAddress, url.pathname)')<route.indexOf('const auth = authorizeApiRequest('));
+console.log('BOUNDED_RATE_LIMITER=PASS');

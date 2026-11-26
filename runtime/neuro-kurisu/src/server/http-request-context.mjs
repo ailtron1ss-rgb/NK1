@@ -34,9 +34,16 @@ export function firstForwardedAddress(headerValue) {
  * Client address used for rate limiting. Forwarded headers are trusted only when the
  * deployment explicitly opts in, otherwise every proxied client would share one bucket.
  */
-export function resolveClientAddress(req, { trustProxy = false } = {}) {
+export function parseAddressAllowlist(raw) {
+  return new Set(String(raw ?? '').split(',').map(value => value.trim().toLowerCase()).filter(Boolean));
+}
+
+/** Forwarded client identity is used only when the socket peer is explicitly allowlisted. */
+export function resolveClientAddress(req, { trustProxy = false, trustedProxyAddresses = new Set() } = {}) {
   const socketAddress = String(req?.socket?.remoteAddress ?? '').trim();
-  if (!trustProxy) return socketAddress || 'unknown';
+  const trusted = trustProxy && trustedProxyAddresses instanceof Set
+    && trustedProxyAddresses.has(socketAddress.toLowerCase());
+  if (!trusted) return socketAddress || 'unknown';
   const forwarded = firstForwardedAddress(req?.headers?.['x-forwarded-for']);
   return forwarded || socketAddress || 'unknown';
 }
@@ -47,14 +54,14 @@ export function isProxiedRequest(req) {
   return Boolean(forwardedFor || forwarded);
 }
 
-export function createRequestContext(req, { trustProxy = false, requestIdFactory = randomUUID } = {}) {
+export function createRequestContext(req, { trustProxy = false, trustedProxyAddresses = new Set(), requestIdFactory = randomUUID } = {}) {
   const method = String(req?.method ?? 'GET').toUpperCase();
   const rawUrl = String(req?.url ?? '/');
   return {
     requestId: requestIdFactory(),
     method,
     pathname: rawUrl.split('?')[0] || '/',
-    clientAddress: resolveClientAddress(req, { trustProxy }),
+    clientAddress: resolveClientAddress(req, { trustProxy, trustedProxyAddresses }),
     proxied: isProxiedRequest(req),
     startedAt: Date.now(),
   };
