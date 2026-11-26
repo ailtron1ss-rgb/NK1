@@ -116,7 +116,19 @@ evidenceSource.recordExternalEvidence({ at: 10, claim: 'sensor:door-open', confi
 const evidenceSnapshot = evidenceSource.snapshot();
 const evidenceRestored = new PerceptualEvidenceCompiler();
 evidenceRestored.restore(evidenceSnapshot);
-assert.deepEqual(evidenceRestored.snapshot(), evidenceSnapshot, 'valid evidence snapshot must round-trip');
+const restoredEvidenceSnapshot = evidenceRestored.snapshot();
+assert.deepEqual(restoredEvidenceSnapshot.evidence, evidenceSnapshot.evidence,
+  'durable evidence rows must round-trip without changing their provenance');
+assert.equal(restoredEvidenceSnapshot.lastAt, evidenceSnapshot.lastAt);
+assert.equal(restoredEvidenceSnapshot.updates, evidenceSnapshot.updates);
+assert.equal(restoredEvidenceSnapshot.metrics.groundedSignalRatio01, 0,
+  'process-local observation authority must be cleared during restore');
+assert.equal(restoredEvidenceSnapshot.metrics.grounding01, defaultPerceptualEvidence().metrics.grounding01,
+  'persisted aggregate grounding is rebuilt conservatively, not trusted');
+const restoredDerivedHash = restoredEvidenceSnapshot.lastHash;
+evidenceRestored.restore(restoredEvidenceSnapshot);
+assert.equal(evidenceRestored.snapshot().lastHash, restoredDerivedHash,
+  'the derived state hash must be stable after the restore normalization pass');
 
 // --- DeviceEvidenceLedger -----------------------------------------------------
 const ledger = new DeviceEvidenceLedger();
