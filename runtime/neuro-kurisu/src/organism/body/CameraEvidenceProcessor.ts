@@ -1,4 +1,3 @@
-import { attestHostObservation } from './ObservationIntakeGate.ts';
 import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 
@@ -153,7 +152,7 @@ export function buildCameraCaptureObservation(input: {
   if (Number.isSafeInteger(evidence.width) && Number(evidence.width) > 0) payload.width = evidence.width;
   if (Number.isSafeInteger(evidence.height) && Number(evidence.height) > 0) payload.height = evidence.height;
 
-  return attestHostObservation({
+  return {
     id: 'camera-capture:' + executionId,
     sourceId: 'android-camera-' + cameraId,
     sourceKind: 'camera-device-capture',
@@ -165,5 +164,5 @@ export function buildCameraCaptureObservation(input: {
     provenance: 'device-capture',
     evidenceRefs: [executionId, providerReceiptId],
     payload,
-  });
+  };
 }
