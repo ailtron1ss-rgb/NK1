@@ -1,11 +1,11 @@
-import { Brain, Grid2X2, HeartPulse, Home, Settings } from "lucide-react";
+import { Bot, Brain, Grid2X2, Home, Settings } from "lucide-react";
 import type { AppSection } from "@/organism/store";
 import { cn } from "@/lib/utils";
 
 const items: Array<{ id: AppSection; label: string; icon: typeof Home }> = [
   { id: "home", label: "Home", icon: Home },
-  { id: "memory", label: "Memory", icon: Brain },
-  { id: "motivation", label: "Motivation", icon: HeartPulse },
+  { id: "avatar", label: "Avatar", icon: Bot },
+  { id: "memory", label: "Brain", icon: Brain },
   { id: "settings", label: "Settings", icon: Settings },
   { id: "more", label: "More", icon: Grid2X2 },
 ];
