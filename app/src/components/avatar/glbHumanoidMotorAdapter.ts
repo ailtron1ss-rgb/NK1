@@ -45,7 +45,7 @@ const ROLE_BY_CHANNEL: Readonly<Partial<Record<BodyChannel, GenericGlbChannelMap
   rightKnee: { role: "rightLowerLeg", axis: "z", limit: 1.4, boneName: "rightLowerLeg" },
 });
 
-const isMotorNode = (value: HumanoidNodeLike | undefined): value is GenericGlbMotorNode => {
+const isMotorNode = (value: HumanoidNodeLike | null | undefined): value is GenericGlbMotorNode => {
   if (!value || value.isBone !== true) return false;
   const candidate = value as unknown as { rotation?: Record<string, unknown> };
   const rotation = candidate.rotation;
