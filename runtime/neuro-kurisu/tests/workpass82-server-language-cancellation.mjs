@@ -10,7 +10,24 @@ import { pollUntilReady } from '../scripts/server-smoke-poll.mjs';
 
 const runtimeRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const stateDir = await mkdtemp(path.join(tmpdir(), 'nk-cancel-smoke-'));
-const serverPort = 33000 + Math.floor(Math.random() * 2500);
+async function allocateLoopbackPort() {
+  const probe = createServer();
+  await new Promise((resolve, reject) => {
+    probe.once('error', reject);
+    probe.listen(0, '127.0.0.1', resolve);
+  });
+  const address = probe.address();
+  if (!address || typeof address === 'string') {
+    await new Promise(resolve => probe.close(() => resolve()));
+    throw new Error('unable to allocate a loopback port for the language cancellation fixture');
+  }
+  const port = address.port;
+  await new Promise((resolve, reject) => {
+    probe.close(error => error ? reject(error) : resolve());
+  });
+  return port;
+}
+const serverPort = await allocateLoopbackPort();
 let resolveProviderStarted;
 let resolveProviderClosed;
 const providerStarted = new Promise(resolve => { resolveProviderStarted = resolve; });
