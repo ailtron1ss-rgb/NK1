@@ -4,6 +4,7 @@ import {
   createAvatarFrameBudgetController,
   resolveAvatarFrameBudget,
   shouldRenderAvatarFrame,
+  shouldRunAvatarRenderLoop,
 } from "../src/components/avatar/avatarFrameBudget.ts";
 
 test("reduced-motion and data-saver preferences select the low-power budget", () => {
@@ -120,4 +121,11 @@ test("invalid render-cost samples do not advance the adaptive controller", () =>
   controller.recordFrameCost(-1);
   assert.equal(controller.snapshot().tier, "high");
   assert.equal(controller.recordFrameCost(20)?.tier, "balanced");
+});
+
+test("the 3D render loop is active only while the page and avatar are visible", () => {
+  assert.equal(shouldRunAvatarRenderLoop(true, true), true);
+  assert.equal(shouldRunAvatarRenderLoop(false, true), false);
+  assert.equal(shouldRunAvatarRenderLoop(true, false), false);
+  assert.equal(shouldRunAvatarRenderLoop(false, false), false);
 });
