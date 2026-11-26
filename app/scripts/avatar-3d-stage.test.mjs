@@ -520,3 +520,37 @@ test("generic GLB full-body motor is wired after clip playback and only uses aud
  assert.match(adapter, /leftHip: \{ role: "leftUpperLeg"/);
  assert.match(adapter, /leftKnee: \{ role: "leftLowerLeg"/);
 });
+
+
+import {
+  AVATAR_CAMERA_DEFAULT_DISTANCE,
+  AVATAR_CAMERA_MAX_DISTANCE,
+  AVATAR_CAMERA_MIN_DISTANCE,
+  resolveAvatarCameraFitDistance,
+} from "../src/components/avatar/avatarViewportControls.ts";
+
+test("3D camera fit frames a compact avatar more closely than a full-height model", () => {
+  const compactMobileModel = resolveAvatarCameraFitDistance({ x: 0.84, y: 1.07, z: 0.84 }, 31, 280 / 420);
+  const fullHeightModel = resolveAvatarCameraFitDistance({ x: 0.84, y: 3.15, z: 0.84 }, 31, 280 / 420);
+  assert.ok(compactMobileModel >= AVATAR_CAMERA_MIN_DISTANCE);
+  assert.ok(fullHeightModel > compactMobileModel, "a taller model must move farther from the camera");
+  assert.ok(fullHeightModel <= AVATAR_CAMERA_MAX_DISTANCE);
+});
+
+test("3D camera fit accounts for viewport aspect and rejects invalid model bounds", () => {
+  const narrow = resolveAvatarCameraFitDistance({ x: 2, y: 2, z: 0.3 }, 31, 0.6);
+  const wide = resolveAvatarCameraFitDistance({ x: 2, y: 2, z: 0.3 }, 31, 1.8);
+  assert.ok(narrow > wide, "a narrow mobile viewport needs more distance for the same width");
+  assert.equal(resolveAvatarCameraFitDistance({ x: 0, y: 0, z: 0 }, 31, 1), AVATAR_CAMERA_DEFAULT_DISTANCE);
+  assert.equal(resolveAvatarCameraFitDistance({ x: 1, y: Number.NaN, z: 1 }, 31, 1), AVATAR_CAMERA_DEFAULT_DISTANCE);
+});
+
+test("3D scene refits after model load and preserves a camera target while zooming", async () => {
+  const stage = await readFile(stagePath, "utf8");
+  assert.match(stage, /resolveAvatarCameraFitDistance/);
+  assert.match(stage, /fitAvatarCameraToModel/);
+  assert.match(stage, /cameraTarget/);
+  assert.match(stage, /cameraDistance/);
+  assert.match(stage, /fitAvatarCameraToModel\(rt,root\)/);
+  assert.match(stage, /rt\.camera\.lookAt\(rt\.cameraTarget\)/);
+});
