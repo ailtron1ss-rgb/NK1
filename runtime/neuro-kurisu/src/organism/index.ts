@@ -84,3 +84,4 @@ export * from './research/TheInventionLoop.ts';
 
 // Expose the integrated kernel; internal research contracts remain module-scoped.
 export * from './system/OmeStroIntegrationKernel.ts';
+export * from './system/CognitiveModuleRuntime.ts';
