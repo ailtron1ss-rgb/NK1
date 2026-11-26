@@ -79,7 +79,7 @@ assert.equal(isTrustedEmbodiedActionResult(action),true,'executor fixture must b
 assert.equal(isTrustedEmbodiedOutcomeVerification(proof,action),false,
   'device telemetry and action execution receipts are not independent observations of the external effect');
 
-const cameraAt=at+250;
+const cameraAt=Date.now();
 const cameraHash='b'.repeat(64);
 const cameraNonce='g3-camera-capture-nonce-0001';
 const cameraExecutionId='exec-camera-g3-00000001';
