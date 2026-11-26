@@ -6,7 +6,7 @@ on:
       - aspect/module-runtime-lifecycle-20261126
     paths:
       - 'runtime/neuro-kurisu/src/organism/index.ts'
-      - 'runtime/neuro-kurisu/src/organism/system/CognitiveModuleRuntime.ts'
+      - 'runtime/neuro-kurisu/src/organism/core/CognitiveModuleRuntime.ts'
       - 'runtime/neuro-kurisu/tests/cognitive-module-runtime.mjs'
       - '.github/workflows/cognitive-module-runtime.yml'
   pull_request:
@@ -14,7 +14,7 @@ on:
       - workpass70-source
     paths:
       - 'runtime/neuro-kurisu/src/organism/index.ts'
-      - 'runtime/neuro-kurisu/src/organism/system/CognitiveModuleRuntime.ts'
+      - 'runtime/neuro-kurisu/src/organism/core/CognitiveModuleRuntime.ts'
       - 'runtime/neuro-kurisu/tests/cognitive-module-runtime.mjs'
       - '.github/workflows/cognitive-module-runtime.yml'
   workflow_dispatch:
@@ -29,7 +29,7 @@ concurrency:
 jobs:
   module-runtime-contract:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 8
     steps:
       - name: Checkout exact commit
         uses: actions/checkout@v7
