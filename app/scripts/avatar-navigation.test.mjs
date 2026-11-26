@@ -48,3 +48,28 @@ test("primary mobile navigation uses concise Russian labels and a localized land
   assert.match(route, /Инструменты и диагностика/);
   assert.doesNotMatch(navigation, /label: "(?:Home|Avatar|Brain|Settings|More)"/);
 });
+
+
+test("avatar workspace compares actual renderer manifests instead of hard-coded capability claims", async () => {
+  const route = await readFile(new URL("routes/index.tsx", root), "utf8");
+  const { DEFAULT_RENDERER_MANIFESTS } = await import("../src/components/avatar/rendererRegistryDefaults.ts");
+
+  assert.equal(DEFAULT_RENDERER_MANIFESTS.length, 4, "the four wired body renderers must be represented");
+  assert.match(route, /DEFAULT_RENDERER_MANIFESTS/);
+  for (const field of [
+    "renderer.label",
+    "renderer.assetKind",
+    "renderer.channels.length",
+    "renderer.supportsSpeechVisemes",
+    "renderer.supportsPhysics",
+    "renderer.productionReady",
+  ]) {
+    assert.ok(route.includes(field), `renderer comparison must read live manifest field: ${field}`);
+  }
+
+  const threeD = DEFAULT_RENDERER_MANIFESTS.find((renderer) => renderer.rendererId === "nk1-three-vrm3d");
+  assert.ok(threeD, "the 3D preview renderer must remain in the canonical capability list");
+  assert.equal(threeD.productionReady, false, "a preview candidate must not be represented as production-ready");
+  assert.equal(threeD.assetKind, "gltf");
+  assert.ok(threeD.notes?.includes("not production-ready"));
+});
