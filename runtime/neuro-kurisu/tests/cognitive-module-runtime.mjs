@@ -485,3 +485,32 @@ console.log('COGNITIVE_MODULE_RUNTIME=PASS');
 }
 
 console.log('COGNITIVE_MODULE_CHECKPOINT_ATOMICITY=PASS');
+
+
+// The composition root may bind the canonical checkpoint adapter after the
+// host is constructed but before any module activation. Rebinding after
+// activation is forbidden because it could split module state across stores.
+{
+  const initialStore = memoryStore();
+  const replacementStore = memoryStore([{
+    schemaVersion: 1,
+    moduleId: 'memory.bound-store',
+    moduleVersion: '1.0.0',
+    stateSchemaVersion: 1,
+    capturedAt: 500,
+    state: { value: 58 },
+  }]);
+  const events = [];
+  const fixture = moduleFixture('memory.bound-store', events);
+  const host = runtime({ stateStore: initialStore });
+  host.register({ manifest: manifest('memory.bound-store'), factory: () => fixture.module });
+  assert.equal(typeof host.bindStateStore, 'function', 'runtime composition must bind the canonical module state adapter');
+  host.bindStateStore(replacementStore);
+  await host.activate('memory.bound-store');
+  assert.equal(fixture.state.value, 58);
+  await expectReject(
+    Promise.resolve().then(() => host.bindStateStore(initialStore)),
+    /module-state-store-already-in-use/,
+  );
+  await host.stopAll();
+}
