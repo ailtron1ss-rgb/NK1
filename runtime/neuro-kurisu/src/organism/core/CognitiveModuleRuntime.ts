@@ -114,6 +114,8 @@ const MODULE_ID_PATTERN = /^[a-z][a-z0-9]*(?:[.-][a-z0-9]+)*$/;
 const SEMVER_PATTERN =
   /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/;
 const CAPABILITY_PATTERN = /^[a-z][a-z0-9]*(?:[.-][a-z0-9]+)*$/;
+/** Must stay aligned with CognitiveModuleCheckpointStore.MAX_MODULES. */
+const MAX_COGNITIVE_MODULES = 256;
 
 function fail(code: string, detail?: string): Error {
   return new Error(detail ? `${code}:${detail}` : code);
@@ -359,6 +361,9 @@ export class CognitiveModuleRuntime {
     }
     const manifest = validateManifest(registration.manifest, this.hostApiVersion);
     if (this.records.has(manifest.id)) throw fail('duplicate-module-id', manifest.id);
+    if (this.records.size >= MAX_COGNITIVE_MODULES) {
+      throw fail('module-registry-capacity-exceeded', String(MAX_COGNITIVE_MODULES));
+    }
 
     const hostGrant = this.grants.get(manifest.id) ?? new Set<string>();
     // Least privilege: modules see only the capabilities they requested and
