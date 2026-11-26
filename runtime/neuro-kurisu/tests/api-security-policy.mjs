@@ -33,7 +33,7 @@ const rateIndex = routeSource.indexOf('const rate = consumeRateLimit(context.cli
 const authIndex = routeSource.indexOf('const auth = authorizeApiRequest(');
 assert.ok(rateIndex >= 0 && authIndex >= 0 && rateIndex < authIndex, 'rate limit must run before API authorization');
 const rateBody = serverSource.slice(serverSource.indexOf('function consumeRateLimit('), serverSource.indexOf('function applyCorsHeaders('));
-assert.ok(rateBody.includes('API_RATE_LIMITER.consume(clientAddress)'));
+assert.ok(rateBody.includes('API_RATE_LIMITER.consume(String(clientAddress || 'unknown'))'));
 assert.ok(!rateBody.includes('x-forwarded-for'), 'rate limiter must not inspect raw forwarded headers');
 
 console.log('API_SECURITY=PASS');
