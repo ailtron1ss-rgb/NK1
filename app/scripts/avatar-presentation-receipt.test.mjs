@@ -45,6 +45,8 @@ test("AvatarStage surfaces current-tick receipts without claiming that pixels we
   assert.match(stage, /parameters-observed/);
   assert.match(stage, /onFrameReceipt=/);
   assert.match(stage, /frameTick=\{snap\.tick\}/);
+  assert.match(stage, /if \(receipt\.tick !== latestSnapRef\.current\.tick\) return;/);
+  assert.match(stage, /setPresentationReceipt\(null\);\s*\}, \[mode, snap\.tick\]\);/);
 });
 
 test("receipt builder binds the canonical tick and never promotes a renderer stage to visual completion", () => {
