@@ -284,7 +284,8 @@ try {
   assert.equal(restored.rejectedCount, persistedImmuneState.rejectedCount,
     'restart must restore the exact durable rejection counter');
   assert.equal(restored.validatedCount, persistedImmuneState.validatedCount);
-  assert.equal(restored.quarantine.length, 5);
+  assert.equal(restored.quarantine.length, persistedImmuneState.quarantine.length,
+    'restart must restore every durable quarantine receipt');
   assert.equal(restored.quarantine[0].reason, 'prompt-injection-pattern');
   await restartedRuntime.stop();
 
