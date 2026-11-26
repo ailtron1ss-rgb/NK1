@@ -87,7 +87,7 @@
   "statusCounts": {
     "NOT_AUDITED": 136,
     "TESTED_NOT_IN_SOURCE": 3,
-    "MERGED_AWAITING_POST_MERGE_CI": 1,
+    "TESTED_IN_SOURCE_AWAITING_INDEPENDENT_VERIFICATION": 1,
     "REBASED_AWAITING_EXACT_HEAD_CI": 1,
     "CI_BLOCKED": 2,
     "STACKED_TESTED_NOT_IN_SOURCE": 1
@@ -102,9 +102,10 @@
     "exactHeadGreenPercent": 4.17,
     "exactHeadFailures": 2,
     "notAudited": 136,
-    "note": "Eight task IDs have been audited. T3-022 is merged and awaiting post-merge CI; T3-029 has been synchronized to the new source through a two-parent merge commit and is awaiting fresh exact-head CI; three tasks retain green PR-head tests but are not in canonical source (one stacked); two tasks have failing Actions. No T3 item is counted as fully verified complete.",
-    "mergedAwaitingPostMergeCI": 1,
-    "rebasedAwaitingExactHeadCI": 1
+    "note": "Eight T3 task IDs have been audited. T3-022 is merged and post-merge CI is fully green on canonical source, but awaits independent verification. T3-029 is synchronized and its fresh exact-head CI is running; three tasks retain green PR-head tests outside source (one stacked); two tasks have failing Actions. No T3 item is yet fully verified complete.",
+    "mergedAwaitingPostMergeCI": 0,
+    "rebasedAwaitingExactHeadCI": 1,
+    "testedInSourceAwaitingIndependentVerification": 1
   },
   "tasks": [
     {
@@ -331,7 +332,7 @@
       "title": "Монотонный event order",
       "wave": "C",
       "secondaryWave": null,
-      "status": "MERGED_AWAITING_POST_MERGE_CI",
+      "status": "TESTED_IN_SOURCE_AWAITING_INDEPENDENT_VERIFICATION",
       "countAsComplete": false,
       "linkedPR": 1189,
       "evidence": {
@@ -342,19 +343,21 @@
           "failed": 0
         },
         "draft": false,
-        "notes": "PR #1189 merged into canonical source. Exact PR-head Actions were 66/66 successful. Post-merge workflow is not yet complete; do not count as verified complete until all required post-merge checks finish and acceptance is refreshed.",
+        "notes": "Merged PR #1189; exact PR-head Actions 66/66 and post-merge canonical-source Actions 30/30 successful. Bounded diff review found no blocking issue. The master-plan independent verification gate remains pending, so not counted as fully complete.",
         "merged": true,
         "mergeCommit": "29ab13c98b3a603bc1667a99fffb8ee33dc9560d",
         "mergedAt": "2026-11-26T05:57:46Z",
         "postMergeActions": {
           "total": 30,
-          "completed": 5,
-          "success": 5,
+          "completed": 30,
+          "success": 30,
           "failed": 0,
-          "inProgress": 19,
-          "queued": 6,
+          "inProgress": 0,
+          "queued": 0,
           "allHeadSha": "29ab13c98b3a603bc1667a99fffb8ee33dc9560d"
-        }
+        },
+        "sourceStatus": "TESTED_CANONICAL_SOURCE",
+        "independentVerification": "PENDING"
       }
     },
     {
