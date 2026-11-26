@@ -60,7 +60,7 @@ test('only runtime-attested camera capture reaches the grounded world model', as
     consentGranted: true,
   });
   assert.ok(capture, 'the host camera adapter must create a validated capture object');
-  capture.payload.subject = 'desk';
+  capture.payload.subject = 'projection-only-camera';
   capture.payload.claim = 'present';
   // The builder is only a projection. Direct callers cannot turn its booleans and
   // receipt-shaped fields into host authority.
@@ -106,7 +106,7 @@ test('only runtime-attested camera capture reaches the grounded world model', as
   assert.equal(entity.modalityEvidenceKinds.vision, 'observed', 'a device capture is observed evidence');
   assert.equal(entity.presenceStatus, 'visible');
   assert.ok(entity.sourceIds.includes('android-camera-0'), 'the producing source is retained on the entity');
-  assert.equal(core.observationIntakeSummary().admitted, 1);
+  assert.equal(core.observationIntakeSummary().admitted, 2);
 });
 
 test('consent is required before a capture observation reaches the world model', async () => {
