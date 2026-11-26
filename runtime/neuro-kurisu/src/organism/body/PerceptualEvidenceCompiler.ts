@@ -153,7 +153,8 @@ export class PerceptualEvidenceCompiler{
       ? `android-camera-frame:${cameraArtifact.cameraId ?? '?'}:${cameraArtifact.hash ?? 'missing-hash'}:${cameraArtifact.size ?? 0}:${cameraArtifact.captureNonce ?? 'missing-nonce'}`
       : undefined;
     const claimMatchesProof=action?.realityClass!=='camera-artifact' ||
-      Boolean(cameraFrameClaim && input.modality==='vision' && input.claim===cameraFrameClaim);
+      Boolean(cameraFrameClaim && input.modality==='vision' && input.claim===cameraFrameClaim &&
+        Math.abs(input.at-Number(cameraArtifact?.capturedAt??0))<=2_000);
     const proofAvailable=Boolean(proof && typeof proof==='object' && !consumedPerceptualEvidenceProofs.has(proof as object));
     const independentlyVerified=trustedProof && claimMatchesProof && proofAvailable;
     if(independentlyVerified && proof && typeof proof==='object') consumedPerceptualEvidenceProofs.add(proof as object);
