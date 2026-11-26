@@ -174,3 +174,24 @@ Useful source anchors (line numbers from the fetched current source response):
 - **Do not call simulated world outcomes externally verified.** The runtime's own metacognitive episode marks simulated outcomes as simulated and records their limitation.
 
 This moves the connection map beyond a component inventory: one causal runtime spine is source-visible. Its exact-source regression and failure-injection verification remains the next gate.
+
+
+## 9. Verified read-only diagnostic edge and memory owner trace — 26 Nov 2026
+
+### C16 — diagnostics must not mutate scheduler state
+
+- The first test-only run exposed an actual side effect: `agency.multiProjectSchedule()` delegated to the active scheduler's `choose()` command, which mutates `lastDecision`.
+- The isolated fix introduces `multiProjectScheduleSnapshot()`, backed by `projectScheduler.snapshot()`, and maps the diagnostics port to that read-only accessor. The active `multiProjectSchedule()` remains a separate command.
+- A dedicated regression now exercises all 34 ports, exception redaction, malformed snapshot classification, per-owner failure aggregation, cache refresh and real-Core assertions that the tick and scheduler snapshot do not change.
+- Exact-head workflow [45798424365](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45798424365) passed all focused steps, plus [Module Dependency Audit](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45798424335), [Unified organism runtime](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45798424134), [NeuroCore regression](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45798424286) and [Integrated Software Baseline](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45798424476) on that PR head.
+- The branch is exactly 8 commits ahead and 0 behind its stated canonical base at the time checked; the PR changes seven files, remains Draft and is not merged.
+
+### MemoryOS2 / MemoryFabric single-owner inspection
+
+The current source constructs one MemoryOS2 within MemorySubsystemRuntime and passes the same object to MemoryFabric. N.E.K.O./Hexis import bridges and the canonical lifecycle authority are wired to MemoryFabric. The lifecycle authority delegates maintenance to MemoryFabric, and the sampled Core direct MemoryOS2 accessors are reads/snapshots/diagnostics while mutation paths examined route through MemoryFabric.
+
+The remaining public legacy adapter helpers in MemorySubstrateCoordinator deserve a complete repository-wide call-site search and writer-boundary test. The source comments say production restore/ingest route through MemoryFabric; this source inspection alone does not conclusively prove there are no other bypass writers anywhere in the full repository. Accordingly C05/C13 memory writer boundary remains **partially verified**, not closed.
+
+### Evidence boundary
+
+All successful CI above ran against the isolated PR merge ref. It proves the checked tests/build contracts on that ref, not canonical integration, semantic `tsc`, Android/Termux soak, measured runtime latency, or release readiness.
