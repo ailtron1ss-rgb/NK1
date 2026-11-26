@@ -143,7 +143,7 @@ function EvidenceLab({ snap }: { snap: OrganismSnapshot }) {
           <p className="text-xs uppercase tracking-wider text-subtle">{b.kind}</p>
           <p className="text-sm">{b.claim}</p>
           <p className="mt-1 text-xs tabular-nums text-muted">
-            conf {b.confidence.toFixed(2)} · support {b.support} · {b.source}
+            уверенность {b.confidence.toFixed(2)} · подтверждения {b.support} · источник {b.source}
           </p>
         </li>
       ))}
