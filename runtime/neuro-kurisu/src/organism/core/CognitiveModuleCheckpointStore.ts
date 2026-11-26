@@ -149,8 +149,17 @@ export class CognitiveModuleCheckpointStore implements JsonStateStore<PersistedO
     await this.delegate.save(value);
   }
 
-  metrics(): StateStoreMetrics | undefined {
-    return this.delegate.metrics?.();
+  metrics(): StateStoreMetrics {
+    return this.delegate.metrics?.() ?? {
+      saves: 0,
+      bytesWritten: 0,
+      lastPayloadBytes: 0,
+      lastSaveMs: 0,
+      backupCopies: 0,
+      fsyncs: 0,
+      lastSavedAt: 0,
+      skippedUnchangedSaves: 0,
+    };
   }
 
   diagnostics(): {
