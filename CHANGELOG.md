@@ -3978,3 +3978,10 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - This is an aspect-branch implementation milestone; it is not a merged change or a published Release.
 
 - Deduplicate restored pending SelfAuthorship rows by exact decision ID, retaining the newest ledger entry so a malformed snapshot cannot award the same decision twice.
+
+## 2026-11-25 — Host-admitted source candidate workspace hardening
+
+- Use the default UTF-8 string encoding in SHA-256 updates so the new candidate workspace passes the repository's semantic TypeScript contract.
+- Reserve the final candidate receipt and temporary receipt names for both source snapshots and edits; a supplied source file can no longer be overwritten by the materialization manifest.
+- Replace locale-sensitive path sorting with stable code-point ordering for content-addressed source-tree and edit-set fingerprints.
+- Add regressions for reserved source-file collisions and input-order-independent candidate identity.
