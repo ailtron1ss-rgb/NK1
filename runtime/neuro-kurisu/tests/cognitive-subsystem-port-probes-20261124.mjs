@@ -101,6 +101,29 @@ function createAccessors(overrides = {}) {
   assert.equal(self.evidence, 'snapshot-only');
 }
 
+// Snapshot diagnostics must reject getters and proxies without evaluating their code.
+{
+  const { accessors } = createAccessors();
+  let getterCalls = 0;
+  const accessorSnapshot = {};
+  Object.defineProperty(accessorSnapshot, 'privateValue', {
+    enumerable: true,
+    get() { getterCalls += 1; return 'must-not-run'; },
+  });
+  accessors.p71Snapshot = () => accessorSnapshot;
+  accessors.identityCausalitySnapshot = () => new Proxy({}, {
+    ownKeys() { throw new Error('proxy trap must not be evaluated by a probe'); },
+  });
+  const registry = new CognitiveSubsystemRegistry(accessors);
+  const details = registry.probeDetails(true);
+  const accessor = details.find(row => row.domain === 'self' && row.port === 'consistency');
+  const proxied = details.find(row => row.domain === 'self' && row.port === 'identityCausality');
+  assert.equal(accessor.status, 'invalid');
+  assert.equal(proxied.status, 'invalid');
+  assert.equal(getterCalls, 0, 'diagnostics must never execute snapshot getters');
+  assert.equal(JSON.stringify(details).includes('must-not-run'), false);
+}
+
 // Repeated observations use a bounded cache; forced refresh is explicit.
 {
   const { accessors, calls } = createAccessors();
