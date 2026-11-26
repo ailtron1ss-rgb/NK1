@@ -73,3 +73,13 @@ test("avatar workspace compares actual renderer manifests instead of hard-coded 
   assert.equal(threeD.assetKind, "gltf");
   assert.ok(threeD.notes?.includes("not production-ready"));
 });
+
+
+test("renderer asset labels are exhaustive over the canonical asset-kind type", async () => {
+  const route = await readFile(new URL("routes/index.tsx", root), "utf8");
+  assert.match(route, /import type \{ AvatarAssetKind \} from "@\/components\/avatar\/rendererCapabilityManifest"/);
+  assert.match(route, /RENDERER_ASSET_LABELS:\s*Record<AvatarAssetKind, string>/,
+    "adding a renderer asset kind must require a visible localized label");
+  assert.match(route, /alt="Курису в задумчивой позе"/,
+    "the Home companion preview must provide localized alternative text");
+});
