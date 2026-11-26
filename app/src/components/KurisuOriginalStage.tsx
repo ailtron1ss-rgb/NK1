@@ -1,9 +1,10 @@
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import type { ActionKind, EmotionLabel, AvatarBrainChannelsV1 } from "@/organism/types";
 import { readAvatarPreference, writeAvatarPreference } from "@/legacy/avatar/safeLocalStorage";
 import type { MouthPose } from "./avatar/embodimentTimeline";
 import type { AvatarMotorIntentPlan } from "./avatar/motorIntent";
 import { originalStageChannelOffsets, type BodyChannels } from "./avatar/originalStageChannels";
+import { createAvatarPresentationReceipt, type AvatarPresentationReceiptV1 } from "./avatar/avatarPresentationReceipt.ts";
 
 type Outfit = "lab" | "casual" | "night";
 type EyeTone = "ice" | "violet" | "teal";
@@ -113,6 +114,9 @@ export interface KurisuOriginalStageProps {
   bodyChannels?: BodyChannels;
   /** Canonical brain face channels; stale frames retain the deterministic fallback. */
   avatarBrainChannels?: AvatarBrainChannelsV1;
+  /** Canonical organism tick, not a renderer-local animation counter. */
+  frameTick: number;
+  onFrameReceipt?: (receipt: AvatarPresentationReceiptV1) => void;
 }
 
 /**
@@ -121,7 +125,8 @@ export interface KurisuOriginalStageProps {
  * organism state and audio-timed mouth signal, and is intended to be the art
  * direction + switchable UI while a production PSD/Cubism rig is authored.
  */
-export function KurisuOriginalStage({ emotion, action, valence, arousal, gazeX, gazeY, speaking, mouthPose, thinking, motorPlan, motorSignals, bodyChannels, avatarBrainChannels }: KurisuOriginalStageProps) {
+export function KurisuOriginalStage({ emotion, action, valence, arousal, gazeX, gazeY, speaking, mouthPose, thinking, motorPlan, motorSignals, bodyChannels, avatarBrainChannels, frameTick, onFrameReceipt }: KurisuOriginalStageProps) {
+  const svgRoot = useRef<SVGSVGElement | null>(null);
   // SVG paint-server IDs must be unique when multiple avatar previews are mounted.
   const instanceId = useId().replace(/:/g, "");
   const svgIds = {
@@ -178,6 +183,27 @@ export function KurisuOriginalStage({ emotion, action, valence, arousal, gazeX, 
     writeAvatarPreference("kurisu-original-scale", String(scale));
   }, [outfit, eyeTone, hairTone, accentTone, motion, poseOverride, scale]);
 
+  useLayoutEffect(() => {
+    const svg = svgRoot.current;
+    if (!svg || !Number.isSafeInteger(frameTick) || frameTick < 0 || !onFrameReceipt) return;
+    let raf = 0;
+    // Wait until React has committed the SVG and the browser has computed its geometry.
+    raf = requestAnimationFrame(() => {
+      if (!svg.isConnected) return;
+      try {
+        const box = svg.getBBox();
+        const rect = svg.getBoundingClientRect();
+        if (!Number.isFinite(box.width) || !Number.isFinite(box.height)
+          || box.width <= 0 || box.height <= 0 || rect.width <= 0 || rect.height <= 0) return;
+        const receipt = createAvatarPresentationReceipt("original2d", frameTick, "dom-committed");
+        if (receipt) onFrameReceipt(receipt);
+      } catch {
+        // Hidden, detached, or unsupported SVG geometry must never fabricate a receipt.
+      }
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [frameTick, onFrameReceipt]);
+
   const isLab = outfit === "lab";
   const isNight = outfit === "night";
   const coat = isLab ? "#f1f4f5" : isNight ? "#1c3442" : "#a87962";
@@ -203,7 +229,7 @@ export function KurisuOriginalStage({ emotion, action, valence, arousal, gazeX, 
         @media (prefers-reduced-motion: reduce) { .nk-float,.nk-hair,.nk-breath,.nk-scanner,.nk-eye { animation: none !important; } }
       `}</style>
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_36%,rgba(38,113,133,.35),transparent_47%),linear-gradient(180deg,#0a1b25,#050b12)]" />
-      <svg viewBox="0 0 420 560" role="img" aria-label={`NK1 Original — Курису, ${moodLabel[emotion]}, ${OUTFITS.find((item) => item.id === outfit)?.label}`} className="relative z-10 h-[320px] w-full md:h-[420px]" preserveAspectRatio="xMidYMid meet" style={{ transform: `scale(${scale})`, transformOrigin: "50% 55%", transition: "transform 180ms ease" }}>
+      <svg ref={svgRoot} viewBox="0 0 420 560" role="img" aria-label={`NK1 Original — Курису, ${moodLabel[emotion]}, ${OUTFITS.find((item) => item.id === outfit)?.label}`} className="relative z-10 h-[320px] w-full md:h-[420px]" preserveAspectRatio="xMidYMid meet" style={{ transform: `scale(${scale})`, transformOrigin: "50% 55%", transition: "transform 180ms ease" }}>
         <defs>
           <linearGradient id={svgIds.hair} x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stopColor={hair.main}/><stop offset="54%" stopColor="#c86645"/><stop offset="100%" stopColor={hair.shade}/></linearGradient>
           <linearGradient id={svgIds.coat} x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stopColor={coatShadow}/><stop offset="48%" stopColor={coat}/><stop offset="100%" stopColor={coatShadow}/></linearGradient>
