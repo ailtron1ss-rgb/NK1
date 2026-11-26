@@ -11,7 +11,7 @@ import { snapshotPollDelayMs } from "./pollingSchedule";
 import { recoverPendingChatTurns } from "./chatRecovery";
 
 export type LabsTab = "mind" | "memory" | "lab" | "skills" | "evidence";
-export type AppSection = "home" | "memory" | "motivation" | "settings" | "more";
+export type AppSection = "home" | "avatar" | "memory" | "motivation" | "settings" | "more";
 export type AvatarViewMode = "live2d" | "legacy" | "original" | "3d";
 export type UiConnectionStatus = "connecting" | "connected" | "degraded" | "disconnected";
 export type VoiceInputStatus = "idle" | "requesting" | "listening" | "stopping" | "transcribed" | "empty" | "error" | "stop-unconfirmed";
