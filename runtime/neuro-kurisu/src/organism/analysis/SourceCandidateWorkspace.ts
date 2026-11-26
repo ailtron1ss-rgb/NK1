@@ -1,5 +1,4 @@
 import { createHash } from 'node:crypto';
-import { chmodSync } from 'node:fs';
 import { lstat, mkdir, realpath, rename, rm, writeFile } from 'node:fs/promises';
 import { isAbsolute, relative, resolve, sep } from 'node:path';
 import { types as nodeUtilTypes } from 'node:util';
@@ -236,8 +235,12 @@ async function ensureDirectoryWithoutSymlink(path: string): Promise<void> {
   }
   const info = await lstat(path);
   if (!info.isDirectory() || info.isSymbolicLink()) throw new Error('candidate-workspace-path-not-directory');
-  // Candidate content is private staging data; do not inherit broad umask-derived access.
-  chmodSync(path, 0o700);
+  // New directories are created private. Existing directories are accepted only
+  // when their current POSIX mode is already owner-only; do not silently broaden
+  // or mutate a caller-owned workspace root.
+  if (process.platform !== 'win32' && (info.mode & 0o077) !== 0) {
+    throw new Error('candidate-workspace-directory-permissions-not-private');
+  }
 }
 
 async function writeCandidateFile(root: string, relativePath: string, content: string): Promise<void> {
@@ -257,6 +260,11 @@ async function writeCandidateFile(root: string, relativePath: string, content: s
     throw new Error('candidate-path-escaped-workspace');
   }
   await writeFile(target, content, { encoding: 'utf8', flag: 'wx', mode: 0o600 });
+  const fileInfo = await lstat(target);
+  if (!fileInfo.isFile() || fileInfo.isSymbolicLink() ||
+      process.platform !== 'win32' && (fileInfo.mode & 0o077) !== 0) {
+    throw new Error('candidate-workspace-file-permissions-not-private');
+  }
 }
 
 export class SourceCandidateWorkspaceV1 {
@@ -388,8 +396,10 @@ export class SourceCandidateWorkspaceV1 {
       await mkdir(this.configuredWorkspaceRoot, { recursive: true, mode: 0o700 });
       const rootInfo = await lstat(this.configuredWorkspaceRoot);
       if (!rootInfo.isDirectory() || rootInfo.isSymbolicLink()) return reject('candidate-workspace-root-not-directory', candidateId);
+      if (process.platform !== 'win32' && (rootInfo.mode & 0o077) !== 0) {
+        return reject('candidate-workspace-root-permissions-not-private', candidateId);
+      }
       const workspaceRoot = await realpath(this.configuredWorkspaceRoot);
-      chmodSync(workspaceRoot, 0o700);
       candidateRoot = resolve(workspaceRoot, candidateId);
       const rootRelative = relative(workspaceRoot, candidateRoot);
       if (rootRelative === '..' || rootRelative.startsWith('..' + sep) || isAbsolute(rootRelative)) {
@@ -438,7 +448,11 @@ export class SourceCandidateWorkspaceV1 {
         // is the only signal that a candidate is fully materialized.
         await mkdir(candidateRoot, { mode: 0o700 });
         ownsCandidateDirectory = true;
-        chmodSync(candidateRoot, 0o700);
+        const candidateInfo = await lstat(candidateRoot);
+        if (!candidateInfo.isDirectory() || candidateInfo.isSymbolicLink() ||
+            process.platform !== 'win32' && (candidateInfo.mode & 0o077) !== 0) {
+          throw new Error('candidate-workspace-directory-permissions-not-private');
+        }
       } catch (error) {
         if ((error as NodeJS.ErrnoException)?.code === 'EEXIST') {
           return reject('candidate-workspace-already-exists', candidateId);
@@ -473,6 +487,11 @@ export class SourceCandidateWorkspaceV1 {
       };
       const temporaryManifest = resolve(candidateRoot, '.candidate-receipt-' + candidateId + '.tmp');
       await writeFile(temporaryManifest, JSON.stringify(manifest, null, 2) + '\n', { encoding: 'utf8', flag: 'wx', mode: 0o600 });
+      const manifestInfo = await lstat(temporaryManifest);
+      if (!manifestInfo.isFile() || manifestInfo.isSymbolicLink() ||
+          process.platform !== 'win32' && (manifestInfo.mode & 0o077) !== 0) {
+        throw new Error('candidate-workspace-manifest-permissions-not-private');
+      }
       await rename(temporaryManifest, resolve(candidateRoot, RECEIPT_NAME));
       ownsCandidateDirectory = false;
       return {
