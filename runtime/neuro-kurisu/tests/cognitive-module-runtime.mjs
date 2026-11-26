@@ -404,3 +404,32 @@ async function expectReject(promise, pattern) {
 }
 
 console.log('COGNITIVE_MODULE_RUNTIME=PASS');
+
+
+// Active modules can checkpoint their current state without being quiesced or
+// shut down. The result reports per-module capture failures without lying about
+// the lifecycle state of a module that remains active.
+{
+  const store = memoryStore();
+  const events = [];
+  const host = runtime({ stateStore: store });
+  const fixture = moduleFixture('memory.live-checkpoint', events);
+  host.register({
+    manifest: manifest('memory.live-checkpoint'),
+    factory: () => fixture.module,
+  });
+  await host.activate('memory.live-checkpoint');
+  fixture.state.value = 73;
+  assert.equal(
+    typeof host.snapshotAll,
+    'function',
+    'active cognitive modules need a non-disruptive checkpoint operation',
+  );
+  const result = await host.snapshotAll();
+  assert.deepEqual(result, { captured: ['memory.live-checkpoint'], failed: [] });
+  assert.equal(store.rows.get('memory.live-checkpoint').state.value, 73);
+  assert.equal(statusOf(host, 'memory.live-checkpoint'), 'active');
+  assert.ok(!events.includes('quiesce:memory.live-checkpoint'));
+  assert.ok(!events.includes('shutdown:memory.live-checkpoint'));
+  await host.stopAll();
+}
