@@ -27,6 +27,12 @@ function check(name, ok, detail = "") {
 
 async function smokeProfile(profile) {
   const context = await browser.newContext({ viewport: profile.viewport, deviceScaleFactor: 1 });
+  if (profile.name === "desktop") {
+    await context.addInitScript(() => {
+      localStorage.setItem("kurisu-avatar-mode", "original");
+      localStorage.setItem("kurisu-avatar-voice-enabled", "false");
+    });
+  }
   const page = await context.newPage();
   const errors = { page: [], console: [], requests: [], responses: [] };
   page.on("pageerror", (error) => errors.page.push(error.message));
@@ -56,7 +62,18 @@ async function smokeProfile(profile) {
   for (const [name, control] of [["Live2D", live2d], ["Legacy", legacy], ["Original 2D", original], ["3D preview", threeD]]) {
     check(profile.name + ": visible " + name + " selector", await control.isVisible());
   }
-  check(profile.name + ": Live2D selected by default", (await live2d.getAttribute("aria-pressed")) === "true");
+  if (profile.name === "desktop") {
+    await page.waitForFunction(() => {
+      const button = [...document.querySelectorAll('[role="group"][aria-label="Режим отображения персонажа"] button')]
+        .find((element) => (element.getAttribute("aria-label") || "").startsWith("Выбрать NK1 Original"));
+      return button?.getAttribute("aria-pressed") === "true";
+    }, undefined, { timeout: 8_000 });
+    check("desktop: saved Original2D preference restores after hydration", (await original.getAttribute("aria-pressed")) === "true");
+    await live2d.click();
+    check("desktop: Live2D can be selected after preference restore", (await live2d.getAttribute("aria-pressed")) === "true");
+  } else {
+    check("mobile: Live2D default is deterministic without saved preference", (await live2d.getAttribute("aria-pressed")) === "true");
+  }
   check(profile.name + ": 3D is explicitly preview-only", /предпросмотр/i.test(await threeD.getAttribute("aria-label") || ""));
 
   await page.getByRole("heading", { name: "Cognitive cycle" }).waitFor({ state: "visible" });
@@ -74,8 +91,12 @@ async function smokeProfile(profile) {
       check("desktop: MindHud panel " + label, await page.getByText(label, { exact: true }).isVisible());
     }
   } else {
+    const compactStatus = page.locator("main div.grid.grid-cols-2.gap-2").filter({
+      has: page.getByText("emotion", { exact: true }),
+    });
+    await compactStatus.waitFor({ state: "visible" });
     for (const label of ["emotion", "option", "energy", "PE"]) {
-      check("mobile: compact status " + label, await page.getByText(label, { exact: true }).isVisible());
+      check("mobile: compact status " + label, await compactStatus.getByText(label, { exact: true }).isVisible());
     }
   }
 
