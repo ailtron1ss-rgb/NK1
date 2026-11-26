@@ -94,7 +94,7 @@ test("runtime protocol-v1 normalizer preserves the canonical tick without breaki
     voiceEmphasis: 0,
   };
   assert.equal(normalizeEmbodimentIntentV1({ ...base, frameTick: 42 }).frameTick, 42);
-  assert.equal(normalizeEmbodimentIntentV1(base).frameTick, null);
+  assert.equal(normalizeEmbodimentIntentV1(base).frameTick, undefined);
   assert.equal(normalizeEmbodimentIntentV1({ ...base, frameTick: -1 }), null);
   assert.equal(normalizeEmbodimentIntentV1({ ...base, frameTick: 1.25 }), null);
 });
