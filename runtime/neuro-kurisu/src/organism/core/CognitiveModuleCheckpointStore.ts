@@ -48,7 +48,9 @@ export class CognitiveModuleCheckpointStore implements JsonStateStore<PersistedO
         throw new Error(`cognitive-module-checkpoint-restore-failed:${this.checkpointLoadError}`);
       }
       const envelope = this.moduleStates.get(moduleId);
-      return envelope ? structuredClone(envelope) : null;
+      // Runtime validates and bounded-clones the envelope before restore; avoid
+      // an unbounded duplicate allocation at this adapter boundary.
+      return envelope ?? null;
     },
     save: async (envelope) => {
       if (!envelope || typeof envelope.moduleId !== 'string' || !envelope.moduleId) {
@@ -57,7 +59,10 @@ export class CognitiveModuleCheckpointStore implements JsonStateStore<PersistedO
       if (!this.moduleStates.has(envelope.moduleId) && this.moduleStates.size >= MAX_MODULES) {
         throw new Error('cognitive-module-checkpoint-capacity-exceeded');
       }
-      this.moduleStates.set(envelope.moduleId, structuredClone(envelope));
+      // Runtime snapshot and stop paths already produce bounded immutable
+      // envelopes. Retain the owned snapshot reference until the canonical
+      // store serializes it, avoiding another potentially large object graph copy.
+      this.moduleStates.set(envelope.moduleId, envelope);
     },
   };
 
@@ -99,7 +104,7 @@ export class CognitiveModuleCheckpointStore implements JsonStateStore<PersistedO
           throw new Error('cognitive-module-checkpoint-duplicate-or-invalid-id');
         }
         seen.add(moduleId);
-        this.moduleStates.set(moduleId, structuredClone(candidate) as CognitiveModuleStateEnvelopeV1);
+        this.moduleStates.set(moduleId, candidate as CognitiveModuleStateEnvelopeV1);
       }
 
       if (Array.isArray(raw.snapshotFailures)) {
@@ -173,8 +178,7 @@ export class CognitiveModuleCheckpointStore implements JsonStateStore<PersistedO
       schemaVersion: 1,
       capturedAt,
       modules: [...this.moduleStates.values()]
-        .sort((a, b) => a.moduleId.localeCompare(b.moduleId))
-        .map(envelope => structuredClone(envelope)),
+        .sort((a, b) => a.moduleId.localeCompare(b.moduleId)),
       snapshotFailures: this.lastSnapshotFailures.map(row => ({ ...row })),
     };
     // OrganismCore stamps and validates the canonical organism before invoking
