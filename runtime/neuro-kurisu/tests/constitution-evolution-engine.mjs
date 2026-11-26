@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { createHmac, generateKeyPairSync, sign } from 'node:crypto';
 import { ActionGateway } from '../src/organism/system/ActionGateway.ts';
-import { ConstitutionEvolutionEngine, MUTABLE_CONSTITUTION_DOMAINS, PROTECTED_CONSTITUTIONAL_INVARIANTS } from '../src/organism/cognition/evolution/ConstitutionEvolutionEngine.ts';
+import { CONSTITUTION_RATIFICATION_TOOL, ConstitutionEvolutionEngine, MUTABLE_CONSTITUTION_DOMAINS, PROTECTED_CONSTITUTIONAL_INVARIANTS } from '../src/organism/cognition/evolution/ConstitutionEvolutionEngine.ts';
 import { canonicalConstitutionReviewPayload } from '../src/organism/cognition/evolution/ConstitutionReviewAuthority.ts';
 
 const TEST_KEY = 'omestro-20-test-signing-key-32-bytes-minimum';
@@ -84,6 +84,17 @@ assert.equal(reviewed.status,'awaiting-ratification');
 // Caller-supplied booleans are no longer an approval authority.
 await assert.rejects(()=>engine.ratify(proposal.id,{explicitHumanApproval:true,approverId:'forged',
   candidateDigest:proposal.candidateDigest,approvalRef:'approval://fake',rationale:'forged approval'},gateway),/approvalId|ticket/i);
+
+// A failed approval-ledger persistence must preserve a safe root-cause code;
+ // the engine must not collapse it into a generic missing-ticket error.
+const failingGateway = new ActionGateway({ live:false });
+failingGateway.setExecutionLedgerPersister(async () => { throw new Error('action-ledger-persistence-busy'); });
+await assert.rejects(
+  () => engine.requestRatification(proposal.id, failingGateway),
+  /ActionGateway did not create a ratification ticket: action-ledger-persistence-busy/,
+);
+assert.equal(failingGateway.toolPermissionSnapshot().pending, 0,
+  'a failed approval persistence must roll back the in-memory pending request');
 
 // A real ActionGateway ticket is required and is bound to this proposal digest.
 const ratification = await engine.requestRatification(proposal.id,gateway);
