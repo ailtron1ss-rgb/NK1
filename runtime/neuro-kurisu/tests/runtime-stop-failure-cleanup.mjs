@@ -43,7 +43,7 @@ test('stop closes and drains the continuity ledger after a canonical Core checkp
       false,
       'stop must close the continuity ledger even when an earlier canonical checkpoint fails',
     );
-    const persistedLines = await readFile(join(directory, 'organism.json.continuity.jsonl'), 'utf8');
+    const persistedLines = await readFile(join(directory, 'organism.continuity.jsonl'), 'utf8');
     assert.match(persistedLines, /shutdown-cleanup-fixture/, 'the diagnostic ledger must be drained before it is closed');
   } finally {
     await runtime.continuityLedger.close();
