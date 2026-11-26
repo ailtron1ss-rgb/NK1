@@ -8063,7 +8063,7 @@ export class OrganismCore {
             externalEvidence: Boolean(observation.success != null || observation.reward != null),
             outcome01: observation.success ?? observation.reward ?? null,
         });
-        const researchOutcomeInput = { capabilityId: 'organism-outcome', before01: clamp(selectedIntent?.predictedUtility ?? p73Capability.capability01), after01: clamp(observation.success ?? observation.reward ?? 0), evidence: observation.success != null || observation.reward != null ? 'external-outcome' : 'none', context: `mode=${p74Frame.mode};memory=${p75Plan.retrievalFocus};action=${selectedIntent?.action ?? 'none'}` };
+        const researchOutcomeInput: import('../system/P77RealityExperimentOS.ts').P77Outcome = { capabilityId: 'organism-outcome', before01: clamp(selectedIntent?.predictedUtility ?? p73Capability.capability01), after01: clamp(observation.success ?? observation.reward ?? 0), evidence: observation.success != null || observation.reward != null ? 'external-outcome' : 'none', context: `mode=${p74Frame.mode};memory=${p75Plan.retrievalFocus};action=${selectedIntent?.action ?? 'none'}` };
         const researchInvocationStartedAt = Date.now();
         this.organismSystems.research.p77RealityExperimentOS.record(state.tick, researchOutcomeInput);
         this.organismSystems.research.p77RealityExperimentOS.noteComplexity(clamp((this.persisted.traces.length / 320) * .25 + (this.persisted.facets.memory.eventLog.length / 768) * .25 + (memorySizeNow / 1600) * .25 + (p74RecentModesNow / 32) * .25));
