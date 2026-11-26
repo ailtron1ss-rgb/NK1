@@ -32,7 +32,7 @@ const trusted = new Map(Object.keys(roles).map(name => [
   keys[name].publicKey.export({ type: 'spki', format: 'pem' }),
 ]));
 
-function makeCandidate() {
+function makeCandidate(immutableRevision = 'b'.repeat(40)) {
   return createCodeAssimilationCandidate({
     baseRuntimeSha: 'a'.repeat(40),
     createdAt: now - 20_000,
@@ -47,7 +47,7 @@ function makeCandidate() {
         sourceKind: 'git',
         canonicalUri: 'https://github.com/example/donor',
         publisher: 'example-org',
-        immutableRevision: 'b'.repeat(40),
+        immutableRevision,
         contentSha256: sha('donor source content'),
         treeSha256: sha('donor source tree'),
         retrievedAt: now - 10_000,
@@ -225,7 +225,9 @@ assert.throws(() => createCodeAssimilationSourceCandidateAuthorizationV1({
 }), /license-modify-approval-required/,
 'study-only/research-only permission cannot authorize candidate modification');
 
-const otherCandidate = makeCandidate();
+const otherCandidate = makeCandidate('c'.repeat(40));
+assert.notEqual(otherCandidate.candidateFingerprint, candidate.candidateFingerprint,
+  'the other donor fixture must have a distinct immutable source fingerprint');
 const otherSourceReceipt = signedReceipt(otherCandidate, 'source');
 assert.throws(() => createCodeAssimilationSourceCandidateAuthorizationV1({
   candidate,
