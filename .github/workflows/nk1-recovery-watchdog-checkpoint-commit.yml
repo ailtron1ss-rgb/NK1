@@ -1,0 +1,36 @@
+name: NK1 recovery watchdog checkpoint commit semantics
+on:
+  pull_request:
+    branches: [workpass70-source]
+    paths:
+      - 'runtime/neuro-kurisu/src/organism/persistence/RecoveryWatchdog.ts'
+      - 'runtime/neuro-kurisu/src/organism/core/OrganismCore.ts'
+      - 'runtime/neuro-kurisu/tests/recovery-watchdog-checkpoint-commit-20261126.mjs'
+      - '.github/workflows/nk1-recovery-watchdog-checkpoint-commit.yml'
+permissions:
+  contents: read
+concurrency:
+  group: nk1-recovery-watchdog-checkpoint-commit-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  checkpoint-commit-semantics:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: runtime/neuro-kurisu
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: runtime/neuro-kurisu/package-lock.json
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Recovery watchdog and canonical Core checkpoint commit regression (red-first)
+        run: node --experimental-strip-types tests/recovery-watchdog-checkpoint-commit-20261126.mjs
+      - name: Existing RecoveryWatchdog restart regression
+        run: npm run test:big-pass-324
+      - name: Existing Core watchdog restart regression
+        run: npm run test:big-pass-324:core
+      - name: Runtime typecheck
+        run: npm run typecheck
