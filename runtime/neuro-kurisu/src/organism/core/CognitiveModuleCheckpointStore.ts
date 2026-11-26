@@ -92,12 +92,14 @@ export class CognitiveModuleCheckpointStore implements JsonStateStore<PersistedO
     const system = asRecord((persisted as unknown as Record<string, unknown>).system);
     if (!system || !Object.prototype.hasOwnProperty.call(system, CHECKPOINT_FIELD)) return persisted;
     const raw = asRecord(system[CHECKPOINT_FIELD]);
+    const capturedAt = raw?.capturedAt;
     if (!raw || raw.schemaVersion !== 1 || !Array.isArray(raw.modules) ||
-        raw.modules.length > MAX_MODULES || !Number.isFinite(raw.capturedAt) || raw.capturedAt < 0) {
+        raw.modules.length > MAX_MODULES || typeof capturedAt !== 'number' ||
+        !Number.isFinite(capturedAt) || capturedAt < 0) {
       this.quarantineCheckpoint('cognitive-module-checkpoint-invalid');
       return persisted;
     }
-    this.lastCapturedAt = raw.capturedAt;
+    this.lastCapturedAt = capturedAt;
 
     try {
       const seen = new Set<string>();
