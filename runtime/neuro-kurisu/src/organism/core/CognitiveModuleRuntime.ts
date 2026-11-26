@@ -79,6 +79,8 @@ export interface CognitiveModuleRuntimeOptions {
   clock?: () => number;
   /** Maximum UTF-8 JSON bytes accepted for one module snapshot (default 1 MiB). */
   maxStateBytes?: number;
+  /** Per-module health probe deadline (default 750 ms; maximum 10 seconds). */
+  healthTimeoutMs?: number;
 }
 
 interface ModuleRecord {
@@ -313,6 +315,7 @@ export class CognitiveModuleRuntime {
   private stateStore?: CognitiveModuleStateStore;
   private readonly clock: () => number;
   private readonly maxStateBytes: number;
+  private readonly healthTimeoutMs: number;
   private readonly records = new Map<string, ModuleRecord>();
   private snapshotOperationTail: Promise<void> = Promise.resolve();
   private snapshotAllInFlight: Promise<{ captured: string[]; failed: Array<{ id: string; reason: string }> }> | null = null;
@@ -333,6 +336,10 @@ export class CognitiveModuleRuntime {
     this.maxStateBytes = options.maxStateBytes ?? DEFAULT_MAX_MODULE_STATE_BYTES;
     if (!Number.isSafeInteger(this.maxStateBytes) || this.maxStateBytes < 1 || this.maxStateBytes > MAX_MODULE_STATE_BYTES) {
       throw fail('invalid-module-state-size-limit');
+    }
+    this.healthTimeoutMs = options.healthTimeoutMs ?? 750;
+    if (!Number.isSafeInteger(this.healthTimeoutMs) || this.healthTimeoutMs < 1 || this.healthTimeoutMs > 10_000) {
+      throw fail('invalid-module-health-timeout');
     }
   }
 
@@ -763,23 +770,35 @@ export class CognitiveModuleRuntime {
         });
         continue;
       }
+
+      let timer: ReturnType<typeof setTimeout> | undefined;
       try {
-        const result = await record.module.health();
+        const probe = Promise.resolve().then(() => record.module!.health());
+        const deadline = new Promise<never>((_resolve, reject) => {
+          timer = setTimeout(() => reject(fail('module-health-timeout')), this.healthTimeoutMs);
+        });
+        const result = await Promise.race([probe, deadline]);
         const probeHealthy = typeof result === 'boolean' ? result : result?.healthy === true;
         const diagnosticError = record.lastSnapshotError ?? record.lastError;
+        const reportedReason = result && typeof result === 'object' ? result.reason : undefined;
         modules.push({
           id: record.manifest.id,
           status: record.status,
           healthy: probeHealthy && !diagnosticError,
-          reason: diagnosticError ?? (typeof result === 'object' ? result.reason : undefined),
+          reason: diagnosticError ?? reportedReason,
         });
-      } catch {
+      } catch (error) {
+        const probeFailure = error instanceof Error && error.message === 'module-health-timeout'
+          ? 'module-health-timeout'
+          : 'health-probe-failed';
         modules.push({
           id: record.manifest.id,
           status: record.status,
           healthy: false,
-          reason: record.lastSnapshotError ?? record.lastError ?? 'health-probe-failed',
+          reason: record.lastSnapshotError ?? record.lastError ?? probeFailure,
         });
+      } finally {
+        if (timer !== undefined) clearTimeout(timer);
       }
     }
     return { ok: modules.every(row => row.healthy), modules };
