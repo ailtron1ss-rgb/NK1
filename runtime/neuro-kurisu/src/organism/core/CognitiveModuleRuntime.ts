@@ -129,6 +129,16 @@ interface StateCloneBudget { bytes: number; readonly maxBytes: number; }
 const STATE_TEXT_ENCODER = new TextEncoder();
 const DEFAULT_MAX_MODULE_STATE_BYTES = 1024 * 1024;
 const MAX_MODULE_STATE_BYTES = 16 * 1024 * 1024;
+const MAX_MODULE_ENVELOPE_METADATA_BYTES = 2048;
+const MODULE_ENVELOPE_KEYS = new Set([
+  'schemaVersion',
+  'moduleId',
+  'moduleVersion',
+  'stateSchemaVersion',
+  'capturedAt',
+  'state',
+  'stateHashSha256',
+]);
 
 function chargeStateBytes(budget: StateCloneBudget | undefined, text: string, path: string): void {
   if (!budget) return;
@@ -264,36 +274,53 @@ function validateEnvelope(
   maxStateBytes: number,
 ): CognitiveModuleStateEnvelopeV1 | null {
   if (envelope == null) return null;
-  if (typeof envelope !== 'object' || envelope.schemaVersion !== 1) {
+
+  // A persistence adapter may return arbitrary JavaScript objects, not only
+  // JSON parsed values. Clone descriptors first so getters/accessors cannot
+  // execute before integrity admission, and bound metadata overhead as well.
+  const safeEnvelope = cloneBoundedState(
+    envelope,
+    maxStateBytes + MAX_MODULE_ENVELOPE_METADATA_BYTES,
+  );
+  if (!safeEnvelope || typeof safeEnvelope !== 'object' || Array.isArray(safeEnvelope)) {
     throw fail('module-state-envelope-invalid', moduleId);
   }
-  if (envelope.moduleId !== moduleId) throw fail('module-state-owner-mismatch', moduleId);
-  if (typeof envelope.moduleVersion !== 'string' || !SEMVER_PATTERN.test(envelope.moduleVersion)) {
+  const fields = safeEnvelope as Record<string, unknown>;
+  if (Object.keys(fields).some(key => !MODULE_ENVELOPE_KEYS.has(key))) {
+    throw fail('module-state-envelope-invalid', moduleId);
+  }
+  if (fields.schemaVersion !== 1) {
+    throw fail('module-state-envelope-invalid', moduleId);
+  }
+  if (fields.moduleId !== moduleId) throw fail('module-state-owner-mismatch', moduleId);
+  if (typeof fields.moduleVersion !== 'string' || !SEMVER_PATTERN.test(fields.moduleVersion)) {
     throw fail('module-state-version-invalid', moduleId);
   }
-  if (!Number.isSafeInteger(envelope.stateSchemaVersion) || envelope.stateSchemaVersion < 1) {
+  if (!Number.isSafeInteger(fields.stateSchemaVersion) || (fields.stateSchemaVersion as number) < 1) {
     throw fail('module-state-schema-invalid', moduleId);
   }
-  if (!Number.isFinite(envelope.capturedAt) || envelope.capturedAt < 0) {
+  if (typeof fields.capturedAt !== 'number' || !Number.isFinite(fields.capturedAt) || fields.capturedAt < 0) {
     throw fail('module-state-time-invalid', moduleId);
   }
+
   const normalized = {
     schemaVersion: 1 as const,
     moduleId,
-    moduleVersion: envelope.moduleVersion,
-    stateSchemaVersion: envelope.stateSchemaVersion,
-    capturedAt: envelope.capturedAt,
-    state: cloneBoundedState(envelope.state, maxStateBytes),
+    moduleVersion: fields.moduleVersion,
+    stateSchemaVersion: fields.stateSchemaVersion as number,
+    capturedAt: fields.capturedAt,
+    state: cloneBoundedState(fields.state, maxStateBytes),
   };
-  if (envelope.stateHashSha256 !== undefined) {
-    if (typeof envelope.stateHashSha256 !== 'string' || !/^[a-f0-9]{64}$/.test(envelope.stateHashSha256)) {
+  if (fields.stateHashSha256 !== undefined) {
+    if (typeof fields.stateHashSha256 !== 'string' || !/^[a-f0-9]{64}$/.test(fields.stateHashSha256)) {
       throw fail('module-state-hash-invalid', moduleId);
     }
-    if (sha256Stable(normalized) !== envelope.stateHashSha256) {
+    if (sha256Stable(normalized) !== fields.stateHashSha256) {
       throw fail('module-state-hash-mismatch', moduleId);
     }
-    return { ...normalized, stateHashSha256: envelope.stateHashSha256 };
+    return { ...normalized, stateHashSha256: fields.stateHashSha256 };
   }
+
   // Pre-digest V1 envelopes remain readable; the next successful snapshot
   // upgrades them to the integrity-sealed representation.
   return normalized;
