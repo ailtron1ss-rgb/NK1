@@ -188,11 +188,11 @@ export class PerceptualEpistemicGraph {
     const c:EvidenceClaim={id:idFor(modality,claim,at),at,modality,claim,source,confidence01,targetIds,...(supersedes?{supersedes}:{})};
     const replayed=this.state.claims.find(x=>x.id===c.id);
     if(replayed)return structuredClone(replayed);
-    const superseded=input.supersedes
-      ? this.state.claims.find(x=>x.id===input.supersedes&&x.id!==c.id)
+    const superseded=supersedes
+      ? this.state.claims.find(x=>x.id===supersedes&&x.id!==c.id)
       : undefined;
     const similar=this.state.claims.filter(x=>x.claim===claim&&x.id!==c.id);
-    const independentCorroboration=similar.filter(x=>x.modality!==input.modality);
+    const independentCorroboration=similar.filter(x=>x.modality!==modality);
     // Repeating the same proposition from the same modality is persistence,
     // not independent corroboration.
     if(superseded)this.state.resolvedPairs++;
