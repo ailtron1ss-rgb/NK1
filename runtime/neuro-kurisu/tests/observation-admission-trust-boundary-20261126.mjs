@@ -112,6 +112,22 @@ const cameraProof=await new ExternalPostconditionVerifier().assess(cameraAction)
 assert.equal(cameraAction.realityClass,'camera-artifact');
 assert.equal(isTrustedEmbodiedOutcomeVerification(cameraProof,cameraAction),true,
   'fresh retained camera bytes plus exact decision-linked host capture proof may verify the frame observation');
+const wrongCameraClaim=untrustedCompiler.recordExternalEvidence({
+  at:at+21,claim:'the door is open',confidence01:.99,modality:'vision',
+  verification:cameraProof,embodiedAction:cameraAction,
+});
+assert.equal(wrongCameraClaim.kind,'derived','camera frame proof cannot be laundered into an arbitrary semantic claim');
+const frameClaim=cameraProof.expectedPostcondition;
+const admittedCameraFrame=untrustedCompiler.recordExternalEvidence({
+  at:at+22,claim:frameClaim,confidence01:.99,modality:'vision',
+  verification:cameraProof,embodiedAction:cameraAction,
+});
+assert.equal(admittedCameraFrame.kind,'observed','only the exact hash/size/nonce-bound camera-frame claim may be observed');
+const replayedCameraFrame=untrustedCompiler.recordExternalEvidence({
+  at:at+23,claim:frameClaim,confidence01:.99,modality:'vision',
+  verification:cameraProof,embodiedAction:cameraAction,
+});
+assert.equal(replayedCameraFrame.kind,'derived','one camera observation proof cannot be credited twice by evidence compilation');
 const replayedCameraAction=await createTrustedEmbodiedActionFixture('explore',{
   cameraAvailable:true,decisionId:cameraDecisionId,
   cameraCaptureExecutionId:cameraExecutionId,cameraCaptureVerification,
