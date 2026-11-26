@@ -358,7 +358,7 @@ console.log('EMBODIMENT_RESTORE_SANITIZATION_INTEGRITY=PASS');
   const restoredP41 = restored.p41SemanticPerception.snapshot();
   assert.equal(restoredP41.tick, snapshot.p41Semantic.tick);
   assert.equal(restoredP41.scene.label, 'round-trip-lab');
-  assert.equal(restoredP41.entities[0]?.trackId, 'world:round-trip-door-1');
+  assert.equal(restoredP41.entities[0]?.trackId, 'world:canonical:round-trip-door-1');
 
   const legacy = new EmbodimentSubsystemRuntime();
   legacy.restoreFromPersisted({
@@ -366,7 +366,7 @@ console.log('EMBODIMENT_RESTORE_SANITIZATION_INTEGRITY=PASS');
     embodiment: { p41SemanticPerception: snapshot.p41Semantic },
     advanced: {},
   });
-  assert.equal(legacy.p41SemanticPerception.snapshot().entities[0]?.trackId, 'world:round-trip-door-1');
+  assert.equal(legacy.p41SemanticPerception.snapshot().entities[0]?.trackId, 'world:canonical:round-trip-door-1');
 
   let getterInvoked = false;
   const hostileRoot = {};
