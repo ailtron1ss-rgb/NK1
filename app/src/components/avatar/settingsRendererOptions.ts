@@ -1,6 +1,6 @@
 import type { AvatarViewMode } from "@/organism/store";
 import type { BodyRendererCapabilityManifest } from "./rendererCapabilityManifest";
-import { AVATAR_ASSET_KIND_LABELS } from "./rendererPresentation";
+import { AVATAR_ASSET_KIND_LABELS } from "./rendererPresentation.ts";
 import { DEFAULT_RENDERER_MANIFESTS } from "./rendererRegistryDefaults.ts";
 
 /**
