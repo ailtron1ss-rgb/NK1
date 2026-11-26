@@ -702,6 +702,14 @@ export interface OrganismSystemState {
     realityEvidenceLedger?: import('../system/RealityEvidenceLedger.ts').RealityEvidenceLedgerState;
     /** Diagnostics for a bounded same-tick duplicate cycle-close attempt. */
     cognitiveCycleDuplicateFeedback?: { tick:number; lastClosedTick:number; at:number };
+    /** Bounded receipt for feedback that arrived after a newer operational cycle began. */
+    delayedCognitiveOutcome?: {
+        decisionId: string | null;
+        decisionTick: number | null;
+        outcomeTick: number;
+        outcomeEventId: string;
+        at: number;
+    };
     unifiedCognitiveCycle?: import('../system/UnifiedCognitiveCycle.ts').UnifiedCognitiveCycleState;
     continuousCognitiveFabric?: import('../system/ContinuousCognitiveFabric.ts').ContinuousCognitiveSnapshot;
     runtimeClosure?: import('../system/RuntimeClosureLedger.ts').RuntimeClosureSnapshot;
@@ -9098,7 +9106,7 @@ export class OrganismCore {
         if (outcome.decisionId && !trace)
             throw new Error('decision-feedback-target-not-found');
         const state = this.persisted.state;
-        const delayedFeedback = Boolean(trace && trace.tick !== state.tick);
+        const delayedFeedback = Boolean(trace && trace.id !== this.persisted.traces[0]?.id);
         const feedbackCycleAnchors: Partial<Record<'observation' | 'prediction' | 'appraisal' | 'attention' | 'memory' | 'goal' | 'plan' | 'action', string>> =
             trace?.cognitiveEventAnchors ?? (delayedFeedback ? {} : this.cognitiveCycleAnchors);
         if (outcome.outcomeId !== undefined &&
@@ -9297,9 +9305,11 @@ export class OrganismCore {
         }
         this.evidenceResearchSubsystem.shadowOrganism.observeOutcome({ tick: state.tick, actualSuccess: success, actualAction: trace?.selected?.action ?? 'wait' });
         this.cognitiveRuntime.longitudinal.recordOutcome(gatedSuccess01);
+        const decisionCycleTick = trace?.tick ?? state.tick;
+        const feedbackEventTick = delayedFeedback ? state.tick : decisionCycleTick;
         const outcomeEvent = this.cognitiveRuntime.cognitiveEventFabric.append({
             id: feedbackOutcomeEventId,
-            tick: state.tick,
+            tick: feedbackEventTick,
             stage: 'outcome',
             source: outcome.evidenceSource ?? (outcome.worldTransition ? 'simulator' : 'feedback'),
             parentIds: [feedbackCycleAnchors.action, feedbackCycleAnchors.prediction].filter(Boolean) as string[],
@@ -9313,14 +9323,14 @@ export class OrganismCore {
         });
         const learningEvent = this.cognitiveRuntime.cognitiveEventFabric.append({
             id: `cef:learning:${feedbackEventKey.slice(0, 56)}`,
-            tick: state.tick, stage: 'learning', source: 'outcome-learning',
+            tick: feedbackEventTick, stage: 'learning', source: 'outcome-learning',
             parentIds: [outcomeEvent.id, feedbackCycleAnchors.action].filter(Boolean) as string[],
             confidence01: clamp(1 - surprise),
             payload: { decisionId: trace?.id ?? null, outcomeId: feedbackOutcomeId, feedbackInputFingerprint },
         });
         const selfUpdateEvent = this.cognitiveRuntime.cognitiveEventFabric.append({
             id: `cef:self-update:${feedbackEventKey.slice(0, 48)}`,
-            tick: state.tick, stage: 'self-update', source: 'self-model',
+            tick: feedbackEventTick, stage: 'self-update', source: 'self-model',
             parentIds: [learningEvent.id, outcomeEvent.id],
             confidence01: clamp(trace?.stateBefore.needs.identityCoherence ?? 0.5),
             payload: { decisionId: trace?.id ?? null, outcomeId: feedbackOutcomeId, feedbackInputFingerprint },
@@ -9344,6 +9354,7 @@ export class OrganismCore {
                 this.cognitiveRuntime.cognitiveEventFabric,
                 {
                     tick: decisionTick,
+                    outcomeTick: state.tick,
                     cycleId: `nk1-cycle:${trace?.id ?? decisionTick}:outcome:${outcomeEvent.id}`,
                     observationEventId: metacognitiveObservationEventId,
                     predictionEventId: metacognitivePredictionEventId,
