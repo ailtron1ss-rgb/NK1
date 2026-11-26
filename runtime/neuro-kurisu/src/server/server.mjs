@@ -6,6 +6,8 @@ import { existsSync as fsExistsSync, statSync as fsStatSync, readdirSync as fsRe
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { OrganismRuntime } from '../organism/core/OrganismRuntime.ts';
+import { createFileBackedPluginMessageIngress } from '../organism/integration/neko/PluginMessageIngressHost.ts';
+import { authorizeNekoPluginTransport, parseNekoPluginCredentials } from './neko-plugin-transport-auth.mjs';
 import { NmcNLocalHttpPort } from '../organism/integration/nmcn/NmcNLocalHttpPort.ts';
 import { buildNmcNRuntimeInput, evaluateNmcNRuntime } from '../organism/integration/nmcn/NmcNRuntimeBridge.ts';
 import { Mem0PlatformAdapter } from '../organism/integration/mem0/Mem0PlatformAdapter.ts';
@@ -61,6 +63,8 @@ const LOCAL_LANGUAGE_BACKEND_POLICY = new LocalLanguageBackendPolicy();
 const MEM0_MEMORY_ADAPTER = Mem0PlatformAdapter.fromEnvironment();
 const REQUEST_TIMEOUT_MS = Math.max(5000, Number(process.env.NEURO_REQUEST_TIMEOUT_MS || 45000));
 const MAX_BODY_BYTES = Math.max(4096, Number(process.env.NEURO_MAX_BODY_BYTES || 256000));
+// Optional, server-only per-plugin secrets. Empty means the N.E.K.O. HTTP transport is disabled.
+const NEKO_PLUGIN_CREDENTIALS = parseNekoPluginCredentials(process.env.NEKO_PLUGIN_CREDENTIALS_JSON);
 // External HMX 1.7 imports have a dedicated bounded payload budget; other API routes keep the smaller default.
 const HMX_STAGE_MAX_BODY_BYTES = 2 * 1024 * 1024 + 64 * 1024;
 const PHONE_POLICY = resolvePhonePolicyConfig(process.env);
@@ -404,6 +408,7 @@ const runtime = new OrganismRuntime({
     ...(COMPOUND_REPAIR_REVISION ? { compoundRepairRevision: COMPOUND_REPAIR_REVISION } : {}),
 });
 let runtimeReady = false;
+let nekoPluginIngress = null;
 const willSdk = new WillSdkFacade({ step: (message, options) => runtime.step(message, options), snapshot: () => runtime.core.snapshot(), flush: () => runtime.core.flush(), exportWillPma: () => runtime.core.exportWillPma(), validateWillPma: (pma) => runtime.core.validateWillPma(pma) }, { enqueue: (input) => runtime.core.willEnqueueEnvelope(input), ack: (input) => runtime.core.willAckEnvelope(input), searchText: (text, k) => runtime.core.willSearchVector(text, k), benchmarkVectorIndex: (queries, k, ef) => runtime.core.willBenchmarkVectorIndex(queries, k, ef), diagnostics: () => runtime.core.willIntegrationDiagnostics() }, 'kurisu');
 const willMcp = new WillMcpJsonRpcServer(willSdk);
 const willChannels = new WillChannelAdapter({ enqueue: (input) => runtime.core.willEnqueueEnvelope(input), ack: (input) => runtime.core.willAckEnvelope(input), searchText: (text, k) => runtime.core.willSearchVector(text, k), benchmarkVectorIndex: (queries, k, ef) => runtime.core.willBenchmarkVectorIndex(queries, k, ef), diagnostics: () => runtime.core.willIntegrationDiagnostics() });
@@ -671,6 +676,38 @@ async function route(req, res) {
         }
         if (url.pathname === '/health' || url.pathname === '/api/health') {
             return json(res, 200, { ok: true, ready: runtimeReady, service: 'neuro-kurisu', version: RELEASE_CONTRACT.application, organismCore: RELEASE_CONTRACT.organismCore, schemaVersion: RELEASE_CONTRACT.stateSchema, tick: runtimeReady ? runtime.core.operationalStatusSnapshot().tick : 0, uptimeSec: Math.round(process.uptime()), bodySource: runtimeReady ? runtime.embodiment.snapshot().telemetry.source : 'initializing', actionLedger: runtimeReady ? runtime.core.actionExecutionLedgerMetrics() : null, language: languageCapabilitySnapshot() });
+        }
+        if (req.method === 'POST' && url.pathname === '/api/neko/messages/push') {
+            if (!runtimeReady)
+                return json(res, 503, { ok: false, error: 'organism-runtime-not-ready' });
+            if (!nekoPluginIngress || NEKO_PLUGIN_CREDENTIALS.size === 0)
+                return json(res, 503, { ok: false, error: 'neko-plugin-transport-not-configured' });
+            const input = await body(req);
+            const transportAuth = authorizeNekoPluginTransport({
+                credentials: NEKO_PLUGIN_CREDENTIALS,
+                pluginIdHeader: req.headers['x-neko-plugin-id'],
+                tokenHeader: req.headers['x-neko-plugin-token'],
+                identity: input?.identity,
+                payload: input?.payload,
+            });
+            if (!transportAuth.allowed)
+                return json(res, 401, { ok: false, error: 'neko-plugin-auth-denied' });
+            if (!input || typeof input !== 'object' || Array.isArray(input)
+                || !input.payload || typeof input.payload !== 'object' || Array.isArray(input.payload))
+                return json(res, 400, { ok: false, error: 'invalid-neko-plugin-envelope' });
+            // This endpoint currently owns quiet evidence ingestion only. Chat/HUD delivery
+            // and response generation remain closed until a durable host presenter exists.
+            if (input.payload.ai_behavior !== 'read'
+                || (input.payload.visibility !== undefined
+                    && (!Array.isArray(input.payload.visibility) || input.payload.visibility.length !== 0)))
+                return json(res, 409, { ok: false, error: 'neko-plugin-presentation-transport-not-configured' });
+            const result = await nekoPluginIngress.handle(input);
+            const status = result.accepted ? 200
+                : result.errorCode === 'message-id-conflict' || result.errorCode === 'message-recovery-required' ? 409
+                : result.errorCode === 'plugin-not-allowed' || result.errorCode === 'policy-denied' ? 403
+                : result.errorCode === 'receipt-ledger-full' || result.errorCode === 'message-processing-failed' ? 503
+                : 400;
+            return json(res, status, { ok: result.accepted, ...result });
         }
         if (req.method === 'GET' && url.pathname === '/api/organism/evaluation/evidence') {
             if (!runtimeReady)
@@ -2945,6 +2982,14 @@ process.on('SIGTERM', () => void shutdown());
 try {
     await runtime.init();
     await runtime.core.p40ConfigureModelBackend('llama.cpp', LLAMA_CPP_PROVIDER.configured());
+    if (NEKO_PLUGIN_CREDENTIALS.size > 0) {
+        nekoPluginIngress = await createFileBackedPluginMessageIngress({
+            receiptFilePath: path.join(STATE, 'neko-plugin-message-receipts.json'),
+            allowedPlugins: [...NEKO_PLUGIN_CREDENTIALS.keys()],
+            authorize: async (context) => NEKO_PLUGIN_CREDENTIALS.has(context.pluginId),
+            runtime: { step: (text, options) => runtime.step(text, options) },
+        });
+    }
     runtimeReady = true;
 }
 catch (error) {
