@@ -57,15 +57,15 @@ function Home() {
           <h1 className="font-display text-3xl tracking-tight text-fg md:text-4xl">Kurisu</h1>
           <p className="mt-1 text-xs text-muted">
             {connection.lastSyncedAt === null
-              ? "Canonical organism state has not been confirmed"
-              : (snap.awake ? "Awake" : "Asleep") + " · tick " + snap.tick}
+              ? "Каноническое состояние организма ещё не подтверждено"
+              : (snap.awake ? "Бодрствует" : "Спит") + " · tick " + snap.tick}
           </p>
         </div>
         <ConnectionStatus />
       </header>
 
       {section === "home" ? (
-        <section className="mx-auto grid max-w-7xl gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(250px,320px)]" aria-label="Home">
+        <section className="mx-auto grid max-w-7xl gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(250px,320px)]" aria-label="Главная">
           <div className="order-2 flex min-h-[520px] flex-col lg:order-1">
             <ChatPanel />
           </div>
@@ -73,7 +73,7 @@ function Home() {
             <button
               type="button"
               onClick={() => setSection("avatar")}
-              aria-label="Open Kurisu avatar and embodiment controls"
+              aria-label="Открыть аватар Курису и настройки воплощения"
               className="group flex w-full items-center gap-3 rounded-xl border border-border bg-surface p-3 text-left transition hover:border-accent/50 hover:bg-elevated focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
             >
               <span className="size-24 shrink-0 overflow-hidden rounded-lg border border-border bg-elevated">
@@ -85,10 +85,10 @@ function Home() {
                 />
               </span>
               <span className="min-w-0 flex-1">
-                <span className="block text-[10px] uppercase tracking-widest text-subtle">Your companion</span>
+                <span className="block text-[10px] uppercase tracking-widest text-subtle">Твой компаньон</span>
                 <span className="mt-1 block font-display text-xl text-fg">Kurisu</span>
-                <span className="mt-1 block text-xs leading-relaxed text-muted">Open avatar, expressions, voice and renderer controls.</span>
-                <span className="mt-2 block text-xs font-medium text-accent">Open avatar →</span>
+                <span className="mt-1 block text-xs leading-relaxed text-muted">Открой аватар, выражения, голос и настройки рендерера.</span>
+                <span className="mt-2 block text-xs font-medium text-accent">Открыть аватар →</span>
               </span>
             </button>
             <div className="lg:hidden">
@@ -104,10 +104,10 @@ function Home() {
       {section === "avatar" ? (
         <section className="mx-auto max-w-7xl space-y-4" aria-label="Avatar">
           <header>
-            <p className="text-xs uppercase tracking-widest text-subtle">Embodiment · Renderer workspace</p>
-            <h2 className="font-display text-2xl text-fg md:text-3xl">Kurisu · Avatar</h2>
+            <p className="text-xs uppercase tracking-widest text-subtle">Воплощение · Панель рендереров</p>
+            <h2 className="font-display text-2xl text-fg md:text-3xl">Курису · Аватар</h2>
             <p className="mt-1 max-w-3xl text-sm leading-relaxed text-muted">
-              One organism state, one selected renderer. Voice, expression and movement are projected from the current runtime snapshot.
+              Единое состояние организма и один выбранный рендерер. Голос, выражение и движение проецируются из актуального снимка runtime.
             </p>
           </header>
           <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_280px]">
@@ -116,29 +116,29 @@ function Home() {
             </div>
             <aside className="space-y-3">
               <CompactStatus snap={snap} connection={connection} />
-              <section className="rounded-xl border border-border bg-surface p-4" aria-label="Renderer capabilities">
-                <h3 className="font-display text-lg text-fg">Renderer capabilities</h3>
-                <p className="mt-1 text-xs leading-relaxed text-muted">The labels describe the actual renderer type, not an equal level of production readiness.</p>
+              <section className="rounded-xl border border-border bg-surface p-4" aria-label="Возможности рендереров">
+                <h3 className="font-display text-lg text-fg">Возможности рендереров</h3>
+                <p className="mt-1 text-xs leading-relaxed text-muted">Подписи отражают фактический тип рендерера, а не одинаковую степень готовности к выпуску.</p>
                 <div className="mt-3 space-y-3">
                   <div>
-                    <p className="text-sm font-medium text-fg">Live2D · primary</p>
-                    <p className="text-xs text-muted">Cubism deformable 2D rig, expressions, motion and speech projection.</p>
+                    <p className="text-sm font-medium text-fg">Live2D · основной рендерер</p>
+                    <p className="text-xs text-muted">Деформируемый 2D-риг Cubism, выражения, движения и проекция речи.</p>
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-fg">NK1 Original · vector</p>
-                    <p className="text-xs text-muted">Editable SVG stage with limited vector animation, not a full skeletal rig.</p>
+                    <p className="text-sm font-medium text-fg">NK1 Original · векторный fallback</p>
+                    <p className="text-xs text-muted">Редактируемая SVG-сцена с ограниченной векторной анимацией, не полноценный скелетный риг.</p>
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-fg">Legacy · sprite fallback</p>
-                    <p className="text-xs text-muted">Static PNG poses with visual transitions; no deformable character rig.</p>
+                    <p className="text-sm font-medium text-fg">Legacy · спрайтовый fallback</p>
+                    <p className="text-xs text-muted">Статические PNG-позы с визуальными переходами; деформируемого рига нет.</p>
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-fg">3D · preview</p>
-                    <p className="text-xs text-muted">VRM/GLB candidate renderer; visual, device and contact acceptance remain separate gates.</p>
+                    <p className="text-sm font-medium text-fg">3D · предварительный просмотр</p>
+                    <p className="text-xs text-muted">Кандидат VRM/GLB; визуальная, мобильная и контактная приёмка остаются отдельными этапами.</p>
                   </div>
                   <div className="border-t border-border pt-3">
-                    <p className="text-sm font-medium text-muted">2.5D · not enabled</p>
-                    <p className="text-xs text-muted">Awaiting authored layered artwork, masks, pivots and device acceptance.</p>
+                    <p className="text-sm font-medium text-muted">2.5D · пока недоступен</p>
+                    <p className="text-xs text-muted">Ожидает готовой многослойной графики, масок, pivot-точек и проверки на устройствах.</p>
                   </div>
                 </div>
               </section>
@@ -149,28 +149,28 @@ function Home() {
 
       {section === "memory" ? (
         <section className="mx-auto max-w-7xl space-y-3" aria-label="Memory">
-          <div><h2 className="font-display text-2xl text-fg">Memory & knowledge</h2><p className="text-sm text-muted">Search and inspect the memories, beliefs and knowledge published by the canonical runtime.</p></div>
+          <div><h2 className="font-display text-2xl text-fg">Нейропамять и знания</h2><p className="text-sm text-muted">Поиск и просмотр воспоминаний, убеждений и знаний, опубликованных каноническим runtime.</p></div>
           <Labs snap={snap} />
         </section>
       ) : null}
 
       {section === "motivation" ? (
-        <section className="mx-auto max-w-7xl space-y-3" aria-label="Motivation">
-          <div><h2 className="font-display text-2xl text-fg">Motivation</h2><p className="text-sm text-muted">Goals and homeostatic drives, read-only from the organism snapshot.</p></div>
+        <section className="mx-auto max-w-7xl space-y-3" aria-label="Мотивация">
+          <div><h2 className="font-display text-2xl text-fg">Мотивация</h2><p className="text-sm text-muted">Цели и гомеостатические потребности. Данные доступны для просмотра из снимка организма.</p></div>
           <MotivationPanel snap={snap} connection={connection} />
         </section>
       ) : null}
 
       {section === "settings" ? (
-        <section className="mx-auto max-w-7xl space-y-3" aria-label="Settings">
-          <div><h2 className="font-display text-2xl text-fg">Settings</h2><p className="text-sm text-muted">User-facing voice and embodiment preferences. These settings do not modify the organism's internal goals or personality.</p></div>
+        <section className="mx-auto max-w-7xl space-y-3" aria-label="Настройки">
+          <div><h2 className="font-display text-2xl text-fg">Настройки</h2><p className="text-sm text-muted">Настройки голоса и воплощения. Они не изменяют внутренние цели или личность организма.</p></div>
           <SettingsPanel snap={snap} />
         </section>
       ) : null}
 
       {section === "more" ? (
-        <section className="mx-auto max-w-7xl space-y-4" aria-label="More tools and diagnostics">
-          <div><h2 className="font-display text-2xl text-fg">More</h2><p className="text-sm text-muted">Motivation, research, integration, governance and diagnostic workspaces.</p></div>
+        <section className="mx-auto max-w-7xl space-y-4" aria-label="Инструменты и диагностика">
+          <div><h2 className="font-display text-2xl text-fg">Инструменты и диагностика</h2><p className="text-sm text-muted">Рабочие пространства мотивации, исследований, интеграций, управления и диагностики.</p></div>
           <MotivationPanel snap={snap} connection={connection} />
           <RuntimeHealthPanel />
           <Labs snap={snap} />
@@ -185,7 +185,7 @@ function Home() {
       ) : null}
 
       <footer className="mx-auto mt-6 max-w-7xl text-center text-[10px] text-subtle">
-        Canonical state is authoritative · local preferences affect presentation only · 2.5D remains gated
+        Каноническое состояние — источник истины · локальные настройки влияют только на отображение · 2.5D пока заблокирован
       </footer>
 
       <CommandPalette />
