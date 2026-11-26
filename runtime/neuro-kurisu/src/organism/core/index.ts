@@ -12,4 +12,4 @@ export * from './WorldSubsystemRuntime.ts';
 export * from './EmbodimentSubsystemRuntime.ts';
 export * from './SubsystemFlightRecorder.ts';
 export * from './OrganismSystemFabric.ts';
-export * from '../system/CognitiveModuleRuntime.ts';
+export * from './CognitiveModuleRuntime.ts';
