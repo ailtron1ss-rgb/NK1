@@ -1,14 +1,8 @@
 import { useEffect, useState } from "react";
 import { Check, Mic, Volume2 } from "lucide-react";
-import { useKurisu, type AvatarViewMode, type UiConnectionStatus } from "@/organism/store";
+import { useKurisu, type UiConnectionStatus } from "@/organism/store";
 import type { OrganismSnapshot } from "@/organism/types";
-
-const modes: Array<{ id: AvatarViewMode; label: string; description: string }> = [
-  { id: "live2d", label: "Live2D", description: "Интерактивная 2D-модель Cubism с подтверждением состояния viewer." },
-  { id: "original", label: "NK1 Original", description: "Встроенная векторная сцена персонажа на SVG." },
-  { id: "legacy", label: "Legacy", description: "Запасной режим на статичных спрайтах." },
-  { id: "3d", label: "3D · предпросмотр", description: "Экспериментальный предпросмотр VRM/GLB; модель не прошла production-приёмку." },
-];
+import { SETTINGS_RENDERER_OPTIONS } from "./avatar/settingsRendererOptions";
 
 const connectionStatusLabels: Record<UiConnectionStatus, string> = {
   connecting: "Подключение",
@@ -91,10 +85,16 @@ export function SettingsPanel({ snap }: { snap: OrganismSnapshot }) {
           <div><h2 className="font-display text-lg text-fg">Аватар и отображение</h2><p className="text-xs text-muted">Общие настройки главного экрана и панели аватара</p></div>
         </div>
         <div className="mt-4 space-y-2">
-          {modes.map((mode) => (
-            <button key={mode.id} type="button" aria-pressed={avatarMode === mode.id} onClick={() => setAvatarMode(mode.id)} className={avatarMode === mode.id ? "flex w-full items-start gap-3 rounded-lg border border-accent/60 bg-accent/10 p-3 text-left" : "flex w-full items-start gap-3 rounded-lg border border-border bg-bg p-3 text-left hover:border-accent/40"}>
+          {SETTINGS_RENDERER_OPTIONS.map((mode) => (
+            <button key={mode.rendererId} type="button" aria-pressed={avatarMode === mode.id} onClick={() => setAvatarMode(mode.id)} className={avatarMode === mode.id ? "flex w-full items-start gap-3 rounded-lg border border-accent/60 bg-accent/10 p-3 text-left" : "flex w-full items-start gap-3 rounded-lg border border-border bg-bg p-3 text-left hover:border-accent/40"}>
               <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full border border-border">{avatarMode === mode.id ? <Check className="size-3.5 text-accent" /> : null}</span>
-              <span className="min-w-0"><span className="block text-sm font-medium text-fg">{mode.label}</span><span className="mt-0.5 block text-xs leading-relaxed text-muted">{mode.description}</span></span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-medium text-fg">{mode.label}</span>
+                <span className="mt-0.5 block text-xs leading-relaxed text-muted">{mode.description}</span>
+                {!mode.productionReady ? (
+                  <span className="mt-2 block border-t border-amber-400/20 pt-2 text-[10px] leading-relaxed text-amber-200">{mode.availability}</span>
+                ) : null}
+              </span>
             </button>
           ))}
           <div className="rounded-lg border border-border bg-bg p-3 opacity-70" aria-disabled="true">
