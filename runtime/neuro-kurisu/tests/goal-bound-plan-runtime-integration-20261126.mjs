@@ -21,6 +21,13 @@ const runtime = new OrganismRuntime({
 const planCalls = [];
 try {
   await runtime.init();
+  let cycleEventInput = null;
+  const eventFabric = runtime.cognitiveEventFabric;
+  const recordOperationalCycle = eventFabric.recordOperationalCycle.bind(eventFabric);
+  eventFabric.recordOperationalCycle = input => {
+    cycleEventInput = input;
+    return recordOperationalCycle(input);
+  };
   const build = runtime.plans.build.bind(runtime.plans);
   const fallback = runtime.plans.buildBudgetFallback.bind(runtime.plans);
   runtime.plans.build = (goal, preferred, depth, width, context) => {
@@ -49,6 +56,15 @@ try {
   assert.ok(call.plan.steps.length > 0);
   assert.ok(call.plan.steps.every(step => step.preconditions && step.expectedOutcome),
     'the real runtime plan must preserve step preconditions and expected outcomes');
+  assert.ok(cycleEventInput, 'the real runtime must record its operational cognitive cycle');
+  for (const stage of ['plan', 'action', 'outcome']) {
+    assert.equal(cycleEventInput[stage].payload.planId, call.plan.id,
+      'the same PlanEngine plan ID must survive the plan/action/outcome causal stages');
+    assert.equal(cycleEventInput[stage].payload.goalId, call.plan.lineage.goal.id,
+      'the same exact goal identity must survive the plan/action/outcome causal stages');
+    assert.equal(cycleEventInput[stage].payload.planAccepted, true,
+      'the runtime must only mark the bound plan accepted after context and first-step validation');
+  }
   console.log('GOAL_BOUND_PLAN_RUNTIME_INTEGRATION=PASS', JSON.stringify({
     kind: call.kind,
     decisionId: call.context.decisionId,
