@@ -128,7 +128,7 @@ import { GlobalWorkspaceSubstrateV2 } from '../cognition/GlobalWorkspaceSubstrat
 import { IntrinsicExperimentGenerator } from '../cognition/IntrinsicExperimentGenerator.ts';
 import { KURISU_ORGANISM_CANON } from '../language/KurisuCanonProfile.ts';
 import { defaultBodyState, applyBodyToOrganismState } from '../body/EmbodiedBody.ts';
-import { captureCameraPhotoWithReceipt, lookupCameraCaptureReceipt, CameraCaptureOutcomeUncertainError, sampleAndroidTelemetry, speakViaTermuxWithOutcome, interruptTermuxTtsWithOutcome } from '../body/AndroidEmbodimentBridge.ts';
+import { captureCameraPhotoWithReceipt, lookupCameraCaptureReceipt, CameraCaptureOutcomeUncertainError, isTrustedCameraCaptureReceipt, type CameraCaptureReceiptResult, sampleAndroidTelemetry, speakViaTermuxWithOutcome, interruptTermuxTtsWithOutcome } from '../body/AndroidEmbodimentBridge.ts';
 import { defaultSelfAuthorship } from '../cognition/SelfAuthorship.ts';
 import { SensorimotorLoop, defaultSensorimotorState } from '../cognition/SensorimotorLoop.ts';
 import { IntrinsicMotivationEngine, defaultIntrinsicDriveState } from '../cognition/IntrinsicMotivationEngine.ts';
@@ -1384,38 +1384,96 @@ export class OrganismCore {
                 const freshAndroid = sampled.source === 'android-termux' && sampled.staleMs === 0;
                 return { ok: freshAndroid, verified: freshAndroid, battery01: sampled.battery01, thermalPressure01: sampled.thermalPressure01, cpuLoad01: sampled.cpuLoad01, ramPressure01: sampled.ramPressure01, networkOnline: sampled.networkOnline, motion01: sampled.motion01, source: sampled.source, staleMs: sampled.staleMs, error: freshAndroid ? undefined : 'android-telemetry-not-fresh' };
             } });
+        const cameraCaptureReceiptsByExecutionId = new Map<string, CameraCaptureReceiptResult>();
         this.cognitiveRuntime.actionGateway.registerTool({
             id: 'organism.device.capture', capability: 'device.vision', destructive: false, projectAllowed: false,
             requiresIdempotencyKey: true,
             execute: async (input, context) => {
                 const enabled = /^(1|true|yes|on)$/i.test(process.env.DEVICE_VISION_LIVE || '');
                 if (!enabled) return { ok: false, verified: false, error: 'device-vision-live-disabled' };
-                // A physical camera operation is not safely retryable without the same
-                // durable operation token. Any ambiguous Termux outcome leaves the
-                // ActionGateway receipt pending for later read-only reconciliation.
-                if (!context?.idempotencyKey) throw new ToolExecutionUncertainError('camera-capture-requires-keyed-durable-execution');
+                if (!context?.idempotencyKey || !context.executionId) throw new ToolExecutionUncertainError('camera-capture-requires-keyed-durable-execution');
                 try {
+                    const cameraId = Math.max(0, Math.floor(Number(input.cameraId ?? 0)));
                     const result = await captureCameraPhotoWithReceipt(
-                        Math.max(0, Math.floor(Number(input.cameraId ?? 0))),
+                        cameraId,
                         Math.max(3000, Math.min(15000, Number(input.timeoutMs ?? 12000))),
-                        Boolean(input.retain), context.idempotencyKey,
+                        Boolean(input.retain), context.idempotencyKey, undefined,
+                        { executionId: context.executionId, decisionId: context.decisionId ?? '' },
                     );
-                    return { ok: true, verified: true, size: result.size, hash: result.hash, path: result.path, cameraId: result.cameraId, capturedAt: result.capturedAt, providerReceiptId: result.providerReceiptId, providerReceipt: result.receiptId };
+                    if (context.decisionId && isTrustedCameraCaptureReceipt(result)) {
+                        cameraCaptureReceiptsByExecutionId.set(context.executionId, result);
+                        while (cameraCaptureReceiptsByExecutionId.size > 64) {
+                            const oldest = cameraCaptureReceiptsByExecutionId.keys().next().value;
+                            if (!oldest) break;
+                            cameraCaptureReceiptsByExecutionId.delete(oldest);
+                        }
+                    }
+                    return {
+                        ok: true, verified: true, size: result.size, hash: result.hash, path: result.path,
+                        cameraId: result.cameraId, capturedAt: result.capturedAt,
+                        captureStartedAt: result.captureStartedAt, captureNonce: result.captureNonce,
+                        sourceId: result.sourceId, decisionId: result.decisionId, retained: result.retained,
+                        providerReceiptId: result.providerReceiptId, providerReceipt: result.receiptId,
+                    };
                 } catch (error) {
                     if (error instanceof CameraCaptureOutcomeUncertainError) throw new ToolExecutionUncertainError(error.message);
                     throw error;
                 }
             },
+            verify: async (verificationContext) => {
+                const executionId = String(verificationContext.executionId ?? '');
+                const receipt = cameraCaptureReceiptsByExecutionId.get(executionId);
+                try {
+                    const decisionId = String(verificationContext.decisionId ?? '');
+                    const result = verificationContext.result ?? {};
+                    const cameraId = Math.max(0, Math.floor(Number(verificationContext.input.cameraId ?? 0)));
+                    const retain = Boolean(verificationContext.input.retain);
+                    const ageMs = receipt ? Date.now() - receipt.capturedAt : Number.POSITIVE_INFINITY;
+                    const valid = Boolean(
+                        receipt && isTrustedCameraCaptureReceipt(receipt) && decisionId &&
+                        receipt.executionId === executionId && receipt.decisionId === decisionId &&
+                        receipt.cameraId === cameraId && receipt.retained === retain &&
+                        receipt.hash === String(result.hash ?? '') && receipt.size === Number(result.size ?? 0) &&
+                        receipt.captureNonce === String(result.captureNonce ?? '') &&
+                        receipt.providerReceiptId === String(result.providerReceiptId ?? '') &&
+                        receipt.sourceId === String(result.sourceId ?? '') &&
+                        receipt.capturedAt === Number(result.capturedAt ?? 0) &&
+                        receipt.captureStartedAt === Number(result.captureStartedAt ?? 0) &&
+                        ageMs >= -2000 && ageMs <= 30_000 &&
+                        /^[a-f0-9]{64}$/.test(receipt.hash) && receipt.size > 0 &&
+                        /^[a-f0-9-]{20,64}$/i.test(receipt.captureNonce)
+                    );
+                    if (!valid || !receipt) return {
+                        verified: false, basis: 'none', confidence01: 0, externalObservation: false,
+                        notes: 'camera-capture-receipt-is-not-a-fresh-decision-bound-host-observation',
+                    };
+                    const postcondition = `android-camera-frame:${receipt.cameraId}:${receipt.hash}:${receipt.size}:${receipt.captureNonce}`;
+                    return {
+                        verified: true, basis: 'external-postcondition', confidence01: .99, externalObservation: true,
+                        observationId: `camera-observation:${receipt.captureNonce}`,
+                        expectedPostcondition: postcondition, observedPostcondition: postcondition,
+                        notes: 'fresh-host-issued-termux-camera-frame-bound-to-action-gateway-execution-and-decision',
+                    };
+                } finally {
+                    cameraCaptureReceiptsByExecutionId.delete(executionId);
+                }
+            },
             reconcile: async (input, context) => {
-                // Local durable device receipt is authoritative only when present
-                // and fully validated. A missing receipt after restart is UNKNOWN:
-                // Termux may have captured a frame before the process died.
+                // Restored receipts can reconcile execution state but cannot recreate
+                // the process-local capability needed to admit a fresh observation.
                 const lookup = await lookupCameraCaptureReceipt(
                     context.idempotencyKey ?? '', Math.max(0, Math.floor(Number(input.cameraId ?? 0))), Boolean(input.retain),
+                    undefined, { executionId: context.executionId, decisionId: context.decisionId },
                 );
                 if (lookup.status === 'found') return {
                     status: 'found', authoritative: true, receiptId: lookup.receiptId,
-                    result: { ok: true, verified: true, size: lookup.result.size, hash: lookup.result.hash, path: lookup.result.path, cameraId: lookup.result.cameraId, capturedAt: lookup.result.capturedAt, providerReceiptId: lookup.result.providerReceiptId, providerReceipt: lookup.result.receiptId }, checkedAt: lookup.checkedAt,
+                    result: {
+                        ok: true, verified: true, size: lookup.result.size, hash: lookup.result.hash, path: lookup.result.path,
+                        cameraId: lookup.result.cameraId, capturedAt: lookup.result.capturedAt,
+                        captureStartedAt: lookup.result.captureStartedAt, captureNonce: lookup.result.captureNonce,
+                        sourceId: lookup.result.sourceId, decisionId: lookup.result.decisionId, retained: lookup.result.retained,
+                        providerReceiptId: lookup.result.providerReceiptId, providerReceipt: lookup.result.receiptId,
+                    }, checkedAt: lookup.checkedAt,
                 };
                 return { status: 'unknown', reason: lookup.reason, checkedAt: lookup.checkedAt };
             },
