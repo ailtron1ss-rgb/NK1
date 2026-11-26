@@ -750,13 +750,19 @@ console.log('COGNITIVE_MODULE_CHECKPOINT_ATOMICITY=PASS');
 
   const secondEvents = [];
   const secondFixture = moduleFixture('memory.integrity', secondEvents);
+  let secondFactoryCalls = 0;
   const second = runtime({ stateStore: store });
   second.register({
     manifest: manifest('memory.integrity'),
-    factory: () => secondFixture.module,
+    factory: () => {
+      secondFactoryCalls += 1;
+      return secondFixture.module;
+    },
   });
   await expectReject(second.activate('memory.integrity'), /module-state-hash-mismatch/);
   assert.equal(statusOf(second, 'memory.integrity'), 'failed');
+  assert.equal(secondFactoryCalls, 0,
+    'unverified persistent state must be rejected before invoking module factory code');
   assert.equal(secondEvents.includes('restore:memory.integrity'), false);
   assert.equal(secondEvents.includes('initialize:memory.integrity'), false);
 }
