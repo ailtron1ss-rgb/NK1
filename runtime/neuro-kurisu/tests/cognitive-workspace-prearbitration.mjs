@@ -215,6 +215,23 @@ assert.equal(missingCredit.updated, false,
 assert.deepEqual(restoredDelayedWorkspace.snapshot().gateWeights, gateAfterFirstCredit,
   'unmatched outcomes must not change workspace parameters');
 
+const crossDecisionReuse = restoredDelayedWorkspace.learnOutcomeForDecision({
+  decisionId: 'another-decision', outcomeId: 'outcome-credit-a',
+  reward01: .1, learningRate: .2, learningScale01: 1,
+});
+assert.equal(crossDecisionReuse.updated, false,
+  'one outcome identity must never be reused to credit a second decision');
+assert.equal(crossDecisionReuse.reason, 'outcome-id-already-bound-to-different-decision',
+  'cross-decision outcome reuse must produce an explicit integrity rejection');
+const invalidRateResult = restoredDelayedWorkspace.learnOutcomeForDecision({
+  decisionId: 'decision-credit-a', outcomeId: 'outcome-credit-nan',
+  reward01: .98, learningRate: Number.NaN, learningScale01: 1,
+});
+assert.equal(invalidRateResult.updated, true,
+  'an invalid learning-rate override must degrade to a zero-rate receipt rather than poison workspace parameters');
+assert.ok(restoredDelayedWorkspace.snapshot().gateWeights.every(Number.isFinite),
+  'invalid external learning-rate values must never introduce NaN parameters');
+
 console.log('NK1_GLOBAL_WORKSPACE_ADMISSION=PASS', JSON.stringify({
   orderInvariant: true,
   admitted: admissionA.diagnostics().admission.admittedCount,
