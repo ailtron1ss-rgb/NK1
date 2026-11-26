@@ -97,8 +97,9 @@ function persisted() {
   await restoredHost.stopAll();
 }
 
-// A broken module snapshot must not block the organism checkpoint or erase the
-// last good module envelope. The failure is made visible in checkpoint metadata.
+// A broken module snapshot must block the enclosing canonical checkpoint.
+// The last durable envelope remains intact, and the in-memory diagnostic exposes
+// the failed owner until a complete retry can commit a fresh generation.
 {
   const durable = backingStore();
   const checkpoint = new CognitiveModuleCheckpointStore(durable);
@@ -118,15 +119,27 @@ function persisted() {
   await checkpoint.save(persisted());
 
   item.module.snapshot = () => { events.push('snapshot-failed'); throw new Error('module-snapshot-offline'); };
-  await checkpoint.save(persisted());
+  await assert.rejects(
+    checkpoint.save(persisted()),
+    /cognitive-module-checkpoint-snapshot-incomplete:memory.index/,
+  );
   const afterFailure = durable.inspect();
   assert.equal(afterFailure.system.cognitiveModuleRuntime.modules[0].state.counter, 11);
-  assert.deepEqual(afterFailure.system.cognitiveModuleRuntime.snapshotFailures, [
+  assert.deepEqual(afterFailure.system.cognitiveModuleRuntime.snapshotFailures, []);
+  assert.deepEqual(checkpoint.diagnostics().snapshotFailures, [
     { id: 'memory.index', reason: 'module-snapshot-offline' },
   ]);
   assert.equal(host.list()[0].status, 'active');
   assert.equal(events.includes('quiesce'), false);
   assert.equal(events.includes('shutdown'), false);
+
+  item.state.counter = 12;
+  item.module.snapshot = () => { events.push('snapshot-recovered'); return structuredClone(item.state); };
+  await checkpoint.save(persisted());
+  const recovered = durable.inspect();
+  assert.equal(recovered.system.cognitiveModuleRuntime.modules[0].state.counter, 12);
+  assert.deepEqual(recovered.system.cognitiveModuleRuntime.snapshotFailures, []);
+  assert.deepEqual(checkpoint.diagnostics().snapshotFailures, []);
   await host.stopAll();
 }
 
