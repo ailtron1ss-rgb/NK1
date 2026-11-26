@@ -158,6 +158,8 @@ import { IntrinsicMotivationGoalCoupling } from '../src/organism/cognition/Intri
 import { PlanEngine } from '../src/organism/world/PlanEngine.ts';
 import { CounterfactualEngine } from '../src/organism/world/CounterfactualEngine.ts';
 import { WorldEnvironment } from '../src/organism/world/WorldEnvironment.ts';
+import { OrganismCore } from '../src/organism/core/OrganismCore.ts';
+import { MemoryStateStore } from '../src/organism/persistence/MemoryStateStore.ts';
 
 const endogenousCycle = {
   tick: 1,
@@ -645,4 +647,95 @@ test('P81 sanitizes malformed persisted attention state before it can affect act
   assert.equal(state.worldUnresolved01, 0);
   assert.equal(state.worldChange01, 0);
   assert.ok(Number.isFinite(attention.actionBias('verify')));
+});
+
+
+test('OrganismCore passes the real read-only world projection through appraisal, goal generation and P81', async () => {
+  const core = new OrganismCore(new MemoryStateStore(), {
+    enableLanguage: false,
+    enableWorkspace: true,
+    cycleResultMode: 'operational',
+  });
+  await core.init();
+
+  const worldOwner = core.organismSystemFabric.world;
+  const worldReads = [];
+  const originalWorldSignal = worldOwner.cognitiveAttentionSignal.bind(worldOwner);
+  worldOwner.cognitiveAttentionSignal = () => {
+    const signal = originalWorldSignal();
+    worldReads.push(structuredClone(signal));
+    return signal;
+  };
+
+  const appraisalInputs = [];
+  const appraisal = core.cognitiveRuntime.emotionAppraisal;
+  const originalAppraise = appraisal.appraise.bind(appraisal);
+  appraisal.appraise = input => {
+    appraisalInputs.push(structuredClone(input));
+    return originalAppraise(input);
+  };
+
+  const b272Inputs = [];
+  const coupling = core.cognitiveRuntime.intrinsicMotivationGoalCoupling;
+  const originalB272Step = coupling.step.bind(coupling);
+  coupling.step = input => {
+    b272Inputs.push(structuredClone(input));
+    return originalB272Step(input);
+  };
+
+  const b273Inputs = [];
+  const b273 = core.developmentalNeural.autonomousGoalLifecycleB273;
+  const originalB273Step = b273.step.bind(b273);
+  b273.step = input => {
+    b273Inputs.push(structuredClone(input));
+    return originalB273Step(input);
+  };
+
+  const attentionInputs = [];
+  const attention = core.organismSystemFabric.self.p81PredictiveAttention;
+  const originalAttentionEvaluate = attention.evaluate.bind(attention);
+  attention.evaluate = input => {
+    attentionInputs.push(structuredClone(input));
+    return originalAttentionEvaluate(input);
+  };
+
+  await core.observe({
+    text: 'Inspect the current room, reconcile uncertain evidence and choose the safest useful next action.',
+    novelty: .7,
+    uncertainty: .35,
+  });
+
+  assert.ok(worldReads.length >= 2,
+    'Core must take an early world projection and a late projection for same-cycle predictive attention');
+  const earlyWorldSignal = worldReads[0];
+  const lateWorldSignal = worldReads.at(-1);
+
+  const appraisalInput = [...appraisalInputs].reverse().find(input =>
+    typeof input.worldChange01 === 'number' &&
+    typeof input.worldConflict01 === 'number' &&
+    typeof input.worldDisagreement01 === 'number' &&
+    typeof input.worldUncertainty01 === 'number' &&
+    typeof input.worldEvidenceConfidence01 === 'number');
+  assert.ok(appraisalInput, 'the real appraisal stage must receive the world projection');
+  assert.equal(appraisalInput.worldChange01, earlyWorldSignal.changeMagnitude01);
+  assert.equal(appraisalInput.worldConflict01, earlyWorldSignal.conflict01);
+  assert.equal(appraisalInput.worldDisagreement01, earlyWorldSignal.modelDisagreement01);
+  assert.equal(appraisalInput.worldUncertainty01, earlyWorldSignal.uncertainty01);
+  assert.equal(appraisalInput.worldEvidenceConfidence01, earlyWorldSignal.evidenceConfidence01);
+
+  assert.ok(b272Inputs.length > 0, 'the real endogenous-goal coupling must execute');
+  assert.deepEqual(b272Inputs.at(-1).cycle.worldEvidence, earlyWorldSignal,
+    'B272 must consume the exact early projection used by appraisal, not a separately reconstructed world score');
+
+  assert.ok(b273Inputs.length > 0, 'the real autonomous-goal lifecycle must execute');
+  assert.deepEqual(b273Inputs.at(-1).worldEvidence, earlyWorldSignal,
+    'B273 must consume the same early projection as B272');
+
+  assert.ok(attentionInputs.length > 0, 'the real P81 attention stage must execute');
+  assert.deepEqual(attentionInputs.at(-1).worldState, lateWorldSignal,
+    'P81 must consume the freshest read-only world projection available at its position in the cycle');
+  assert.equal(attentionInputs.at(-1).worldState.revision, lateWorldSignal.revision);
+
+  assert.equal(core.organismSystemFabric.world, worldOwner,
+    'all consumers must read one canonical WorldSubsystemRuntime owner');
 });
