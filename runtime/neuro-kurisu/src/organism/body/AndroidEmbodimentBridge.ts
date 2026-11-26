@@ -442,7 +442,7 @@ export async function persistCameraCaptureReceipt(input: {
   const executionId = String(input.executionId ?? '').trim();
   const decisionId = String(input.decisionId ?? '').trim();
   if (!/^exec-[a-z0-9-]{8,80}$/i.test(executionId)) throw new CameraCaptureOutcomeUncertainError('camera-capture-execution-binding-required');
-  if (!decisionId || decisionId.length > 180 || /[\u0000-\u001f\u007f-\u009f]/.test(decisionId)) throw new CameraCaptureOutcomeUncertainError('camera-capture-decision-binding-required');
+  if (decisionId.length > 180 || /[\u0000-\u001f\u007f-\u009f]/.test(decisionId)) throw new CameraCaptureOutcomeUncertainError('camera-capture-decision-binding-invalid');
   const captureNonce = String(input.captureNonce ?? randomUUID()).trim();
   if (!/^[a-f0-9-]{20,64}$/i.test(captureNonce)) throw new CameraCaptureOutcomeUncertainError('camera-capture-nonce-invalid');
   const capturedAt = Math.max(0, Number(input.capturedAt ?? Date.now()) || Date.now());
@@ -523,7 +523,7 @@ export async function lookupCameraCaptureReceipt(
       entry.receiptId !== `termux-camera:${token.slice(0, 32)}` || entry.result?.ok !== true ||
       entry.result.verified !== true || entry.result.sourceId !== 'android-termux.camera' ||
       entry.result.cameraId !== Math.max(0, Math.floor(Number(cameraId) || 0)) || entry.result.retained !== Boolean(retain) ||
-      !/^exec-[a-z0-9-]{8,80}$/i.test(receiptExecutionId) || !receiptDecisionId || receiptDecisionId.length > 180 ||
+      !/^exec-[a-z0-9-]{8,80}$/i.test(receiptExecutionId) || receiptDecisionId.length > 180 || /[\u0000-\u001f\u007f-\u009f]/.test(receiptDecisionId) ||
       !/^[a-f0-9-]{20,64}$/i.test(String(entry.result.captureNonce ?? '')) ||
       !Number.isFinite(entry.result.captureStartedAt) || !Number.isFinite(entry.result.capturedAt) ||
       entry.result.capturedAt < entry.result.captureStartedAt || entry.result.capturedAt - entry.result.captureStartedAt > 30_000 ||
@@ -557,7 +557,7 @@ export async function captureCameraPhotoWithReceipt(
   const token = normalizeCaptureToken(idempotencyToken);
   const executionId = String(actionContext?.executionId ?? '').trim();
   const decisionId = String(actionContext?.decisionId ?? '').trim();
-  if (!/^exec-[a-z0-9-]{8,80}$/i.test(executionId) || !decisionId || decisionId.length > 180) {
+  if (!/^exec-[a-z0-9-]{8,80}$/i.test(executionId) || decisionId.length > 180 || /[\u0000-\u001f\u007f-\u009f]/.test(decisionId)) {
     throw new CameraCaptureOutcomeUncertainError('camera-capture-action-context-required');
   }
   const prior = await lookupCameraCaptureReceipt(token, cameraId, retain, receiptDir, { executionId, decisionId });
