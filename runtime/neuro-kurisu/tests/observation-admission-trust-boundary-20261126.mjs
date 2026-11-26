@@ -124,18 +124,18 @@ assert.equal(cameraGrounding.source,'external','the verified camera frame must e
 assert.equal(cameraGrounding.proofClass,'independent-observation','the camera frame proof must be classified as independent observation');
 assert.equal(cameraGrounding.independent01,1);
 const wrongCameraClaim=untrustedCompiler.recordExternalEvidence({
-  at:at+21,claim:'the door is open',confidence01:.99,modality:'vision',
+  at:cameraAt,claim:'the door is open',confidence01:.99,modality:'vision',
   verification:cameraProof,embodiedAction:cameraAction,
 });
 assert.equal(wrongCameraClaim.kind,'derived','camera frame proof cannot be laundered into an arbitrary semantic claim');
 const frameClaim=cameraProof.expectedPostcondition;
 const admittedCameraFrame=untrustedCompiler.recordExternalEvidence({
-  at:at+22,claim:frameClaim,confidence01:.99,modality:'vision',
+  at:cameraAt,claim:frameClaim,confidence01:.99,modality:'vision',
   verification:cameraProof,embodiedAction:cameraAction,
 });
 assert.equal(admittedCameraFrame.kind,'observed','only the exact hash/size/nonce-bound camera-frame claim may be observed');
 const replayedCameraFrame=untrustedCompiler.recordExternalEvidence({
-  at:at+23,claim:frameClaim,confidence01:.99,modality:'vision',
+  at:cameraAt+1,claim:frameClaim,confidence01:.99,modality:'vision',
   verification:cameraProof,embodiedAction:cameraAction,
 });
 assert.equal(replayedCameraFrame.kind,'derived','one camera observation proof cannot be credited twice by evidence compilation');
