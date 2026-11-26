@@ -117,6 +117,14 @@ assert.ok(delayedOutcomeEvent.parentIds.includes(firstDecisionEventAnchors.predi
   'the delayed outcome must parent the original decision prediction event');
 assert.equal(core.cognitiveCycleAnchors.action, secondCycleEventAnchors.action,
   'delayed feedback must not clear or overwrite the newer active cognitive cycle anchors');
+const delayedMetacognitiveEvent = core.cognitiveRuntime.cognitiveEventFabric.recent(128)
+  .find(event => event.stage === 'metacognition' &&
+    event.payload?.actionEventId === firstDecisionEventAnchors.action &&
+    event.payload?.outcomeEventId === delayedOutcomeEvent.id);
+assert.ok(delayedMetacognitiveEvent,
+  'delayed outcome must still close a decision-scoped metacognitive episode using historical anchors');
+assert.equal(delayedMetacognitiveEvent.tick, firstDecisionTrace.tick,
+  'the metacognitive episode remains anchored to the original decision tick');
 
 console.log('NK1_COGNITIVE_WORKSPACE_PREARBITRATION=PASS', JSON.stringify({
   order,
