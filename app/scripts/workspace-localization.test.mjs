@@ -43,7 +43,7 @@ test("Mind HUD translates canonical snapshot, needs, identity and policy labels"
     "Рабочее пространство",
     "Политика выбора",
     "Ошибка предсказания",
-    "Последний подтверждённый снимок",
+    "показан последний подтверждённый снимок",
   ]) {
     assert.ok(hud.includes(phrase), `missing localized HUD copy: ${phrase}`);
   }
