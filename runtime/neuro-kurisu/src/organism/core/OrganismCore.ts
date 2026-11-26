@@ -11214,6 +11214,12 @@ export class OrganismCore {
             this.worldSubsystem.groundedWorld.integrateObservation({ at: result.observation.receivedAt, observation: result.observation });
             this.persisted.facets.advanced.groundedWorld = this.worldSubsystem.groundedWorld.snapshot();
             this.persisted.facets.embodiment.observationIntake = this.organismSystems.embodiment.observationIntake.snapshot();
+            if (result.observation.modality === 'vision' && result.observation.isRealCapture === true) {
+                // A physical capture is counted only after host attestation, freshness,
+                // consent, deduplication and canonical admission have all succeeded.
+                this.embodimentSubsystem.multimodal.recordAdmittedHostVisionCapture();
+                this.persisted.facets.embodiment.multimodal = this.embodimentSubsystem.multimodal.snapshot();
+            }
             this.markPersistenceDirty();
         }
         return result;
