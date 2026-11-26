@@ -24,7 +24,7 @@ test("avatar is a first-class mobile navigation section", async () => {
   assert.ok(avatarSection, "the route must render a dedicated avatar section");
   assert.match(avatarSection[0], /<AvatarStage snap=\{snap\} thinking=\{busy\} \/>/,
     "the avatar tab must host the existing canonical AvatarStage");
-  assert.match(avatarSection[0], /aria-label="Avatar"/,
+  assert.match(avatarSection[0], /aria-label="Аватар"/,
     "the avatar destination must have a named landmark");
 
   const homeSection = route.match(/\{section === "home" \? \(([\s\S]*?)\) : null\}/);
@@ -39,7 +39,7 @@ test("primary mobile navigation uses concise Russian labels and a localized land
   const route = await readFile(new URL("routes/index.tsx", root), "utf8");
 
   assert.match(navigation, /aria-label="Основная навигация"/);
-  for (const label of ["Домой", "Аватар", "Память", "Настройки", "Ещё"]) {
+  for (const label of ["Главная", "Аватар", "Память", "Настройки", "Ещё"]) {
     assert.ok(navigation.includes(`label: "${label}"`), `missing Russian navigation label: ${label}`);
   }
   assert.match(route, /aria-label="Главная"/);
