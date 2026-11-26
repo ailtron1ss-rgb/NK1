@@ -112,7 +112,7 @@ Host использует тот же `JsonStateStore<PersistedOrganism>`, ко�
 
 `CognitiveModuleRuntime.bindStateStore()` разрешён только до активации. Это защищает от разделения состояния между разными persistence owners. `CognitiveModuleCheckpointStore` сохраняет последнюю успешную версию envelope, если текущий snapshot конкретного модуля не удался, но **не коммитит новый checkpoint организма**: ошибка фиксируется в диагностике и передаётся вызывающему коду. После успешного повторного snapshot весь новый checkpoint фиксируется атомарно через прежний canonical store.
 
-Envelope связывает module ID и module version, state schema version, timestamp и snapshot state.
+Envelope связывает module ID и module version, state schema version, timestamp и snapshot state. Новые записи дополнительно содержат `stateHashSha256`: SHA-256 по стабильному JSON-представлению нормализованного envelope (metadata + state). При restore digest проверяется до вызова `restore()`; несовпадение переводит модуль в `failed` и блокирует его активацию. V1 snapshots без digest продолжают читаться как legacy, а следующий успешный checkpoint записывает их уже в sealed-формате. Digest обнаруживает случайное повреждение/расхождение payload, но не заменяет подпись или HMAC против атакующего, способного менять и state, и hash одновременно.
 
 Размер каждого module snapshot ограничен по UTF-8 JSON bytes: по умолчанию **1 MiB**, настраиваемый предел — от 1 байта до **16 MiB**. Лимит учитывает строки, ключи и структурные разделители и проверяется инкрементально при клонировании; он действует при snapshot, restore и миграции состояния. Превышение лимита отклоняет операцию до durable save. При неудачной штатной остановке модуль возобновляется через `resume`, если shutdown ещё не начался.
 
@@ -190,6 +190,7 @@ Envelope связывает module ID и module version, state schema version, t
 - JSON-safe snapshot, __proto__ как обычный ключ и запрет getter execution;
 - health degradation;
 - non-disruptive `snapshotAll()` для активных модулей;
+- проверка SHA-256 для новых module snapshots и legacy-read совместимость V1 envelopes без digest;
 - дедупликация конкурентных checkpoint-запросов и barrier между snapshot/deactivation;
 - rebinding state store только до активации;
 - canonical checkpoint round-trip через новый host;
