@@ -34,7 +34,7 @@ test("mode controls are a named toolbar with pressed state and mobile-sized targ
     const pressedAt = stage.indexOf(pressed);
     assert.notEqual(pressedAt, -1, "missing selected state for " + mode);
     const buttonStart = stage.lastIndexOf("<button", pressedAt);
-    const buttonEnd = stage.indexOf(">", pressedAt);
+    const buttonEnd = stage.indexOf("</button>", pressedAt);
     assert.ok(stage.slice(buttonStart, buttonEnd).includes("min-h-11"), mode + " control must have a 44px minimum hit target");
   }
   assert.match(stage, /focus-visible:ring-2/);
