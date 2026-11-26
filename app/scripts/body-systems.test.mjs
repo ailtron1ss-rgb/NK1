@@ -50,7 +50,9 @@ function createFakeVrm(names) {
 const FULL_BODY_NAMES = ["head", "neck", "leftUpperArm", "rightUpperArm", "spine", "leftLowerArm", "rightLowerArm", "leftUpperLeg", "rightUpperLeg", "leftLowerLeg", "rightLowerLeg"];
 
 const baseManifest = () => ({
-  schemaVersion: 1,
+  schemaVersion: 2,
+  rigClass: "cubism-deform",
+  selectionRole: "primary",
   rendererId: "nk1-test-live2d",
   label: "Test Live2D",
   mode: "live2d",
@@ -73,6 +75,51 @@ test("accepts a well-formed capability manifest", () => {
 test("rejects a production-ready renderer that has no asset", () => {
   const codes = validateRendererCapabilityManifest({ ...baseManifest(), assetKind: "none" }).map((i) => i.code);
   assert.ok(codes.includes("inconsistent-production-ready"));
+});
+
+test("schema v2 requires a truthful rig class and a distinct selection role", () => {
+  const missingRig = validateRendererCapabilityManifest({ ...baseManifest(), rigClass: undefined }).map((issue) => issue.code);
+  const missingRole = validateRendererCapabilityManifest({ ...baseManifest(), selectionRole: undefined }).map((issue) => issue.code);
+  assert.ok(missingRig.includes("invalid-rig-class"));
+  assert.ok(missingRole.includes("invalid-selection-role"));
+});
+
+test("schema v1 remains readable for backwards compatibility", () => {
+  const legacy = { ...baseManifest(), schemaVersion: 1, rigClass: undefined, selectionRole: undefined };
+  assert.deepEqual(validateRendererCapabilityManifest(legacy), []);
+});
+
+test("preview candidates cannot masquerade as selectable production bodies", () => {
+  const issues = validateRendererCapabilityManifest({
+    ...baseManifest(),
+    selectionRole: "preview-only",
+    productionReady: true,
+  }).map((issue) => issue.code);
+  assert.ok(issues.includes("preview-cannot-be-selectable"));
+});
+
+test("rig classes must match the concrete asset type", () => {
+  const issues = validateRendererCapabilityManifest({
+    ...baseManifest(),
+    rigClass: "static-poses",
+    assetKind: "cubism-model",
+  }).map((issue) => issue.code);
+  assert.ok(issues.includes("rig-asset-mismatch"));
+});
+
+test("default registry declares truthful classes and excludes 3D preview from selectable bodies", () => {
+  const registry = createDefaultBodyRendererRegistry();
+  const manifests = registry.list();
+  assert.deepEqual(manifests.map((entry) => [entry.rendererId, entry.rigClass, entry.selectionRole]), [
+    ["nk1-live2d-cubism", "cubism-deform", "primary"],
+    ["nk1-original-svg-2d", "vector-driven", "fallback"],
+    ["nk1-legacy-sprites-2d", "static-poses", "fallback"],
+    ["nk1-three-vrm3d", "humanoid-skeleton", "preview-only"],
+  ]);
+  assert.deepEqual(registry.selectable().map((entry) => entry.rendererId), [
+    "nk1-live2d-cubism", "nk1-original-svg-2d", "nk1-legacy-sprites-2d",
+  ]);
+  assert.equal(registry.resolveByMode("live2d")?.rendererId, "nk1-live2d-cubism");
 });
 
 test("malformed channel arrays return diagnostics instead of throwing", () => {
@@ -112,7 +159,7 @@ test("registry fails closed on invalid or duplicate renderers", () => {
 test("registry exposes only selectable renderers and resolves by mode", () => {
   const registry = new BodyRendererRegistry();
   registry.register(baseManifest());
-  registry.register({ ...baseManifest(), rendererId: "nk1-test-2p5d", label: "2.5D", mode: "depth2d", assetKind: "none", productionReady: false, source: "none" });
+  registry.register({ ...baseManifest(), rendererId: "nk1-test-2p5d", label: "2.5D", mode: "depth2d", assetKind: "none", rigClass: "none", selectionRole: "preview-only", productionReady: false, source: "none" });
   assert.equal(registry.selectable().length, 1);
   assert.equal(registry.selectable()[0].rendererId, "nk1-test-live2d");
   assert.equal(registry.resolveByMode("depth2d")?.rendererId, "nk1-test-2p5d");
