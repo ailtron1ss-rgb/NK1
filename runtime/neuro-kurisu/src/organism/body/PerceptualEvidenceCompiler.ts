@@ -33,6 +33,7 @@ export interface PerceptualEvidenceState{
 export const defaultPerceptualEvidence=():PerceptualEvidenceState=>({version:1,updates:0,lastAt:0,scene:'unknown',evidence:[],activeQuery:null,metrics:{grounding01:.08,semanticCoverage01:0,crossModalAgreement01:.5,temporalBinding01:.1,groundedSignalRatio01:0,conflict01:0,unresolved01:0},lastHash:''});
 
 const trustedPerceptualEvidenceSnapshots = new WeakSet<object>();
+const consumedPerceptualEvidenceProofs = new WeakSet<object>();
 
 /** True only for the exact in-process snapshot minted by this canonical evidence owner. */
 export function isTrustedPerceptualEvidenceSnapshot(value:unknown):value is PerceptualEvidenceState{
@@ -144,7 +145,18 @@ export class PerceptualEvidenceCompiler{
   recordExternalEvidence(input:{at:number;claim:string;confidence01:number;parents?:string[];modality?:'sensor'|'vision'|'world'|'fusion';verified?:boolean;verification?:unknown;embodiedAction?:EmbodiedActionResult}){
     const confidence=clamp(input.confidence01);
     // `verified` remains accepted for compatibility but is never an authority.
-    const independentlyVerified=isTrustedEmbodiedOutcomeVerification(input.verification,input.embodiedAction);
+    const proof=input.verification;
+    const trustedProof=isTrustedEmbodiedOutcomeVerification(proof,input.embodiedAction);
+    const action=input.embodiedAction;
+    const cameraArtifact=action?.realityClass==='camera-artifact'?action.artifact:undefined;
+    const cameraFrameClaim=cameraArtifact
+      ? `android-camera-frame:${cameraArtifact.cameraId ?? '?'}:${cameraArtifact.hash ?? 'missing-hash'}:${cameraArtifact.size ?? 0}:${cameraArtifact.captureNonce ?? 'missing-nonce'}`
+      : undefined;
+    const claimMatchesProof=action?.realityClass!=='camera-artifact' ||
+      Boolean(cameraFrameClaim && input.modality==='vision' && input.claim===cameraFrameClaim);
+    const proofAvailable=Boolean(proof && typeof proof==='object' && !consumedPerceptualEvidenceProofs.has(proof as object));
+    const independentlyVerified=trustedProof && claimMatchesProof && proofAvailable;
+    if(independentlyVerified && proof && typeof proof==='object') consumedPerceptualEvidenceProofs.add(proof as object);
     const record:PerceptualEvidenceRecord={
       id:`pe-external-${stableHash(`${input.at}:${input.claim}:${confidence.toFixed(3)}`)}`,
       at:input.at, modality:input.modality??'sensor', claim:String(input.claim).slice(0,240),
