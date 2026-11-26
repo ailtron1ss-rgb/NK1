@@ -24,6 +24,11 @@ async function withRuntime(options, run) {
     riskAwareRecoveryStore: {
       save: options.riskAwareRecoverySave ?? (async () => {}),
     },
+    cognitiveHealthSystem: options.cognitiveHealthSystem ?? null,
+    cognitiveHealthStore: {
+      load: async () => null,
+      save: options.cognitiveHealthSave ?? (async () => {}),
+    },
     journal: {
       write: async (level, event, data) => { entries.push({ level, event, data }); },
     },
@@ -65,6 +70,7 @@ test('stop records partial durability when an optional checkpoint sidecar fails'
       world: 'durable',
       cognitiveSpine: 'failed',
       riskAwareRecovery: 'durable',
+      cognitiveHealth: 'not-configured',
       continuityLedger: 'durable',
     });
     assert.equal(stop.data.overall, 'partial');
@@ -85,6 +91,7 @@ test('stop records full durability only when core, world and both sidecars compl
       world: 'durable',
       cognitiveSpine: 'durable',
       riskAwareRecovery: 'durable',
+      cognitiveHealth: 'not-configured',
       continuityLedger: 'durable',
     });
     assert.equal(stop.data.overall, 'durable');
@@ -127,9 +134,58 @@ test('stop records partial durability when the diagnostic continuity ledger flus
       world: 'durable',
       cognitiveSpine: 'durable',
       riskAwareRecovery: 'durable',
+      cognitiveHealth: 'not-configured',
       continuityLedger: 'failed',
     });
     assert.equal(stop.data.overall, 'partial');
     assert.equal(entries.some(entry => entry.event === 'runtime.stop.durable'), false);
+  });
+});
+
+const healthFixture = () => ({
+  version: 1,
+  acceptedObservations: 7,
+  lastTick: 63,
+  signals: [{ id: 'health-signal-7', status: 'open' }],
+  reviewHistory: [],
+});
+
+const healthMonitor = (state) => ({
+  restore() {},
+  snapshot() { return structuredClone(state); },
+  healthSnapshot() { return structuredClone(state); },
+  inspectHealth() { return { tick: state.lastTick, score01: 0.8, coverage01: 1, healthStatus: 'healthy', newSignals: [], recoveredSignals: [], recommendedAction: 'none', observationAccepted: true }; },
+  reviewHealthSignal() { return false; },
+});
+
+test('stop forces the final accepted cognitive-health snapshot to its durable sidecar', async () => {
+  const snapshot = healthFixture();
+  let saved = null;
+  await withRuntime({
+    cognitiveHealthSystem: healthMonitor(snapshot),
+    cognitiveHealthSave: async (state) => { saved = structuredClone(state); },
+  }, async ({ runtime, entries }) => {
+    await runtime.stop();
+
+    assert.deepEqual(saved, snapshot, 'stop must persist the latest monitor snapshot even when its periodic cadence has not elapsed');
+    const stop = entries.find(entry => entry.event === 'runtime.stop.durable');
+    assert.ok(stop, 'successful cognitive-health sidecar flush must retain full durability');
+    assert.equal(stop.data.durability.cognitiveHealth, 'durable');
+  });
+});
+
+test('stop records partial durability when the cognitive-health sidecar save fails', async () => {
+  const snapshot = healthFixture();
+  await withRuntime({
+    cognitiveHealthSystem: healthMonitor(snapshot),
+    cognitiveHealthSave: async () => { throw new Error('simulated cognitive-health sidecar disk failure'); },
+  }, async ({ runtime, entries }) => {
+    await runtime.stop();
+
+    const stop = entries.find(entry => entry.event === 'runtime.stop.partial');
+    assert.ok(stop, 'a failed cognitive-health sidecar must not be reported as fully durable');
+    assert.equal(stop.level, 'warn');
+    assert.equal(stop.data.durability.cognitiveHealth, 'failed');
+    assert.equal(stop.data.overall, 'partial');
   });
 });
