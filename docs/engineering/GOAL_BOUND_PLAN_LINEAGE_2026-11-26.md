@@ -24,6 +24,6 @@ Previously a plan identified a goal by `goalId` but did not carry an integrity b
 
 ## Acceptance
 
-Focused tests prove same-context acceptance, goal/world/decision mismatch rejection, chained step preconditions, expected successor shape, bounded fallback compatibility, and zero world-state mutation during planning. A real OrganismRuntime autonomous cycle also captures the live PlanEngine call and checks that the exact returned cycle decision ID/tick are passed to either beam search or the budget fallback. Existing planner, budget, fallback and ActionGateway tests remain part of the CI gate.
+Focused tests prove same-context acceptance, goal/world/decision mismatch rejection, chained step preconditions, expected successor shape, bounded fallback compatibility, and zero world-state mutation during planning. A real OrganismRuntime autonomous cycle also captures the live PlanEngine call and checks that the exact returned cycle decision ID/tick are passed to either beam search or the budget fallback. Existing planner, budget, fallback and ActionGateway tests remain part of the CI gate. The PR workflow installs pinned TypeScript 5.8.3 plus Node 22 type definitions and runs the existing strict `tsconfig.clean.json` semantic compiler check instead of relying on syntax stripping.
 
 This is causal/engineering integrity, not a claim that goals are always correctly understood or plans are optimal.
