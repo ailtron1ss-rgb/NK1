@@ -190,7 +190,7 @@ export class MemoryWritePolicy {
     const key = String(input.id);
     const history = this.perId.get(key) ?? { observations: 0, lastError01: 0, lastSalience01: 0, lastUpdate01: 0 };
     const salience = clamp01(Number(input.retentionScore01 ?? 0));
-    const update = Math.abs(salience - history.lastSalience01);
+    const update = MemoryWritePolicy.salienceUpdate01(history, salience);
     this.perId.set(key, {
       observations: history.observations + 1,
       lastError01: error01,
@@ -217,7 +217,7 @@ export class MemoryWritePolicy {
       observations: history.observations + 1,
       lastError01: error,
       lastSalience01: salience,
-      lastUpdate01: Math.abs(salience - history.lastSalience01),
+      lastUpdate01: MemoryWritePolicy.salienceUpdate01(history, salience),
     };
     this.perId.set(key, next);
     this.trimPerId();
@@ -252,6 +252,14 @@ export class MemoryWritePolicy {
     this.deepBatchLastReason = selection.reason;
     this.deepBatchRecent = [{ candidates: candidates.length, deepCount: selection.deepCount, reason: selection.reason }, ...this.deepBatchRecent].slice(0, 8);
     return { mask: selection.mask, deepCount: selection.deepCount, deepFraction01: selection.deepFraction01, reason: selection.reason };
+  }
+
+  private static salienceUpdate01(history: PerIdHistory, salience: number): number {
+    // The first observation is not "churn": with no previous retention score the delta would be
+    // the score itself (0.85 for a healthy record), and the resulting 0.15 penalty cancelled the
+    // protection that observation is supposed to buy. Only a change between two real readings
+    // counts as instability.
+    return history.observations === 0 ? 0 : Math.abs(salience - history.lastSalience01);
   }
 
   private trimPerId(): void {

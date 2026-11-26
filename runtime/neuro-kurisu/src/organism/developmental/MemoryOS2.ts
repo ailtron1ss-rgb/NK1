@@ -1900,8 +1900,11 @@ export class MemoryOS2{
    // into a confident-looking autobiographical answer.
    const conceptMatchesById=new Map<string,number>([...candidatePriority.entries()].map(([id,priority])=>[id,priority.conceptMatches]));
    const minQueryCoverage=qTokens.size>=5?.30:qTokens.size>=3?.34:qTokens.size===2?.50:1;
-   const identifierPattern=/(?:\b[A-Z]{2,}[-_/]?[0-9]{2,}\b|\b[0-9]{3,}\b|\b[A-F0-9]{8,}\b)/giu;
-   const normalizeIdentifier=(value:string)=>value.toLocaleUpperCase().replace(/[^A-Z0-9]/g,'');
+   const identifierPattern=/(?:(?<![\p{L}\p{N}])\p{L}{2,}(?:[-_/]\p{L}{1,})*[-_/]?\p{N}{1,}(?![\p{L}\p{N}])|\b[A-Z]{2,}[-_/]?[0-9]{2,}\b|\b[0-9]{3,}\b|\b[A-F0-9]{8,}\b)/gu;
+   // Cyrillic codes (КХ-РУ-3) must normalize to the same letters, so the strip keeps any
+   // script's letters and digits; the previous ASCII-only strip turned КХ-РУ-3 into "3" and
+   // every such code looked identical to every other one.
+   const normalizeIdentifier=(value:string)=>value.toLocaleUpperCase().replace(/[^\p{L}\p{N}]/gu,'');
    const queryIdentifiers=[...(String(query).matchAll(identifierPattern))].map(match=>normalizeIdentifier(match[0]));
    const groundedRows=topRows.filter(({m})=>{
      // Exact identifiers are direct evidence even when the prose query includes several
@@ -1929,6 +1932,10 @@ export class MemoryOS2{
          return inflectionalMatch||stableRootMatch;
        }));
      const metadataEvidence=this.metadataRecallEnabled&&evidence.metadata>=.66;
+     // A code in the query that the memory does not carry is a conflict, not a near miss:
+     // character fuzziness between КХ-ПЛОМБА-0 and КХ-РУ-0, or between KX-SEAL-0 and KX-EN-0,
+     // otherwise grounds an unrelated record and the answerability gate never abstains.
+     const identifierConflict=queryIdentifiers.length>0&&memoryIdentifiers.length>0&&!identifierEvidence;
      // Bilingual concept grounding: a memory that expresses the query's active
      // concept groups is direct evidence of aboutness even with zero literal token
      // overlap. Bounded to a focused (<=3 group) query and >=50% group coverage so a
@@ -1937,10 +1944,11 @@ export class MemoryOS2{
      const conceptGroupCount=conceptQuery.groups.length;
      const conceptGrounding=conceptGroupCount>=1&&conceptGroupCount<=3&&(conceptMatchesById.get(m.id)??0)>=1&&evidence.conceptCoverage>=.50&&qTokens.size<=8;
      const spatialEvidence=Boolean(spatialQuery&&evidence.spatialDistance!==null);
-     const lexicalEvidence=spatialEvidence||identifierEvidence||exactPhrase||morphologyEvidence||metadataEvidence||evidence.coverage>=minQueryCoverage||evidence.entity>=.40||
+     const weakEvidence=metadataEvidence||evidence.coverage>=minQueryCoverage||evidence.entity>=.40||
        (qTokens.size<5&&evidence.fuzzy>=.45)||
        (qTokens.size<=4&&evidence.conceptCoverage>=.45&&evidence.coverage>=.16)||
        conceptGrounding;
+     const lexicalEvidence=spatialEvidence||identifierEvidence||exactPhrase||morphologyEvidence||(!identifierConflict&&weakEvidence);
      // A causal paraphrase may have no literal-token overlap with the event text.
      // Permit the concept bridge only when the memory carries explicit causal lineage;
      // generic semantic/recency matches still cannot bypass the answerability gate.
