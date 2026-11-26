@@ -5,7 +5,7 @@ import { assertCognitiveCycleBoundaryInput } from './CognitiveCycleBoundary.ts';
 import { buildUniversalInputInterpretation, formatUniversalInterpretationContext } from '../cognition/UniversalInputInterpreter.ts';
 import { externalGoalForRuntimeInput, normalizeRuntimeExternalPluginSource, shouldInvokeLanguageForRuntimeStep, type RuntimeExternalGoalPolicy, type RuntimeExternalPluginSource } from './RuntimeInputPolicy.ts';
 import { normalizeWorldContext } from './WorldContextNormalizer.ts';
-import { FileStateStore, registerFileWorkspaceUndoFirstTools } from '../persistence/FileStateStore.ts';
+import { DurableDeliveryOutbox, FileStateStore, registerFileWorkspaceUndoFirstTools, type DurableDeliveryEnqueueInput, type DurableDeliveryOutboxState, type DurableDeliveryRecord, type DurableDeliveryReconciliationOutcome, type JsonStateStore } from '../persistence/FileStateStore.ts';
 import { OrganismCore, type OrganismConfig, type PersistedOrganism } from './OrganismCore.ts';
 import { WorldEnvironment, type EnvironmentAction, type PersistedWorld } from '../world/WorldEnvironment.ts';
 import { PlanEngine } from '../world/PlanEngine.ts';
@@ -19,7 +19,6 @@ import { EmbodimentRuntime, type VoiceInputResult } from '../body/EmbodimentRunt
 import { Mem0PlatformAdapter, type Mem0Candidate } from '../integration/mem0/Mem0PlatformAdapter.ts';
 import { buildCognitiveProposalPrompt, parseCognitiveProposal } from '../language/LanguageOrgan.ts';
 import { OperationalJournal } from '../persistence/OperationalJournal.ts';
-import type { JsonStateStore } from '../persistence/FileStateStore.ts';
 import { choosePhonePolicyDelay, type PhonePolicyConfig } from '../system/PhoneRuntimePolicy.ts';
 import { RuntimeClockScheduler, type RuntimeClockDecision } from '../system/RuntimeClockScheduler.ts';
 import { ContinuityLedger } from '../system/ContinuityLedger.ts';
@@ -207,6 +206,10 @@ export interface RuntimeConfig extends OrganismConfig {
   cognitiveSpineStore?: JsonStateStore<CognitiveSpineScheduleState>;
   /** Optional injected durable sidecar for autonomous risk/recovery calibration. */
   riskAwareRecoveryStore?: JsonStateStore<RiskAwareRecoveryControllerState>;
+  /** Durable delivery-obligation sidecar. Does not start a sender or grant network permissions. */
+  deliveryOutboxStore?: JsonStateStore<DurableDeliveryOutboxState>;
+  /** Host-owned consent/quiet-hours admission; absent means outbound delivery claims fail closed. */
+  deliveryAdmission?: (record: Readonly<DurableDeliveryRecord>, at: number) => boolean;
   worldStateStore?: JsonStateStore<PersistedWorld>;
   journal?: { write(level: 'info'|'warn'|'error', event: string, data?: Record<string, unknown>): Promise<void> };
   visionBackend?: VisionSemanticBackend;
@@ -450,6 +453,9 @@ export class OrganismRuntime {
   private readonly proceduralSkillLibrary = new ProceduralSkillLibrary();
   private readonly proceduralSkillStore: JsonStateStore<SkillLibraryState>;
   private readonly openLoopStore: JsonStateStore<OpenLoopRadarState>;
+  private readonly deliveryOutbox = new DurableDeliveryOutbox();
+  private readonly deliveryOutboxStore: JsonStateStore<DurableDeliveryOutboxState>;
+  private readonly deliveryAdmission: RuntimeConfig['deliveryAdmission'] | null;
   private stopping = false;
   /** Opt-in read-only aspect graph adapter; attached after Core construction. */
   private aspectFabric?: RuntimeAspectFabricPort;
@@ -577,6 +583,8 @@ export class OrganismRuntime {
       throw new Error('synaptic-adapter-timeout-invalid');
     }
     this.openLoopStore = new FileStateStore<OpenLoopRadarState>(`${config.stateFile}.open-loops.json`);
+    this.deliveryOutboxStore = config.deliveryOutboxStore ?? new FileStateStore<DurableDeliveryOutboxState>(`${config.stateFile}.delivery-outbox.json`);
+    this.deliveryAdmission = config.deliveryAdmission ?? null;
     this.journal = config.journal ?? new OperationalJournal(config.stateFile.replace(/\.json$/i, '.operational.jsonl'));
     this.continuityLedger = new ContinuityLedger(config.stateFile.replace(/\.json$/i, '.continuity.jsonl'));
     this.registerRuntimeClocks();
@@ -668,6 +676,9 @@ export class OrganismRuntime {
       const restoredOpenLoopState = await this.openLoopStore.load();
       this.openLoopRadar.restore(restoredOpenLoopState ?? undefined);
       if (!restoredOpenLoopState) await this.openLoopStore.save(this.openLoopRadar.snapshot());
+      const restoredDeliveryState = await this.deliveryOutboxStore.load();
+      this.deliveryOutbox.restore(restoredDeliveryState ?? undefined);
+      if (!restoredDeliveryState) await this.deliveryOutboxStore.save(this.deliveryOutbox.snapshot());
       const systemSnapshot = this.core.systemSnapshot();
       if (this.cognitiveImmuneSystem) {
         try {
@@ -2756,6 +2767,7 @@ export class OrganismRuntime {
       await this.core.flush();
       await this.persistCognitiveSpineSchedule();
       await this.persistRiskAwareRecovery();
+      await this.deliveryOutboxStore.save(this.deliveryOutbox.snapshot());
       await this.checkpointWorld(true);
       await this.journal.write('info', 'runtime.stop.durable', {
         tick: runtimeView.tick,
@@ -3036,6 +3048,91 @@ export class OrganismRuntime {
    * write fails, restore the in-memory snapshot so callers never observe an
    * uncommitted lifecycle transition.
    */
+  private async persistDeliveryOutboxMutation<T>(mutation: () => T): Promise<T> {
+    const previous = this.deliveryOutbox.snapshot();
+    try {
+      const result = mutation();
+      await this.deliveryOutboxStore.save(this.deliveryOutbox.snapshot());
+      return result;
+    } catch (error) {
+      this.deliveryOutbox.restore(previous);
+      throw error;
+    }
+  }
+
+  private async claimDeliveryObligationById(
+    id: string, leaseOwner: string, leaseMs: number, at: number,
+  ): Promise<DurableDeliveryRecord | null> {
+    if (!this.deliveryAdmission) return null;
+    const candidate = this.deliveryOutbox.get(id);
+    if (!candidate || candidate.status !== 'pending' || candidate.nextAttemptAt > at
+      || (candidate.expiresAt !== null && candidate.expiresAt <= at)) return null;
+    let admitted = false;
+    try { admitted = this.deliveryAdmission(candidate, at) === true; } catch { admitted = false; }
+    if (!admitted) return null;
+    return this.persistDeliveryOutboxMutation(() => this.deliveryOutbox.claim(id, leaseOwner, at, leaseMs));
+  }
+
+  enqueueDeliveryObligation(input: DurableDeliveryEnqueueInput, at = Date.now()) {
+    return this.enqueue(() => this.persistDeliveryOutboxMutation(() => this.deliveryOutbox.enqueue(input, at)));
+  }
+
+  /**
+   * Claims only after host-owned admission re-checks consent, quiet hours and cancellation.
+   * No sender is started here; the host must execute through ActionGateway.
+   */
+  prepareNextDeliveryObligation(leaseOwner: string, leaseMs = 30_000, at = Date.now()) {
+    return this.enqueue(async () => {
+      if (!this.deliveryAdmission) return null;
+      await this.persistDeliveryOutboxMutation(() => this.deliveryOutbox.reapExpiredLeases(at));
+      const candidate = this.deliveryOutbox.pendingCandidate(at);
+      if (!candidate) return null;
+      let admitted = false;
+      try {
+        admitted = this.deliveryAdmission(candidate, at) === true;
+      } catch {
+        admitted = false;
+      }
+      if (!admitted) return null;
+      return this.persistDeliveryOutboxMutation(() => this.deliveryOutbox.claim(candidate.id, leaseOwner, at, leaseMs));
+    });
+  }
+
+  acknowledgeDeliveryObligation(id: string, leaseOwner: string, deliveredAt = Date.now()) {
+    return this.enqueue(() => this.persistDeliveryOutboxMutation(() => this.deliveryOutbox.acknowledge(id, leaseOwner, deliveredAt)));
+  }
+
+  failDeliveryObligation(id: string, leaseOwner: string, errorCode: string, attemptedAt = Date.now()) {
+    return this.enqueue(() => this.persistDeliveryOutboxMutation(() => this.deliveryOutbox.recordFailure(id, leaseOwner, errorCode, attemptedAt)));
+  }
+
+  cancelDeliveryObligation(id: string, reasonCode: string) {
+    return this.enqueue(() => this.persistDeliveryOutboxMutation(() => this.deliveryOutbox.cancel(id, reasonCode)));
+  }
+
+  /**
+   * Resolve an expired ambiguous delivery only after the host has checked the
+   * authoritative provider/ActionGateway idempotency receipt or postcondition.
+   * Do not pass "confirmed-not-delivered" when the external result is unknown.
+   */
+  resolveDeliveryObligationReconciliation(
+    id: string,
+    outcome: DurableDeliveryReconciliationOutcome,
+    at = Date.now(),
+  ) {
+    return this.enqueue(() => this.persistDeliveryOutboxMutation(
+      () => this.deliveryOutbox.resolveReconciliation(id, outcome, at),
+    ));
+  }
+
+  deliveryOutboxSnapshot() {
+    return this.enqueue(async () => this.deliveryOutbox.snapshot());
+  }
+
+  deliveryOutboxDiagnostics() {
+    return this.enqueue(async () => this.deliveryOutbox.diagnostics());
+  }
+
   private async persistOpenLoopMutation<T>(mutation: () => T): Promise<T> {
     const previous = this.openLoopRadar.snapshot();
     try {
@@ -3157,24 +3254,11 @@ export class OrganismRuntime {
       return acknowledged;
     });
   }
-
-  previewNekoKnowledgePack(rawBytes: Uint8Array) {
-    const ownedBytes = new Uint8Array(rawBytes);
-    return this.enqueue(async () => this.core.previewNekoKnowledgePack(ownedBytes));
-  }
-
-  importNekoKnowledgePack(
-    rawBytes: Uint8Array,
-    approval: import('../integration/neko/NekoKnowledgePackImporter.ts').NekoKnowledgePackImportApproval,
-  ) {
-    const ownedBytes = new Uint8Array(rawBytes);
-    return this.enqueue(() => this.core.importNekoKnowledgePack(ownedBytes, approval));
-  }
-
   async flush(): Promise<void> {
     return this.enqueue(async () => {
       await this.core.flush();
       await this.openLoopStore.save(this.openLoopRadar.snapshot());
+      await this.deliveryOutboxStore.save(this.deliveryOutbox.snapshot());
       const view = this.core.runtimeClosureOperationalSnapshot();
       this.runtimeClosure.durable({ at: Date.now(), tick: view.tick, stateTick: view.tick, replaySignature: view.replaySignature, continuousTick: view.continuous?.tick, continuityProcessed: view.continuous?.processed, memoryCount: view.memoryCount });
       this.core.setRuntimeClosure(this.runtimeClosure.snapshot());

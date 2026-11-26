@@ -257,3 +257,6 @@ export class FileStateStore<T> implements JsonStateStore<T> {
 }
 
 export { registerFileWorkspaceUndoFirstTools } from './UndoFirstFileSystemAdapter.ts';
+
+export { DurableDeliveryOutbox } from './DurableDeliveryOutbox.ts';
+export type { DurableDeliveryEnqueueInput, DurableDeliveryOutboxState, DurableDeliveryRecord, DurableDeliveryReconciliationOutcome } from './DurableDeliveryOutbox.ts';
