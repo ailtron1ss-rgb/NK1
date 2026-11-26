@@ -43,6 +43,7 @@ test("primary mobile navigation uses concise Russian labels and a localized land
     assert.ok(navigation.includes(`label: "${label}"`), `missing Russian navigation label: ${label}`);
   }
   assert.match(route, /aria-label="Главная"/);
+  assert.match(route, /aria-label="Нейропамять и знания"/);
   assert.match(route, /Нейропамять и знания/);
   assert.match(route, /Мотивация/);
   assert.match(route, /Инструменты и диагностика/);
