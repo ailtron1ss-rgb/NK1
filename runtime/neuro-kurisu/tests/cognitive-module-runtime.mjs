@@ -759,3 +759,35 @@ console.log('COGNITIVE_MODULE_CHECKPOINT_ATOMICITY=PASS');
   assert.equal(secondEvents.includes('restore:memory.integrity'), false);
   assert.equal(secondEvents.includes('initialize:memory.integrity'), false);
 }
+
+
+// A caller may inspect the result of deactivate(), but must not receive the
+// same mutable envelope object owned by the canonical module checkpoint store.
+{
+  const rows = new Map();
+  const stateStore = {
+    async load(moduleId) {
+      return rows.get(moduleId) ?? null;
+    },
+    async save(envelope) {
+      rows.set(envelope.moduleId, envelope);
+    },
+  };
+  const events = [];
+  const fixture = moduleFixture('memory.detached-result', events);
+  const host = runtime({ stateStore });
+  host.register({
+    manifest: manifest('memory.detached-result'),
+    factory: () => fixture.module,
+  });
+  await host.activate('memory.detached-result');
+  fixture.state.value = 37;
+
+  const returnedEnvelope = await host.deactivate('memory.detached-result');
+  returnedEnvelope.state.value = 999;
+  assert.equal(
+    rows.get('memory.detached-result').state.value,
+    37,
+    'mutating the returned lifecycle result must not mutate the stored checkpoint',
+  );
+}
