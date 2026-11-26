@@ -1,0 +1,121 @@
+name: NK1 full application UI browser smoke
+
+on:
+  pull_request:
+    branches: [workpass70-source]
+    paths:
+      - "app/**"
+      - "runtime/neuro-kurisu/**"
+      - "research/research_bridge.py"
+      - "tools/super-quickstart.mjs"
+      - "tools/super-start.mjs"
+      - "tools/super-gateway.mjs"
+      - "tools/super-install.mjs"
+      - "package.json"
+      - "package-lock.json"
+      - ".nvmrc"
+      - ".python-version"
+      - ".github/workflows/nk1-full-app-ui-browser-smoke.yml"
+  push:
+    branches: [workpass70-source]
+    paths:
+      - "app/**"
+      - "runtime/neuro-kurisu/**"
+      - "research/research_bridge.py"
+      - "tools/super-quickstart.mjs"
+      - "tools/super-start.mjs"
+      - "tools/super-gateway.mjs"
+      - "tools/super-install.mjs"
+      - "package.json"
+      - "package-lock.json"
+      - ".nvmrc"
+      - ".python-version"
+      - ".github/workflows/nk1-full-app-ui-browser-smoke.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nk1-full-app-ui-browser-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  full-app-ui-browser-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: |
+            app/package-lock.json
+            runtime/neuro-kurisu/package-lock.json
+      - uses: actions/setup-python@v6
+        with:
+          python-version-file: .python-version
+      - name: Install locked app and runtime dependencies
+        run: |
+          npm ci --prefix app --no-audit --no-fund
+          npm ci --prefix runtime/neuro-kurisu --no-audit --no-fund
+      - name: Install Chromium for the full application UI
+        working-directory: app
+        run: npx playwright install --with-deps chromium
+      - name: Launch the complete prototype and verify the full UI
+        shell: bash
+        run: |
+          set -euo pipefail
+          out="$RUNNER_TEMP/nk1-full-app-ui"
+          log="$RUNNER_TEMP/nk1-full-app-ui-quickstart.log"
+          mkdir -p "$out"
+          setsid npm run quickstart >"$log" 2>&1 &
+          launcher_pid=$!
+
+          cleanup() {
+            kill -INT -- "-$launcher_pid" 2>/dev/null || true
+            for attempt in $(seq 1 30); do
+              if ! curl --fail --silent http://127.0.0.1:8080/ >/dev/null \
+                && ! curl --fail --silent http://127.0.0.1:3310/health >/dev/null \
+                && ! curl --fail --silent http://127.0.0.1:8765/health >/dev/null; then
+                break
+              fi
+              sleep 1
+            done
+            wait "$launcher_pid" 2>/dev/null || true
+            echo "----- full UI quickstart log -----"
+            cat "$log" 2>/dev/null || true
+          }
+          trap cleanup EXIT
+
+          ready=0
+          for attempt in $(seq 1 300); do
+            if ! kill -0 "$launcher_pid" 2>/dev/null; then
+              echo "quickstart exited before full UI readiness" >&2
+              cat "$log" >&2 || true
+              exit 1
+            fi
+            if curl --fail --silent http://127.0.0.1:3310/health >/dev/null \
+              && curl --fail --silent http://127.0.0.1:8765/health >/dev/null \
+              && curl --fail --silent http://127.0.0.1:8080/ >/dev/null \
+              && curl --fail --silent http://127.0.0.1:8080/api/organism/ui-snapshot >"$out/ui-snapshot.json"; then
+              ready=1
+              break
+            fi
+            sleep 2
+          done
+          if [[ "$ready" != "1" ]]; then
+            echo "Full UI services or canonical ui-snapshot did not become ready" >&2
+            cat "$log" >&2 || true
+            exit 1
+          fi
+          node app/scripts/full-app-ui-browser-smoke.mjs http://127.0.0.1:8080 "$out"
+          cp "$log" "$out/quickstart.log"
+      - name: Upload full application screenshots and smoke report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nk1-full-app-ui-browser-smoke
+          path: ${{ runner.temp }}/nk1-full-app-ui/
+          if-no-files-found: warn
+          retention-days: 14
