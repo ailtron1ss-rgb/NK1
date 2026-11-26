@@ -39,6 +39,9 @@ for (const required of [
 }
 
 // Every baseline row is a real module path inside the canonical runtime.
-assert.ok(baselineData.orphans.every(orphan => /^organism\\/[^/]+\\/.*\\.ts$/.test(orphan)), 'baseline rows must be canonical module paths');
+assert.ok(
+  baselineData.orphans.every(orphan => orphan.startsWith('organism/') && orphan.endsWith('.ts') && orphan.split('/').length >= 3),
+  'baseline rows must be canonical module paths',
+);
 
 console.log(`runtime wiring census PASS canonicalModules=${report.canonicalModules} connected=${report.connectedModules} knownOrphans=${baselineData.orphans.length}`);
