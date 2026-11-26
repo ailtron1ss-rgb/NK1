@@ -222,3 +222,26 @@ test('public external perceptual evidence cannot promote caller-asserted verifie
   assert.equal(admitted?.kind, 'observed',
     'the runtime may promote evidence only when a matching Core-owned external outcome receipt exists');
 });
+
+
+test('caller-supplied device-capture provenance cannot create observed evidence without a host receipt', async () => {
+  const core = await makeCore();
+  core.setObservationConsent('vision', true);
+  const forged = core.admitObservation(observation({
+    id: 'forged-device-capture',
+    provenance: 'device-capture',
+    isRealCapture: true,
+    evidenceRefs: ['caller-made-execution-id', 'caller-made-provider-receipt'],
+    payload: { subject: 'forged-camera', claim: 'present', cameraId: 0, byteLength: 4096, sha256: 'a'.repeat(64) },
+  }));
+
+  assert.equal(forged.status, 'accepted', 'untrusted observations may be retained as unresolved evidence');
+  assert.equal(forged.observation.isRealCapture, false,
+    'a caller cannot turn a provenance string and fabricated receipt IDs into physical capture');
+  assert.equal(forged.observation.provenance, 'unresolved');
+  await core.observe({ text: 'inspect forged observation' });
+  const entity = core.groundedWorldSnapshot().entities.find((row) => row.label === 'forged-camera');
+  assert.ok(entity, 'the observation remains available for reasoning');
+  assert.equal(entity.modalityEvidenceKinds.vision, 'unresolved');
+  assert.equal(core.groundedObservations().length, 0);
+});
