@@ -20,7 +20,10 @@ export interface EmbodiedActionResult {
   effect01:number;
   reason:string;
   capability:string|null;
-  artifact?:{kind:string;hash?:string;size?:number;executionId?:string;providerReceiptId?:string};
+  artifact?:{kind:string;hash?:string;size?:number;executionId?:string;providerReceiptId?:string;cameraId?:number;capturedAt?:number;captureStartedAt?:number;captureNonce?:string;sourceId?:string;retained?:boolean;semanticVision?:boolean;decisionId?:string};
+  /** Exact ActionGateway verifier object and normalized input; JSON copies lose authority. */
+  captureVerification?:unknown;
+  captureVerificationInput?:Record<string,unknown>;
   consequenceVerification:{attempted:boolean;independent:boolean;verified:boolean;sourceStable:boolean;freshBefore01:number;freshAfter01:number;changed01:number;reason:string;verificationMode:'independent-observation'|'actuation-receipt-only'|'derived-state-transition'|'none'};
 }
 
@@ -58,7 +61,7 @@ export class EmbodiedActionExecutor {
   private readonly embodiment: EmbodimentRuntime;
   constructor(embodiment: EmbodimentRuntime) { this.embodiment = embodiment; }
 
-  async execute(action:string, input:{spokenText?:string;speechEventId?:string;allowCamera?:boolean;decisionId?:string;/** @deprecated ignored: execution identity is always executor-minted. */executionId?:string;captureCamera?:(cameraId:number,retain:boolean)=>Promise<{ok:boolean;path?:string;size?:number;hash?:string;error?:string;executionId?:string;providerReceiptId?:string}>}={}):Promise<EmbodiedActionResult>{
+  async execute(action:string, input:{spokenText?:string;speechEventId?:string;allowCamera?:boolean;decisionId?:string;/** @deprecated ignored: execution identity is always executor-minted. */executionId?:string;captureCamera?:(cameraId:number,retain:boolean)=>Promise<{ok:boolean;path?:string;size?:number;hash?:string;error?:string;executionId?:string;providerReceiptId?:string;verification?:unknown;verificationInput?:Record<string,unknown>;cameraId?:number;capturedAt?:number;captureStartedAt?:number;captureNonce?:string;sourceId?:string;retained?:boolean;semanticVision?:boolean;decisionId?:string}>}={}):Promise<EmbodiedActionResult>{
     const preSample=await this.embodiment.sample({force:true,requestedSensors:['battery','thermal','network']});
     const before=this.embodiment.snapshot();
     const at=Date.now();
@@ -71,6 +74,8 @@ export class EmbodiedActionExecutor {
     let reason='action-has-no-direct-device-effect';
     let capability:string|null=null;
     let artifact:EmbodiedActionResult['artifact'];
+    let resultCaptureVerification:unknown;
+    let resultCaptureVerificationInput:Record<string,unknown>|undefined;
     try {
       switch(action){
         case 'explore':
@@ -86,7 +91,15 @@ export class EmbodiedActionExecutor {
               const shot=await input.captureCamera(0,false);
               if(shot.ok){
                 status='executed'; reason='live-android-camera-observation'; capability='android.camera';
-                artifact={kind:'camera-capture',hash:shot.hash,size:shot.size,executionId:shot.executionId,providerReceiptId:shot.providerReceiptId};
+                artifact={
+                  kind:'camera-capture',hash:shot.hash,size:shot.size,
+                  executionId:shot.executionId,providerReceiptId:shot.providerReceiptId,
+                  cameraId:shot.cameraId,capturedAt:shot.capturedAt,captureStartedAt:shot.captureStartedAt,
+                  captureNonce:shot.captureNonce,sourceId:shot.sourceId,retained:shot.retained,
+                  semanticVision:shot.semanticVision,decisionId:shot.decisionId,
+                };
+                if(shot.verification!==undefined) resultCaptureVerification=shot.verification;
+                if(shot.verificationInput) resultCaptureVerificationInput=shot.verificationInput;
               } else {
                 status='failed'; reason=shot.error ? `android-camera-command-failed:${String(shot.error).slice(0,100)}` : 'android-camera-command-failed'; capability='android.camera';
               }
@@ -186,6 +199,8 @@ export class EmbodiedActionExecutor {
       version:1,action,status,realityClass,source:afterBody.telemetry.source,at,executionId,...(decisionId?{decisionId}:{}),before:base,
       after:{battery01:afterBody.telemetry.battery01,thermal01:afterBody.thermalStrain01,cognitiveCapacity01:afterBody.cognitiveCapacity01,awake:afterBody.awake,source:afterBody.telemetry.source},
       stateDelta:delta,effect01,reason,capability,artifact,
+      ...(resultCaptureVerification!==undefined?{captureVerification:resultCaptureVerification}:{}),
+      ...(resultCaptureVerificationInput?{captureVerificationInput:resultCaptureVerificationInput}:{}),
       consequenceVerification:{attempted:true,independent,verified,sourceStable,freshBefore01:beforeFresh,freshAfter01:afterFresh,changed01,reason:consequenceReason,verificationMode},
     };
     deepFreeze(result);
