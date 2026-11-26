@@ -237,3 +237,18 @@ For canonical source SHA `7e601680...`, the recursive tree returned 11,596 entri
 - No physical Android/Termux restore or power-loss soak; no microphone/TTS playback, lip sync, UI/browser end-to-end acceptance or phone performance measurement.
 - No RU/EN sealed holdout, >=5 paired seeds, scale benchmark at the required 10k/100k tiers, archive/license/SBOM parity check or new Release.
 - All implementation is isolated on Draft PR branches. The canonical branch and immutable archive have not changed.
+
+
+## 11. Final exact-head and release/source status — 26 Nov 2026
+
+| PR | Aspect | Head | Ahead / behind | Exact-head workflow result | Merge state |
+|---|---|---|---:|---|---|
+| [#1197](https://github.com/ailtron1ss-rgb/NK1/pull/1197) | Read-only diagnostics, memory and 11-stage CEF regressions | `1bcb011...` | 14 / 0 | 32/32 workflow runs success; focused suite 29/29 steps | Draft / unmerged |
+| [#1199](https://github.com/ailtron1ss-rgb/NK1/pull/1199) | World context / P27 latent restore continuity | `06a2014...` | 3 / 0 | 13/13 workflow runs success | Draft / unmerged |
+| [#1201](https://github.com/ailtron1ss-rgb/NK1/pull/1201) | Memory lifecycle replay result identity | `98fef39...` | 3 / 0 | 17/17 workflow runs success | Draft / unmerged |
+
+All three PRs use the same base `workpass70-source@7e601680...`; none is behind that base. Successful workflows are exact isolated PR-head evidence, not canonical integration.
+
+The current GitHub Release listing still contains only 19-Oct-2026 assets (`Neuro_Kurisu_WORKPASS70_2026-10-19.zip` and `Neuro_Kurisu_WORKPASS70_HOTFIX1_2026-10-19.zip`). These aspect fixes are not included in either asset.
+
+The full Master Plan X is estimated at **36/100 ±8 pp** for engineering integration / verification as a whole. Device testing, independent sealed evaluation, full checkpoint crash/power-loss evidence, global writer census, semantic `tsc`, source/archive parity, license/SBOM and Release gates remain incomplete.
