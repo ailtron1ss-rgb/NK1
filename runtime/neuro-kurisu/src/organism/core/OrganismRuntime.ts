@@ -19,7 +19,6 @@ import { EmbodimentRuntime, type VoiceInputResult } from '../body/EmbodimentRunt
 import { Mem0PlatformAdapter, type Mem0Candidate } from '../integration/mem0/Mem0PlatformAdapter.ts';
 import { buildCognitiveProposalPrompt, parseCognitiveProposal } from '../language/LanguageOrgan.ts';
 import { OperationalJournal } from '../persistence/OperationalJournal.ts';
-import type { OperationalJournalCursor } from '../persistence/OperationalJournal.ts';
 import type { JsonStateStore } from '../persistence/FileStateStore.ts';
 import { choosePhonePolicyDelay, type PhonePolicyConfig } from '../system/PhoneRuntimePolicy.ts';
 import { RuntimeClockScheduler, type RuntimeClockDecision } from '../system/RuntimeClockScheduler.ts';
@@ -56,6 +55,8 @@ import { withIndependentCandidateEvaluation } from '../learning/P23IndependentEv
 import type { IndependentCandidateEvaluationConfig } from '../learning/IndependentSkillCandidateEvaluator.ts';
 import { createHostOwnedIndependentEvaluationConfigFactory, type HostOwnedIndependentEvaluationFactoryOptions } from '../learning/HostOwnedIndependentEvaluationServices.ts';
 
+type RuntimeRuntimeOperationalJournalCursor = Awaited<ReturnType<OperationalJournal['cursor']>>;
+
 export interface RuntimeCheckpointRecoveryReceipt {
   receiptId:string;
   outcome:'restored'|'rejected'|'restore-failed'|'legacy';
@@ -65,7 +66,7 @@ export interface RuntimeCheckpointRecoveryReceipt {
   generation?:number;
   coreTick?:number;
   worldTick?:number;
-  journalOffset?:OperationalJournalCursor;
+  journalOffset?:RuntimeOperationalJournalCursor;
   manifestHash?:string;
   reason?:string;
 }
@@ -3076,7 +3077,7 @@ export class OrganismRuntime {
   }
 
 
-  private runtimeCheckpointOwnerSnapshots(journalOffset:OperationalJournalCursor) {
+  private runtimeCheckpointOwnerSnapshots(journalOffset:RuntimeOperationalJournalCursor) {
     return {
       world: this.environment.persisted(),
       openLoop: this.openLoopRadar.snapshot(),

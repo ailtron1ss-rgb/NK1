@@ -86,8 +86,15 @@ export class OperationalJournal {
    * retained segment. Hashes identify the segment and its last complete record;
    * this is a cursor, not a second journal or a promise of infinite retention.
    */
-  async cursor(): Promise<OperationalJournalCursor> {
-    await this.flush();
+  cursor(): Promise<OperationalJournalCursor> {
+    // Queue the cursor behind all prior appends and ahead of later ones so the
+    // captured offset cannot race an append or rotation.
+    const next = this.writeTail.then(() => this.readCursorInternal());
+    this.writeTail = next.then(() => {}, () => {});
+    return next;
+  }
+
+  private async readCursorInternal(): Promise<OperationalJournalCursor> {
     await mkdir(dirname(this.filePath), { recursive: true });
     const barrier = await open(this.filePath, 'a+');
     try {
@@ -112,7 +119,7 @@ export class OperationalJournal {
         if (!isMissing(error)) throw error;
       }
     }
-    const lines = active.toString('utf8').split('\n');
+    const lines = active.toString('utf8').split('\\n');
     const completeLines = lines.slice(0, lines.length - 1).filter(Boolean);
     const first = completeLines[0];
     const last = completeLines[completeLines.length - 1];

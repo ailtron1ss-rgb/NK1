@@ -59,11 +59,14 @@ let restarted;
 let legacy;
 try {
   await cursorProbeJournal.write('info','runtime.checkpoint-envelope.restored',{generation:1});
-  const cursorProbe=await cursorProbeJournal.cursor();
+  const cursorPromise=cursorProbeJournal.cursor();
+  const writeAfterCursor=cursorProbeJournal.write('info','after-cursor',{generation:2});
+  const cursorProbe=await cursorPromise;
+  await writeAfterCursor;
   assert.equal(cursorProbe.version,1,'OperationalJournal must expose a versioned durable cursor');
-  assert.equal(cursorProbe.activeSegmentRecords,1,'cursor must count the committed active-segment record');
-  assert.equal(cursorProbe.activeSegmentBytes,(await readFile(journalCursorFile)).byteLength,
-    'cursor byte offset must match the actual durable active journal segment');
+  assert.equal(cursorProbe.activeSegmentRecords,1,'cursor must count only records committed before its queue position');
+  assert.ok(cursorProbe.activeSegmentBytes<(await readFile(journalCursorFile)).byteLength,
+    'a later append must not move the captured durable cursor');
   assert.equal(cursorProbe.retainedBytes,cursorProbe.activeSegmentBytes);
   assert.match(cursorProbe.activeSegmentId,/^[a-f0-9]{64}$/);
   assert.match(cursorProbe.activeSegmentTailSha256,/^[a-f0-9]{64}$/);
