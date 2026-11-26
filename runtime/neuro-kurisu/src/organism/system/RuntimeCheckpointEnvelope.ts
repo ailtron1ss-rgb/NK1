@@ -250,5 +250,14 @@ export function validateRuntimeCheckpointEnvelope(value:unknown):RuntimeCheckpoi
   if(payloadBytes!==declaredPayloadBytes||compressedBytes!==declaredCompressedBytes)
     return {ok:false,reason:'envelope-size-accounting-invalid'};
   snapshots.journalOffset=currentV2?(journalOffset as OperationalJournalCursor):LEGACY_EMPTY_JOURNAL_OFFSET;
-  return {ok:true,envelope:structuredClone(value) as unknown as AnyRuntimeCheckpointEnvelope,snapshots};
+  let acceptedEnvelope:AnyRuntimeCheckpointEnvelope;
+  try {
+    // Proxies and other exotic objects can pass descriptor/prototype checks but
+    // are not structured-cloneable. Reject them as malformed checkpoint input
+    // instead of letting DataCloneError escape the runtime restore boundary.
+    acceptedEnvelope=structuredClone(value) as unknown as AnyRuntimeCheckpointEnvelope;
+  } catch {
+    return {ok:false,reason:'envelope-clone-failed'};
+  }
+  return {ok:true,envelope:acceptedEnvelope,snapshots};
 }
