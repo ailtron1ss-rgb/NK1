@@ -81,7 +81,8 @@ const ACTUATION_ACTIONS=new Set<ActionKind>(['respond','rest']);
 function isExternalCandidate(r:EmbodiedActionResult|null|undefined, postcondition?:OutcomeVerification):boolean {
   if(!isTrustedEmbodiedActionResult(r) || r.status!=='executed' || r.source!=='android-termux') return false;
   if(r.realityClass==='device-actuation') return true; // receipt only; never independent postcondition proof
-  return r.realityClass==='device-observation' && isTrustedEmbodiedOutcomeVerification(postcondition,r);
+  return (r.realityClass==='device-observation'||r.realityClass==='camera-artifact') &&
+    isTrustedEmbodiedOutcomeVerification(postcondition,r);
 }
 
 function rewardFromExternal(r:EmbodiedActionResult, verified01:number, independent01:number, consequence01:number):number {
@@ -198,8 +199,8 @@ export class RealityGroundingController {
       ? 'untrusted-or-action-mismatched-embodied-result;simulation-remains-primary'
       : trustedAction && trustedAction.realityClass==='device-telemetry'
         ? 'device-telemetry-is-not-world-observation;simulation-remains-primary'
-        : trustedAction && trustedAction.realityClass==='camera-artifact'
-          ? 'camera-artifact-requires-semantic-world-observation-receipt;simulation-remains-primary'
+        : trustedAction && trustedAction.realityClass==='camera-artifact' && !independentPostcondition
+          ? 'camera-artifact-lacks-fresh-decision-bound-semantic-world-observation-proof;simulation-remains-primary'
           : trustedAction && trustedAction.source==='android-termux' && trustedAction.realityClass==='device-observation' && !independentPostcondition
             ? 'device-observation-lacks-outcome-verification-service-proof;simulation-remains-primary'
             : trustedAction && trustedAction.realityClass==='device-actuation'
