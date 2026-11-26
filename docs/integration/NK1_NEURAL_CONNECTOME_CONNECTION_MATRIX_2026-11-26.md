@@ -195,3 +195,45 @@ The remaining public legacy adapter helpers in MemorySubstrateCoordinator deserv
 ### Evidence boundary
 
 All successful CI above ran against the isolated PR merge ref. It proves the checked tests/build contracts on that ref, not canonical integration, semantic `tsc`, Android/Termux soak, measured runtime latency, or release readiness.
+
+
+## 10. Later exact-head integrations — 26 Nov 2026
+
+### C16 hardening: diagnostics and exception metadata
+
+PR [#1197](https://github.com/ailtron1ss-rgb/NK1/pull/1197), branch `aspect/cognitive-port-readonly-observability-20261126`:
+- The diagnostics port now uses `multiProjectScheduleSnapshot()`, not the active mutating scheduler.
+- Every one of 34 snapshot ports is probed with bounded, cached, payload-free metadata across seven domains.
+- Exception messages and caller-controlled exception class names are not exposed.
+- Exact-head run [45803686848](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45803686848) passed 29 steps spanning diagnostics, memory owner/lifecycle/restore, 11-stage CEF, owner receipts and restore integrity.
+- All 32 Actions workflow runs associated with head `1bcb011...` ended success. The startup smoke initially had a development-supervisor timeout just after Vite was ready; rerun attempt 2 passed.
+- This PR remains Draft and not merged.
+
+### World context restore
+
+PR [#1199](https://github.com/ailtron1ss-rgb/NK1/pull/1199):
+- `lastWorldContext` is rehydrated from the persisted canonical `UnifiedLatentWorldState.currentObservation()`, guarded by `isWorldContext()`.
+- P27's owner is restored before the derived cached latent is read.
+- RED [45803058277](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45803058277), GREEN [45803373594](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45803373594).
+- All 13 workflows on PR head `06a2014...` passed, including Unified Organism Runtime 39/39, NeuroCore 55/55, World Perception, Memory Integrity, prototype startup and integrated baseline.
+- This PR remains Draft and not merged.
+
+### Memory lifecycle replay result identity
+
+PR [#1201](https://github.com/ailtron1ss-rgb/NK1/pull/1201):
+- Replay of a persisted encode receipt now resolves the exact original memory item via `MemoryOS2.snapshotItem()`, instead of following the chain to a later revision tip.
+- RED [45803492755](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45803492755), GREEN [45803609717](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45803609717). The focused workflow also ran existing WorkPass31 lifecycle receipt coverage.
+- All 17 workflows on PR head `98fef39...` passed, including Memory Integrity 18/18, Unified Organism Runtime 39/39, Module Dependency and integrated software baseline.
+- This PR remains Draft and not merged.
+
+### Exact source inventory
+
+For canonical source SHA `7e601680...`, the recursive tree returned 11,596 entries / 10,676 files / 3,857 source files, including 747 organism runtime source files. This is a file inventory only and must not be treated as feature completeness.
+
+### Current gaps
+
+- MemorySubstrateCoordinator contains legacy direct-write adapter helpers; sampled production call sites were read-only/projection paths, and the canonical production writers route through MemoryFabric. A whole-repo writer call-site census is still open.
+- Exact semantic TypeScript `tsc` is not available in the focused workflow; only Node strip-syntax validation passed.
+- No physical Android/Termux restore or power-loss soak; no microphone/TTS playback, lip sync, UI/browser end-to-end acceptance or phone performance measurement.
+- No RU/EN sealed holdout, >=5 paired seeds, scale benchmark at the required 10k/100k tiers, archive/license/SBOM parity check or new Release.
+- All implementation is isolated on Draft PR branches. The canonical branch and immutable archive have not changed.
