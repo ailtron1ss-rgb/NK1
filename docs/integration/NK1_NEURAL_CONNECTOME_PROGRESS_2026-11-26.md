@@ -5,7 +5,7 @@
 **Work branch:** `aspect/neural-connectome-integration-20261126`  
 **Canonical source baseline:** `workpass70-source@7e601680c765d6dc94e51e4c8f5e729b48a6f56e`  
 **Master Plan X reference snapshot:** `9008a8982a5173304456bee2c604bd0bc8665964`  
-**Progress:** 16/100 — canonical baseline, full census snapshot and first integration topology mapped  
+**Progress:** 20/100 — seven owner runtimes and dependency contracts inspected  
 **Status:** analysis/inventory only; no source runtime code integrated by this ledger commit.
 
 ## Safety and source-of-truth rules
@@ -89,7 +89,7 @@ The runtime cycle remains `Perceive → Appraise → Plan → Act → Reflect �
 - [ ] Selectively port and verify implementation changes on isolated aspect branches.
 - [ ] Complete integration, device/browser acceptance and release evidence.
 
-**Progress is 16/100.** This measures completion of the requested unified integration work, not the percentage of NK1 product readiness.
+**Progress is 20/100.** This measures completion of the requested unified integration work, not the percentage of NK1 product readiness.
 
 
 ## Census and architecture audit refinement — 26 Nov 2026
@@ -110,3 +110,44 @@ The runtime cycle remains `Perceive → Appraise → Plan → Act → Reflect �
 - [ ] Re-enumerate live branch refs and open PRs directly from GitHub REST, all pages, to refresh the snapshot.
 - [ ] Recount source tree entries and organism files at exact current SHA.
 - [ ] Re-run architecture, ownership, dependency and import-cycle audits at exact current SHA.
+
+
+## Canonical owner inspection — source files fetched from `workpass70-source`
+
+The following seven owner runtime files were read from the canonical source branch. These are actual source files, not just roadmap labels:
+
+| Domain | Canonical owner | Declared dependencies | Main responsibility visible in source |
+|---|---|---|---|
+| Embodiment | `core/EmbodimentSubsystemRuntime.ts` | none | Sensorium, multimodal perception, PerceptionEngine, camera evidence, active perception |
+| World | `core/WorldSubsystemRuntime.ts` | embodiment | Grounded world state, world models, prediction, active inference and causal world bridges |
+| Memory | `core/MemorySubsystemRuntime.ts` | world | MemoryOS2, MemoryFabric, episodic/autobiographical/semantic/working memory, lifecycle and consolidation |
+| Self | `core/SelfSubsystemRuntime.ts` | memory, world | Identity continuity, SelfAuthorship, personhood, UserModel evidence, metacognition and self-state |
+| Governance | `core/GovernanceSubsystemRuntime.ts` | self | CapabilityRegistry, IntegritySentinel, ReplayEngine, resilience, constitutional arbiter and lifecycle |
+| Agency | `core/AgencySubsystemRuntime.ts` | self, world, governance | Goals, project execution, budget, quorum, scheduling and initiative lifecycle |
+| Evidence / Research | `core/EvidenceResearchSubsystemRuntime.ts` | world, memory, governance | Prediction/evidence ledgers, evidence firewall, research sessions, skill acquisition and controlled experiments |
+
+### Structural findings
+
+- `OrganismSystemFabric` is the composition root for these seven physical owners. Its source exposes `names()`, `get()`, `contracts()`, `capabilityMatrix()`, `dependencyOrder()`, `dependencyCycles()`, `executionOrder()`, `systemGraph()`, `snapshot()` and `restoreFromPersisted()`.
+- The declared dependency order is embodiment → world → memory → self → governance → agency → research. The contract source records the dependency edges and execution ranks; the runtime graph should still be tested on the exact current SHA.
+- `CognitiveSubsystemPorts` and `CognitiveSubsystemRegistry` are a separate dependency-inverted read-only facade over the seven owners. They are not a second set of physical subsystem owners.
+- PR #1176 adds the 34-port read-only probe details/cache/flight evidence on top of that facade. It should be evaluated as observability hardening, not treated as the missing seven-domain architecture itself.
+- `MemorySubsystemRuntime` physically owns many memory mechanisms, but its source constructs `MemoryOS2` and a `MemoryFabric` that receives that canonical store. Knowledge importers and evidence bridges are explicitly wired through `MemoryFabric`. A full write-call audit is still required to prove there are no bypass writers or shadow stores.
+- `CognitiveEventFabric` describes itself as a thin causal ledger and explicitly avoids becoming a second source of truth for memory, world or goals. Its schema includes the strict eleven-stage operational cycle and parent/receipt lineage.
+- `OrganismSystemFabric.restoreFromPersisted()` restores the physical owners and adapters in an explicit sequence. This is a key integration point for checkpoint/recovery reconciliation.
+
+### Current evidence classification
+
+- **IMPLEMENTED (structural):** seven owner runtime classes, their dependency declarations, composition fabric, system contracts and snapshots/restores are present in the current source tree.
+- **CONNECTED (partial):** owner-level assembly and dependency metadata exist; every end-to-end runtime call edge has not yet been traced.
+- **TESTED (partial):** focused branch tests exist for subsystem ports, workspace order, world→appraisal/attention and event lineage; their PRs are still draft/diverged, so they do not prove all tests pass on current source.
+- **MEASURED:** no new target-device or end-to-end latency measurement performed in this workpass.
+- **RELEASED:** no new work from this branch is in main or the published ZIP.
+
+### Next source-level work
+
+1. Trace the actual `OrganismRuntime → OrganismCore → OrganismSystemFabric` construction and restore path.
+2. Locate the canonical cognitive cycle boundary and enumerate all stage call sites in execution order.
+3. Trace each edge from observation admission through world/appraisal/attention/workspace/P61-P64/goal/plan/action/outcome/learning.
+4. Audit all writes into MemoryOS2 and all derived projections for single-writer compliance.
+5. Connect the event lineage to durable checkpoint/recovery without promoting the bounded CEF ring buffer into a second autobiography.
