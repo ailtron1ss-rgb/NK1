@@ -229,7 +229,7 @@ function reject(reason: string, candidateId?: string): SourceCandidateWorkspaceR
 
 async function ensureDirectoryWithoutSymlink(path: string): Promise<void> {
   try {
-    await mkdir(path);
+    await mkdir(path, { mode: 0o700 });
   } catch (error) {
     if ((error as NodeJS.ErrnoException)?.code !== 'EEXIST') throw error;
   }
