@@ -28,6 +28,15 @@ on:
       - 'runtime/neuro-kurisu/tests/p2855-r5-memory-lifecycle-ablation.mjs'
       - 'runtime/neuro-kurisu/tests/memoryos2-metadata-retrieval.mjs'
       - 'runtime/neuro-kurisu/tests/memory-semantic-vector-integrity.mjs'
+      - 'runtime/neuro-kurisu/tests/workpass71-unified-cycle-completeness.mjs'
+      - 'runtime/neuro-kurisu/tests/workpass321-expanded-cognitive-phase-spine.mjs'
+      - 'runtime/neuro-kurisu/tests/workpass325-core-eleven-phase-causal-loop.mjs'
+      - 'runtime/neuro-kurisu/tests/big-pass-161-cognitive-event-fabric.mjs'
+      - 'runtime/neuro-kurisu/tests/cognitive-stage-evidence-workpass83.mjs'
+      - 'runtime/neuro-kurisu/tests/workpass641-cognitive-event-fabric-restore-integrity.mjs'
+      - 'runtime/neuro-kurisu/tests/cognitive-cycle-boundary-runtime-wiring.mjs'
+      - 'runtime/neuro-kurisu/tests/cognitive-cycle-boundary.mjs'
+      - 'runtime/neuro-kurisu/tests/cognitive-stage-attention-pair-workpass83.mjs'
       - 'runtime/neuro-kurisu/tests/cognitive-subsystem-port-probes-20261124.mjs'
       - '.github/workflows/nk1-cognitive-port-readonly-regression.yml'
 permissions:
@@ -83,3 +92,21 @@ jobs:
         run: npm run test:memoryos2-metadata-retrieval
       - name: Memory semantic vector integrity
         run: npm run test:memory-semantic-vector-integrity
+      - name: Full eleven-stage cycle completeness and v1 restore boundary
+        run: node --experimental-strip-types tests/workpass71-unified-cycle-completeness.mjs
+      - name: Eleven-stage CEF lineage and persistence roundtrip
+        run: node --experimental-strip-types tests/workpass321-expanded-cognitive-phase-spine.mjs
+      - name: Core eleven-phase causal call ordering
+        run: node --experimental-strip-types tests/workpass325-core-eleven-phase-causal-loop.mjs
+      - name: Real runtime CEF persistence and restart
+        run: node --experimental-strip-types tests/big-pass-161-cognitive-event-fabric.mjs
+      - name: Real owner receipts projected into the current cognitive cycle
+        run: node --experimental-strip-types tests/cognitive-stage-evidence-workpass83.mjs
+      - name: CEF hostile restore and receipt replay integrity
+        run: node --experimental-strip-types tests/workpass641-cognitive-event-fabric-restore-integrity.mjs
+      - name: Runtime cognitive boundary wiring
+        run: node tests/cognitive-cycle-boundary-runtime-wiring.mjs
+      - name: Cognitive boundary malformed-input regression
+        run: node --experimental-strip-types tests/cognitive-cycle-boundary.mjs
+      - name: Same-cycle attention resource pairing
+        run: node --experimental-strip-types tests/cognitive-stage-attention-pair-workpass83.mjs
