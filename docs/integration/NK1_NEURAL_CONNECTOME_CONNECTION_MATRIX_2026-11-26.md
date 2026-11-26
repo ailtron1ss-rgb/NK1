@@ -246,6 +246,7 @@ For canonical source SHA `7e601680...`, the recursive tree returned 11,596 entri
 | [#1197](https://github.com/ailtron1ss-rgb/NK1/pull/1197) | Read-only diagnostics, memory and 11-stage CEF regressions | `1bcb011...` | 14 / 0 | 32/32 workflow runs success; focused suite 29/29 steps | Draft / unmerged |
 | [#1199](https://github.com/ailtron1ss-rgb/NK1/pull/1199) | World context / P27 latent restore continuity | `06a2014...` | 3 / 0 | 13/13 workflow runs success | Draft / unmerged |
 | [#1201](https://github.com/ailtron1ss-rgb/NK1/pull/1201) | Memory lifecycle replay result identity | `98fef39...` | 3 / 0 | 17/17 workflow runs success | Draft / unmerged |
+| [#1202](https://github.com/ailtron1ss-rgb/NK1/pull/1202) | Truthful runtime shutdown durability | `9678599...` | 4 / 0 | 30/30 workflow runs success; focused 4/4, Unified Runtime 39/39 | Draft / unmerged |
 
 All three PRs use the same base `workpass70-source@7e601680...`; none is behind that base. Successful workflows are exact isolated PR-head evidence, not canonical integration.
 
