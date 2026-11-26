@@ -366,23 +366,25 @@ export async function synthesizeSpeechInput(timeout = 12000): Promise<string | n
   } catch { return null; }
 }
 
-export async function captureCameraPhoto(cameraId = 0, timeout = 15_000, retain = false): Promise<{ ok:boolean; path?:string; size?:number; hash?:string; error?:string }> {
+export async function captureCameraPhoto(cameraId = 0, timeout = 15_000, retain = false): Promise<{ ok:boolean; path?:string; size?:number; hash?:string; error?:string; captureStartedAt?:number; capturedAt?:number }> {
   const fs = await import('node:fs/promises');
   const crypto = await import('node:crypto');
   const path = await import('node:path');
   const osMod = await import('node:os');
   const dir = await fs.mkdtemp(path.join(osMod.tmpdir(), 'neuro-kurisu-camera-'));
   const output = path.join(dir, 'capture.jpg');
+  const captureStartedAt = Date.now();
   try {
     await execFileAsync('termux-camera-photo', ['-c', String(Math.max(0, Math.floor(cameraId))), output], { timeout, windowsHide:true, maxBuffer:64 * 1024 });
     const bytes = await fs.readFile(output);
     const hash = crypto.createHash('sha256').update(bytes).digest('hex');
-    const result = retain ? { ok:true, path:output, size:bytes.length, hash } : { ok:true, size:bytes.length, hash };
+    const capturedAt = Date.now();
+    const result = retain ? { ok:true, path:output, size:bytes.length, hash, captureStartedAt, capturedAt } : { ok:true, size:bytes.length, hash, captureStartedAt, capturedAt };
     if (!retain) await fs.rm(dir, { recursive:true, force:true }).catch(() => {});
     return result;
   } catch (error:any) {
     await fs.rm(dir, { recursive:true, force:true }).catch(() => {});
-    return { ok:false, error:String(error?.message || error) };
+    return { ok:false, error:String(error?.message || error), captureStartedAt };
   }
 }
 
@@ -394,12 +396,18 @@ export class CameraCaptureOutcomeUncertainError extends Error {
 export interface CameraCaptureReceiptResult {
   ok: true; verified: true; receiptId: string; providerReceiptId: string;
   size: number; hash: string; cameraId: number; retained: boolean; capturedAt: number; path?: string;
+  sourceId: 'android-termux.camera'; executionId: string; decisionId: string; captureNonce: string; captureStartedAt: number;
+}
+const trustedCameraCaptureReceipts = new WeakSet<object>();
+/** Only a freshly executed Termux camera capture in this process can mint this capability. */
+export function isTrustedCameraCaptureReceipt(value: unknown): value is CameraCaptureReceiptResult {
+  return Boolean(value && typeof value === 'object' && trustedCameraCaptureReceipts.has(value as object) && Object.isFrozen(value));
 }
 export type CameraCaptureReceiptLookup =
   | { status: 'found'; authoritative: true; receiptId: string; result: CameraCaptureReceiptResult; checkedAt: number }
   | { status: 'unknown'; reason: string; checkedAt: number };
 interface CameraCaptureReceiptFile {
-  version: 1; type: 'termux-camera-capture'; tokenHash: string; operationHash: string;
+  version: 2; type: 'termux-camera-capture-v2'; tokenHash: string; operationHash: string;
   receiptId: string; recordedAt: number; result: CameraCaptureReceiptResult;
 }
 
@@ -407,8 +415,11 @@ function cameraReceiptDirectory(receiptDir?: string): string {
   const supplied = String(receiptDir ?? process.env.NEURO_ACTION_RECEIPT_DIR ?? '').trim();
   return supplied || path.join(os.homedir(), '.neuro-kurisu', 'action-receipts');
 }
-function cameraOperationHash(cameraId: number, retain: boolean): string {
-  return createHash('sha256').update(JSON.stringify({ cameraId: Math.max(0, Math.floor(cameraId)), retain: Boolean(retain), kind: 'termux-camera-capture-v1' })).digest('hex');
+function cameraOperationHash(cameraId: number, retain: boolean, executionId: string, decisionId: string): string {
+  return createHash('sha256').update(JSON.stringify({
+    cameraId: Math.max(0, Math.floor(cameraId)), retain: Boolean(retain),
+    executionId, decisionId, kind: 'termux-camera-capture-v2',
+  })).digest('hex');
 }
 function normalizeCaptureToken(value: string): string {
   const token = String(value ?? '').trim().toLowerCase();
@@ -423,10 +434,20 @@ function cameraReceiptPath(token: string, receiptDir?: string): string {
 export async function persistCameraCaptureReceipt(input: {
   idempotencyToken: string; cameraId: number; retain: boolean;
   result: { ok: true; size: number; hash: string; path?: string };
-  receiptDir?: string; capturedAt?: number;
+  executionId: string; decisionId: string; captureNonce?: string;
+  receiptDir?: string; captureStartedAt?: number; capturedAt?: number;
 }): Promise<CameraCaptureReceiptResult> {
   const token = normalizeCaptureToken(input.idempotencyToken);
   const cameraId = Math.max(0, Math.floor(Number(input.cameraId) || 0));
+  const executionId = String(input.executionId ?? '').trim();
+  const decisionId = String(input.decisionId ?? '').trim();
+  if (!/^exec-[a-z0-9-]{8,80}$/i.test(executionId)) throw new CameraCaptureOutcomeUncertainError('camera-capture-execution-binding-required');
+  if (!decisionId || decisionId.length > 180 || /[\u0000-\u001f\u007f-\u009f]/.test(decisionId)) throw new CameraCaptureOutcomeUncertainError('camera-capture-decision-binding-required');
+  const captureNonce = String(input.captureNonce ?? randomUUID()).trim();
+  if (!/^[a-f0-9-]{20,64}$/i.test(captureNonce)) throw new CameraCaptureOutcomeUncertainError('camera-capture-nonce-invalid');
+  const capturedAt = Math.max(0, Number(input.capturedAt ?? Date.now()) || Date.now());
+  const captureStartedAt = Math.max(0, Number(input.captureStartedAt ?? capturedAt) || capturedAt);
+  if (capturedAt < captureStartedAt || capturedAt - captureStartedAt > 30_000) throw new CameraCaptureOutcomeUncertainError('camera-capture-time-window-invalid');
   if (!input.result || input.result.ok !== true || !Number.isFinite(input.result.size) || input.result.size <= 0 || !/^[a-f0-9]{64}$/i.test(String(input.result.hash ?? ''))) {
     throw new CameraCaptureOutcomeUncertainError('camera-capture-result-is-not-a-valid-receipt');
   }
@@ -435,12 +456,13 @@ export async function persistCameraCaptureReceipt(input: {
   const result: CameraCaptureReceiptResult = {
     ok: true, verified: true, receiptId, providerReceiptId: receiptId,
     size: Math.floor(input.result.size), hash: String(input.result.hash).toLowerCase(),
-    cameraId, retained: Boolean(input.retain), capturedAt: Math.max(0, Number(input.capturedAt ?? Date.now()) || Date.now()),
+    cameraId, retained: Boolean(input.retain), capturedAt,
+    sourceId: 'android-termux.camera', executionId, decisionId, captureNonce, captureStartedAt,
     ...(input.retain && input.result.path ? { path: input.result.path } : {}),
   };
   const entry: CameraCaptureReceiptFile = {
-    version: 1, type: 'termux-camera-capture', tokenHash: token,
-    operationHash: cameraOperationHash(cameraId, input.retain), receiptId,
+    version: 2, type: 'termux-camera-capture-v2', tokenHash: token,
+    operationHash: cameraOperationHash(cameraId, input.retain, executionId, decisionId), receiptId,
     recordedAt: Date.now(), result,
   };
   const destination = cameraReceiptPath(token, input.receiptDir);
@@ -456,7 +478,9 @@ export async function persistCameraCaptureReceipt(input: {
       if (String((error as any)?.code ?? '') !== 'EEXIST') throw error;
       const existing = await readFile(destination, 'utf8');
       const prior = JSON.parse(existing) as CameraCaptureReceiptFile;
-      if (prior?.version !== 1 || prior.tokenHash !== token || prior.operationHash !== entry.operationHash || prior.result?.hash !== result.hash || prior.result?.size !== result.size) {
+      if (prior?.version !== 2 || prior.type !== 'termux-camera-capture-v2' || prior.tokenHash !== token ||
+          prior.operationHash !== entry.operationHash || prior.result?.hash !== result.hash ||
+          prior.result?.size !== result.size || prior.result?.captureNonce !== result.captureNonce) {
         throw new CameraCaptureOutcomeUncertainError('camera-capture-receipt-key-conflict');
       }
       return structuredClone(prior.result);
@@ -477,6 +501,7 @@ export async function persistCameraCaptureReceipt(input: {
  */
 export async function lookupCameraCaptureReceipt(
   idempotencyToken: string, cameraId: number, retain: boolean, receiptDir?: string,
+  expectedBinding?: { executionId?: string; decisionId?: string },
 ): Promise<CameraCaptureReceiptLookup> {
   const checkedAt = Date.now();
   let token: string;
@@ -491,8 +516,23 @@ export async function lookupCameraCaptureReceipt(
   let entry: CameraCaptureReceiptFile;
   try { entry = JSON.parse(text) as CameraCaptureReceiptFile; }
   catch { return { status: 'unknown', reason: 'camera-capture-receipt-invalid-json', checkedAt }; }
-  if (entry?.version !== 1 || entry.type !== 'termux-camera-capture' || entry.tokenHash !== token || entry.operationHash !== cameraOperationHash(cameraId, retain) || entry.receiptId !== `termux-camera:${token.slice(0, 32)}` || entry.result?.ok !== true || entry.result.verified !== true || !/^[a-f0-9]{64}$/.test(String(entry.result.hash ?? '')) || !Number.isFinite(entry.result.size) || entry.result.size <= 0) {
+  const receiptExecutionId = String(entry?.result?.executionId ?? '');
+  const receiptDecisionId = String(entry?.result?.decisionId ?? '');
+  if (entry?.version !== 2 || entry.type !== 'termux-camera-capture-v2' || entry.tokenHash !== token ||
+      entry.operationHash !== cameraOperationHash(cameraId, retain, receiptExecutionId, receiptDecisionId) ||
+      entry.receiptId !== `termux-camera:${token.slice(0, 32)}` || entry.result?.ok !== true ||
+      entry.result.verified !== true || entry.result.sourceId !== 'android-termux.camera' ||
+      entry.result.cameraId !== Math.max(0, Math.floor(Number(cameraId) || 0)) || entry.result.retained !== Boolean(retain) ||
+      !/^exec-[a-z0-9-]{8,80}$/i.test(receiptExecutionId) || !receiptDecisionId || receiptDecisionId.length > 180 ||
+      !/^[a-f0-9-]{20,64}$/i.test(String(entry.result.captureNonce ?? '')) ||
+      !Number.isFinite(entry.result.captureStartedAt) || !Number.isFinite(entry.result.capturedAt) ||
+      entry.result.capturedAt < entry.result.captureStartedAt || entry.result.capturedAt - entry.result.captureStartedAt > 30_000 ||
+      !/^[a-f0-9]{64}$/.test(String(entry.result.hash ?? '')) || !Number.isFinite(entry.result.size) || entry.result.size <= 0) {
     return { status: 'unknown', reason: 'camera-capture-receipt-schema-or-request-mismatch', checkedAt };
+  }
+  if ((expectedBinding?.executionId && expectedBinding.executionId !== receiptExecutionId) ||
+      (expectedBinding?.decisionId && expectedBinding.decisionId !== receiptDecisionId)) {
+    return { status: 'unknown', reason: 'camera-capture-receipt-execution-binding-mismatch', checkedAt };
   }
   if (retain) {
     const savedPath = String(entry.result.path ?? '');
@@ -512,17 +552,39 @@ export async function lookupCameraCaptureReceipt(
 /** Execute camera capture once for a keyed operation and persist the provider-style receipt. */
 export async function captureCameraPhotoWithReceipt(
   cameraId = 0, timeout = 15_000, retain = false, idempotencyToken: string, receiptDir?: string,
+  actionContext?: { executionId?: string; decisionId?: string },
 ): Promise<CameraCaptureReceiptResult> {
   const token = normalizeCaptureToken(idempotencyToken);
-  const prior = await lookupCameraCaptureReceipt(token, cameraId, retain, receiptDir);
+  const executionId = String(actionContext?.executionId ?? '').trim();
+  const decisionId = String(actionContext?.decisionId ?? '').trim();
+  if (!/^exec-[a-z0-9-]{8,80}$/i.test(executionId) || !decisionId || decisionId.length > 180) {
+    throw new CameraCaptureOutcomeUncertainError('camera-capture-action-context-required');
+  }
+  const prior = await lookupCameraCaptureReceipt(token, cameraId, retain, receiptDir, { executionId, decisionId });
+  // A restored receipt is useful for reconciliation but cannot recreate the
+  // process-local host capability needed to admit a fresh observed perception.
   if (prior.status === 'found') return prior.result;
   if (!prior.reason?.includes('not-found-is-ambiguous')) throw new CameraCaptureOutcomeUncertainError(prior.reason);
-  let capture: { ok: boolean; path?: string; size?: number; hash?: string; error?: string };
+  let capture: { ok: boolean; path?: string; size?: number; hash?: string; error?: string; captureStartedAt?: number; capturedAt?: number };
   try { capture = await captureCameraPhoto(cameraId, timeout, retain); }
   catch (error) { throw new CameraCaptureOutcomeUncertainError(String((error as any)?.message ?? 'camera-capture-command-outcome-unknown')); }
   if (!capture.ok) throw new CameraCaptureOutcomeUncertainError(`camera-capture-command-outcome-unknown:${String(capture.error ?? 'capture-failed').replace(/[\\r\\n\\t]+/g, ' ').slice(0, 100)}`);
+  const captureNonce = randomUUID();
   try {
-    return await persistCameraCaptureReceipt({ idempotencyToken: token, cameraId, retain, result: { ok: true, size: Number(capture.size), hash: String(capture.hash ?? ''), ...(capture.path ? { path: capture.path } : {}) }, receiptDir });
+    const receipt = await persistCameraCaptureReceipt({
+      idempotencyToken: token, cameraId, retain, executionId, decisionId, captureNonce,
+      captureStartedAt: Number(capture.captureStartedAt ?? Date.now()),
+      capturedAt: Number(capture.capturedAt ?? Date.now()),
+      result: { ok: true, size: Number(capture.size), hash: String(capture.hash ?? ''), ...(capture.path ? { path: capture.path } : {}) },
+      receiptDir,
+    });
+    // Concurrent duplicate keys return a previously persisted clone and are
+    // deliberately not re-attested as a new physical observation.
+    if (receipt.captureNonce === captureNonce && receipt.executionId === executionId && receipt.decisionId === decisionId) {
+      Object.freeze(receipt);
+      trustedCameraCaptureReceipts.add(receipt);
+    }
+    return receipt;
   } catch (error) {
     if (error instanceof CameraCaptureOutcomeUncertainError) throw error;
     throw new CameraCaptureOutcomeUncertainError('camera-capture-receipt-persistence-failed');
