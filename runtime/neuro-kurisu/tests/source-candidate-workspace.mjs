@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, readFile, readdir, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, readdir, rm, stat } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import {
@@ -49,11 +49,23 @@ try {
   assert.equal(await readFile(path.join(result.candidateRoot, 'runtime/neuro-kurisu/src/example.mjs'), 'utf8'), updated);
   assert.equal(await readFile(path.join(result.candidateRoot, 'runtime/neuro-kurisu/src/candidate-only.mjs'), 'utf8'), newText);
   assert.equal(await readFile(path.join(result.candidateRoot, 'README.md'), 'utf8'), original[1].content);
+  if (process.platform !== 'win32') {
+    const candidateRootMode = (await stat(result.candidateRoot)).mode & 0o777;
+    const nestedDirectoryMode = (await stat(path.join(result.candidateRoot, 'runtime'))).mode & 0o777;
+    const candidateFileMode = (await stat(path.join(result.candidateRoot, 'runtime/neuro-kurisu/src/example.mjs'))).mode & 0o777;
+    assert.equal(candidateRootMode, 0o700, 'candidate workspace root must be private to the owner');
+    assert.equal(nestedDirectoryMode, 0o700, 'nested candidate directories must remain private');
+    assert.equal(candidateFileMode, 0o600, 'candidate source files must not be group/world readable');
+  }
   const manifest = JSON.parse(await readFile(result.manifestPath, 'utf8'));
   assert.equal(manifest.status, 'materialized');
   assert.equal(manifest.executionStatus, 'not-executed');
   assert.equal(manifest.baseSha, baseSha);
   assert.equal(manifest.admissionReceiptId, 'host-receipt-' + result.editSetSha256.slice(0, 24));
+  if (process.platform !== 'win32') {
+    assert.equal((await stat(result.manifestPath)).mode & 0o777, 0o600,
+      'candidate receipt must remain private to the workspace owner');
+  }
   assert.equal(manifest.changedFiles.length, 2);
   assert.ok(/^[a-f0-9]{64}$/.test(manifest.beforeTreeSha256));
   assert.ok(/^[a-f0-9]{64}$/.test(manifest.candidateTreeSha256));

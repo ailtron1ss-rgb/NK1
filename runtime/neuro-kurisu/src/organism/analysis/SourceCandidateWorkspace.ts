@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { lstat, mkdir, realpath, rename, rm, writeFile } from 'node:fs/promises';
+import { chmod, lstat, mkdir, realpath, rename, rm, writeFile } from 'node:fs/promises';
 import { isAbsolute, relative, resolve, sep } from 'node:path';
 import { types as nodeUtilTypes } from 'node:util';
 
@@ -235,6 +235,8 @@ async function ensureDirectoryWithoutSymlink(path: string): Promise<void> {
   }
   const info = await lstat(path);
   if (!info.isDirectory() || info.isSymbolicLink()) throw new Error('candidate-workspace-path-not-directory');
+  // Candidate content is private staging data; do not inherit broad umask-derived access.
+  await chmod(path, 0o700);
 }
 
 async function writeCandidateFile(root: string, relativePath: string, content: string): Promise<void> {
@@ -253,7 +255,7 @@ async function writeCandidateFile(root: string, relativePath: string, content: s
   if (rel === '..' || rel.startsWith('..' + sep) || isAbsolute(rel)) {
     throw new Error('candidate-path-escaped-workspace');
   }
-  await writeFile(target, content, { encoding: 'utf8', flag: 'wx' });
+  await writeFile(target, content, { encoding: 'utf8', flag: 'wx', mode: 0o600 });
 }
 
 export class SourceCandidateWorkspaceV1 {
@@ -382,10 +384,11 @@ export class SourceCandidateWorkspaceV1 {
         editSetSha256,
       })).slice(0, 32);
 
-      await mkdir(this.configuredWorkspaceRoot, { recursive: true });
+      await mkdir(this.configuredWorkspaceRoot, { recursive: true, mode: 0o700 });
       const rootInfo = await lstat(this.configuredWorkspaceRoot);
       if (!rootInfo.isDirectory() || rootInfo.isSymbolicLink()) return reject('candidate-workspace-root-not-directory', candidateId);
       const workspaceRoot = await realpath(this.configuredWorkspaceRoot);
+      await chmod(workspaceRoot, 0o700);
       candidateRoot = resolve(workspaceRoot, candidateId);
       const rootRelative = relative(workspaceRoot, candidateRoot);
       if (rootRelative === '..' || rootRelative.startsWith('..' + sep) || isAbsolute(rootRelative)) {
@@ -432,7 +435,8 @@ export class SourceCandidateWorkspaceV1 {
         // mkdir is the exclusive claim. A concurrent request cannot replace an
         // existing candidate directory; the final manifest is written last and
         // is the only signal that a candidate is fully materialized.
-        await mkdir(candidateRoot);
+        await mkdir(candidateRoot, { mode: 0o700 });
+        await chmod(candidateRoot, 0o700);
         ownsCandidateDirectory = true;
       } catch (error) {
         if ((error as NodeJS.ErrnoException)?.code === 'EEXIST') {
@@ -467,7 +471,7 @@ export class SourceCandidateWorkspaceV1 {
         createdAt: Date.now(),
       };
       const temporaryManifest = resolve(candidateRoot, '.candidate-receipt-' + candidateId + '.tmp');
-      await writeFile(temporaryManifest, JSON.stringify(manifest, null, 2) + '\n', { encoding: 'utf8', flag: 'wx' });
+      await writeFile(temporaryManifest, JSON.stringify(manifest, null, 2) + '\n', { encoding: 'utf8', flag: 'wx', mode: 0o600 });
       await rename(temporaryManifest, resolve(candidateRoot, RECEIPT_NAME));
       ownsCandidateDirectory = false;
       return {
