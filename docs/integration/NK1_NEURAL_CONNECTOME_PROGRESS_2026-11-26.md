@@ -291,3 +291,16 @@ The following seven owner runtime files were read from the canonical source bran
 - PR [#1202](https://github.com/ailtron1ss-rgb/NK1/pull/1202) is Draft, unmerged, four commits ahead / zero behind its canonical base, with three changed files. It is not a cross-store atomic transaction and does not prove device power-loss recovery.
 
 The Master Plan X estimate remains **36/100 ±8 pp**. This fix improves the truthfulness of durability evidence; it does not materially close the G2 atomic-generation, mobile device, independent evaluation or release gates. No canonical source, `main`, archive, tags or Releases were changed.
+
+
+## Follow-up verification — shutdown failure cleanup — 26 Nov 2026
+
+- PR [#1202](https://github.com/ailtron1ss-rgb/NK1/pull/1202) now points to exact HEAD `575e6c6908aa127cbaf0bb0ceac24e98bc957497`, **9 commits ahead / 0 behind** `workpass70-source@7e601680...`, with four changed files. It remains Draft and unmerged.
+- A second reproducible shutdown defect was found on the same isolated branch: after a canonical Core checkpoint error, `OrganismRuntime.stop()` rejected before reaching `ContinuityLedger.close()`, leaving its file handle open and any buffered continuity frame pending.
+- RED: [45811756331](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45811756331) — new regression failed with the ledger still open after the injected Core error.
+- Fix: wrap the complete shutdown sequence in `try/finally`; call `ContinuityLedger.close()` in `finally`. This preserves the original Core/World exception and lets the ledger make its best-effort flush before closing.
+- GREEN: [45812214633](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45812214633) — **5/5 tests passed**, including pending-frame flush and handle closure after Core failure, plus the four existing full/partial/fail-fast cases.
+- Exact-head verification at `575e6c6908aa127cbaf0bb0ceac24e98bc957497`: **30/30 Actions workflows succeeded**, with no failed/cancelled runs. This includes Unified Organism Runtime [45812214417](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45812214417), NeuroCore regression [45812214396](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45812214396), WorkPass79 [45812214691](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45812214691) and clean startup [45812216164](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45812216164).
+- The earlier 4/4 result at HEAD `9678599...` is a historical checkpoint; the superseding current-head focused result is 5/5 above.
+
+The overall Master Plan X estimate remains **36/100 ±8 pp**. The shutdown/failure-cleanup evidence is improved, but G2 still lacks a shared cross-store generation/commit manifest and power-loss recovery proof. Android/Termux soak, independent sealed evaluation, global memory writer census, semantic TypeScript `tsc`, source/archive parity and new Release remain open. The canonical source, `main`, immutable archive, tags and Releases were not modified.
