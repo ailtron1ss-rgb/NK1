@@ -7,7 +7,7 @@ import { externalGoalForRuntimeInput, normalizeRuntimeExternalPluginSource, shou
 import { normalizeWorldContext } from './WorldContextNormalizer.ts';
 import { FileStateStore, registerFileWorkspaceUndoFirstTools } from '../persistence/FileStateStore.ts';
 import { OrganismCore, type OrganismConfig, type PersistedOrganism } from './OrganismCore.ts';
-import { connectCognitiveModuleRuntimeCheckpoint, type CognitiveModuleRuntimeHost } from './CognitiveModuleCheckpointStore.ts';
+import type { CognitiveModuleRuntimeHost } from './CognitiveModuleCheckpointStore.ts';
 import { WorldEnvironment, type EnvironmentAction, type PersistedWorld } from '../world/WorldEnvironment.ts';
 import { PlanEngine } from '../world/PlanEngine.ts';
 import { OfflineConsolidation, type ConsolidationResult } from '../cognition/OfflineConsolidation.ts';
@@ -379,7 +379,7 @@ export class OrganismRuntime {
   readonly embodiedRecovery = new EmbodiedRecoveryController();
   private readonly config: Required<Pick<RuntimeConfig, 'intervalMs'|'enableLanguage'>> & RuntimeConfig;
   private readonly cognitiveModuleRuntime: CognitiveModuleRuntimeHost | null;
-  private readonly cognitiveModuleCheckpointStore: ReturnType<typeof connectCognitiveModuleRuntimeCheckpoint> | null;
+  private readonly cognitiveModuleCheckpointStore: ReturnType<CognitiveModuleRuntimeHost['connectCanonicalCheckpointStore']> | null;
   private readonly temporalObjectTracker = new TemporalObjectTracker();
   private readonly mem0Adapter: Mem0PlatformAdapter;
   private readonly mem0CognitiveRecallEnabled: boolean;
@@ -500,7 +500,7 @@ export class OrganismRuntime {
     const canonicalStateStore = config.stateStore ?? new FileStateStore<PersistedOrganism>(config.stateFile);
     this.cognitiveModuleRuntime = config.cognitiveModuleRuntime ?? null;
     this.cognitiveModuleCheckpointStore = this.cognitiveModuleRuntime
-      ? connectCognitiveModuleRuntimeCheckpoint(this.cognitiveModuleRuntime, canonicalStateStore)
+      ? this.cognitiveModuleRuntime.connectCanonicalCheckpointStore(canonicalStateStore)
       : null;
     const stateStore = this.cognitiveModuleCheckpointStore ?? canonicalStateStore;
     this.core = new OrganismCore(stateStore, { ...config, cycleResultMode:'operational' });
