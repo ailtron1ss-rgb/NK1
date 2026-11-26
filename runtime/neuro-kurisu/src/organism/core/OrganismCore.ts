@@ -3428,6 +3428,8 @@ export class OrganismCore {
     operationalStatusSnapshot() {
         if (!this.ready)
             throw new Error('OrganismCore.init() must be called first');
+        if (outcome.decisionId && !this.persisted.traces.some(trace => trace.id === outcome.decisionId))
+            throw new Error('decision-feedback-target-not-found');
         const state = this.persisted.state;
         const body = this.persisted.facets.embodiment.body;
         const identity = this.persisted.facets.consciousness.identityContinuity;
@@ -4220,6 +4222,8 @@ export class OrganismCore {
         return { state: structuredClone(state), goals: this.persisted.goals.slice(0, 16).map(g => ({ ...g })), memories: [], workspace, decision };
     }
     private async feedbackSpineOnly(outcome: {
+        decisionId?: string;
+        outcomeId?: string;
         success?: number;
         reward?: number;
         surprise?: number;
@@ -4229,7 +4233,11 @@ export class OrganismCore {
         observation?: OrganismObservation;
     }): Promise<void> {
         const state = this.persisted.state;
-        const trace = this.persisted.traces[0];
+        const trace = outcome.decisionId
+            ? this.persisted.traces.find(candidate => candidate.id === outcome.decisionId)
+            : this.persisted.traces[0];
+        if (outcome.decisionId && !trace)
+            throw new Error('decision-feedback-target-not-found');
         if (!trace?.selected)
             return;
         const success = clamp(outcome.success ?? (outcome.reward == null ? .5 : .5 + outcome.reward * .5));
@@ -8417,6 +8425,13 @@ export class OrganismCore {
             this.memorySubsystem.events.append(makeEvent('action-authorized', state.tick, audit as any));
         }
         if (selectedIntent) {
+            this.cognitiveRuntime.globalWorkspace.registerDecision({
+                decisionId: decision.id,
+                tick: decision.tick,
+                action: selectedIntent.action,
+                at: decision.createdAt,
+            });
+            this.persisted.facets.cognition.globalWorkspace = this.cognitiveRuntime.globalWorkspace.snapshot();
             this.cognitiveRuntime.canonicalTemporalCredit.registerDecision({
                 decisionId: decision.id,
                 tick: decision.tick,
@@ -9054,6 +9069,10 @@ export class OrganismCore {
         complexityProxy01?: number;
     }) { const r = this.worldSubsystem.p57RealityFirstObservatory.observe({ tick: this.persisted.state.tick, at: Date.now(), ...input }); this.persisted.facets.advanced.p57RealityFirstObservatory = this.worldSubsystem.p57RealityFirstObservatory.snapshot(); return r; }
     async feedback(outcome: {
+        /** Exact historical decision to resolve when feedback arrives asynchronously. */
+        decisionId?: string;
+        /** Stable external feedback identity; replays are idempotent in bounded learners. */
+        outcomeId?: string;
         success?: number;
         reward?: number;
         surprise?: number;
@@ -9116,7 +9135,9 @@ export class OrganismCore {
         if (outcome.notes)
             this.cognitiveRuntime.sourceMonitor.add('system', 'feedback-note', 0.7, 'hypothesis');
         this.persisted.facets.cognition.sources = this.cognitiveRuntime.sourceMonitor.snapshot();
-        const trace = this.persisted.traces[0];
+        const trace = outcome.decisionId
+            ? this.persisted.traces.find(candidate => candidate.id === outcome.decisionId)
+            : this.persisted.traces[0];
         const feedbackEmotion = this.cognitiveRuntime.emotionAppraisal.appraise({ tick: state.tick, at: state.at, goalPressure01: state.needs.goalPressure, goalCongruence01: success, controllability01: 1 - state.needs.uncertainty, novelty01: clamp(state.needs.novelty * .6 + surprise * .4), selfRelevance01: state.needs.identityCoherence, socialMeaning01: state.needs.socialNeed, uncertainty01: state.needs.uncertainty, predictionError01: surprise, homeostaticPressure01: clamp((1 - state.needs.energy) * .4 + state.needs.cognitiveLoad * .25 + state.needs.uncertainty * .2 + surprise * .15), energy01: state.needs.energy, success01: gatedSuccess01, external: Boolean(outcome.evidenceSource) });
         const feedbackFeeling = this.cognitiveRuntime.emotionAppraisal.inferFeeling(feedbackEmotion, { energy01: state.needs.energy, cognitiveLoad01: state.needs.cognitiveLoad, uncertainty01: state.needs.uncertainty, selfFocus01: state.needs.identityCoherence });
         const feedbackCalibration = this.cognitiveRuntime.emotionAppraisal.recordOutcome({ action: trace?.selected?.action ?? feedbackEmotion.actionTendency, success01: gatedSuccess01, surprise01: gatedSurprise01, regulationCost01: this.cognitiveRuntime.emotionAppraisal.regulationPressure01() });
@@ -9357,7 +9378,16 @@ export class OrganismCore {
             this.persisted.facets.consciousness.p32 = this.selfSubsystem.p32CausalSelf.snapshot();
             this.selfSubsystem.p31Consciousness.observeOutcome({ action: trace.selected.action, success01: gatedSuccess01, reward01: gatedReward01, surprise01: gatedSurprise01, predictedSameAction: trace.selected.action === state.predictedNextAction, externallyRequested: Boolean(trace.userRequestedAction), learningScale01: learning.learningScale01, identityUpdateScale01: learning.identityUpdateScale01 });
             this.cognitiveRuntime.centralBrain.learnAction(trace.selected.action, gatedNeuralReward01, gatedPredictionError01);
-            this.cognitiveRuntime.globalWorkspace.learnReward(gatedLearningReward01, .02 * learning.learningScale01);
+            // Resolve reward against the exact decision-time workspace coalition. A
+            // later observe() may already have replaced the live coalition by feedback time.
+            this.cognitiveRuntime.globalWorkspace.learnOutcomeForDecision({
+                decisionId: trace.id,
+                outcomeId: outcome.outcomeId ?? `feedback:${trace.id}`,
+                reward01: gatedLearningReward01,
+                learningRate: .02,
+                learningScale01: learning.learningScale01,
+                at: state.at,
+            });
             const causalMatch01 = clamp(.5 + (clamp(1 - surprise) - .5) * learning.identityUpdateScale01);
             this.cognitiveRuntime.predictiveSelfAgency.learnOutcome(trace.selected.action, gatedLearningReward01, state, Boolean(trace.userRequestedAction), causalMatch01);
             this.persisted.facets.cognition.predictiveSelfAgency = this.cognitiveRuntime.predictiveSelfAgency.snapshot();
@@ -9971,6 +10001,7 @@ export class OrganismCore {
                 const temporalAutonomous = !Boolean(trace.userRequestedAction) || Boolean(trace.autonomousOverride);
                 const temporalResolution = this.cognitiveRuntime.canonicalTemporalCredit.resolveOutcome({
                     decisionId: trace.id,
+                    outcomeId: outcome.outcomeId ?? `feedback:${trace.id}`,
                     tick: state.tick,
                     reward01: gatedReward01,
                     predictionError01: gatedSurprise01,
