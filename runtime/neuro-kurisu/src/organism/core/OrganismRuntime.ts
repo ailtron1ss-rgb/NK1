@@ -400,6 +400,7 @@ export class OrganismRuntime {
   private readonly config: Required<Pick<RuntimeConfig, 'intervalMs'|'enableLanguage'>> & RuntimeConfig;
   private readonly cognitiveModuleRuntime: RuntimeCognitiveModuleHost | null;
   private readonly cognitiveModuleCheckpointStore: ReturnType<RuntimeCognitiveModuleHost['connectCanonicalCheckpointStore']> | null;
+  private cognitiveModuleActivationError: string | null = null;
   private readonly temporalObjectTracker = new TemporalObjectTracker();
   private readonly mem0Adapter: Mem0PlatformAdapter;
   private readonly mem0CognitiveRecallEnabled: boolean;
@@ -780,12 +781,34 @@ export class OrganismRuntime {
       // Modules activate only after canonical organism state and runtime adapters are restored,
       // but before any scheduler or autonomous cognitive clock can run.
       if (this.cognitiveModuleRuntime) {
-        const activated = await this.cognitiveModuleRuntime.activateAll();
-        const health = await this.cognitiveModuleRuntime.health();
-        await this.journal.write('info', 'runtime.cognitive-modules.activated', {
+        let activated: unknown[] = [];
+        try {
+          activated = await this.cognitiveModuleRuntime.activateAll();
+        } catch (error) {
+          // Module extensions are optional to the canonical organism. The host
+          // already rolls back modules activated in this batch; keep Core online
+          // and expose the degraded module status rather than failing organism init.
+          this.cognitiveModuleActivationError =
+            String(error instanceof Error ? error.message : error).slice(0, 180);
+          await this.journal.write('error', 'runtime.cognitive-modules.activation-failed', {
+            message: this.cognitiveModuleActivationError,
+          }).catch(() => {});
+        }
+        let health: { ok: boolean; modules: unknown[] } = { ok: false, modules: [] };
+        try {
+          health = await this.cognitiveModuleRuntime.health();
+        } catch (error) {
+          this.cognitiveModuleActivationError ??=
+            String(error instanceof Error ? error.message : error).slice(0, 180);
+          await this.journal.write('error', 'runtime.cognitive-modules.health-failed', {
+            message: this.cognitiveModuleActivationError,
+          }).catch(() => {});
+        }
+        await this.journal.write('info', 'runtime.cognitive-modules.activation-complete', {
           count: activated.length,
           healthy: health.ok,
-        });
+          activationError: this.cognitiveModuleActivationError,
+        }).catch(() => {});
       }
       this.initialized = true;
       this.startEmbodimentClock();
@@ -2767,6 +2790,7 @@ export class OrganismRuntime {
     return {
       enabled: this.cognitiveModuleRuntime !== null,
       modules: this.cognitiveModuleRuntime?.list() ?? [],
+      activationError: this.cognitiveModuleActivationError,
       checkpoint: this.cognitiveModuleCheckpointStore?.diagnostics() ?? null,
     };
   }
