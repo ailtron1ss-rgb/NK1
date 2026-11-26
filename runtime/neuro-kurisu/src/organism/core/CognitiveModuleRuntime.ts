@@ -129,7 +129,26 @@ function clonePlainData(value: unknown, path = '$', seen = new Set<object>()): u
 
   try {
     if (Array.isArray(value)) {
-      const out = value.map((item, index) => clonePlainData(item, `${path}[${index}]`, seen));
+      if (Object.getOwnPropertySymbols(value).length > 0) {
+        throw fail('module-state-symbol-key-rejected', path);
+      }
+      const keys = Reflect.ownKeys(value);
+      if (keys.length !== value.length + 1) {
+        throw fail('module-state-array-shape-invalid', path);
+      }
+      const out: unknown[] = [];
+      for (let index = 0; index < value.length; index += 1) {
+        const descriptor = Object.getOwnPropertyDescriptor(value, String(index));
+        if (!descriptor || !descriptor.enumerable || 'get' in descriptor || 'set' in descriptor) {
+          throw fail('module-state-array-element-invalid', `${path}[${index}]`);
+        }
+        Object.defineProperty(out, String(index), {
+          value: clonePlainData(descriptor.value, `${path}[${index}]`, seen),
+          enumerable: true,
+          writable: true,
+          configurable: true,
+        });
+      }
       return out;
     }
 
@@ -137,15 +156,25 @@ function clonePlainData(value: unknown, path = '$', seen = new Set<object>()): u
     if (prototype !== Object.prototype && prototype !== null) {
       throw fail('module-state-non-plain-object', path);
     }
+    if (Object.getOwnPropertySymbols(value).length > 0) {
+      throw fail('module-state-symbol-key-rejected', path);
+    }
 
     const descriptors = Object.getOwnPropertyDescriptors(value);
     const out: Record<string, unknown> = {};
     for (const [key, descriptor] of Object.entries(descriptors)) {
-      if (!descriptor.enumerable) continue;
+      if (!descriptor.enumerable) {
+        throw fail('module-state-nonenumerable-key-rejected', `${path}.${key}`);
+      }
       if ('get' in descriptor || 'set' in descriptor) {
         throw fail('module-state-accessor-rejected', `${path}.${key}`);
       }
-      out[key] = clonePlainData(descriptor.value, `${path}.${key}`, seen);
+      Object.defineProperty(out, key, {
+        value: clonePlainData(descriptor.value, `${path}.${key}`, seen),
+        enumerable: true,
+        writable: true,
+        configurable: true,
+      });
     }
     return out;
   } catch (error) {
