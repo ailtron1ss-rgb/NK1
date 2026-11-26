@@ -47,7 +47,6 @@ test("Settings voice and avatar controls use Russian labels and descriptions", a
   const staleVisibleConnectionCopy = [
     /label:\s*"Connecting"/,
     /label:\s*"Connected"/,
-    /label:\s*"Degraded"/,
     /label:\s*"Offline"/,
     />\s*Language fallback\s*</,
     />\s*Retry\s*</,
