@@ -13,7 +13,7 @@ test("avatar is a first-class mobile navigation section", async () => {
 
   assert.match(store, /export type AppSection =[^;]*"avatar"/,
     "the shared navigation state must include the avatar section");
-  assert.match(navigation, /\\{\\s*id:\\s*"avatar",\\s*label:\\s*"Аватар"/,
+  assert.match(navigation, /\{\s*id:\s*"avatar",\s*label:\s*"Аватар"/,
     "the bottom navigation must expose the avatar destination");
   assert.match(navigation, /aria-current=\{active === id \? "page" : undefined\}/,
     "the selected tab must remain accessible");
