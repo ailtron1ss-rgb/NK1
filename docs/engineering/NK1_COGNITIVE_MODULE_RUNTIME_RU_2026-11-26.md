@@ -107,7 +107,7 @@ Host использует тот же `JsonStateStore<PersistedOrganism>`, ко�
 1. загружает module envelopes вместе с каноническим состоянием организма;
 2. привязывает host к in-memory `CognitiveModuleStateStore` адаптеру;
 3. активирует модули после восстановления Core и embodiment, но до запуска scheduler/autonomy;
-4. при каждом полном durable checkpoint вызывает `snapshotAll()` для активных модулей без quiesce/shutdown;
+4. при каждом полном durable checkpoint вызывает `snapshotAll()` для активных модулей без quiesce/shutdown; параллельные запросы объединяются в один capture, а deactivation ждёт завершения уже начатого snapshot;
 5. при остановке дренирует очередь, останавливает модули в обратном порядке и включает их финальные snapshots в единый `core.flush()`.
 
 `CognitiveModuleRuntime.bindStateStore()` разрешён только до активации. Это защищает от разделения состояния между разными persistence owners. `CognitiveModuleCheckpointStore` сохраняет последнюю успешную версию envelope, если текущий snapshot конкретного модуля не удался, но **не коммитит новый checkpoint организма**: ошибка фиксируется в диагностике и передаётся вызывающему коду. После успешного повторного snapshot весь новый checkpoint фиксируется атомарно через прежний canonical store.
@@ -182,6 +182,7 @@ Envelope связывает module ID и module version, state schema version, t
 - JSON-safe snapshot, __proto__ как обычный ключ и запрет getter execution;
 - health degradation;
 - non-disruptive `snapshotAll()` для активных модулей;
+- дедупликация конкурентных checkpoint-запросов и barrier между snapshot/deactivation;
 - rebinding state store только до активации;
 - canonical checkpoint round-trip через новый host;
 - сохранение последнего хорошего module snapshot при ошибке одного модуля;
