@@ -139,7 +139,7 @@ export class GroundedWorldState {
     const d=defaultGroundedWorldState();
     const restored = raw === undefined || raw === null
       ? {}
-      : cloneInertSnapshot<unknown>(raw, { maxDepth: 16, maxProperties: 65_536 });
+      : cloneInertSnapshot<unknown>(raw, { maxDepth: 16, maxProperties: 65_536, allowNonFiniteNumbers: true });
     if (!restored || typeof restored !== 'object' || Array.isArray(restored)) {
       throw new Error('grounded-world-snapshot-invalid');
     }
