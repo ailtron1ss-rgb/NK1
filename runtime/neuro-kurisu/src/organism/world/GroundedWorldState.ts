@@ -204,13 +204,13 @@ export class GroundedWorldState {
     const rawFacts=ownDataValue(r,'facts');
     const facts=isPlainDataArray(rawFacts,1024)
       ?rawFacts.filter((fact):fact is string=>typeof fact==='string'&&Boolean(fact.trim())
-        &&!fact.startsWith('external-observed:')&&!fact.startsWith('shadow-divergence:'))
+        &&!fact.toLowerCase().startsWith('external-observed:')&&!fact.toLowerCase().startsWith('shadow-divergence:'))
         .slice(-192).map(fact=>fact.trim().slice(0,240))
       :[];
     const rawProvenance=ownDataValue(r,'provenanceIds');
     const provenanceIds=isPlainDataArray(rawProvenance,512)
       ?rawProvenance.filter((id):id is string=>typeof id==='string'&&Boolean(id.trim())
-        &&!id.startsWith('external-postcondition:'))
+        &&!id.toLowerCase().startsWith('external-postcondition:'))
         .slice(0,128).map(id=>id.trim().slice(0,192))
       :[];
 
