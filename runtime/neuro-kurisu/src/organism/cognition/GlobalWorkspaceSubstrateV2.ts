@@ -86,7 +86,7 @@ const defaultState = (): GlobalWorkspaceSubstrateState => ({
  */
 export class GlobalWorkspaceSubstrateV2 {
   private state = defaultState();
-  private lastAdmission = { inputCount: 0, uniqueCount: 0, admittedCount: 0, duplicateCount: 0, invalidCount: 0, overflowCount: 0 };
+  private lastAdmission = { inputCount: 0, uniqueCount: 0, admittedCount: 0, duplicateCount: 0, invalidCount: 0, overflowCount: 0, admittedBySource: {} as Record<string, number> };
 
   snapshot() { return structuredClone(this.state); }
 
@@ -174,8 +174,31 @@ export class GlobalWorkspaceSubstrateV2 {
       }
     }
     const rankedAll = [...byId.values()].sort((a, b) =>
-      b.score - a.score || a.c.id.localeCompare(b.c.id));
-    const admitted = rankedAll.slice(0, 64);
+      b.score - a.score || (a.c.id < b.c.id ? -1 : a.c.id > b.c.id ? 1 : 0));
+    // Reserve an initial share for each represented source. If fewer than 64
+    // candidates exist, the second pass fills the remaining capacity globally.
+    const sourceCount = new Set(rankedAll.map(x => x.c.source)).size;
+    const sourceQuota = Math.max(1, Math.ceil(64 / Math.max(1, sourceCount)));
+    const admitted: typeof rankedAll = [];
+    const sourceCounts = new Map<string, number>();
+    for (const item of rankedAll) {
+      const count = sourceCounts.get(item.c.source) ?? 0;
+      if (count >= sourceQuota) continue;
+      admitted.push(item);
+      sourceCounts.set(item.c.source, count + 1);
+      if (admitted.length === 64) break;
+    }
+    if (admitted.length < 64) {
+      const admittedIds = new Set(admitted.map(x => x.c.id));
+      for (const item of rankedAll) {
+        if (admitted.length === 64) break;
+        if (admittedIds.has(item.c.id)) continue;
+        admitted.push(item);
+        admittedIds.add(item.c.id);
+      }
+    }
+    const admittedBySource: Record<string, number> = {};
+    for (const item of admitted) admittedBySource[item.c.source] = (admittedBySource[item.c.source] ?? 0) + 1;
     this.lastAdmission = {
       inputCount,
       uniqueCount: byId.size,
@@ -183,6 +206,7 @@ export class GlobalWorkspaceSubstrateV2 {
       duplicateCount,
       invalidCount,
       overflowCount: Math.max(0, rankedAll.length - admitted.length) + Math.max(0, inputCount - boundedInput.length),
+      admittedBySource,
     };
     const usable = admitted.map(x => x.c);
     if (!usable.length) {
