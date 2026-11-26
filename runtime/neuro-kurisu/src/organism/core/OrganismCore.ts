@@ -3428,8 +3428,6 @@ export class OrganismCore {
     operationalStatusSnapshot() {
         if (!this.ready)
             throw new Error('OrganismCore.init() must be called first');
-        if (outcome.decisionId && !this.persisted.traces.some(trace => trace.id === outcome.decisionId))
-            throw new Error('decision-feedback-target-not-found');
         const state = this.persisted.state;
         const body = this.persisted.facets.embodiment.body;
         const identity = this.persisted.facets.consciousness.identityContinuity;
@@ -9091,6 +9089,8 @@ export class OrganismCore {
         }
         if (!this.ready)
             throw new Error('OrganismCore.init() must be called first');
+        if (outcome.decisionId && !this.persisted.traces.some(trace => trace.id === outcome.decisionId))
+            throw new Error('decision-feedback-target-not-found');
         const state = this.persisted.state;
         // P80 is read-only during feedback; keep one detached view instead of cloning it
         // repeatedly for each downstream learning/neural branch.

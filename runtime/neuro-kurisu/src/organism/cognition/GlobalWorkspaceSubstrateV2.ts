@@ -461,6 +461,11 @@ export class GlobalWorkspaceSubstrateV2 {
       this.state.learning.outcomesReplayed++;
       return { updated: false as const, replayed: true, reason: 'outcome-already-applied' };
     }
+    const priorOwner = this.state.decisionReceipts.find(candidate =>
+      candidate.decisionId !== decisionId && candidate.outcomeIds.includes(outcomeId));
+    if (priorOwner) {
+      return { updated: false as const, replayed: false, reason: 'outcome-id-already-bound-to-different-decision' };
+    }
     if (receipt.outcomeIds.length >= 8) {
       return { updated: false as const, replayed: false, reason: 'decision-outcome-capacity-reached' };
     }
@@ -472,8 +477,11 @@ export class GlobalWorkspaceSubstrateV2 {
     const reward = clamp01(input.reward01);
     const baseline = this.state.learning.rewardMean01;
     const error = reward - baseline;
-    const learningRate = Math.max(0, Math.min(0.2, Number(input.learningRate ?? 0.02)));
+    const requestedLearningRate = Number(input.learningRate ?? 0.02);
+    const learningRate = Number.isFinite(requestedLearningRate) ? Math.max(0, Math.min(0.2, requestedLearningRate)) : 0;
     const learningScale01 = clamp01(Number(input.learningScale01 ?? 1));
+    const outcomeAt = Number(input.at ?? Date.now());
+    const safeOutcomeAt = Number.isFinite(outcomeAt) ? Math.max(0, outcomeAt) : Date.now();
     const totalWeight = eligible.reduce((sum, candidate) => sum + candidate.weight01, 0);
     const denominator = Math.max(1e-9, totalWeight);
     const update = learningRate * learningScale01 * error * 0.08;
@@ -490,7 +498,7 @@ export class GlobalWorkspaceSubstrateV2 {
     this.state.learning.gateUpdates++;
     this.state.learning.outcomesApplied++;
     receipt.outcomeIds = [...receipt.outcomeIds, outcomeId].slice(-8);
-    receipt.lastOutcomeAt = Math.max(0, Number(input.at ?? Date.now()));
+    receipt.lastOutcomeAt = safeOutcomeAt;
     return {
       updated: true as const, replayed: false, decisionId, outcomeId,
       error01: Math.abs(error), tdErrorSigned: error, creditedCandidates: eligible.length,
