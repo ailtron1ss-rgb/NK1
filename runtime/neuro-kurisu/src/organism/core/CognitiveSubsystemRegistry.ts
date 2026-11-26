@@ -1,3 +1,4 @@
+import { types as nodeUtilTypes } from 'node:util';
 import { createCognitiveSubsystemPorts, type CognitiveSubsystemPorts, type CognitiveSubsystemName } from './CognitiveSubsystemPorts.ts';
 import { SubsystemFlightRecorder } from './SubsystemFlightRecorder.ts';
 import { OrganismSystemFabric } from './OrganismSystemFabric.ts';
@@ -98,11 +99,29 @@ function safeErrorType(error:unknown):string {
 
 function inspectSnapshot(value:unknown):{status:'ok'|'empty'|'invalid';keyCount:number} {
   if(value===null) return {status:'empty',keyCount:0};
-  if(typeof value!=='object' || Array.isArray(value)) return {status:'invalid',keyCount:0};
+  if(typeof value!=='object' || Array.isArray(value) || nodeUtilTypes.isProxy(value)) {
+    return {status:'invalid',keyCount:0};
+  }
   try {
     const prototype=Object.getPrototypeOf(value);
     if(prototype!==Object.prototype && prototype!==null) return {status:'invalid',keyCount:0};
-    return {status:'ok',keyCount:Object.keys(value).length};
+    const keys=Reflect.ownKeys(value);
+    let keyCount=0;
+    for(const key of keys) {
+      // Snapshot diagnostics are data-only: accessors, symbols and hidden fields
+      // are rejected instead of being evaluated or silently counted.
+      if(typeof key!=='string') return {status:'invalid',keyCount:0};
+      const descriptor=Object.getOwnPropertyDescriptor(value,key);
+      if(!descriptor
+        || !Object.prototype.hasOwnProperty.call(descriptor,'value')
+        || descriptor.get!==undefined
+        || descriptor.set!==undefined
+        || !descriptor.enumerable) {
+        return {status:'invalid',keyCount:0};
+      }
+      keyCount+=1;
+    }
+    return {status:'ok',keyCount};
   } catch {
     return {status:'invalid',keyCount:0};
   }
