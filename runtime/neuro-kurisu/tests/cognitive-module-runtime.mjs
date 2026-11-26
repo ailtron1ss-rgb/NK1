@@ -602,3 +602,56 @@ console.log('COGNITIVE_MODULE_CHECKPOINT_ATOMICITY=PASS');
   assert.equal(store.rows.get('memory.snapshot-barrier').state.value, 99);
   assert.equal(statusOf(host, 'memory.snapshot-barrier'), 'stopped');
 }
+
+
+// Dependency shutdown must not race a dependent that is still initializing.
+// An initializing dependent is already an in-flight lifecycle claim: stopping
+// its dependency must wait, then reject because the dependent became active.
+{
+  const events = [];
+  const host = runtime();
+  const dependency = moduleFixture('core.dependency', events);
+  const dependent = moduleFixture('memory.dependent', events);
+  let releaseInitialize;
+  let notifyInitializeStarted;
+  const gate = new Promise(resolve => { releaseInitialize = resolve; });
+  const started = new Promise(resolve => { notifyInitializeStarted = resolve; });
+
+  dependent.module.initialize = async () => {
+    events.push('initialize-start:memory.dependent');
+    notifyInitializeStarted();
+    await gate;
+    events.push('initialize-end:memory.dependent');
+  };
+
+  host.register({
+    manifest: manifest('core.dependency'),
+    factory: () => dependency.module,
+  });
+  host.register({
+    manifest: manifest('memory.dependent', { dependencies: ['core.dependency'] }),
+    factory: () => dependent.module,
+  });
+  await host.activate('core.dependency');
+
+  const activating = host.activate('memory.dependent');
+  await started;
+  const stoppingDependency = host.deactivate('core.dependency');
+  await Promise.resolve();
+  assert.equal(
+    events.includes('quiesce:core.dependency'),
+    false,
+    'dependency shutdown must wait until a dependent finishes initialization',
+  );
+
+  releaseInitialize();
+  await activating;
+  await expectReject(stoppingDependency, /active-dependent:memory\.dependent/);
+  assert.equal(statusOf(host, 'core.dependency'), 'active');
+  assert.equal(statusOf(host, 'memory.dependent'), 'active');
+  assert.ok(
+    events.indexOf('initialize-end:memory.dependent') < events.indexOf('quiesce:core.dependency'),
+    'dependent initialization must settle before dependency shutdown is evaluated',
+  );
+  await host.stopAll();
+}
