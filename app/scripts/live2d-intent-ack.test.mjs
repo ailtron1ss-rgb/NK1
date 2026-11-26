@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
+import { normalizeEmbodimentIntentV1 } from "../../runtime/neuro-kurisu/public/live2d/embodiment-intent.mjs";
 
 const viewers = await Promise.all([
   ["frontend", new URL("../public/live2d/viewer.html", import.meta.url)],
@@ -25,6 +26,13 @@ for (const item of viewers) {
     assert.match(viewer, /if\(pending\.expressionStatus==='pending'\|\|pending\.motionStatus==='pending'\)return;/);
     assert.match(viewer, /pending\.readback=/);
     assert.match(viewer, /pending\.stateVersion!==lastIntentStateVersion/);
+    assert.match(viewer, /frameTick:pending\.frameTick/);
+    if (name === "frontend") {
+      assert.match(viewer, /const frameTick=d\.frameTick===undefined\?null/);
+      assert.match(viewer, /frameTick,\s*sentAtEpochMs/);
+    } else {
+      assert.match(viewer, /frameTick:normalized\.frameTick/);
+    }
   });
 
   test(name + " partial ACK distinguishes command start from unavailable/failed action and never claims visual completion", () => {
@@ -70,4 +78,23 @@ test("AvatarStage targets the frontend viewer whose ACK contract is covered abov
   assert.match(avatar, /isLive2DActionStatus\(ev\.data\.motionStatus\)/);
   assert.match(avatar, /partial ACK is never a renderer receipt/);
   assert.match(avatar, /latestIntentStateVersionRef\.current = intent\.stateVersion/);
+  assert.match(avatar, /frameTick: currentProjection\.tick/);
+  assert.match(avatar, /createAvatarPresentationReceipt\("live2d", ev\.data\.frameTick/);
+});
+
+test("runtime protocol-v1 normalizer preserves the canonical tick without breaking older intents", () => {
+  const base = {
+    type: "kurisu_embodiment_intent", protocolVersion: 1, stateVersion: 17,
+    sentAtEpochMs: 1_700_000_000_000, speechEventId: null, audioClockId: null,
+    speechPhase: "idle", audioTimeMs: 0, clockSource: "none", priority: 30,
+    cancellationToken: null, expression: "neutral", expressionIntensity: 0,
+    mouth: { open: 0.015, form: 0, viseme: "rest" },
+    gaze: { x: 0, y: 0, driven: true },
+    body: { headTilt: 0, gesture: false, motionGroup: "Idle", motionIndex: 0, motionToken: 0 },
+    voiceEmphasis: 0,
+  };
+  assert.equal(normalizeEmbodimentIntentV1({ ...base, frameTick: 42 }).frameTick, 42);
+  assert.equal(normalizeEmbodimentIntentV1(base).frameTick, null);
+  assert.equal(normalizeEmbodimentIntentV1({ ...base, frameTick: -1 }), null);
+  assert.equal(normalizeEmbodimentIntentV1({ ...base, frameTick: 1.25 }), null);
 });
