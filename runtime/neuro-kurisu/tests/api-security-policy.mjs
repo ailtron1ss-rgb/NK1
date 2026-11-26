@@ -48,7 +48,7 @@ assert.ok(rateLimitFunction.includes("pathName === '/health' || pathName === '/a
   'health endpoints remain exempt from general API traffic throttling');
 
 
-import { BoundedRateLimiter } from '../src/server/bounded-rate-limiter.mjs';
+
 {
   const limiter = new BoundedRateLimiter({ windowMs: 10_000, limit: 2, maxKeys: 3 });
   assert.equal(limiter.consume('peer-a', 1_000).allowed, true);
