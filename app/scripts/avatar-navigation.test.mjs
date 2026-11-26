@@ -76,11 +76,13 @@ test("avatar workspace compares actual renderer manifests instead of hard-coded 
 });
 
 
-test("renderer asset labels are exhaustive over the canonical asset-kind type", async () => {
+test("renderer asset names have one exhaustive shared presentation dictionary", async () => {
   const route = await readFile(new URL("routes/index.tsx", root), "utf8");
-  assert.match(route, /import type \{ AvatarAssetKind \} from "@\/components\/avatar\/rendererCapabilityManifest"/);
-  assert.match(route, /RENDERER_ASSET_LABELS:\s*Record<AvatarAssetKind, string>/,
-    "adding a renderer asset kind must require a visible localized label");
+  const presentation = await readFile(new URL("../src/components/avatar/rendererPresentation.ts", import.meta.url), "utf8");
+  assert.match(route, /import \{ AVATAR_ASSET_KIND_LABELS \} from "@\/components\/avatar\/rendererPresentation"/);
+  assert.match(route, /AVATAR_ASSET_KIND_LABELS\[renderer\.assetKind\]/);
+  assert.match(presentation, /AVATAR_ASSET_KIND_LABELS:\s*Record<AvatarAssetKind, string>/,
+    "adding a renderer asset kind must require one shared localized label");
   assert.match(route, /alt="Курису в задумчивой позе"/,
     "the Home companion preview must provide localized alternative text");
 });
