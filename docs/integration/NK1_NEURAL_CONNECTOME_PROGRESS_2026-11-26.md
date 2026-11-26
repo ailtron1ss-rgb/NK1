@@ -5,7 +5,7 @@
 **Work branch:** `aspect/neural-connectome-integration-20261126`  
 **Canonical source baseline:** `workpass70-source@7e601680c765d6dc94e51e4c8f5e729b48a6f56e`  
 **Master Plan X reference snapshot:** `9008a8982a5173304456bee2c604bd0bc8665964`  
-**Progress:** 12/100 — inventory and topology discovery started  
+**Progress:** 16/100 — canonical baseline, full census snapshot and first integration topology mapped  
 **Status:** analysis/inventory only; no source runtime code integrated by this ledger commit.
 
 ## Safety and source-of-truth rules
@@ -89,4 +89,24 @@ The runtime cycle remains `Perceive → Appraise → Plan → Act → Reflect �
 - [ ] Selectively port and verify implementation changes on isolated aspect branches.
 - [ ] Complete integration, device/browser acceptance and release evidence.
 
-**Progress is 12/100.** This measures completion of the requested unified integration work, not the percentage of NK1 product readiness.
+**Progress is 16/100.** This measures completion of the requested unified integration work, not the percentage of NK1 product readiness.
+
+
+## Census and architecture audit refinement — 26 Nov 2026
+
+- The full census artifacts in PR #1133 were fetched and parsed: **1,160 branch refs** across two JSONL parts (600 + 560), and **264 open PRs** in the full open-PR JSONL. This is a complete paginated census snapshot after merge #1139, not a newly repeated live REST enumeration in this work session.
+- The census records 1,160 unique branch HEADs and zero duplicate HEAD groups. It did **not** establish global tree-SHA uniqueness; do not infer that all branches contain unique code.
+- Current canonical source tree SHA recorded by the consolidation ledger: `bd5eb23dc2d7c029c6b9ae9e10c49257590e571e`.
+- The 24-Nov Deep Engineering Audit counted 11,535 tree entries and 746 organism source files, but against an older source checkpoint (`54f9ec7...`). These counts are historical reference only; a fresh tree/file census at `7e601680...` remains required.
+- A separate special-mechanisms workpass reported `audit:architecture` PASS (2,542 source files, 710 canonical files, zero missing imports/cycles), but `audit:core-physical-ownership` FAIL due to missing canonical `MemorySubsystemRuntime` extraction and a Core line-regression threshold. This is branch/workpass evidence, not yet re-run on current canonical source.
+- The 26-Nov execution register uses a strict denominator of 144 unique T3 tasks. Its initial audit recorded 0/144 fully completed at the complete proof threshold; 8/144 had exact-PR-head inspection and 6/144 had green PR-head CI in that earlier snapshot. This does not mean there is no code: it means none was credited as fully complete across all required gates in that register. Re-audit on current source is required before adopting those counts as live progress.
+
+### Updated work ledger
+
+- [x] Retrieve both full branch census JSONL parts (600 + 560 records) and full open-PR census (264 records) from the existing consolidation artifact.
+- [x] Read the 26-Nov branch integration ledger and current-source merge evidence for #1191 and #1139.
+- [x] Separate current-source tree SHA from the Master Plan reference SHA and older documentation baselines.
+- [x] Capture first-pass diverged-PR matrix for the eight primary architecture PRs.
+- [ ] Re-enumerate live branch refs and open PRs directly from GitHub REST, all pages, to refresh the snapshot.
+- [ ] Recount source tree entries and organism files at exact current SHA.
+- [ ] Re-run architecture, ownership, dependency and import-cycle audits at exact current SHA.
