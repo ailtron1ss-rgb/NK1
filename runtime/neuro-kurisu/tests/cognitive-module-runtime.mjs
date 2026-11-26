@@ -986,3 +986,48 @@ console.log('COGNITIVE_MODULE_CHECKPOINT_ATOMICITY=PASS');
   assert.equal(health.modules[0].reason, 'module-health-timeout');
   await host.stopAll();
 }
+
+
+// The persisted envelope itself is untrusted input, not only its nested state.
+// Accessor properties must be rejected without executing their getter or
+// constructing the module instance.
+{
+  let getterCalls = 0;
+  let factoryCalls = 0;
+  const envelope = {
+    schemaVersion: 1,
+    moduleId: 'memory.hostile-envelope',
+    moduleVersion: '1.0.0',
+    stateSchemaVersion: 1,
+    capturedAt: 10,
+  };
+  Object.defineProperty(envelope, 'state', {
+    enumerable: true,
+    get() {
+      getterCalls += 1;
+      return { value: 17 };
+    },
+  });
+  const stateStore = {
+    async load() { return envelope; },
+    async save() {},
+  };
+  const events = [];
+  const fixture = moduleFixture('memory.hostile-envelope', events);
+  const host = runtime({ stateStore });
+  host.register({
+    manifest: manifest('memory.hostile-envelope'),
+    factory: () => {
+      factoryCalls += 1;
+      return fixture.module;
+    },
+  });
+
+  await expectReject(
+    host.activate('memory.hostile-envelope'),
+    /module-state-accessor-rejected/,
+  );
+  assert.equal(getterCalls, 0, 'envelope validation must inspect descriptors rather than execute getters');
+  assert.equal(factoryCalls, 0, 'invalid persisted metadata must be rejected before factory invocation');
+  assert.equal(statusOf(host, 'memory.hostile-envelope'), 'failed');
+}
