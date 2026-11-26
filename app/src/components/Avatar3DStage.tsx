@@ -19,7 +19,7 @@ import { resolveGlbMouthMorphWeights } from "./avatar/glbMouthMorphAdapter";
 import { fetchRemoteAvatarModel } from "./avatar/remoteAvatarSource";
 import { applyAvatarAnimationFrame } from "./avatar/avatarAnimationRuntime";
 import { createAvatarPresentationReceipt, type AvatarPresentationReceiptV1 } from "./avatar/avatarPresentationReceipt.ts";
-import { createAvatarFrameBudgetController, resolveAvatarFrameBudget, shouldRenderAvatarFrame } from "./avatar/avatarFrameBudget.ts";
+import { createAvatarFrameBudgetController, resolveAvatarFrameBudget, shouldRenderAvatarFrame, shouldRunAvatarRenderLoop } from "./avatar/avatarFrameBudget.ts";
 
 type Props = { frameTick: number; onFrameReceipt?: (receipt: AvatarPresentationReceiptV1) => void; emotion: EmotionLabel; action: ActionKind; motorPlan: AvatarMotorIntentPlan; arousal: number; valence: number; dominance: number; energy: number; cognitiveLoad: number; uncertainty: number; socialNeed: number; novelty: number; goalPressure: number; curiosity: number; predictionError: number; traits: Record<string, number>; gazeX: number; gazeY: number; speaking: boolean; mouthPose: MouthPose; thinking: boolean; awake: boolean; bodyChannels?: Record<string, number>; avatarBrainFrame?: AvatarBrainProjectionV1; onReturnTo2D?: () => void };
 type Bone = { node: any; name: string; x: number; y: number; z: number };
