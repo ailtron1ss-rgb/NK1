@@ -137,6 +137,8 @@ Envelope связывает module ID и module version, state schema version, t
 | Ошибка load / migration / restore / initialize | Модуль получает статус failed |
 | Ошибка quiesce / snapshot / durable save при штатной остановке | Вызывает resume; остаётся active только если resume прошёл |
 | Ошибка `snapshotAll()` на обычном checkpoint | Сохраняет предыдущую durable generation, отклоняет текущий checkpoint целиком, оставляет модуль active и показывает ошибку в diagnostics |
+| Ошибка canonical `delegate.save()` | Не обновляет `capturedAt`; фиксирует причину в `checkpointSaveError`, повторный успешный save очищает её |
+
 | Ошибка resume после неудачной остановки | Статус failed |
 | Ошибка shutdown после сохранения | Состояние уже сохранено; экземпляр помечается failed, его нельзя объявлять active |
 | Ошибка health / превышение deadline | Health result unhealthy; timeout получает причину `module-health-timeout`, runtime не скрывает ошибку |
@@ -146,6 +148,8 @@ Envelope связывает module ID и module version, state schema version, t
 
 
 Каждый health probe ограничен отдельным deadline: по умолчанию **750 ms**, допустимая настройка `healthTimeoutMs` — **1–10 000 ms**. Таймаут возвращает unhealthy с причиной `module-health-timeout`, но не меняет lifecycle status активного модуля. Runtime не может принудительно отменить произвольный Promise провайдера, поэтому реализация `health()` должна быть read-only и самостоятельно ограничивать сторонние операции.
+
+Диагностика `CognitiveModuleCheckpointStore` разделяет `checkpointLoadError` (повреждённый/несовместимый extension payload) и `checkpointSaveError` (неудачная запись новой durable generation). Второе поле доступно через `OrganismRuntime.cognitiveModuleDiagnostics().checkpoint` и очищается только после успешной canonical записи.
 
 Lifecycle barrier сериализует одиночную активацию, полный `activateAll()`, checkpoint, `deactivate()` и `stopAll()`. Поэтому зависимость нельзя остановить, пока зависимый модуль находится в `initializing` или уже `active`; проверка графа выполняется после завершения предшествующей lifecycle-операции.
 
