@@ -67,6 +67,24 @@ test("reports missing renderer capabilities instead of claiming unsupported beha
   assert.ok(plan.unsupportedChannels.includes("leftFingers"));
 });
 
+test("distinguishes different 2D source and target renderers with exact identity", () => {
+  const plan = planEmbodimentSwitch("live2d", {
+    mode: "live2d",
+    rendererId: "nk1-legacy-sprites-2d",
+    channels: [],
+    expressions: ["neutral"],
+    supportsSpeechVisemes: false,
+    supportsWorldTargets: false,
+    supportsClothingLayers: false,
+    supportsPhysics: false,
+  }, state, "nk1-original-svg-2d");
+  assert.equal(plan.from, "live2d");
+  assert.equal(plan.to, "live2d");
+  assert.equal(plan.fromRendererId, "nk1-original-svg-2d");
+  assert.equal(plan.toRendererId, "nk1-legacy-sprites-2d");
+  assert.equal(plan.requiresNeutralRebind, true);
+});
+
 test("shared pose blending is finite, bounded by endpoints and omits one-sided channels", () => {
   assert.deepEqual(blendSharedPose({ headYaw: -1, leftElbow: 0.2 }, { headYaw: 1, rightElbow: 0.9 }, 0.5), { headYaw: 0 });
   assert.deepEqual(blendSharedPose({ headYaw: 0 }, { headYaw: 1 }, 2), { headYaw: 1 });
