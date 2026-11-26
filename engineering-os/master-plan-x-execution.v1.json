@@ -86,8 +86,9 @@
   },
   "statusCounts": {
     "NOT_AUDITED": 136,
-    "TESTED_NOT_IN_SOURCE": 4,
+    "TESTED_NOT_IN_SOURCE": 3,
     "MERGED_AWAITING_POST_MERGE_CI": 1,
+    "REBASED_AWAITING_EXACT_HEAD_CI": 1,
     "CI_BLOCKED": 2,
     "STACKED_TESTED_NOT_IN_SOURCE": 1
   },
@@ -101,8 +102,9 @@
     "exactHeadGreenPercent": 4.17,
     "exactHeadFailures": 2,
     "notAudited": 136,
-    "note": "Eight task IDs were audited. T3-022 is now merged into canonical source and awaits post-merge CI (5/30 completed successful at last refresh); five other tasks have green PR-head Actions but remain outside canonical source (one is stacked); two tasks have failing Actions. No T3 item is yet counted as fully verified complete.",
-    "mergedAwaitingPostMergeCI": 1
+    "note": "Eight task IDs have been audited. T3-022 is merged and awaiting post-merge CI; T3-029 has been synchronized to the new source through a two-parent merge commit and is awaiting fresh exact-head CI; three tasks retain green PR-head tests but are not in canonical source (one stacked); two tasks have failing Actions. No T3 item is counted as fully verified complete.",
+    "mergedAwaitingPostMergeCI": 1,
+    "rebasedAwaitingExactHeadCI": 1
   },
   "tasks": [
     {
@@ -420,18 +422,38 @@
       "title": "Единая checkpoint generation",
       "wave": "B",
       "secondaryWave": null,
-      "status": "TESTED_NOT_IN_SOURCE",
+      "status": "REBASED_AWAITING_EXACT_HEAD_CI",
       "countAsComplete": false,
       "linkedPR": 1170,
       "evidence": {
-        "headSha": "2095bce3353daacb8eebe567a53b33ef32ff1931",
-        "baseSha": "9008a8982a5173304456bee2c604bd0bc8665964",
+        "headSha": "c0f7a3e5fca9b66cf3b5294a538788fc85ec970f",
+        "baseSha": "29ab13c98b3a603bc1667a99fffb8ee33dc9560d",
         "exactHeadActions": {
-          "success": 75,
-          "failed": 0
+          "total": 26,
+          "completed": 0,
+          "success": 0,
+          "failed": 0,
+          "inProgress": 11,
+          "queued": 15,
+          "headSha": "c0f7a3e5fca9b66cf3b5294a538788fc85ec970f"
         },
         "draft": true,
-        "notes": "Exact-head Actions success; open Draft PR, not merged. Independent review and device soak outstanding in PR checkpoint."
+        "notes": "PR #1170 now includes current source T3-022 merge while preserving checkpoint diff. Exact-head CI on the rebased commit is still running; independent review, semantic TypeScript typecheck and real-device Android soak remain outstanding. PR remains Draft.",
+        "previousExactHead": {
+          "sha": "2095bce3353daacb8eebe567a53b33ef32ff1931",
+          "actions": {
+            "success": 75,
+            "failed": 0
+          }
+        },
+        "mergeCommit": "c0f7a3e5fca9b66cf3b5294a538788fc85ec970f",
+        "rebaseMethod": "two-parent merge commit; existing branch advanced with expected-SHA lease, no force push",
+        "diffAgainstCurrentSource": {
+          "status": "ahead",
+          "ahead": 4,
+          "behind": 0,
+          "changedFiles": 11
+        }
       }
     },
     {
