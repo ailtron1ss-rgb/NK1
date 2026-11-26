@@ -247,10 +247,8 @@ console.log('ORGANISM_RUNTIME_MODULE_INTEGRATION=PASS');
   await durable.save(damaged);
 
   const checkpoint = new CognitiveModuleCheckpointStore(durable);
-  const loaded = await assert.doesNotReject(
-    checkpoint.load(),
-    'invalid optional-module metadata must not prevent loading canonical organism state',
-  );
+  const loaded = await checkpoint.load();
+  assert.ok(loaded, 'canonical organism state must load despite optional-module metadata corruption');
   assert.equal(loaded.system.cognitiveModuleRuntime.schemaVersion, 99);
   assert.match(checkpoint.diagnostics().checkpointLoadError ?? '', /checkpoint-invalid/);
 
