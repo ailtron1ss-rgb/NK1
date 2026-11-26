@@ -99,9 +99,9 @@ const pe = evidence.snapshot();
 assert.equal(pe.updates, 0);
 assert.equal(pe.scene, defaultPerceptualEvidence().scene);
 assert.equal(pe.metrics.grounding01, defaultPerceptualEvidence().metrics.grounding01, 'string metric falls back');
-assert.equal(pe.metrics.conflict01, 1, 'metric above 1 clamps to 1');
+assert.equal(pe.metrics.conflict01, 0, 'persisted aggregate conflicts cannot self-attest without supporting evidence rows');
 assert.equal(pe.metrics.unresolved01, 0, 'negative metric clamps to 0');
-assert.equal(pe.evidence.length, 1, 'only plain-record evidence rows survive; primitives are dropped');
+assert.equal(pe.evidence.length, 0, 'incomplete records without typed identity, modality and claim are dropped');
 assert.equal(pe.activeQuery.modality, 'unknown');
 assert.equal(pe.activeQuery.priority01, 1);
 
@@ -111,7 +111,10 @@ evidenceSource.recordExternalEvidence({ at: 10, claim: 'sensor:door-open', confi
 const evidenceSnapshot = evidenceSource.snapshot();
 const evidenceRestored = new PerceptualEvidenceCompiler();
 evidenceRestored.restore(evidenceSnapshot);
-assert.deepEqual(evidenceRestored.snapshot(), evidenceSnapshot, 'valid evidence snapshot must round-trip');
+assert.equal(evidenceSnapshot.evidence[0].kind, 'derived', 'legacy verified=true does not mint observation provenance');
+assert.equal(evidenceRestored.snapshot().evidence[0].kind, 'derived', 'restored evidence must not recreate an ephemeral host proof');
+assert.equal(evidenceRestored.snapshot().metrics.groundedSignalRatio01, 0, 'restored aggregates cannot self-attest observation provenance');
+assert.equal(evidenceRestored.snapshot().updates, evidenceSnapshot.updates, 'bounded lifecycle counters survive restore');
 
 // --- DeviceEvidenceLedger -----------------------------------------------------
 const ledger = new DeviceEvidenceLedger();
