@@ -35,6 +35,8 @@ jobs:
         run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Goal-bound plan lineage contract
         run: npm run test:goal-bound-plan-lineage
+      - name: Runtime-bound canonical decision lineage integration
+        run: npm run test:goal-bound-plan-runtime-integration
       - name: Existing PlanEngine integration
         run: node --experimental-strip-types tests/p10-planner-integration.mjs
       - name: Existing planner fallback
