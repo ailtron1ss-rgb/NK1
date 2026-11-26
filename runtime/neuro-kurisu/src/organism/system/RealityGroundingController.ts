@@ -215,7 +215,7 @@ export class RealityGroundingController {
         independent01=1;
         consequence01=clamp(Math.max(trusted.consequenceVerification.changed01,trusted.effect01));
         evidence01=clamp(.22+.46*verified01+.18*independent01+.06*trusted.effect01);
-        reason='external-device-observation-primary;outcome-verification-service=match';
+        reason=trusted.realityClass==='camera-artifact'?'external-camera-frame-observation-primary;host-receipt-and-decision-binding=match':'external-device-observation-primary;outcome-verification-service=match';
       }else{
         verified01=0;
         independent01=0;
