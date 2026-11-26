@@ -139,7 +139,7 @@ export class PerceptualEpistemicGraph {
   private state=defaultEpistemicState();
   restore(raw?:Partial<EpistemicState>|null){
     const d=defaultEpistemicState();
-    const restored=raw===undefined||raw===null?{}:cloneInertSnapshot<unknown>(raw,{maxDepth:12,maxProperties:32_768});
+    const restored=raw===undefined||raw===null?{}:cloneInertSnapshot<unknown>(raw,{maxDepth:12,maxProperties:32_768,allowNonFiniteNumbers:true});
     if(!restored||typeof restored!=='object'||Array.isArray(restored))throw new Error('epistemic-snapshot-invalid');
     const r=restored as Partial<EpistemicState>;
     const claims=Array.isArray(r.claims)?r.claims.slice(0,256)
