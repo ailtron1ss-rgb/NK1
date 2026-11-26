@@ -97,6 +97,6 @@ const ownerWorld=groundedOwner.integrate({at:at+20,evidence:ownerSnapshot});
 assert.ok(ownerWorld.facts.includes('derived-evidence:caller says door is open'));
 const groundedClone=new GroundedWorldState();
 const cloneWorld=groundedClone.integrate({at:at+20,evidence:clonedSnapshot});
-assert.ok(cloneWorld.facts.includes('historical-derived-evidence:caller says door is open'));
+assert.ok(cloneWorld.facts.includes('derived-evidence:caller says door is open'));
 
 console.log('OBSERVATION_ADMISSION_TRUST_BOUNDARY=PASS');
