@@ -5,7 +5,12 @@ const c=lab.propose({tick:12,at:1,predictionError01:.78,selfPredictionError01:.7
 assert.ok(c);
 const t=lab.test(c.id,{predictionError01:.3,selfPredictionError01:.2,uncertainty01:.2,identityContinuity01:.94,grounding01:.9,causalAlignment01:.9,holdoutFactor01:.92});
 assert.ok(t);
-assert.equal(t.status,'promotable');
-const p=lab.promote(c.id,2); assert.equal(p?.status,'promoted');
-assert.ok(lab.snapshot().promotions>=1);
-console.log('p53 developmental self-modification PASS');
+assert.equal(t.status,'preview-only');
+assert.equal(t.holdout01,0);
+assert.equal(t.transfer01,0);
+const before=lab.snapshot().activeKnobProfile;
+const p=lab.promote(c.id,2);
+assert.equal(p?.status,'preview-only');
+assert.deepEqual(lab.snapshot().activeKnobProfile,before);
+assert.equal(lab.snapshot().promotions,0);
+console.log('p53 developmental self-modification preview-only PASS');

@@ -904,26 +904,36 @@ export function migratePersistedOrganism(input: unknown): PersistedShapeCurrent 
   advancedBase.p52CounterfactualDevelopment = { ...p52Default, ...p52Raw, version:1, trajectory:Array.isArray(p52Raw.trajectory)?p52Raw.trajectory.slice(-256):[], counterfactuals:Array.isArray(p52Raw.counterfactuals)?p52Raw.counterfactuals.slice(-192):[] };
   const p53Raw = (raw.facets as any)?.advanced?.p53DevelopmentalSelfModification ?? (raw as any).p53DevelopmentalSelfModification ?? {};
   const p53Firewall = p53Raw.firewall ?? {};
+  const p53Candidates = Array.isArray(p53Raw.candidates) ? p53Raw.candidates.slice(0, 96) : [];
+  const p53Count = (value:unknown) => typeof value === 'number' && Number.isSafeInteger(value) && value > 0 ? value : 0;
+  const p53LegacyPromotionCount = Math.max(
+    p53Count(p53Raw.quarantinedLegacyPromotions),
+    p53Count(p53Raw.promotions),
+    p53Candidates.filter((candidate:any)=>candidate?.status==='promotable'||candidate?.status==='promoted').length,
+  );
   advancedBase.p53DevelopmentalSelfModification = {
-    version: 2,
+    version: 3,
+    quarantinedLegacyPromotions: p53LegacyPromotionCount,
     proposals: Number(p53Raw.proposals ?? 0),
     tests: Number(p53Raw.tests ?? 0),
-    promotions: Number(p53Raw.promotions ?? 0),
+    promotions: 0,
     rejections: Number(p53Raw.rejections ?? 0),
     cooldowns: Number(p53Raw.cooldowns ?? 0),
     oscillationBlocks: Number(p53Raw.oscillationBlocks ?? 0),
     identityViolations: Number(p53Raw.identityViolations ?? 0),
-    bestImprovement01: Number(p53Raw.bestImprovement01 ?? 0),
+    bestImprovement01: 0,
     developmentalReadiness01: Number(p53Raw.developmentalReadiness01 ?? .25),
     labStability01: Number(p53Raw.labStability01 ?? .8),
-    candidates: Array.isArray(p53Raw.candidates) ? p53Raw.candidates.slice(0, 96) : [],
+    candidates: p53Candidates.map((candidate:any)=>
+      candidate?.status==='promotable'||candidate?.status==='promoted'
+        ? {...candidate,status:'preview-only',holdout01:0,transfer01:0,improvement01:0,reason:`${String(candidate.reason??'legacy')}|legacy-promotion-quarantined`}
+        : candidate),
     activeKnobProfile: {
       exploration: .5, verification: .5, reflection: .5, attention: .5, prediction: .5,
-      ...(p53Raw.activeKnobProfile ?? {}),
     },
     firewall: {
       protectedKeys: Array.isArray(p53Firewall.protectedKeys) ? p53Firewall.protectedKeys.slice(0, 16) : ['identity','coreValues','name','continuityAnchors'],
-      protectedHash: String(p53Firewall.protectedHash ?? 'P53-ID-FIREWALL-v2'),
+      protectedHash: String(p53Firewall.protectedHash ?? 'P53-ID-FIREWALL-v3'),
       violations: Number(p53Firewall.violations ?? 0),
     },
     lastReason: String(p53Raw.lastReason ?? ''),
