@@ -99,6 +99,13 @@ test('stop emits the full durability receipt only after the continuity ledger fl
     ledgerDiagnostics: diagnostics(null),
     ledgerClose: async () => {},
   });
+  // This fixture models a successful canonical Core commit. A no-op flush alone
+  // must not be mistaken for a committed envelope in the production boundary.
+  const committedEnvelope = { generation: 1, checkpointId: 'shutdown-test-envelope-0001' };
+  runtime.core.systemSnapshot = () => ({ runtimeCheckpointEnvelope: committedEnvelope });
+  runtime.core.validateRuntimeCheckpointEnvelope = value => value === committedEnvelope
+    ? { ok: true, envelope: committedEnvelope, snapshots: { cognitiveHealth: null } }
+    : { ok: false, reason: 'fixture-envelope-not-committed' };
   try {
     await runtime.stop();
     const stop = entries.find(entry => entry.event === 'runtime.stop.durable');
