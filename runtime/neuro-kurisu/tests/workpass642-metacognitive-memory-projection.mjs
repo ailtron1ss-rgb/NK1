@@ -159,8 +159,10 @@ const incompleteCycleStageIds = {
   learning: incompleteStages.learning,
   'self-update': incompleteStages.selfUpdate,
 };
+const incompleteInput = { ...input };
+delete incompleteInput.decisionId;
 const incompleteResult = incompleteFabric.recordMetacognitiveEpisode({
-  ...input,
+  ...incompleteInput,
   tick: 43,
   cycleId: 'cycle-43',
   cycleStageIds: incompleteCycleStageIds,
