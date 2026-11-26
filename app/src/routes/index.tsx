@@ -65,26 +65,91 @@ function Home() {
       </header>
 
       {section === "home" ? (
-        <section className="mx-auto grid max-w-7xl gap-4 lg:grid-cols-[minmax(260px,320px)_minmax(0,1fr)_minmax(240px,280px)]" aria-label="Home">
-          <div className="space-y-3">
-            <AvatarStage snap={snap} thinking={busy} />
-            <div className="lg:hidden"><CompactStatus snap={snap} connection={connection} /></div>
-            <p className="hidden text-xs leading-relaxed text-muted lg:block">
-              One canonical organism state · one owner per cognitive function · renderers are projections.
-            </p>
-          </div>
-          <div className="flex min-h-[480px] flex-col md:min-h-[520px]">
+        <section className="mx-auto grid max-w-7xl gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(250px,320px)]" aria-label="Home">
+          <div className="order-2 flex min-h-[520px] flex-col lg:order-1">
             <ChatPanel />
           </div>
-          <div className="hidden lg:block">
-            <MindHud snap={snap} connection={connection} />
+          <aside className="order-1 space-y-3 lg:order-2">
+            <button
+              type="button"
+              onClick={() => setSection("avatar")}
+              aria-label="Open Kurisu avatar and embodiment controls"
+              className="group flex w-full items-center gap-3 rounded-xl border border-border bg-surface p-3 text-left transition hover:border-accent/50 hover:bg-elevated focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+            >
+              <span className="size-24 shrink-0 overflow-hidden rounded-lg border border-border bg-elevated">
+                <img
+                  src="/sprites/kurisu/thinking_chin.png"
+                  alt="Kurisu in a thoughtful pose"
+                  loading="lazy"
+                  className="h-full w-full object-cover object-center"
+                />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-[10px] uppercase tracking-widest text-subtle">Your companion</span>
+                <span className="mt-1 block font-display text-xl text-fg">Kurisu</span>
+                <span className="mt-1 block text-xs leading-relaxed text-muted">Open avatar, expressions, voice and renderer controls.</span>
+                <span className="mt-2 block text-xs font-medium text-accent">Open avatar →</span>
+              </span>
+            </button>
+            <div className="lg:hidden">
+              <CompactStatus snap={snap} connection={connection} />
+            </div>
+            <div className="hidden lg:block">
+              <MindHud snap={snap} connection={connection} />
+            </div>
+          </aside>
+        </section>
+      ) : null}
+
+      {section === "avatar" ? (
+        <section className="mx-auto max-w-7xl space-y-4" aria-label="Avatar">
+          <header>
+            <p className="text-xs uppercase tracking-widest text-subtle">Embodiment · Renderer workspace</p>
+            <h2 className="font-display text-2xl text-fg md:text-3xl">Kurisu · Avatar</h2>
+            <p className="mt-1 max-w-3xl text-sm leading-relaxed text-muted">
+              One organism state, one selected renderer. Voice, expression and movement are projected from the current runtime snapshot.
+            </p>
+          </header>
+          <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_280px]">
+            <div className="min-w-0">
+              <AvatarStage snap={snap} thinking={busy} />
+            </div>
+            <aside className="space-y-3">
+              <CompactStatus snap={snap} connection={connection} />
+              <section className="rounded-xl border border-border bg-surface p-4" aria-label="Renderer capabilities">
+                <h3 className="font-display text-lg text-fg">Renderer capabilities</h3>
+                <p className="mt-1 text-xs leading-relaxed text-muted">The labels describe the actual renderer type, not an equal level of production readiness.</p>
+                <div className="mt-3 space-y-3">
+                  <div>
+                    <p className="text-sm font-medium text-fg">Live2D · primary</p>
+                    <p className="text-xs text-muted">Cubism deformable 2D rig, expressions, motion and speech projection.</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-fg">NK1 Original · vector</p>
+                    <p className="text-xs text-muted">Editable SVG stage with limited vector animation, not a full skeletal rig.</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-fg">Legacy · sprite fallback</p>
+                    <p className="text-xs text-muted">Static PNG poses with visual transitions; no deformable character rig.</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-fg">3D · preview</p>
+                    <p className="text-xs text-muted">VRM/GLB candidate renderer; visual, device and contact acceptance remain separate gates.</p>
+                  </div>
+                  <div className="border-t border-border pt-3">
+                    <p className="text-sm font-medium text-muted">2.5D · not enabled</p>
+                    <p className="text-xs text-muted">Awaiting authored layered artwork, masks, pivots and device acceptance.</p>
+                  </div>
+                </div>
+              </section>
+            </aside>
           </div>
         </section>
       ) : null}
 
       {section === "memory" ? (
         <section className="mx-auto max-w-7xl space-y-3" aria-label="Memory">
-          <div><h2 className="font-display text-2xl text-fg">Memory</h2><p className="text-sm text-muted">Search and inspect the memories, beliefs and knowledge published by the canonical runtime.</p></div>
+          <div><h2 className="font-display text-2xl text-fg">Memory & knowledge</h2><p className="text-sm text-muted">Search and inspect the memories, beliefs and knowledge published by the canonical runtime.</p></div>
           <Labs snap={snap} />
         </section>
       ) : null}
@@ -105,7 +170,8 @@ function Home() {
 
       {section === "more" ? (
         <section className="mx-auto max-w-7xl space-y-4" aria-label="More tools and diagnostics">
-          <div><h2 className="font-display text-2xl text-fg">More</h2><p className="text-sm text-muted">Research, integration, governance and diagnostic workspaces.</p></div>
+          <div><h2 className="font-display text-2xl text-fg">More</h2><p className="text-sm text-muted">Motivation, research, integration, governance and diagnostic workspaces.</p></div>
+          <MotivationPanel snap={snap} connection={connection} />
           <RuntimeHealthPanel />
           <Labs snap={snap} />
           <ResearchDock />
