@@ -63,11 +63,14 @@ export async function createSkillPromotionApprovalRequest({ storePath, registryP
     throw new Error('trusted run registry must be a regular non-symlink file no larger than 10 MiB');
   }
   const registry = new AtomicFileTrustedSkillShadowRunRegistry(path.resolve(registryPath));
-  const verifyEvidence = createContextBoundSkillShadowEvidenceVerifier(trustedKeys, (observation, observedCandidate) =>
-    registry.resolve(observation, observedCandidate));
+  const verifyEvidence = createContextBoundSkillShadowEvidenceVerifier(
+    trustedKeys,
+    (observation, observedCandidate) => registry.resolve(observation, observedCandidate),
+    { now: () => now },
+  );
   for (const observation of candidate.shadowObservations) {
     let valid = false;
-    try { valid = verifyEvidence(observation, candidate); } catch { valid = false; }
+    try { valid = verifyEvidence(observation, candidate, 'promotion'); } catch { valid = false; }
     if (valid !== true) throw new Error('candidate contains shadow evidence that fails signature or trusted-run context verification');
   }
   const active = snapshot.active.find(item => item?.skillId === candidate.skillId) ?? null;
