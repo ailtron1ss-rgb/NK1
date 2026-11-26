@@ -436,8 +436,8 @@ export class SourceCandidateWorkspaceV1 {
         // existing candidate directory; the final manifest is written last and
         // is the only signal that a candidate is fully materialized.
         await mkdir(candidateRoot, { mode: 0o700 });
-        await chmod(candidateRoot, 0o700);
         ownsCandidateDirectory = true;
+        await chmod(candidateRoot, 0o700);
       } catch (error) {
         if ((error as NodeJS.ErrnoException)?.code === 'EEXIST') {
           return reject('candidate-workspace-already-exists', candidateId);

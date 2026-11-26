@@ -18,6 +18,7 @@ Base: `workpass70-source @ 9008a8982a5173304456bee2c604bd0bc8665964`
 - Source and edit paths are checked for traversal, reserved segments, cross-platform aliases, duplicate edits, and file/directory ancestor collisions before host admission.
 - Resource bounds cap the source snapshot, individual file, edit count, and replacement sizes.
 - Files are written exclusively into a unique workspace; a manifest is atomically renamed into place last. Partial materialization is removed on failure.
+- On POSIX filesystems, workspace and nested directories are forced to owner-only `0700`; candidate files and the manifest use owner-only `0600`. Windows retains host filesystem ACL behavior and the permission-bit regression is skipped there.
 
 ## Signed evidence admission bridge
 
