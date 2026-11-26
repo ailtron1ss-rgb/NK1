@@ -119,6 +119,58 @@ test("registry exposes only selectable renderers and resolves by mode", () => {
   assert.equal(registry.resolveByMode("vrm3d"), null);
 });
 
+
+test("schema v2 requires truthful rig and selection metadata while schema v1 remains readable", () => {
+  const v2 = { ...baseManifest(), schemaVersion: 2, rigClass: "cubism-deform", selectionRole: "primary" };
+  assert.deepEqual(validateRendererCapabilityManifest(v2), []);
+  assert.ok(validateRendererCapabilityManifest({ ...v2, rigClass: undefined }).some((issue) => issue.code === "invalid-rig-class"));
+  assert.ok(validateRendererCapabilityManifest({ ...v2, selectionRole: undefined }).some((issue) => issue.code === "invalid-selection-role"));
+  assert.deepEqual(validateRendererCapabilityManifest({ ...baseManifest(), schemaVersion: 1 }), []);
+});
+
+test("schema v2 rejects selectable previews, missing assets and rig/asset mismatches", () => {
+  const preview = validateRendererCapabilityManifest({
+    ...baseManifest(), schemaVersion: 2, rigClass: "cubism-deform", selectionRole: "preview-only",
+  }).map((issue) => issue.code);
+  assert.ok(preview.includes("preview-cannot-be-selectable"));
+
+  const noAsset = validateRendererCapabilityManifest({
+    ...baseManifest(), schemaVersion: 2, assetKind: "none", rigClass: "none", selectionRole: "fallback",
+    productionReady: false,
+  }).map((issue) => issue.code);
+  assert.ok(noAsset.includes("selectable-role-needs-asset"));
+
+  const mismatch = validateRendererCapabilityManifest({
+    ...baseManifest(), schemaVersion: 2, rigClass: "static-poses", selectionRole: "primary",
+  }).map((issue) => issue.code);
+  assert.ok(mismatch.includes("rig-asset-mismatch"));
+});
+
+test("default registry distinguishes renderer rigs and keeps preview candidates out of selection", () => {
+  const registry = createDefaultBodyRendererRegistry();
+  assert.deepEqual(registry.list().map((entry) => [entry.rendererId, entry.rigClass, entry.selectionRole]), [
+    ["nk1-live2d-cubism", "cubism-deform", "primary"],
+    ["nk1-original-svg-2d", "vector-driven", "fallback"],
+    ["nk1-legacy-sprites-2d", "static-poses", "fallback"],
+    ["nk1-three-vrm3d", "humanoid-skeleton", "preview-only"],
+  ]);
+  assert.deepEqual(registry.selectable().map((entry) => entry.rendererId), [
+    "nk1-live2d-cubism", "nk1-original-svg-2d", "nk1-legacy-sprites-2d",
+  ]);
+  assert.equal(registry.get("nk1-three-vrm3d")?.productionReady, false);
+  assert.equal(registry.list().some((entry) => entry.rigClass === "layered-depth-puppet" && entry.selectionRole !== "preview-only"), false);
+});
+
+test("registry resolves a canonical primary even when a fallback was registered first", () => {
+  const registry = new BodyRendererRegistry();
+  const primary = { ...baseManifest(), schemaVersion: 2, rendererId: "primary", rigClass: "cubism-deform", selectionRole: "primary" };
+  const fallback = { ...baseManifest(), schemaVersion: 2, rendererId: "fallback", rigClass: "vector-driven", selectionRole: "fallback", assetKind: "svg-vector" };
+  registry.register(fallback);
+  registry.register({ ...primary, rendererId: "preview", selectionRole: "preview-only", productionReady: false });
+  registry.register(primary);
+  assert.equal(registry.resolveByMode("live2d")?.rendererId, "primary");
+});
+
 test("motion programs validate their keyframe contract", () => {
   for (const program of Object.values(MOTION_PROGRAMS)) {
     assert.deepEqual(validateMotionProgram(program), [], `${program.id} should be valid`);
