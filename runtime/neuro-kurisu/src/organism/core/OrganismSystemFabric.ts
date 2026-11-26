@@ -121,36 +121,46 @@ export class OrganismSystemFabric {
 
   /** Restore only the physical owners. Derived/non-owned Core engines stay untouched. */
   restoreFromPersisted(persisted: any): void {
-    const facets=persisted?.facets ?? {};
-    const memory=facets.memory ?? {};
-    const cognition=facets.cognition ?? {};
-    const advanced=facets.advanced ?? {};
-    const learning=facets.learning ?? {};
-    const consciousness=facets.consciousness ?? {};
-    const evolution=facets.evolution ?? {};
-    const system=persisted?.system ?? {};
+    // This is the composition-root persistence boundary. Do not dereference a
+    // caller-supplied Proxy or accessor-backed record before validating it.
+    const root=isPlainDataRecord(persisted)?persisted:{};
+    const readRecord=(record:Record<string,unknown>,key:string):Record<string,unknown>=>{
+      const value=ownDataValue(record,key);
+      return isPlainDataRecord(value)?value:{};
+    };
+    const facets=readRecord(root,'facets');
+    const memory=readRecord(facets,'memory');
+    const cognition=readRecord(facets,'cognition');
+    const advanced=readRecord(facets,'advanced');
+    const learning=readRecord(facets,'learning');
+    const consciousness=readRecord(facets,'consciousness');
+    const evolution=readRecord(facets,'evolution');
+    const embodiment=readRecord(facets,'embodiment');
+    const system=readRecord(root,'system');
+    const worldModel=ownDataValue(root,'worldModel');
+    const safePersisted={worldModel:isPlainDataRecord(worldModel)?worldModel:undefined};
 
-    this.world.restoreFromPersisted({ persisted, cognition, advanced, consciousness, learning });
+    this.world.restoreFromPersisted({ persisted:safePersisted, cognition, advanced, consciousness, learning });
     this.memory.restoreFromPersisted({ memory, advanced });
-    this.embodiment.restoreFromPersisted({ cognition, embodiment:facets.embodiment ?? {}, advanced });
+    this.embodiment.restoreFromPersisted({ cognition, embodiment, advanced });
     this.agency.restore({
-      selfProjects:evolution.selfProjects,
-      agency:evolution.agency,
-      budget:cognition.budget,
-      quorum:system.cognitiveQuorum,
-      executor:system.autonomousProjectExecutor,
-      decisionReceipts:system.autonomousDecisionReceipts,
-      p67:advanced.p67AutonomousGoalGenesis,
-      p68:advanced.p68GoalEcology,
+      selfProjects:ownDataValue(evolution,'selfProjects'),
+      agency:ownDataValue(evolution,'agency'),
+      budget:ownDataValue(cognition,'budget'),
+      quorum:ownDataValue(system,'cognitiveQuorum'),
+      executor:ownDataValue(system,'autonomousProjectExecutor'),
+      decisionReceipts:ownDataValue(system,'autonomousDecisionReceipts'),
+      p67:ownDataValue(advanced,'p67AutonomousGoalGenesis'),
+      p68:ownDataValue(advanced,'p68GoalEcology'),
     });
     this.self.restoreFromPersisted({ consciousness, learning, advanced });
     this.governance.restoreFromPersisted({ advanced });
     this.research.restoreFromPersisted(system);
-    this.willIntegration.restore(system.willIntegration);
-    this.luminaAdaptation.restore(system.luminaAdaptation);
-    this.hexisAdaptation.restore(system.hexisAdaptation);
-    this.lettaGovernanceAdaptation.restore(system.lettaGovernanceAdaptation);
-    this.conscioAdaptation.restore(system.conscioAdaptation);
+    this.willIntegration.restore(ownDataValue(system,'willIntegration'));
+    this.luminaAdaptation.restore(ownDataValue(system,'luminaAdaptation'));
+    this.hexisAdaptation.restore(ownDataValue(system,'hexisAdaptation'));
+    this.lettaGovernanceAdaptation.restore(ownDataValue(system,'lettaGovernanceAdaptation'));
+    this.conscioAdaptation.restore(ownDataValue(system,'conscioAdaptation'));
   }
 
   contract(name: OrganismSystemName): OrganismSystemContract { return organismSystemContract(name); }
