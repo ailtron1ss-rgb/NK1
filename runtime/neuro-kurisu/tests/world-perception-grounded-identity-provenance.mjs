@@ -209,6 +209,30 @@ const spatialOutput = spatialWorld.objects.find(object => object.label === 'crat
 assert.deepEqual({ x: spatialOutput?.x, y: spatialOutput?.y, z: spatialOutput?.z, frame: spatialOutput?.coordinateFrameId },
   { x: -1.25, y: .75, z: 2.5, frame: 'depth-camera:world-v1' });
 
+
+// Restored evidence metadata cannot revive process-local observation authority.
+const restoredGroundedWorld = new GroundedWorldState();
+restoredGroundedWorld.restore({
+  version:1,revision:7,lastAt:2_000,location:'lab',uncertainty01:0,confidence01:1,
+  entities:[{
+    id:'persisted-door',label:'door',kind:'object',confidence01:1,present01:1,firstSeenAt:1,lastSeenAt:2_000,
+    modalities:['world'],modalityEvidenceKinds:{world:'observed'},presenceStatus:'visible',persistence01:1,
+    absenceEvidence01:0,observationCount:8,
+  }],
+  relations:[],
+  events:[{id:'persisted-event',label:'external-observed:door:door-open',confidence01:1,lastAt:2_000,persistence01:1,evidenceKind:'observed',modalityEvidenceKinds:{world:'observed'}}],
+  facts:['external-observed:door:door-open','shadow-divergence:door:0.9','derived-evidence:door:door-open'],
+  provenanceIds:['external-postcondition:exec-old-receipt','local-note:kept'],
+  lastHash:'caller-controlled-hash',
+});
+const restoredGroundedSnapshot = restoredGroundedWorld.snapshot();
+assert.equal(restoredGroundedSnapshot.entities[0]?.modalityEvidenceKinds?.world,'derived');
+assert.ok(!restoredGroundedSnapshot.facts.some(fact=>fact.startsWith('external-observed:')||fact.startsWith('shadow-divergence:')));
+assert.deepEqual(restoredGroundedSnapshot.facts,['derived-evidence:door:door-open']);
+assert.equal(restoredGroundedSnapshot.events[0]?.label,'external-receipt:door:door-open');
+assert.equal(restoredGroundedSnapshot.events[0]?.confidence01,0);
+assert.deepEqual(restoredGroundedSnapshot.provenanceIds,['local-note:kept']);
+
 // Keep the base truthfulness results above as one focused regression summary.
 console.log(JSON.stringify({
   ok: true,

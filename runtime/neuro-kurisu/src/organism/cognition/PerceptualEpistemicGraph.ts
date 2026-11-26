@@ -118,7 +118,11 @@ export class PerceptualEpistemicGraph {
   restore(raw?:Partial<EpistemicState>|null){
     const d=defaultEpistemicState(); const r=raw??{};
     this.state={...d,...r,
-      claims:Array.isArray(r.claims)?r.claims.slice(-256):[],
+      claims:Array.isArray(r.claims)?r.claims.slice(-256).map((claim:any)=>({
+        ...claim,
+        source:claim?.source==='observed'?'derived':
+          claim?.source==='model-output'||claim?.source==='derived'||claim?.source==='unresolved'?claim.source:'unresolved',
+      })):[],
       contradictionPairs:safeCounter(r.contradictionPairs,4096),
       resolvedPairs:safeCounter(r.resolvedPairs,4096),
       corroboratedPairs:safeCounter(r.corroboratedPairs,1000),

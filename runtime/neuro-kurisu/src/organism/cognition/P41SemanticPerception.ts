@@ -3,6 +3,19 @@ import { PerceptualContinuityModel, defaultPerceptualContinuityState, type Conti
 import { PerceptualEpistemicGraph, defaultEpistemicState, type EpistemicState } from './PerceptualEpistemicGraph.ts';
 
 const clamp = (n:number) => Math.max(0, Math.min(1, Number.isFinite(n) ? n : 0));
+const admittedEvidenceKind=(value:unknown):P41EvidenceKind=>{
+  if(value==='model-output'||value==='derived'||value==='unresolved')return value;
+  // P41 inputs and snapshots do not carry the host admission capability.
+  // An observed label here is only a caller assertion, so it fails closed.
+  return value==='observed'?'derived':'unresolved';
+};
+const sanitizeModalityEvidenceKinds=(value:unknown):Partial<Record<P41Modality,P41EvidenceKind>>=>{
+  if(!value||typeof value!=='object'||Array.isArray(value))return {};
+  const record=value as Record<string,unknown>;
+  const modalities:P41Modality[]=['text','vision','audio','sensor','world'];
+  return Object.fromEntries(modalities.filter(modality=>Object.prototype.hasOwnProperty.call(record,modality))
+    .map(modality=>[modality,admittedEvidenceKind(record[modality])])) as Partial<Record<P41Modality,P41EvidenceKind>>;
+};
 const now = () => Date.now();
 const MAX_TRACK_GAP_MS=30_000;
 const MAX_TRACK_ASSOCIATION_DISTANCE=.75;
@@ -214,6 +227,7 @@ export class P41SemanticPerceptionEngine {
     const d=defaultP41SemanticPerception(); const r=raw??{};
     this.state={...d,...r,
       scene:{...d.scene,...(r.scene??{})},
+      sceneEvidenceKind:admittedEvidenceKind(r.sceneEvidenceKind),
       entities:Array.isArray(r.entities)?r.entities.slice(-192).map((entity:any)=>{
         const imageBox=normalizedImageBox(entity?.imageBox);
         const cameraId=Number.isSafeInteger(entity?.imageBoxCameraId)&&Number(entity.imageBoxCameraId)>=0?Number(entity.imageBoxCameraId):undefined;
@@ -223,11 +237,12 @@ export class P41SemanticPerceptionEngine {
         const validImageEvidence=Boolean(imageBox&&cameraId!==undefined&&imageAt!==undefined&&imageAt<=snapshotAt&&boxConfidence!==undefined);
         return {
           ...entity,
+          modalityEvidenceKinds:sanitizeModalityEvidenceKinds(entity?.modalityEvidenceKinds),
           ...(validImageEvidence?{imageBox,imageBoxCameraId:cameraId,imageBoxAt:imageAt,imageBoxConfidence01:boxConfidence}:{imageBox:undefined,imageBoxCameraId:undefined,imageBoxAt:undefined,imageBoxConfidence01:undefined}),
         };
       }):[],
-      relations:Array.isArray(r.relations)?r.relations.slice(-384):[],
-      events:Array.isArray(r.events)?r.events.slice(-128):[],
+      relations:Array.isArray(r.relations)?r.relations.slice(-384).map((relation:any)=>({...relation,evidenceKind:admittedEvidenceKind(relation?.evidenceKind)})):[],
+      events:Array.isArray(r.events)?r.events.slice(-128).map((event:any)=>({...event,evidenceKind:admittedEvidenceKind(event?.evidenceKind),modalityEvidenceKinds:sanitizeModalityEvidenceKinds(event?.modalityEvidenceKinds)})):[],
       snapshots:Array.isArray(r.snapshots)?r.snapshots.slice(-128):[],
       pending:Array.isArray(r.pending)?r.pending.slice(-64):[],
       modalityReliability:Object.fromEntries((Object.keys(d.modalityReliability) as P41Modality[]).map(modality=>[
@@ -337,13 +352,15 @@ export class P41SemanticPerceptionEngine {
 
   ingestSensor(s:NonNullable<P41SemanticInput['sensor']>,at:number){
     const label=String(s.location??'host-local');
-    this.upsertEntity(label,'place',.82,.35,'sensor',at,null,'observed');
-    this.upsertEntity(`body@${label}`,'body',.92,.42,'sensor',at,null,'observed');
+    // A sensor payload without the host admission capability is useful input,
+    // but it must not cross the observed-evidence boundary by itself.
+    this.upsertEntity(label,'place',.82,.35,'sensor',at,null,'derived');
+    this.upsertEntity(`body@${label}`,'body',.92,.42,'sensor',at,null,'derived');
     this.recordModality('sensor',clamp(s.freshness01??.85),0);
   }
 
   ingestWorld(w:NonNullable<P41SemanticInput['world']>,at:number){
-    const sceneEvidenceKind=w.evidenceKind??'unresolved';
+    const sceneEvidenceKind=admittedEvidenceKind(w.evidenceKind);
     if(w.scene){
       const label=String(w.scene).slice(0,120);
       const sameSceneObservation=this.state.scene.at===at&&this.state.scene.label===label;
@@ -356,7 +373,7 @@ export class P41SemanticPerceptionEngine {
     for(const o of (w.objects??[]).slice(0,24)){
       const suppliedTrackId=cleanTrackId(o.trackId);
       const namespacedTrackId=suppliedTrackId?'world:'+(cleanTrackId(o.sourceId)||'canonical')+':'+suppliedTrackId:undefined;
-      const evidenceKind=o.evidenceKind??sceneEvidenceKind;
+      const evidenceKind=admittedEvidenceKind(o.evidenceKind??sceneEvidenceKind);
       const coordinateFrameId=cleanTrackId(o.coordinateFrameId);
       const position=coordinateFrameId?finitePosition(o.x,o.y,o.z):null;
       const entity=this.upsertEntity(String(o.label),o.kind??'object',clamp(o.confidence01??.35),.52,'world',at,position,evidenceKind,namespacedTrackId,position?coordinateFrameId:undefined);

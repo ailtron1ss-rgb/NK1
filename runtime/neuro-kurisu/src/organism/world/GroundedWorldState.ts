@@ -1,8 +1,20 @@
 import type { WorldContext } from '../core/types.ts';
 import type { P41PerceptionState } from '../cognition/P41SemanticPerception.ts';
 import type { PerceptualEvidenceState } from '../body/PerceptualEvidenceCompiler.ts';
+import type { EmbodiedActionResult } from '../body/EmbodiedActionExecutor.ts';
+import { isTrustedEmbodiedOutcomeVerification, type OutcomeVerification } from '../system/ExternalPostconditionVerifier.ts';
 
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
+const admittedWorldEvidenceKind=(value:unknown):'observed'|'model-output'|'derived'|'conflict'|'unresolved'=>{
+  if(value==='model-output'||value==='derived'||value==='conflict'||value==='unresolved')return value;
+  // External data/state is not an admission receipt, including during restore.
+  return value==='observed'?'derived':'unresolved';
+};
+const sanitizeWorldModalityEvidence=(value:unknown):Record<string,'observed'|'model-output'|'derived'|'conflict'|'unresolved'>=>{
+  if(!value||typeof value!=='object'||Array.isArray(value))return {};
+  return Object.fromEntries(Object.entries(value as Record<string,unknown>)
+    .slice(0,8).map(([key,kind])=>[key.slice(0,32),admittedWorldEvidenceKind(kind)]));
+};
 const norm=(x:string)=>String(x??'').trim().toLowerCase().slice(0,120);
 // Match P41 cleanTrackId: identity tokens retain case and only normalize Unicode/whitespace.
 const cleanIdentity=(value:unknown)=>{
@@ -85,7 +97,7 @@ export class GroundedWorldState {
           modalities:Array.isArray(e?.modalities)?[...new Set(e.modalities.filter((x:any)=>typeof x==='string'))]:[],
           trackAliases:Array.isArray(e?.trackAliases)?[...new Set(e.trackAliases.filter((x:any)=>typeof x==='string'))].slice(-16):[],
           sourceIds:Array.isArray(e?.sourceIds)?[...new Set(e.sourceIds.filter((x:any)=>typeof x==='string'))].slice(-16):[],
-          modalityEvidenceKinds:e?.modalityEvidenceKinds&&typeof e.modalityEvidenceKinds==='object'?{...e.modalityEvidenceKinds}:{},
+          modalityEvidenceKinds:sanitizeWorldModalityEvidence(e?.modalityEvidenceKinds),
           ...(validImageEvidence?{imageBox,imageBoxCameraId,imageBoxAt,imageBoxConfidence01}:{imageBox:undefined,imageBoxCameraId:undefined,imageBoxAt:undefined,imageBoxConfidence01:undefined}),
           presenceStatus:['visible','fading','unknown'].includes(e?.presenceStatus)?e.presenceStatus:'unknown',
           persistence01:clamp(Number(e?.persistence01??0)),
@@ -97,52 +109,65 @@ export class GroundedWorldState {
         };
       }):[],
       relations:Array.isArray(r.relations)?r.relations.slice(0,256):[],
-      events:Array.isArray(r.events)?r.events.slice(0,96):[],
-      facts:Array.isArray(r.facts)?r.facts.slice(0,192):[],
-      provenanceIds:Array.isArray(r.provenanceIds)?r.provenanceIds.slice(0,128):[],
+      events:Array.isArray(r.events)?r.events.slice(0,96).map((event:any)=>{
+        const label=typeof event?.label==='string'?event.label:'';
+        const revoked=label.startsWith('external-observed:');
+        return {...event,label:revoked?'external-receipt:'+label.slice('external-observed:'.length):label,
+          confidence01:revoked?0:clamp(Number(event?.confidence01??0)),
+          persistence01:revoked?0:clamp(Number(event?.persistence01??0)),
+          evidenceKind:admittedWorldEvidenceKind(event?.evidenceKind),
+          modalityEvidenceKinds:sanitizeWorldModalityEvidence(event?.modalityEvidenceKinds)};
+      }):[],
+      facts:Array.isArray(r.facts)?r.facts.filter((fact:any)=>typeof fact==='string'&&!fact.startsWith('external-observed:')&&!fact.startsWith('shadow-divergence:')).slice(0,192):[],
+      provenanceIds:Array.isArray(r.provenanceIds)?r.provenanceIds.filter((id:any)=>typeof id==='string'&&!id.startsWith('external-postcondition:')).slice(0,128):[],
     };
   }
   snapshot(){return structuredClone(this.state);}
 
-  /** P2841: commit only externally evidenced consequences into the canonical grounded world. */
+  /**
+   * Commit a world consequence only when the exact executor result and exact
+   * verifier token are still trusted in this process. Numeric flags, labels,
+   * copied JSON and persisted receipts cannot authorize canonical world facts.
+   */
   integrateExternalOutcome(input:{
-    at:number; action:string; status:string; proofClass:string; verified01:number; independent01:number;
-    evidence01:number; consequence01:number; claim:string; provenanceId:string; divergence01:number;
+    embodiedAction:EmbodiedActionResult;
+    postconditionVerification:OutcomeVerification;
+    divergence01?:number;
   }){
-    const at=input.at;
-    const evidence=clamp(input.evidence01);
-    const verified=clamp(input.verified01);
-    const independent=clamp(input.independent01);
-    // A command receipt proves that the device accepted/executed a command, not
-    // that the intended world effect occurred. Only the canonical, independently
-    // verified postcondition may change grounded facts or world confidence.
-    const verifiedWorldEffect=input.proofClass==='independent-observation' && verified>=.8 && independent>=.8;
-    const confidence=verifiedWorldEffect?clamp(.48*evidence+.30*verified+.22*independent):0;
-    const eventId=`gw-external-${stableHash(`${at}:${input.action}:${input.provenanceId}`)}`;
-    const eventLabel=norm(`${verifiedWorldEffect?'external-observed':'external-receipt'}:${input.action}:${input.status}:${input.proofClass}`);
-    const fact=verifiedWorldEffect?norm(`external-observed:${input.action}:${input.claim}`):'';
-    const divergenceFact=verifiedWorldEffect?norm(`shadow-divergence:${input.action}:${input.divergence01.toFixed(3)}`):'';
-    const events=new Map(this.state.events.map(x=>[x.id,{...x}]));
+    const actionResult=input?.embodiedAction;
+    const verification=input?.postconditionVerification;
+    const at=Number.isSafeInteger(actionResult?.at)&&actionResult.at>=0?actionResult.at:this.state.lastAt;
+    const action=typeof actionResult?.action==='string'?actionResult.action.trim().slice(0,80)||'unknown':'unknown';
+    const status=typeof actionResult?.status==='string'?actionResult.status.slice(0,32):'unknown';
+    const realityClass=typeof actionResult?.realityClass==='string'?actionResult.realityClass.slice(0,40):'unknown';
+    const executionId=typeof actionResult?.executionId==='string'?actionResult.executionId.slice(0,100):'unbound';
+    const trusted=isTrustedEmbodiedOutcomeVerification(verification,actionResult);
+    const verifiedWorldEffect=trusted&&verification.verified===true&&verification.externalObservation===true&&verification.basis==='external-postcondition';
+    const confidence=verifiedWorldEffect?clamp(verification.confidence01):0;
+    const divergence=clamp(Number(input?.divergence01??0));
+    const eventId=`gw-external-${stableHash(`${at}:${action}:${executionId}`)}`;
+    const eventLabel=norm(`${verifiedWorldEffect?'external-observed':'external-receipt'}:${action}:${status}:${realityClass}`);
+    const fact=verifiedWorldEffect?norm(`external-observed:${action}:${verification.observedPostcondition??'postcondition'}`):'';
+    const divergenceFact=verifiedWorldEffect?norm(`shadow-divergence:${action}:${divergence.toFixed(3)}`):'';
+    const events=new Map(this.state.events.map(row=>[row.id,{...row}]));
     events.set(eventId,{
       id:eventId,label:eventLabel,confidence01:confidence,lastAt:at,
-      persistence01:verifiedWorldEffect?clamp(.12+.28*confidence+.18*input.consequence01):0,
+      persistence01:verifiedWorldEffect?clamp(.12+.28*confidence):0,
     });
     const facts=[...this.state.facts,fact,divergenceFact].filter(Boolean);
-    const provenance=[input.provenanceId,...this.state.provenanceIds].filter(Boolean);
+    const provenance=trusted?[ `external-postcondition:${executionId}`,...this.state.provenanceIds ]:[...this.state.provenanceIds];
     const eventRows=[...events.values()].sort((a,b)=>b.lastAt-a.lastAt).slice(0,96);
     const nextConfidence=verifiedWorldEffect?clamp(this.state.confidence01*.82+confidence*.18):this.state.confidence01;
-    this.state={...this.state,revision:this.state.revision+1,lastAt:at,confidence01:nextConfidence,uncertainty01:clamp(1-nextConfidence),events:eventRows,facts:[...new Set(facts)].slice(-192),provenanceIds:[...new Set(provenance)].slice(0,128)};
+    this.state={...this.state,revision:this.state.revision+1,lastAt:Math.max(this.state.lastAt,at),confidence01:nextConfidence,uncertainty01:clamp(1-nextConfidence),events:eventRows,facts:[...new Set(facts)].slice(-192),provenanceIds:[...new Set(provenance)].slice(0,128)};
     const digest=`${this.state.location}|${this.state.revision}|${this.state.facts.slice(-24).join('|')}|${this.state.events.slice(0,8).map(x=>x.id).join('|')}`;
     this.state.lastHash=stableHash(digest);
-    return {revision:this.state.revision,eventId,confidence01:confidence,verified01:verified,independent01:independent,lastHash:this.state.lastHash};
+    return {revision:this.state.revision,eventId,confidence01:confidence,verified01:verifiedWorldEffect?1:0,independent01:verifiedWorldEffect?1:0,lastHash:this.state.lastHash};
   }
 
   integrate(input:{at:number;base?:WorldContext|null;perception?:P41PerceptionState|null;evidence?:PerceptualEvidenceState|null;}):WorldContext{
     const at=input.at; const base=input.base; const p=input.perception; const e=input.evidence;
     const rows:GroundedEntity[]=this.state.entities.map(row=>({...row,modalities:[...row.modalities],trackAliases:[...(row.trackAliases??[])],sourceIds:[...(row.sourceIds??[])],modalityEvidenceKinds:{...(row.modalityEvidenceKinds??{})}}));
-    const normalizeEvidence=(value:unknown):'observed'|'model-output'|'derived'|'conflict'|'unresolved'=>{
-      return value==='observed'||value==='model-output'||value==='derived'||value==='conflict'||value==='unresolved'?value:'unresolved';
-    };
+    const normalizeEvidence=(value:unknown):'observed'|'model-output'|'derived'|'conflict'|'unresolved'=>admittedWorldEvidenceKind(value);
     const trackTokens=(entity:Pick<GroundedEntity,'id'|'trackId'|'trackAliases'>):string[]=>{
       const values:string[]=[];
       if(entity.id)values.push('id:'+entity.id);

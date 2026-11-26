@@ -68,9 +68,9 @@ assert.equal(lastLearning?.learningScale01,0,'unverified device receipt must not
 assert.equal(lastLearning?.identityUpdateScale01,0);
 assert.deepEqual(groundedWorldAfter.facts,groundedWorldBefore.facts,'a command receipt must not create grounded world facts');
 assert.equal(groundedWorldAfter.confidence01,groundedWorldBefore.confidence01,'a command receipt must not increase grounded world confidence');
-assert.ok(groundedWorldAfter.events.some(x=>x.label.startsWith('external-receipt:respond:executed:stable-device-receipt')));
+assert.ok(groundedWorldAfter.events.some(x=>x.label.startsWith('external-receipt:respond:executed:device-actuation')));
 const perceptual = runtime.core.perceptualEvidenceSummary();
-assert(perceptual.evidence.some(x => String(x.claim).startsWith('external-outcome:respond')), 'external outcome must return to next-cycle perceptual evidence');
+assert(perceptual.evidence.some(x => String(x.claim).startsWith('external-outcome-derived:respond')), 'external outcome must return to next-cycle perceptual evidence');
 assert(externalStep.embodiedAction?.status === 'executed');
 
 // Restore the real executor and verify simulation fallback still advances canonical world.
