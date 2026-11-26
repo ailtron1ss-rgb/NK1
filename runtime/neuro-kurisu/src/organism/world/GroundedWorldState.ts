@@ -2,7 +2,8 @@ import type { WorldContext } from '../core/types.ts';
 import type { P41PerceptionState } from '../cognition/P41SemanticPerception.ts';
 import type { PerceptualEvidenceState } from '../body/PerceptualEvidenceCompiler.ts';
 import type { EmbodiedActionResult } from '../body/EmbodiedActionExecutor.ts';
-import { isTrustedEmbodiedOutcomeVerification, type OutcomeVerification } from '../system/ExternalPostconditionVerifier.ts';
+import { isTrustedEmbodiedOutcomeVerification } from '../system/ExternalPostconditionVerifier.ts';
+import type { OutcomeVerification } from '../system/OutcomeVerificationService.ts';
 
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
 const admittedWorldEvidenceKind=(value:unknown):'observed'|'model-output'|'derived'|'conflict'|'unresolved'=>{
