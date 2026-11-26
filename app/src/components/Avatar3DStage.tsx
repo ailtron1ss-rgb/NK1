@@ -70,11 +70,14 @@ function bonesOf(root:any):Bone[]{const out:Bone[]=[];root.traverse((node:any)=>
 function fitAvatarCameraToModel(rt: Runtime, root: any): boolean {
   try {
     root.updateMatrixWorld?.(true);
+    refreshAvatarRaycastBounds(root);
     const fit = resolveAvatarModelFitBounds(root);
     const size = new THREE.Vector3();
     const center = new THREE.Vector3();
-    fit.bounds.getSize(size);
-    fit.bounds.getCenter(center);
+    // Skin geometry can contain unweighted/outlier vertices. Frame the visible
+    // character envelope used by real contact zones, not the inflated rig bounds.
+    fit.contactBounds.getSize(size);
+    fit.contactBounds.getCenter(center);
     const distance = resolveAvatarCameraFitDistance(
       { x: size.x, y: size.y, z: size.z },
       rt.camera.fov,
@@ -87,7 +90,7 @@ function fitAvatarCameraToModel(rt: Runtime, root: any): boolean {
     rt.camera.updateProjectionMatrix();
     rt.camera.updateMatrixWorld?.(true);
     rt.renderer.domElement.dataset.avatarCameraFit = JSON.stringify({
-      source: fit.source,
+      source: "visible-character-surfaces",
       size: { x: size.x, y: size.y, z: size.z },
       aspect: rt.camera.aspect,
       distance,
