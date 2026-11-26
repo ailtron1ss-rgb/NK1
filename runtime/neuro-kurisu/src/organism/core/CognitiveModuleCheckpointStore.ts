@@ -39,6 +39,7 @@ export class CognitiveModuleCheckpointStore implements JsonStateStore<PersistedO
   private snapshotProvider?: SnapshotProvider;
   private lastSnapshotFailures: Array<{ id: string; reason: string }> = [];
   private checkpointLoadError: string | null = null;
+  private lastCapturedAt = 0;
   private readonly delegate: JsonStateStore<PersistedOrganism>;
   private readonly clock: () => number;
 
@@ -85,15 +86,18 @@ export class CognitiveModuleCheckpointStore implements JsonStateStore<PersistedO
     this.moduleStates.clear();
     this.lastSnapshotFailures = [];
     this.checkpointLoadError = null;
+    this.lastCapturedAt = 0;
     if (!persisted) return null;
 
     const system = asRecord((persisted as unknown as Record<string, unknown>).system);
     if (!system || !Object.prototype.hasOwnProperty.call(system, CHECKPOINT_FIELD)) return persisted;
     const raw = asRecord(system[CHECKPOINT_FIELD]);
-    if (!raw || raw.schemaVersion !== 1 || !Array.isArray(raw.modules) || raw.modules.length > MAX_MODULES) {
+    if (!raw || raw.schemaVersion !== 1 || !Array.isArray(raw.modules) ||
+        raw.modules.length > MAX_MODULES || !Number.isFinite(raw.capturedAt) || raw.capturedAt < 0) {
       this.quarantineCheckpoint('cognitive-module-checkpoint-invalid');
       return persisted;
     }
+    this.lastCapturedAt = raw.capturedAt;
 
     try {
       const seen = new Set<string>();
@@ -186,6 +190,7 @@ export class CognitiveModuleCheckpointStore implements JsonStateStore<PersistedO
     // organism's content hash, and is written atomically with the same payload.
     system[CHECKPOINT_FIELD] = checkpoint;
     await this.delegate.save(value);
+    this.lastCapturedAt = capturedAt;
   }
 
   metrics(): StateStoreMetrics {
@@ -209,7 +214,8 @@ export class CognitiveModuleCheckpointStore implements JsonStateStore<PersistedO
   } {
     return {
       moduleCount: this.moduleStates.size,
-      capturedAt: this.clock(),
+      // Zero means no module checkpoint has been durably captured yet.
+      capturedAt: this.lastCapturedAt,
       snapshotFailures: this.lastSnapshotFailures.map(row => ({ ...row })),
       checkpointLoadError: this.checkpointLoadError,
     };
