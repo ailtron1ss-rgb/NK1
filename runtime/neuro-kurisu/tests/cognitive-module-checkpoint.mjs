@@ -193,3 +193,38 @@ console.log('COGNITIVE_MODULE_CHECKPOINT=PASS');
 
 console.log('ORGANISM_RUNTIME_MODULE_INTEGRATION=PASS');
 
+
+
+// Optional module startup faults must not take the canonical organism offline.
+// The module host rolls back its own partial activation; OrganismRuntime keeps
+// Core available and exposes the degraded module health to the host.
+{
+  const { OrganismRuntime } = await import('../src/organism/core/OrganismRuntime.ts');
+  const durable = backingStore();
+  const events = [];
+  const broken = fixture(events);
+  broken.module.initialize = () => {
+    events.push('initialize-failed');
+    throw new Error('optional-module-init-failure');
+  };
+  const host = new CognitiveModuleRuntime({ hostApiVersion: 1, grants: {} });
+  host.register({ manifest: manifest('optional.visual-index'), factory: () => broken.module });
+  const organism = new OrganismRuntime({
+    stateFile: `/tmp/nk1-module-optional-init-${process.pid}.json`,
+    stateStore: durable,
+    autoRun: false,
+    enableLanguage: false,
+    cognitiveModuleRuntime: host,
+  });
+
+  await assert.doesNotReject(
+    organism.init(),
+    'an optional module initialization failure must not block the canonical organism',
+  );
+  assert.equal(organism.cognitiveModuleDiagnostics().enabled, true);
+  assert.equal(organism.cognitiveModuleDiagnostics().modules[0].status, 'failed');
+  const health = await organism.cognitiveModuleHealth();
+  assert.equal(health.ok, false);
+  assert.equal(organism.core.operationalStatusSnapshot().tick, 0);
+  await organism.stop();
+}
