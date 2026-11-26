@@ -106,19 +106,26 @@ export class CognitiveModuleCheckpointStore implements JsonStateStore<PersistedO
     }
 
     if (this.snapshotProvider) {
+      let result: CognitiveModuleCheckpointCaptureResult;
       try {
-        const result = await this.snapshotProvider();
-        this.lastSnapshotFailures = Array.isArray(result?.failed)
-          ? result.failed.slice(0, MAX_FAILURES).map(row => ({
-              id: String(row.id ?? '').slice(0, 120),
-              reason: String(row.reason ?? 'snapshot-failed').slice(0, 180),
-            }))
-          : [];
+        result = await this.snapshotProvider();
       } catch (error) {
         this.lastSnapshotFailures = [{
           id: '*',
           reason: String(error instanceof Error ? error.message : error).slice(0, 180),
         }];
+        throw new Error('cognitive-module-checkpoint-snapshot-incomplete:*');
+      }
+
+      this.lastSnapshotFailures = Array.isArray(result?.failed)
+        ? result.failed.slice(0, MAX_FAILURES).map(row => ({
+            id: String(row.id ?? '').slice(0, 120),
+            reason: String(row.reason ?? 'snapshot-failed').slice(0, 180),
+          }))
+        : [];
+      if (this.lastSnapshotFailures.length > 0) {
+        const failedIds = this.lastSnapshotFailures.map(row => row.id).join(',');
+        throw new Error(`cognitive-module-checkpoint-snapshot-incomplete:${failedIds}`);
       }
     }
 
