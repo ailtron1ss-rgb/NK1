@@ -107,6 +107,8 @@ test("plans a live2d -> 3d handoff preserving the snapshot and reporting neutral
   assert.equal(plan.to, "vrm3d");
   assert.equal(plan.stateRevision, 7);
   assert.equal(plan.requiresNeutralRebind, true);
+  assert.equal(plan.fromRendererId, "nk1-live2d-cubism");
+  assert.equal(plan.toRendererId, "nk1-three-vrm3d");
   assert.deepEqual(plan.preserved.speech, state.speech);
   assert.deepEqual(plan.preserved.gaze, state.gaze);
   assert.equal(progress.committed, false);
@@ -119,6 +121,8 @@ test("cross-mode handoff between two distinct 2D renderers still reports a rebin
   const { plan } = beginBodySwitch("original", "legacy", state);
   assert.equal(plan.from, "live2d");
   assert.equal(plan.to, "live2d");
+  assert.equal(plan.fromRendererId, "nk1-original-svg-2d");
+  assert.equal(plan.toRendererId, "nk1-legacy-sprites-2d");
   assert.equal(plan.requiresNeutralRebind, true, "different renderer ids must not be treated as the same body");
 });
 
@@ -126,6 +130,8 @@ test("switching to the same renderer commits immediately without a rebind", () =
   const state = projectSemanticBodyState(baseInput());
   const { plan, progress } = beginBodySwitch("3d", "3d", state);
   assert.equal(plan.requiresNeutralRebind, false);
+  assert.equal(plan.fromRendererId, "nk1-three-vrm3d");
+  assert.equal(plan.toRendererId, "nk1-three-vrm3d");
   assert.equal(progress.committed, true);
 });
 
