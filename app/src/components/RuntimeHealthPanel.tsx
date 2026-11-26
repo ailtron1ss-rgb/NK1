@@ -170,7 +170,7 @@ export function RuntimeHealthPanel() {
       <section className="mt-4 rounded-lg border border-border bg-bg p-3">
         <div className="flex flex-wrap items-center justify-between gap-2"><div className="flex items-center gap-2"><ShieldAlert className="size-4 text-amber-400" /><h3 className="text-sm font-medium text-fg">Очередь восстановления действий</h3></div><span className="rounded-full border border-border px-2 py-1 text-[10px] text-muted">{recovery.length} записей</span></div>
         <p className="mt-1 text-[10px] leading-relaxed text-muted">{recoveryNote ?? "Список действий, внешний результат которых может потребовать сверки."} Панель работает только для просмотра и никогда не повторяет и не выполняет действия автоматически.</p>
-        {recovery.length ? <div className="mt-3 grid gap-2 xl:grid-cols-2">{recovery.map(item => <RecoveryCard key={item.id} item={item} />)}</div> : !errors.some(error => error.startsWith("Action recovery")) ? <p className="mt-3 text-xs text-muted">Runtime не вернул записей для восстановления.</p> : null}
+        {recovery.length ? <div className="mt-3 grid gap-2 xl:grid-cols-2">{recovery.map(item => <RecoveryCard key={item.id} item={item} />)}</div> : !errors.some(error => error.startsWith("Очередь восстановления действий:")) ? <p className="mt-3 text-xs text-muted">Runtime не вернул записей для восстановления.</p> : null}
       </section>
     </section>
   );
