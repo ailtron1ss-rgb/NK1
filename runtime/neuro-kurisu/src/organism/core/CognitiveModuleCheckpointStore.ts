@@ -38,11 +38,15 @@ export class CognitiveModuleCheckpointStore implements JsonStateStore<PersistedO
   private readonly moduleStates = new Map<string, CognitiveModuleStateEnvelopeV1>();
   private snapshotProvider?: SnapshotProvider;
   private lastSnapshotFailures: Array<{ id: string; reason: string }> = [];
+  private checkpointLoadError: string | null = null;
   private readonly delegate: JsonStateStore<PersistedOrganism>;
   private readonly clock: () => number;
 
   readonly moduleStateStore: CognitiveModuleStateStore = {
     load: async (moduleId) => {
+      if (this.checkpointLoadError) {
+        throw new Error(`cognitive-module-checkpoint-restore-failed:${this.checkpointLoadError}`);
+      }
       const envelope = this.moduleStates.get(moduleId);
       return envelope ? structuredClone(envelope) : null;
     },
@@ -75,40 +79,65 @@ export class CognitiveModuleCheckpointStore implements JsonStateStore<PersistedO
     const persisted = await this.delegate.load();
     this.moduleStates.clear();
     this.lastSnapshotFailures = [];
+    this.checkpointLoadError = null;
     if (!persisted) return null;
 
     const system = asRecord((persisted as unknown as Record<string, unknown>).system);
-    const raw = asRecord(system?.[CHECKPOINT_FIELD]);
-    if (!raw) return persisted;
-
-    if (raw.schemaVersion !== 1 || !Array.isArray(raw.modules) || raw.modules.length > MAX_MODULES) {
-      throw new Error('cognitive-module-checkpoint-invalid');
+    if (!system || !Object.prototype.hasOwnProperty.call(system, CHECKPOINT_FIELD)) return persisted;
+    const raw = asRecord(system[CHECKPOINT_FIELD]);
+    if (!raw || raw.schemaVersion !== 1 || !Array.isArray(raw.modules) || raw.modules.length > MAX_MODULES) {
+      this.quarantineCheckpoint('cognitive-module-checkpoint-invalid');
+      return persisted;
     }
 
-    const seen = new Set<string>();
-    for (const candidate of raw.modules) {
-      const envelope = asRecord(candidate);
-      const moduleId = typeof envelope?.moduleId === 'string' ? envelope.moduleId : '';
-      if (!moduleId || seen.has(moduleId)) throw new Error('cognitive-module-checkpoint-duplicate-or-invalid-id');
-      seen.add(moduleId);
-      this.moduleStates.set(moduleId, structuredClone(candidate) as CognitiveModuleStateEnvelopeV1);
-    }
+    try {
+      const seen = new Set<string>();
+      for (const candidate of raw.modules) {
+        const envelope = asRecord(candidate);
+        const moduleId = typeof envelope?.moduleId === 'string' ? envelope.moduleId : '';
+        if (!moduleId || seen.has(moduleId)) {
+          throw new Error('cognitive-module-checkpoint-duplicate-or-invalid-id');
+        }
+        seen.add(moduleId);
+        this.moduleStates.set(moduleId, structuredClone(candidate) as CognitiveModuleStateEnvelopeV1);
+      }
 
-    if (Array.isArray(raw.snapshotFailures)) {
-      this.lastSnapshotFailures = raw.snapshotFailures
-        .slice(0, MAX_FAILURES)
-        .flatMap((item) => {
-          const row = asRecord(item);
-          if (typeof row?.id !== 'string' || typeof row.reason !== 'string') return [];
-          return [{ id: row.id.slice(0, 120), reason: row.reason.slice(0, 180) }];
-        });
+      if (Array.isArray(raw.snapshotFailures)) {
+        this.lastSnapshotFailures = raw.snapshotFailures
+          .slice(0, MAX_FAILURES)
+          .flatMap((item) => {
+            const row = asRecord(item);
+            if (typeof row?.id !== 'string' || typeof row.reason !== 'string') return [];
+            return [{ id: row.id.slice(0, 120), reason: row.reason.slice(0, 180) }];
+          });
+      }
+    } catch (error) {
+      this.quarantineCheckpoint(
+        String(error instanceof Error ? error.message : error).slice(0, 180),
+      );
     }
     return persisted;
+  }
+
+  private quarantineCheckpoint(reason: string): void {
+    this.moduleStates.clear();
+    this.checkpointLoadError = String(reason || 'checkpoint-invalid').slice(0, 180);
+    this.lastSnapshotFailures = [{
+      id: '*',
+      reason: this.checkpointLoadError,
+    }];
   }
 
   async save(value: PersistedOrganism): Promise<void> {
     if (!value || typeof value !== 'object' || !asRecord((value as unknown as Record<string, unknown>).system)) {
       throw new Error('cognitive-module-checkpoint-organism-state-invalid');
+    }
+
+    if (this.checkpointLoadError) {
+      // Keep the untrusted extension payload untouched for forensic recovery.
+      // Core state may continue checkpointing; module restore remains fail-closed.
+      await this.delegate.save(value);
+      return;
     }
 
     if (this.snapshotProvider) {
@@ -172,11 +201,13 @@ export class CognitiveModuleCheckpointStore implements JsonStateStore<PersistedO
     moduleCount: number;
     capturedAt: number;
     snapshotFailures: Array<{ id: string; reason: string }>;
+    checkpointLoadError: string | null;
   } {
     return {
       moduleCount: this.moduleStates.size,
       capturedAt: this.clock(),
       snapshotFailures: this.lastSnapshotFailures.map(row => ({ ...row })),
+      checkpointLoadError: this.checkpointLoadError,
     };
   }
 }
