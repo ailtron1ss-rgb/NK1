@@ -158,6 +158,7 @@ try {
     authorize: createCodeAssimilationSourceCandidateAuthorizationV1({
       candidate,
       sourceProvenanceReceipt: sourceReceipt,
+      sbomReceipt,
       licenseDecisionReceipt: licenseReceipt,
       verifyBaseSnapshot: () => { wrongBaseVerifierCalls++; return true; },
     }),
@@ -177,6 +178,7 @@ try {
     authorize: createCodeAssimilationSourceCandidateAuthorizationV1({
       candidate,
       sourceProvenanceReceipt: sourceReceipt,
+      sbomReceipt,
       licenseDecisionReceipt: licenseReceipt,
       verifyBaseSnapshot: () => { rejectedHostCalls++; return false; },
     }),
@@ -197,6 +199,7 @@ try {
     authorize: createCodeAssimilationSourceCandidateAuthorizationV1({
       candidate,
       sourceProvenanceReceipt: sourceReceipt,
+      sbomReceipt,
       licenseDecisionReceipt: licenseReceipt,
       verifyBaseSnapshot: () => { throw new Error('host unavailable'); },
     }),
