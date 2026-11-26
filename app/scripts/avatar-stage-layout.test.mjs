@@ -30,8 +30,12 @@ test("mode controls are a named toolbar with pressed state and mobile-sized targ
   assert.match(stage, /role="group" aria-label="Режим отображения персонажа"/);
   assert.match(stage, /role="status" aria-live="polite" aria-label="Тип выбранного тела"/);
   for (const mode of ["live2d", "legacy", "original", "3d"]) {
-    assert.ok(stage.includes(`aria-pressed={mode === "${mode}"}`), "missing selected state for " + mode);
-    assert.match(stage, new RegExp("min-h-11[^\\n]*aria-pressed={mode === \\"" + mode + "\\\"}"));
+    const pressed = `aria-pressed={mode === "${mode}"}`;
+    const pressedAt = stage.indexOf(pressed);
+    assert.notEqual(pressedAt, -1, "missing selected state for " + mode);
+    const buttonStart = stage.lastIndexOf("<button", pressedAt);
+    const buttonEnd = stage.indexOf(">", pressedAt);
+    assert.ok(stage.slice(buttonStart, buttonEnd).includes("min-h-11"), mode + " control must have a 44px minimum hit target");
   }
   assert.match(stage, /focus-visible:ring-2/);
   assert.doesNotMatch(stage, /absolute left-3 top-3/, "toolbar must not obscure the avatar hit surface");
@@ -40,6 +44,7 @@ test("mode controls are a named toolbar with pressed state and mobile-sized targ
 
 test("UI exposes truthful Russian descriptions and does not offer unbuilt 2.5D as a mode", async () => {
   const stage = await readFile(stagePath, "utf8");
+  const presentation = await readFile(new URL("../src/components/avatar/avatarRendererPresentation.ts", import.meta.url), "utf8");
   for (const phrase of [
     "Cubism · деформируемое 2D-тело",
     "Статичные спрайты",
@@ -50,6 +55,6 @@ test("UI exposes truthful Russian descriptions and does not offer unbuilt 2.5D a
     "Бодрствует",
     "Спит",
     "Провайдер речи Termux:",
-  ]) assert.ok(stage.includes(phrase), "missing user-visible copy: " + phrase);
+  ]) assert.ok(stage.includes(phrase) || presentation.includes(phrase), "missing user-visible copy: " + phrase);
   assert.doesNotMatch(stage, /setMode\("depth2d"\)|aria-label="Выбрать 2\.5D/, "2.5D remains hidden until its asset pack is accepted");
 });
