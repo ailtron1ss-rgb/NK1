@@ -1,3 +1,8 @@
+import { connectCognitiveModuleRuntimeCheckpoint } from './CognitiveModuleCheckpointStore.ts';
+import type { CognitiveModuleCheckpointStore } from './CognitiveModuleCheckpointStore.ts';
+import type { JsonStateStore } from '../persistence/FileStateStore.ts';
+import type { PersistedOrganism } from './OrganismCore.ts';
+
 export type CognitiveModuleStatus =
   | 'registered'
   | 'initializing'
@@ -324,6 +329,13 @@ export class CognitiveModuleRuntime {
       throw fail('module-state-store-already-in-use');
     }
     this.stateStore = stateStore;
+  }
+
+  /** Compose the runtime with the organism's existing canonical checkpoint owner. */
+  connectCanonicalCheckpointStore(
+    delegate: JsonStateStore<PersistedOrganism>,
+  ): CognitiveModuleCheckpointStore {
+    return connectCognitiveModuleRuntimeCheckpoint(this, delegate);
   }
 
   register(registration: CognitiveModuleRegistration): CognitiveModuleListItem {
