@@ -42,7 +42,8 @@ export class RecoveryWatchdog {
       previousBootId:'',
       startedAt:nowAt,
       lastHeartbeatAt:nowAt,
-      lastCheckpointAt:nowAt,
+      // Construction proves liveness, not that any state reached durable storage.
+      lastCheckpointAt:0,
       lastTick:0,
       lastLearningCount:0,
       recoveryCount:0,
@@ -57,6 +58,7 @@ export class RecoveryWatchdog {
     const raw = rawOverride ?? (this.store ? await this.store.load() : null);
     if (raw) {
       const currentBootId=this.state.bootId;
+      const rawCheckpointAt = Number(raw.lastCheckpointAt ?? 0);
       this.state = {
         ...this.state,
         ...raw,
@@ -67,6 +69,8 @@ export class RecoveryWatchdog {
         recoveryCount:clampInt(raw.recoveryCount)+1,
         lastRecoveryReason:'process-resume',
         lastHeartbeatAt:nowAt,
+        lastCheckpointAt:Number.isSafeInteger(rawCheckpointAt) &&
+          rawCheckpointAt >= 0 && rawCheckpointAt <= nowAt + 60_000 ? rawCheckpointAt : 0,
       };
       await this.persist();
     }
@@ -76,7 +80,7 @@ export class RecoveryWatchdog {
   heartbeat(input: RecoveryProbe = {}): RecoveryWatchdogState {
     const at = input.now ?? now();
     this.state.lastHeartbeatAt = at;
-    this.state.lastCheckpointAt = at;
+    // A heartbeat is an in-memory liveness observation, not a durable commit.
     if (input.tick !== undefined) this.state.lastTick = clampInt(input.tick);
     if (input.learningCount !== undefined) this.state.lastLearningCount = clampInt(input.learningCount);
     this.state.status = 'healthy';
@@ -97,14 +101,32 @@ export class RecoveryWatchdog {
     this.state.lastRecoveryAt = at;
     this.state.lastRecoveryReason = reason;
     this.state.lastHeartbeatAt = at;
-    this.state.lastCheckpointAt = at;
+    // Recovery classification is not itself proof of a successful checkpoint.
     this.state.status = 'recovered';
     return this.snapshot();
   }
 
-  async checkpoint(input: RecoveryProbe = {}): Promise<RecoveryWatchdogState> {
-    this.heartbeat(input);
-    await this.persist();
+  /**
+   * Advance the durable checkpoint marker only at a successful persistence boundary.
+   * Hosts with a larger canonical store may supply commit so the watchdog state is
+   * written inside that store's atomic transaction rather than a competing file.
+   */
+  async checkpoint(
+    input: RecoveryProbe = {},
+    commit?: (state: RecoveryWatchdogState) => Promise<void> | void,
+  ): Promise<RecoveryWatchdogState> {
+    const previous = this.snapshot();
+    const at = input.now ?? now();
+    this.heartbeat({ ...input, now: at });
+    this.state.lastCheckpointAt = at;
+    try {
+      if (commit) await commit(this.snapshot());
+      else await this.persist();
+    } catch (error) {
+      // Do not retain a success marker or speculative heartbeat for a failed commit.
+      this.state = previous;
+      throw error;
+    }
     return this.snapshot();
   }
 

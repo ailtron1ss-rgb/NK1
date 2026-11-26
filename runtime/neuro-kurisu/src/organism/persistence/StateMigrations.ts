@@ -195,6 +195,7 @@ export interface PersistedShapeCurrent {
     replaySignature: string;
     lastReplayAt: number;
     actionExecutionLedger?: import('../system/ActionGateway.ts').ActionExecutionLedgerSnapshot;
+    runtimeCheckpointEnvelope?: import('../system/RuntimeCheckpointEnvelope.ts').RuntimeCheckpointEnvelope;
     subjectIdentity: import('../core/types.ts').SubjectIdentityRecord;
     externalObserver?: import('../system/ExternalObserverFabric.ts').ExternalObserverState;
     evolution: any;
@@ -1207,6 +1208,8 @@ export function migratePersistedOrganism(input: unknown): PersistedShapeCurrent 
       actionExecutionLedger: raw.system?.actionExecutionLedger && Array.isArray(raw.system.actionExecutionLedger.records)
         ? { version:1, records:raw.system.actionExecutionLedger.records.slice(-128), ...(raw.system.actionExecutionLedger.permissions && typeof raw.system.actionExecutionLedger.permissions==='object' ? { permissions:raw.system.actionExecutionLedger.permissions } : {}) }
         : { version:1, records:[] },
+      runtimeCheckpointEnvelope: raw.system && Object.prototype.hasOwnProperty.call(raw.system, 'runtimeCheckpointEnvelope')
+        ? raw.system.runtimeCheckpointEnvelope : undefined,
       subjectIdentity: ensureSubjectIdentity({ subjectIdentity: raw.system?.subjectIdentity } as any),
       evolution:raw.system?.evolution ?? {version:1,stage:'emergence',intrinsicProjectCycles:0,selfAuthoredActions:0,valueRevisionCycles:0,identitySamples:0,replaySignature:'',lastReplayAt:0},
       advancedProjectionSchedule: raw.system?.advancedProjectionSchedule,

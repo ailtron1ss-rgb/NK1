@@ -630,7 +630,23 @@ export class ActionGateway {
       ...(typeof options.decisionId==='string'&&options.decisionId.trim()?{decisionId:options.decisionId.trim().slice(0,180)}:{}),autonomous:Boolean(options.autonomous)};
     this.permissionState.requests=[...this.permissionState.requests,rec].slice(-128);
     this.permissionState.created++; this.permissionState.lastChangeAt=at;
-    try { await this.persistExecutionLedger(); } catch { this.permissionState.requests=this.permissionState.requests.filter(x=>x.id!==rec.id); this.permissionState.created=Math.max(0,this.permissionState.created-1); return {created:false,error:'approval-storage-failed',request:null}; }
+    try {
+      await this.persistExecutionLedger();
+    } catch (error) {
+      this.permissionState.requests=this.permissionState.requests.filter(x=>x.id!==rec.id);
+      this.permissionState.created=Math.max(0,this.permissionState.created-1);
+      // Keep the public error bounded and path-free, but preserve a useful causal code
+      // so governance callers do not mistake failed persistence for a missing ticket.
+      const code = error && typeof error === 'object' && 'code' in error &&
+        typeof (error as { code?: unknown }).code === 'string'
+        ? (error as { code: string }).code
+        : '';
+      const message = error instanceof Error ? error.message : '';
+      const safe = /^[A-Z][A-Z0-9_]{1,39}$/.test(code) ? code.toLowerCase()
+        : /^[a-z0-9][a-z0-9-]{0,79}$/i.test(message) ? message
+        : 'checkpoint-save-failed';
+      return {created:false,error:'approval-storage-failed',failureReason:safe,request:null};
+    }
     return {created:true,request:this.publicApproval(rec)};
     });
   }
