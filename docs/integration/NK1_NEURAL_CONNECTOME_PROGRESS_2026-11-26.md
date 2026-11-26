@@ -334,3 +334,39 @@ The overall Master Plan X estimate remains **36/100 ±8 pp**. The shutdown/failu
 ### Updated estimate
 
 **Master Plan X engineering integration: approximately 38/100 (±8 percentage points).** This is an evidence-weighted estimate for architecture integration and engineering verification, not product or release readiness. The increase reflects two independently reproduced checkpoint-consistency defects fixed with exact-head RED/GREEN tests and 32/32 broad workflow matrices. The remaining cross-store atomicity and real-device gates prevent a larger increase.
+
+
+## Continuity and recovery certificate commit receipts — 26 Nov 2026
+
+- Expanded the same failure-injection regression in PR #1206 to include `PersistentContinuityKernel`, `B1701B2200UnifiedLifeContinuityCore` checkpoint verification counters and `FailureRecoveryCertification`.
+- RED [45817176036](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45817176036): after a forced Core store rejection, continuity lineage had already advanced from headSeq/commits 1 to 2; the failure exposed that the lineage was being mutated before the canonical store commit.
+- Fix: `PersistentContinuityKernel` and B1701 checkpoint verification now run on detached clones. `FailureRecoveryCertification` checkpoint history/sequence is also calculated on a detached candidate. All candidate snapshots enter the same `PersistedOrganism` image; live owners are restored from candidates only after the canonical `store.save()` succeeds. On failure, the persisted-system receipt fields are returned to their previous values and live owners remain unchanged.
+- GREEN focused run [45817365876](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45817365876): new failure-injection assertions for revision graph/tokens, persistent continuity head/commits, B1701 chain verification counters and failure recovery certification history/sequence; existing revision graph test; BigPass 57 projection coordinator; runtime typecheck — all PASS.
+- Exact latest HEAD `97ece3fcc8d77b1dc4a94e56d688bb74bf7e5eb8`: **32/32 GitHub Actions workflows success**. Unified Organism Runtime [45817365986](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45817365986) passed all 36 substantive steps, including personality, identity, affect/voice, P34, CEF replay and final runtime smoke.
+- PR #1206 remains Draft/unmerged, 6 commits ahead / 0 behind, 4 changed files; canonical source unchanged.
+
+### Sidecar inventory — next unclosed transaction boundary
+
+The current OrganismRuntime uses independent durable stores/files for:
+- canonical Core `stateFile` / `stateStore`;
+- World `.world.json`;
+- procedural skills `.procedural-skills.json`;
+- cognitive spine `.cognitive-spine.json`;
+- risk-aware recovery `.risk-aware-recovery.json`;
+- cognitive health `.cognitive-health.json`;
+- synaptic matrix `.synaptic-matrix.json`;
+- open loops `.open-loops.json`;
+- P23 retry backoff `.p23-retry-backoff.json`;
+- operational journal `.operational.jsonl`;
+- continuity ledger `.continuity.jsonl`;
+- additional learning journals and configured replay-anchor stores.
+
+PR #1202's shutdown receipt currently classifies the final boundary across Core, World, cognitive-spine and risk-aware recovery; it does not include every independently persisted store above. A future shared generation manifest must distinguish:
+1. stores that are part of the strict resumable checkpoint;
+2. append-only diagnostic/audit journals that are best-effort;
+3. independently committed registries whose failure must either roll back or remain explicitly pending;
+4. externally owned stores with their own transaction authority.
+
+**Next work is a read-only sidecar/store ownership map and then a generation manifest protocol with prepare → commit → verify → recover.** Do not claim multi-store atomicity until crash points have deterministic tests and the same generation is verified after restart.
+
+Estimate revised to **39/100 ±8 pp**. This increment reflects four categories of Core-owned commit markers now remaining unchanged on a failed save and advancing only after a successful canonical save, with 32/32 exact-head workflows passing. It does not close the sidecar-wide manifest or mobile power-loss gates.
