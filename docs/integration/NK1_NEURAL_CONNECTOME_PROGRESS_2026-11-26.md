@@ -279,3 +279,15 @@ The following seven owner runtime files were read from the canonical source bran
 - Live Release list still shows the last assets from 19-Oct-2026: `Neuro_Kurisu_WORKPASS70_2026-10-19.zip` and `Neuro_Kurisu_WORKPASS70_HOTFIX1_2026-10-19.zip` (with SHA256 report on the hotfix). No release has been made for these changes.
 - All three implementation branches have `behind_by=0` from the canonical source SHA used as their base. They are proposals, not canonical integrations.
 - Revised estimate: **36/100 ±8 percentage points** against the full Master Plan X integration/readiness scope. This is not a device-readiness or release score. Source presence is materially higher than end-to-end verification.
+
+
+### Additional isolated fix — truthful runtime shutdown durability (PR #1202)
+
+- Added after the three previously recorded integration defects. The current `OrganismRuntime.stop()` path had an observability defect: the cognitive-spine and risk-aware-recovery sidecar save helpers swallowed write failures, but shutdown still emitted `runtime.stop.durable`.
+- Reproduced on test-only head in [RED run 45806050935](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45806050935). The focused assertions failed because a failed sidecar was reported as a fully durable shutdown and the event lacked per-owner status.
+- Fix commit: `cd0c717f33dbc09317a5868fa2b31027e2c31f31`; regression-hardening commit: `9678599bf6812a3a41042fac208d17b0f0560bcd`.
+- [GREEN focused run 45806383022](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45806383022): **4/4 tests passed** — full success receipt, partial receipt on sidecar failure, fail-fast on Core flush failure and fail-fast on World checkpoint failure.
+- Exact-head run inventory for `9678599bf6812a3a41042fac208d17b0f0560bcd`: **29/30 Actions workflows complete successfully** at the last poll. Successful runs include integrated software baseline 45806382669, NeuroCore core regression 45806382657, Module Dependency Audit 45806384600, startup smoke 45806383035 and focused shutdown 45806383022. Unified Organism Runtime 45806382842 was still executing its remaining restore/continuity checks, so the 30/30 statement is intentionally not made here.
+- PR [#1202](https://github.com/ailtron1ss-rgb/NK1/pull/1202) is Draft, unmerged, four commits ahead / zero behind its canonical base, with three changed files. It is not a cross-store atomic transaction and does not prove device power-loss recovery.
+
+The Master Plan X estimate remains **36/100 ±8 pp**. This fix improves the truthfulness of durability evidence; it does not materially close the G2 atomic-generation, mobile device, independent evaluation or release gates. No canonical source, `main`, archive, tags or Releases were changed.
