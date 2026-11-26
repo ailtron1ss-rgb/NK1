@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import { deflateRawSync, inflateRawSync } from 'node:zlib';
+import type { OperationalJournalCursor } from '../persistence/OperationalJournal.ts';
 import type { OpenLoopRadarState } from '../cognition/evolution/OpenLoopRadar.ts';
 import type { CognitiveSpineScheduleState } from './CognitiveSpineScheduler.ts';
 import type { RiskAwareRecoveryControllerState } from '../cognition/RiskAwareRecoveryController.ts';
@@ -14,20 +15,27 @@ export interface RuntimeCheckpointOwnerSnapshots {
   cognitiveSpine: CognitiveSpineScheduleState;
   riskAwareRecovery: RiskAwareRecoveryControllerState;
   cognitiveHealth: unknown | null;
+  journalOffset?: OperationalJournalCursor;
 }
 export interface EncodedRuntimeCheckpointOwner {
   encoding:'deflate-raw+base64'; rawBytes:number; compressedBytes:number; payloadBase64:string;
 }
-export interface RuntimeCheckpointEnvelope {
-  version:1; generation:number; checkpointId:string; coreTick:number; worldTick:number; createdAt:number;
+interface RuntimeCheckpointEnvelopeBase {
+  generation:number; checkpointId:string; coreTick:number; worldTick:number; createdAt:number;
   owners:Record<RuntimeCheckpointOwnerName,EncodedRuntimeCheckpointOwner>;
   ownerHashes:Record<RuntimeCheckpointOwnerName,string>; payloadBytes:number; compressedBytes:number;
 }
+export interface LegacyRuntimeCheckpointEnvelope extends RuntimeCheckpointEnvelopeBase { version:1; }
+export interface RuntimeCheckpointEnvelope extends RuntimeCheckpointEnvelopeBase {
+  version:2; journalOffset:OperationalJournalCursor; manifestHash:string;
+}
+export type AnyRuntimeCheckpointEnvelope = LegacyRuntimeCheckpointEnvelope | RuntimeCheckpointEnvelope;
 export interface RuntimeCheckpointEnvelopeInput {
-  generation:number; checkpointId:string; coreTick:number; createdAt:number; snapshots:RuntimeCheckpointOwnerSnapshots;
+  generation:number; checkpointId:string; coreTick:number; createdAt:number;
+  snapshots:RuntimeCheckpointOwnerSnapshots & { journalOffset:OperationalJournalCursor };
 }
 export type RuntimeCheckpointEnvelopeValidation =
-  | {ok:true;envelope:RuntimeCheckpointEnvelope;snapshots:RuntimeCheckpointOwnerSnapshots}
+  | {ok:true;envelope:AnyRuntimeCheckpointEnvelope;snapshots:RuntimeCheckpointOwnerSnapshots}
   | {ok:false;reason:string};
 
 const MAX_OWNER_RAW_BYTES=16*1024*1024;
@@ -61,6 +69,52 @@ export function runtimeCheckpointOwnerHash(value:unknown):string {
   const json=JSON.stringify(value);
   if(typeof json!=='string')throw new Error('runtime-checkpoint-owner-not-json-serializable');
   return sha256(Buffer.from(json,'utf8'));
+}
+function validJournalOffset(value:unknown):value is OperationalJournalCursor {
+  if(!isPlainRecord(value)||!hasExactKeys(value,[
+    'version','retainedSegments','retainedBytes','activeSegmentId','activeSegmentBytes',
+    'activeSegmentRecords','activeSegmentTailSha256','fileSynced','directorySynced',
+  ]))return false;
+  const version=ownData(value,'version'),retainedSegments=ownData(value,'retainedSegments'),
+    retainedBytes=ownData(value,'retainedBytes'),activeSegmentBytes=ownData(value,'activeSegmentBytes'),
+    activeSegmentRecords=ownData(value,'activeSegmentRecords'),activeSegmentId=ownData(value,'activeSegmentId'),
+    activeSegmentTailSha256=ownData(value,'activeSegmentTailSha256'),fileSynced=ownData(value,'fileSynced'),
+    directorySynced=ownData(value,'directorySynced');
+  if(version!==1||!safeCounter(retainedSegments)||retainedSegments>6||!safeCounter(retainedBytes)||retainedBytes>600*1024*1024||
+     !safeCounter(activeSegmentBytes)||activeSegmentBytes>100*1024*1024||!safeCounter(activeSegmentRecords)||
+     fileSynced!==true||typeof directorySynced!=='boolean'||retainedBytes<activeSegmentBytes||
+     retainedSegments<(activeSegmentBytes>0?1:0))return false;
+  const validHash=(item:unknown):boolean=>typeof item==='string'&&/^[a-f0-9]{64}$/.test(item);
+  if(activeSegmentBytes===0)return activeSegmentRecords===0&&activeSegmentId===null&&activeSegmentTailSha256===null;
+  return activeSegmentRecords>=1&&validHash(activeSegmentId)&&validHash(activeSegmentTailSha256);
+}
+function checkpointManifestDigest(input:{
+  generation:number;checkpointId:string;coreTick:number;worldTick:number;createdAt:number;
+  journalOffset:OperationalJournalCursor;
+  owners:Record<RuntimeCheckpointOwnerName,{encoding:unknown;rawBytes:unknown;compressedBytes:unknown}>;
+  ownerHashes:Record<RuntimeCheckpointOwnerName,unknown>;
+  payloadBytes:number;compressedBytes:number;
+}):string {
+  const material={
+    schema:'nk1-runtime-checkpoint-manifest-v2',
+    version:2,
+    generation:input.generation,
+    checkpointId:input.checkpointId,
+    coreTick:input.coreTick,
+    worldTick:input.worldTick,
+    createdAt:input.createdAt,
+    journalOffset:input.journalOffset,
+    owners:RUNTIME_CHECKPOINT_OWNERS.map(name=>({
+      name,
+      encoding:input.owners[name].encoding,
+      rawBytes:input.owners[name].rawBytes,
+      compressedBytes:input.owners[name].compressedBytes,
+      sha256:input.ownerHashes[name],
+    })),
+    payloadBytes:input.payloadBytes,
+    compressedBytes:input.compressedBytes,
+  };
+  return sha256(Buffer.from(JSON.stringify(material),'utf8'));
 }
 function encodeOwner(value:unknown):{encoded:EncodedRuntimeCheckpointOwner;hash:string;rawBytes:number}{
   const json=JSON.stringify(value);if(typeof json!=='string')throw new Error('runtime-checkpoint-owner-not-json-serializable');
@@ -106,7 +160,8 @@ function validOwnerSnapshot(name:RuntimeCheckpointOwnerName,value:unknown,worldT
 }
 export function createRuntimeCheckpointEnvelope(input:RuntimeCheckpointEnvelopeInput):RuntimeCheckpointEnvelope {
   if(!safeCounter(input.generation)||input.generation<1||typeof input.checkpointId!=='string'||input.checkpointId.trim().length<16||
-     !safeCounter(input.coreTick)||!safeCounter(input.createdAt))throw new Error('runtime-checkpoint-envelope-input-invalid');
+     !safeCounter(input.coreTick)||!safeCounter(input.createdAt)||!validJournalOffset(input.snapshots?.journalOffset))
+    throw new Error('runtime-checkpoint-envelope-input-invalid');
   const worldTick=input.snapshots?.world?.snapshot?.tick;
   if(!safeCounter(worldTick))throw new Error('runtime-checkpoint-world-tick-invalid');
   const owners={} as Record<RuntimeCheckpointOwnerName,EncodedRuntimeCheckpointOwner>;
@@ -114,49 +169,71 @@ export function createRuntimeCheckpointEnvelope(input:RuntimeCheckpointEnvelopeI
   let payloadBytes=0,compressedBytes=0;
   for(const name of RUNTIME_CHECKPOINT_OWNERS){const result=encodeOwner(input.snapshots[name]);owners[name]=result.encoded;ownerHashes[name]=result.hash;payloadBytes+=result.rawBytes;compressedBytes+=result.encoded.compressedBytes;}
   if(payloadBytes>MAX_TOTAL_RAW_BYTES||compressedBytes>MAX_TOTAL_COMPRESSED_BYTES)throw new Error('runtime-checkpoint-envelope-size-limit-exceeded');
-  const envelope:RuntimeCheckpointEnvelope={version:1,generation:input.generation,checkpointId:input.checkpointId,coreTick:input.coreTick,worldTick,createdAt:input.createdAt,owners,ownerHashes,payloadBytes,compressedBytes};
+  const base={
+    version:2 as const,generation:input.generation,checkpointId:input.checkpointId,coreTick:input.coreTick,
+    worldTick,createdAt:input.createdAt,journalOffset:input.snapshots.journalOffset,owners,ownerHashes,payloadBytes,compressedBytes,
+  };
+  const envelope:RuntimeCheckpointEnvelope={...base,manifestHash:checkpointManifestDigest({
+    generation:base.generation,checkpointId:base.checkpointId,coreTick:base.coreTick,worldTick:base.worldTick,
+    createdAt:base.createdAt,journalOffset:base.journalOffset,
+    owners:owners as Record<RuntimeCheckpointOwnerName,{encoding:unknown;rawBytes:unknown;compressedBytes:unknown}>,
+    ownerHashes,payloadBytes,compressedBytes,
+  })};
   const verified=validateRuntimeCheckpointEnvelope(envelope);if(!verified.ok)throw new Error('runtime-checkpoint-envelope-build-invalid:'+verified.reason);
   return envelope;
 }
 export function validateRuntimeCheckpointEnvelope(value:unknown):RuntimeCheckpointEnvelopeValidation {
   if(!isPlainRecord(value))return {ok:false,reason:'envelope-shape-invalid'};
-  if(!hasExactKeys(value,['version','generation','checkpointId','coreTick','worldTick','createdAt','owners','ownerHashes','payloadBytes','compressedBytes']))
-    return {ok:false,reason:'envelope-keys-invalid'};
-  const version=ownData(value,'version'),generation=ownData(value,'generation'),checkpointId=ownData(value,'checkpointId'),coreTick=ownData(value,'coreTick'),
+  const version=ownData(value,'version');
+  const legacyV1=version===1&&hasExactKeys(value,['version','generation','checkpointId','coreTick','worldTick','createdAt','owners','ownerHashes','payloadBytes','compressedBytes']);
+  const currentV2=version===2&&hasExactKeys(value,['version','generation','checkpointId','coreTick','worldTick','createdAt','journalOffset','owners','ownerHashes','payloadBytes','compressedBytes','manifestHash']);
+  if(!legacyV1&&!currentV2)return {ok:false,reason:'envelope-keys-invalid'};
+  const generation=ownData(value,'generation'),checkpointId=ownData(value,'checkpointId'),coreTick=ownData(value,'coreTick'),
     worldTick=ownData(value,'worldTick'),createdAt=ownData(value,'createdAt'),ownerValues=ownData(value,'owners'),ownerHashValues=ownData(value,'ownerHashes'),
     declaredPayloadBytes=ownData(value,'payloadBytes'),declaredCompressedBytes=ownData(value,'compressedBytes');
-  if(version!==1||!safeCounter(generation)||generation<1||typeof checkpointId!=='string'||checkpointId.trim().length<16||checkpointId.length>180||
+  const journalOffset=currentV2?ownData(value,'journalOffset'):undefined;
+  const manifestHash=currentV2?ownData(value,'manifestHash'):undefined;
+  if(!safeCounter(generation)||generation<1||typeof checkpointId!=='string'||checkpointId.trim().length<16||checkpointId.length>180||
      !safeCounter(coreTick)||!safeCounter(worldTick)||!safeCounter(createdAt)||!safeCounter(declaredPayloadBytes)||!safeCounter(declaredCompressedBytes)||
      !isPlainRecord(ownerValues)||!isPlainRecord(ownerHashValues)||
      !hasExactKeys(ownerValues,RUNTIME_CHECKPOINT_OWNERS)||!hasExactKeys(ownerHashValues,RUNTIME_CHECKPOINT_OWNERS))
     return {ok:false,reason:'envelope-metadata-invalid'};
-
-  // Preflight all declared owner sizes before any base64 allocation or decompression.
-  // This makes the aggregate 24 MiB raw / 8 MiB compressed budget a real memory guard.
+  if(currentV2&&(!validJournalOffset(journalOffset)||typeof manifestHash!=='string'||!/^[a-f0-9]{64}$/.test(manifestHash)))
+    return {ok:false,reason:'envelope-journal-offset-invalid'};
   if(declaredPayloadBytes>MAX_TOTAL_RAW_BYTES||declaredCompressedBytes>MAX_TOTAL_COMPRESSED_BYTES)
     return {ok:false,reason:'envelope-size-limit-exceeded'};
   let preflightRawBytes=0,preflightCompressedBytes=0;
+  const manifestOwners={} as Record<RuntimeCheckpointOwnerName,{encoding:unknown;rawBytes:unknown;compressedBytes:unknown}>;
+  const manifestOwnerHashes={} as Record<RuntimeCheckpointOwnerName,unknown>;
   for(const name of RUNTIME_CHECKPOINT_OWNERS){
     const owner=ownData(ownerValues,name);
     if(!isPlainRecord(owner)||!hasExactKeys(owner,['encoding','rawBytes','compressedBytes','payloadBase64']))
       return {ok:false,reason:name+':owner-payload-shape-invalid'};
-    const rawBytes=ownData(owner,'rawBytes'),compressedBytes=ownData(owner,'compressedBytes');
+    const rawBytes=ownData(owner,'rawBytes'),ownerCompressedBytes=ownData(owner,'compressedBytes');
     const payloadBase64=ownData(owner,'payloadBase64');
+    manifestOwners[name]={encoding:ownData(owner,'encoding'),rawBytes,compressedBytes:ownerCompressedBytes};
+    manifestOwnerHashes[name]=ownData(ownerHashValues,name);
     if(ownData(owner,'encoding')!=='deflate-raw+base64'||!safeCounter(rawBytes)||rawBytes>MAX_OWNER_RAW_BYTES||
-       !safeCounter(compressedBytes)||compressedBytes===0||compressedBytes>MAX_TOTAL_COMPRESSED_BYTES)
+       !safeCounter(ownerCompressedBytes)||ownerCompressedBytes===0||ownerCompressedBytes>MAX_TOTAL_COMPRESSED_BYTES)
       return {ok:false,reason:name+':owner-payload-metadata-invalid'};
-    // Reject a mismatched encoded length before regex scanning, base64 allocation or decompression.
-    const expectedBase64Length=Math.ceil(compressedBytes/3)*4;
+    const expectedBase64Length=Math.ceil(ownerCompressedBytes/3)*4;
     if(typeof payloadBase64!=='string'||payloadBase64.length!==expectedBase64Length||payloadBase64.length>MAX_BASE64_LENGTH)
       return {ok:false,reason:name+':owner-payload-base64-length-invalid'};
-    preflightRawBytes+=rawBytes;
-    preflightCompressedBytes+=compressedBytes;
+    preflightRawBytes+=rawBytes;preflightCompressedBytes+=ownerCompressedBytes;
     if(preflightRawBytes>MAX_TOTAL_RAW_BYTES||preflightCompressedBytes>MAX_TOTAL_COMPRESSED_BYTES)
       return {ok:false,reason:'envelope-size-limit-exceeded'};
   }
   if(preflightRawBytes!==declaredPayloadBytes||preflightCompressedBytes!==declaredCompressedBytes)
     return {ok:false,reason:'envelope-size-accounting-invalid'};
-
+  if(currentV2){
+    try {
+      const expectedManifestHash=checkpointManifestDigest({
+        generation,checkpointId,coreTick,worldTick,createdAt,journalOffset:journalOffset as OperationalJournalCursor,
+        owners:manifestOwners,ownerHashes:manifestOwnerHashes,payloadBytes:declaredPayloadBytes,compressedBytes:declaredCompressedBytes,
+      });
+      if(expectedManifestHash!==manifestHash)return {ok:false,reason:'envelope-manifest-hash-mismatch'};
+    } catch { return {ok:false,reason:'envelope-manifest-invalid'}; }
+  }
   const snapshots={} as RuntimeCheckpointOwnerSnapshots;let payloadBytes=0,compressedBytes=0;
   for(const name of RUNTIME_CHECKPOINT_OWNERS){
     const decoded=decodeOwner(ownData(ownerValues,name),ownData(ownerHashValues,name));
@@ -166,5 +243,6 @@ export function validateRuntimeCheckpointEnvelope(value:unknown):RuntimeCheckpoi
   }
   if(payloadBytes!==declaredPayloadBytes||compressedBytes!==declaredCompressedBytes)
     return {ok:false,reason:'envelope-size-accounting-invalid'};
-  return {ok:true,envelope:structuredClone(value) as unknown as RuntimeCheckpointEnvelope,snapshots};
+  if(currentV2)snapshots.journalOffset=journalOffset as OperationalJournalCursor;
+  return {ok:true,envelope:structuredClone(value) as unknown as AnyRuntimeCheckpointEnvelope,snapshots};
 }

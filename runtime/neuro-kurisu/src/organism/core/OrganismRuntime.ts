@@ -3,7 +3,20 @@ import type { NekoPluginVoiceTranscriptBridge } from '../integration/neko/NekoPl
 import type { NekoAsrProviderPort } from '../integration/neko/NekoAsrTranscriptAdapter.ts';
 import { assertCognitiveCycleBoundaryInput } from './CognitiveCycleBoundary.ts';
 import { buildUniversalInputInterpretation, formatUniversalInterpretationContext } from '../cognition/UniversalInputInterpreter.ts';
-import { externalGoalForRuntimeInput, normalizeRuntimeExternalPluginSource, shouldInvokeLanguageForRuntimeStep, type RuntimeExternalGoalPolicy, type RuntimeExternalPluginSource } from './RuntimeInputPolicy.ts';
+import { externalGoalForRuntimeInput, normalizeRuntimeExternalPluginSource, shouldInvokeLanguageForRuntimeStep, type RuntimeExternalGoalPolicy, export interface RuntimeCheckpointRecoveryReceipt {
+  receiptId:string;
+  outcome:'restored'|'rejected'|'restore-failed'|'legacy';
+  recoveredAt:number;
+  schemaVersion?:number;
+  checkpointId?:string;
+  generation?:number;
+  coreTick?:number;
+  worldTick?:number;
+  journalOffset?:OperationalJournalCursor;
+  manifestHash?:string;
+  reason?:string;
+}
+type RuntimeExternalPluginSource } from './RuntimeInputPolicy.ts';
 import { normalizeWorldContext } from './WorldContextNormalizer.ts';
 import { FileStateStore, registerFileWorkspaceUndoFirstTools } from '../persistence/FileStateStore.ts';
 import { OrganismCore, type OrganismConfig, type PersistedOrganism } from './OrganismCore.ts';
@@ -19,6 +32,7 @@ import { EmbodimentRuntime, type VoiceInputResult } from '../body/EmbodimentRunt
 import { Mem0PlatformAdapter, type Mem0Candidate } from '../integration/mem0/Mem0PlatformAdapter.ts';
 import { buildCognitiveProposalPrompt, parseCognitiveProposal } from '../language/LanguageOrgan.ts';
 import { OperationalJournal } from '../persistence/OperationalJournal.ts';
+import type { OperationalJournalCursor } from '../persistence/OperationalJournal.ts';
 import type { JsonStateStore } from '../persistence/FileStateStore.ts';
 import { choosePhonePolicyDelay, type PhonePolicyConfig } from '../system/PhoneRuntimePolicy.ts';
 import { RuntimeClockScheduler, type RuntimeClockDecision } from '../system/RuntimeClockScheduler.ts';
@@ -440,6 +454,7 @@ export class OrganismRuntime {
   private readonly cognitiveImmuneSystem: RuntimeCognitiveHealthMonitor | null;
   private readonly cognitiveImmuneStore: JsonStateStore<any>;
   private runtimeCheckpointRestoreStatus = 'not-checked';
+  private runtimeCheckpointRecoveryReceipt: RuntimeCheckpointRecoveryReceipt | null = null;
   private readonly runtimeCheckpointProjectionFailures = new Map<string, { generation: number; reason: 'startup-repair' | 'post-commit'; message: string }>();
   private readonly unifiedCycle = new UnifiedCognitiveCycle();
   private readonly continuousCognitiveFabric = new ContinuousCognitiveFabric();
@@ -737,7 +752,7 @@ export class OrganismRuntime {
           this.lastWorldCheckpointAt = Date.now();
         }
       }
-      this.core.setRuntimeCheckpointContributor(() => this.runtimeCheckpointOwnerSnapshots());
+      this.core.setRuntimeCheckpointContributor(async () => this.runtimeCheckpointOwnerSnapshots(await this.journal.cursor()));
       this.core.setRuntimeCheckpointCommitObserver(envelope => this.onRuntimeCheckpointCommitted(envelope));
       this.evidenceBus.restore(systemSnapshot.runtimeEvidence ?? undefined);
       this.cognitiveEventFabric.restore(systemSnapshot.runtimeCognitiveEventFabric ?? systemSnapshot.cognitiveEventFabric ?? undefined);
@@ -3060,13 +3075,14 @@ export class OrganismRuntime {
   }
 
 
-  private runtimeCheckpointOwnerSnapshots() {
+  private runtimeCheckpointOwnerSnapshots(journalOffset:OperationalJournalCursor) {
     return {
       world: this.environment.persisted(),
       openLoop: this.openLoopRadar.snapshot(),
       cognitiveSpine: this.cognitiveSpineScheduler.snapshot(),
       riskAwareRecovery: this.unifiedCycle.riskAwareRecoverySnapshot(),
       cognitiveHealth: this.cognitiveImmuneSystem?.snapshot() ?? null,
+      journalOffset,
     };
   }
 
@@ -3116,11 +3132,33 @@ export class OrganismRuntime {
     return {
       restoreStatus: this.runtimeCheckpointRestoreStatus,
       generation: this.core.systemSnapshot().runtimeCheckpointEnvelope?.generation ?? 0,
+      recoveryReceipt: this.runtimeCheckpointRecoveryReceipt ? { ...this.runtimeCheckpointRecoveryReceipt } : null,
       projectionFailures: [...this.runtimeCheckpointProjectionFailures.entries()].map(([owner, failure]) => ({
         owner,
         ...failure,
       })),
     };
+  }
+
+  private async recordRuntimeCheckpointRecoveryReceipt(
+    outcome:RuntimeCheckpointRecoveryReceipt['outcome'],
+    details:Partial<Omit<RuntimeCheckpointRecoveryReceipt,'receiptId'|'outcome'|'recoveredAt'>> = {},
+  ):Promise<void> {
+    const receipt:RuntimeCheckpointRecoveryReceipt={
+      receiptId:randomUUID(),
+      outcome,
+      recoveredAt:Date.now(),
+      ...details,
+    };
+    this.runtimeCheckpointRecoveryReceipt=receipt;
+    const event={
+      restored:'runtime.checkpoint-envelope.restored',
+      rejected:'runtime.checkpoint-envelope.rejected',
+      'restore-failed':'runtime.checkpoint-envelope.restore-failed',
+      legacy:'runtime.checkpoint-envelope.legacy',
+    }[outcome];
+    const level=outcome==='restored'||outcome==='legacy'?'info':'warn';
+    await this.journal.write(level,event,{...receipt}).catch(()=>{});
   }
 
   private async onRuntimeCheckpointCommitted(value: unknown): Promise<void> {
@@ -3182,14 +3220,13 @@ export class OrganismRuntime {
   private async restoreRuntimeCheckpointEnvelope(value: unknown): Promise<boolean> {
     if (value === undefined) {
       this.runtimeCheckpointRestoreStatus = 'legacy-no-envelope';
+      await this.recordRuntimeCheckpointRecoveryReceipt('legacy',{reason:'checkpoint-envelope-absent'});
       return false;
     }
     const validation = this.core.validateRuntimeCheckpointEnvelope(value);
     if (!validation.ok) {
       this.runtimeCheckpointRestoreStatus = 'rejected:' + validation.reason;
-      await this.journal.write('warn', 'runtime.checkpoint-envelope.rejected', {
-        reason: validation.reason,
-      }).catch(() => {});
+      await this.recordRuntimeCheckpointRecoveryReceipt('rejected',{reason:validation.reason});
       return false;
     }
     try {
@@ -3204,18 +3241,28 @@ export class OrganismRuntime {
         'startup-repair',
       );
       this.runtimeCheckpointRestoreStatus = 'restored:' + validation.envelope.generation;
-      await this.journal.write('info', 'runtime.checkpoint-envelope.restored', {
-        generation: validation.envelope.generation,
-        coreTick: validation.envelope.coreTick,
-        worldTick: validation.envelope.worldTick,
-      }).catch(() => {});
+      await this.recordRuntimeCheckpointRecoveryReceipt('restored',{
+        schemaVersion:validation.envelope.version,
+        checkpointId:validation.envelope.checkpointId,
+        generation:validation.envelope.generation,
+        coreTick:validation.envelope.coreTick,
+        worldTick:validation.envelope.worldTick,
+        ...('journalOffset' in validation.envelope ? {journalOffset:validation.envelope.journalOffset} : {}),
+        ...('manifestHash' in validation.envelope ? {manifestHash:validation.envelope.manifestHash} : {}),
+      });
       return true;
     } catch (error) {
       this.runtimeCheckpointRestoreStatus = 'restore-failed:' + String((error as any)?.message ?? error).slice(0, 160);
-      await this.journal.write('warn', 'runtime.checkpoint-envelope.restore-failed', {
-        generation: validation.envelope.generation,
-        message: String((error as any)?.message ?? error).slice(0, 180),
-      }).catch(() => {});
+      await this.recordRuntimeCheckpointRecoveryReceipt('restore-failed',{
+        schemaVersion:validation.envelope.version,
+        checkpointId:validation.envelope.checkpointId,
+        generation:validation.envelope.generation,
+        coreTick:validation.envelope.coreTick,
+        worldTick:validation.envelope.worldTick,
+        ...('journalOffset' in validation.envelope ? {journalOffset:validation.envelope.journalOffset} : {}),
+        ...('manifestHash' in validation.envelope ? {manifestHash:validation.envelope.manifestHash} : {}),
+        reason:String((error as any)?.message ?? error).slice(0,180),
+      });
       return false;
     }
   }

@@ -1,4 +1,5 @@
-import { open, mkdir, rename, stat, unlink } from 'node:fs/promises';
+import { open, mkdir, rename, stat, unlink, readFile } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
 import { dirname } from 'node:path';
 
 export type OperationalLevel = 'info' | 'warn' | 'error';
@@ -17,6 +18,17 @@ export interface OperationalJournalMetrics {
   directoryFsyncs: number;
   rotations: number;
 }
+export interface OperationalJournalCursor {
+  version:1;
+  retainedSegments:number;
+  retainedBytes:number;
+  activeSegmentId:string|null;
+  activeSegmentBytes:number;
+  activeSegmentRecords:number;
+  activeSegmentTailSha256:string|null;
+  fileSynced:true;
+  directorySynced:boolean;
+}
 
 const DEFAULT_SYNC_EVENTS = [
   'runtime.stop.durable',
@@ -24,6 +36,8 @@ const DEFAULT_SYNC_EVENTS = [
   'runtime.p23.compound-repair-revision.staged',
   'runtime.p23.compound-repair-revision.completed',
   'runtime.p23.trusted-shadow.completed',
+  'runtime.checkpoint-envelope.restored',
+  'runtime.checkpoint-envelope.legacy',
 ] as const;
 const VALID_LEVELS: readonly OperationalLevel[] = ['info', 'warn', 'error'];
 const isMissing = (error: unknown): boolean =>
@@ -67,6 +81,54 @@ export class OperationalJournal {
 
   /** Wait until every write queued before this call has completed. */
   flush(): Promise<void> { return this.writeTail; }
+  /**
+   * Durably fence all prior journal writes and return a position in the active
+   * retained segment. Hashes identify the segment and its last complete record;
+   * this is a cursor, not a second journal or a promise of infinite retention.
+   */
+  async cursor(): Promise<OperationalJournalCursor> {
+    await this.flush();
+    await mkdir(dirname(this.filePath), { recursive: true });
+    const barrier = await open(this.filePath, 'a+');
+    try {
+      await barrier.sync();
+      this.stats.fsyncs += 1;
+    } finally {
+      await barrier.close();
+    }
+    const directorySynced = await this.syncDirectory();
+    const active = await readFile(this.filePath);
+    const paths = [this.filePath, ...Array.from({length:this.maxRotations}, (_,index)=>`${this.filePath}.${index+1}`)];
+    let retainedBytes = 0;
+    let retainedSegments = 0;
+    for (const path of paths) {
+      try {
+        const details = await stat(path);
+        if (details.size > 0) {
+          retainedBytes += details.size;
+          retainedSegments += 1;
+        }
+      } catch (error) {
+        if (!isMissing(error)) throw error;
+      }
+    }
+    const lines = active.toString('utf8').split('\\n');
+    const completeLines = lines.slice(0, lines.length - 1).filter(Boolean);
+    const first = completeLines[0];
+    const last = completeLines[completeLines.length - 1];
+    const digest = (value:string):string => createHash('sha256').update(value,'utf8').digest('hex');
+    return {
+      version:1,
+      retainedSegments,
+      retainedBytes,
+      activeSegmentId:first ? digest(first) : null,
+      activeSegmentBytes:active.byteLength,
+      activeSegmentRecords:completeLines.length,
+      activeSegmentTailSha256:last ? digest(last) : null,
+      fileSynced:true,
+      directorySynced,
+    };
+  }
 
   write(level: OperationalLevel, event: string, data?: Record<string, unknown>): Promise<void> {
     if (!VALID_LEVELS.includes(level)) return Promise.reject(new TypeError('operational-journal-level-invalid'));
@@ -127,7 +189,7 @@ export class OperationalJournal {
     await this.syncDirectory();
   }
 
-  private async syncDirectory(): Promise<void> {
+  private async syncDirectory(): Promise<boolean> {
     try {
       const handle = await open(dirname(this.filePath), 'r');
       try {
@@ -136,8 +198,10 @@ export class OperationalJournal {
       } finally {
         await handle.close();
       }
+      return true;
     } catch (error) {
       if (this.strictDirectoryFsync) throw error;
+      return false;
     }
   }
 }

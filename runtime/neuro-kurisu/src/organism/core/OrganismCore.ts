@@ -1279,7 +1279,7 @@ export class OrganismCore {
     /** Highest tick already evaluated by the canonical internal cycle verifier. */
     private lastClosedCognitiveCycleTick = -1;
     private persisted: PersistedOrganism = defaultPersisted();
-    private runtimeCheckpointContributor: ((coreTick:number)=>RuntimeCheckpointOwnerSnapshots) | null = null;
+    private runtimeCheckpointContributor: ((coreTick:number)=>RuntimeCheckpointOwnerSnapshots|Promise<RuntimeCheckpointOwnerSnapshots>) | null = null;
     private runtimeCheckpointCommitObserver: ((envelope:RuntimeCheckpointEnvelope)=>Promise<void>|void) | null = null;
     private ready = false;
     /** Serializes Negative Space mutations across durable checkpoints and rollback. */
@@ -2200,7 +2200,7 @@ export class OrganismCore {
             throw new Error(`Organism final integrity violation: ${finalIntegrity.violations.map(v => `${v.code}@${v.path}`).join(', ')}`);
         }
         if (fullProjection && this.runtimeCheckpointContributor) {
-            const snapshots = this.runtimeCheckpointContributor(this.persisted.state.tick);
+            const snapshots = await this.runtimeCheckpointContributor(this.persisted.state.tick);
             const previousGeneration = this.persisted.system.runtimeCheckpointEnvelope?.generation ?? 0;
             const envelope = createRuntimeCheckpointEnvelope({
                 generation: Number.isSafeInteger(previousGeneration) && previousGeneration >= 0 ? previousGeneration + 1 : 1,
@@ -2578,7 +2578,7 @@ export class OrganismCore {
     setCognitiveEventFabric(snapshot: import('../system/CognitiveEventFabric.ts').CognitiveEventFabricSnapshot): void { this.persisted.system.cognitiveEventFabric = snapshot; }
     setRuntimeCognitiveEventFabric(snapshot: import('../system/CognitiveEventFabric.ts').CognitiveEventFabricSnapshot): void { this.persisted.system.runtimeCognitiveEventFabric = snapshot; }
     /** Runtime contributes its bounded sidecar bundle immediately before a durable Core save. */
-    setRuntimeCheckpointContributor(provider: ((coreTick:number)=>RuntimeCheckpointOwnerSnapshots) | null): void {
+    setRuntimeCheckpointContributor(provider: ((coreTick:number)=>RuntimeCheckpointOwnerSnapshots|Promise<RuntimeCheckpointOwnerSnapshots>) | null): void {
         this.runtimeCheckpointContributor = provider;
     }
     validateRuntimeCheckpointEnvelope(value: unknown): RuntimeCheckpointEnvelopeValidation {

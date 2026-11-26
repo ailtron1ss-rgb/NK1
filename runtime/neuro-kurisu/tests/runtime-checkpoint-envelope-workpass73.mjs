@@ -17,6 +17,7 @@ const backingWorldStore=new FileStateStore(worldStateFile);
 const checkpointJournalState={
   version:1,retainedSegments:0,retainedBytes:0,
   activeSegmentId:null,activeSegmentBytes:0,activeSegmentRecords:0,activeSegmentTailSha256:null,
+  fileSynced:true,directorySynced:true,
 };
 const journalCursorFile=path.join(directory,'cursor-probe.operational.jsonl');
 const cursorProbeJournal=new OperationalJournal(journalCursorFile);
@@ -66,7 +67,7 @@ try {
   assert.equal(cursorProbe.retainedBytes,cursorProbe.activeSegmentBytes);
   assert.match(cursorProbe.activeSegmentId,/^[a-f0-9]{64}$/);
   assert.match(cursorProbe.activeSegmentTailSha256,/^[a-f0-9]{64}$/);
-  assert.equal(cursorProbeJournal.metrics().fsyncs,1,
+  assert.equal(cursorProbeJournal.metrics().fsyncs,2,
     'a successful checkpoint recovery receipt must force an OperationalJournal fsync');
 
   await backingWorldStore.save(new WorldEnvironment().persisted());
@@ -198,6 +199,8 @@ try {
   assert.equal(recoveryReceipt.checkpointId,envelope.checkpointId);
   assert.equal(recoveryReceipt.generation,envelope.generation);
   assert.equal(recoveryReceipt.manifestHash,envelope.manifestHash);
+  assert.equal(recoveryReceipt.schemaVersion,2);
+  assert.equal(recoveryReceipt.journalOffset.activeSegmentBytes,envelope.journalOffset.activeSegmentBytes);
   assert.ok(typeof recoveryReceipt.receiptId==='string'&&recoveryReceipt.receiptId.length>=16);
   assert.ok(journalEvents.some(row=>row.event==='runtime.checkpoint-envelope.restored'&&
     row.data?.receiptId===recoveryReceipt.receiptId),
