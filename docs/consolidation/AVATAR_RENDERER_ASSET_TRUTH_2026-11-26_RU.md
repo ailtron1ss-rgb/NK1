@@ -140,3 +140,28 @@ app/src/legacy/avatar/LegacySpriteDeck.tsx использует new Image() и c
 Первым выполнять A и B — они устраняют фактическую проблему надёжности контактов и неоднозначности выбора. Затем C — укрепить уже существующее настоящее тело. D и E вести параллельно как production art/3D tracks, но не включать в selector преждевременно. F объединяет всё в единую систему.
 
 Нельзя объявлять следующий этап завершённым по одному успешному build. Нужны exact SHA, unit + integration + browser acceptance, реальный Android soak, asset hashes, визуальные доказательства, provenance/license и release ZIP audit. До закрытия этих gates ветви остаются Draft и не попадают в Release.
+
+## Дополнение к реализации 26.11.2026
+
+В текущей ветке добавлен второй уровень точности для каталога рендереров:
+- schema v2 добавляет `rigClass` и `selectionRole`;
+- `productionReady` оставлено как совместимое поле наличия/selectability реального тела, но больше не трактуется как оценка качества, лицензии, Android и готовности к релизу;
+- schema v1 остаётся читаемой для старых сохранённых manifest;
+- registry выбирает `primary` для canonical режима, допускает `fallback`, но не выдаёт `preview-only` кандидата за selectable тело;
+- несовместимые пары, например `static-poses + cubism-model`, блокируются валидатором.
+
+Текущая v2 классификация:
+| rendererId | rigClass | selectionRole | смысл |
+|---|---|---|---|
+| nk1-live2d-cubism | cubism-deform | primary | основное деформируемое 2D-тело |
+| nk1-original-svg-2d | vector-driven | fallback | управляемая векторная иллюстрация |
+| nk1-legacy-sprites-2d | static-poses | fallback | набор готовых PNG-поз |
+| nk1-three-vrm3d | humanoid-skeleton | preview-only | 3D-кандидат, не production body |
+
+В #1164 изменён приём pointer contact у Original SVG: обработчик перенесён на stage wrapper в capture-фазу, событие принимается только если pointerdown начался внутри SVG, а координаты вычисляются относительно SVG bounding box. Причина фикса — на предыдущем exact-head browser acceptance реальный Playwright tap по SVG не создавал canonical event, хотя unit tests проходили. До успешного повторного browser run это решение считается кандидатом на исправление, не доказанным исправлением.
+
+Проверка #1164 на предыдущем HEAD c5793566f3b0213182f5a09479ab09665a51a059 завершилась так:
+- Live2D WebGL visual browser acceptance — success.
+- GLB/VRM preflight, switch contract + app typecheck, cognitive-affect motor coupling + typecheck, Original 2D asset contract — success.
+- Avatar Contact Browser Acceptance — failure на первом Original SVG face tap (ожидался zone=head, наблюдаемого event не было); 3D browser stage в этом запуске не был достигнут.
+- На новом HEAD 2c87d22110b356ce973ca78a6a815dbd97aa6c2a включены capture-handler fix, его тест, rig/selection schema v2 и проверки. Exact-head workflows поставлены на повторную проверку; их результаты нельзя наследовать от предыдущего SHA.
