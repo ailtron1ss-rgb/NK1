@@ -1,18 +1,19 @@
 import { Activity, AlertTriangle, RefreshCw, Wifi, WifiOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useKurisu } from "@/organism/store";
+import { UI_CONNECTION_STATUS_LABELS } from "@/organism/uiLabels";
 
 const copy = {
-  connecting: { label: "Подключение", detail: "Ожидаем подтверждения канонического runtime.", icon: Activity },
-  connected: { label: "Подключено", detail: "Последний канонический снимок актуален.", icon: Wifi },
-  degraded: { label: "Ограниченный режим", detail: "Показан последний подтверждённый снимок.", icon: AlertTriangle },
-  disconnected: { label: "Нет соединения", detail: "Канонический снимок сейчас недоступен.", icon: WifiOff },
+  connecting: { detail: "Ожидаем подтверждения канонического runtime.", icon: Activity },
+  connected: { detail: "Последний канонический снимок актуален.", icon: Wifi },
+  degraded: { detail: "Показан последний подтверждённый снимок.", icon: AlertTriangle },
+  disconnected: { detail: "Канонический снимок сейчас недоступен.", icon: WifiOff },
 } as const;
 
 export function ConnectionStatus() {
   const connection = useKurisu((s) => s.connection);
   const refresh = useKurisu((s) => s.refresh);
-  const state = copy[connection.status];
+  const state = { ...copy[connection.status], label: UI_CONNECTION_STATUS_LABELS[connection.status] };
   const Icon = state.icon;
 
   return (
