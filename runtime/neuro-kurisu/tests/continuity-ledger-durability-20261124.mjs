@@ -90,4 +90,43 @@ test('rejects a single frame that cannot fit in the bounded journal', async () =
   } finally { await ledger.close(); }
 });
 
+test('repairs a complete-looking uncommitted append from a durable marker after process restart', async () => {
+  const file = path.join(directory, 'restart-rollback.jsonl');
+  const marker = file + '.rollback';
+  const committed = [makeFrame(20), makeFrame(21)].map(row => JSON.stringify(row)).join('\\n') + '\\n';
+  const uncertain = JSON.stringify(makeFrame(22)) + '\\n';
+  const rollbackSize = Buffer.byteLength(committed, 'utf8');
+  await writeFile(file, committed + uncertain);
+  await writeFile(marker, JSON.stringify({ version: 1, rollbackSize }), { mode: 0o600 });
+
+  const restarted = new ContinuityLedger(file, 1024 * 1024, 1);
+  try {
+    await restarted.record(makeFrame(23));
+    const lines = (await readFile(file, 'utf8')).trimEnd().split('\\n').map(line => JSON.parse(line));
+    assert.deepEqual(lines.map(row => row.tick), [20, 21, 23],
+      'restart must discard the entire uncertain append, even when it ended with a newline');
+    assert.equal(restarted.diagnostics().recoveredTailBytes, Buffer.byteLength(uncertain, 'utf8'),
+      'recovery diagnostics must count bytes removed at the persisted rollback boundary');
+    await assert.rejects(() => readFile(marker), { code: 'ENOENT' },
+      'the recovery marker must be cleared after the boundary is durably repaired');
+  } finally { await restarted.close(); }
+});
+
+test('fails closed when the persisted rollback marker is malformed', async () => {
+  const file = path.join(directory, 'invalid-rollback-marker.jsonl');
+  const marker = file + '.rollback';
+  const original = JSON.stringify(makeFrame(30)) + '\\n';
+  await writeFile(file, original);
+  await writeFile(marker, JSON.stringify({ version: 1, rollbackSize: -1 }), { mode: 0o600 });
+
+  const ledger = new ContinuityLedger(file, 1024 * 1024, 1);
+  try {
+    await assert.rejects(() => ledger.record(makeFrame(31)),
+      /continuity-ledger-rollback-marker-invalid/,
+      'invalid recovery metadata must block further appends rather than guess a boundary');
+    assert.equal(await readFile(file, 'utf8'), original,
+      'a malformed marker must not cause destructive truncation or accept additional frames');
+  } finally { await ledger.close(); }
+});
+
 console.log('CONTINUITY_LEDGER_DURABILITY=PASS');
