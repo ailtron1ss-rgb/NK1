@@ -1,0 +1,29 @@
+name: NK1 adaptive avatar frame budget
+
+on:
+  pull_request:
+    branches: [workpass70-source]
+    paths:
+      - "app/src/components/Avatar3DStage.tsx"
+      - "app/src/components/avatar/avatarFrameBudget.ts"
+      - "app/scripts/avatar-frame-budget.test.mjs"
+      - ".github/workflows/nk1-avatar-frame-budget.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nk1-avatar-frame-budget-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  frame-budget:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - name: Verify adaptive frame budget behavior
+        run: node --experimental-strip-types --test app/scripts/avatar-frame-budget.test.mjs
