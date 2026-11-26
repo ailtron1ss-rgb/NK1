@@ -237,6 +237,23 @@ assert.throws(() => createCodeAssimilationSourceCandidateAuthorizationV1({
 }), /source-provenance-receipt-required/,
 'provenance from another candidate cannot authorize this workspace');
 
+const otherLicenseReceipt = signedReceipt(otherCandidate, 'license');
+assert.throws(() => createCodeAssimilationSourceCandidateAuthorizationV1({
+  candidate,
+  sourceProvenanceReceipt: sourceReceipt,
+  licenseDecisionReceipt: otherLicenseReceipt,
+  verifyBaseSnapshot: () => true,
+}), /license-modify-approval-required/,
+'a modify approval from another candidate cannot authorize this workspace');
+
+assert.throws(() => createCodeAssimilationSourceCandidateAuthorizationV1({
+  candidate,
+  sourceProvenanceReceipt: sourceReceipt,
+  licenseDecisionReceipt: signedReceipt(candidate, 'license', { permittedUses: ['study', 'execute'] }),
+  verifyBaseSnapshot: () => true,
+}), /license-modify-approval-required/,
+'an execution-only license does not imply permission to modify source');
+
 assert.throws(() => createCodeAssimilationSourceCandidateAuthorizationV1({
   candidate,
   sourceProvenanceReceipt: sourceReceipt,
