@@ -691,3 +691,33 @@ console.log('COGNITIVE_MODULE_CHECKPOINT_ATOMICITY=PASS');
   );
   assert.ok(events.includes('shutdown:core.racing-activation'));
 }
+
+
+// stopAll must continue shutting down independent modules after one module
+// refuses quiescence. The failed module remains active only after a successful
+// resume; unrelated modules must not be stranded by the first error.
+{
+  const events = [];
+  const host = runtime();
+  const healthy = moduleFixture('memory.healthy', events);
+  const unstable = moduleFixture('world.unstable', events);
+  unstable.module.quiesce = () => {
+    events.push('quiesce-failed:world.unstable');
+    throw new Error('fixture-quiesce-offline');
+  };
+  host.register({ manifest: manifest('memory.healthy'), factory: () => healthy.module });
+  host.register({ manifest: manifest('world.unstable'), factory: () => unstable.module });
+  await host.activateAll();
+
+  await expectReject(host.stopAll(), /module-stop-incomplete:world\.unstable/);
+  assert.equal(statusOf(host, 'world.unstable'), 'active',
+    'a module may remain active only after its resume operation succeeded');
+  assert.equal(statusOf(host, 'memory.healthy'), 'stopped',
+    'one module failure must not prevent independent modules from shutting down');
+  assert.ok(events.includes('resume:world.unstable'));
+  assert.ok(events.includes('shutdown:memory.healthy'));
+
+  unstable.module.quiesce = () => { events.push('quiesce:world.unstable'); };
+  await host.stopAll();
+  assert.equal(statusOf(host, 'world.unstable'), 'stopped');
+}
