@@ -53,6 +53,7 @@ export class ContinuityLedger {
   private readonly filePath: string;
   private readonly maxBytes: number;
   private readonly flushEveryFrames: number;
+  private readonly rollbackMarkerPath: string;
   private pendingLines: string[] = [];
   private pendingBytes = 0;
   private stats: ContinuityLedgerMetrics = { writes: 0, bytesWritten: 0, frames: 0, lastWriteMs: 0, lastAt: 0 };
@@ -62,20 +63,96 @@ export class ContinuityLedger {
   private retentionDroppedFrames = 0;
   private lastError: string | null = null;
   private lastDurabilityWarning: string | null = null;
-  private pendingRollbackSize: number | null = null;
 
   constructor(filePath: string, maxBytes = 4 * 1024 * 1024, flushEveryFrames = 4) {
     this.filePath = filePath;
+    this.rollbackMarkerPath = filePath + '.rollback';
     this.maxBytes = Math.max(64 * 1024, Math.floor(maxBytes));
     this.flushEveryFrames = Math.max(1, Math.min(16, Math.floor(flushEveryFrames)));
   }
 
   metrics(): ContinuityLedgerMetrics { return { ...this.stats }; }
 
+  private async readRollbackMarker(): Promise<number | null> {
+    let raw: string;
+    try {
+      raw = await readFile(this.rollbackMarkerPath, 'utf8');
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException)?.code === 'ENOENT') return null;
+      throw error;
+    }
+
+    let marker: unknown;
+    try {
+      marker = JSON.parse(raw);
+    } catch {
+      throw new Error('continuity-ledger-rollback-marker-invalid');
+    }
+    if (!marker || typeof marker !== 'object' || Array.isArray(marker)) {
+      throw new Error('continuity-ledger-rollback-marker-invalid');
+    }
+    const record = marker as Record<string, unknown>;
+    const keys = Object.keys(record).sort();
+    if (keys.length !== 2 || keys[0] !== 'rollbackSize' || keys[1] !== 'version' ||
+        record.version !== 1 || !Number.isSafeInteger(record.rollbackSize) ||
+        (record.rollbackSize as number) < 0) {
+      throw new Error('continuity-ledger-rollback-marker-invalid');
+    }
+    return record.rollbackSize as number;
+  }
+
+  private async syncJournalDirectory(): Promise<void> {
+    const directoryHandle = await open(dirname(this.filePath), 'r');
+    try {
+      await directoryHandle.sync();
+    } finally {
+      await directoryHandle.close();
+    }
+  }
+
+  private async writeRollbackMarker(rollbackSize: number): Promise<void> {
+    const temporaryPath = this.rollbackMarkerPath + '.' + randomUUID() + '.tmp';
+    let temporaryHandle: ContinuityFileHandle | null = null;
+    try {
+      temporaryHandle = await open(temporaryPath, 'wx', 0o600);
+      await temporaryHandle.writeFile(JSON.stringify({ version: 1, rollbackSize }) + '\n', 'utf8');
+      await temporaryHandle.sync();
+      await temporaryHandle.close();
+      temporaryHandle = null;
+      await rename(temporaryPath, this.rollbackMarkerPath);
+      // The intent record must reach the directory before any journal bytes are appended.
+      await this.syncJournalDirectory();
+    } catch (error) {
+      if (temporaryHandle) await temporaryHandle.close().catch(() => {});
+      await unlink(temporaryPath).catch(() => {});
+      throw error;
+    }
+  }
+
+  private async clearRollbackMarker(): Promise<void> {
+    try {
+      await unlink(this.rollbackMarkerPath);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException)?.code !== 'ENOENT') throw error;
+    }
+    await this.syncJournalDirectory();
+  }
+
   private async repairPendingAppendRollback(): Promise<void> {
-    const rollbackSize = this.pendingRollbackSize;
+    const rollbackSize = await this.readRollbackMarker();
     if (rollbackSize === null) return;
-    const repairHandle = await open(this.filePath, 'r+');
+
+    let repairHandle: ContinuityFileHandle;
+    try {
+      repairHandle = await open(this.filePath, 'r+');
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException)?.code === 'ENOENT' && rollbackSize === 0) {
+        await this.clearRollbackMarker();
+        return;
+      }
+      throw new Error('continuity-ledger-rollback-boundary-lost');
+    }
+
     try {
       const currentSize = (await repairHandle.stat()).size;
       if (currentSize < rollbackSize) {
@@ -86,11 +163,11 @@ export class ContinuityLedger {
         await repairHandle.sync();
         this.recoveredTailBytes += currentSize - rollbackSize;
       }
-      this.pendingRollbackSize = null;
-      this.lastDurabilityWarning = null;
     } finally {
       await repairHandle.close();
     }
+    await this.clearRollbackMarker();
+    this.lastDurabilityWarning = null;
   }
 
   private async repairTornTail(): Promise<void> {
@@ -200,22 +277,26 @@ export class ContinuityLedger {
   }
 
   private async appendDurably(handle: ContinuityFileHandle, startSize: number, payload: Buffer): Promise<void> {
-    let offset = 0;
     try {
+      // Write-ahead intent makes the rollback boundary survive process death.
+      await this.writeRollbackMarker(startSize);
+      let offset = 0;
       while (offset < payload.byteLength) {
         const result = await handle.write(payload, offset, payload.byteLength - offset, null);
         if (!result.bytesWritten) throw new Error('continuity-ledger-zero-write');
         offset += result.bytesWritten;
       }
       await handle.sync();
+      await this.clearRollbackMarker();
+      this.lastDurabilityWarning = null;
     } catch (error) {
       try {
         await handle.truncate(startSize);
         await handle.sync();
+        await this.clearRollbackMarker();
       } catch (rollbackError) {
-        // Preserve the exact pre-append boundary. A partial write may end with a
-        // newline, so a torn-tail-only repair would not be enough to avoid duplicates.
-        this.pendingRollbackSize = startSize;
+        // Keep the durable marker in place. A fresh process will truncate even a
+        // complete-looking newline-terminated append to the pre-append boundary.
         this.lastDurabilityWarning = 'append-rollback-failed:' +
           String((rollbackError as any)?.message ?? rollbackError).slice(0, 140);
         if (this.handle === handle) this.handle = null;
