@@ -514,3 +514,20 @@ console.log('COGNITIVE_MODULE_CHECKPOINT_ATOMICITY=PASS');
   );
   await host.stopAll();
 }
+
+
+// Module state snapshots are bounded before they can enter the canonical checkpoint.
+// An oversized snapshot must fail closed and resume the still-running module.
+{
+  const events = [];
+  const fixture = moduleFixture('memory.oversized', events);
+  fixture.module.snapshot = () => ({ payload: 'x'.repeat(4096) });
+  const host = runtime({ maxStateBytes: 512 });
+  host.register({ manifest: manifest('memory.oversized'), factory: () => fixture.module });
+  await host.activate('memory.oversized');
+  await expectReject(host.deactivate('memory.oversized'), /module-state-size-limit/);
+  assert.equal(statusOf(host, 'memory.oversized'), 'active');
+  assert.ok(events.includes('resume:memory.oversized'));
+  assert.ok(!events.includes('shutdown:memory.oversized'));
+  await host.stopAll();
+}
