@@ -39,6 +39,7 @@ export class CognitiveModuleCheckpointStore implements JsonStateStore<PersistedO
   private snapshotProvider?: SnapshotProvider;
   private lastSnapshotFailures: Array<{ id: string; reason: string }> = [];
   private checkpointLoadError: string | null = null;
+  private lastCheckpointSaveError: string | null = null;
   private lastCapturedAt = 0;
   private readonly delegate: JsonStateStore<PersistedOrganism>;
   private readonly clock: () => number;
@@ -86,6 +87,7 @@ export class CognitiveModuleCheckpointStore implements JsonStateStore<PersistedO
     this.moduleStates.clear();
     this.lastSnapshotFailures = [];
     this.checkpointLoadError = null;
+    this.lastCheckpointSaveError = null;
     this.lastCapturedAt = 0;
     if (!persisted) return null;
 
@@ -141,13 +143,22 @@ export class CognitiveModuleCheckpointStore implements JsonStateStore<PersistedO
 
   async save(value: PersistedOrganism): Promise<void> {
     if (!value || typeof value !== 'object' || !asRecord((value as unknown as Record<string, unknown>).system)) {
-      throw new Error('cognitive-module-checkpoint-organism-state-invalid');
+      const error = new Error('cognitive-module-checkpoint-organism-state-invalid');
+      this.lastCheckpointSaveError = error.message;
+      throw error;
     }
 
     if (this.checkpointLoadError) {
       // Keep the untrusted extension payload untouched for forensic recovery.
       // Core state may continue checkpointing; module restore remains fail-closed.
-      await this.delegate.save(value);
+      try {
+        await this.delegate.save(value);
+        this.lastCheckpointSaveError = null;
+      } catch (error) {
+        this.lastCheckpointSaveError =
+          String(error instanceof Error ? error.message : error).slice(0, 180);
+        throw error;
+      }
       return;
     }
 
@@ -160,7 +171,9 @@ export class CognitiveModuleCheckpointStore implements JsonStateStore<PersistedO
           id: '*',
           reason: String(error instanceof Error ? error.message : error).slice(0, 180),
         }];
-        throw new Error('cognitive-module-checkpoint-snapshot-incomplete:*');
+        this.lastCheckpointSaveError =
+          'cognitive-module-checkpoint-snapshot-incomplete:*';
+        throw new Error(this.lastCheckpointSaveError);
       }
 
       this.lastSnapshotFailures = Array.isArray(result?.failed)
@@ -171,13 +184,16 @@ export class CognitiveModuleCheckpointStore implements JsonStateStore<PersistedO
         : [];
       if (this.lastSnapshotFailures.length > 0) {
         const failedIds = this.lastSnapshotFailures.map(row => row.id).join(',');
-        throw new Error(`cognitive-module-checkpoint-snapshot-incomplete:${failedIds}`);
+        this.lastCheckpointSaveError =
+          `cognitive-module-checkpoint-snapshot-incomplete:${failedIds}`.slice(0, 180);
+        throw new Error(this.lastCheckpointSaveError);
       }
     }
 
     const capturedAt = this.clock();
     if (!Number.isFinite(capturedAt) || capturedAt < 0) {
-      throw new Error('cognitive-module-checkpoint-time-invalid');
+      this.lastCheckpointSaveError = 'cognitive-module-checkpoint-time-invalid';
+      throw new Error(this.lastCheckpointSaveError);
     }
     const system = (value as unknown as { system: Record<string, unknown> }).system;
     const checkpoint: CognitiveModuleCheckpointEnvelopeV1 = {
@@ -191,7 +207,14 @@ export class CognitiveModuleCheckpointStore implements JsonStateStore<PersistedO
     // its store. This extension lives under system, which is excluded from the
     // organism's content hash, and is written atomically with the same payload.
     system[CHECKPOINT_FIELD] = checkpoint;
-    await this.delegate.save(value);
+    try {
+      await this.delegate.save(value);
+    } catch (error) {
+      this.lastCheckpointSaveError =
+        String(error instanceof Error ? error.message : error).slice(0, 180);
+      throw error;
+    }
+    this.lastCheckpointSaveError = null;
     this.lastCapturedAt = capturedAt;
   }
 
@@ -213,6 +236,7 @@ export class CognitiveModuleCheckpointStore implements JsonStateStore<PersistedO
     capturedAt: number;
     snapshotFailures: Array<{ id: string; reason: string }>;
     checkpointLoadError: string | null;
+    checkpointSaveError: string | null;
   } {
     return {
       moduleCount: this.moduleStates.size,
@@ -220,6 +244,7 @@ export class CognitiveModuleCheckpointStore implements JsonStateStore<PersistedO
       capturedAt: this.lastCapturedAt,
       snapshotFailures: this.lastSnapshotFailures.map(row => ({ ...row })),
       checkpointLoadError: this.checkpointLoadError,
+      checkpointSaveError: this.lastCheckpointSaveError,
     };
   }
 }
