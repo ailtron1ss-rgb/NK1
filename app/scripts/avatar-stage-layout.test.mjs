@@ -26,7 +26,7 @@ test("avatar mode controls announce the selected renderer and expose an accessib
     assert.ok(stage.includes(`aria-pressed={mode === "${mode}"}`), `missing pressed state for ${mode}`);
     assert.ok(stage.includes(`aria-label="${expected[mode]}"`), `missing accurate accessible label for ${mode}`);
   }
-  for (const descriptor of ["Cubism rig · деформируемое 2D-тело", "Статичные спрайты · готовые PNG-позы без рига", "SVG-вектор · ограниченная 2D-анимация, не полноценный риг", "VRM / GLB · кандидат для предпросмотра, не прошедший приёмку для выпуска"]) {
+  for (const descriptor of ["Cubism · деформируемое 2D-тело", "Статичные спрайты · готовые PNG-позы без рига", "SVG-вектор · ограниченная 2D-анимация, не полноценный риг", "VRM / GLB · кандидат для предпросмотра, не прошедший приёмку для выпуска"]) {
     assert.ok(stage.includes(descriptor), "missing truthful visible renderer description: " + descriptor);
   }
   assert.match(stage, /title="Live2D · деформируемый Cubism-риг"/);
