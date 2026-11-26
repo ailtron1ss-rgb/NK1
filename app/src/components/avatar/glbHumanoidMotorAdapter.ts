@@ -39,9 +39,11 @@ const ROLE_BY_CHANNEL: Readonly<Record<string, { role: HumanoidRole; axis: "x" |
 });
 
 const isMotorNode = (value: HumanoidNodeLike | undefined): value is GenericGlbMotorNode => {
-  if (!value || value.isBone !== true || !value.rotation) return false;
-  const rotation = value.rotation as unknown as Record<string, unknown>;
-  return ["x", "y", "z"].every((axis) => typeof rotation[axis] === "number" && Number.isFinite(rotation[axis]));
+  if (!value || value.isBone !== true) return false;
+  const candidate = value as unknown as { rotation?: Record<string, unknown> };
+  const rotation = candidate.rotation;
+  return Boolean(rotation)
+    && ["x", "y", "z"].every((axis) => typeof rotation?.[axis] === "number" && Number.isFinite(rotation[axis]));
 };
 
 /**
