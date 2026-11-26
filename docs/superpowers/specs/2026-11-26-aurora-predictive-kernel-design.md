@@ -2,7 +2,7 @@
 
 **Date:** 2026-11-26  
 **Project:** NeuroCore / NK1  
-**Owner boundary:** \`WorldSubsystemRuntime\`
+**Owner boundary:** `WorldSubsystemRuntime`
 
 ## Intent
 
@@ -10,7 +10,7 @@ Add a compact, explainable predictive executive kernel that turns the existing w
 
 ## Existing architecture
 
-\`WorldSubsystemRuntime\` already owns \`P27NeuralWorldFoundation\`, \`WorldModelEnsembleController\`, \`UnifiedLatentWorldState\`, \`GroundedWorldState\`, and the integrated prediction path. The existing owners remain authoritative. AURORA consumes their read-only projections and exposes a decision receipt; it does not maintain a second world database, latent model, memory store, neural-weight store, or action executor.
+`WorldSubsystemRuntime` already owns `P27NeuralWorldFoundation`, `WorldModelEnsembleController`, `UnifiedLatentWorldState`, `GroundedWorldState`, and the integrated prediction path. The existing owners remain authoritative. AURORA consumes their read-only projections and exposes a decision receipt; it does not maintain a second world database, latent model, memory store, neural-weight store, or action executor.
 
 ## Goals
 
@@ -19,7 +19,7 @@ Add a compact, explainable predictive executive kernel that turns the existing w
 - Select a supplied observation/question candidate only when its information value fits attention, energy, cost, privacy, latency, and interruption budgets.
 - Recommend a short or long planning horizon according to uncertainty.
 - Fail closed on malformed forecasts and sanitize persisted telemetry.
-- Integrate with \`WorldSubsystemRuntime.predictForDecision\`, snapshot, and restore.
+- Integrate with `WorldSubsystemRuntime.predictForDecision`, snapshot, and restore.
 
 ## Non-goals and anti-goals
 
@@ -28,7 +28,7 @@ Add a compact, explainable predictive executive kernel that turns the existing w
 - No direct sensor call, user message, tool invocation, external side effect, or action dispatch from AURORA.
 - No upgrade of model outputs or simulation into observed facts.
 - No autonomous weight promotion or mutation of the running model.
-- No changes to \`main\` or published Release artifacts in this change.
+- No changes to `main` or published Release artifacts in this change.
 
 ## Approaches considered
 
@@ -38,9 +38,9 @@ Add a compact, explainable predictive executive kernel that turns the existing w
 
 ## Runtime contract
 
-- Input: one forecast (\`action\`, utility, confidence, uncertainty), one canonical world evidence projection, optional observation candidates, and resource/privacy budgets.
+- Input: one forecast (`action`, utility, confidence, uncertainty), one canonical world evidence projection, optional observation candidates, and resource/privacy budgets.
 - Output: directive, reason, attention focus, world revision, epistemic pressure, effective confidence, bounded risk/verification adjustments, adjusted utility, recommended horizon, and selected observation ID.
-- Persistence: bounded aggregate counters and recent directive history only, nested under \`advanced.auroraKernel\` in the existing runtime checkpoint.
+- Persistence: bounded aggregate counters and recent directive history only, nested under `advanced.auroraKernel` in the existing runtime checkpoint.
 - Execution: downstream owners decide whether/how to honor a directive. AURORA never executes the directive itself.
 
 ## Evidence policy
@@ -51,5 +51,5 @@ Observed evidence contributes to grounded confidence only when it is already rep
 
 - Unit tests cover budgeted sensing, clarification, wait/abstain, grounded action, bounded adjustment, invalid inputs, and restore sanitization.
 - Runtime integration tests prove canonical prediction annotation and persistence round-trip.
-- The focused tests and runtime typecheck pass on the exact pull-request head.
+- The focused tests and runtime syntax validation pass on the exact pull-request head. Semantic `tsc` validation remains unavailable in the current CI image because the TypeScript compiler is not installed.
 - No execution authority is added; all external side effects remain behind the existing canonical action gateway.
