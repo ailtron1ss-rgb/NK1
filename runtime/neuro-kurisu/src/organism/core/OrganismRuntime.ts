@@ -1417,23 +1417,28 @@ export class OrganismRuntime {
       ? this.core.cognitiveBudgetSpend('planning',undefined,cycle.state.needs.uncertainty,'action-planning')
       : { accepted: false };
     const selectedGoal = cycle.goals.find(g => g.id === cycle.decision.selected?.goalId) ?? null;
+    const planBuildContext = { decisionId: cycle.decision.id, tick: cycle.decision.tick };
     const plan = riskRecoveryApplied
-      ? this.plans.buildBudgetFallback(selectedGoal, internalAction, 'risk-aware-recovery-override')
+      ? this.plans.buildBudgetFallback(selectedGoal, internalAction, 'risk-aware-recovery-override', planBuildContext)
       : planningBudget.accepted && projectAllowed
-        ? this.plans.build(selectedGoal, internalAction, 4, 4)
-        : this.plans.buildBudgetFallback(selectedGoal, internalAction, projectAllowed ? 'planning-budget-exhausted' : 'planner-project-gated');
+        ? this.plans.build(selectedGoal, internalAction, 4, 4, planBuildContext)
+        : this.plans.buildBudgetFallback(selectedGoal, internalAction, projectAllowed ? 'planning-budget-exhausted' : 'planner-project-gated', planBuildContext);
+    const before = this.environment.observationContext();
+    const planContextValidation = this.plans.validateContext(plan, selectedGoal, before, planBuildContext);
+    const firstStepValidation = this.plans.validateStep(plan, 0, before);
+    const planStepValid = planContextValidation.valid && firstStepValidation.valid;
+    const planStep = planStepValid ? plan.steps[0] : undefined;
     const worldRolloutAllowed = executionPlan?.run?.['world-rollout'] !== false && spineDecision.run['world-rollout'];
     const shadowPassAllowed = executionPlan?.run?.shadow !== false && spineDecision.run.shadow;
     const simBudget = worldRolloutAllowed && shadowPassAllowed
       ? this.core.cognitiveBudgetSpend('simulation',undefined,cycle.state.needs.uncertainty,'counterfactual-rollout')
       : { accepted: false };
-    const branches = simBudget.accepted && worldRolloutAllowed && shadowPassAllowed
-      ? this.counterfactuals.imagine(plan.steps[0]?.environmentAction, resourceAllocation.maxCounterfactualBranches, 4)
+    const branches = simBudget.accepted && worldRolloutAllowed && shadowPassAllowed && planStep
+      ? this.counterfactuals.imagine(planStep.environmentAction, resourceAllocation.maxCounterfactualBranches, 4)
       : [];
     await this.core.recordCounterfactuals(branches);
-    const worldAction = plan.steps[0]?.environmentAction ?? 'observe';
-    const expectedReward = plan.steps[0]?.predictedReward ?? 0.5;
-    const before = this.environment.observationContext();
+    const worldAction = planStep?.environmentAction ?? 'observe';
+    const expectedReward = planStep?.predictedReward ?? 0.5;
     const causalContextKey = `loc:${String(before.location ?? 'unknown').trim().toLowerCase().slice(0,64)}|goal:${String(cycle.decision.selected?.goalId ?? 'none').slice(0,32)}|energy:${Math.floor(Math.max(0,Math.min(1,cycle.state.needs.energy))*4)}`;
     // P2840: predictive simulation is pure. Canonical world state is committed only
     // after reality arbitration decides that no authoritative external outcome exists.
@@ -1458,20 +1463,20 @@ export class OrganismRuntime {
     const rewardPredictionId = this.core.recordPrediction({
       tick: cycle.state.tick, kind: 'reward', action: worldAction,
       predicted01: Math.max(0, Math.min(1, expectedReward)),
-      confidence01: Math.max(0.05, Math.min(0.99, plan.steps[0]?.confidence ?? cycle.decision.selected?.confidence ?? 0.5)),
+      confidence01: Math.max(0.05, Math.min(0.99, planStep?.confidence ?? cycle.decision.selected?.confidence ?? 0.5)),
       context: { internalAction, selectedGoalId: cycle.decision.selected?.goalId ?? null },
     });
     this.core.trackWorldCausalPrediction({
       predictionId:rewardPredictionId,
       action:worldAction,
       predicted01:Math.max(0,Math.min(1,expectedReward)),
-      confidence01:Math.max(0.05,Math.min(0.99,plan.steps[0]?.confidence ?? cycle.decision.selected?.confidence ?? .5)),
+      confidence01:Math.max(0.05,Math.min(0.99,planStep?.confidence ?? cycle.decision.selected?.confidence ?? .5)),
       intervention:true,
       at:cycle.state.at,
       persist:false,
     });
     const predictionEvidence = this.evidenceBus.publish({
-      tick:cycle.state.tick,kind:'prediction',source:'reward-model',confidence01:plan.steps[0]?.confidence ?? .5,
+      tick:cycle.state.tick,kind:'prediction',source:'reward-model',confidence01:planStep?.confidence ?? .5,
       parentIds:[observationEvidence.id],payload:{id:rewardPredictionId,action:worldAction,predicted01:expectedReward,shadowModel:true},
     });
     const actionEvidence = this.evidenceBus.publish({
@@ -1576,7 +1581,7 @@ export class OrganismRuntime {
       tick:cycle.state.tick,
       action:(embodiedAction.action as import('../core/types.ts').ActionKind) ?? selectedCandidate?.action ?? null,
       expectedReward01,
-      predictionConfidence01:clamp01(Number(selectedCandidate?.confidence ?? plan.steps[0]?.confidence ?? .5)),
+      predictionConfidence01:clamp01(Number(selectedCandidate?.confidence ?? planStep?.confidence ?? .5)),
       simulatedReward01:Math.max(0,Math.min(1,(transition.reward+1)/2)),
       simulatedSurprise01:clamp01(transition.surprise),
       simulatedSuccess01:transition.valid?1:0,
@@ -1691,7 +1696,7 @@ export class OrganismRuntime {
       action:worldAction,
       actual01:clamp01(grounded.reward01),
       source:grounded.source==='external' ? 'intervention' : 'feedback',
-      confidence01:clamp01(plan.steps[0]?.confidence ?? cycle.decision.selected?.confidence ?? .5),
+      confidence01:clamp01(planStep?.confidence ?? cycle.decision.selected?.confidence ?? .5),
       verified01:grounded.verified01,
       independent01:grounded.independent01,
       evidence01:grounded.evidence01,
@@ -1796,7 +1801,7 @@ export class OrganismRuntime {
     const cycleStageIds = this.cognitiveEventFabric.recordOperationalCycle({
       tick:cycle.state.tick,
       observation:{source:externalPluginSource ? `neko-plugin:${externalPluginSource.pluginId}` : 'runtime',external:Boolean(externalText),confidence01:.72,payload:{predictionError:cycle.state.predictionError,selectedAction:internalAction,evidenceId:observationEvidence.id,...(externalPluginSource ? {externalSourceKind:externalPluginSource.kind,externalMessageId:externalPluginSource.messageId} : {})}},
-      prediction:{source:'reward-model',confidence01:plan.steps[0]?.confidence ?? .5,payload:{predictionId:rewardPredictionId,evidenceId:predictionEvidence.id,action:worldAction,predicted01:expectedReward,shadowModel:true}},
+      prediction:{source:'reward-model',confidence01:planStep?.confidence ?? .5,payload:{predictionId:rewardPredictionId,evidenceId:predictionEvidence.id,action:worldAction,predicted01:expectedReward,shadowModel:true}},
       appraisal:{source:'homeostatic-appraisal',confidence01:clamp01(1-cycle.state.needs.uncertainty),payload:{energy01:cycle.state.needs.energy,cognitiveLoad01:cycle.state.needs.cognitiveLoad,uncertainty01:cycle.state.needs.uncertainty,novelty01:cycle.state.needs.novelty,socialNeed01:cycle.state.needs.socialNeed,goalPressure01:cycle.state.needs.goalPressure,predictionError01:cycle.state.predictionError}},
       attention:cycle.stageEvidence ? {
         source:'OrganismCore.attend',
@@ -1850,7 +1855,7 @@ export class OrganismRuntime {
         payload:{retrievedMemoryIds:cycle.memories.slice(0,12).map(memory=>memory.id),retrievedCount:cycle.memories.length,continuity01:continuousFabric.continuity01,memoryRetention01:continuousFabric.memoryRetention01,lastSpine01:continuousFabric.lastSpine01},
       },
       goal:{source:'canonical-goal-selection',confidence01:clamp01(cycle.decision.selected?.confidence ?? .5),payload:{selectedGoalId:cycle.decision.selected?.goalId ?? null,activeGoalIds:cycle.goals.slice(0,12).map(goal=>goal.id),autonomousOverride:cycle.decision.autonomousOverride}},
-      plan:{source:'plan-engine',confidence01:clamp01(plan.steps[0]?.confidence ?? .5),payload:{stepCount:plan.steps.length,nextAction:worldAction,firstStepConfidence01:plan.steps[0]?.confidence ?? null}},
+      plan:{source:'plan-engine',confidence01:clamp01(planStep?.confidence ?? .5),payload:{stepCount:plan.steps.length,nextAction:worldAction,firstStepConfidence01:planStep?.confidence ?? null,decisionId:plan.lineage.decisionId,decisionTick:plan.lineage.decisionTick,goalFingerprint:plan.lineage.goal.fingerprint,worldFingerprint:plan.lineage.world.fingerprint,contextValid:planStepValid,validationReason:planContextValidation.valid?firstStepValidation.reason:planContextValidation.reason,preconditions:planStep?.preconditions??null,expectedOutcome:planStep?.expectedOutcome??null}},
       action:{source:'organism-action-gate',confidence01:cycle.decision.selected?.confidence ?? .5,payload:{evidenceId:actionEvidence.id,action:embodiedAction.action,internalAction,goalId:cycle.decision.selected?.goalId ?? null}},
       outcome:{source:grounded.source==='external'?'external-device':'shadow-simulator',external:grounded.source==='external',confidence01:grounded.evidence01,payload:{evidenceId:outcomeEvidence.id,reward01:grounded.reward01,surprise:grounded.surprise01,error01:resolvedPrediction?.error01 ?? null,verified01:grounded.verified01}},
       learning:{source:'core.feedback',confidence01:clamp01((1-(resolvedPrediction?.error01??0.5))*learningGate.learningScale01),payload:{predictionError01:resolvedPrediction?.error01??null,realitySource:grounded.source,learningPriority01:grounded.learningPriority01,learningScale01:learningGate.learningScale01}},
@@ -1899,7 +1904,7 @@ export class OrganismRuntime {
       prediction: {
         summary: `The planned world action ${worldAction} was assigned expected outcome ${expectedReward.toFixed(3)}.`,
         expectedOutcome01: predictedOutcome01,
-        confidence01: clamp01(plan.steps[0]?.confidence ?? selectedDecision?.confidence ?? .5),
+        confidence01: clamp01(planStep?.confidence ?? selectedDecision?.confidence ?? .5),
         provenance: 'inferred',
       },
       selection: {
