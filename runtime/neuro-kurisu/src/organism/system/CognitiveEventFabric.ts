@@ -827,6 +827,14 @@ export class CognitiveEventFabric {
           invalidEvidenceRefs.push(stage + ':kind-mismatch');
           continue;
         }
+        // The observation envelope is deliberately runtime-owned even when a
+        // plugin supplied the original user message. Other linked phase sources
+        // must match their CEF phase owner exactly.
+        const expectedSource = stage === 'observation' ? 'runtime' : node.source;
+        if (linked.source !== expectedSource) {
+          invalidEvidenceRefs.push(stage + ':source-mismatch');
+          continue;
+        }
         evidenceStageRefs.set(stage, linked);
       }
 
@@ -841,14 +849,18 @@ export class CognitiveEventFabric {
         invalidEvidenceRefs.push('action:missing-prediction-parent');
       }
       if (observationRef && actionRef) {
-        const riskParent = actionRef.parentIds
+        const riskParents = actionRef.parentIds
           .map(parentId => evidenceById.get(parentId))
-          .find(parent => parent?.kind === 'action' &&
+          .filter((parent): parent is RuntimeEvidenceLink => Boolean(
+            parent && parent.kind === 'action' &&
             parent.source === 'risk-aware-recovery-controller' &&
-            parent.tick === cycleTick);
-        if (!riskParent) {
+            parent.tick === cycleTick
+          ));
+        if (riskParents.length === 0) {
           invalidEvidenceRefs.push('action:missing-risk-parent');
-        } else if (!riskParent.parentIds.includes(observationRef.id)) {
+        } else if (riskParents.length > 1) {
+          invalidEvidenceRefs.push('action:duplicate-risk-parent');
+        } else if (!riskParents[0].parentIds.includes(observationRef.id)) {
           invalidEvidenceRefs.push('action:risk-parent-missing-observation');
         }
       }

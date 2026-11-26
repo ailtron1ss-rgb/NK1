@@ -110,6 +110,24 @@ const wrongKind = fabric.verifyOperationalCycle(stageIds, [attentionReceipt,memo
 assert.equal(wrongKind.fullComplete, false);
 assert.ok(wrongKind.invalidEvidenceRefs.includes('observation:kind-mismatch'));
 
+// A source label must agree with the canonical CEF phase owner.
+const wrongSourceEvidence = actualEvidence.map(event => event.id === prediction.id
+  ? { ...event, source:'untrusted-predictor' }
+  : event);
+const wrongSource = fabric.verifyOperationalCycle(stageIds, [attentionReceipt,memoryReceipt], wrongSourceEvidence);
+assert.equal(wrongSource.fullComplete, false);
+assert.ok(wrongSource.invalidEvidenceRefs.includes('prediction:source-mismatch'));
+
+// Multiple risk-controller parents make the action lineage ambiguous and fail closed.
+const duplicateRiskId = 'reb:42:risk-duplicate';
+const duplicateRiskEvidence = actualEvidence.map(event => event.id === action.id
+  ? { ...event, parentIds:[...event.parentIds, duplicateRiskId] }
+  : event);
+duplicateRiskEvidence.push({ ...risk, id:duplicateRiskId });
+const duplicateRisk = fabric.verifyOperationalCycle(stageIds, [attentionReceipt,memoryReceipt], duplicateRiskEvidence);
+assert.equal(duplicateRisk.fullComplete, false);
+assert.ok(duplicateRisk.invalidEvidenceRefs.includes('action:duplicate-risk-parent'));
+
 // Duplicate IDs create ambiguous lineage and are rejected.
 const duplicateEvidence = [...actualEvidence, { ...observation }];
 const duplicate = fabric.verifyOperationalCycle(stageIds, [attentionReceipt,memoryReceipt], duplicateEvidence);
