@@ -158,6 +158,8 @@ test("default registry distinguishes renderer rigs and keeps preview candidates 
     "nk1-live2d-cubism", "nk1-original-svg-2d", "nk1-legacy-sprites-2d",
   ]);
   assert.equal(registry.get("nk1-three-vrm3d")?.productionReady, false);
+  assert.equal(registry.resolveSelectableByMode("vrm3d"), null);
+  assert.equal(registry.resolveSelectableByMode("depth2d"), null);
   assert.equal(registry.list().some((entry) => entry.rigClass === "layered-depth-puppet" && entry.selectionRole !== "preview-only"), false);
 });
 
