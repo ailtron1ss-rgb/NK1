@@ -9136,7 +9136,7 @@ export class OrganismCore {
         const feedbackFinalizationEventId = `cef:feedback-finalized:${feedbackEventKey.slice(0, 48)}`;
         const priorFeedbackFinalization = this.cognitiveRuntime.cognitiveEventFabric.findById(feedbackFinalizationEventId);
         if (priorFeedbackFinalization) {
-            if (priorFeedbackFinalization.stage !== 'metacognition' ||
+            if (priorFeedbackFinalization.stage !== 'metacognitive-episode' ||
                 priorFeedbackFinalization.payload.feedbackInputFingerprint !== feedbackInputFingerprint ||
                 priorFeedbackFinalization.payload.decisionId !== (trace?.id ?? null))
                 throw new Error('feedback-outcome-id-conflict');
@@ -11356,7 +11356,7 @@ export class OrganismCore {
         this.cognitiveRuntime.cognitiveEventFabric.append({
             id: feedbackFinalizationEventId,
             tick: state.tick,
-            stage: 'metacognition',
+            stage: 'metacognitive-episode',
             source: 'core.feedback-finalization',
             parentIds: [outcomeEvent.id, learningEvent.id, selfUpdateEvent.id],
             confidence01: clamp(1 - surprise),
