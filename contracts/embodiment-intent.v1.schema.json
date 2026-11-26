@@ -10,6 +10,7 @@
     "type": { "const": "kurisu_embodiment_intent" },
     "protocolVersion": { "const": 1 },
     "stateVersion": { "type": "integer", "minimum": 1 },
+    "frameTick": { "type": "integer", "minimum": 0 },
     "sentAtEpochMs": { "type": "number", "minimum": 0 },
     "speechEventId": { "type": ["string", "null"], "maxLength": 180 },
     "audioClockId": { "type": ["string", "null"], "maxLength": 220 },
