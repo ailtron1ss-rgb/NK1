@@ -608,7 +608,7 @@ export class CognitiveEventFabric {
     if(prediction&&!action.parentIds.includes(prediction.id))return{resolved:false,replayed:false,reason:'action-prediction-lineage-broken'};
     if(observation&&!prediction&&!action.parentIds.includes(observation.id))return{resolved:false,replayed:false,reason:'action-observation-lineage-broken'};
     if(action.stage!=='action'||outcome.stage!=='outcome'||learning.stage!=='learning')return{resolved:false,replayed:false,reason:'causal-parent-stage-invalid'};
-    if(action.tick!==input.tick||outcome.tick!==input.tick||learning.tick!==input.tick)return{resolved:false,replayed:false,reason:'causal-parent-tick-mismatch'};
+    if(action.tick!==input.tick||outcome.tick<input.tick||learning.tick!==outcome.tick)return{resolved:false,replayed:false,reason:'causal-parent-tick-mismatch'};
     if(!outcome.parentIds.includes(action.id)||!learning.parentIds.includes(outcome.id))return{resolved:false,replayed:false,reason:'causal-lineage-broken'};
     let cycleParentIds:string[]|null=null;
     if(input.cycleStageIds){
@@ -621,7 +621,7 @@ export class CognitiveEventFabric {
       cycleParentIds=ordered as string[];
     }
     const normalized={
-      tick:input.tick,cycleIdHash:sha256Stable(cycleId),actionEventId:action.id,outcomeEventId:outcome.id,learningEventId:learning.id,
+      tick:input.tick,outcomeTick:outcome.tick,cycleIdHash:sha256Stable(cycleId),actionEventId:action.id,outcomeEventId:outcome.id,learningEventId:learning.id,
       observationEventId:observation?.id??null,predictionEventId:prediction?.id??null,
       predictedOutcomeHash:input.predictedOutcomeHash.toLowerCase(),observedOutcomeHash:input.observedOutcomeHash.toLowerCase(),
       decisionRationaleHash:input.decisionRationaleHash.toLowerCase(),predictionError01:input.predictionError01,
