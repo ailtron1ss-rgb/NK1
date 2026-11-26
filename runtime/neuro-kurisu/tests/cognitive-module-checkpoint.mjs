@@ -369,3 +369,25 @@ console.log('ORGANISM_RUNTIME_MODULE_INTEGRATION=PASS');
   assert.ok(events.includes('initialize-failed'));
   await organism.stop();
 }
+
+
+// A canonical durable-write failure is observable in checkpoint diagnostics,
+// and the diagnostic clears only after a later successful commit.
+{
+  const durable = backingStore();
+  const checkpoint = new CognitiveModuleCheckpointStore(durable, () => 700);
+  await checkpoint.load();
+  const originalSave = durable.save.bind(durable);
+  durable.save = async () => { throw new Error('canonical-disk-offline'); };
+
+  await assert.rejects(
+    checkpoint.save(persisted()),
+    /canonical-disk-offline/,
+  );
+  assert.equal(checkpoint.diagnostics().checkpointSaveError, 'canonical-disk-offline');
+
+  durable.save = originalSave;
+  await checkpoint.save(persisted());
+  assert.equal(checkpoint.diagnostics().checkpointSaveError, null);
+  assert.equal(checkpoint.diagnostics().capturedAt, 700);
+}
