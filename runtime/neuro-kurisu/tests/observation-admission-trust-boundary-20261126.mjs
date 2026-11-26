@@ -112,6 +112,15 @@ const cameraProof=await new ExternalPostconditionVerifier().assess(cameraAction)
 assert.equal(cameraAction.realityClass,'camera-artifact');
 assert.equal(isTrustedEmbodiedOutcomeVerification(cameraProof,cameraAction),true,
   'fresh retained camera bytes plus exact decision-linked host capture proof may verify the frame observation');
+const replayedCameraAction=await createTrustedEmbodiedActionFixture('explore',{
+  cameraAvailable:true,decisionId:cameraDecisionId,
+  cameraCaptureExecutionId:cameraExecutionId,cameraCaptureVerification,
+  cameraCaptureVerificationInput:cameraInput,cameraHash,cameraSize:4,cameraCapturedAt:cameraAt,
+  cameraNonce,cameraRetained:true,semanticVision:true,cameraSourceId:'android-termux.camera',
+});
+const replayedCameraProof=await new ExternalPostconditionVerifier().assess(replayedCameraAction);
+assert.equal(isTrustedEmbodiedOutcomeVerification(replayedCameraProof,replayedCameraAction),false,
+  'one host-issued camera frame capability must be consumed once and cannot verify a second embodied result');
 const clonedCameraAction=await createTrustedEmbodiedActionFixture('explore',{
   cameraAvailable:true,decisionId:cameraDecisionId,
   cameraCaptureExecutionId:cameraExecutionId,cameraCaptureVerification:structuredClone(cameraCaptureVerification),
@@ -121,12 +130,27 @@ const clonedCameraAction=await createTrustedEmbodiedActionFixture('explore',{
 const clonedCameraProof=await new ExternalPostconditionVerifier().assess(clonedCameraAction);
 assert.equal(isTrustedEmbodiedOutcomeVerification(clonedCameraProof,clonedCameraAction),false,
   'a copied ActionGateway camera verifier token cannot authorize observed evidence');
+const staleCameraAt=Date.now()-60_000;
+const staleCameraNonce='g3-camera-capture-nonce-stale-02';
+const staleCameraExecutionId='exec-camera-g3-00000002';
+const staleCameraPostcondition=`android-camera-frame:0:${cameraHash}:4:${staleCameraNonce}`;
+const staleCameraVerification=await new OutcomeVerificationService().verify({
+  toolId:'organism.device.capture',
+  input:cameraInput,
+  result:{ok:true,hash:cameraHash,size:4,cameraId:0,capturedAt:staleCameraAt,captureNonce:staleCameraNonce,sourceId:'android-termux.camera',retained:true},
+  executionId:staleCameraExecutionId,
+  decisionId:cameraDecisionId,
+},async()=>({
+  verified:true,basis:'external-postcondition',confidence01:.99,externalObservation:true,
+  observationId:`camera-observation:${staleCameraNonce}`,
+  expectedPostcondition:staleCameraPostcondition,observedPostcondition:staleCameraPostcondition,
+}));
 const staleCameraAction=await createTrustedEmbodiedActionFixture('explore',{
   cameraAvailable:true,decisionId:cameraDecisionId,
-  cameraCaptureExecutionId:cameraExecutionId,cameraCaptureVerification,
-  cameraCaptureVerificationInput:cameraInput,cameraHash,cameraSize:4,cameraCapturedAt:cameraAt-60_000,
-  cameraNonce,cameraRetained:true,semanticVision:true,cameraSourceId:'android-termux.camera',
-});
+  cameraCaptureExecutionId:staleCameraExecutionId,cameraCaptureVerification:staleCameraVerification,
+  cameraCaptureVerificationInput:cameraInput,cameraHash,cameraSize:4,cameraCapturedAt:staleCameraAt,
+  cameraNonce:staleCameraNonce,cameraRetained:true,semanticVision:true,cameraSourceId:'android-termux.camera',
+}));
 const staleCameraProof=await new ExternalPostconditionVerifier().assess(staleCameraAction);
 assert.equal(isTrustedEmbodiedOutcomeVerification(staleCameraProof,staleCameraAction),false,
   'stale camera evidence cannot be promoted to observed');
