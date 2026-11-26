@@ -246,7 +246,7 @@ For canonical source SHA `7e601680...`, the recursive tree returned 11,596 entri
 | [#1197](https://github.com/ailtron1ss-rgb/NK1/pull/1197) | Read-only diagnostics, memory and 11-stage CEF regressions | `1bcb011...` | 14 / 0 | 32/32 workflow runs success; focused suite 29/29 steps | Draft / unmerged |
 | [#1199](https://github.com/ailtron1ss-rgb/NK1/pull/1199) | World context / P27 latent restore continuity | `06a2014...` | 3 / 0 | 13/13 workflow runs success | Draft / unmerged |
 | [#1201](https://github.com/ailtron1ss-rgb/NK1/pull/1201) | Memory lifecycle replay result identity | `98fef39...` | 3 / 0 | 17/17 workflow runs success | Draft / unmerged |
-| [#1202](https://github.com/ailtron1ss-rgb/NK1/pull/1202) | Truthful runtime shutdown durability | `9678599...` | 4 / 0 | 30/30 workflow runs success; focused 4/4, Unified Runtime 39/39 | Draft / unmerged |
+| [#1202](https://github.com/ailtron1ss-rgb/NK1/pull/1202) | Truthful shutdown durability + failure-path continuity-ledger cleanup | `575e6c6...` | 9 / 0 | 30/30 workflow runs success; focused 5/5 | Draft / unmerged |
 
 All three PRs use the same base `workpass70-source@7e601680...`; none is behind that base. Successful workflows are exact isolated PR-head evidence, not canonical integration.
 
@@ -268,3 +268,11 @@ The full Master Plan X is estimated at **36/100 ±8 pp** for engineering integra
 - RED [45806050935](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45806050935); GREEN [45806383022](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45806383022), 4/4.
 - Exact-head `9678599bf6812a3a41042fac208d17b0f0560bcd`: **30/30 Actions workflows success**; Unified Organism Runtime [45806382842](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45806382842) 39/39 steps, NeuroCore regression [45806382657](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45806382657) 55/55, integrated software baseline [45806382669](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45806382669), startup smoke [45806383035](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45806383035) and Module Dependency Audit [45806384600](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45806384600) all passed.
 - PR [#1202](https://github.com/ailtron1ss-rgb/NK1/pull/1202) remains Draft / unmerged. This is not a cross-store atomic checkpoint protocol; power-loss/device recovery remains unproven.
+
+
+### Shutdown failure-path cleanup follow-up
+
+- Current PR #1202 head is `575e6c6908aa127cbaf0bb0ceac24e98bc957497`; exact-head CI is 30/30 success. The initial 4/4 focused result on the earlier head is superseded by [5/5 GREEN run 45812214633](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45812214633).
+- The additional regression [RED 45811756331](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45811756331) proved that Core checkpoint failure skipped `ContinuityLedger.close()`, leaving a live file handle and pending diagnostics. The fix executes `close()` in a shutdown-wide `finally` block, while preserving fail-fast Core/World errors.
+- The GREEN test leaves one frame buffered, injects Core failure, then verifies that the stop rejection remains visible, the ledger handle is closed, the pending count is zero, and the frame was written. This tests actual cleanup, not only pre-flushed file state.
+- Remaining limitation: per-owner stores still write independently; no shared generation commit, rollback to a matched multi-store snapshot, or Android/Termux power-loss guarantee has been implemented.
