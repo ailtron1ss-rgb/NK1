@@ -119,13 +119,18 @@ export class PerceptualEvidenceCompiler{
    * verified admission receipt is wired into this owner. Caller flags are ignored.
    */
   recordExternalEvidence(input:{at:number;claim:string;confidence01:number;parents?:string[];modality?:'sensor'|'world'|'fusion'}){
-    const at=timestampOr(input?.at,-1);
-    const claim=stringOr(input?.claim,'',240).trim();
+    // External producer payloads are untrusted data. Reject Proxy/accessor shapes
+    // before property access so caller-defined code cannot run during admission.
+    if(!isPlainDataRecord(input))throw new TypeError('external-perceptual-evidence-input-invalid');
+    const at=timestampOr(ownDataValue(input,'at'),-1);
+    const claim=stringOr(ownDataValue(input,'claim'),'',240).trim();
     if(at<0||!Number.isSafeInteger(at))throw new RangeError('external-perceptual-evidence-timestamp-invalid');
     if(!claim)throw new TypeError('external-perceptual-evidence-claim-required');
-    const confidence=clamp(input.confidence01);
-    const modality=input.modality&&EVIDENCE_MODALITIES.has(input.modality)?input.modality:'sensor';
-    const rawParents=input.parents;
+    const confidence=clamp(Number(ownDataValue(input,'confidence01')??0));
+    const rawModality=ownDataValue(input,'modality');
+    const modality=typeof rawModality==='string'&&EVIDENCE_MODALITIES.has(rawModality as PerceptualEvidenceRecord['modality'])
+      ?rawModality as PerceptualEvidenceRecord['modality']:'sensor';
+    const rawParents=ownDataValue(input,'parents');
     const parents=isPlainDataArray(rawParents,32)
       ?rawParents.filter((parent):parent is string=>typeof parent==='string'&&Boolean(parent.trim())).slice(0,8).map(parent=>parent.trim().slice(0,180))
       :[];
