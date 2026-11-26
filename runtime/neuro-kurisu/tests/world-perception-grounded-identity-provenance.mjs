@@ -84,7 +84,7 @@ const staleEvidence = {
 };
 const staleWorld = stale.integrate({ at: staleAt, perception: state, evidence: staleEvidence });
 assert.ok(!stale.snapshot().provenanceIds.includes('stale-observed-receipt'));
-assert.ok(staleWorld.facts.includes('historical-observed-evidence:old:door-open'));
+assert.ok(staleWorld.facts.includes('historical-derived-evidence:old:door-open'));
 assert.ok(!staleWorld.facts.includes('observed-evidence:old:door-open'));
 
 // A same-cycle unresolved world summary must not downgrade a direct vision model result.
@@ -118,9 +118,35 @@ const observed = observedEngine.ingest({
   at: 3_000,
   world: { scene: 'office', evidenceKind: 'observed', objects: [{ label: 'door', trackId: 'door-1', sourceId: 'sensor', evidenceKind: 'observed' }], events: ['door-opened'] },
 });
-assert.equal(observed.entities.find(entity => entity.label === 'door')?.modalityEvidenceKinds?.world, 'observed');
-assert.equal(observed.sceneEvidenceKind, 'observed');
-assert.equal(observed.events.find(event => event.label === 'door-opened')?.evidenceKind, 'observed');
+assert.equal(observed.entities.find(entity => entity.label === 'door')?.modalityEvidenceKinds?.world, 'derived', 'caller-supplied observed labels are not admission receipts');
+assert.equal(observed.sceneEvidenceKind, 'derived');
+assert.equal(observed.events.find(event => event.label === 'door-opened')?.evidenceKind, 'derived');
+
+
+// Persisted P41 provenance labels are not host capabilities and must fail closed.
+const restoredP41 = new P41SemanticPerceptionEngine();
+restoredP41.restore({
+  sceneEvidenceKind: 'observed',
+  entities: [{
+    id:'restored-door',label:'door',kind:'object',confidence01:.99,salience01:.8,present01:1,
+    firstSeenAt:1,lastSeenAt:2,observations:9,modalities:['world'],position:null,
+    modalityEvidenceKinds:{world:'observed'},
+  }],
+  relations:[{id:'restored-rel',from:'door',relation:'is',to:'open',confidence01:.99,modality:'world',evidenceKind:'observed',at:2}],
+  events:[{id:'restored-event',label:'door-opened',confidence01:.99,modalities:['world'],startedAt:1,lastAt:2,persistence01:1,evidenceKind:'observed',modalityEvidenceKinds:{world:'observed'}}],
+  epistemic:{version:1,claims:[{id:'restored-claim',at:2,modality:'world',claim:'door is open',source:'observed',confidence01:1,targetIds:[]}],contradictionPairs:0,resolvedPairs:0,corroboratedPairs:0,meanConfidence01:1,lastAt:2},
+});
+const restoredP41State = restoredP41.snapshot();
+assert.equal(restoredP41State.sceneEvidenceKind,'derived');
+assert.equal(restoredP41State.entities[0]?.modalityEvidenceKinds?.world,'derived');
+assert.equal(restoredP41State.relations[0]?.evidenceKind,'derived');
+assert.equal(restoredP41State.events[0]?.evidenceKind,'derived');
+assert.equal(restoredP41State.events[0]?.modalityEvidenceKinds?.world,'derived');
+assert.equal(restoredP41State.epistemic?.claims[0]?.source,'derived');
+
+const sensorIngress = new P41SemanticPerceptionEngine().ingest({at:3_500,sensor:{location:'laboratory',freshness01:1}});
+assert.equal(sensorIngress.entities.find(entity=>entity.kind==='place')?.modalityEvidenceKinds?.sensor,'derived');
+assert.equal(sensorIngress.entities.find(entity=>entity.kind==='body')?.modalityEvidenceKinds?.sensor,'derived');
 
 // Explicit unknown flags must survive the untrusted world-context boundary.
 const normalized = normalizeWorldContext({
