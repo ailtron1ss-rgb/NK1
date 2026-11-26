@@ -28,6 +28,9 @@ await core.observe({ text: 'touch critical memory identity and development revis
 
 const beforeGraph = core.revisionGraphSnapshot();
 const beforeTokens = core.persistenceProjectionSnapshot().revisionTokens;
+const beforeContinuity = core.persistentContinuitySnapshot();
+const beforeB1701 = core.b1701B2200Snapshot();
+const beforeRecoveryCertification = core.failureRecoveryCertificationSnapshot();
 const dirtyDomains = Object.entries(beforeGraph.current)
   .filter(([domain, revision]) => revision !== beforeGraph.materialized[domain])
   .map(([domain]) => domain);
@@ -41,6 +44,21 @@ await assert.rejects(core.flush(), /injected-revision-checkpoint-failure/);
 
 const afterFailedGraph = core.revisionGraphSnapshot();
 const afterFailedTokens = core.persistenceProjectionSnapshot().revisionTokens;
+assert.deepEqual(
+  core.persistentContinuitySnapshot(),
+  beforeContinuity,
+  'failed canonical save must not advance PersistentContinuityKernel lineage/head',
+);
+assert.deepEqual(
+  core.b1701B2200Snapshot(),
+  beforeB1701,
+  'failed canonical save must not advance B1701 checkpoint verification counters',
+);
+assert.deepEqual(
+  core.failureRecoveryCertificationSnapshot(),
+  beforeRecoveryCertification,
+  'failed canonical save must not advance FailureRecoveryCertification sequence/history',
+);
 for (const domain of dirtyDomains) {
   assert.equal(
     afterFailedGraph.materialized[domain],
@@ -74,6 +92,17 @@ await core.flush();
 const committed = await backing.load();
 const committedGraph = core.revisionGraphSnapshot();
 const committedTokens = core.persistenceProjectionSnapshot().revisionTokens;
+const committedContinuity = core.persistentContinuitySnapshot();
+const committedB1701 = core.b1701B2200Snapshot();
+const committedRecoveryCertification = core.failureRecoveryCertificationSnapshot();
+assert.equal(committedContinuity.headSeq, beforeContinuity.headSeq + 1);
+assert.equal(committedContinuity.commits, beforeContinuity.commits + 1);
+assert.equal(committedB1701.stats.chainChecks, beforeB1701.stats.chainChecks + 1);
+assert.equal(committedRecoveryCertification.checkpoints, beforeRecoveryCertification.checkpoints + 1);
+assert.equal(committedRecoveryCertification.lastCheckpointSequence, beforeRecoveryCertification.lastCheckpointSequence + 1);
+assert.deepEqual(committed.system.persistentContinuityKernel, committedContinuity);
+assert.deepEqual(committed.system.b1701B2200UnifiedLifeContinuity, committedB1701);
+assert.deepEqual(committed.system.failureRecoveryCertification, committedRecoveryCertification);
 for (const domain of dirtyDomains) {
   assert.equal(committedGraph.materialized[domain], committedGraph.current[domain]);
   assert.equal(committed.system.revisionGraph.materialized[domain], committed.system.revisionGraph.current[domain]);
