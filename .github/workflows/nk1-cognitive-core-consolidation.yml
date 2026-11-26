@@ -12,6 +12,15 @@ on:
       - 'runtime/neuro-kurisu/src/organism/memory/EventSourcing.ts'
       - 'runtime/neuro-kurisu/src/organism/system/CognitiveEventFabric.ts'
       - 'runtime/neuro-kurisu/tests/metacognitive-episode-*.mjs'
+      - 'runtime/neuro-kurisu/tests/runtime-checkpoint-envelope-*.mjs'
+      - 'runtime/neuro-kurisu/tests/runtime-checkpoint-projection-fault-matrix-*.mjs'
+      - 'runtime/neuro-kurisu/src/organism/system/RuntimeCheckpointEnvelope.ts'
+      - 'runtime/neuro-kurisu/src/organism/system/ContinuityLedger.ts'
+      - 'runtime/neuro-kurisu/src/organism/persistence/RecoveryWatchdog.ts'
+      - 'runtime/neuro-kurisu/src/organism/persistence/OperationalJournal.ts'
+      - 'runtime/neuro-kurisu/tests/continuity-ledger-durability-*.mjs'
+      - 'runtime/neuro-kurisu/tests/recovery-watchdog-checkpoint-semantics-*.mjs'
+      - 'runtime/neuro-kurisu/tests/big-pass-324-core-watchdog.mjs'
       - 'runtime/neuro-kurisu/package.json'
       - '.github/workflows/nk1-cognitive-core-consolidation.yml'
 permissions:
@@ -39,7 +48,19 @@ jobs:
         run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Metacognitive episode contract and real runtime
         run: npm run test:workpass613:metacognitive-episodes
+      - name: Runtime checkpoint generation and mixed-sidecar recovery
+        run: npm run test:runtime-checkpoint-envelope
+      - name: Runtime checkpoint projection failure matrix and invalid-envelope quarantine
+        run: npm run test:runtime-checkpoint-projection-fault-matrix
+      - name: Continuity Ledger durable append and rollback-marker recovery
+        run: npm run test:continuity-ledger-durability
+      - name: Joint Core save / RecoveryWatchdog / envelope / sidecar commit semantics
+        run: npm run test:recovery-watchdog-checkpoint-semantics
+      - name: Core recovery-watchdog restart integration
+        run: npm run test:big-pass-324:core
       - name: Active-information closed-loop regression
         run: npm run test:p2675:information
+      - name: Install pinned TypeScript compiler for semantic runtime typecheck
+        run: npm install --no-save --package-lock=false --ignore-scripts --no-audit --no-fund typescript@5.8.3 @types/node@22.20.5
       - name: Runtime typecheck
         run: npm run typecheck

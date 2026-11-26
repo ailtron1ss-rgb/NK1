@@ -135,8 +135,7 @@ jobs:
             fi
             if curl --fail --silent http://127.0.0.1:3310/health >/dev/null \
               && curl --fail --silent http://127.0.0.1:8765/health >/dev/null \
-              && curl --fail --silent http://127.0.0.1:8765/api/research/status >/dev/null \
-              && curl --fail --silent http://127.0.0.1:8080/ >/dev/null; then
+              && curl --fail --silent http://127.0.0.1:8765/api/research/status >/dev/null; then
               ready=1
               break
             fi
@@ -144,11 +143,36 @@ jobs:
           done
 
           if [[ "$ready" != "1" ]]; then
-            echo "Prototype did not pass all HTTP readiness probes within 30 minutes" >&2
+            echo "Runtime and research services did not pass readiness probes within 30 minutes" >&2
             cat "$log" >&2 || true
             exit 1
           fi
 
+          # Let super-start complete its own gateway fetch/readiness check before
+          # issuing an external request to the same gateway. Concurrent probes can
+          # race the supervisor's final readiness banner and make cleanup send SIGINT
+          # while the supervisor is still resolving its own fetch.
+          banner_ready=0
+          for attempt in $(seq 1 60); do
+            if grep -Fq "[super] NeuroCore prototype is ready." "$log"; then
+              banner_ready=1
+              break
+            fi
+            if ! kill -0 "$launcher_pid" 2>/dev/null; then
+              echo "quickstart exited before the supervisor reported full readiness" >&2
+              cat "$log" >&2 || true
+              exit 1
+            fi
+            sleep 1
+          done
+
+          if [[ "$banner_ready" != "1" ]]; then
+            echo "Supervisor did not complete its gateway readiness check within 60 seconds" >&2
+            cat "$log" >&2 || true
+            exit 1
+          fi
+
+          curl --fail --silent --show-error http://127.0.0.1:8080/ >/dev/null
           grep -F "[super] NeuroCore prototype is ready." "$log"
           echo "NK1_CLEAN_STARTUP_SMOKE=PASS"
 

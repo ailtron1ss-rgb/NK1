@@ -284,7 +284,12 @@ export class ConstitutionEvolutionEngine {
     const input={proposalId:p.id,candidateDigest:p.candidateDigest};
     const request=await gateway.requestToolApproval(CONSTITUTION_RATIFICATION_TOOL,input,'Ratify constitutional revision '+p.id,this.approvalOptions(decisionId),'direct');
     const ticket=request?.request;
-    if (!ticket?.id || ticket.status!=='pending' || !Number.isFinite(ticket.expiresAt)) throw new Error('ActionGateway did not create a ratification ticket');
+    if (!ticket?.id || ticket.status!=='pending' || !Number.isFinite(ticket.expiresAt)) {
+      const failureReason = request && 'failureReason' in request && typeof request.failureReason === 'string'
+        ? request.failureReason : null;
+      throw new Error('ActionGateway did not create a ratification ticket' +
+        (failureReason ? ': ' + failureReason : ''));
+    }
     p.approvalRequestId=ticket.id;
     this.event('proposal.ratification-requested',p.authorId,p.id,p.baseVersion,null,'one-shot ratification requested',[ticket.id],Date.now());
     return { proposalId:p.id,candidateDigest:p.candidateDigest,approvalRequestId:ticket.id,expiresAt:ticket.expiresAt,toolId:CONSTITUTION_RATIFICATION_TOOL };

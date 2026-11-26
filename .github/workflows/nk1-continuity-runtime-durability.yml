@@ -1,0 +1,51 @@
+name: NK1 continuity runtime durability
+
+on:
+  pull_request:
+    branches: [workpass70-source]
+    paths:
+      - 'runtime/neuro-kurisu/src/organism/system/ContinuityLedger.ts'
+      - 'runtime/neuro-kurisu/src/organism/persistence/RecoveryWatchdog.ts'
+      - 'runtime/neuro-kurisu/src/organism/core/OrganismCore.ts'
+      - 'runtime/neuro-kurisu/tests/continuity-ledger-durability-20261124.mjs'
+      - 'runtime/neuro-kurisu/tests/recovery-watchdog-checkpoint-semantics-20261124.mjs'
+      - 'runtime/neuro-kurisu/tests/big-pass-324-core-watchdog.mjs'
+      - 'runtime/neuro-kurisu/package.json'
+      - '.github/workflows/nk1-continuity-runtime-durability.yml'
+permissions:
+  contents: read
+concurrency:
+  group: nk1-continuity-runtime-durability-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  continuity-durability:
+    name: Continuity journal and watchdog checkpoint acceptance
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: runtime/neuro-kurisu
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v7
+      - name: Set up Node
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: runtime/neuro-kurisu/package-lock.json
+      - name: Install locked dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Formal continuity durability gate
+        run: npm run audit:continuity-durability
+      - name: Durable process restart
+        run: npm run test:big-pass-318
+      - name: FileStateStore crash recovery
+        run: npm run test:big-pass-319
+      - name: Kill and resume process recovery
+        run: npm run test:big-pass-323:kill-resume
+      - name: Longitudinal behavioral continuity
+        run: npm run test:b1701-b2200:continuity
+      - name: Persistent continuity kernel
+        run: npm run test:pcontinuity
+      - name: Persistent continuity organism integration
+        run: npm run test:pcontinuity:integration
