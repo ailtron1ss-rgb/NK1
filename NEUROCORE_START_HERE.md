@@ -1,34 +1,93 @@
-# CURRENT HANDOFF — 2026-11-21
+# CURRENT HANDOFF — 2026-11-25
 
-**Canonical source baseline:** `workpass70-source` @ `f1cbaa9492ea297d67d8c7461642a75de92b677e`.  
-**main:** `06e01cdd0a8e60ed70991f22e842887f544d1ebf` (release/metadata only).
+**Canonical source:** `workpass70-source` @ `9008a8982a5173304456bee2c604bd0bc8665964`.  
+**main:** `06e01cdd0a8e60ed70991f22e842887f544d1ebf` (release/metadata only).  
+**Branch protection:** `workpass70-source` ранее наблюдался как `protected=false`; точные checks обязательны перед каждым merge.
 
-## Exact-source evidence
+## Точный source и границы изменений
 
-- Source HEAD commit time: 2026-11-21T07:53:04Z; parent `8d98f271e1374376cc81a9ba0c6e77c014f13ca8`.
-- Exact source Actions: **9/9 SUCCESS** on `f1cbaa9492ea297d67d8c7461642a75de92b677e`; see [daily report](docs/NK1_DAILY_ENGINEERING_CYCLE_2026-11-21.md) for all nine run links.
-- Full branch census: 1,053 refs / 1,035 unique heads / 3 duplicate-tip groups / 18 excess aliases. Open PR count: 275.
-- [PR #1059](https://github.com/ailtron1ss-rgb/NK1/pull/1059) is Draft, based on the live source SHA. It carries a benchmark-only locale-neutral BM25 tokenization fix and Turkish-I regression. First exact-head Actions: 16/17 SUCCESS; the memory-integrity failure was a fixture contract issue (missing explicit `independenceGroupId` with query evidence enabled), corrected in commit `396e1241226820a0dcd64ea92dbaaf33eaba024f`. Code/test head `67460ab86ca25179b2d4125cc7dbe1d692b60f80` then passed **18/18 exact-head Actions SUCCESS**. The synthetic benchmark remains not-promoted (recallDelta=0); recheck the current PR head after this documentation-only update.
-- PR #903 remains open/Draft; stacked children #916/#928/#947 are merged only into parent branches. Compare live source to #903: 180 ahead / 893 behind; do not rebase, merge or rewrite without a deliberate source-based salvage pass.
-- No PR was merged by this cycle. No branch was deleted or force-pushed.
+- Current source после PR #1157: `9008a8982a5173304456bee2c604bd0bc8665964`.
+- PR #1157 был объединён до текущего инженерного прохода; merge SHA равен source HEAD. Его 72/72 exact-head checks и 31/31 post-merge checks записаны в реестре консолидации.
+- В ходе текущей работы canonical `workpass70-source`, `main`, Release tag и Release assets не изменялись.
+- Кодовые изменения сделаны в отдельных aspect-ветках и остаются Draft PR; никаких новых merge в source в этом проходе не выполнялось.
+
+## Verified aspect work
+
+| PR | Branch HEAD | Verification | Remaining gate |
+|---|---|---:|---|
+| [#1179](https://github.com/ailtron1ss-rgb/NK1/pull/1179) | `a33e889900a6575160cb8b5b96ab6b8d1cf61de1` | 11/11 SUCCESS | Independent review |
+| [#1180](https://github.com/ailtron1ss-rgb/NK1/pull/1180) | `9c13acd0287314992a0d8a421c50533d2798231a` | 74/74 SUCCESS | Independent review; host verifier remains a separate future capability |
+| [#1175](https://github.com/ailtron1ss-rgb/NK1/pull/1175) | `b1bce60c5d2ea79e24707597b77935764fc14cd1` | 51/51 SUCCESS | Draft; independent review / merge gate |
+| [#1173](https://github.com/ailtron1ss-rgb/NK1/pull/1173) | `b7b6a6d76141010677af36a8a8453fe7a3b52b86` | 95/95 SUCCESS | Draft; visual/avatar-device validation and review |
+| [#1174](https://github.com/ailtron1ss-rgb/NK1/pull/1174) | `e1f83557bc8f5e7d9b304f943f8fce8d9c9b6192` | 76/76 SUCCESS, 0 failures, 0 pending | Independent review, semantic runtime TSC and real device power-loss soak |
+| [#1170](https://github.com/ailtron1ss-rgb/NK1/pull/1170) | `bdcad2c34a5dd9ffa0443c4cca8b56d989cc43e6` | 83/83 Actions SUCCESS | Independent review; semantic TSC check and Android/Termux soak |
+| [#1185](https://github.com/ailtron1ss-rgb/NK1/pull/1185) | `651a3c92dae4e1b71d7dde69dedaa34999482a84` | 14/14 Actions SUCCESS | Draft; candidate workspace only (`materialized`, not executed); host admission adapter and OS-level isolation remain future gates |
+
+## Key outcomes
+
+- **Metacognitive neural integrity (#1179):** correct 24→27 feature contract, v1→v2 state migration preserving old learned weights, paired prediction targets, and gradient attribution to the current sample.
+- **P53 self-improvement guard (#1180):** P53 v3 cannot generate its own holdout/transfer/progress evidence or promote its own candidate. Legacy unverified active profiles are neutralized during restore/migration.
+- **Continuity durability (#1174):** append-only journal is bounded, concurrent flush does not drop later records, torn tail recovery and rollback boundaries are explicit; watchdog checkpoint timestamp only advances inside a successful Core save callback.
+- **Runtime checkpoint envelope (#1170):** five critical sidecar owners are committed/restored as one bounded generation; invalid present envelopes fail closed rather than combining mixed legacy sidecars.
+
+## Next P0/P1 execution queue
+
+1. Obtain independent review for #1174 and run semantic runtime TSC; the 76/76 CI matrix is green, but the focused continuity typecheck used Node strip-syntax mode.
+2. Obtain independent code review for #1170, #1174, #1179 and #1180; fix all Critical/Important findings and retain Draft until then.
+3. Verify P53's future host-owned promotion capability design against existing #743 admission; do not wire candidate-controlled booleans or self-produced holdout evidence.
+4. Continue MemoryOS2 integrity and independent RU/EN holdout: frozen corpus, source-cluster splits, at least five paired seeds, recall uplift and forgetting/revision metrics.
+5. Run actual local-model inference on the intended host, ActionGateway lost-ACK/restart reconciliation and Android/Termux/browser/audio/embodiment soak.
+6. Inspect the October 19 Release ZIP bytes, independently hash/extract, compare file manifest and resolve human license review before any new Release.
 
 ## Release truth
 
-- Stable ZIP metadata SHA-256: `c5cf6a63661e28b30f976d03c8839a231341d73a09489b9066f062e29b224286`.
-- Latest prerelease ZIP metadata SHA-256: `9effadfcf0d402b462dd9cf2fd5b5793742039c9260db80578be830952bf52eb`.
-- ZIP bytes were not materialized; independent hash, extraction manifest and source parity remain UNVERIFIED.
-- Human license review remains pending; redistribution approval is false.
-- The 75-aspect registry is a 2026-11-06 snapshot, not current readiness evidence.
+The latest October 19 ZIP remains the only verified published artifact by metadata. ZIP bytes, extraction manifest and source parity remain UNVERIFIED; human license review and redistribution approval remain blocking. November source/PR changes are not RELEASED.
 
-## Next P0 / P1
+**Current cycle note:** this handoff was refreshed on 2026-11-25. The current daily engineering report is [docs/NK1_DAILY_ENGINEERING_CYCLE_2026-11-25.md](docs/NK1_DAILY_ENGINEERING_CYCLE_2026-11-25.md). The prior 2026-11-24 checkpoint remains below as historical context.
+---
+# ARCHIVED HANDOFF — 2026-11-24
 
-1. Re-read PR #1059 current head and exact-SHA Actions; fix only any reproduced failure and keep Draft.
-2. Continue #903 source-based salvage analysis without rewriting branch history.
-3. Materialize the October 19 ZIP through a supported path; independently hash/extract and compare to source.
-4. Run immutable RU/EN holdout with at least five paired seeds.
-5. Complete browser/WebGL and Android/Termux soak; obtain human license review.
+**Canonical source:** `workpass70-source` @ `87c9ed9034e09ca9fb83fd676ac52bb46434c4fe`.  
+**main:** `06e01cdd0a8e60ed70991f22e842887f544d1ebf` (release/metadata only).  
+**Live source exact-SHA Actions:** **11/11 SUCCESS**. GitHub API reports `protected=false` for the source branch.
 
-**Current cycle report:** [docs/NK1_DAILY_ENGINEERING_CYCLE_2026-11-21.md](docs/NK1_DAILY_ENGINEERING_CYCLE_2026-11-21.md).
+## Verified source checkpoint
+
+- Live source HEAD is the merge commit for PR #1161, observed at 2026-11-24T11:28:30Z. It was merged externally before this cycle; do not attribute that merge to this cycle.
+- PR #1161 converts branch-retirement candidate reporting to manual, read-only GET-only audit; `contents: read`; no branch refs were deleted.
+- No direct commits to `workpass70-source` or `main` were made by this cycle.
+
+## Active verified work
+
+| PR | Head SHA | Exact checks | State / scope |
+|---|---|---:|---|
+| [#1167](https://github.com/ailtron1ss-rgb/NK1/pull/1167) | `eccbb9238d9a97cc7389e9d04064ebd251218a6b` | 73/73 | Draft; one decision ID across 11 cognitive stages and metacognitive reflection |
+| [#1168](https://github.com/ailtron1ss-rgb/NK1/pull/1168) | `19e4089674067ba30bb8c30947c3ef261ba10940` | 35/35 | Draft; verified agency outcome and SelfAuthorship |
+| [#1169](https://github.com/ailtron1ss-rgb/NK1/pull/1169) | `91ce0af2629e2583ce6aa107d3e6c6ac2b4096fa` | 68/68 | Draft; plugin quarantine via real PluginMessageIngress test and sidecar restart |
+| [#1164](https://github.com/ailtron1ss-rgb/NK1/pull/1164) | `846519a5e1952bf790562cf2d35d9d43cee83099` | 15/15 | Draft; avatar v7 preview-only; manual visual/license acceptance remains |
+
+- PR #1167 and #1164 use base `8328336`; live source is now `87c9ed9`. Recompare/sync without force-push and rerun exact-head CI before any merge.
+- PR #1152 is merged. #1149 and #1153 remain open on base `54f9ec7` and overlap MemoryOS2 identity/revision/restore; do not merge independently.
+- PR #1133 contains the 2026-11-24 daily report and branch census; it remains Draft/open and its base is `8328336`.
+
+## Release truth
+
+- Latest Release tag `Neuro`, published 2026-10-19.
+- ZIP `Neuro_Kurisu_WORKPASS70_2026-10-19.zip`, 135,290,615 bytes; GitHub metadata digest `sha256:c5cf6a63661e28b30f976d03c8839a231341d73a09489b9066f062e29b224286`.
+- ZIP bytes were not materialized or independently hashed in this cycle; source/ZIP parity remains **UNVERIFIED**.
+- `contracts/RELEASE_LICENSE_REVIEW.json` is pending. Root project license is `NOASSERTION`; runtime is private/all-rights-reserved; redistribution approval=false. Human review is mandatory.
+
+## Next execution order
+
+1. MemoryOS2 hunk matrix: #1149/#1153 vs merged #1152; identify one canonical write/revision/restore implementation.
+2. Sync #1167 against current source and rerun exact-head Actions.
+3. Run immutable independent RU/EN holdout with ≥5 paired seeds; no synthetic-only uplift claim.
+4. Complete actual host plugin reconnect/duplicate delivery, Android/Termux 10k ticks, speech interrupt and lip-sync soak.
+5. Materialize/hash/extract the Release ZIP and complete human license review.
+
+**Current daily report:** [docs/NK1_DAILY_ENGINEERING_CYCLE_2026-11-24.md](docs/NK1_DAILY_ENGINEERING_CYCLE_2026-11-24.md).
+
+No PR merge, Release publication, branch deletion, force-push, production change or paid action was performed by this cycle.
 
 ---
 
@@ -491,3 +550,27 @@ When the user says “работай над проектом”, “продол
 - **Regression:** `test:p23:verified-skill-lifecycle-bootstrap` is registered in the continual-learning workflow.
 - **Verification:** exact-head Actions runs fail before steps start; the jobs have no step output and the logs endpoint returns `BlobNotFound`. This is consistent with the known runner/infrastructure problem, but does **not** prove the code or tests pass. Local typecheck/test execution is unavailable in this pass.
 - **Next P0:** connect the real learning/shadow supervisor to `registerTrustedSkillShadowRun` before receipt ingestion; provision trusted verifier keys; integrate authenticated approval; then get an actionable successful CI/typecheck run and audit every store creation/activation path.
+
+
+## Live engineering checkpoint — P23 Skill Shadow evidence freshness (2026-11-25)
+
+- Existing aspect PR [#1177](https://github.com/ailtron1ss-rgb/NK1/pull/1177), branch `aspect/skill-shadow-evidence-freshness-20261125`, current inspected HEAD `27c74e0502264f4a10959ad9f7cd49acfcd221c5`.
+- Canonical source remains `workpass70-source@9008a8982a5173304456bee2c604bd0bc8665964`; PR compare is 15 ahead / 0 behind and keeps six intended P23 files.
+- Freshness is purpose-aware: record and promotion require current evidence; persisted-active may restore historical evidence without age expiry, but signature, candidate/context identity, future bounds and valid timestamp checks remain mandatory.
+- New fail-closed checks reject non-positive, unsafe or fractional verifier clocks and fractional signed `observedAt` UTC-millisecond values.
+- TDD red was observed for unsafe verifier clock on test-only HEAD `fc4247d26ae2e8e41377fdd256a86ae9e96a3b47` ([run 45606567069](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45606567069)). Production fixes followed in `b43d5b64068e2a8b14888cf41c3e5026022d3cfe` and `27c74e0502264f4a10959ad9f7cd49acfcd221c5`.
+- Dedicated current-head workflow [45607764358](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45607764358) completed **SUCCESS**; focused P23 freshness, signature, candidate-store and approval-request tests all passed. Runtime syntax validation covered 746 files; semantic `tsc` remains unavailable. Do not infer typecheck coverage beyond the reported syntax-only validation.
+- PR #1177 remains Draft/open/unmerged. No source, main or Release artifact was modified.
+- Full record: [P23 signed Skill Shadow evidence freshness](docs/engineering/NK1_P23_SKILL_SHADOW_EVIDENCE_FRESHNESS_2026-11-25.md).
+
+
+## Live engineering checkpoint — durable delivery ownership (2026-11-25)
+
+- PR #1181 [social initiative lease and UI ACK](https://github.com/ailtron1ss-rgb/NK1/pull/1181): exact head `c92c734cc785fc4d36ba1cc9e9d471d0cf7c0436`, **46/46 Actions SUCCESS**. It exclusively owns user-visible proactive social initiative delivery, consent/quiet-hours checks, retry and durable chat-before-ACK.
+- PR #1182 [generic durable delivery outbox](https://github.com/ailtron1ss-rgb/NK1/pull/1182): current head `b65bc0bbcb8596d9fc30922960b94f4703d923a9`, 27 ahead / 0 behind, seven paths; remains Draft. It is restricted to task-completion/reminder/notification/custom, and rejects `initiative-message` to prevent duplicate lease ownership.
+- Generic outbox now quarantines expired leases as `reconciliation-required`; only an authoritative host outcome can confirm delivery, confirm non-delivery and authorize retry with backoff, or cancel. Unknown outcomes stay quarantined.
+- Architecture correction: code head `46c5b4a...` passed dependency audit [45610617629](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45610617629): dependency budget 65/65, zero violations/cycles/missing imports, semantic `tsc` PASS. Transitive import audit [45610616775](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45610616775) also passed.
+- Dedicated outbox contract workflow for current PR head [45611057409](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45611057409) is queued; focused contract, existing consent regression and OpenLoop tests are not yet claimed as passing.
+- PR #1177 P23 exact-head CI matrix: **65/65 SUCCESS**; freshness/signed-evidence/candidate-store/approval-request tests passed. Semantic `tsc` was unavailable in that particular P23 workflow.
+- All three aspect PRs remain Draft/unmerged; canonical `workpass70-source@9008a898...`, `main` and published Release remain unchanged.
+- Full record for the generic queue: [OPENCLAW_DURABLE_DELIVERY_OUTBOX_ADAPTATION_2026-11-25.md](docs/engineering/OPENCLAW_DURABLE_DELIVERY_OUTBOX_ADAPTATION_2026-11-25.md).
