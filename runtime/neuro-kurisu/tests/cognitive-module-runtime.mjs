@@ -856,3 +856,35 @@ console.log('COGNITIVE_MODULE_CHECKPOINT_ATOMICITY=PASS');
   );
   assert.equal(host.list().length, 256);
 }
+
+
+// Corrupt checkpoint metadata must be rejected before the trusted host factory
+// is invoked. Constructors may have effects; integrity admission precedes them.
+{
+  const store = memoryStore([{
+    schemaVersion: 1,
+    moduleId: 'memory.pre-factory-admission',
+    moduleVersion: '1.0.0',
+    stateSchemaVersion: 1,
+    capturedAt: 10,
+    state: { value: 41 },
+    stateHashSha256: '0'.repeat(64),
+  }]);
+  const host = runtime({ stateStore: store });
+  const events = [];
+  const fixture = moduleFixture('memory.pre-factory-admission', events);
+  let factoryCalls = 0;
+  host.register({
+    manifest: manifest('memory.pre-factory-admission'),
+    factory: () => {
+      factoryCalls += 1;
+      return fixture.module;
+    },
+  });
+
+  await expectReject(host.activate('memory.pre-factory-admission'), /module-state-hash-mismatch/);
+  assert.equal(factoryCalls, 0,
+    'persisted module integrity must be verified before trusted code construction');
+  assert.equal(events.length, 0);
+  assert.equal(statusOf(host, 'memory.pre-factory-admission'), 'failed');
+}
