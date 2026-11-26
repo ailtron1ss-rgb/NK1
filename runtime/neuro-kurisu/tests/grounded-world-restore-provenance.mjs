@@ -1,5 +1,19 @@
 import assert from 'node:assert/strict';
 import { GroundedWorldState } from '../src/organism/world/GroundedWorldState.ts';
+import { cloneInertSnapshot } from '../src/organism/core/InertSnapshot.ts';
+// Non-finite values remain rejected by default. A restore owner may opt in only
+// when it immediately validates every numeric field after this inert clone.
+assert.throws(() => cloneInertSnapshot({ metric: Number.NaN }), /inert-snapshot-invalid/,
+  'the generic snapshot clone stays strict by default');
+const inertNumericSentinels = cloneInertSnapshot({
+  nan: Number.NaN,
+  positiveInfinity: Number.POSITIVE_INFINITY,
+  negativeInfinity: Number.NEGATIVE_INFINITY,
+}, { allowNonFiniteNumbers: true });
+assert.ok(Number.isNaN(inertNumericSentinels.nan));
+assert.equal(inertNumericSentinels.positiveInfinity, Number.POSITIVE_INFINITY);
+assert.equal(inertNumericSentinels.negativeInfinity, Number.NEGATIVE_INFINITY);
+
 const world = new GroundedWorldState();
 world.restore({
   version:1,revision:9,lastAt:5_000,location:'persisted-location',
