@@ -46,7 +46,7 @@ export function SettingsPanel({ snap }: { snap: OrganismSnapshot }) {
             aria-checked={voiceEnabled}
             disabled={!speechAvailable}
             onClick={() => setVoiceEnabled(!voiceEnabled)}
-            className={voiceEnabled ? "shrink-0 rounded-full bg-accent px-3 py-1.5 text-xs font-semibold text-accent-fg" : "shrink-0 rounded-full border border-border px-3 py-1.5 text-xs text-muted disabled:opacity-50"}
+            className={voiceEnabled ? "min-h-11 min-w-16 shrink-0 rounded-full bg-accent px-3 py-1.5 text-xs font-semibold text-accent-fg" : "min-h-11 min-w-16 shrink-0 rounded-full border border-border px-3 py-1.5 text-xs text-muted disabled:opacity-50"}
           >
             {voiceEnabled ? "Вкл." : speechAvailable ? "Выкл." : "Недоступно"}
           </button>
