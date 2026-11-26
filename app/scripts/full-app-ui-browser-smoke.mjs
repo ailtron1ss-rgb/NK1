@@ -105,12 +105,36 @@ async function smokeProfile(profile) {
     check("mobile: Live2D recovery selector works", (await live2d.getAttribute("aria-pressed")) === "true");
   }
 
-  const layout = await page.evaluate(() => ({
-    viewportWidth: window.innerWidth,
-    documentWidth: document.documentElement.scrollWidth,
-    mainWidth: document.querySelector("main")?.scrollWidth ?? 0,
-    tickText: [...document.querySelectorAll("header span")].map((node) => node.textContent?.trim()).filter(Boolean),
-  }));
+  const layout = await page.evaluate(() => {
+    const viewportWidth = window.innerWidth;
+    const offenders = [...document.querySelectorAll("body *")].map((node) => {
+      const element = node;
+      const rect = element.getBoundingClientRect();
+      const style = getComputedStyle(element);
+      return {
+        tag: element.tagName.toLowerCase(),
+        id: element.id || null,
+        className: typeof element.className === "string" ? element.className.slice(0, 180) : "",
+        text: (element.textContent || "").trim().replace(/\s+/g, " ").slice(0, 90),
+        left: Math.round(rect.left),
+        right: Math.round(rect.right),
+        width: Math.round(rect.width),
+        scrollWidth: element.scrollWidth,
+        clientWidth: element.clientWidth,
+        overflowX: style.overflowX,
+      };
+    }).filter((item) => item.right > viewportWidth + 2 || item.scrollWidth > item.clientWidth + 2)
+      .sort((a, b) => Math.max(b.right - viewportWidth, b.scrollWidth - b.clientWidth) - Math.max(a.right - viewportWidth, a.scrollWidth - a.clientWidth))
+      .slice(0, 30);
+    return {
+      viewportWidth,
+      documentWidth: document.documentElement.scrollWidth,
+      bodyWidth: document.body.scrollWidth,
+      mainWidth: document.querySelector("main")?.scrollWidth ?? 0,
+      tickText: [...document.querySelectorAll("header span")].map((node) => node.textContent?.trim()).filter(Boolean),
+      overflowOffenders: offenders,
+    };
+  });
   check(profile.name + ": no page-level horizontal overflow", layout.documentWidth <= layout.viewportWidth + 1, JSON.stringify(layout));
   const visibleRuntimeErrors = await page.locator("div").filter({ hasText: /^Runtime:/ }).count();
   check(profile.name + ": no visible runtime error banner", visibleRuntimeErrors === 0, "runtime error banners=" + visibleRuntimeErrors);
