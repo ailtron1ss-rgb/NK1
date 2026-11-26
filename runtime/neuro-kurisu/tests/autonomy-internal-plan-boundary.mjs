@@ -108,4 +108,48 @@ assert.equal(corruptedReady.latestReady(at), null,
   'a restored private plan must remain non-deliverable after the recovery pass');
 assert.equal(corruptedReady.snapshot().deferred, 1);
 
+
+const corruptedPlanned = new AutonomousSocialInitiativeEngine();
+corruptedPlanned.restore({
+  version: 1,
+  cycles: 1,
+  planned: 1,
+  executed: 0,
+  deferred: 0,
+  reciprocity01: .5,
+  initiative01: .3,
+  consentGranted: true,
+  consentDecisionAt: at,
+  quietHoursEnabled: false,
+  quietStartHourUtc: 22,
+  quietEndHourUtc: 8,
+  suppressedByConsent: 0,
+  suppressedByQuietHours: 0,
+  initiatives: [{
+    id: 'private-planned-corruption',
+    contact: null,
+    kind: 'share-thought',
+    priority01: .8,
+    status: 'planned',
+    internalOnly: true,
+    createdAt: at,
+    reason: 'private reflection',
+    topic: 'A private plan with a forged staged payload',
+    topicSource: 'reflection',
+    openingIntent: 'share-observation',
+    message: 'This internal-only message must be scrubbed',
+    stagedAt: at,
+  }],
+  startedAt: at,
+  lastExternalInputAt: 0,
+  lastInitiativeAt: at,
+});
+const sanitizedPrivatePlan = corruptedPlanned.latestInternalPlan(at);
+assert.ok(sanitizedPrivatePlan);
+assert.equal(sanitizedPrivatePlan.status, 'planned');
+assert.equal(sanitizedPrivatePlan.message, undefined);
+assert.equal(sanitizedPrivatePlan.stagedAt, undefined);
+assert.equal(corruptedPlanned.latestPlanned(at), null);
+assert.equal(corruptedPlanned.latestReady(at), null);
+
 console.log('AUTONOMY_INTERNAL_PLAN_BOUNDARY=PASS');
