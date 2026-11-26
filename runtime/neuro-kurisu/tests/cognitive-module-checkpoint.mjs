@@ -358,7 +358,7 @@ console.log('ORGANISM_RUNTIME_MODULE_INTEGRATION=PASS');
   assert.equal(organism.cognitiveModuleDiagnostics().enabled, true);
   assert.match(
     organism.cognitiveModuleDiagnostics().activationError ?? '',
-    /module-initialize-failed/,
+    /optional-module-init-offline/,
   );
   assert.equal(organism.core.operationalStatusSnapshot().tick, 0,
     'canonical Core must remain initialized when an optional module fails');
