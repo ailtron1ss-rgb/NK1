@@ -37,6 +37,21 @@ assert.equal(health.coverage.length, 7);
 assert.equal(health.coverage.filter(row => row.present).length, 7);
 assert.equal(health.systems.length, 7);
 assert.equal(health.subsystems.length, 7);
+
+// The aspect graph and seven physical owners can be present while a real
+// subsystem port is unavailable. Aggregate health must not report connected.
+const failingRegistry = {
+  health: () => health.subsystems.map(row => row.name === 'memory'
+    ? { ...row, available:false, failedProbeCount:1, failedPorts:['snapshot'] }
+    : row),
+};
+const degradedFabric = new OrganismAspectFabric(graph, systems, failingRegistry);
+const degradedHealth = degradedFabric.health();
+assert.equal(degradedHealth.ok, false);
+assert.deepEqual(degradedHealth.missingSubsystems, ['memory']);
+assert.equal(degradedFabric.snapshot().connected, false);
+assert.throws(() => degradedFabric.assertConnected(), /subsystem:memory/);
+
 const snapshot = fabric.snapshot();
 assert.equal(snapshot.connected, true);
 assert.equal(snapshot.graph.nodes.length, 75);
