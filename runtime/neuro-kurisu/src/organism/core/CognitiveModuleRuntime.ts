@@ -290,6 +290,8 @@ export class CognitiveModuleRuntime {
   private readonly clock: () => number;
   private readonly maxStateBytes: number;
   private readonly records = new Map<string, ModuleRecord>();
+  private snapshotOperationTail: Promise<void> = Promise.resolve();
+  private snapshotAllInFlight: Promise<{ captured: string[]; failed: Array<{ id: string; reason: string }> }> | null = null;
 
   constructor(options: CognitiveModuleRuntimeOptions = {}) {
     this.hostApiVersion = options.hostApiVersion ?? 1;
@@ -494,6 +496,10 @@ export class CognitiveModuleRuntime {
   }
 
   async deactivate(id: string): Promise<CognitiveModuleStateEnvelopeV1 | null> {
+    return this.withSnapshotBarrier(() => this.deactivateInternal(id));
+  }
+
+  private async deactivateInternal(id: string): Promise<CognitiveModuleStateEnvelopeV1 | null> {
     const record = this.records.get(id);
     if (!record) throw fail('unknown-cognitive-module', id);
     if (record.status !== 'active' || !record.module) {
@@ -606,16 +612,44 @@ export class CognitiveModuleRuntime {
    * stopping modules. Each module is isolated: a failed snapshot is reported
    * while the last successfully persisted envelope remains available.
    */
-  async snapshotAll(): Promise<{ captured: string[]; failed: Array<{ id: string; reason: string }> }> {
-    const captured: string[] = [];
-    const failed: Array<{ id: string; reason: string }> = [];
-    for (const id of this.topologicalOrder()) {
-      const record = this.records.get(id);
-      if (record?.status !== 'active' || !record.module) continue;
-      const existingCapture = record.snapshotInFlight;
-      if (existingCapture) {
+  private withSnapshotBarrier<T>(operation: () => Promise<T>): Promise<T> {
+    const previous = this.snapshotOperationTail;
+    let release!: () => void;
+    this.snapshotOperationTail = new Promise<void>(resolve => { release = resolve; });
+    return previous.then(async () => {
+      try {
+        return await operation();
+      } finally {
+        release();
+      }
+    });
+  }
+
+  snapshotAll(): Promise<{ captured: string[]; failed: Array<{ id: string; reason: string }> }> {
+    // Concurrent checkpoint callers share one in-flight capture. This avoids
+    // duplicate module work and guarantees shutdown waits for that same barrier.
+    if (this.snapshotAllInFlight) return this.snapshotAllInFlight;
+    const operation = this.withSnapshotBarrier(async () => {
+      const captured: string[] = [];
+      const failed: Array<{ id: string; reason: string }> = [];
+      for (const id of this.topologicalOrder()) {
+        const record = this.records.get(id);
+        if (record?.status !== 'active' || !record.module) continue;
         try {
-          await existingCapture;
+          const state = cloneBoundedState(await record.module.snapshot(), this.maxStateBytes);
+          const capturedAt = this.clock();
+          if (!Number.isFinite(capturedAt) || capturedAt < 0) {
+            throw fail('module-state-time-invalid', id);
+          }
+          const envelope: CognitiveModuleStateEnvelopeV1 = {
+            schemaVersion: 1,
+            moduleId: record.manifest.id,
+            moduleVersion: record.manifest.version,
+            stateSchemaVersion: record.manifest.stateSchemaVersion,
+            capturedAt,
+            state,
+          };
+          if (this.stateStore) await this.stateStore.save(envelope);
           captured.push(id);
         } catch (error) {
           failed.push({
@@ -623,42 +657,14 @@ export class CognitiveModuleRuntime {
             reason: String(error instanceof Error ? error.message : error).slice(0, 180),
           });
         }
-        continue;
       }
-
-      const module = record.module;
-      const capture = (async (): Promise<void> => {
-        const state = cloneBoundedState(await module.snapshot(), this.maxStateBytes);
-        const capturedAt = this.clock();
-        if (!Number.isFinite(capturedAt) || capturedAt < 0) {
-          throw fail('module-state-time-invalid', id);
-        }
-        const envelope: CognitiveModuleStateEnvelopeV1 = {
-          schemaVersion: 1,
-          moduleId: record.manifest.id,
-          moduleVersion: record.manifest.version,
-          stateSchemaVersion: record.manifest.stateSchemaVersion,
-          capturedAt,
-          state,
-        };
-        if (this.stateStore) await this.stateStore.save(envelope);
-      })();
-      // Publish the promise before yielding: concurrent snapshots share this
-      // capture, and deactivate() observes it before invoking quiesce().
-      record.snapshotInFlight = capture;
-      try {
-        await capture;
-        captured.push(id);
-      } catch (error) {
-        failed.push({
-          id,
-          reason: String(error instanceof Error ? error.message : error).slice(0, 180),
-        });
-      } finally {
-        if (record.snapshotInFlight === capture) record.snapshotInFlight = undefined;
-      }
-    }
-    return { captured, failed };
+      return { captured, failed };
+    });
+    this.snapshotAllInFlight = operation;
+    void operation.finally(() => {
+      if (this.snapshotAllInFlight === operation) this.snapshotAllInFlight = null;
+    }).catch(() => undefined);
+    return operation;
   }
 
   async health(): Promise<CognitiveModuleRuntimeHealth> {
