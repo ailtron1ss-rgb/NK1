@@ -7,6 +7,7 @@ on:
       - 'runtime/neuro-kurisu/src/organism/body/PerceptualEvidenceCompiler.ts'
       - 'runtime/neuro-kurisu/src/organism/cognition/P41SemanticPerception.ts'
       - 'runtime/neuro-kurisu/src/organism/cognition/PerceptualEpistemicGraph.ts'
+      - 'runtime/neuro-kurisu/src/organism/cognition/PerceptualContinuityModel.ts'
       - 'runtime/neuro-kurisu/src/organism/world/GroundedWorldState.ts'
       - 'runtime/neuro-kurisu/src/organism/core/EmbodimentSubsystemRuntime.ts'
       - 'runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts'
@@ -37,6 +38,8 @@ jobs:
           cache: npm
           cache-dependency-path: runtime/neuro-kurisu/package-lock.json
       - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Install pinned semantic TypeScript verifier (CI-only)
+        run: npm install --no-save --no-package-lock --ignore-scripts --no-audit --no-fund typescript@5.8.3 @types/node@22
       - name: Caller-controlled admission and hostile restore regression
         run: node --experimental-strip-types tests/g3-perceptual-evidence-admission-boundary-20261126.mjs
       - name: Reality boundary regressions
