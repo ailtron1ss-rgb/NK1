@@ -1929,6 +1929,7 @@
     "test:self-authorship-spineonly-runtime-workpass71": "node --experimental-strip-types tests/self-authorship-spineonly-runtime-workpass71.mjs",
     "test:action-receipt-selfauthorship-recovery-workpass72": "node --experimental-strip-types tests/action-receipt-selfauthorship-recovery-workpass72.mjs",
     "test:cef-decision-reference-workpass72": "node --experimental-strip-types tests/cef-decision-reference-workpass72.mjs",
-    "test:workpass642:cef-ordering": "node --experimental-strip-types tests/workpass642-cognitive-event-ordering.mjs"
+    "test:workpass642:cef-ordering": "node --experimental-strip-types tests/workpass642-cognitive-event-ordering.mjs",
+    "test:goal-bound-plan-lineage": "node --experimental-strip-types tests/goal-bound-plan-lineage-20261126.mjs"
   }
 }
