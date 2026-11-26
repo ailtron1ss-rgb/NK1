@@ -11,7 +11,7 @@ test("avatar is a first-class mobile navigation section", async () => {
     readFile(new URL("routes/index.tsx", root), "utf8"),
   ]);
 
-  assert.match(store, /export type AppSection =[^;]*\b"avatar"\b/,
+  assert.match(store, /export type AppSection =[^;]*"avatar"/,
     "the shared navigation state must include the avatar section");
   assert.match(navigation, /\{\s*id:\s*"avatar",\s*label:\s*"Avatar"/,
     "the bottom navigation must expose the avatar destination");
