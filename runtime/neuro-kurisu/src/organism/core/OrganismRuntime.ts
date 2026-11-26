@@ -1555,7 +1555,25 @@ export class OrganismRuntime {
         const keepForVision = retain || Boolean(this.config.visionBackend);
         const cameraKey = `autonomous-camera:${cycle.state.tick}:${cameraId}:${keepForVision ? 'path' : 'metadata'}`;
         const shot = await this.captureCameraDirect(cameraId, retain, { idempotencyKey: cameraKey, decisionId: cycle.decision.id, autonomous: true });
-        return { ok: shot.ok === true, path: 'path' in shot ? shot.path : undefined, size: 'size' in shot ? shot.size : undefined, hash: 'hash' in shot ? shot.hash : undefined, error: 'error' in shot ? shot.error : undefined, executionId: shot.executionId, providerReceiptId: 'providerReceiptId' in shot ? shot.providerReceiptId : undefined };
+        return {
+          ok: shot.ok === true,
+          path: 'path' in shot ? shot.path : undefined,
+          size: 'size' in shot ? shot.size : undefined,
+          hash: 'hash' in shot ? shot.hash : undefined,
+          error: 'error' in shot ? shot.error : undefined,
+          executionId: shot.executionId,
+          providerReceiptId: 'providerReceiptId' in shot ? shot.providerReceiptId : undefined,
+          verification: 'captureVerification' in shot ? shot.captureVerification : undefined,
+          verificationInput: 'captureVerificationInput' in shot ? shot.captureVerificationInput : undefined,
+          cameraId: 'cameraId' in shot ? shot.cameraId : undefined,
+          capturedAt: 'capturedAt' in shot ? shot.capturedAt : undefined,
+          captureStartedAt: 'captureStartedAt' in shot ? shot.captureStartedAt : undefined,
+          captureNonce: 'captureNonce' in shot ? shot.captureNonce : undefined,
+          sourceId: 'sourceId' in shot ? shot.sourceId : undefined,
+          retained: 'retained' in shot ? shot.retained : undefined,
+          semanticVision: 'semanticVision' in shot ? shot.semanticVision : undefined,
+          decisionId: cycle.decision.id,
+        };
       },
     });
     await this.core.setEmbodiedActionResult(embodiedAction);
@@ -1724,8 +1742,10 @@ export class OrganismRuntime {
     if(grounded.source==='external') {
       this.core.recordExternalPerceptualEvidence({
         at:cycle.state.at,
-        modality:embodiedAction.realityClass==='device-observation'?'sensor':'world',
-        claim:`external-outcome:${embodiedAction.action}:verified=${grounded.verified01.toFixed(2)}:independent=${grounded.independent01.toFixed(2)}:consequence=${grounded.consequence01.toFixed(2)}:shadowDivergence=${shadowResolution.divergence01.toFixed(2)}`,
+        modality:embodiedAction.realityClass==='camera-artifact'?'vision':embodiedAction.realityClass==='device-observation'?'sensor':'world',
+        claim:embodiedAction.realityClass==='camera-artifact'
+          ? `camera-frame:${embodiedAction.artifact?.cameraId ?? '?'}:${embodiedAction.artifact?.hash ?? 'missing-hash'}:${embodiedAction.artifact?.captureNonce ?? 'missing-nonce'}`
+          : `external-outcome:${embodiedAction.action}:verified=${grounded.verified01.toFixed(2)}:independent=${grounded.independent01.toFixed(2)}:consequence=${grounded.consequence01.toFixed(2)}:shadowDivergence=${shadowResolution.divergence01.toFixed(2)}`,
         confidence01:grounded.evidence01, verification:postcondition, embodiedAction, parents:[outcomeEvidence.id,actionEvidence.id],
       });
     }
@@ -2601,6 +2621,15 @@ export class OrganismRuntime {
     return {
       ...successResult, ok: true, verified: toolExecution.verified, executionId: toolExecution.executionId,
       providerReceiptId: toolExecution.providerReceiptId ?? (typeof result.providerReceiptId === 'string' ? result.providerReceiptId : undefined),
+      captureVerification: toolExecution.verification,
+      captureVerificationInput: structuredClone(normalized),
+      cameraId: normalizedCameraId,
+      capturedAt: Number(result.capturedAt ?? 0),
+      captureStartedAt: Number(result.captureStartedAt ?? 0),
+      captureNonce: typeof result.captureNonce === 'string' ? result.captureNonce : undefined,
+      sourceId: typeof result.sourceId === 'string' ? result.sourceId : undefined,
+      retained: result.retained === true,
+      decisionId: typeof result.decisionId === 'string' ? result.decisionId : undefined,
       evidence, cameraEvidence: this.core.cameraEvidenceSnapshot(), semanticVision: semantic?.semantic === true,
       semanticBackend: semantic?.backend ?? null, semanticResult: semantic, tracking: trackingMetrics,
     };
