@@ -1,0 +1,38 @@
+name: NK1 approval actor attribution
+on:
+  pull_request:
+    branches: [workpass70-source, aspect/http-perimeter-and-closure-growth-20261125]
+    paths:
+      - 'runtime/neuro-kurisu/src/organism/system/ActionGateway.ts'
+      - 'runtime/neuro-kurisu/src/organism/core/OrganismCore.ts'
+      - 'runtime/neuro-kurisu/src/organism/system/ApiSecurityPolicy.ts'
+      - 'runtime/neuro-kurisu/src/server/server.mjs'
+      - 'runtime/neuro-kurisu/tests/workpass643-approval-actor-attribution.mjs'
+      - '.github/workflows/nk1-approval-actor-attribution.yml'
+permissions:
+  contents: read
+concurrency:
+  group: nk1-approval-actor-attribution-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  attribution:
+    name: Trusted approval principal propagation and persistence
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: runtime/neuro-kurisu
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v7
+      - name: Set up Node
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: runtime/neuro-kurisu/package-lock.json
+      - name: Install locked dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Approval actor attribution regression
+        run: node --experimental-strip-types tests/workpass643-approval-actor-attribution.mjs
+      - name: Runtime typecheck
+        run: npm run typecheck
