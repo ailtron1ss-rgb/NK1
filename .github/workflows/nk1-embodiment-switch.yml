@@ -16,6 +16,9 @@ on:
       - "app/scripts/live2d-intent-ack.test.mjs"
       - "runtime/neuro-kurisu/public/live2d/viewer.html"
       - "app/src/components/AvatarStage.tsx"
+      - "app/src/components/KurisuOriginalStage.tsx"
+      - "app/src/components/avatar/avatarPresentationReceipt.ts"
+      - "app/scripts/avatar-presentation-receipt.test.mjs"
       - "app/src/components/Avatar3DStage.tsx"
       - "app/src/components/avatar/threeToonMaterials.ts"
       - "app/src/types/three.d.ts"
@@ -68,6 +71,9 @@ on:
       - "app/scripts/live2d-intent-ack.test.mjs"
       - "runtime/neuro-kurisu/public/live2d/viewer.html"
       - "app/src/components/AvatarStage.tsx"
+      - "app/src/components/KurisuOriginalStage.tsx"
+      - "app/src/components/avatar/avatarPresentationReceipt.ts"
+      - "app/scripts/avatar-presentation-receipt.test.mjs"
       - "app/src/components/Avatar3DStage.tsx"
       - "app/src/components/avatar/threeToonMaterials.ts"
       - "app/src/types/three.d.ts"
@@ -124,6 +130,8 @@ jobs:
         run: npm --prefix app run test:body-systems
       - name: Test accessible avatar renderer controls
         run: node --test app/scripts/avatar-stage-layout.test.mjs
+      - name: Test tick-bound cross-renderer presentation receipts
+        run: node --test app/scripts/avatar-presentation-receipt.test.mjs
       - name: Test N.E.K.O.-derived semantic gesture cards and NK1 motion programs
         run: npm --prefix app run test:semantic-gesture-intent
       - name: Test shared grapheme-to-viseme articulation
