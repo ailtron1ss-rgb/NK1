@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
-import { PerceptualEvidenceCompiler } from '../src/organism/body/PerceptualEvidenceCompiler.ts';
+import { PerceptualEvidenceCompiler, isTrustedPerceptualEvidenceSnapshot } from '../src/organism/body/PerceptualEvidenceCompiler.ts';
+import { isTrustedEmbodiedActionResult } from '../src/organism/body/EmbodiedActionExecutor.ts';
 import { ExternalPostconditionVerifier, isTrustedEmbodiedOutcomeVerification } from '../src/organism/system/ExternalPostconditionVerifier.ts';
 import { P41SemanticPerceptionEngine, defaultP41SemanticPerception } from '../src/organism/cognition/P41SemanticPerception.ts';
 import { PerceptualEpistemicGraph } from '../src/organism/cognition/PerceptualEpistemicGraph.ts';
@@ -73,31 +74,29 @@ assert.equal(forgedPersisted.snapshot().metrics.groundedSignalRatio01,0,'persist
 
 const action=await createTrustedEmbodiedActionFixture('explore',{decisionId:'g3-admission-decision'});
 const proof=await new ExternalPostconditionVerifier().assess(action);
-assert.ok(isTrustedEmbodiedOutcomeVerification(proof,action),'test fixture must produce the canonical executor-bound proof');
+assert.equal(isTrustedEmbodiedActionResult(action),true,'executor fixture must be an authentic result object');
+assert.equal(isTrustedEmbodiedOutcomeVerification(proof,action),false,
+  'device telemetry and action execution receipts are not independent observations of the external effect');
 const forgedProof=structuredClone(proof);
-assert.equal(isTrustedEmbodiedOutcomeVerification(forgedProof,action),false,'a JSON copy of a verifier result must not retain its ephemeral capability');
-
-const trustedCompiler=new PerceptualEvidenceCompiler();
-const trustedRow=trustedCompiler.recordExternalEvidence({
-  at:at+20,claim:'independently verified door postcondition',confidence01:.94,verified:false,
+assert.equal(isTrustedEmbodiedOutcomeVerification(forgedProof,action),false,'a JSON copy of a verifier result cannot retain a capability');
+const actionEvidence=untrustedCompiler.recordExternalEvidence({
+  at:at+20,claim:'device telemetry without independent postcondition',confidence01:.94,verified:true,
   verification:proof,embodiedAction:action,
 });
-assert.equal(trustedRow.kind,'observed','exact verifier token plus exact executor result may enter the observed lane');
-const untrustedProofRow=untrustedCompiler.recordExternalEvidence({
-  at:at+21,claim:'copied verifier result',confidence01:.94,verified:true,
-  verification:forgedProof,embodiedAction:action,
-});
-assert.equal(untrustedProofRow.kind,'derived','copied verifier result plus verified=true remains untrusted');
+assert.equal(actionEvidence.kind,'derived','no observed promotion is permitted until the host has independent effect evidence');
 
-const trustedSnapshot=trustedCompiler.snapshot();
-const groundedTrusted=new GroundedWorldState();
-const trustedWorld=groundedTrusted.integrate({at:at+20,evidence:trustedSnapshot});
-assert.ok(trustedWorld.facts.includes('observed-evidence:independently verified door postcondition'),
-  'GroundedWorldState accepts observed evidence only from the live owner snapshot capability');
-const clonedSnapshot=structuredClone(trustedSnapshot);
+const ownerSnapshot=untrustedCompiler.snapshot();
+assert.equal(isTrustedPerceptualEvidenceSnapshot(ownerSnapshot),true,'only the exact canonical in-process snapshot is owner-authenticated');
+assert.equal(Object.isFrozen(ownerSnapshot),true,'owner-issued evidence snapshots must be immutable');
+assert.equal(Object.isFrozen(ownerSnapshot.evidence[0]),true,'nested evidence rows must also be immutable');
+assert.throws(()=>{ownerSnapshot.evidence[0].kind='observed';},TypeError,'callers cannot mutate an authenticated owner snapshot');
+const clonedSnapshot=structuredClone(ownerSnapshot);
+assert.equal(isTrustedPerceptualEvidenceSnapshot(clonedSnapshot),false,'a serialized/copied snapshot loses its ephemeral capability');
+const groundedOwner=new GroundedWorldState();
+const ownerWorld=groundedOwner.integrate({at:at+20,evidence:ownerSnapshot});
+assert.ok(ownerWorld.facts.includes('derived-evidence:caller says door is open'));
 const groundedClone=new GroundedWorldState();
-const clonedWorld=groundedClone.integrate({at:at+20,evidence:clonedSnapshot});
-assert.ok(clonedWorld.facts.includes('derived-evidence:independently verified door postcondition'),
-  'serialized/copied owner snapshots lose the ephemeral admission capability');
+const cloneWorld=groundedClone.integrate({at:at+20,evidence:clonedSnapshot});
+assert.ok(cloneWorld.facts.includes('historical-derived-evidence:caller says door is open'));
 
 console.log('OBSERVATION_ADMISSION_TRUST_BOUNDARY=PASS');
