@@ -1,4 +1,5 @@
 import type { MechanismSerendipityOptions } from '../research/MechanismSerendipityEngine.ts';
+import { isPlainDataRecord, ownDataValue } from '../body/RestoreSanitizers.ts';
 import { SelfSubsystemRuntime } from './SelfSubsystemRuntime.ts';
 import { GovernanceSubsystemRuntime } from './GovernanceSubsystemRuntime.ts';
 import { MemorySubsystemRuntime } from './MemorySubsystemRuntime.ts';
