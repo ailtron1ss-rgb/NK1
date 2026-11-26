@@ -82,10 +82,10 @@ export type GroundedEvidenceKind='observed'|'model-output'|'derived'|'conflict'|
  * interface produces `observed`. A provider's inference is `model-output` and a
  * synthetic fixture is `unresolved`, no matter how confident the caller is.
  */
-export function observationEvidenceKind(provenance:string):GroundedEvidenceKind{
+export function observationEvidenceKind(provenance:string,isRealCapture=false):GroundedEvidenceKind{
   switch(provenance){
-    case 'device-capture':return 'observed';
-    case 'host-interface':return 'observed';
+    case 'device-capture':
+    case 'host-interface':return isRealCapture?'observed':'unresolved';
     case 'provider-model-output':return 'model-output';
     case 'derived':return 'derived';
     default:return 'unresolved';
@@ -485,7 +485,7 @@ export class GroundedWorldState {
     if (!Number.isFinite(at) || at < 0) return { accepted: false, reason: 'invalid-timestamp', evidenceKind: 'unresolved', revision: this.state.revision };
     if (observation.expiresAt < at) return { accepted: false, reason: 'expired-observation', evidenceKind: 'unresolved', revision: this.state.revision };
 
-    const evidenceKind = observationEvidenceKind(observation.provenance);
+    const evidenceKind = observationEvidenceKind(observation.provenance, observation.isRealCapture);
     const subject = typeof observation.payload.subject === 'string' && observation.payload.subject.trim()
       ? observation.payload.subject.trim()
       : typeof observation.payload.label === 'string' && observation.payload.label.trim()
