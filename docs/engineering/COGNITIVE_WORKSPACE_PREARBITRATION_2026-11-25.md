@@ -84,3 +84,21 @@ The focused workspace test now covers:
 The branch remains Draft / open / unmerged. The latest exact-head dedicated Actions run must complete before claiming these new contracts pass. Earlier successful runs on earlier heads are not inherited as proof for the current head.
 
 No measured phone latency, Android/Termux power-loss durability, independent review, or end-to-end production acceptance is claimed. The workspace and credit receipts are bounded engineering mechanisms; they are not a consciousness detector and do not establish subjective experience. main, Release tags/assets and immutable gearonone.zip remain untouched.
+
+## Cross-tick CEF lineage and outcome finalization
+
+Each decision trace now carries the CEF event IDs created by its own operational cycle: observation, prediction, appraisal, attention, memory, goal, plan and action. These IDs are copied into the decision trace before it is returned, so a later observation cannot replace the historical anchors.
+
+For a delayed feedback call:
+
+- the caller supplies the exact decisionId and stable outcomeId;
+- the outcome event is appended at the actual feedback tick, but its parent links point to the original decision's prediction/action events;
+- learning and self-update events are linked to that outcome and carry the same decision/outcome identities;
+- the metacognitive episode retains both decisionTick and outcomeTick;
+- a delayed outcome does not close, increment, or clear the newer active operational cycle.
+
+The CEF metacognitive episode contract permits a later outcome/learning tick while requiring the action and original observation/prediction anchors to remain on the decision tick. Current-tick feedback still uses the strict full-cycle verification path.
+
+**Replay contract:** an outcome event ID and a separate feedback-finalization event ID are deterministic from (decisionId, outcomeId). Replaying an already finalized outcome with the same input fingerprint returns before re-running feedback learners. Reusing an outcome ID for a different decision or changing the content under an existing identity is rejected. The finalization marker is written only after the feedback projections complete, and the CEF snapshot is persisted with it.
+
+The replay guard is bounded by the retained CEF/event and workspace receipt windows; this is not an unlimited global idempotency database. Cross-process exactly-once behavior beyond retained checkpoints and independent Android power-loss testing remain separate acceptance gates.
