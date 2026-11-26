@@ -195,8 +195,8 @@ export class PerceptualEpistemicGraph {
     const independentCorroboration=similar.filter(x=>x.modality!==modality);
     // Repeating the same proposition from the same modality is persistence,
     // not independent corroboration.
-    if(superseded)this.state.resolvedPairs++;
-    else if(independentCorroboration.length)this.state.corroboratedPairs+=independentCorroboration.length;
+    if(superseded)this.state.resolvedPairs=Math.min(4096,this.state.resolvedPairs+1);
+    else if(independentCorroboration.length)this.state.corroboratedPairs=Math.min(1000,this.state.corroboratedPairs+independentCorroboration.length);
     this.state.claims.unshift(c); this.state.claims=this.state.claims.slice(0,256);
     // contradictionPairs is a gauge over the retained window, not a lifetime
     // event counter: restating one side of a standing disagreement must not
