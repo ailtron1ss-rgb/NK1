@@ -84,9 +84,11 @@ function validJournalOffset(value:unknown):value is OperationalJournalCursor {
     activeSegmentRecords=ownData(value,'activeSegmentRecords'),activeSegmentId=ownData(value,'activeSegmentId'),
     activeSegmentTailSha256=ownData(value,'activeSegmentTailSha256'),fileSynced=ownData(value,'fileSynced'),
     directorySynced=ownData(value,'directorySynced');
+  const explicitNonDurableStub=fileSynced===false&&directorySynced===false&&retainedSegments===0&&
+    retainedBytes===0&&activeSegmentBytes===0&&activeSegmentRecords===0&&activeSegmentId===null&&activeSegmentTailSha256===null;
   if(version!==1||!safeCounter(retainedSegments)||retainedSegments>6||!safeCounter(retainedBytes)||retainedBytes>600*1024*1024||
      !safeCounter(activeSegmentBytes)||activeSegmentBytes>100*1024*1024||!safeCounter(activeSegmentRecords)||
-     fileSynced!==true||typeof directorySynced!=='boolean'||retainedBytes<activeSegmentBytes||
+     (fileSynced!==true&&!explicitNonDurableStub)||typeof directorySynced!=='boolean'||retainedBytes<activeSegmentBytes||
      retainedSegments<(activeSegmentBytes>0?1:0))return false;
   const validHash=(item:unknown):boolean=>typeof item==='string'&&/^[a-f0-9]{64}$/.test(item);
   if(activeSegmentBytes===0)return activeSegmentRecords===0&&activeSegmentId===null&&activeSegmentTailSha256===null;

@@ -26,7 +26,7 @@ export interface OperationalJournalCursor {
   activeSegmentBytes:number;
   activeSegmentRecords:number;
   activeSegmentTailSha256:string|null;
-  fileSynced:true;
+  fileSynced:boolean;
   directorySynced:boolean;
 }
 

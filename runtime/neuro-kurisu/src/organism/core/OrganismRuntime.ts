@@ -66,7 +66,7 @@ export interface RuntimeCheckpointRecoveryReceipt {
   generation?:number;
   coreTick?:number;
   worldTick?:number;
-  journalOffset?:RuntimeOperationalJournalCursor;
+  journalOffset?:RuntimeJournalCursor;
   manifestHash?:string;
   reason?:string;
 }
@@ -754,7 +754,7 @@ export class OrganismRuntime {
           this.lastWorldCheckpointAt = Date.now();
         }
       }
-      this.core.setRuntimeCheckpointContributor(async () => this.runtimeCheckpointOwnerSnapshots(await this.journal.cursor()));
+      this.core.setRuntimeCheckpointContributor(async () => this.runtimeCheckpointOwnerSnapshots(await this.runtimeCheckpointJournalOffset()));
       this.core.setRuntimeCheckpointCommitObserver(envelope => this.onRuntimeCheckpointCommitted(envelope));
       this.evidenceBus.restore(systemSnapshot.runtimeEvidence ?? undefined);
       this.cognitiveEventFabric.restore(systemSnapshot.runtimeCognitiveEventFabric ?? systemSnapshot.cognitiveEventFabric ?? undefined);
@@ -3077,7 +3077,25 @@ export class OrganismRuntime {
   }
 
 
-  private runtimeCheckpointOwnerSnapshots(journalOffset:RuntimeOperationalJournalCursor) {
+  private async runtimeCheckpointJournalOffset(): Promise<RuntimeJournalCursor> {
+    const journal = this.journal as typeof this.journal & { cursor?: () => Promise<RuntimeJournalCursor> };
+    if (typeof journal.cursor === 'function') return journal.cursor();
+    // Test/custom journal adapters expose write-only semantics. Record an explicit
+    // non-durable empty cursor; never pretend this adapter fsynced a file.
+    return {
+      version:1,
+      retainedSegments:0,
+      retainedBytes:0,
+      activeSegmentId:null,
+      activeSegmentBytes:0,
+      activeSegmentRecords:0,
+      activeSegmentTailSha256:null,
+      fileSynced:false,
+      directorySynced:false,
+    };
+  }
+
+  private runtimeCheckpointOwnerSnapshots(journalOffset:RuntimeJournalCursor) {
     return {
       world: this.environment.persisted(),
       openLoop: this.openLoopRadar.snapshot(),
