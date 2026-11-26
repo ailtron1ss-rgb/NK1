@@ -112,7 +112,7 @@ export class OperationalJournal {
         if (!isMissing(error)) throw error;
       }
     }
-    const lines = active.toString('utf8').split('\\n');
+    const lines = active.toString('utf8').split('\n');
     const completeLines = lines.slice(0, lines.length - 1).filter(Boolean);
     const first = completeLines[0];
     const last = completeLines[completeLines.length - 1];

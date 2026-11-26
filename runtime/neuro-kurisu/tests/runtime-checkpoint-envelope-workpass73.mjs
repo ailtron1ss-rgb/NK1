@@ -28,7 +28,7 @@ const journal={
   cursor:async()=>({...checkpointJournalState}),
   write:async(level,event,data)=>{
     journalEvents.push({level,event,data});
-    const line=JSON.stringify({level,event,data})+'\\n';
+    const line=JSON.stringify({level,event,data})+'\n';
     checkpointJournalState.activeSegmentBytes+=Buffer.byteLength(line);
     checkpointJournalState.retainedBytes=checkpointJournalState.activeSegmentBytes;
     checkpointJournalState.activeSegmentRecords+=1;

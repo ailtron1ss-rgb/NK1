@@ -3,20 +3,7 @@ import type { NekoPluginVoiceTranscriptBridge } from '../integration/neko/NekoPl
 import type { NekoAsrProviderPort } from '../integration/neko/NekoAsrTranscriptAdapter.ts';
 import { assertCognitiveCycleBoundaryInput } from './CognitiveCycleBoundary.ts';
 import { buildUniversalInputInterpretation, formatUniversalInterpretationContext } from '../cognition/UniversalInputInterpreter.ts';
-import { externalGoalForRuntimeInput, normalizeRuntimeExternalPluginSource, shouldInvokeLanguageForRuntimeStep, type RuntimeExternalGoalPolicy, export interface RuntimeCheckpointRecoveryReceipt {
-  receiptId:string;
-  outcome:'restored'|'rejected'|'restore-failed'|'legacy';
-  recoveredAt:number;
-  schemaVersion?:number;
-  checkpointId?:string;
-  generation?:number;
-  coreTick?:number;
-  worldTick?:number;
-  journalOffset?:OperationalJournalCursor;
-  manifestHash?:string;
-  reason?:string;
-}
-type RuntimeExternalPluginSource } from './RuntimeInputPolicy.ts';
+import { externalGoalForRuntimeInput, normalizeRuntimeExternalPluginSource, shouldInvokeLanguageForRuntimeStep, type RuntimeExternalGoalPolicy, type RuntimeExternalPluginSource } from './RuntimeInputPolicy.ts';
 import { normalizeWorldContext } from './WorldContextNormalizer.ts';
 import { FileStateStore, registerFileWorkspaceUndoFirstTools } from '../persistence/FileStateStore.ts';
 import { OrganismCore, type OrganismConfig, type PersistedOrganism } from './OrganismCore.ts';
@@ -68,6 +55,20 @@ import { P23CompoundRepairRevisionCoordinator, type CompoundRepairRetryBackoffSn
 import { withIndependentCandidateEvaluation } from '../learning/P23IndependentEvaluationProvider.ts';
 import type { IndependentCandidateEvaluationConfig } from '../learning/IndependentSkillCandidateEvaluator.ts';
 import { createHostOwnedIndependentEvaluationConfigFactory, type HostOwnedIndependentEvaluationFactoryOptions } from '../learning/HostOwnedIndependentEvaluationServices.ts';
+
+export interface RuntimeCheckpointRecoveryReceipt {
+  receiptId:string;
+  outcome:'restored'|'rejected'|'restore-failed'|'legacy';
+  recoveredAt:number;
+  schemaVersion?:number;
+  checkpointId?:string;
+  generation?:number;
+  coreTick?:number;
+  worldTick?:number;
+  journalOffset?:OperationalJournalCursor;
+  manifestHash?:string;
+  reason?:string;
+}
 
 function currentBudgetAllowsLanguage(mode: string | undefined): boolean { return mode !== 'sleep' && mode !== 'defer'; }
 const clamp01=(n:number)=>Math.max(0,Math.min(1,Number.isFinite(n)?n:0));
