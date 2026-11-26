@@ -399,7 +399,7 @@ export class OrganismRuntime {
   readonly embodiedRecovery = new EmbodiedRecoveryController();
   private readonly config: Required<Pick<RuntimeConfig, 'intervalMs'|'enableLanguage'>> & RuntimeConfig;
   private readonly cognitiveModuleRuntime: RuntimeCognitiveModuleHost | null;
-  private readonly cognitiveModuleCheckpointStore: ReturnType<CognitiveModuleRuntimeHost['connectCanonicalCheckpointStore']> | null;
+  private readonly cognitiveModuleCheckpointStore: ReturnType<RuntimeCognitiveModuleHost['connectCanonicalCheckpointStore']> | null;
   private readonly temporalObjectTracker = new TemporalObjectTracker();
   private readonly mem0Adapter: Mem0PlatformAdapter;
   private readonly mem0CognitiveRecallEnabled: boolean;
