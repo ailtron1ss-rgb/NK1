@@ -440,8 +440,9 @@ console.log('COGNITIVE_MODULE_RUNTIME=PASS');
 // not provide a fresh snapshot. Stale module state must never masquerade as a
 // complete checkpoint; the next fully successful capture may commit atomically.
 {
-  const persisted = { value: null, saves: 0 };
   const delegate = {
+    value: null,
+    saves: 0,
     async load() { return this.value ? structuredClone(this.value) : null; },
     async save(value) {
       this.saves += 1;
@@ -470,7 +471,6 @@ console.log('COGNITIVE_MODULE_RUNTIME=PASS');
     'a partial module snapshot must block the enclosing canonical checkpoint',
   );
   assert.equal(delegate.saves, 0, 'the canonical store must not commit a partial module snapshot');
-  assert.equal(persisted.value, null);
   assert.equal(host.list().every(row => row.status === 'active'), true,
     'snapshot failure must not stop or quarantine otherwise active modules');
 
