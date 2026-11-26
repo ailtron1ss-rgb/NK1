@@ -11,6 +11,53 @@ const clamp = (x: number) => Math.max(0, Math.min(1, Number.isFinite(x) ? x : 0)
  */
 export class PersistenceProjectionCoordinator {
   private readonly snapshotCache = new Map<string, unknown>();
+  private pendingMaterialization: { tick: number; groups: ProjectionGroup[] } | null = null;
+
+  /**
+   * Prepare a detached projection image. Revision and scheduler owners remain dirty
+   * until the canonical PersistedOrganism store confirms the write.
+   */
+  private materializationCandidate(ctx: PersistenceProjectionContext, tick: number) {
+    const schedule = ctx.advancedProjectionScheduler.snapshot();
+    const graph = ctx.revisionGraph.currentSnapshot();
+    const tokens = ctx.revisionTokens.snapshot();
+    const pending = this.pendingMaterialization;
+    if (pending && pending.tick === tick) {
+      schedule.lastFullTick = tick;
+      for (const group of pending.groups) {
+        schedule.materialized[group] = Math.max(schedule.materialized[group], tick);
+        graph.materialized[group] = graph.current[group];
+        for (const token of Object.values(tokens.tokens)) {
+          if (token.domain !== group) continue;
+          token.materializedRevision = token.revision;
+          token.lastMaterializedTick = tick;
+        }
+      }
+    }
+    const ages = Object.values(schedule.materialized).map(value =>
+      value < 0 ? tick + 1 : Math.max(0, tick - value),
+    );
+    const freshness01 = ages.length ? Math.max(0, 1 - Math.min(...ages) / 16) : 1;
+    return {
+      schedule,
+      graph,
+      tokens,
+      metrics: { lastFullTick: schedule.lastFullTick, freshness01, ages },
+    };
+  }
+
+  /** Commit projection freshness markers only after the backing store has committed. */
+  commitMaterialization(ctx: PersistenceProjectionContext, tick: number): void {
+    const pending = this.pendingMaterialization;
+    if (!pending || pending.tick !== tick) return;
+    ctx.advancedProjectionScheduler.begin(tick);
+    for (const group of pending.groups) {
+      ctx.advancedProjectionScheduler.mark(group, tick);
+      ctx.revisionGraph.markMaterialized(group);
+      ctx.revisionTokens.markMaterialized(group, tick);
+    }
+    this.pendingMaterialization = null;
+  }
 
   private snapshotOnce(key: string, provider: { snapshot: (...args:any[]) => any } | null | undefined, ...args:any[]): any {
     if (this.snapshotCache.has(key)) return this.snapshotCache.get(key);
@@ -25,6 +72,7 @@ export class PersistenceProjectionCoordinator {
 
   sync(target: PersistedOrganism, ctx: PersistenceProjectionContext, includeAdvanced=true, forceAllAdvanced=false): void {
     this.snapshotCache.clear();
+    this.pendingMaterialization = null;
     const budgetAction=ctx.persistenceBudgetController.decide(target);
     target.traces=target.traces.slice(0,budgetAction.traceLimit);
     // Durable world state is materialized at the persistence boundary, not on every observation.
@@ -53,6 +101,8 @@ export class PersistenceProjectionCoordinator {
     const advancedGroups: ProjectionGroup[] = ['critical','memory','identity','reality','developmental','slow'];
     const projectionPressure = clamp(1 - target.state.needs.energy + target.state.needs.cognitiveLoad * .35);
     const materialize = new Set<ProjectionGroup>(advancedGroups.filter(group => forceAllAdvanced || (ctx.revisionGraph.changed(group) && ctx.advancedProjectionScheduler.shouldMaterialize(group, target.state.tick, false, projectionPressure))));
+    // This is a full checkpoint projection candidate, not yet a durable commit.
+    this.pendingMaterialization = { tick: target.state.tick, groups: [...materialize] };
       if(materialize.has('slow')) {
       target.facets.advanced.p24=this.snapshotOnce('snap:worldSubsystem.p24WorldIdentity', ctx.worldSubsystem.p24WorldIdentity);
       }
@@ -259,7 +309,7 @@ export class PersistenceProjectionCoordinator {
       if(materialize.has('identity')) {
       target.facets.advanced.futureSelf=this.snapshotOnce('snap:futureSelf', ctx.futureSelf);
       }
-      for (const group of materialize) { ctx.advancedProjectionScheduler.mark(group, target.state.tick); ctx.revisionGraph.markMaterialized(group); ctx.revisionTokens.markMaterialized(group, target.state.tick); }
+      // Materialization markers are committed after the canonical store write.
     }
     target.facets.embodiment.multimodal=this.snapshotOnce('snap:embodimentSubsystem.multimodal', ctx.embodimentSubsystem.multimodal);
     target.facets.embodiment.toolAudit=this.snapshotOnce('snap:actionGateway', ctx.actionGateway);
@@ -385,12 +435,13 @@ export class PersistenceProjectionCoordinator {
     target.system.mechanismSerendipity=this.snapshotOnce('snap:evidenceResearchSubsystem.mechanismSerendipity', ctx.evidenceResearchSubsystem.mechanismSerendipity);
     target.system.cognitiveSpineSchedule=this.snapshotOnce('snap:cognitiveSpineScheduler', ctx.cognitiveSpineScheduler);
     target.system.cognitiveExecutionPlan=this.snapshotOnce('snap:cognitiveExecutionPlanner', ctx.cognitiveExecutionPlanner);
-    target.system.advancedProjectionSchedule=this.snapshotOnce('snap:advancedProjectionScheduler', ctx.advancedProjectionScheduler);
-    target.system.revisionGraph=ctx.revisionGraph.currentSnapshot();
-    target.system.revisionTokens=this.snapshotOnce('snap:revisionTokens', ctx.revisionTokens);
+    const materialized = this.materializationCandidate(ctx, target.state.tick);
+    target.system.advancedProjectionSchedule=materialized.schedule;
+    target.system.revisionGraph=materialized.graph;
+    target.system.revisionTokens=materialized.tokens;
     if (ctx.b333AutonomousGoalGenesis?.snapshot) target.system.b333AutonomousGoalGenesis=this.snapshotOnce('snap:b333AutonomousGoalGenesis', ctx.b333AutonomousGoalGenesis);
     if (ctx.b334AutonomousProjectLifecycle?.snapshot) target.system.b334AutonomousProjectLifecycle=this.snapshotOnce('snap:b334AutonomousProjectLifecycle', ctx.b334AutonomousProjectLifecycle);
-    target.system.advancedProjectionScheduleMetrics=ctx.advancedProjectionScheduler.metrics(target.state.tick);
+    target.system.advancedProjectionScheduleMetrics=materialized.metrics;
     if (ctx.memoryRetentionEconomy?.snapshot) target.system.memoryRetentionEconomy=this.snapshotOnce('snap:memoryRetentionEconomy', ctx.memoryRetentionEconomy);
     if (ctx.behavioralInfluenceLedger?.snapshot) target.system.behavioralInfluenceLedger=this.snapshotOnce('snap:behavioralInfluenceLedger', ctx.behavioralInfluenceLedger);
     if (ctx.emotionAppraisal?.snapshot) target.system.emotionAppraisal=this.snapshotOnce('snap:emotionAppraisal', ctx.emotionAppraisal);
