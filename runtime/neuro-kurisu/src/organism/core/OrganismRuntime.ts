@@ -16,6 +16,7 @@ import { AdaptiveSynapticMatrixEngine, type AdaptiveSynapticMatrixState, type Sy
 import type { ContextBudgetLedgerReport } from '../language/ContextBudgetLedger.ts';
 import { CounterfactualEngine } from '../world/CounterfactualEngine.ts';
 import { EmbodimentRuntime, buildAndroidTelemetryObservation, type VoiceInputResult } from '../body/EmbodimentRuntime.ts';
+import { attestHostObservation } from '../body/ObservationIntakeGate.ts';
 import { Mem0PlatformAdapter, type Mem0Candidate } from '../integration/mem0/Mem0PlatformAdapter.ts';
 import { buildCognitiveProposalPrompt, parseCognitiveProposal } from '../language/LanguageOrgan.ts';
 import { OperationalJournal } from '../persistence/OperationalJournal.ts';
@@ -1188,7 +1189,16 @@ export class OrganismRuntime {
       consentGranted: this.core.observationIntakeSummary().consent.device === true,
       sessionId: this.deviceObservationSessionId,
     });
-    if (deviceObservation) this.core.admitObservation(deviceObservation);
+    if (deviceObservation &&
+        activeBody.telemetry.source === 'android-termux' &&
+        activeBody.telemetry.staleMs === 0 &&
+        activeBody.telemetry.sampledAt > previousSampledAt &&
+        observedSensors.length > 0 &&
+        this.core.observationIntakeSummary().consent.device === true) {
+      // Only the runtime can attach host authority after sampleActive() returns a
+      // fresh Termux sample for the requested sensors and the user has consented.
+      this.core.admitObservation(attestHostObservation(deviceObservation));
+    }
     const perceptionFulfilled = activeBody.telemetry.sampledAt>previousSampledAt && activeBody.telemetry.source==='android-termux' ? Math.min(1, observedSensors.length/Math.max(1,perceptionPlan.requestedSensors.filter((x:string)=>x!=='camera').length)) : 0;
     this.core.b365RecordPerceptionPlanResult({tick:this.core.operationalStatusSnapshot().tick,observedSensors,fulfilled01:perceptionFulfilled});
     const wasAwake = activeBody.awake;
@@ -2588,7 +2598,15 @@ export class OrganismRuntime {
       receiptVerified: toolExecution.verified === true,
       consentGranted: this.core.observationIntakeSummary().consent.vision === true,
     });
-    if (cameraObservation) this.core.admitObservation(cameraObservation);
+    if (cameraObservation &&
+        toolExecution.verified === true &&
+        typeof toolExecution.executionId === 'string' && toolExecution.executionId.trim() &&
+        typeof toolExecution.providerReceiptId === 'string' && toolExecution.providerReceiptId.trim() &&
+        this.core.observationIntakeSummary().consent.vision === true) {
+      // Receipt identity and verification come from the just-completed ActionGateway
+      // execution, not from the observation projection's caller-controlled fields.
+      this.core.admitObservation(attestHostObservation(cameraObservation));
+    }
     let semantic = null as Awaited<ReturnType<VisionSemanticBackend['analyze']>> | null;
     let trackingMetrics: ReturnType<TemporalObjectTracker['update']>['metrics'] | null = null;
     if (this.config.visionBackend) this.core.setSemanticVisionAvailability(true);
