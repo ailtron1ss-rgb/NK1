@@ -133,12 +133,8 @@ export interface ToolExecutionContext {
   expectedPreconditionHash?:string;
 }
 export type ActionToolPermissionClass = 'web'|'device'|'filesystem'|'code'|'system'|'self-modification';
-export type ActionToolApprovalActor = 'owner'|'api-token-holder'|'loopback-local-client';
 export type ActionToolApprovalOperation = 'execute'|'reconcile'|'direct';
 export type ActionToolApprovalStatus = 'pending'|'approved'|'declined'|'consumed'|'expired';
-export function isActionToolApprovalActor(value: unknown): value is ActionToolApprovalActor {
-  return value === 'owner' || value === 'api-token-holder' || value === 'loopback-local-client';
-}
 export interface ActionToolApprovalRecord {
   id:string; toolId:string; permissionClass:ActionToolPermissionClass; operation:ActionToolApprovalOperation;
   requestHash:string; status:ActionToolApprovalStatus; createdAt:number; expiresAt:number;
@@ -639,9 +635,8 @@ export class ActionGateway {
     });
   }
 
-  async resolveToolApproval(requestId:string,approved:boolean,actor:ActionToolApprovalActor='owner') {
+  async resolveToolApproval(requestId:string,approved:boolean,actor='owner') {
     return this.withPermissionAdmission(async()=>{
-    if(!isActionToolApprovalActor(actor)) return {ok:false,error:'approval-actor-invalid'};
     const at=Date.now(); this.expirePermissionRequests(at);
     const row=this.permissionState.requests.find(x=>x.id===requestId);
     if(!row) return {ok:false,error:'approval-request-not-found'};
@@ -684,7 +679,7 @@ export class ActionGateway {
     for(const row of this.permissionState.requests) if((row.status==='pending'||row.status==='approved')&&row.expiresAt<=at){row.status='expired';changed=true;this.permissionState.expired++;}
     if(changed)this.permissionState.lastChangeAt=at;
   }
-  private publicApproval(row:ActionToolApprovalRecord) { return {id:row.id,toolId:row.toolId,permissionClass:row.permissionClass,operation:row.operation,status:row.status,createdAt:row.createdAt,expiresAt:row.expiresAt,resolvedAt:row.resolvedAt,consumedAt:row.consumedAt,actor:isActionToolApprovalActor(row.actor)?row.actor:undefined,reasonCode:row.reasonCode,inputKeys:row.inputKeys,inputPreview:row.inputPreview,decisionId:row.decisionId,autonomous:row.autonomous,requestHashPrefix:row.requestHash.slice(0,12)}; }
+  private publicApproval(row:ActionToolApprovalRecord) { return {id:row.id,toolId:row.toolId,permissionClass:row.permissionClass,operation:row.operation,status:row.status,createdAt:row.createdAt,expiresAt:row.expiresAt,resolvedAt:row.resolvedAt,consumedAt:row.consumedAt,reasonCode:row.reasonCode,inputKeys:row.inputKeys,inputPreview:row.inputPreview,decisionId:row.decisionId,autonomous:row.autonomous,requestHashPrefix:row.requestHash.slice(0,12)}; }
 
 
   restoreExecutionLedger(snapshot:unknown):void {
@@ -748,7 +743,7 @@ export class ActionGateway {
     if(Array.isArray(permissions?.requests)) for(const item of permissions!.requests.slice(-128)) {
       if(!item||typeof item!=='object'||typeof item.id!=='string'||!item.id.startsWith('approval-')||!['web','device','filesystem','code','system','self-modification'].includes(item.permissionClass)||!['execute','reconcile','direct'].includes(item.operation)||!['pending','approved','declined','consumed','expired'].includes(item.status)||!/^[a-f0-9]{64}$/i.test(String(item.requestHash??''))) continue;
       const createdAt=typeof item.createdAt==='number'?item.createdAt:NaN,expiresAt=typeof item.expiresAt==='number'?item.expiresAt:NaN; if(!Number.isFinite(createdAt)||!Number.isFinite(expiresAt)||expiresAt<createdAt||expiresAt-createdAt>5*60_000+1000) continue;
-      cleanRequests.push({...structuredClone(item),requestHash:item.requestHash.toLowerCase(),createdAt,expiresAt,actor:isActionToolApprovalActor(item.actor)?item.actor:undefined,inputKeys:Array.isArray(item.inputKeys)?item.inputKeys.slice(0,24).map(x=>String(x).slice(0,80)):[],inputPreview:item.inputPreview&&typeof item.inputPreview==='object'?structuredClone(item.inputPreview):{},autonomous:Boolean(item.autonomous)});
+      cleanRequests.push({...structuredClone(item),requestHash:item.requestHash.toLowerCase(),createdAt,expiresAt,inputKeys:Array.isArray(item.inputKeys)?item.inputKeys.slice(0,24).map(x=>String(x).slice(0,80)):[],inputPreview:item.inputPreview&&typeof item.inputPreview==='object'?structuredClone(item.inputPreview):{},autonomous:Boolean(item.autonomous)});
     }
     const safeCounter=(value:unknown,fallback=0)=>typeof value==='number'&&Number.isSafeInteger(value)&&value>=0?Math.min(value,1_000_000_000):fallback;
     const safeTimestamp=(value:unknown)=>typeof value==='number'&&Number.isFinite(value)&&value>=0?value:0;

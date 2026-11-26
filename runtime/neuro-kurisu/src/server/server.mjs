@@ -21,7 +21,8 @@ import { hexisEvidenceHttpStatus } from './hexis-evidence-http-status.mjs';
 import { LocalLanguageBackendPolicy } from './local-language-backend-policy.mjs';
 import { RELEASE_CONTRACT } from '../organism/system/ReleaseContract.ts';
 import { resolvePhonePolicyConfig } from '../organism/system/PhoneRuntimePolicy.ts';
-import { authorizeApiRequest, apiApprovalActor } from '../organism/system/ApiSecurityPolicy.ts';
+import { authorizeApiRequest } from '../organism/system/ApiSecurityPolicy.ts';
+import { BoundedRateLimiter, parseRateLimitSetting } from './bounded-rate-limiter.mjs';
 import { GeminiVisionSemanticBackend } from '../organism/body/GeminiVisionSemanticBackend.ts';
 import { OpenAICompatibleLocalChatProvider } from '../organism/integration/local/OpenAICompatibleLocalChatProvider.ts';
 import { NeuroPlasticInferenceAdapter } from '../organism/integration/local/NeuroPlasticInferenceAdapter.ts';
@@ -31,6 +32,7 @@ import { WillSdkFacade } from '../organism/integration/will/WillSdkFacade.ts';
 import { WillMcpJsonRpcServer } from '../organism/integration/will/WillMcpJsonRpc.ts';
 import { WillChannelAdapter } from '../organism/integration/will/WillChannelAdapter.ts';
 import { startNativeSpeechSseStream } from './native-speech-sse.mjs';
+import { createRequestContext, formatAccessLog, parseAddressAllowlist, parseOriginAllowlist, parseToggle, resolveCorsOrigin } from './http-request-context.mjs';
 import { parseTrustedConstitutionReviewKeys, createAuthenticatedConstitutionReviewVerifier, constitutionReviewAuthoritySnapshot } from '../organism/cognition/evolution/ConstitutionReviewAuthority.ts';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '../..');
@@ -122,23 +124,27 @@ let languageCallCount = 0;
 let lastUserModelPreferenceEventTick = 0;
 let lastLanguageBackend = 'none';
 let lastLanguageFailure = '';
-const RATE_WINDOW_MS = Math.max(10000, Number(process.env.NEURO_RATE_WINDOW_MS || 60000));
-const RATE_LIMIT = Math.max(30, Number(process.env.NEURO_RATE_LIMIT || 240));
-const rateBuckets = new Map();
-function consumeRateLimit(req, pathName) {
-    if (pathName === '/health' || pathName === '/api/health')
-        return { allowed: true };
-    const now = Date.now();
-    const key = String(req.socket?.remoteAddress || req.headers['x-forwarded-for'] || 'unknown');
-    const current = rateBuckets.get(key);
-    const bucket = !current || now - current.startedAt >= RATE_WINDOW_MS ? { startedAt: now, count: 0 } : current;
-    bucket.count++;
-    rateBuckets.set(key, bucket);
-    if (rateBuckets.size > 512)
-        for (const [k, v] of rateBuckets)
-            if (now - v.startedAt >= RATE_WINDOW_MS)
-                rateBuckets.delete(k);
-    return bucket.count <= RATE_LIMIT ? { allowed: true, remaining: RATE_LIMIT - bucket.count } : { allowed: false, retryAfterSec: Math.ceil((bucket.startedAt + RATE_WINDOW_MS - now) / 1000) };
+const RATE_WINDOW_MS = parseRateLimitSetting(process.env.NEURO_RATE_WINDOW_MS, { fallback: 60000, minimum: 10000, maximum: 86400000 });
+const RATE_LIMIT = parseRateLimitSetting(process.env.NEURO_RATE_LIMIT, { fallback: 240, minimum: 30, maximum: 100000 });
+const TRUSTED_PROXY_ADDRESSES = parseAddressAllowlist(process.env.NEURO_TRUSTED_PROXY_ADDRESSES);
+const TRUST_PROXY = parseToggle(process.env.NEURO_TRUST_PROXY, false) && TRUSTED_PROXY_ADDRESSES.size > 0;
+const ACCESS_LOG_ENABLED = parseToggle(process.env.NEURO_ACCESS_LOG, true);
+const CORS_ALLOWLIST = parseOriginAllowlist(process.env.NEURO_CORS_ORIGINS);
+const API_RATE_LIMITER = new BoundedRateLimiter({ windowMs: RATE_WINDOW_MS, limit: RATE_LIMIT, maxKeys: 512 });
+function consumeRateLimit(clientAddress, pathName) {
+    if (pathName === '/health' || pathName === '/api/health') return { allowed: true };
+    return API_RATE_LIMITER.consume(String(clientAddress || 'unknown'));
+}
+function applyCorsHeaders(req, res) {
+    const origin = resolveCorsOrigin(req.headers.origin, CORS_ALLOWLIST);
+    if (!origin)
+        return '';
+    res.setHeader('access-control-allow-origin', origin);
+    res.setHeader('vary', 'Origin');
+    res.setHeader('access-control-allow-methods', 'GET,POST,OPTIONS');
+    res.setHeader('access-control-allow-headers', 'authorization,content-type,x-request-id');
+    res.setHeader('access-control-max-age', '600');
+    return origin;
 }
 const VISION_BACKEND = VISION_ENABLED && process.env.GEMINI_API_KEY ? new GeminiVisionSemanticBackend({ apiKey: process.env.GEMINI_API_KEY, model: process.env.GEMINI_VISION_MODEL || process.env.GEMINI_MODEL || 'gemini-3.8-flash', timeoutMs: Number(process.env.GEMINI_VISION_TIMEOUT_MS || 12000), maxImageBytes: Number(process.env.GEMINI_VISION_MAX_IMAGE_BYTES || 8000000) }) : undefined;
 await mkdir(STATE, { recursive: true });
@@ -660,15 +666,29 @@ async function generateLanguage(request) {
 }
 async function route(req, res) {
     const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+    const context = createRequestContext(req, { trustProxy: TRUST_PROXY, trustedProxyAddresses: TRUSTED_PROXY_ADDRESSES });
+    res.setHeader('x-request-id', context.requestId);
+    if (ACCESS_LOG_ENABLED)
+        res.on('finish', () => console.log('[access] ' + formatAccessLog({ ...context, status: res.statusCode, durationMs: Date.now() - context.startedAt })));
     try {
-        const auth = authorizeApiRequest(HOST, url.pathname, req.headers.authorization);
-        if (url.pathname.startsWith('/api/') && !auth.allowed)
-            return json(res, auth.status, { ok: false, error: 'api-authorization-required', reason: auth.reason });
-        const rate = consumeRateLimit(req, url.pathname);
+        applyCorsHeaders(req, res);
+        // Rate-limit before auth so failed credentials and preflights consume the same budget.
+        const rate = consumeRateLimit(context.clientAddress, url.pathname);
         if (!rate.allowed) {
             res.setHeader('retry-after', String(rate.retryAfterSec));
-            return json(res, 429, { ok: false, error: 'rate-limit-exceeded', retryAfterSec: rate.retryAfterSec });
+            return json(res, 429, { ok: false, error: 'rate-limit-exceeded', retryAfterSec: rate.retryAfterSec, requestId: context.requestId });
         }
+        if (req.method === 'OPTIONS') {
+            res.writeHead(204);
+            return res.end();
+        }
+        const auth = authorizeApiRequest(HOST, url.pathname, req.headers.authorization, undefined, {
+            remoteAddress: req.socket?.remoteAddress,
+            forwardedFor: req.headers['x-forwarded-for'],
+            forwarded: req.headers.forwarded,
+        });
+        if (url.pathname.startsWith('/api/') && !auth.allowed)
+            return json(res, auth.status, { ok: false, error: 'api-authorization-required', reason: auth.reason, requestId: context.requestId });
         if (url.pathname === '/health' || url.pathname === '/api/health') {
             return json(res, 200, { ok: true, ready: runtimeReady, service: 'neuro-kurisu', version: RELEASE_CONTRACT.application, organismCore: RELEASE_CONTRACT.organismCore, schemaVersion: RELEASE_CONTRACT.stateSchema, tick: runtimeReady ? runtime.core.operationalStatusSnapshot().tick : 0, uptimeSec: Math.round(process.uptime()), bodySource: runtimeReady ? runtime.embodiment.snapshot().telemetry.source : 'initializing', actionLedger: runtimeReady ? runtime.core.actionExecutionLedgerMetrics() : null, language: languageCapabilitySnapshot() });
         }
@@ -2669,10 +2689,7 @@ async function route(req, res) {
             const input=await body(req);
             const requestId=String(input.requestId||'').trim().slice(0,120);
             if(!requestId) return json(res,400,{ok:false,error:'missing-approval-request-id'});
-            let actor;
-            try { actor=apiApprovalActor(auth.reason); }
-            catch { return json(res,403,{ok:false,error:'approval-actor-unavailable'}); }
-            const result=await runtime.core.resolveActionToolApproval(requestId,input.approved===true,actor);
+            const result=await runtime.core.resolveActionToolApproval(requestId,input.approved===true);
             return json(res,result.ok?200:409,result);
         }
         if (req.method === 'POST' && url.pathname === '/api/organism/tools/permissions/consume') {
@@ -2913,16 +2930,24 @@ async function route(req, res) {
         const message = String(error?.message || error);
         const code = String(error?.code || '');
         if (message === 'request-too-large')
-            return json(res, 413, { ok: false, error: 'request-too-large', maxBodyBytes: MAX_BODY_BYTES });
+            return json(res, 413, { ok: false, error: 'request-too-large', maxBodyBytes: MAX_BODY_BYTES, requestId: context.requestId });
         if (/JSON|Unexpected token|Expected property name|Unexpected end of JSON input/i.test(message))
-            return json(res, 400, { ok: false, error: 'invalid-json-request' });
+            return json(res, 400, { ok: false, error: 'invalid-json-request', requestId: context.requestId });
         if (code === 'transport-envelope-id-conflict' || code === 'transport-envelope-history-unknown')
-            return json(res, 409, { ok: false, error: code, message });
+            return json(res, 409, { ok: false, error: code, message, requestId: context.requestId });
         if (code === 'transport-envelope-invalid')
-            return json(res, 400, { ok: false, error: code, message });
+            return json(res, 400, { ok: false, error: code, message, requestId: context.requestId });
         if (code === 'transport-queue-full')
-            return json(res, 503, { ok: false, error: code, message });
-        return json(res, 500, { ok: false, error: message });
+            return json(res, 503, { ok: false, error: code, message, requestId: context.requestId });
+        // Internal details stay in the log; the client gets a correlation id instead.
+        console.error('[request-error] ' + JSON.stringify({
+            requestId: context.requestId,
+            method: context.method,
+            path: context.pathname,
+            message: message.slice(0, 500),
+            stack: String(error?.stack ?? '').split('\n').slice(0, 6).join(' | ').slice(0, 1200),
+        }));
+        return json(res, 500, { ok: false, error: 'internal-error', requestId: context.requestId });
     }
 }
 const server = http.createServer((req, res) => void route(req, res));

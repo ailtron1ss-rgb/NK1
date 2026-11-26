@@ -3723,7 +3723,13 @@ export class OrganismCore {
     private domainClosureMarkSet(): CognitiveDomainMarkSet {
         // Closure needs compact before/after fingerprints only. Full subsystem snapshots here
         // were never used as evidence and created a large allocation/GC spike on every cycle.
-        const fingerprint = (value: unknown) => JSON.stringify(value).slice(0, 1600);
+        // The digest preserves the previous comparison semantics (equality of the first 1600
+        // characters) while keeping each closure record small.
+        const fingerprint = (value: unknown) => {
+            // Compact equality marker over the existing 1600-character comparison window.
+            const text = JSON.stringify(value).slice(0, 1600);
+            return createHash('sha256').update(text).digest('hex');
+        };
         const memoryEvents = this.persisted.facets.memory.eventLog ?? [];
         const memoryCount = this.memorySubsystem.events.size() + this.memorySubsystem.memories.snapshot({ clone: false }).length;
         const worldState = this.worldSubsystem.worldModel2.snapshot({ clone: false });
@@ -12435,8 +12441,8 @@ export class OrganismCore {
     async requestActionToolApproval(toolId:string, input:Record<string,unknown>={}, reason='user-request', options:import('../system/ActionGateway.ts').ActionGatewayExecutionOptions={}, operation:import('../system/ActionGateway.ts').ActionToolApprovalOperation='execute') {
         return this.cognitiveRuntime.actionGateway.requestToolApproval(toolId,input,reason,options,operation);
     }
-    async resolveActionToolApproval(requestId:string, approved:boolean, actor:import('../system/ActionGateway.ts').ActionToolApprovalActor='owner') {
-        const result=await this.cognitiveRuntime.actionGateway.resolveToolApproval(requestId,approved,actor);
+    async resolveActionToolApproval(requestId:string, approved:boolean) {
+        const result=await this.cognitiveRuntime.actionGateway.resolveToolApproval(requestId,approved,'owner');
         if(result.ok && result.request) {
             this.p34RecordConsent({ action:`tool:${result.request.toolId}`, risk01:.9, actor:'creator', decision:approved?'approved':'declined', reason:`one-shot tool approval ${result.request.id}` });
             await this.checkpoint(true);

@@ -1,0 +1,49 @@
+name: NK1 HTTP security perimeter
+on:
+  pull_request:
+    branches: [workpass70-source]
+    paths:
+      - '.gitignore'
+      - 'runtime/neuro-kurisu/package.json'
+      - 'runtime/neuro-kurisu/scripts/typecheck-runtime.mjs'
+      - 'runtime/neuro-kurisu/src/organism/core/OrganismCore.ts'
+      - 'runtime/neuro-kurisu/src/organism/system/ApiSecurityPolicy.ts'
+      - 'runtime/neuro-kurisu/src/server/**'
+      - 'runtime/neuro-kurisu/tests/api-security-policy.mjs'
+      - 'runtime/neuro-kurisu/tests/http-request-context.mjs'
+      - 'runtime/neuro-kurisu/tests/bounded-rate-limiter.mjs'
+      - 'runtime/neuro-kurisu/tests/state-growth-budget.mjs'
+      - '.github/workflows/nk1-http-security-perimeter.yml'
+permissions:
+  contents: read
+concurrency:
+  group: nk1-http-security-perimeter-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  security:
+    name: API perimeter, bounded limiter, state growth and runtime typecheck
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: runtime/neuro-kurisu
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v7
+      - name: Set up Node
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: runtime/neuro-kurisu/package-lock.json
+      - name: Install locked dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: API authorization and auth-attempt rate-limit order
+        run: npm run test:api-security
+      - name: Bounded fixed-window rate limiter
+        run: npm run test:bounded-rate-limiter
+      - name: Trusted proxy, CORS and request context
+        run: npm run test:http-request-context
+      - name: Durable state growth budget
+        run: npm run test:state-growth
+      - name: Runtime TypeScript syntax / semantic typecheck
+        run: npm run typecheck
