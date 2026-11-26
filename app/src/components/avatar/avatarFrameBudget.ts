@@ -115,9 +115,12 @@ export function createAvatarFrameBudgetController(initial: AvatarFrameBudget): {
 }
 
 /**
- * Decide whether a frame is due. A hidden page or off-screen avatar is never
- * scheduled, even when the frame interval has elapsed.
+ * Decide whether a frame is due according to the current FPS budget.
  */
+export function shouldRunAvatarRenderLoop(pageVisible: boolean, intersectsViewport: boolean): boolean {
+  return pageVisible && intersectsViewport;
+}
+
 export function shouldRenderAvatarFrame(
   now: number,
   lastRenderedAt: number | null,
