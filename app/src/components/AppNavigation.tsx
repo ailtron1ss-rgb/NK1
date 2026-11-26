@@ -3,16 +3,16 @@ import type { AppSection } from "@/organism/store";
 import { cn } from "@/lib/utils";
 
 const items: Array<{ id: AppSection; label: string; icon: typeof Home }> = [
-  { id: "home", label: "Home", icon: Home },
-  { id: "avatar", label: "Avatar", icon: Bot },
-  { id: "memory", label: "Brain", icon: Brain },
-  { id: "settings", label: "Settings", icon: Settings },
-  { id: "more", label: "More", icon: Grid2X2 },
+  { id: "home", label: "Главная", icon: Home },
+  { id: "avatar", label: "Аватар", icon: Bot },
+  { id: "memory", label: "Память", icon: Brain },
+  { id: "settings", label: "Настройки", icon: Settings },
+  { id: "more", label: "Ещё", icon: Grid2X2 },
 ];
 
 export function AppNavigation({ active, onSelect }: { active: AppSection; onSelect: (section: AppSection) => void }) {
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-border bg-surface/95 pb-[env(safe-area-inset-bottom)] shadow-[0_-8px_32px_rgba(0,0,0,0.24)] backdrop-blur-xl" aria-label="Main navigation">
+    <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-border bg-surface/95 pb-[env(safe-area-inset-bottom)] shadow-[0_-8px_32px_rgba(0,0,0,0.24)] backdrop-blur-xl" aria-label="Основная навигация">
       <div className="mx-auto grid max-w-4xl grid-cols-5">
         {items.map(({ id, label, icon: Icon }) => (
           <button
