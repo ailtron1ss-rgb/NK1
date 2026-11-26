@@ -1,4 +1,4 @@
-import { type PointerEvent as ReactPointerEvent, useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import type { ActionKind, EmotionLabel, AvatarBrainChannelsV1 } from "@/organism/types";
 import { readAvatarPreference, writeAvatarPreference } from "@/legacy/avatar/safeLocalStorage";
 import type { MouthPose } from "./avatar/embodimentTimeline";
@@ -147,6 +147,9 @@ export function KurisuOriginalStage({ emotion, action, valence, arousal, gazeX, 
   });
   const [settingsOpen, setSettingsOpen] = useState(false);
   const contactPointerStartRef = useRef<{ pointerId: number; x: number; y: number } | null>(null);
+  const originalSvgRef = useRef<SVGSVGElement | null>(null);
+  const onContactRef = useRef(onContact);
+  onContactRef.current = onContact;
   const hair = HAIR.find((choice) => choice.id === hairTone) ?? HAIR[0];
   const eyes = EYES.find((choice) => choice.id === eyeTone) ?? EYES[0];
   const accent = ACCENTS.find((choice) => choice.id === accentTone) ?? ACCENTS[0];
@@ -189,35 +192,46 @@ export function KurisuOriginalStage({ emotion, action, valence, arousal, gazeX, 
   const shirt = isNight ? "#c4d7db" : "#f4f0e9";
   const tie = isNight ? "#67d6d3" : "#b52b43";
   const motionDuration = motion === "soft" ? "5.2s" : "3.1s";
-  // Capture at the stage boundary: SVGs contain many painted path targets and
-  // embedded browsers may retarget pointer-up across them. Only gestures that
-  // begin inside the SVG itself are accepted as avatar contacts.
-  const handleStagePointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if (!onContact || event.button !== 0 || !event.isPrimary) return;
-    const svg = event.currentTarget.querySelector<SVGSVGElement>('svg[role="img"]');
-    if (!svg || !(event.target instanceof Node) || !svg.contains(event.target)) return;
-    contactPointerStartRef.current = { pointerId: event.pointerId, x: event.clientX, y: event.clientY };
-  };
-  const handleStagePointerUp = (event: ReactPointerEvent<HTMLDivElement>) => {
-    const start = contactPointerStartRef.current;
-    contactPointerStartRef.current = null;
-    if (!onContact || !start || start.pointerId !== event.pointerId) return;
-    if (Math.hypot(event.clientX - start.x, event.clientY - start.y) > 8) return;
-    const svg = event.currentTarget.querySelector<SVGSVGElement>('svg[role="img"]');
-    const rect = svg?.getBoundingClientRect();
-    if (!rect || rect.width <= 0 || rect.height <= 0) return;
-    const contact = resolveOriginalStageContactPoint(
-      (event.clientX - rect.left) / rect.width,
-      (event.clientY - rect.top) / rect.height,
-    );
-    if (contact) onContact(contact);
-  };
-  const handleStagePointerCancel = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if (contactPointerStartRef.current?.pointerId === event.pointerId) contactPointerStartRef.current = null;
-  };
+  // Use native listeners on the SVG itself. This avoids React synthetic pointer
+  // retargeting in embedded browsers while keeping all hit-tests bound to the
+  // actual vector surface. The parent callback is kept fresh without re-binding.
+  useEffect(() => {
+    const svg = originalSvgRef.current;
+    if (!svg) return;
+    const onDown = (event: PointerEvent) => {
+      if (!onContactRef.current || event.button !== 0 || !event.isPrimary) return;
+      contactPointerStartRef.current = { pointerId: event.pointerId, x: event.clientX, y: event.clientY };
+      try { svg.setPointerCapture(event.pointerId); } catch { /* capture is optional in embedded browsers */ }
+    };
+    const onUp = (event: PointerEvent) => {
+      const start = contactPointerStartRef.current;
+      contactPointerStartRef.current = null;
+      if (!onContactRef.current || !start || start.pointerId !== event.pointerId) return;
+      if (Math.hypot(event.clientX - start.x, event.clientY - start.y) > 8) return;
+      const rect = svg.getBoundingClientRect();
+      if (rect.width <= 0 || rect.height <= 0) return;
+      const contact = resolveOriginalStageContactPoint(
+        (event.clientX - rect.left) / rect.width,
+        (event.clientY - rect.top) / rect.height,
+      );
+      if (contact) onContactRef.current(contact);
+    };
+    const onCancel = (event: PointerEvent) => {
+      if (contactPointerStartRef.current?.pointerId === event.pointerId) contactPointerStartRef.current = null;
+    };
+    svg.addEventListener("pointerdown", onDown, true);
+    svg.addEventListener("pointerup", onUp, true);
+    svg.addEventListener("pointercancel", onCancel, true);
+    return () => {
+      svg.removeEventListener("pointerdown", onDown, true);
+      svg.removeEventListener("pointerup", onUp, true);
+      svg.removeEventListener("pointercancel", onCancel, true);
+      contactPointerStartRef.current = null;
+    };
+  }, []);
 
   return (
-    <div className="relative min-h-[320px] overflow-hidden rounded-xl border border-border bg-[#07131b] md:min-h-[420px]" data-testid="kurisu-original-stage" data-organism-action={action} onPointerDownCapture={handleStagePointerDown} onPointerUpCapture={handleStagePointerUp} onPointerCancelCapture={handleStagePointerCancel}>
+    <div className="relative min-h-[320px] overflow-hidden rounded-xl border border-border bg-[#07131b] md:min-h-[420px]" data-testid="kurisu-original-stage" data-organism-action={action}>
       <style>{`
         @keyframes nk-float { 0%,100% { transform: translateY(0px) } 50% { transform: translateY(-3.5px) } }
         @keyframes nk-hair { 0%,100% { transform: rotate(-.45deg) } 50% { transform: rotate(.65deg) } }
@@ -233,7 +247,7 @@ export function KurisuOriginalStage({ emotion, action, valence, arousal, gazeX, 
         @media (prefers-reduced-motion: reduce) { .nk-float,.nk-hair,.nk-breath,.nk-scanner,.nk-eye { animation: none !important; } }
       `}</style>
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_36%,rgba(38,113,133,.35),transparent_47%),linear-gradient(180deg,#0a1b25,#050b12)]" />
-      <svg viewBox="0 0 420 560" role="img" aria-label={`NK1 Original — Курису, ${moodLabel[emotion]}, ${OUTFITS.find((item) => item.id === outfit)?.label}`} className="relative z-10 h-[320px] w-full touch-manipulation md:h-[420px]" preserveAspectRatio="xMidYMid meet" style={{ transform: `scale(${scale})`, transformOrigin: "50% 55%", transition: "transform 180ms ease" }}>
+      <svg ref={originalSvgRef} viewBox="0 0 420 560" role="img" aria-label={`NK1 Original — Курису, ${moodLabel[emotion]}, ${OUTFITS.find((item) => item.id === outfit)?.label}`} className="relative z-10 h-[320px] w-full touch-manipulation md:h-[420px]" preserveAspectRatio="xMidYMid meet" style={{ transform: `scale(${scale})`, transformOrigin: "50% 55%", transition: "transform 180ms ease" }}>
         <defs>
           <linearGradient id={svgIds.hair} x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stopColor={hair.main}/><stop offset="54%" stopColor="#c86645"/><stop offset="100%" stopColor={hair.shade}/></linearGradient>
           <linearGradient id={svgIds.coat} x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stopColor={coatShadow}/><stop offset="48%" stopColor={coat}/><stop offset="100%" stopColor={coatShadow}/></linearGradient>
