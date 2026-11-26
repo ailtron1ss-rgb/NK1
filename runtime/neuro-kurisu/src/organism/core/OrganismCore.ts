@@ -2210,8 +2210,19 @@ export class OrganismCore {
         }
         if (fullProjection) {
             this.persistence.persistenceFullCheckpointCount += 1;
+            const watchdogBeforeCommit = this.cognitiveRuntime.recoveryWatchdog.snapshot();
+            const watchdogCheckpointAt = Date.now();
+            this.persisted.system.recoveryWatchdog = this.cognitiveRuntime.recoveryWatchdog.checkpointCandidate(watchdogCheckpointAt);
             t = Date.now();
-            await this.store.save(this.persisted);
+            try {
+                await this.store.save(this.persisted);
+                this.cognitiveRuntime.recoveryWatchdog.commitCheckpoint(watchdogCheckpointAt);
+            }
+            catch (error) {
+                // A failed canonical save must not leave an in-memory success marker behind.
+                this.persisted.system.recoveryWatchdog = watchdogBeforeCommit;
+                throw error;
+            }
             saveMs = Date.now() - t;
             const persistedMetrics = this.persistenceMetrics();
             this.persistence.persistenceDurabilityGovernor.recordCheckpoint({
