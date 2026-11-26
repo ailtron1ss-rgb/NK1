@@ -120,6 +120,14 @@ Envelope связывает module ID и module version, state schema version, t
 
 Если загруженная schema старше текущей, модуль обязан реализовать migrateState(state, from, to). После миграции restore получает уже target schema version. Более новая сохранённая schema блокирует активацию, а не обрезается молча.
 
+## 6.1. Карантин повреждённого module checkpoint
+
+Повреждение или неизвестная версия только extension-envelope **не блокирует загрузку канонического организма**. `CognitiveModuleCheckpointStore` сохраняет исходный payload без изменений, помечает `checkpointLoadError` и запрещает активацию модулей, пока состояние не будет исправлено. `OrganismRuntime` продолжает запуск Core, показывает ошибку в diagnostics и позволяет сохранять новые checkpoint организма, не перезаписывая повреждённую module-запись.
+
+Это разделяет два уровня отказа: ошибка MemoryOS2/Core/persisted organism остаётся критической для ядра; ошибка необязательного module extension изолируется в extension boundary. Никакой повреждённый snapshot не трактуется как пустое или валидное состояние.
+
+Лifecycle-операции host также сериализованы одним barrier: одиночная активация, полный `activateAll()`, checkpoint, `deactivate()` и `stopAll()` не могут пересекаться таким образом, чтобы модуль активировался уже после завершённой остановки.
+
 ## 7. Поведение при сбоях
 
 | Сбой | Поведение host |
