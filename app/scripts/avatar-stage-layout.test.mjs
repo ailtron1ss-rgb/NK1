@@ -31,7 +31,7 @@ test("avatar mode controls announce the selected renderer and expose an accessib
   }
   assert.match(stage, /title="Live2D · деформируемый Cubism-риг"/);
   assert.match(stage, /title="Legacy · статичные PNG-позы, без деформируемого рига"/);
-  assert.match(stage, /title="NK1 Original · SVG-вектор, не полноценный rig"/);
+  assert.match(stage, /title="NK1 Original · SVG-вектор, не полноценный скелетный риг"/);
   assert.match(stage, /title="3D · предпросмотр модели VRM\/GLB, не прошедшей приёмку для выпуска"/);
 });
 
