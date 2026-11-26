@@ -22,7 +22,12 @@ assert.equal(state.records.find(row=>row.id==='forged-unknown').status,'candidat
 assert.equal(state.records.find(row=>row.id==='forged-simulator').sourceClass,'simulator');
 assert.equal(state.records.find(row=>row.id==='forged-simulator').status,'candidate','simulator evidence cannot restore as corroborated');
 assert.ok(state.records.every(row=>row.trust01<1),'persisted trust scores must be recomputed');
-assert.ok(state.records.every(row=>row.corroborations===1),'persisted corroboration counters must be rebuilt from bounded event receipts, not trusted');
+assert.equal(state.records.find(row=>row.id==='forged-unknown').corroborations, 1,
+  'one unique bounded event receipt must restore one corroboration observation');
+assert.equal(state.records.find(row=>row.id==='forged-simulator').corroborations, 0,
+  'a record without an event receipt must not regain corroboration from persisted aggregate counters');
+assert.ok(state.records.every(row=>row.corroborations===(row.evidenceIds?.length??0)),
+  'persisted corroboration counters must be rebuilt from bounded event receipts, not trusted');
 assert.ok(state.records.every(row=>row.contradictions===0),'persisted contradiction counters without supporting receipts must not alter restored trust');
 const forgedDevice=new ExternalEvidenceTrustEngine();
 forgedDevice.restore({version:1,records:[{id:'forged-device',claimKey:'claim:device',source:'device',independenceKey:'camera-a',confidence01:1,trust01:1,corroborations:999,independentSources:99,contradictions:0,status:'corroborated',firstSeenAt:now,lastSeenAt:now,evidenceIds:['only-one-event']}]});
