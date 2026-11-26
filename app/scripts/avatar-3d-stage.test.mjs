@@ -556,3 +556,19 @@ test("3D scene refits after model load and preserves a camera target while zoomi
   assert.match(stage, /fit\.contactBounds\.getSize\(size\)/);
   assert.match(stage, /rt\.camera\.lookAt\(rt\.cameraTarget\)/);
 });
+
+
+test("3D camera waits for the first evaluated rig pose before fitting skinned bounds", async () => {
+ const stage = await readFile(stagePath, "utf8");
+ const modelAttach = stage.indexOf("rt.loaded=root");
+ const immediateFit = stage.indexOf("fitAvatarCameraToModel(rt,root)", modelAttach);
+ const animationFrame = stage.indexOf("if(rt.loaded){", stage.indexOf("const animate="));
+ const vrmUpdate = stage.indexOf("updateVrmForNk1Frame(rt.vrm,dt)", animationFrame);
+ const settledFit = stage.indexOf("fitAvatarCameraToModel(rt,rt.loaded)", vrmUpdate);
+ assert.ok(modelAttach >= 0, "the verified model must be attached before camera fitting");
+ assert.equal(immediateFit, -1, "bind-pose skin bounds must not set the final camera distance");
+ assert.match(stage, /cameraNeedsFit:boolean/);
+ assert.ok(animationFrame > modelAttach, "the fit must be deferred to the render loop");
+ assert.ok(vrmUpdate > animationFrame, "the first VRM pose must be evaluated before fit");
+ assert.ok(settledFit > vrmUpdate, "the camera must fit after the first settled deformed pose");
+});
