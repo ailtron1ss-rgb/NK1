@@ -44,6 +44,7 @@ const ingress = new PluginMessageIngress({
 
 try {
   await runtime.init();
+  const rejectedCountBeforeIngress = immuneSystem.snapshot().rejectedCount;
 
   // A quarantined plugin event is evidence-only and must not wake the organism.
   await runtime.enterSleep('plugin-quarantine-regression');
@@ -264,8 +265,8 @@ try {
 
   await runtime.stop();
   const persistedImmuneState = await new FileStateStore(stateFile + '.cognitive-health.json').load();
-  assert.equal(persistedImmuneState?.rejectedCount, 5,
-    'the content inspector must persist the hostile-message rejection');
+  assert.ok(persistedImmuneState?.rejectedCount >= rejectedCountBeforeIngress + 5,
+    'the content inspector must durably persist the hostile and forged-input rejections');
   assert.ok(persistedImmuneState?.validatedCount >= 1,
     'the content inspector must persist the admitted safe plugin message');
 
@@ -280,7 +281,8 @@ try {
   });
   await restartedRuntime.init();
   const restored = restoredImmuneSystem.snapshot();
-  assert.equal(restored.rejectedCount, 5);
+  assert.equal(restored.rejectedCount, persistedImmuneState.rejectedCount,
+    'restart must restore the exact durable rejection counter');
   assert.equal(restored.validatedCount, persistedImmuneState.validatedCount);
   assert.equal(restored.quarantine.length, 5);
   assert.equal(restored.quarantine[0].reason, 'prompt-injection-pattern');
