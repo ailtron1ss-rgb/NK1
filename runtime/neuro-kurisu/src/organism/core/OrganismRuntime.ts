@@ -7,6 +7,8 @@ import { externalGoalForRuntimeInput, normalizeRuntimeExternalPluginSource, shou
 import { normalizeWorldContext } from './WorldContextNormalizer.ts';
 import { FileStateStore, registerFileWorkspaceUndoFirstTools } from '../persistence/FileStateStore.ts';
 import { OrganismCore, type OrganismConfig, type PersistedOrganism } from './OrganismCore.ts';
+import type { CognitiveModuleRuntime } from './CognitiveModuleRuntime.ts';
+import { CognitiveModuleCheckpointStore } from './CognitiveModuleCheckpointStore.ts';
 import { WorldEnvironment, type EnvironmentAction, type PersistedWorld } from '../world/WorldEnvironment.ts';
 import { PlanEngine } from '../world/PlanEngine.ts';
 import { OfflineConsolidation, type ConsolidationResult } from '../cognition/OfflineConsolidation.ts';
@@ -197,6 +199,8 @@ export interface RuntimeConfig extends OrganismConfig {
     routing: SynapticAdapterRoutingInput,
   ) => Promise<SynapticAdapterLanguageResponse>;
   stateStore?: JsonStateStore<PersistedOrganism>;
+  /** Optional host-registered modules; when supplied, their state is checkpointed inside PersistedOrganism.system. */
+  cognitiveModuleRuntime?: CognitiveModuleRuntime;
   /** Host-owned monitor instance; structural injection avoids a core-to-cognition dependency edge. */
   cognitiveHealthSystem?: RuntimeCognitiveHealthMonitor;
   /** Optional canonical-ledger adapter; missing evidence remains unknown, never a healthy sample. */
@@ -375,6 +379,8 @@ export class OrganismRuntime {
   readonly embodiedActions = new EmbodiedActionExecutor(this.embodiment);
   readonly embodiedRecovery = new EmbodiedRecoveryController();
   private readonly config: Required<Pick<RuntimeConfig, 'intervalMs'|'enableLanguage'>> & RuntimeConfig;
+  private readonly cognitiveModuleRuntime: CognitiveModuleRuntime | null;
+  private readonly cognitiveModuleCheckpointStore: CognitiveModuleCheckpointStore | null;
   private readonly temporalObjectTracker = new TemporalObjectTracker();
   private readonly mem0Adapter: Mem0PlatformAdapter;
   private readonly mem0CognitiveRecallEnabled: boolean;
@@ -492,7 +498,16 @@ export class OrganismRuntime {
     this.phonePolicy.checkpointMaxDirtyCycles = Math.max(1, Number(this.phonePolicy.checkpointMaxDirtyCycles));
     this.phonePolicy.worldCheckpointMaxDirtyCycles = Math.max(1, Number(this.phonePolicy.worldCheckpointMaxDirtyCycles));
     this.stopping = false;
-    const stateStore = config.stateStore ?? new FileStateStore<PersistedOrganism>(config.stateFile);
+    const canonicalStateStore = config.stateStore ?? new FileStateStore<PersistedOrganism>(config.stateFile);
+    this.cognitiveModuleRuntime = config.cognitiveModuleRuntime ?? null;
+    this.cognitiveModuleCheckpointStore = this.cognitiveModuleRuntime
+      ? new CognitiveModuleCheckpointStore(canonicalStateStore)
+      : null;
+    if (this.cognitiveModuleRuntime && this.cognitiveModuleCheckpointStore) {
+      this.cognitiveModuleRuntime.bindStateStore(this.cognitiveModuleCheckpointStore.moduleStateStore);
+      this.cognitiveModuleCheckpointStore.bindSnapshotProvider(() => this.cognitiveModuleRuntime!.snapshotAll());
+    }
+    const stateStore = this.cognitiveModuleCheckpointStore ?? canonicalStateStore;
     this.core = new OrganismCore(stateStore, { ...config, cycleResultMode:'operational' });
     this.undoFirstWorkspaceRoot = stateStore instanceof FileStateStore ? stateStore.siblingPath('workspace') : null;
     const learningJournals = createDefaultLearningJournals(config.stateFile);
@@ -747,6 +762,16 @@ export class OrganismRuntime {
         for (const tool of tools) this.core.registerActionTool(tool);
       }
       await this.core.setEmbodiment(this.embodiment.snapshot(), this.embodiment.eventLog(), { sensorFailures: snap.facets.embodiment?.sensorFailures ?? 0 });
+      // Modules activate only after canonical organism state and runtime adapters are restored,
+      // but before any scheduler or autonomous cognitive clock can run.
+      if (this.cognitiveModuleRuntime) {
+        const activated = await this.cognitiveModuleRuntime.activateAll();
+        const health = await this.cognitiveModuleRuntime.health();
+        await this.journal.write('info', 'runtime.cognitive-modules.activated', {
+          count: activated.length,
+          healthy: health.ok,
+        });
+      }
       this.initialized = true;
       this.startEmbodimentClock();
       this.clockScheduler.start('reflection');
@@ -2723,6 +2748,16 @@ export class OrganismRuntime {
   aspectFabricSnapshot(): unknown { return this.aspectFabric?.snapshot() ?? null; }
   aspectFabricHealth(): unknown { return this.aspectFabric?.health() ?? null; }
   get organismSystemFabric() { return this.core.organismSystemFabric; }
+  cognitiveModuleDiagnostics() {
+    return {
+      enabled: this.cognitiveModuleRuntime !== null,
+      modules: this.cognitiveModuleRuntime?.list() ?? [],
+      checkpoint: this.cognitiveModuleCheckpointStore?.diagnostics() ?? null,
+    };
+  }
+  async cognitiveModuleHealth() {
+    return this.cognitiveModuleRuntime?.health() ?? { ok: true, modules: [] };
+  }
   embodimentDiagnostics(){ return this.embodiment.sensorDiagnosticsSnapshot(); }
   async stop(): Promise<void> {
     // Stop is a durability boundary, not merely a scheduler shutdown.  The previous
@@ -2734,11 +2769,22 @@ export class OrganismRuntime {
     await this.clockScheduler.drain();
     await this.trustedShadowLearningScheduler?.drain();
     await this.queue.catch(() => undefined);
+    let moduleStopError: unknown = null;
 
     // All queued cognitive work has drained, so the final flush is now serialized
     // with the same queue used by step()/tool calls.  This closes the crash/restart
     // window without making every cycle pay a synchronous disk write.
     await this.enqueue(async () => {
+      if (this.cognitiveModuleRuntime) {
+        try {
+          await this.cognitiveModuleRuntime.stopAll();
+        } catch (error) {
+          moduleStopError = error;
+          await this.journal.write('error', 'runtime.cognitive-modules.stop-failed', {
+            message: String(error instanceof Error ? error.message : error).slice(0, 180),
+          }).catch(() => {});
+        }
+      }
       // Capture the closure before the single durable flush. A previous implementation
       // flushed twice here, which is disproportionately expensive because a full core
       // projection serializes several MB of state on a phone.
@@ -2765,6 +2811,7 @@ export class OrganismRuntime {
 
     await this.continuityLedger.flush().catch(() => {});
     await this.continuityLedger.close();
+    if (moduleStopError) throw moduleStopError;
   }
 
   private async persistCognitiveSpineSchedule(): Promise<void> {
