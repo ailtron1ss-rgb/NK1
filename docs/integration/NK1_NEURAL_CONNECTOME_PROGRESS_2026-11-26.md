@@ -304,3 +304,33 @@ The Master Plan X estimate remains **36/100 ±8 pp**. This fix improves the trut
 - The earlier 4/4 result at HEAD `9678599...` is a historical checkpoint; the superseding current-head focused result is 5/5 above.
 
 The overall Master Plan X estimate remains **36/100 ±8 pp**. The shutdown/failure-cleanup evidence is improved, but G2 still lacks a shared cross-store generation/commit manifest and power-loss recovery proof. Android/Termux soak, independent sealed evaluation, global memory writer census, semantic TypeScript `tsc`, source/archive parity and new Release remain open. The canonical source, `main`, immutable archive, tags and Releases were not modified.
+
+
+## Shared checkpoint semantics follow-up — 26 Nov 2026
+
+### PR #1205 — RecoveryWatchdog commit marker
+
+- RED [45814877926](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45814877926) proved that `heartbeat()` moved `lastCheckpointAt` from 1000 to 2000 before any durable write.
+- Fix: liveness heartbeat no longer changes durable checkpoint time; watchdog creates a detached checkpoint candidate; Core includes that candidate in the canonical `PersistedOrganism` save and advances the in-memory commit marker only after `store.save()` succeeds. Failed save restores the previous watchdog marker.
+- GREEN [45815058315](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45815058315): new failure-injection regression, existing RecoveryWatchdog restart test, Core watchdog test and runtime typecheck all pass.
+- Exact-head `36298b593e900965a8e3e8749fc42ac597b9839b`: **32/32 Actions workflows success**. PR [#1205](https://github.com/ailtron1ss-rgb/NK1/pull/1205) remains Draft/unmerged, 4 files, 4 commits ahead / 0 behind canonical base.
+
+### PR #1206 — Revision materialization after commit
+
+- RED [45815366152](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45815366152) proved that a failed Core save left the `critical` revision domain marked materialized (actual 1, previous durable 0).
+- Fix: projection builds detached candidates for `AdvancedProjectionScheduler`, `RevisionGraph` and `RevisionTokenRegistry`. The candidate image is included in `PersistedOrganism`; live owners are marked materialized only after the canonical store accepts the save. Failed projection or failed save leaves live revision markers dirty so the next full checkpoint retries.
+- GREEN [45816034171](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45816034171): new fail-injection test, existing revision graph persistence test, BigPass 57 projection coordinator test and runtime typecheck all pass.
+- Initial post-fix broad run surfaced TypeScript inference errors from untyped `Object.values()`; resolved with the repository's existing `ProjectionScheduleState`, `RevisionGraphState` and `RevisionTokenRegistryState` contracts.
+- Exact-head `b886a2d0c7321afd5265de451a47ed5dc552d80e`: **32/32 Actions workflows success**. PR [#1206](https://github.com/ailtron1ss-rgb/NK1/pull/1206) remains Draft/unmerged, 4 files, 4 commits ahead / 0 behind canonical base.
+
+### Checkpoint consistency status after both fixes
+
+- The canonical Core checkpoint now does not claim a new watchdog checkpoint timestamp before save.
+- Advanced projection freshness counters are now written as a candidate in the same canonical Core image as the advanced snapshots; live freshness owners only advance after save succeeds.
+- These changes improve **single-store Core checkpoint commit semantics**. They do not introduce a shared transaction manifest across the independent World, cognitive-spine, risk-aware-recovery, open-loop, skill and other sidecar files.
+- Remaining high-priority gap: checkpoint commit state is still mutated before canonical save by persistent continuity lineage (`PersistentContinuityKernel` / B1701) and `FailureRecoveryCertification`. These should be audited/tested as the next checkpoint owner receipts; they are not yet claimed to be rolled back on save failure.
+- Remaining global gates: cross-store generation/manifest and crash recovery, Android/Termux power-loss soak, full repository memory writer census, semantic TypeScript compiler proof, independent bilingual holdout, source/archive/license parity and new Release.
+
+### Updated estimate
+
+**Master Plan X engineering integration: approximately 38/100 (±8 percentage points).** This is an evidence-weighted estimate for architecture integration and engineering verification, not product or release readiness. The increase reflects two independently reproduced checkpoint-consistency defects fixed with exact-head RED/GREEN tests and 32/32 broad workflow matrices. The remaining cross-store atomicity and real-device gates prevent a larger increase.
