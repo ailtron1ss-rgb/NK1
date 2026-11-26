@@ -280,7 +280,7 @@ export class P41SemanticPerceptionEngine {
 
   restore(raw?:Partial<P41PerceptionState>|null){
     const d=defaultP41SemanticPerception();
-    const restored=raw===undefined||raw===null?{}:cloneInertSnapshot<unknown>(raw,{maxDepth:24,maxProperties:65_536});
+    const restored=raw===undefined||raw===null?{}:cloneInertSnapshot<unknown>(raw,{maxDepth:24,maxProperties:65_536,allowNonFiniteNumbers:true});
     if(!restored||typeof restored!=='object'||Array.isArray(restored))throw new Error('p41-perception-snapshot-invalid');
     const r=restored as Partial<P41PerceptionState>;
     const rawScene=r.scene&&typeof r.scene==='object'?r.scene:d.scene;
