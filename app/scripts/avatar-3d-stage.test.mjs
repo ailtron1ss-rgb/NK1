@@ -308,13 +308,13 @@ test("3D fitting uses rigged character meshes instead of the scene environment f
 
 test("3D renderer mode keeps the global avatar toolbar outside the model viewport",async()=>{
  const avatarStage=await readFile(path.join(root,"src/components/AvatarStage.tsx"),"utf8");
- assert.match(avatarStage,/mode === "3d" \|\| mode === "legacy" \? "relative z-30 flex w-full flex-wrap items-center gap-2 border-b border-border bg-black\/70 p-2 backdrop-blur"\s*:\s*"absolute left-3 top-3 z-30/);
+ assert.match(avatarStage,/mode === "3d" \|\| mode === "legacy" \|\| mode === "original" \? "relative z-30 flex w-full flex-wrap items-center gap-2 border-b border-border bg-black\/70 p-2 backdrop-blur"\s*:\s*"absolute left-3 top-3 z-30/);
 });
 
 
 test("Legacy outfit controls are not covered by the global avatar toolbar on mobile",async()=>{
  const stage=await readFile(path.join(root,"src/components/AvatarStage.tsx"),"utf8");
- assert.match(stage,/mode === "3d" \|\| mode === "legacy" \? "relative z-30 flex w-full flex-wrap items-center gap-2 border-b border-border bg-black\/70 p-2 backdrop-blur"\s*:\s*"absolute left-3 top-3 z-30/);
+ assert.match(stage,/mode === "3d" \|\| mode === "legacy" \|\| mode === "original" \? "relative z-30 flex w-full flex-wrap items-center gap-2 border-b border-border bg-black\/70 p-2 backdrop-blur"\s*:\s*"absolute left-3 top-3 z-30/);
 });
 
 test("3D pointer picking declares the Three.js raycaster and vector types",async()=>{
@@ -430,4 +430,72 @@ test("3D contact refreshes animated skin bounds before intersecting pick meshes"
  const refresh=stage.indexOf("refreshAvatarRaycastBounds(target)");
  const intersect=stage.indexOf("raycaster.intersectObjects(fit.pickMeshes,true)");
  assert.ok(refresh>=0&&intersect>refresh,"animated skin bounds must be refreshed before raycast");
+});
+
+
+test("Live2D is a real bundled Cubism rig, while SVG and Legacy remain honestly distinct renderers", async () => {
+ const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
+ const appRoot = path.join(repoRoot, "app");
+ const modelPath = path.join(repoRoot, "runtime/neuro-kurisu/public/live2d/Kurisu/Kurisu.model3.json");
+ const model = JSON.parse(await readFile(modelPath, "utf8"));
+ const refs = model.FileReferences;
+ assert.equal(model.Version, 3, "the canonical model must be a Cubism 3 model");
+ assert.ok(refs?.Moc?.endsWith(".moc3"), "the canonical model must reference a Cubism moc, not a flat image");
+ assert.ok(Array.isArray(refs.Textures) && refs.Textures.length > 0, "Cubism model must reference a texture atlas");
+ assert.ok(refs.Physics && refs.DisplayInfo, "Cubism model must retain physics and display metadata");
+ assert.ok(refs.Expressions?.length >= 7, "Cubism model must provide authored expression assets");
+ assert.ok(Object.values(refs.Motions ?? {}).flat().length >= 5, "Cubism model must provide authored motion assets");
+ assert.ok(model.Groups?.some((group) => group.Name === "EyeBlink"), "Cubism eye-blink group is required");
+ assert.ok(model.Groups?.some((group) => group.Name === "LipSync"), "Cubism lip-sync group is required");
+ assert.ok(model.HitAreas?.some((area) => area.Name === "Head"), "Cubism head hit-area is required");
+ assert.ok(model.HitAreas?.some((area) => area.Name === "Body"), "Cubism body hit-area is required");
+
+ const base = path.dirname(modelPath);
+ const dependencyPaths = [
+  refs.Moc, ...refs.Textures, refs.Physics, refs.DisplayInfo,
+  ...Object.values(refs.Motions ?? {}).flat().map((motion) => motion.File),
+  ...refs.Expressions.map((expression) => expression.File),
+ ];
+ const lock = JSON.parse(await readFile(path.join(repoRoot, "contracts/inventory/canonical-public-assets-workpass42.json"), "utf8"));
+ const locked = new Map(lock.items.map((item) => [item.canonicalPath, item]));
+ for (const reference of dependencyPaths) {
+  const absolute = path.resolve(base, reference);
+  const relative = path.relative(base, absolute);
+  assert.ok(relative && !relative.startsWith("..") && !path.isAbsolute(relative), "Cubism reference must remain inside its asset directory");
+  const repoPath = path.relative(repoRoot, absolute).split(path.sep).join("/");
+  const info = await stat(absolute);
+  const item = locked.get(repoPath);
+  assert.ok(item, "canonical-public asset manifest must lock " + repoPath);
+  assert.equal(info.size, item.sizeBytes, "locked asset size must match " + repoPath);
+  assert.match(item.sha256, /^[a-f0-9]{64}$/, "locked asset SHA-256 must be present for " + repoPath);
+ }
+ assert.ok((await stat(path.join(base, refs.Moc))).size > 5_000_000, "the actual Cubism moc binary must be present");
+ assert.ok((await stat(path.join(base, refs.Textures[0]))).size > 8_000_000, "the high-quality texture atlas must be present");
+
+ const viewer = await readFile(path.join(appRoot, "public/live2d/viewer.html"), "utf8");
+ for (const script of ["./vendor/pixi.min.js", "./vendor/live2dcubismcore.min.js", "./vendor/cubism4.min.js"]) {
+  assert.ok(viewer.includes(script), "the app viewer must use its local pinned runtime: " + script);
+ }
+ assert.match(viewer, /Live2DModel\.from\(modelPath/);
+ const parent = await readFile(path.join(appRoot, "src/components/AvatarStage.tsx"), "utf8");
+ assert.match(parent, /src="\/live2d\/viewer\.html\?profile=auto"/);
+ assert.match(parent, /type ViewMode = "live2d" \| "legacy" \| "original" \| "3d"/);
+ assert.match(parent, /const \[mode, setMode\] = useState<ViewMode>\("live2d"\)/);
+ assert.match(parent, /Live2D unavailable/);
+ assert.match(parent, /Open Legacy/);
+
+ const originalManifest = JSON.parse(await readFile(path.join(appRoot, "public/kurisu-original/asset-manifest.json"), "utf8"));
+ assert.equal(originalManifest.manifestStatus, "planning-inventory");
+ assert.ok(originalManifest.assets.every((asset) => asset.status === "not-authored"),
+  "Original 2D production art masters must not be presented as already authored");
+ const artContract = JSON.parse(await readFile(path.join(appRoot, "public/kurisu-original/character-art-contract.json"), "utf8"));
+ assert.ok(artContract.explicitNonGoals.some((item) => item.includes("does not claim 2.5D depth")));
+ const originalStage = await readFile(path.join(appRoot, "src/components/KurisuOriginalStage.tsx"), "utf8");
+ assert.match(originalStage, /<svg/);
+ assert.match(originalStage, /<path/);
+
+ const legacy = await readFile(path.join(appRoot, "src/legacy/avatar/LegacySpriteDeck.tsx"), "utf8");
+ assert.match(legacy, /new Image\(/);
+ assert.match(legacy, /ctx\.drawImage\(/);
+ assert.match(legacy, /still|stills|static/i);
 });
