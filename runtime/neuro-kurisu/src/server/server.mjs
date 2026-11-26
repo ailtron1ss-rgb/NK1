@@ -21,7 +21,7 @@ import { hexisEvidenceHttpStatus } from './hexis-evidence-http-status.mjs';
 import { LocalLanguageBackendPolicy } from './local-language-backend-policy.mjs';
 import { RELEASE_CONTRACT } from '../organism/system/ReleaseContract.ts';
 import { resolvePhonePolicyConfig } from '../organism/system/PhoneRuntimePolicy.ts';
-import { authorizeApiRequest } from '../organism/system/ApiSecurityPolicy.ts';
+import { authorizeApiRequest, apiApprovalActor } from '../organism/system/ApiSecurityPolicy.ts';
 import { BoundedRateLimiter, parseRateLimitSetting } from './bounded-rate-limiter.mjs';
 import { GeminiVisionSemanticBackend } from '../organism/body/GeminiVisionSemanticBackend.ts';
 import { OpenAICompatibleLocalChatProvider } from '../organism/integration/local/OpenAICompatibleLocalChatProvider.ts';
@@ -2689,7 +2689,10 @@ async function route(req, res) {
             const input=await body(req);
             const requestId=String(input.requestId||'').trim().slice(0,120);
             if(!requestId) return json(res,400,{ok:false,error:'missing-approval-request-id'});
-            const result=await runtime.core.resolveActionToolApproval(requestId,input.approved===true);
+            let actor;
+            try { actor=apiApprovalActor(auth.reason); }
+            catch { return json(res,403,{ok:false,error:'approval-actor-unavailable'}); }
+            const result=await runtime.core.resolveActionToolApproval(requestId,input.approved===true,actor);
             return json(res,result.ok?200:409,result);
         }
         if (req.method === 'POST' && url.pathname === '/api/organism/tools/permissions/consume') {
