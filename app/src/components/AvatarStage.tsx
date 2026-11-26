@@ -190,6 +190,12 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
   latestProjectionRef.current = projection;
   latestSnapRef.current = snap;
 
+  useEffect(() => {
+    // A receipt belongs to one renderer instance and one organism tick only.
+    // Switching mode or advancing/restoring the canonical tick requires a new receipt.
+    setPresentationReceipt(null);
+  }, [mode, snap.tick]);
+
   const stopSpeech = () => {
     const active = activeSpeechSessionRef.current;
     if (active) {
