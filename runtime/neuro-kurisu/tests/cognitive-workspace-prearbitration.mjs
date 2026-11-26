@@ -57,6 +57,7 @@ assert.equal(arbitrationWorkspace01, competed.ignition01,
 const actionByCandidateId = new Map(workspaceInputs.map(candidate => [candidate.id, candidate.content?.action]));
 const sourceScoreByAction = new Map(workspaceInputs.map(candidate => [candidate.content?.action, candidate.features?.[0]]));
 const selectedActions = new Set(competed.selectedIds.map(id => actionByCandidateId.get(id)).filter(Boolean));
+// Verify the real OrganismCore cycle preserves the decision lane while admitting domain summaries.
 const workspaceSourceById = new Map(workspaceInputs.map(candidate => [candidate.id, candidate.source]));
 const selectedSources = new Set(competed.selectedIds.map(id => workspaceSourceById.get(id)).filter(Boolean));
 assert.ok(selectedSources.has('decision'),
