@@ -478,7 +478,7 @@ export class AutonomousSocialInitiativeEngine {
     const mayInitiate = autonomous && timingAllows && !hasPendingDelivery
       && (deliveryAllowed || !hasPendingInternalPlan) && pressure > .48;
     if (!mayInitiate) {
-      if (pressure < .25 && !hasPending) this.state.deferred++;
+      if (pressure < .25 && !hasPendingDelivery && !hasPendingInternalPlan) this.state.deferred++;
       return { shouldInitiate: false, initiative: null, internalPlan: null };
     }
 
