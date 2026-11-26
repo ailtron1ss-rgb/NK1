@@ -10,24 +10,6 @@ import { pollUntilReady } from '../scripts/server-smoke-poll.mjs';
 
 const runtimeRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const stateDir = await mkdtemp(path.join(tmpdir(), 'nk-cancel-smoke-'));
-async function allocateLoopbackPort() {
-  const probe = createServer();
-  await new Promise((resolve, reject) => {
-    probe.once('error', reject);
-    probe.listen(0, '127.0.0.1', resolve);
-  });
-  const address = probe.address();
-  if (!address || typeof address === 'string') {
-    await new Promise(resolve => probe.close(() => resolve()));
-    throw new Error('unable to allocate a loopback port for the language cancellation fixture');
-  }
-  const port = address.port;
-  await new Promise((resolve, reject) => {
-    probe.close(error => error ? reject(error) : resolve());
-  });
-  return port;
-}
-const serverPort = await allocateLoopbackPort();
 let resolveProviderStarted;
 let resolveProviderClosed;
 const providerStarted = new Promise(resolve => { resolveProviderStarted = resolve; });
@@ -57,6 +39,26 @@ await new Promise((resolve, reject) => {
   fakeProvider.listen(0, '127.0.0.1', resolve);
 });
 const providerPort = fakeProvider.address().port;
+// Allocate the runtime port only after the provider is bound, so the OS cannot
+// immediately reuse the same ephemeral port for both local servers.
+async function allocateLoopbackPort() {
+  const probe = createServer();
+  await new Promise((resolve, reject) => {
+    probe.once('error', reject);
+    probe.listen(0, '127.0.0.1', resolve);
+  });
+  const address = probe.address();
+  if (!address || typeof address === 'string') {
+    await new Promise(resolve => probe.close(() => resolve()));
+    throw new Error('unable to allocate a loopback port for the language cancellation fixture');
+  }
+  const port = address.port;
+  await new Promise((resolve, reject) => {
+    probe.close(error => error ? reject(error) : resolve());
+  });
+  return port;
+}
+const serverPort = await allocateLoopbackPort();
 const env = {
   ...process.env,
   HOST: '127.0.0.1',
