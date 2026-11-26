@@ -4,6 +4,16 @@ import os from 'node:os';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { OrganismRuntime } from '../src/organism/core/OrganismRuntime.ts';
+import { MultimodalPerception } from '../src/organism/body/MultimodalPerception.ts';
+
+const legacyMultimodal = new MultimodalPerception();
+legacyMultimodal.restore({ version: 1, visionCaptures: 99 });
+assert.equal(legacyMultimodal.snapshot().visionCaptures, 0,
+  'legacy multimodal snapshots must not carry unverified caller-created vision counts forward');
+const currentMultimodal = new MultimodalPerception();
+currentMultimodal.restore({ version: 2, visionCaptures: 3 });
+assert.equal(currentMultimodal.snapshot().visionCaptures, 3,
+  'version 2 snapshots retain only the host-admitted counter contract');
 
 const root=await mkdtemp(path.join(os.tmpdir(),'nk1-camera-runtime-tracking-'));
 const imagePath=path.join(root,'frame.jpg');
