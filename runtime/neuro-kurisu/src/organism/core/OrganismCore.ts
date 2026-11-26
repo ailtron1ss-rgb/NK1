@@ -8613,6 +8613,11 @@ export class OrganismCore {
         if (state.tick % 8 === 0)
             this.memorySubsystem.fabric.maintain({
                 tick: state.tick, pressure01: p66Homeostasis.pressure01,
+                // Assimilated write policy re-weights byte-budget eviction order. In `shadow`
+                // (default) `evictionWeight01` returns 1, so the ordering is unchanged.
+                ...(this.organismSystems.memory.memoryWritePolicy.getMode() === 'off' ? {} : {
+                    valueAdjustment: (row: { id: string }) => this.organismSystems.memory.memoryWritePolicy.evictionWeight01(row.id),
+                }),
                 maxItems: p66Homeostasis.pressure01 > .92 ? Math.min(720, p75Plan.canonicalBudget) : p66Homeostasis.pressure01 > .78 ? Math.min(960, p75Plan.canonicalBudget) : p75Plan.canonicalBudget,
                 ...(state.tick % 32 === 0 || p66Homeostasis.pressure01 > .82 ? {
                     hotBudget: p75Plan.hotBudget, warmBudget: p75Plan.warmBudget, coldBudget: p75Plan.coldBudget, identityTension01: p75Plan.retrievalFocus === 'identity-critical' ? .78 : experienceBeforeTick.identityGravity.tension01,

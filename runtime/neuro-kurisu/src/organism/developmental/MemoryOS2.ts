@@ -2345,14 +2345,18 @@ export class MemoryOS2{
  forgetById(id:string,reason='memory-knockout'){
   return this.removeCanonicalItemById(id,reason,false);
  }
- enforceByteBudget(options:{maxBytes?:number;tick?:number;protectedIds?:string[];reason?:string}={}){
+ enforceByteBudget(options:{maxBytes?:number;tick?:number;protectedIds?:string[];reason?:string;valueAdjustment?:(m:MemoryItem2)=>number}={}){
    const budget=Math.max(16384,Math.floor(Number(options.maxBytes??this.state.byteBudget??524288)));
    this.state.byteBudget=budget;
    const protectedIds=new Set(options.protectedIds??[]);
    const removed:string[]=[];
    const scoreValue=(m:MemoryItem2)=>clamp(.24*m.salience+.16*m.identityRelevance+.16*m.goalRelevance+.10*m.socialRelevance+.12*m.predictionError+.10*m.confidence+.08*m.emotionalWeight+.04*Math.min(1,m.retrievalCount/12));
    const harm=(m:MemoryItem2)=>clamp(.22*(m.dormant?1:0)+.18*(1-m.confidence)+.15*Math.min(1,m.semanticLinks.length/8));
-   const density=(m:MemoryItem2)=>{const bytes=Math.max(96,estimateMemoryBytes(m));return clamp(Math.max(0,scoreValue(m)-.30*harm(m)+.05*clamp(Number(m.sourceAuthority01??.5)))*Math.sqrt(512/bytes));};
+   // `valueAdjustment` lets an external policy re-weight retention value per item
+   // (e.g. channel reliability from the assimilated write policy). It is clamped so a
+   // caller can nudge eviction order but never invert a clearly valuable memory.
+   const adjust=(m:MemoryItem2)=>{if(!options.valueAdjustment)return 1;const raw=Number(options.valueAdjustment(m));return clamp(Number.isFinite(raw)?raw:1,.5,1.5);};
+   const density=(m:MemoryItem2)=>{const bytes=Math.max(96,estimateMemoryBytes(m));return clamp(Math.max(0,scoreValue(m)-.30*harm(m)+.05*clamp(Number(m.sourceAuthority01??.5)))*Math.sqrt(512/bytes)*adjust(m));};
    while(this.state.estimatedBytes>budget){
      const candidates=this.state.items.filter(m=>!protectedIds.has(m.id)&&m.epistemicStatus!=='quarantined'&&m.kind!=='identity'&&m.kind!=='autobiographical');
      if(!candidates.length)break;

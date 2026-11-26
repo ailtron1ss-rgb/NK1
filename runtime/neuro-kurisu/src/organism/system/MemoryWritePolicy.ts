@@ -73,6 +73,8 @@ export interface MemoryWritePolicySnapshot {
   historyShift01: number;
   deepSelections: number;
   shallowSelections: number;
+  evictionAdjusted: number;
+  evictionShadowWouldAdjust: number;
   uncertainty: UncertaintyWriteSnapshot;
   hippo: HippoLegsSnapshot;
   perId: Record<string, PerIdHistory>;
@@ -110,6 +112,8 @@ export class MemoryWritePolicy {
   private historyShift01 = 0;
   private deepSelections = 0;
   private shallowSelections = 0;
+  private evictionAdjusted = 0;
+  private evictionShadowWouldAdjust = 0;
   private perId = new Map<string, PerIdHistory>();
   private recent: MemoryWritePolicySnapshot['recent'] = [];
 
@@ -184,6 +188,26 @@ export class MemoryWritePolicy {
     }
   }
 
+  /**
+   * Bounded multiplier for byte-budget eviction ranking: memories whose channel is reliable
+   * and whose prediction error has been low are protected (weight > 1), noisy ones are
+   * evicted earlier (weight < 1). Unknown memories get exactly 1, so the default ordering is
+   * untouched. Only `active` returns a value other than 1; `shadow` records how often it would
+   * have changed the ranking.
+   */
+  evictionWeight01(id: string): number {
+    const history = this.perId.get(String(id));
+    if (!history || history.observations < 3) return 1;
+    const reliability = this.uncertainty.reliability01(this.channel);
+    const quality01 = clamp01(0.5 * reliability + 0.5 * (1 - history.lastError01));
+    const weight = clamp(0.85 + 0.35 * quality01 - 0.15 * history.lastUpdate01, 0.85, 1.2);
+    if (this.mode === 'off') return 1;
+    if (Math.abs(weight - 1) < 0.01) return 1;
+    if (this.mode === 'active') { this.evictionAdjusted++; return weight; }
+    this.evictionShadowWouldAdjust++;
+    return 1;
+  }
+
   private history(id: string): PerIdHistory {
     return this.perId.get(String(id)) ?? { observations: 0, lastError01: 0, lastSalience01: 0, lastUpdate01: 0 };
   }
@@ -201,6 +225,8 @@ export class MemoryWritePolicy {
       historyShift01: this.historyShift01,
       deepSelections: this.deepSelections,
       shallowSelections: this.shallowSelections,
+      evictionAdjusted: this.evictionAdjusted,
+      evictionShadowWouldAdjust: this.evictionShadowWouldAdjust,
       trackedMemories: this.perId.size,
       uncertainty: this.uncertainty.diagnostics(),
       fastSlow: this.fastSlow.diagnostics(),
@@ -224,6 +250,8 @@ export class MemoryWritePolicy {
       historyShift01: this.historyShift01,
       deepSelections: this.deepSelections,
       shallowSelections: this.shallowSelections,
+      evictionAdjusted: this.evictionAdjusted,
+      evictionShadowWouldAdjust: this.evictionShadowWouldAdjust,
       uncertainty: this.uncertainty.snapshot(),
       hippo: this.hippo.snapshot(),
       perId: Object.fromEntries(this.perId),
@@ -242,6 +270,8 @@ export class MemoryWritePolicy {
     this.historyShift01 = clamp01(Number(raw?.historyShift01 ?? 0));
     this.deepSelections = Math.max(0, Math.floor(Number(raw?.deepSelections ?? 0)));
     this.shallowSelections = Math.max(0, Math.floor(Number(raw?.shallowSelections ?? 0)));
+    this.evictionAdjusted = Math.max(0, Math.floor(Number(raw?.evictionAdjusted ?? 0)));
+    this.evictionShadowWouldAdjust = Math.max(0, Math.floor(Number(raw?.evictionShadowWouldAdjust ?? 0)));
     this.uncertainty.restore(raw?.uncertainty);
     this.hippo.restore(raw?.hippo);
     this.perId.clear();
