@@ -188,6 +188,11 @@ restoredDelayedWorkspace.compete([
   { id: 'memory-credit-b', source: 'memory', salience: .24,
     features: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], content: { signal: 'different-context' } },
 ]);
+const decisionBReceipt = restoredDelayedWorkspace.registerDecision({
+  decisionId: 'another-decision', tick: 5, action: 'rest', at: 500,
+});
+assert.equal(decisionBReceipt.recorded, true,
+  'the later coalition must be frozen against its own decision identity');
 const gateBeforeDelayedCredit = restoredDelayedWorkspace.snapshot().gateWeights.slice();
 const delayedResult = restoredDelayedWorkspace.learnOutcomeForDecision({
   decisionId: 'decision-credit-a', outcomeId: 'outcome-credit-a',
