@@ -5,8 +5,8 @@
 **Work branch:** `aspect/neural-connectome-integration-20261126`  
 **Canonical source baseline:** `workpass70-source@7e601680c765d6dc94e51e4c8f5e729b48a6f56e`  
 **Master Plan X reference snapshot:** `9008a8982a5173304456bee2c604bd0bc8665964`  
-**Progress:** 25/100 — seven owners, dependency graph and runtime causal spine mapped  
-**Status:** analysis/inventory only; no source runtime code integrated by this ledger commit.
+**Progress:** 30/100 — seven owners, runtime causal spine, one verified diagnostics defect fixed on an isolated branch, exact-head focused CI green  
+**Status:** this ledger branch remains documentation-only; implementation is tracked separately in Draft PR #1197 and is not yet in canonical source.
 
 ## Safety and source-of-truth rules
 
@@ -89,7 +89,7 @@ The runtime cycle remains `Perceive → Appraise → Plan → Act → Reflect �
 - [ ] Selectively port and verify implementation changes on isolated aspect branches.
 - [ ] Complete integration, device/browser acceptance and release evidence.
 
-**Progress is 25/100.** This measures completion of the requested unified integration work, not the percentage of NK1 product readiness.
+**Progress is 30/100.** This measures completion of the requested unified integration work, not the percentage of NK1 product readiness. The focused read-only diagnostics aspect has reached exact-head CI green on its isolated Draft PR; broad runtime checks also passed on that PR head. Canonical source integration, independent review, complete call graph, full memory writer census, device measurement and release gates remain open.
 
 
 ## Census and architecture audit refinement — 26 Nov 2026
@@ -162,3 +162,44 @@ The following seven owner runtime files were read from the canonical source bran
 - Confirmed metacognitive episode persistence is attempted through `core.recordMetacognitiveEpisode()`; CEF stores the causal event and MemoryOS2 is named as the memory owner.
 - Created a second artifact: `docs/integration/NK1_NEURAL_CONNECTOME_CONNECTION_MATRIX_2026-11-26.md`, with owner graph, eleven-stage spine, 16 cross-domain edges, evidence requirements and source-backed runtime call path.
 - These are source-inspection findings. No runtime test was executed in this environment; exact-source CI, failure injection and device verification remain open.
+
+
+## Read-only diagnostics TDD and first memory ownership audit — 26 Nov 2026
+
+### Verified side-effect defect and fix
+
+- Created a test-first isolated branch and PR: [#1197](https://github.com/ailtron1ss-rgb/NK1/pull/1197), branch `aspect/cognitive-port-readonly-observability-20261126`.
+- Initial exact test run [45797106646](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45797106646) produced the intended **RED**: `CognitiveSubsystemPorts.ts:134` invoked the active `multiProjectSchedule()` command from the diagnostics agency port.
+- The fix splits the active scheduler command from `multiProjectScheduleSnapshot()`; the diagnostics port now reads the scheduler snapshot only.
+- Added bounded, sanitized read-only probing for 34 ports over seven domains. Probe states are `ok`, `empty`, `throw` and `invalid`; exception messages and snapshot payloads are not exposed. Probe results are cached for two seconds with explicit force-refresh.
+- Per-domain health is aggregated from every nested port, so a root snapshot cannot hide a failing child. Flight records are per port and distinguish seven owning domains from 34 port probes.
+- The Core and facade expose diagnostics; the architecture runtime snapshot adds seven explicitly labelled `snapshot-only` rows. A BigPass 48 assertion protects the scheduler read-only contract.
+
+### Exact-head evidence on the isolated branch
+
+- Current implementation head: `3dbca52ac61d59ae1a3e5cd88c0cf6dc21052632` at the time of this record.
+- Focused workflow [45798424365](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45798424365): **PASS** — 34-port regression, BigPass 48, BigPass 59 cache/projection, and runtime typecheck.
+- Runtime typecheck reports `TYPECHECK=PASS mode=node-strip-syntax-only files=747`; semantic TypeScript `tsc` is not available in that workflow, so a semantic compiler pass is **not** claimed.
+- [Module Dependency Audit 45798424335](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45798424335): **PASS**.
+- [Unified organism runtime 45798424134](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45798424134): **PASS**, including cycle, persistence, ingress, world, agency and runtime smoke contracts.
+- [NeuroCore regression 45798424286](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45798424286): **PASS**, including memory, causal cycle, eleven-phase spine, local LLM and speech-gateway contracts.
+- [Integrated software baseline 45798424476](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45798424476): **PASS**.
+- These runs are evidence on the PR's merge ref at that point in time, not proof that the aspect is merged into `workpass70-source`. PR #1197 remains Draft; no merge or release was done.
+
+### Memory ownership trace — bounded source inspection
+
+- `MemorySubsystemRuntime` constructs one `MemoryOS2` and injects that same instance into one `MemoryFabric`.
+- `NekoKnowledgePackImporter`, both Hexis canonical-memory bridges and `CanonicalMemoryLifecycleAuthority` receive the `MemoryFabric` boundary.
+- Restore runs `MemoryOS2.restore(...)` and `MemoryFabric.restore(...)` under the same memory subsystem owner; compatibility restore flows through `MemoryFabric.consolidateCompatibility(...)`.
+- `CanonicalMemoryLifecycleAuthority.run()` and `maintainCanonical()` delegate lifecycle writes to `MemoryFabric.maintain(...)`.
+- Core-level memory mutation paths inspected use `MemoryFabric` operations such as `encode`, `revise`, `updateSignals`, `forgetById`; direct Core calls to `memorySubsystem.memoryOS` found in this inspection were reads, snapshots, or diagnostics.
+- `MemoryFabric` explicitly treats MemoryOS2 as the single durable authority; multi-timescale/semantic indexes are projections/read models.
+- **Remaining caveat:** `MemorySubstrateCoordinator` still contains legacy adapter helpers that can encode/reconcile when explicitly passed a MemoryOS2. Its comment says production restore/ingest are routed through MemoryFabric. A full repo-wide call-site/writer census and adversarial writer-boundary test remain open; do not mark the global single-writer audit complete yet.
+
+### Updated classification
+
+- **IMPLEMENTED:** targeted scheduler snapshot separation and 34-port read-only diagnostics exist on PR #1197 head.
+- **CONNECTED:** Core/facade/architecture diagnostic surfaces route to one subsystem registry; MemoryFabric bridges are wired through MemorySubsystemRuntime.
+- **TESTED:** focused regression, BigPass 48/59, module dependency, unified runtime, NeuroCore and integrated baseline workflows all passed on the isolated PR head.
+- **MEASURED:** only workflow/syntax validation timings; no target device latency, heap, power-loss or avatar/audio measurement.
+- **RELEASED:** not merged to canonical source, not included in main or Release ZIP.
