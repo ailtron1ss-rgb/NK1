@@ -1,3 +1,4 @@
+import { types as nodeUtilTypes } from 'node:util';
 export { normalizeMetacognitiveEpisode } from '../cognition/MetacognitiveEpisode.ts';
 import { validateCognitiveStageReceipt, type CognitiveStageReceipt, type CognitiveStageOwnerName } from './CognitiveStageReceipt.ts';
 import { sha256Stable } from '../core/StableSerialization.ts';
@@ -32,6 +33,14 @@ export type OperationalCycleStageName = 'observation'|'prediction'|'appraisal'|'
 export type OperationalCycleStageIds = Partial<Record<OperationalCycleStageName, string | undefined>>;
 type OperationalCyclePhaseInput = { source?:string; external?:boolean; confidence01?:number; payload?:Record<string,unknown>; receipt?:CognitiveStageReceipt };
 
+export interface RuntimeEvidenceLink {
+  id: string;
+  tick: number;
+  kind: string;
+  source: string;
+  parentIds: string[];
+}
+
 export interface OperationalCycleLineageCheck {
   tick: number | null;
   /** Legacy-compatible six-stage verdict. */
@@ -53,6 +62,11 @@ export interface OperationalCycleLineageCheck {
   ownerEvidenceComplete: boolean;
   missingOwnerEvidenceStages: string[];
   invalidOwnerEvidence: string[];
+  /** Cross-journal verification is opt-in for backward-compatible direct callers. */
+  evidenceVerification: 'not-requested'|'verified'|'incomplete';
+  evidenceComplete?: boolean;
+  missingEvidenceRefs: string[];
+  invalidEvidenceRefs: string[];
 }
 
 export interface ExternalObservationProjectionRef { observationId:string; eventId:string; projectionHash:string; projectedAt:number; }
@@ -651,7 +665,11 @@ export class CognitiveEventFabric {
     return{resolved:true,replayed:false,eventId:event.id,projectionHash};
   }
 
-  verifyOperationalCycle(stageIds: OperationalCycleStageIds, ownerReceipts?: readonly CognitiveStageReceipt[]): OperationalCycleLineageCheck {
+  verifyOperationalCycle(
+    stageIds: OperationalCycleStageIds,
+    ownerReceipts?: readonly CognitiveStageReceipt[],
+    runtimeEvidenceEvents?: readonly RuntimeEvidenceLink[],
+  ): OperationalCycleLineageCheck {
     const required = ['observation','prediction','action','outcome','learning','self-update'] as const;
     const optional = ['appraisal','attention','memory','goal','plan'] as const;
     const byId = new Map(this.events.map(event => [event.id, event] as const));
@@ -737,6 +755,117 @@ export class CognitiveEventFabric {
       missingOwnerEvidenceStages.length === 0 &&
       invalidOwnerEvidence.length === 0 &&
       requiredOwnerStages.every(stage => expectedOwnerReceipts.has(stage));
+
+    // Verify that the CEF phase nodes point to real events emitted by the
+    // existing RuntimeEvidenceBus. This is a cross-reference check, not a
+    // second evidence store: the bus remains the owner of these event records.
+    const missingEvidenceRefs: string[] = [];
+    const invalidEvidenceRefs: string[] = [];
+    const evidenceById = new Map<string, RuntimeEvidenceLink>();
+    if (runtimeEvidenceEvents !== undefined) {
+      if (!Array.isArray(runtimeEvidenceEvents) || nodeUtilTypes.isProxy(runtimeEvidenceEvents)) {
+        invalidEvidenceRefs.push('runtime-evidence:not-plain-array');
+      } else {
+        for (const raw of runtimeEvidenceEvents) {
+          if (!raw || typeof raw !== 'object' || Array.isArray(raw) || nodeUtilTypes.isProxy(raw)) {
+            invalidEvidenceRefs.push('runtime-evidence:event-not-plain-record');
+            continue;
+          }
+          const id = ownData(raw, 'id');
+          const tick = ownData(raw, 'tick');
+          const kind = ownData(raw, 'kind');
+          const source = ownData(raw, 'source');
+          const rawParents = ownData(raw, 'parentIds');
+          if (typeof id !== 'string' || !id.trim() || id.length > 180 ||
+              typeof tick !== 'number' || !Number.isSafeInteger(tick) || tick < 0 ||
+              typeof kind !== 'string' || !kind.trim() ||
+              typeof source !== 'string' || !source.trim() ||
+              !Array.isArray(rawParents) || nodeUtilTypes.isProxy(rawParents)) {
+            invalidEvidenceRefs.push('runtime-evidence:event-shape-invalid');
+            continue;
+          }
+          const parentIds = ownArray(rawParents, 8);
+          if (parentIds.length !== rawParents.length ||
+              parentIds.some(parent => typeof parent !== 'string' || !parent.trim() || parent.length > 180)) {
+            invalidEvidenceRefs.push('runtime-evidence:parent-shape-invalid');
+            continue;
+          }
+          if (evidenceById.has(id)) {
+            invalidEvidenceRefs.push('runtime-evidence:duplicate-id');
+            continue;
+          }
+          evidenceById.set(id, { id, tick, kind, source, parentIds: parentIds as string[] });
+        }
+      }
+    }
+
+    const evidenceStageRefs = new Map<'observation'|'prediction'|'action'|'outcome', RuntimeEvidenceLink>();
+    if (runtimeEvidenceEvents !== undefined) {
+      const expectedEvidenceKinds = {
+        observation: 'observation',
+        prediction: 'prediction',
+        action: 'action',
+        outcome: 'outcome',
+      } as const;
+      for (const stage of Object.keys(expectedEvidenceKinds) as Array<keyof typeof expectedEvidenceKinds>) {
+        const node = found.get(stage);
+        const evidenceId = node ? ownData(node.payload, 'evidenceId') : undefined;
+        if (typeof evidenceId !== 'string' || !evidenceId.trim() || evidenceId.length > 180) {
+          missingEvidenceRefs.push(stage + ':evidence-id-missing');
+          continue;
+        }
+        const linked = evidenceById.get(evidenceId);
+        if (!linked) {
+          missingEvidenceRefs.push(stage + ':' + evidenceId);
+          continue;
+        }
+        if (cycleTick === null || linked.tick !== cycleTick) {
+          invalidEvidenceRefs.push(stage + ':tick-mismatch');
+          continue;
+        }
+        if (linked.kind !== expectedEvidenceKinds[stage]) {
+          invalidEvidenceRefs.push(stage + ':kind-mismatch');
+          continue;
+        }
+        evidenceStageRefs.set(stage, linked);
+      }
+
+      const observationRef = evidenceStageRefs.get('observation');
+      const predictionRef = evidenceStageRefs.get('prediction');
+      const actionRef = evidenceStageRefs.get('action');
+      const outcomeRef = evidenceStageRefs.get('outcome');
+      if (observationRef && predictionRef && !predictionRef.parentIds.includes(observationRef.id)) {
+        invalidEvidenceRefs.push('prediction:missing-observation-parent');
+      }
+      if (predictionRef && actionRef && !actionRef.parentIds.includes(predictionRef.id)) {
+        invalidEvidenceRefs.push('action:missing-prediction-parent');
+      }
+      if (observationRef && actionRef) {
+        const riskParent = actionRef.parentIds
+          .map(parentId => evidenceById.get(parentId))
+          .find(parent => parent?.kind === 'action' &&
+            parent.source === 'risk-aware-recovery-controller' &&
+            parent.tick === cycleTick);
+        if (!riskParent) {
+          invalidEvidenceRefs.push('action:missing-risk-parent');
+        } else if (!riskParent.parentIds.includes(observationRef.id)) {
+          invalidEvidenceRefs.push('action:risk-parent-missing-observation');
+        }
+      }
+      if (actionRef && outcomeRef) {
+        if (!outcomeRef.parentIds.includes(actionRef.id)) {
+          invalidEvidenceRefs.push('outcome:missing-action-parent');
+        }
+        if (predictionRef && !outcomeRef.parentIds.includes(predictionRef.id)) {
+          invalidEvidenceRefs.push('outcome:missing-prediction-parent');
+        }
+      }
+    }
+    const evidenceComplete = runtimeEvidenceEvents === undefined
+      ? undefined
+      : missingEvidenceRefs.length === 0 &&
+        invalidEvidenceRefs.length === 0 &&
+        evidenceStageRefs.size === 4;
     const requiredEdges: Array<[OperationalCycleStageName, OperationalCycleStageName, string]> = [
       ['prediction','observation','prediction->observation'],
       ['action','prediction','action->prediction'],
@@ -818,9 +947,13 @@ export class CognitiveEventFabric {
     }
     const fullStageCoverage = (11 - fullMissingStages.length) / 11;
     const fullEdgeCoverage = fullValidEdges / fullEdges.length;
-    const fullIntegrity01 = clamp01(.50 * fullStageCoverage + .50 * fullEdgeCoverage);
+    const evidenceIntegrity01 = runtimeEvidenceEvents === undefined ? 1 : evidenceComplete ? 1 : evidenceStageRefs.size / 4;
+    const fullIntegrity01 = runtimeEvidenceEvents === undefined
+      ? clamp01(.50 * fullStageCoverage + .50 * fullEdgeCoverage)
+      : clamp01(.45 * fullStageCoverage + .45 * fullEdgeCoverage + .10 * evidenceIntegrity01);
     const coreComplete = missingStages.length === 0 && !coreInvalid && coreMissingEdges.length === 0;
-    const fullComplete = fullMissingStages.length === 0 && invalidStages.length === 0 && fullMissingEdges.length === 0;
+    const fullComplete = fullMissingStages.length === 0 && invalidStages.length === 0 && fullMissingEdges.length === 0 &&
+      (runtimeEvidenceEvents === undefined || evidenceComplete === true);
 
     return {
       tick: cycleTick,
@@ -840,6 +973,10 @@ export class CognitiveEventFabric {
       ownerEvidenceComplete,
       missingOwnerEvidenceStages,
       invalidOwnerEvidence,
+      evidenceVerification: runtimeEvidenceEvents === undefined ? 'not-requested' : evidenceComplete ? 'verified' : 'incomplete',
+      ...(evidenceComplete !== undefined ? { evidenceComplete } : {}),
+      missingEvidenceRefs,
+      invalidEvidenceRefs,
     };
   }
 

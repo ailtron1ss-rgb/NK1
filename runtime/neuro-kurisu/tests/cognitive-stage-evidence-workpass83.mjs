@@ -39,6 +39,8 @@ try {
   assert.equal(memoryReceipt.owner, 'MemoryFabric.retrieveForCognition');
 
   const events = runtime.cognitiveEventFabricSnapshot().recent.filter((event) => event.tick === cycle.state.tick);
+  const runtimeEvidence = runtime.evidenceSnapshot();
+  const evidenceById = new Map(runtimeEvidence.recent.map((event) => [event.id, event]));
   const attentionEvent = events.find((event) => event.stage === 'attention');
   const memoryEvent = events.find((event) => event.stage === 'memory');
   assert.ok(attentionEvent, 'runtime must project attention owner evidence into CEF');
@@ -80,6 +82,54 @@ try {
     'completed_empty means retrieval was enabled and returned no rows',
   );
   assert.equal('query' in memoryEvent.payload, false, 'raw user query must not be copied into the cognitive event');
+
+  // The exact event IDs projected into CEF must resolve to the canonical bounded
+  // RuntimeEvidenceBus events for this same tick and expected event kind.
+  const observationEvent = events.find((event) => event.stage === 'observation');
+  const predictionEvent = events.find((event) => event.stage === 'prediction');
+  const actionEvent = events.find((event) => event.stage === 'action');
+  const outcomeEvent = events.find((event) => event.stage === 'outcome');
+  for (const [cefEvent, kind] of [
+    [observationEvent, 'observation'],
+    [predictionEvent, 'prediction'],
+    [actionEvent, 'action'],
+    [outcomeEvent, 'outcome'],
+  ]) {
+    assert.ok(cefEvent, `CEF ${kind} node must exist`);
+    const evidenceId = cefEvent.payload.evidenceId;
+    assert.equal(typeof evidenceId, 'string', `CEF ${kind} node must carry its exact RuntimeEvidenceBus event ID`);
+    const busEvent = evidenceById.get(evidenceId);
+    assert.ok(busEvent, `CEF ${kind} event reference must resolve in RuntimeEvidenceBus`);
+    assert.equal(busEvent.tick, cycle.state.tick, `RuntimeEvidenceBus ${kind} event must belong to this cycle`);
+    assert.equal(busEvent.kind, kind, `RuntimeEvidenceBus ${kind} event kind must match its CEF phase`);
+  }
+  const observationBus = evidenceById.get(observationEvent.payload.evidenceId);
+  const predictionBus = evidenceById.get(predictionEvent.payload.evidenceId);
+  const actionBus = evidenceById.get(actionEvent.payload.evidenceId);
+  const outcomeBus = evidenceById.get(outcomeEvent.payload.evidenceId);
+  assert.ok(predictionBus.parentIds.includes(observationBus.id), 'prediction evidence must descend from the same-cycle observation');
+  assert.ok(actionBus.parentIds.includes(predictionBus.id), 'action evidence must retain the prediction parent');
+  const riskBus = actionBus.parentIds.map((id) => evidenceById.get(id)).find((event) => event?.source === 'risk-aware-recovery-controller');
+  assert.ok(riskBus, 'action evidence must retain the actual risk-controller parent');
+  assert.ok(riskBus.parentIds.includes(observationBus.id), 'risk-controller evidence must descend from observation');
+  assert.ok(outcomeBus.parentIds.includes(actionBus.id), 'outcome evidence must descend from the actual action event');
+  assert.ok(outcomeBus.parentIds.includes(predictionBus.id), 'outcome evidence must preserve its prediction comparison');
+  assert.equal(runtime.unifiedCognitiveCycleSnapshot().lastFullComplete, true, 'full-cycle admission must include cross-fabric evidence verification');
+
+  const beforeDiagnostics = {
+    evidenceTotal: runtime.evidenceSnapshot().total,
+    cefTotal: runtime.cognitiveEventFabricSnapshot().total,
+  };
+  const integration = runtime.cognitiveIntegrationSnapshot();
+  const afterDiagnostics = {
+    evidenceTotal: runtime.evidenceSnapshot().total,
+    cefTotal: runtime.cognitiveEventFabricSnapshot().total,
+  };
+  assert.equal(integration.overallStatus, 'healthy');
+  assert.equal(integration.connectivity.physicalSystems.available, 7);
+  assert.equal(integration.connectivity.subsystemDomains.available, 7);
+  assert.equal(integration.causalIntegration.currentCycle.status, 'verified');
+  assert.deepEqual(afterDiagnostics, beforeDiagnostics, 'read-only integration snapshot must not append to either event fabric');
 
   console.log('COGNITIVE_STAGE_EVIDENCE_W01=PASS');
 } finally {
