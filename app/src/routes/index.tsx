@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { AvatarStage } from "@/components/AvatarStage";
 import { DEFAULT_RENDERER_MANIFESTS } from "@/components/avatar/rendererRegistryDefaults";
-import type { AvatarAssetKind } from "@/components/avatar/rendererCapabilityManifest";
+import { AVATAR_ASSET_KIND_LABELS } from "@/components/avatar/rendererPresentation";
 import { ChatPanel } from "@/components/ChatPanel";
 import { CompactStatus, MindHud } from "@/components/MindHud";
 import { Labs } from "@/components/Labs";
@@ -23,16 +23,6 @@ import { ConscioControlConsole } from "@/components/ConscioControlConsole";
 import { ConstitutionEvolutionConsole } from "@/components/ConstitutionEvolutionConsole";
 
 export const Route = createFileRoute("/")({ component: Home });
-
-const RENDERER_ASSET_LABELS: Record<AvatarAssetKind, string> = {
-  "cubism-model": "Деформируемый риг Cubism",
-  "svg-vector": "SVG-вектор",
-  "sprite-sheet": "Набор статичных PNG-поз",
-  gltf: "Модель GLB / glTF",
-  vrm: "Модель VRM",
-  "layered-depth-rig": "Многослойный 2.5D-риг",
-  none: "Без ассета",
-};
 
 function Home() {
   const snap = useKurisu((s) => s.snap) ?? emptySnapshot();
@@ -144,7 +134,7 @@ function Home() {
                         </span>
                       </div>
                       <p className="mt-2 text-xs text-muted">
-                        {RENDERER_ASSET_LABELS[renderer.assetKind]} · {renderer.channels.length > 0
+                        {AVATAR_ASSET_KIND_LABELS[renderer.assetKind]} · {renderer.channels.length > 0
                           ? `${renderer.channels.length} управляемых каналов`
                           : "Нет управляемых каналов"}
                       </p>
