@@ -122,12 +122,12 @@ const sourceBalancedCandidates = [
 ];
 sourceBalancedWorkspace.compete(sourceBalancedCandidates);
 const sourceAdmission = sourceBalancedWorkspace.diagnostics().admission.admittedBySource;
-assert.equal(sourceAdmission.memory, 32,
-  'a single high-volume source must not consume more than its initial fair share when another source is represented');
+assert.equal(sourceAdmission.memory, 52,
+  'after reserving admission for other sources, remaining capacity may be filled by the strongest candidates');
 assert.equal(sourceAdmission.perception, 12,
   'lower-volume sources must retain admission even when a dominant source emits many higher-salience candidates');
-assert.equal(sourceBalancedWorkspace.diagnostics().admission.admittedCount, 44,
-  'unused admission capacity must remain available rather than fabricating candidates');
+assert.equal(sourceBalancedWorkspace.diagnostics().admission.admittedCount, 64,
+  'the second admission pass must fill remaining capacity with real candidates');
 
 console.log('NK1_GLOBAL_WORKSPACE_ADMISSION=PASS', JSON.stringify({
   orderInvariant: true,
