@@ -5,8 +5,10 @@ import { MemoryConsolidationController } from '../src/organism/memory/MemoryCons
 import { recordAndPersistMetacognitiveEpisode, persistMetacognitiveEpisode } from '../src/organism/memory/MetacognitiveMemoryProjection.ts';
 
 const fabric = new CognitiveEventFabric(128);
+const canonicalDecisionId = 'decision:42:canonical';
 const recordedStages = fabric.recordOperationalCycle({
   tick: 42,
+  decisionId: canonicalDecisionId,
   observation: { source: 'runtime-observation', confidence01: 0.92 },
   prediction: { source: 'runtime-prediction', confidence01: 0.81 },
   appraisal: { source: 'runtime-appraisal', confidence01: 0.88 },
@@ -50,6 +52,7 @@ assert.ok(expectedParentIds.every((id) => typeof id === 'string'));
 const input = {
   tick: 42,
   cycleId: 'cycle-42',
+  decisionId: canonicalDecisionId,
   cycleStageIds,
   actionEventId: cycleStageIds.action,
   observationEventId: cycleStageIds.observation,
@@ -74,6 +77,7 @@ assert.ok(event);
 assert.deepEqual(event.parentIds, expectedParentIds,
   'the metacognitive event must link all eleven verified stages in canonical order');
 assert.equal(event.parentIds.length, 11);
+assert.equal(event.payload.decisionId, canonicalDecisionId);
 const first = recorded.projection;
 assert.ok(first);
 assert.equal(first.stored, true);
@@ -83,7 +87,8 @@ assert.equal(first.memory.epistemicStatus, 'hypothesis');
 assert.equal(first.memory.provenanceClass, 'derived');
 assert.equal(first.memory.context?.sourceEventId, event.id);
 assert.equal(first.memory.context?.observationId, cycleStageIds.observation);
-assert.equal(first.memory.context?.decisionId, cycleStageIds.action);
+assert.equal(first.memory.context?.decisionId, canonicalDecisionId,
+  'MemoryOS2 must retain the decision ID instead of substituting the action event ID');
 assert.deepEqual(JSON.parse(first.memory.context?.causalParentIds ?? 'null'), expectedParentIds,
   'canonical MemoryOS2 episode must retain the complete causal parent set');
 assert.equal(first.memory.context?.outcomeDirection, 'prediction-aligned');
@@ -201,6 +206,7 @@ const legacyCycleStageIds = {
   'self-update': legacyStages.selfUpdate,
 };
 const legacyBaseInput = { ...input };
+delete legacyBaseInput.decisionId;
 delete legacyBaseInput.cycleStageIds;
 const legacyInput = {
   ...legacyBaseInput,

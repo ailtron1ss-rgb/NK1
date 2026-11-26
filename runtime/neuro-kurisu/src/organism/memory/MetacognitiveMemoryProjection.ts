@@ -9,9 +9,13 @@ const HASH = /^[a-f0-9]{64}$/i;
 const REFLECTION_KINDS = new Set(['none', 'calibration', 'contradiction', 'limitation', 'insight']);
 const CORRECTION_DISPOSITIONS = new Set(['none', 'staged', 'accepted', 'rejected', 'rolled-back']);
 const clamp01 = (value: number): number => Math.max(0, Math.min(1, Number.isFinite(value) ? value : 0));
+const validDecisionId = (value: unknown): value is string =>
+  typeof value === 'string' && value.length > 0 && value.length <= 180
+  && value.trim() === value && !/[\\u0000-\\u001f\\u007f]/u.test(value);
 
 type EpisodeProjection = {
   id: string;
+  decisionId?: string;
   tick: number;
   at: number;
   parentIds: string[];
@@ -76,6 +80,7 @@ function readEpisode(raw: unknown): EpisodeProjection | null {
   if (new Set(parentIds).size !== parentIds.length) return null;
 
   const fields = {
+    decisionId: ownData(payload, 'decisionId'),
     cycleIdHash: ownData(payload, 'cycleIdHash'),
     actionEventId: ownData(payload, 'actionEventId'),
     observationEventId: ownData(payload, 'observationEventId'),
@@ -91,8 +96,9 @@ function readEpisode(raw: unknown): EpisodeProjection | null {
     reflectionKind: ownData(payload, 'reflectionKind'),
     correctionDisposition: ownData(payload, 'correctionDisposition'),
   };
-  if (![fields.cycleIdHash, fields.predictedOutcomeHash, fields.observedOutcomeHash,
-    fields.decisionRationaleHash, fields.projectionHash].every(value => typeof value === 'string' && HASH.test(value))
+  if ((fields.decisionId !== undefined && !validDecisionId(fields.decisionId))
+    || ![fields.cycleIdHash, fields.predictedOutcomeHash, fields.observedOutcomeHash,
+      fields.decisionRationaleHash, fields.projectionHash].every(value => typeof value === 'string' && HASH.test(value))
     || ![fields.actionEventId, fields.outcomeEventId, fields.learningEventId].every(value =>
       typeof value === 'string' && value.length > 0 && value.length <= 180)
     || typeof fields.predictionError01 !== 'number' || !Number.isFinite(fields.predictionError01)
@@ -112,6 +118,7 @@ function readEpisode(raw: unknown): EpisodeProjection | null {
 
   return {
     id, tick: tick as number, at, parentIds,
+    ...(fields.decisionId !== undefined ? { decisionId: fields.decisionId as string } : {}),
     cycleIdHash: fields.cycleIdHash as string,
     actionEventId: fields.actionEventId as string,
     observationEventId,
@@ -201,7 +208,7 @@ export function persistMetacognitiveEpisode(
       cycleIdHash: episode.cycleIdHash,
       actionEventId: episode.actionEventId,
       observationId: episode.observationEventId ?? '',
-      decisionId: episode.actionEventId,
+      ...(episode.decisionId ? { decisionId: episode.decisionId } : {}),
       outcomeDirection: episode.predictionError01 >= 0.5 ? 'prediction-mismatch' : 'prediction-aligned',
       predictionEventId: episode.predictionEventId ?? '',
       outcomeEventId: episode.outcomeEventId,
