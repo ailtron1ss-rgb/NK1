@@ -8,16 +8,15 @@
  *
  * The census follows only relative imports of project sources, so it cannot be
  * confused by package imports, type-only re-exports or generated drafts. It
- * never edits files and never promotes anything.
+ * never edits files and never promotes anything. Import parsing is delimiter
+ * based on purpose: no regex escaping can silently disable the scan.
  *
  * Usage:
  *   node scripts/audit-runtime-wiring.mjs                     # human summary
  *   node scripts/audit-runtime-wiring.mjs --json              # JSON only
  *   node scripts/audit-runtime-wiring.mjs --strict            # exit 1 on any orphan
- *   node scripts/audit-runtime-wiring.mjs --strict \\
- *        --baseline scripts/runtime-wiring-baseline.json      # exit 1 on NEW orphans
- *   node scripts/audit-runtime-wiring.mjs \\
- *        --write-baseline scripts/runtime-wiring-baseline.json # refresh the known-orphan set
+ *   node scripts/audit-runtime-wiring.mjs --strict --baseline scripts/runtime-wiring-baseline.json   # exit 1 on NEW orphans
+ *   node scripts/audit-runtime-wiring.mjs --write-baseline scripts/runtime-wiring-baseline.json      # refresh the known-orphan set
  */
 import { readFileSync, readdirSync, existsSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
@@ -56,18 +55,41 @@ const STRUCTURAL_ALLOWLIST = new Set([
   'server/server.mjs',
 ]);
 
-const IMPORT_RE = /(?:^|\\n)\\s*(?:import|export)\\s+(?:type\\s+)?[^;\\n]*?from\\s+['"](\\.[^'"]+)['"]/g;
-const BARE_IMPORT_RE = /(?:^|\\n)\\s*import\\s+['"](\\.[^'"]+)['"]/g;
-const DYNAMIC_IMPORT_RE = /import\\(\\s*['"](\\.[^"']+)['"]\\s*\\)/g;
+const SOURCE_EXTENSIONS = ['.ts', '.tsx', '.mjs', '.js'];
+
+const isSourceFile = name => SOURCE_EXTENSIONS.some(extension => name.endsWith(extension));
 
 function walk(dir, out = []) {
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     if (entry.name === 'node_modules' || entry.name.startsWith('.')) continue;
     const full = path.join(dir, entry.name);
     if (entry.isDirectory()) walk(full, out);
-    else if (entry.isFile() && /\\.(ts|tsx|mjs|js)$/.test(entry.name)) out.push(full);
+    else if (entry.isFile() && isSourceFile(entry.name)) out.push(full);
   }
   return out;
+}
+
+/** Extract the quoted specifier that follows `from`, a bare `import`, or `import(`. */
+function relativeSpecifiersIn(text) {
+  const specifiers = new Set();
+  const push = value => {
+    const specifier = value.trim();
+    if (specifier.startsWith("'") && specifier.endsWith("'") && specifier.length > 2) specifiers.add(specifier.slice(1, -1));
+    if (specifier.startsWith('"') && specifier.endsWith('"') && specifier.length > 2) specifiers.add(specifier.slice(1, -1));
+  };
+  for (const line of text.split(String.fromCharCode(10))) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('//') || trimmed.startsWith('*') || trimmed.startsWith('/*')) continue;
+    const fromAt = trimmed.indexOf('from ');
+    if (fromAt >= 0) push(trimmed.slice(fromAt + 5).replace(/;+$/, ''));
+    else if (trimmed.startsWith('import ') || trimmed.startsWith('export ')) {
+      const after = trimmed.slice(trimmed.indexOf(' ') + 1);
+      if (after.startsWith("'") || after.startsWith('"')) push(after.replace(/;+$/, ''));
+    }
+    const dynamicAt = trimmed.indexOf('import(');
+    if (dynamicAt >= 0) push(trimmed.slice(dynamicAt + 7).replace(/[)];*$/, ''));
+  }
+  return [...specifiers].filter(specifier => specifier.startsWith('.'));
 }
 
 function resolveSpecifier(fromFile, specifier) {
@@ -75,21 +97,14 @@ function resolveSpecifier(fromFile, specifier) {
   const candidates = [base, `${base}.ts`, `${base}.tsx`, `${base}.mjs`, `${base}.js`,
     path.join(base, 'index.ts'), path.join(base, 'index.mjs')];
   for (const candidate of candidates) {
-    if (existsSync(candidate) && /\\.(ts|tsx|mjs|js)$/.test(candidate)) return candidate;
+    if (existsSync(candidate) && isSourceFile(candidate)) return candidate;
   }
   return null;
 }
 
 function importsOf(file) {
-  const text = readFileSync(file, 'utf8');
-  const specifiers = new Set();
-  for (const re of [IMPORT_RE, BARE_IMPORT_RE, DYNAMIC_IMPORT_RE]) {
-    re.lastIndex = 0;
-    let match;
-    while ((match = re.exec(text))) specifiers.add(match[1]);
-  }
   const resolved = [];
-  for (const specifier of specifiers) {
+  for (const specifier of relativeSpecifiersIn(readFileSync(file, 'utf8'))) {
     const target = resolveSpecifier(file, specifier);
     if (target) resolved.push(target);
   }
@@ -122,7 +137,7 @@ while (queue.length) {
 
 const canonicalFiles = allFiles.filter(file => {
   const relative = path.relative(srcRoot, file).split(path.sep).join('/');
-  if (!/\\.tsx?$/.test(relative)) return false;
+  if (!relative.endsWith('.ts') && !relative.endsWith('.tsx')) return false;
   if (STRUCTURAL_ALLOWLIST.has(relative)) return false;
   return CANONICAL_DIRS.some(dir => relative.startsWith(`${dir}/`));
 });
@@ -160,7 +175,8 @@ let newOrphans = [];
 let resolvedOrphans = [];
 if (baselinePath) {
   if (args.has('--write-baseline')) {
-    writeFileSync(path.resolve(root, baselinePath), `${JSON.stringify({ version: 1, note: 'Known unconnected canonical modules; shrink this list, never grow it.', orphans }, null, 2)}\\n`);
+    const body = JSON.stringify({ version: 1, note: 'Known unconnected canonical modules; shrink this list, never grow it.', orphans }, null, 2);
+    writeFileSync(path.resolve(root, baselinePath), `${body}\n`);
     console.log(`WIRING_BASELINE_WRITTEN=${baselinePath} orphans=${orphans.length}`);
   } else {
     const baselineFile = path.resolve(root, baselinePath);
