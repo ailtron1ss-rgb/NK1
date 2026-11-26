@@ -35,17 +35,35 @@ export class OrganismAspectFabric {
   branchProvenance() {
     return this.graph.manifest.aspects.map(a=>({ n:a.n, id:a.id, system:a.system, branches:a.branches }));
   }
-  health():{ ok:boolean; graph:GraphHealth; systems:SystemHealth; subsystems:SubsystemHealth; missingSystems:AspectFabricSystem[]; coverage:SystemCoverage } {
+  health():{
+    ok:boolean;
+    graph:GraphHealth;
+    systems:SystemHealth;
+    subsystems:SubsystemHealth;
+    missingSystems:AspectFabricSystem[];
+    missingSubsystems:SubsystemHealth[number]['name'][];
+    coverage:SystemCoverage;
+  } {
     const graph=this.graph.health();
     const systems=this.systems.health();
     const subsystems=this.subsystems?.health()??[];
     const present=new Set(systems.filter(s=>s.available).map(s=>s.systemName));
     const missingSystems=this.graph.manifest.systems.filter(s=>!present.has(s.id)).map(s=>s.id);
-    return { ok:graph.ok&&missingSystems.length===0, graph, systems, subsystems, missingSystems, coverage:this.systemCoverage() };
+    const missingSubsystems=subsystems.filter(s=>!s.available).map(s=>s.name);
+    // A connected aspect graph is not a healthy runtime when any real owner port
+    // is unavailable. With no registry attached, preserve the legacy graph +
+    // physical-system check.
+    const ok=graph.ok&&missingSystems.length===0&&missingSubsystems.length===0;
+    return { ok, graph, systems, subsystems, missingSystems, missingSubsystems, coverage:this.systemCoverage() };
   }
   assertConnected() {
     const health=this.health();
-    if(!health.ok) throw new Error(`aspect-fabric-not-connected:${health.missingSystems.join(',')||health.graph.errors.join('; ')}`);
+    const failures=[
+      ...health.missingSystems,
+      ...health.missingSubsystems.map(name=>`subsystem:${name}`),
+      ...health.graph.errors,
+    ];
+    if(!health.ok) throw new Error(`aspect-fabric-not-connected:${failures.join(',')||'unknown-health-failure'}`);
     return health;
   }
   snapshot():OrganismAspectFabricSnapshot {
