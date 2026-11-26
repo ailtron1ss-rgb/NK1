@@ -298,4 +298,57 @@ async function expectReject(promise, pattern) {
   await host.stopAll();
 }
 
+// A module sees only capabilities it both requested and the host granted;
+// unrelated host grants must not leak into its runtime context.
+{
+  const host = runtime({ grants: { 'memory.index': ['memory.read', 'world.admin'] } });
+  const events = [];
+  const fixture = moduleFixture('memory.index', events);
+  host.register({
+    manifest: manifest('memory.index', { capabilities: ['memory.read'] }),
+    factory: () => fixture.module,
+  });
+  await host.activate('memory.index');
+  assert.deepEqual(fixture.contextLog[0].grantedCapabilities, ['memory.read']);
+  assert.equal(fixture.contextLog[0].hasCapability('world.admin'), false);
+  await host.stopAll();
+}
+
+// Quiesce can fail after partially suspending work. The host must ask the
+// module to resume and retain the active state only when resume succeeds.
+{
+  const events = [];
+  const fixture = moduleFixture('world.model', events);
+  fixture.module.quiesce = () => {
+    events.push('quiesce:world.model');
+    throw new Error('quiesce-half-failed');
+  };
+  const host = runtime();
+  host.register({ manifest: manifest('world.model'), factory: () => fixture.module });
+  await host.activate('world.model');
+  await expectReject(host.deactivate('world.model'), /module-quiesce-failed/);
+  assert.equal(statusOf(host, 'world.model'), 'active');
+  assert.ok(events.includes('resume:world.model'));
+  assert.ok(!events.includes('shutdown:world.model'));
+}
+
+// Once shutdown has been entered, a thrown shutdown cannot safely be reported
+// as active merely because resume was called: the module is quarantined.
+{
+  const events = [];
+  const store = memoryStore();
+  const fixture = moduleFixture('memory.index', events);
+  fixture.module.shutdown = () => {
+    events.push('shutdown:memory.index');
+    throw new Error('shutdown-partial-failure');
+  };
+  const host = runtime({ stateStore: store });
+  host.register({ manifest: manifest('memory.index'), factory: () => fixture.module });
+  await host.activate('memory.index');
+  await expectReject(host.deactivate('memory.index'), /module-shutdown-failed/);
+  assert.equal(statusOf(host, 'memory.index'), 'failed');
+  assert.equal(store.rows.get('memory.index').state.value, 0);
+  assert.ok(!events.includes('resume:memory.index'));
+}
+
 console.log('COGNITIVE_MODULE_RUNTIME=PASS');
