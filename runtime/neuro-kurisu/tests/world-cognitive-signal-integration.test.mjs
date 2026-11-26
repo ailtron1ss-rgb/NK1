@@ -739,3 +739,66 @@ test('OrganismCore passes the real read-only world projection through appraisal,
   assert.equal(core.organismSystemFabric.world, worldOwner,
     'all consumers must read one canonical WorldSubsystemRuntime owner');
 });
+
+test('world model continuity survives restart with the last P27 latent and prior observation context', () => {
+  const original = new WorldSubsystemRuntime();
+  const firstContext = {
+    tick: 5,
+    location: 'lab-west',
+    energy: .88,
+    attention: .74,
+    uncertainty: .16,
+    facts: ['west door is closed'],
+    objects: [],
+    events: ['door-observed'],
+  };
+  original.observeGroundedContext(firstContext);
+  const persisted = original.snapshot();
+  const learning = original.worldLearningSnapshot();
+
+  const restored = new WorldSubsystemRuntime();
+  restored.restoreFromPersisted({
+    persisted: { worldModel: persisted.world },
+    cognition: {
+      residualWorld: persisted.residualWorld,
+      contextualWorld: persisted.contextualWorld,
+      p27: persisted.p27,
+      brainSubstrate: persisted.brainSubstrate,
+    },
+    advanced: {
+      worldModel2: persisted.worldModel2,
+      unifiedLatentWorldState: persisted.unifiedLatentWorldState,
+      groundedWorld: persisted.groundedWorld,
+      p83PersistentRealityModel: persisted.p83PersistentRealityModel,
+      worldModelEnsemble: persisted.worldModelEnsemble,
+      worldLearning: learning,
+    },
+    consciousness: { activeInference: persisted.activeInference },
+    learning: { p44PredictiveWorld: persisted.p44 },
+  });
+
+  assert.deepEqual(
+    restored.worldLearningSnapshot().p27Latent.vector,
+    persisted.p27.latent.vector,
+    'the runtime must resume from the restored P27 latent, not the constructor default',
+  );
+  assert.deepEqual(
+    restored.unifiedLatentWorldState.currentObservation()?.context,
+    firstContext,
+    'the prior canonical world observation must remain available as the next transition baseline',
+  );
+
+  const priorPassiveUpdates = restored.worldLearningSnapshot().stats.passiveUpdates;
+  restored.observeGroundedContext({
+    ...firstContext,
+    tick: 6,
+    energy: .72,
+    facts: ['west door is open'],
+    events: ['door-state-changed'],
+  });
+  assert.equal(
+    restored.worldLearningSnapshot().stats.passiveUpdates,
+    priorPassiveUpdates + 1,
+    'the first post-restart observation must be compared with the restored world context',
+  );
+});

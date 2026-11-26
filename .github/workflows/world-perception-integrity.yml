@@ -39,6 +39,8 @@ on:
       - "runtime/neuro-kurisu/tests/world-perception-runtime-ingress.mjs"
       - "runtime/neuro-kurisu/package.json"
       - ".github/workflows/world-perception-integrity.yml"
+      - "runtime/neuro-kurisu/src/organism/core/WorldSubsystemRuntime.ts"
+      - "runtime/neuro-kurisu/tests/world-cognitive-signal-integration.test.mjs"
   pull_request:
     paths:
       - "runtime/neuro-kurisu/src/organism/cognition/PerceptionEngine.ts"
@@ -73,6 +75,8 @@ on:
       - "runtime/neuro-kurisu/tests/world-perception-delta-integrity.mjs"
       - "runtime/neuro-kurisu/package.json"
       - ".github/workflows/world-perception-integrity.yml"
+      - "runtime/neuro-kurisu/src/organism/core/WorldSubsystemRuntime.ts"
+      - "runtime/neuro-kurisu/tests/world-cognitive-signal-integration.test.mjs"
 
 permissions:
   contents: read
@@ -155,6 +159,9 @@ jobs:
       - name: Verify freshness-aware grounded world projection
         working-directory: runtime/neuro-kurisu
         run: node --experimental-strip-types --test tests/world-belief-projection.test.mjs
+      - name: Verify world latent and observation continuity across restart
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types --test tests/world-cognitive-signal-integration.test.mjs
       - name: Type-check canonical runtime
         if: always()
         working-directory: runtime/neuro-kurisu
