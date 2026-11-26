@@ -24,10 +24,11 @@ Base: `workpass70-source @ 9008a8982a5173304456bee2c604bd0bc8665964`
 `createCodeAssimilationSourceCandidateAuthorizationV1` composes the workspace host-admission callback with the existing Code Assimilation evidence verifier:
 
 1. A process-authenticated Ed25519 source-provenance receipt must bind the exact candidate ID, candidate fingerprint, source fingerprint, and source subject.
-2. A process-authenticated license-decision receipt must bind the same candidate and explicitly permit `modify`. A declared license string or a `study`-only / `research-only` receipt is insufficient.
-3. The workspace base SHA must equal the candidate's `baseRuntimeSha`.
-4. A mandatory host-owned verifier must independently confirm the supplied before-tree fingerprint belongs to that exact trusted checkout. False, throwing, or unavailable verification denies materialization.
-5. The returned admission receipt binds the deterministic workspace candidate ID, base SHA, and edit-set fingerprint.
+2. A process-authenticated SBOM receipt from the `sbom-scanner` role must bind the same candidate, exact dependency-lock fingerprint, and exact SBOM fingerprint. Missing dependency-lock/SBOM fingerprints or a missing/cross-candidate SBOM receipt deny modification.
+3. A process-authenticated license-decision receipt must bind the same candidate and explicitly permit `modify`. A declared license string, `study`-only / `research-only` receipt, or `execute` permission without `modify` is insufficient.
+4. The workspace base SHA must equal the candidate's `baseRuntimeSha`.
+5. A mandatory host-owned verifier must independently confirm the supplied before-tree fingerprint belongs to that exact trusted checkout. False, throwing, or unavailable verification denies materialization.
+6. The returned admission receipt binds the deterministic workspace candidate ID, base SHA, and edit-set fingerprint.
 
 Receipts copied through JSON or restored across a process boundary are not authenticated by the current process-local receipt registry; persisted evidence must be verified again from its signed artifact before constructing the adapter. The adapter authorizes only modification into the non-executing candidate workspace. Execution, build, installation, activation, deployment, and redistribution remain separate gates.
 
