@@ -80,10 +80,12 @@ function memoryDelegate(seed = null) {
 // it does not silently replace the previous module snapshot or fail Core save.
 {
   const delegate = memoryDelegate();
+  let failSnapshot = true;
   const host = createCognitiveModuleRuntimePersistence(delegate, [{
     manifest: manifest('memory.unavailable'),
     factory: () => ({
-      initialize() {}, health: () => true, snapshot() { throw new Error('snapshot-unavailable'); },
+      initialize() {}, health: () => true,
+      snapshot() { if (failSnapshot) { failSnapshot = false; throw new Error('snapshot-unavailable'); } return { value: 1 }; },
       restore() {}, quiesce() {}, resume() {}, shutdown() {},
     }),
   }]);
