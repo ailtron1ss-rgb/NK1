@@ -247,6 +247,9 @@ export class GroundedWorldState {
     }
     const rawAction=ownDataValue(input,'embodiedAction');
     const actionResult=isPlainDataRecord(rawAction)?rawAction as unknown as EmbodiedActionResult:null;
+    if(!actionResult){
+      return {revision:this.state.revision,eventId:'',confidence01:0,verified01:0,independent01:0,lastHash:this.state.lastHash};
+    }
     const rawVerification=ownDataValue(input,'postconditionVerification');
     const verification=isPlainDataRecord(rawVerification)?rawVerification as unknown as OutcomeVerification:null;
     const atRaw=actionResult?ownDataValue(actionResult,'at'):undefined;
