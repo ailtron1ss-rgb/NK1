@@ -113,6 +113,7 @@ try {
     'the canonical manifest must have a SHA-256 digest');
   const tamperedJournalOffset=structuredClone(envelope);
   tamperedJournalOffset.journalOffset.activeSegmentBytes+=1;
+  tamperedJournalOffset.journalOffset.retainedBytes+=1;
   assert.equal(validateRuntimeCheckpointEnvelope(tamperedJournalOffset).reason,'envelope-manifest-hash-mismatch',
     'a journal offset mutation must invalidate the complete generation manifest');
   assert.equal(envelope.coreTick,persisted.state.tick,
