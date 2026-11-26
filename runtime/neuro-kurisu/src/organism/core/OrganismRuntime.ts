@@ -7,8 +7,7 @@ import { externalGoalForRuntimeInput, normalizeRuntimeExternalPluginSource, shou
 import { normalizeWorldContext } from './WorldContextNormalizer.ts';
 import { FileStateStore, registerFileWorkspaceUndoFirstTools } from '../persistence/FileStateStore.ts';
 import { OrganismCore, type OrganismConfig, type PersistedOrganism } from './OrganismCore.ts';
-import type { CognitiveModuleRuntime } from './CognitiveModuleRuntime.ts';
-import { CognitiveModuleCheckpointStore } from './CognitiveModuleCheckpointStore.ts';
+import { connectCognitiveModuleRuntimeCheckpoint, type CognitiveModuleRuntimeHost } from './CognitiveModuleCheckpointStore.ts';
 import { WorldEnvironment, type EnvironmentAction, type PersistedWorld } from '../world/WorldEnvironment.ts';
 import { PlanEngine } from '../world/PlanEngine.ts';
 import { OfflineConsolidation, type ConsolidationResult } from '../cognition/OfflineConsolidation.ts';
@@ -200,7 +199,7 @@ export interface RuntimeConfig extends OrganismConfig {
   ) => Promise<SynapticAdapterLanguageResponse>;
   stateStore?: JsonStateStore<PersistedOrganism>;
   /** Optional host-registered modules; when supplied, their state is checkpointed inside PersistedOrganism.system. */
-  cognitiveModuleRuntime?: CognitiveModuleRuntime;
+  cognitiveModuleRuntime?: CognitiveModuleRuntimeHost;
   /** Host-owned monitor instance; structural injection avoids a core-to-cognition dependency edge. */
   cognitiveHealthSystem?: RuntimeCognitiveHealthMonitor;
   /** Optional canonical-ledger adapter; missing evidence remains unknown, never a healthy sample. */
@@ -379,8 +378,8 @@ export class OrganismRuntime {
   readonly embodiedActions = new EmbodiedActionExecutor(this.embodiment);
   readonly embodiedRecovery = new EmbodiedRecoveryController();
   private readonly config: Required<Pick<RuntimeConfig, 'intervalMs'|'enableLanguage'>> & RuntimeConfig;
-  private readonly cognitiveModuleRuntime: CognitiveModuleRuntime | null;
-  private readonly cognitiveModuleCheckpointStore: CognitiveModuleCheckpointStore | null;
+  private readonly cognitiveModuleRuntime: CognitiveModuleRuntimeHost | null;
+  private readonly cognitiveModuleCheckpointStore: ReturnType<typeof connectCognitiveModuleRuntimeCheckpoint> | null;
   private readonly temporalObjectTracker = new TemporalObjectTracker();
   private readonly mem0Adapter: Mem0PlatformAdapter;
   private readonly mem0CognitiveRecallEnabled: boolean;
@@ -501,12 +500,8 @@ export class OrganismRuntime {
     const canonicalStateStore = config.stateStore ?? new FileStateStore<PersistedOrganism>(config.stateFile);
     this.cognitiveModuleRuntime = config.cognitiveModuleRuntime ?? null;
     this.cognitiveModuleCheckpointStore = this.cognitiveModuleRuntime
-      ? new CognitiveModuleCheckpointStore(canonicalStateStore)
+      ? connectCognitiveModuleRuntimeCheckpoint(this.cognitiveModuleRuntime, canonicalStateStore)
       : null;
-    if (this.cognitiveModuleRuntime && this.cognitiveModuleCheckpointStore) {
-      this.cognitiveModuleRuntime.bindStateStore(this.cognitiveModuleCheckpointStore.moduleStateStore);
-      this.cognitiveModuleCheckpointStore.bindSnapshotProvider(() => this.cognitiveModuleRuntime!.snapshotAll());
-    }
     const stateStore = this.cognitiveModuleCheckpointStore ?? canonicalStateStore;
     this.core = new OrganismCore(stateStore, { ...config, cycleResultMode:'operational' });
     this.undoFirstWorkspaceRoot = canonicalStateStore instanceof FileStateStore ? canonicalStateStore.siblingPath('workspace') : null;
