@@ -7,6 +7,20 @@ on:
       - 'runtime/neuro-kurisu/src/organism/core/CognitiveSubsystemPorts.ts'
       - 'runtime/neuro-kurisu/src/organism/core/CognitiveSubsystemFacade.ts'
       - 'runtime/neuro-kurisu/src/organism/core/OrganismCore.ts'
+      - 'runtime/neuro-kurisu/src/organism/core/MemorySubsystemRuntime.ts'
+      - 'runtime/neuro-kurisu/src/organism/memory/MemoryFabric.ts'
+      - 'runtime/neuro-kurisu/src/organism/developmental/MemorySubstrateCoordinator.ts'
+      - 'runtime/neuro-kurisu/src/organism/developmental/MemoryOS2.ts'
+      - 'runtime/neuro-kurisu/src/organism/memory/CanonicalMemoryLifecycleAuthority.ts'
+      - 'runtime/neuro-kurisu/tests/big-pass-52-memory-fabric.mjs'
+      - 'runtime/neuro-kurisu/tests/memory-substrate-coordinator.mjs'
+      - 'runtime/neuro-kurisu/tests/memory-subsystem-state-roundtrip-workpass570.mjs'
+      - 'runtime/neuro-kurisu/tests/p2855-r5-memory-lifecycle-authority.mjs'
+      - 'runtime/neuro-kurisu/tests/memory-lifecycle-command-workpass31.mjs'
+      - 'runtime/neuro-kurisu/tests/memoryos2-capacity-lifecycle-integrity.mjs'
+      - 'runtime/neuro-kurisu/tests/memory-encode-overflow-projection-reconcile.mjs'
+      - 'runtime/neuro-kurisu/tests/memory-restore-duplicate-identity.mjs'
+      - 'runtime/neuro-kurisu/tests/memory-restore-shape-hardening.mjs'
       - 'runtime/neuro-kurisu/tests/cognitive-subsystem-port-probes-20261124.mjs'
       - '.github/workflows/nk1-cognitive-port-readonly-regression.yml'
 permissions:
@@ -36,3 +50,19 @@ jobs:
         run: npm run test:big-pass-59
       - name: Runtime typecheck
         run: npm run typecheck
+      - name: Canonical MemoryFabric write and retrieval contract
+        run: npm run test:big-pass-52-memory-fabric
+      - name: Memory compatibility projection parity
+        run: npm run test:memory-substrate
+      - name: Single memory owner restore and lifecycle roundtrip
+        run: npm run test:memory-subsystem-state-roundtrip
+      - name: Memory lifecycle authority and hostile restore boundary
+        run: npm run test:r5:memory-lifecycle
+      - name: Memory lifecycle command receipts
+        run: npm run test:memory-lifecycle-command-workpass31
+      - name: Memory duplicate and hostile restore integrity
+        run: npm run test:memory-restore-integrity
+      - name: MemoryOS2 capacity and lifecycle invariants
+        run: npm run test:memoryos2-capacity-lifecycle-integrity
+      - name: Memory encode overflow and projection reconciliation
+        run: npm run test:memory-encode-overflow-projection-reconcile
