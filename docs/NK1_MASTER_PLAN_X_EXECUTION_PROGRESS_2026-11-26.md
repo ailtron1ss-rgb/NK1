@@ -2,7 +2,7 @@
 
 **Дата среза:** 26 ноября 2026 года  
 **Источник требований:** Library / «Мастер план x.docx», Master Plan X / 2.0  
-**Канонический источник:** `workpass70-source@9008a8982a5173304456bee2c604bd0bc8665964`  
+**Канонический источник:** `workpass70-source@29ab13c98b3a603bc1667a99fffb8ee33dc9560d`  
 **Назначение:** единый точный счётчик уникальных задач T3-001–T3-144. Это не новая дорожная карта и не замена исходному Master Plan X.
 
 ## Правило зачёта
@@ -22,7 +22,7 @@
 | Уникальных T3-задач в плане | 144 |
 | Полностью завершено и доказано в canonical source | **0 / 144 (0%)** |
 | Проверено на точном HEAD открытого PR | 8 / 144 (5,56%) |
-| Точный PR-head CI зелёный, но код не в source | 6 / 144 (4,17%) |
+| Точный PR-head CI зелёный (первоначальный аудит) | 6 / 144 (4,17%) |
 | PR-head CI имеет ошибки | 2 / 144 (1,39%) |
 | Не проверено в этом первом проходе | 136 / 144 (94,44%) |
 
@@ -33,7 +33,7 @@
 | T3 | Направление | PR | Точный HEAD | Actions |
 |---|---|---:|---|---:|
 | T3-020 | Current-cycle workspace | [#1186](https://github.com/ailtron1ss-rgb/NK1/pull/1186) | `a29e67f6…` | 73/73 PASS |
-| T3-022 | CEF monotonic order / logical time | [#1189](https://github.com/ailtron1ss-rgb/NK1/pull/1189) | `9b131d1b…` | 66/66 PASS |
+| T3-022 | CEF monotonic order / logical time | [#1189](https://github.com/ailtron1ss-rgb/NK1/pull/1189) — **MERGED** | `9b131d1b…` → `29ab13c9…` | 66/66 PR-head PASS; post-merge 5/30 PASS, остальные running/queued |
 | T3-029 | Runtime checkpoint generation | [#1170](https://github.com/ailtron1ss-rgb/NK1/pull/1170) | `2095bce3…` | 75/75 PASS |
 | T3-031 | Crash-safe continuity journal | [#1174](https://github.com/ailtron1ss-rgb/NK1/pull/1174) | `e1f83557…` | 76/76 PASS |
 | T3-050 | Initiative lease / retry | [#1181](https://github.com/ailtron1ss-rgb/NK1/pull/1181) | `974c885b…` | 77/78; 1 failure |
@@ -41,7 +41,7 @@
 | T3-086 | World → appraisal/attention | [#1175](https://github.com/ailtron1ss-rgb/NK1/pull/1175) | `0d3b3824…` | 46/49; 3 failures |
 | T3-118 | Plugin/cognitive immune quarantine | [#1169](https://github.com/ailtron1ss-rgb/NK1/pull/1169) | `ed40b0a6…` | 23/23 PASS, but stacked on #1170 |
 
-Все перечисленные PR открыты и не включены в canonical source. #1186, #1170, #1174, #1182 остаются Draft; #1189 открыт не Draft. #1169 зависит от #1170 и не является самостоятельным PR поверх source. #1175 имеет `mergeable=false` и три ошибки; #1181 имеет одну ошибку. Не сливать до устранения причин и повторного exact-head CI.
+Обновление после merge: #1189 слит в `workpass70-source` коммитом `29ab13c98b3a603bc1667a99fffb8ee33dc9560d`. Post-merge Actions на этом exact SHA: 30 всего, 5 success, 0 failures, 19 in progress, 6 queued на момент последней проверки. Пока workflow не завершатся, T3-022 остаётся `MERGED_AWAITING_POST_MERGE_CI`, не `VERIFIED_COMPLETE`. Остальные PR остаются открыты: #1186, #1170, #1174, #1182 — Draft; #1169 зависит от #1170; #1175 имеет `mergeable=false` и три ошибки; #1181 имеет одну ошибку.
 
 ## Исправления структуры волн
 
@@ -59,7 +59,7 @@
 
 ## Baseline и Release
 
-- Source: `workpass70-source@9008a8982a5173304456bee2c604bd0bc8665964`.
+- Source: `workpass70-source@29ab13c98b3a603bc1667a99fffb8ee33dc9560d` (T3-022 merge).
 - `main@06e01cdd0a8e60ed70991f22e842887f544d1ebf` — отдельный release/metadata контур; не переносить source work напрямую в main.
 - Последний Release на момент сверки: [NeuroKurisu0.1 / tag Neuro](https://github.com/ailtron1ss-rgb/NK1/releases/tag/Neuro), 19 октября 2026.
 - ZIP metadata digest: `c5cf6a63661e28b30f976d03c8839a231341d73a09489b9066f062e29b224286`; независимое извлечение и source/ZIP parity остаются `UNVERIFIED`.
