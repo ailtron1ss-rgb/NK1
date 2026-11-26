@@ -1,4 +1,4 @@
-# NK1 — Cognitive Module Runtime (предпусковой контракт)
+# NK1 — Cognitive Module Runtime (lifecycle + canonical checkpoint integration)
 
 **Дата:** 26 ноября 2026  
 **Каноническая база:** workpass70-source@7e601680c765d6dc94e51e4c8f5e729b48a6f56e  
@@ -128,7 +128,7 @@ Envelope связывает module ID и module version, state schema version, t
 | Capability отсутствует | Fail-closed до factory |
 | Ошибка load / migration / restore / initialize | Модуль получает статус failed |
 | Ошибка quiesce / snapshot / durable save при штатной остановке | Вызывает resume; остаётся active только если resume прошёл |
-| Ошибка `snapshotAll()` на обычном checkpoint | Сохраняет последний успешный envelope, фиксирует `snapshotFailures`, не останавливает модуль и не блокирует checkpoint организма |
+| Ошибка `snapshotAll()` на обычном checkpoint | Сохраняет предыдущую durable generation, отклоняет текущий checkpoint целиком, оставляет модуль active и показывает ошибку в diagnostics |
 | Ошибка resume после неудачной остановки | Статус failed |
 | Ошибка shutdown после сохранения | Состояние уже сохранено; экземпляр помечается failed, его нельзя объявлять active |
 | Ошибка health | Health result unhealthy, runtime не скрывает ошибку |
