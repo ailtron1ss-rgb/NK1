@@ -49,6 +49,34 @@ try {
   await page.addInitScript(() => {
     window.__nkAvatarSpriteDraws = [];
     window.__nkAvatarPointerTrace = [];
+    window.__nkOriginalPointerTrace = [];
+    const traceOriginalPointer = (event) => {
+      if (!(event.target instanceof Element)) return;
+      const stage = event.target.closest('[data-testid="kurisu-original-stage"]');
+      if (!stage) return;
+      const svg = stage.querySelector('svg[role="img"]');
+      const rect = svg?.getBoundingClientRect();
+      const top = document.elementFromPoint(event.clientX, event.clientY);
+      window.__nkOriginalPointerTrace.push({
+        type: event.type,
+        button: event.button,
+        pointerId: event.pointerId,
+        pointerType: event.pointerType,
+        isPrimary: event.isPrimary,
+        x: Math.round(event.clientX),
+        y: Math.round(event.clientY),
+        target: event.target.tagName,
+        targetInsideSvg: Boolean(svg && event.target instanceof Node && svg.contains(event.target)),
+        svgRect: rect ? { x: rect.x, y: rect.y, width: rect.width, height: rect.height } : null,
+        normalized: rect && rect.width > 0 && rect.height > 0
+          ? { x: (event.clientX - rect.left) / rect.width, y: (event.clientY - rect.top) / rect.height }
+          : null,
+        topElement: top ? { tag: top.tagName, aria: top.getAttribute?.("aria-label"), testId: top.getAttribute?.("data-testid") } : null,
+      });
+    };
+    for (const type of ["pointerdown", "pointerup", "pointercancel"]) {
+      document.addEventListener(type, traceOriginalPointer, true);
+    }
     const tracePointer = (event) => {
       const target = event.target;
       if (!(target instanceof HTMLCanvasElement)
@@ -149,6 +177,27 @@ try {
   await originalSvg.click({ position: { x: originalBounds.width * 0.5, y: originalBounds.height * 0.22 } });
   const originalDesktopHeadDeadline = Date.now() + timeoutMs;
   while (observedEvents.length < 5 && Date.now() < originalDesktopHeadDeadline) await page.waitForTimeout(50);
+  if (observedEvents.length < 5) {
+    const diagnostics = await page.evaluate(() => {
+      const stage = document.querySelector('[data-testid="kurisu-original-stage"]');
+      const svg = stage?.querySelector('svg[role="img"]');
+      const rect = svg?.getBoundingClientRect();
+      const x = rect ? rect.left + rect.width * 0.5 : 0;
+      const y = rect ? rect.top + rect.height * 0.22 : 0;
+      const top = document.elementFromPoint(x, y);
+      return {
+        eventCount: window.__nkOriginalPointerTrace?.length ?? 0,
+        pointerTrace: window.__nkOriginalPointerTrace ?? [],
+        stageRect: stage?.getBoundingClientRect().toJSON() ?? null,
+        svgRect: rect?.toJSON() ?? null,
+        expectedClick: { x, y, topElement: top ? { tag: top.tagName, aria: top.getAttribute?.("aria-label"), testId: top.getAttribute?.("data-testid") } : null },
+        observedEventCount: window.__nkAvatarObservedContacts?.length ?? null,
+      };
+    });
+    const screenshotPath = `${process.env.RUNNER_TEMP ?? process.cwd()}/nk1-original-contact-debug.png`;
+    await page.screenshot({ path: screenshotPath, fullPage: true }).catch(() => undefined);
+    console.error("[avatar-contact] Original SVG pointer diagnostics", JSON.stringify({ ...diagnostics, screenshotPath, observedEvents: observedEvents.length }));
+  }
   assert.equal(observedEvents[4]?.interaction?.zone, "head",
     "Original 2D SVG face tap must reach the canonical avatar-contact protocol");
   await page.waitForTimeout(1_600);
