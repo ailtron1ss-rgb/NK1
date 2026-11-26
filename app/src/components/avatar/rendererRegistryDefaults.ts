@@ -1,5 +1,5 @@
 /**
- * Canonical default body-renderer manifests for the four wired UI modes.
+ * Canonical manifests for the four wired renderer adapters.
  *
  * These describe what each renderer actually applies today. They are the single
  * source of truth consumed by `embodimentUiBridge`, so a renderer's declared
