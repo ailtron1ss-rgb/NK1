@@ -36,6 +36,8 @@ export interface EmbodimentIntentV1 {
   type: "kurisu_embodiment_intent";
   protocolVersion: 1;
   stateVersion: number;
+  /** Optional canonical organism tick; distinct from the monotonically increasing transport stateVersion. */
+  frameTick?: number;
   sentAtEpochMs: number;
   speechEventId: string | null;
   audioClockId: string | null;
@@ -255,6 +257,7 @@ export function isEmbodimentIntentV1(value: unknown): value is EmbodimentIntentV
   const phases: SpeechPhase[] = ["idle", "starting", "speaking", "ended", "cancelled", "unknown"];
   if (intent.type !== "kurisu_embodiment_intent" || intent.protocolVersion !== 1) return false;
   if (!Number.isSafeInteger(intent.stateVersion) || Number(intent.stateVersion) <= 0) return false;
+  if (intent.frameTick !== undefined && (!Number.isSafeInteger(intent.frameTick) || Number(intent.frameTick) < 0)) return false;
   if (!Number.isFinite(intent.sentAtEpochMs) || !Number.isFinite(intent.audioTimeMs) || Number(intent.audioTimeMs) < 0) return false;
   if (!phases.includes(intent.speechPhase as SpeechPhase)) return false;
   const validId = (id: unknown, maxLength: number): boolean => id === null || (typeof id === "string" && id.length > 0 && id.length <= maxLength);
