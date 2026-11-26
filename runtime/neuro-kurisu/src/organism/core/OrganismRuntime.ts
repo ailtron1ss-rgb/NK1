@@ -7,7 +7,6 @@ import { externalGoalForRuntimeInput, normalizeRuntimeExternalPluginSource, shou
 import { normalizeWorldContext } from './WorldContextNormalizer.ts';
 import { FileStateStore, registerFileWorkspaceUndoFirstTools } from '../persistence/FileStateStore.ts';
 import { OrganismCore, type OrganismConfig, type PersistedOrganism } from './OrganismCore.ts';
-import type { CognitiveModuleRuntimeHost } from './CognitiveModuleCheckpointStore.ts';
 import { WorldEnvironment, type EnvironmentAction, type PersistedWorld } from '../world/WorldEnvironment.ts';
 import { PlanEngine } from '../world/PlanEngine.ts';
 import { OfflineConsolidation, type ConsolidationResult } from '../cognition/OfflineConsolidation.ts';
@@ -199,7 +198,7 @@ export interface RuntimeConfig extends OrganismConfig {
   ) => Promise<SynapticAdapterLanguageResponse>;
   stateStore?: JsonStateStore<PersistedOrganism>;
   /** Optional host-registered modules; when supplied, their state is checkpointed inside PersistedOrganism.system. */
-  cognitiveModuleRuntime?: CognitiveModuleRuntimeHost;
+  cognitiveModuleRuntime?: RuntimeCognitiveModuleHost;
   /** Host-owned monitor instance; structural injection avoids a core-to-cognition dependency edge. */
   cognitiveHealthSystem?: RuntimeCognitiveHealthMonitor;
   /** Optional canonical-ledger adapter; missing evidence remains unknown, never a healthy sample. */
@@ -333,6 +332,27 @@ interface RuntimeAspectFabricPort {
   health(): unknown;
 }
 
+export interface RuntimeCognitiveModuleCheckpointDiagnostics {
+  moduleCount: number;
+  capturedAt: number;
+  snapshotFailures: Array<{ id: string; reason: string }>;
+}
+
+interface RuntimeCognitiveModuleCheckpointPort {
+  diagnostics(): RuntimeCognitiveModuleCheckpointDiagnostics;
+}
+
+/** Structural host port keeps the large composition root independent of the adapter implementation. */
+export interface RuntimeCognitiveModuleHost {
+  connectCanonicalCheckpointStore(
+    delegate: JsonStateStore<PersistedOrganism>,
+  ): RuntimeCognitiveModuleCheckpointPort;
+  activateAll(): Promise<unknown[]>;
+  health(): Promise<{ ok: boolean; modules: unknown[] }>;
+  stopAll(): Promise<unknown[]>;
+  list(): unknown[];
+}
+
 export class OrganismRuntime {
   /**
    * Host-owned production composition: prepare the three separately configured
@@ -378,7 +398,7 @@ export class OrganismRuntime {
   readonly embodiedActions = new EmbodiedActionExecutor(this.embodiment);
   readonly embodiedRecovery = new EmbodiedRecoveryController();
   private readonly config: Required<Pick<RuntimeConfig, 'intervalMs'|'enableLanguage'>> & RuntimeConfig;
-  private readonly cognitiveModuleRuntime: CognitiveModuleRuntimeHost | null;
+  private readonly cognitiveModuleRuntime: RuntimeCognitiveModuleHost | null;
   private readonly cognitiveModuleCheckpointStore: ReturnType<CognitiveModuleRuntimeHost['connectCanonicalCheckpointStore']> | null;
   private readonly temporalObjectTracker = new TemporalObjectTracker();
   private readonly mem0Adapter: Mem0PlatformAdapter;
