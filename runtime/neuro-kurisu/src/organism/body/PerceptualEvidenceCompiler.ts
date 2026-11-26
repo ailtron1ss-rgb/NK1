@@ -135,7 +135,7 @@ export class PerceptualEvidenceCompiler{
     this.state.metrics.groundedSignalRatio01=clamp(this.state.metrics.groundedSignalRatio01*.92+.08*observedBoost);
     this.state.metrics.grounding01=clamp(this.state.metrics.grounding01*.94+.06*confidence*observedBoost);
     this.state.metrics.temporalBinding01=clamp(this.state.metrics.temporalBinding01*.94+.06*.55);
-    const digest=`${this.state.scene}|${this.state.evidence.slice(0,24).map(e=>`${e.modality}:${e.claim}:${e.confidence01.toFixed(2)}`).join('|')}|${JSON.stringify(this.state.metrics)}`;
+    const digest=`${this.state.scene}|${this.state.evidence.slice(0,24).map(e=>`${e.modality}:${e.claim}:${e.confidence01.toFixed(2)}:${e.kind}`).join('|')}|${JSON.stringify(this.state.metrics)}`;
     this.state.lastHash=stableHash(digest);
     return structuredClone(record);
   }
