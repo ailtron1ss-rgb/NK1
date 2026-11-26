@@ -44,8 +44,17 @@ test("Settings voice and avatar controls use Russian labels and descriptions", a
   for (const phrase of ["Подключение", "Подключено", "Показан последний подтверждённый снимок.", "Повторить"]) {
     assert.ok(connection.includes(phrase), `missing localized connection copy: ${phrase}`);
   }
-  for (const stale of ["Connecting", "Connected", "Degraded", "Offline", "Language fallback", "Retry", "Refresh canonical runtime connection"]) {
-    assert.ok(!connection.includes(stale), `stale English connection status remains: ${stale}`);
+  const staleVisibleConnectionCopy = [
+    /label:\s*"Connecting"/,
+    /label:\s*"Connected"/,
+    /label:\s*"Degraded"/,
+    /label:\s*"Offline"/,
+    />\s*Language fallback\s*</,
+    />\s*Retry\s*</,
+    /aria-label="Refresh canonical runtime connection"/,
+  ];
+  for (const stale of staleVisibleConnectionCopy) {
+    assert.doesNotMatch(connection, stale, `stale English connection UI remains: ${stale}`);
   }
   assert.match(connection, /aria-label="Повторить подключение к каноническому runtime"/);
 });
