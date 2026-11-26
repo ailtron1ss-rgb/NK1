@@ -277,9 +277,12 @@ export class CognitiveModuleRuntime {
     const manifest = validateManifest(registration.manifest, this.hostApiVersion);
     if (this.records.has(manifest.id)) throw fail('duplicate-module-id', manifest.id);
 
-    const grantedCapabilities = Object.freeze([
-      ...(this.grants.get(manifest.id) ?? new Set<string>()),
-    ].sort());
+    const hostGrant = this.grants.get(manifest.id) ?? new Set<string>();
+    // Least privilege: modules see only the capabilities they requested and
+    // the host explicitly approved, never every grant attached to their ID.
+    const grantedCapabilities = Object.freeze(
+      manifest.capabilities.filter(capability => hostGrant.has(capability)).sort(),
+    );
 
     const context: CognitiveModuleContext = Object.freeze({
       moduleId: manifest.id,
@@ -455,11 +458,17 @@ export class CognitiveModuleRuntime {
 
     const module = record.module;
     record.status = 'quiescing';
-    let quiesced = false;
+    let quiesceAttempted = false;
+    let shutdownStarted = false;
     let envelope: CognitiveModuleStateEnvelopeV1 | null = null;
     try {
-      await module.quiesce(record.context);
-      quiesced = true;
+      quiesceAttempted = true;
+      try {
+        await module.quiesce(record.context);
+      } catch (error) {
+        throw fail('module-quiesce-failed', error instanceof Error ? error.message : id);
+      }
+
       const state = clonePlainData(await module.snapshot());
       envelope = {
         schemaVersion: 1,
@@ -479,17 +488,34 @@ export class CognitiveModuleRuntime {
           throw fail('module-state-save-failed', error instanceof Error ? error.message : id);
         }
       }
-      await module.shutdown(record.context);
+
+      shutdownStarted = true;
+      try {
+        await module.shutdown(record.context);
+      } catch (error) {
+        throw fail('module-shutdown-failed', error instanceof Error ? error.message : id);
+      }
       record.module = null;
       record.status = 'stopped';
       record.lastError = undefined;
       return envelope;
     } catch (error) {
-      if (quiesced) {
+      // Once shutdown has begun its partial effects are unknowable. Keep the
+      // durable snapshot, quarantine the instance and never report it active.
+      if (shutdownStarted) {
+        record.module = null;
+        record.status = 'failed';
+        record.lastError = error instanceof Error ? error.message : String(error);
+        throw error;
+      }
+
+      // Quiesce may have partially suspended work even if it rejected.
+      if (quiesceAttempted) {
         try {
           await module.resume(record.context);
           record.status = 'active';
         } catch (resumeError) {
+          record.module = null;
           record.status = 'failed';
           record.lastError = resumeError instanceof Error ? resumeError.message : String(resumeError);
           throw fail('module-resume-after-stop-failure', record.lastError);
