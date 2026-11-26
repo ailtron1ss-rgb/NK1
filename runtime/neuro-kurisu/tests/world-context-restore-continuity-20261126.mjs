@@ -142,7 +142,7 @@ assert.equal(malformedStats.observations, 0);
 assert.equal(malformedStats.passiveUpdates, 0);
 assert.equal(malformedStats.actionUpdates, 0);
 assert.equal(malformedStats.lastPassiveError01, 0);
-assert.equal(malformedStats.lastActionError01, 0);
+assert.equal(malformedStats.lastActionError01, 1, 'an out-of-range error is conservatively clamped to the maximum error');
 assert.equal(malformedStats.modelAgreement01, 0);
 assert.equal(malformedStats.lastAt, 0);
 assert.equal(malformedStats.brainActionSamples, 0);
