@@ -2240,6 +2240,7 @@ export class OrganismCore {
                 });
             } catch (error) {
                 this.persisted.system.recoveryWatchdog = this.cognitiveRuntime.recoveryWatchdog.snapshot();
+                this.persisted.system.runtimeCheckpointEnvelope = previousRuntimeCheckpointEnvelope;
                 throw error;
             }
             const committedEnvelope = this.persisted.system.runtimeCheckpointEnvelope;
