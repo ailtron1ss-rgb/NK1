@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import * as organismApi from '../src/organism/index.ts';
+import { CognitiveModuleCheckpointStore } from '../src/organism/core/CognitiveModuleCheckpointStore.ts';
 
 const CognitiveModuleRuntime = organismApi.CognitiveModuleRuntime;
 assert.equal(
@@ -433,3 +434,54 @@ console.log('COGNITIVE_MODULE_RUNTIME=PASS');
   assert.ok(!events.includes('shutdown:memory.live-checkpoint'));
   await host.stopAll();
 }
+
+
+// A canonical organism checkpoint must not commit if any active module could
+// not provide a fresh snapshot. Stale module state must never masquerade as a
+// complete checkpoint; the next fully successful capture may commit atomically.
+{
+  const persisted = { value: null, saves: 0 };
+  const delegate = {
+    async load() { return this.value ? structuredClone(this.value) : null; },
+    async save(value) {
+      this.saves += 1;
+      this.value = structuredClone(value);
+    },
+  };
+  const checkpointStore = new CognitiveModuleCheckpointStore(delegate, () => 500);
+  const events = [];
+  const host = runtime({ stateStore: checkpointStore.moduleStateStore });
+  const good = moduleFixture('memory.good', events, { initialValue: 11 });
+  const flaky = moduleFixture('memory.flaky', events, { initialValue: 22 });
+  const originalSnapshot = flaky.module.snapshot.bind(flaky.module);
+  let failSnapshot = true;
+  flaky.module.snapshot = () => {
+    if (failSnapshot) throw new Error('snapshot-temporarily-unavailable');
+    return originalSnapshot();
+  };
+  host.register({ manifest: manifest('memory.good'), factory: () => good.module });
+  host.register({ manifest: manifest('memory.flaky'), factory: () => flaky.module });
+  await host.activateAll();
+  checkpointStore.bindSnapshotProvider(() => host.snapshotAll());
+
+  await assert.rejects(
+    checkpointStore.save({ system: {} }),
+    /cognitive-module-checkpoint-snapshot-incomplete/,
+    'a partial module snapshot must block the enclosing canonical checkpoint',
+  );
+  assert.equal(delegate.saves, 0, 'the canonical store must not commit a partial module snapshot');
+  assert.equal(persisted.value, null);
+  assert.equal(host.list().every(row => row.status === 'active'), true,
+    'snapshot failure must not stop or quarantine otherwise active modules');
+
+  failSnapshot = false;
+  await checkpointStore.save({ system: {} });
+  assert.equal(delegate.saves, 1, 'a complete retry must commit exactly once');
+  const checkpoint = delegate.value.system.cognitiveModuleRuntime;
+  assert.deepEqual(checkpoint.modules.map(row => row.moduleId), ['memory.flaky', 'memory.good']);
+  assert.deepEqual(checkpoint.snapshotFailures, []);
+  assert.equal(checkpoint.modules.find(row => row.moduleId === 'memory.flaky').state.value, 22);
+  await host.stopAll();
+}
+
+console.log('COGNITIVE_MODULE_CHECKPOINT_ATOMICITY=PASS');
