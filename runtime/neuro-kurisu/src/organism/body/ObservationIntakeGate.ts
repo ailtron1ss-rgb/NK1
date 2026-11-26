@@ -13,10 +13,10 @@
  *
  * Two invariants are load-bearing and deliberately not configurable:
  *
- * 1. **Provenance is authoritative, not self-declared.** A caller may claim
- *    `isRealCapture: true`; if its `provenance` says `synthetic-fixture` the claim is
- *    discarded and the observation is downgraded. No subsystem can turn a fixture
- *    into a real-world fact by asserting it is one.
+ * 1. **Physical provenance requires host attestation.** A public caller may supply
+ *    `isRealCapture: true`, a `device-capture` / `host-interface` string, or fabricated
+ *    evidence references; none proves a physical sample. Only the exact object emitted
+ *    by a validated internal host adapter carries in-process attestation.
  * 2. **Raw media is never retained.** Observations carry bounded metadata and a
  *    content digest. A payload that looks like raw image/audio bytes is rejected
  *    rather than silently stored, so "we perceived it" cannot mean "we kept it".
@@ -67,6 +67,31 @@ const REAL_PROVENANCE: ReadonlySet<ObservationProvenance> = new Set<ObservationP
   'device-capture',
   'host-interface',
 ]);
+
+/**
+ * In-process identity attestation for observations emitted by validated host adapters.
+ *
+ * A provenance string, boolean, or caller-supplied evidence reference is not an
+ * attestation. The exact object identity must have been created by an internal
+ * adapter after its host receipt / telemetry checks. Serialization and copying
+ * deliberately lose this authority. This helper is internal to the runtime and
+ * must not be re-exported from the package's public entry point.
+ */
+const HOST_ATTESTED_OBSERVATIONS = new WeakSet<object>();
+
+/** @internal */
+export function attestHostObservation<T extends object>(observation: T): T {
+  if (observation === null || typeof observation !== 'object') {
+    throw new TypeError('host-observation-must-be-object');
+  }
+  HOST_ATTESTED_OBSERVATIONS.add(observation);
+  return observation;
+}
+
+function isHostAttestedObservation(value: unknown): value is object {
+  return value !== null && typeof value === 'object' &&
+    HOST_ATTESTED_OBSERVATIONS.has(value as object);
+}
 
 export type RejectionReason =
   | 'malformed-observation'
@@ -529,7 +554,15 @@ export function normalizeObservation(
   if (typeof provenanceRaw !== 'string' || !OBSERVATION_PROVENANCE.includes(provenanceRaw as ObservationProvenance)) {
     return { ok: false, reason: 'invalid-provenance', detail: 'provenance must be a supported string' };
   }
-  const provenance = provenanceRaw as ObservationProvenance;
+  const claimedProvenance = provenanceRaw as ObservationProvenance;
+  const hostAttested = isHostAttestedObservation(raw);
+  // A public caller may retain an observation-shaped claim, but cannot make it a
+  // physical fact. Only an object emitted by a validated host adapter keeps that
+  // provenance across canonical admission.
+  const provenance: ObservationProvenance =
+    REAL_PROVENANCE.has(claimedProvenance) && !hostAttested
+      ? 'unresolved'
+      : claimedProvenance;
 
   const capturedAt = safeTimestamp(ownValue(raw, 'capturedAt'));
   if (capturedAt === null) return { ok: false, reason: 'invalid-timestamp', detail: 'capturedAt' };
@@ -584,8 +617,9 @@ export function normalizeObservation(
     ...(coordinateFrameId ? { coordinateFrameId } : {}),
     sessionId,
     provenance,
-    // Provenance decides reality; the caller's own claim is discarded here.
-    isRealCapture: REAL_PROVENANCE.has(provenance),
+    // The host adapter's in-process attestation, never caller-supplied fields,
+    // decides whether this exact observation represents a physical capture.
+    isRealCapture: hostAttested && REAL_PROVENANCE.has(claimedProvenance),
     expiresAt,
     evidenceRefs,
     payload: { ...payloadResult.payload, contentDigest },
