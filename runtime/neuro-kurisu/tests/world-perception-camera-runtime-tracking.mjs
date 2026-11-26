@@ -44,6 +44,16 @@ const runtime=new OrganismRuntime({
 
 try{
   await runtime.init();
+  runtime.core.recordMultimodalObservation({
+    modality:'vision',
+    summary:'caller supplied vision inference',
+    confidence:.9,
+    salience:.6,
+    evidence:['provider-model-output'],
+    content:'model described a scene',
+  });
+  assert.equal(runtime.core.multimodalSnapshot().visionCaptures, 0,
+    'public vision inference must not increment the physical camera capture counter');
   let receipt=0;
   const idempotencyKeys=new Set();
   // Exercise the real public runtime capture method and real evidence decoder;
@@ -75,6 +85,8 @@ try{
   assert.ok(firstTrackId);
   assert.equal(runtime.core.observationIntakeSummary().admitted, 0,
     'a physical camera capture must not enter the grounded world without explicit vision consent');
+  assert.equal(runtime.core.multimodalSnapshot().visionCaptures, 0,
+    'unconsented camera capture must not be counted as a host-admitted observation');
   runtime.core.setObservationConsent('vision', true);
 
   // The bytes/hash are deliberately identical. A new capture receipt is still a
@@ -101,6 +113,8 @@ try{
   assert.equal(cameraDevice.observationCount, 1);
   assert.equal(runtime.core.observationIntakeSummary().admitted, 1,
     'only the consented second capture should enter the canonical observation gate');
+  assert.equal(runtime.core.multimodalSnapshot().visionCaptures, 1,
+    'only the consented canonical camera observation should increment physical capture count');
   assert.ok(chair.imageBoxAt>0);
   assert.deepEqual(chair.imageBox,{x:.12,y:.20,width:.20,height:.35});
 
