@@ -1,15 +1,9 @@
 import { useEffect, useState } from "react";
 import { Check, Mic, Volume2 } from "lucide-react";
-import { useKurisu, type UiConnectionStatus } from "@/organism/store";
+import { useKurisu } from "@/organism/store";
 import type { OrganismSnapshot } from "@/organism/types";
 import { SETTINGS_RENDERER_OPTIONS } from "./avatar/settingsRendererOptions";
-
-const connectionStatusLabels: Record<UiConnectionStatus, string> = {
-  connecting: "Подключение",
-  connected: "Подключено",
-  degraded: "Ограниченный режим",
-  disconnected: "Нет соединения",
-};
+import { UI_CONNECTION_STATUS_LABELS } from "@/organism/uiLabels";
 
 export function SettingsPanel({ snap }: { snap: OrganismSnapshot }) {
   const avatarMode = useKurisu((s) => s.avatarMode);
@@ -104,7 +98,7 @@ export function SettingsPanel({ snap }: { snap: OrganismSnapshot }) {
         </div>
         <div className="mt-4 rounded-lg border border-border bg-bg p-3" aria-label="Состояние соединения runtime">
           <p className="text-xs font-medium text-muted">Подключение runtime</p>
-          <p className="mt-1 text-sm text-fg">{connectionStatusLabels[connection.status]} · {connection.version ?? "версия недоступна"}</p>
+          <p className="mt-1 text-sm text-fg">{UI_CONNECTION_STATUS_LABELS[connection.status]} · {connection.version ?? "версия недоступна"}</p>
           {connection.serviceDegraded ? <p className="mt-1 text-xs text-amber-400">Активен резервный языковой провайдер.</p> : null}
           <p className="mt-1 text-xs text-subtle">
             {connection.lastError
