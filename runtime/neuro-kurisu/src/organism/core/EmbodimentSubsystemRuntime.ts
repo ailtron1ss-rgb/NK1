@@ -19,6 +19,11 @@ import { ActivePerceptionExecutor, defaultActivePerceptionExecutor, type ActiveP
 import { ActivePerceptionNeuralSubstrate } from '../cognition/ActivePerceptionNeuralSubstrate.ts';
 import { PerceptualEvidenceCompiler, defaultPerceptualEvidence } from '../body/PerceptualEvidenceCompiler.ts';
 import { countOr, isPlainDataRecord, ownDataValue, stringOr, timestampOr, unitOr } from '../body/RestoreSanitizers.ts';
+/** Keep the owner-specific restore type while reading an untrusted persisted value. */
+function restoreOwnerState<T>(owner: { restore(state?: T | null): unknown }, value: unknown): void {
+  owner.restore(value as T | null | undefined);
+}
+
 
 /** BIG PASS 51: physical owner for sensor, perception and embodied-experience state. */
 export class EmbodimentSubsystemRuntime {
@@ -83,30 +88,25 @@ export class EmbodimentSubsystemRuntime {
     const cognition=isPlainDataRecord(cognitionValue)?cognitionValue:{};
     const embodiment=isPlainDataRecord(embodimentValue)?embodimentValue:{};
     const advanced=isPlainDataRecord(advancedValue)?advancedValue:{};
-    this.perception.restore(ownDataValue(cognition,'perception'));
-    this.multimodal.restore(ownDataValue(embodiment,'multimodal'));
-    this.perceptualEvidence.restore(ownDataValue(embodiment,'perceptualEvidence'));
-    this.p35SemanticWorldBody.restore(ownDataValue(embodiment,'p35'));
-    this.p37EmbodiedSensorium.restore(ownDataValue(embodiment,'p37'));
-    this.p40SemanticIntelligence.restore(ownDataValue(embodiment,'p40SemanticIntelligence'));
+    restoreOwnerState(this.perception,ownDataValue(cognition,'perception'));
+    restoreOwnerState(this.multimodal,ownDataValue(embodiment,'multimodal'));
+    restoreOwnerState(this.perceptualEvidence,ownDataValue(embodiment,'perceptualEvidence'));
+    restoreOwnerState(this.p35SemanticWorldBody,ownDataValue(embodiment,'p35'));
+    restoreOwnerState(this.p37EmbodiedSensorium,ownDataValue(embodiment,'p37'));
+    restoreOwnerState(this.p40SemanticIntelligence,ownDataValue(embodiment,'p40SemanticIntelligence'));
     // Accept both the stable facet names and this owner's snapshot names. Older
     // persisted projections use the long names; snapshot() emits the short names.
-    this.p41SemanticPerception.restore(
-      ownDataValue(embodiment,'p41SemanticPerception') ?? ownDataValue(embodiment,'p41Semantic'),
-    );
-    this.p41NativePerception.restore(
-      ownDataValue(embodiment,'p41NativePerception') ?? ownDataValue(embodiment,'p41Native'),
-    );
-    this.p41TemporalPerception.restore(
-      ownDataValue(embodiment,'p41TemporalPerception') ?? ownDataValue(embodiment,'p41Temporal'),
-    );
-    this.p42Experience.restore(
-      ownDataValue(embodiment,'p42Experience') ?? ownDataValue(embodiment,'p42'),
-    );
-    this.p43Imagery.restore(
-      ownDataValue(embodiment,'p43Imagery') ?? ownDataValue(embodiment,'p43'),
-    );
-    this.p66InteroceptiveHomeostasis.restore(ownDataValue(advanced,'p66InteroceptiveHomeostasis'));
+    restoreOwnerState(this.p41SemanticPerception,
+      ownDataValue(embodiment,'p41SemanticPerception') ?? ownDataValue(embodiment,'p41Semantic'));
+    restoreOwnerState(this.p41NativePerception,
+      ownDataValue(embodiment,'p41NativePerception') ?? ownDataValue(embodiment,'p41Native'));
+    restoreOwnerState(this.p41TemporalPerception,
+      ownDataValue(embodiment,'p41TemporalPerception') ?? ownDataValue(embodiment,'p41Temporal'));
+    restoreOwnerState(this.p42Experience,
+      ownDataValue(embodiment,'p42Experience') ?? ownDataValue(embodiment,'p42'));
+    restoreOwnerState(this.p43Imagery,
+      ownDataValue(embodiment,'p43Imagery') ?? ownDataValue(embodiment,'p43'));
+    restoreOwnerState(this.p66InteroceptiveHomeostasis,ownDataValue(advanced,'p66InteroceptiveHomeostasis'));
     this.perceptionRouting = sanitizePerceptionRoutingState(ownDataValue(embodiment,'perceptionRouting'));
   }
 
