@@ -552,5 +552,7 @@ test("3D scene refits after model load and preserves a camera target while zoomi
   assert.match(stage, /cameraTarget/);
   assert.match(stage, /cameraDistance/);
   assert.match(stage, /fitAvatarCameraToModel\(rt,root\)/);
+  assert.match(stage, /refreshAvatarRaycastBounds\(root\)/);
+  assert.match(stage, /fit\.contactBounds\.getSize\(size\)/);
   assert.match(stage, /rt\.camera\.lookAt\(rt\.cameraTarget\)/);
 });
