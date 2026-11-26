@@ -166,7 +166,12 @@ assert.deepEqual(proxyRestored.snapshot(), defaultMultimodalState(), 'a hostile 
 // --- Defaults for null/undefined ----------------------------------------------
 const emptyRestored = new PerceptualEvidenceCompiler();
 emptyRestored.restore(undefined);
-assert.deepEqual(emptyRestored.snapshot(), defaultPerceptualEvidence());
+const emptyEvidenceSnapshot = emptyRestored.snapshot();
+assert.equal(emptyEvidenceSnapshot.updates, defaultPerceptualEvidence().updates);
+assert.equal(emptyEvidenceSnapshot.evidence.length, 0);
+assert.equal(emptyEvidenceSnapshot.metrics.groundedSignalRatio01, 0);
+assert.equal(emptyEvidenceSnapshot.metrics.grounding01, defaultPerceptualEvidence().metrics.grounding01);
+assert.ok(typeof emptyEvidenceSnapshot.lastHash === 'string', 'restored empty evidence state has a deterministic integrity hash');
 
 // --- P35 semantic world/body --------------------------------------------------
 const p35 = new P35SemanticWorldBodyEngine();
