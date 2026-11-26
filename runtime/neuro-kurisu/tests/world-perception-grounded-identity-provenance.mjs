@@ -587,7 +587,7 @@ console.log(JSON.stringify({
   assert.equal(continuityState.scenes[0].visits, 1);
   assert.equal(continuityState.scenes[0].stability01, 0);
   assert.equal(continuityState.scenes[0].transitions, 0);
-  assert.equal(continuityState.transitions, 999_999_999);
+  assert.equal(continuityState.transitions, 1_000_000_000);
   assert.equal(continuityState.stableTransitions, 0);
   assert.equal(continuityState.objectPersistence01, 0);
   assert.equal(continuityState.sceneContinuity01, 0);
