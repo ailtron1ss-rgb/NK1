@@ -721,3 +721,41 @@ console.log('COGNITIVE_MODULE_CHECKPOINT_ATOMICITY=PASS');
   await host.stopAll();
   assert.equal(statusOf(host, 'world.unstable'), 'stopped');
 }
+
+
+// New snapshots carry a deterministic SHA-256 digest. Tampering with a stored
+// state without updating its digest must be rejected before restore/initialize.
+{
+  const store = memoryStore();
+  const firstEvents = [];
+  const firstFixture = moduleFixture('memory.integrity', firstEvents);
+  const first = runtime({ stateStore: store });
+  first.register({
+    manifest: manifest('memory.integrity'),
+    factory: () => firstFixture.module,
+  });
+  await first.activate('memory.integrity');
+  firstFixture.state.value = 37;
+  await first.deactivate('memory.integrity');
+
+  const envelope = store.rows.get('memory.integrity');
+  assert.match(
+    envelope.stateHashSha256 ?? '',
+    /^[a-f0-9]{64}$/,
+    'new module snapshots must include a SHA-256 integrity digest',
+  );
+  envelope.state.value = 999;
+  store.rows.set('memory.integrity', envelope);
+
+  const secondEvents = [];
+  const secondFixture = moduleFixture('memory.integrity', secondEvents);
+  const second = runtime({ stateStore: store });
+  second.register({
+    manifest: manifest('memory.integrity'),
+    factory: () => secondFixture.module,
+  });
+  await expectReject(second.activate('memory.integrity'), /module-state-hash-mismatch/);
+  assert.equal(statusOf(second, 'memory.integrity'), 'failed');
+  assert.equal(secondEvents.includes('restore:memory.integrity'), false);
+  assert.equal(secondEvents.includes('initialize:memory.integrity'), false);
+}
