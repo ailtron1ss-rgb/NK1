@@ -411,13 +411,14 @@ export class WorldSubsystemRuntime {
     this.p83PersistentReality.restore(advanced.p83PersistentRealityModel);
     this.worldModelEnsemble.restore(advanced.worldModelEnsemble);
     this.auroraKernel.restore(advanced.auroraKernel);
+    this.p24WorldIdentity.restore(advanced.p24);
+    // Restore P27 before rebuilding the world-learning projection so its fallback
+    // latent is taken from the persisted model rather than the constructor default.
+    this.p27NeuralWorld.restore(cognition.p27);
+    this.brainSubstrate.restore(cognition.brainSubstrate);
     this.worldLearningRestore(advanced.worldLearning);
     this.lastWorldLatentId=this.lastWorldLatentId ?? this.worldModel2.snapshot({clone:false}).latentState?.id ?? null;
     this.lastWorldContext=null;
-    this.lastP27Latent=this.p27NeuralWorld.snapshot().latent;
-    this.p24WorldIdentity.restore(advanced.p24);
-    this.p27NeuralWorld.restore(cognition.p27);
-    this.brainSubstrate.restore(cognition.brainSubstrate);
     this.p44PredictiveWorld.restore(learning.p44PredictiveWorld);
     this.p50CausalSelfWorld.restore(advanced.p50CausalSelfWorld);
     this.p51GroundedCausalWorkspace.restore(advanced.p51GroundedCausalWorkspace);
