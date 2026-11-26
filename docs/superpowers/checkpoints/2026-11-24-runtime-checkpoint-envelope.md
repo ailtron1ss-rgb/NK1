@@ -76,20 +76,33 @@ This addendum supersedes the earlier “in progress / pending” CI wording abov
 
 - PR: [#1170](https://github.com/ailtron1ss-rgb/NK1/pull/1170)
 - Branch: `aspect/p0-runtime-checkpoint-envelope-20261124`
-- Exact head: `b52bec76dc98e09430ed37b8a9d387e5bb636109`
+- Exact head: `950052360263118874a8263ca0e455782a9d74ea`
 - PR base at verification: `workpass70-source` @ `29ab13c98b3a603bc1667a99fffb8ee33dc9560d`
 - PR state: Open / Draft; GitHub reported mergeable and clean at the time of verification.
 - PR exact-head checks: **76/76 completed SUCCESS**, zero failed, cancelled, or pending.
 
 ### Focused runtime proof
 
-The exact-head run [NK1 Cognitive Core Consolidation #647](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45770053994) completed successfully. Its steps explicitly show:
+The exact-head run [NK1 Cognitive Core Consolidation #651](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45784291500) completed successfully. Its steps explicitly show:
 - Runtime checkpoint generation and mixed-sidecar recovery — completed successfully.
 - Runtime checkpoint projection failure matrix and invalid-envelope quarantine — completed successfully.
 - Pinned TypeScript 5.8.3 / Node typings installation — completed successfully.
 - Runtime typecheck — completed successfully.
 
-The exact-head [Module Dependency Audit #1558](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45770054037) also completed its “Typecheck runtime” step successfully. The broader [Core regression validation #8591](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45770053761) completed runtime typecheck, app typecheck and app build successfully.
+The exact-head [Module Dependency Audit #1565](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45784294075) also completed its “Typecheck runtime” step successfully. The broader [Core regression validation #8605](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45784292104) completed runtime typecheck, app typecheck and app build successfully.
+
+
+### Regression-driven validator hardening — 2026-11-26
+
+A test-first hardening change was added after reviewing the descriptor/prototype boundary:
+
+- Test-only head `595ae1f2049c4ffc19b5bc03b114a02d15a35a7a` intentionally wrapped a valid envelope in a transparent JavaScript Proxy.
+- Exact-head workflow [Cognitive Core Consolidation #651 attempt 1](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45784053102) failed at the new assertion with Node `DataCloneError: #<Object> could not be cloned`, originating from `validateRuntimeCheckpointEnvelope`'s final `structuredClone(value)`.
+- Fix commit `950052360263118874a8263ca0e455782a9d74ea` now catches clone failures and returns the typed rejection `envelope-clone-failed`; it does not alter accepted plain-object checkpoint formats.
+- On the fixed exact head, [Cognitive Core Consolidation #651 attempt 2](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45784291500) passed both checkpoint-envelope tests, the projection fault matrix, active-information regression, and semantic runtime TypeScript typecheck.
+- Full PR check set on this exact head: **76/76 completed SUCCESS**, no failed/cancelled/pending checks at verification.
+
+This fix is present on the PR branch only. It is not yet part of `workpass70-source` and is not released.
 
 ### Current-source relationship and integration status
 
