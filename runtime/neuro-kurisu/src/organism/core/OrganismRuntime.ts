@@ -338,7 +338,7 @@ export interface RuntimeCognitiveModuleCheckpointDiagnostics {
   snapshotFailures: Array<{ id: string; reason: string }>;
 }
 
-interface RuntimeCognitiveModuleCheckpointPort {
+interface RuntimeCognitiveModuleCheckpointPort extends JsonStateStore<PersistedOrganism> {
   diagnostics(): RuntimeCognitiveModuleCheckpointDiagnostics;
 }
 
