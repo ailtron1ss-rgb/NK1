@@ -12438,7 +12438,7 @@ export class OrganismCore {
     async resolveActionToolApproval(requestId:string, approved:boolean) {
         const result=await this.cognitiveRuntime.actionGateway.resolveToolApproval(requestId,approved,'owner');
         if(result.ok && result.request) {
-            this.p34RecordConsent({ action:`tool:${result.request.toolId}`, risk01:.9, actor:'creator', decision:approved?'approved':'declined', reason:`one-shot tool approval ${result.request.id}` });
+            this.p34RecordConsent({ action:`tool:${result.request.toolId}`, risk01:.9, actor:'creator', decision:approved?'approved':'declined', reason:`one-shot tool approval ${result.request.id}`, referenceId:result.request.id });
             await this.checkpoint(true);
         }
         return result;
