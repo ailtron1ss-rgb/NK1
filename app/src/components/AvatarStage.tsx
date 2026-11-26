@@ -240,8 +240,11 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
         const observedCount = Object.values(observed).filter((value) => typeof value === "number" && Number.isFinite(value)).length;
         setIntentAck({ stateVersion: version, status: ev.data.status, observedCount, expressionStatus: ev.data.expressionStatus, motionStatus: ev.data.motionStatus });
         const receiptStage = ev.data.status === "parameters-observed" ? "parameters-observed" : "accepted-unverified";
-        const frameReceipt = createAvatarPresentationReceipt("live2d", ev.data.frameTick, receiptStage);
-        if (frameReceipt && frameReceipt.tick === latestProjectionRef.current?.tick) setPresentationReceipt(frameReceipt);
+        const frameTick = ev.data.frameTick;
+        if (typeof frameTick === "number" && Number.isSafeInteger(frameTick) && frameTick >= 0) {
+          const frameReceipt = createAvatarPresentationReceipt("live2d", frameTick, receiptStage);
+          if (frameReceipt && frameReceipt.tick === latestProjectionRef.current?.tick) setPresentationReceipt(frameReceipt);
+        }
       }
       if (ev.data.type === "live2d_error") {
         if (typeof ev.data.error !== "string" || ev.data.error.length > 512) return;
