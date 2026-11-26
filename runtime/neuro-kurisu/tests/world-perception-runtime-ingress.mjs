@@ -144,13 +144,18 @@ for (const override of [
 }
 
 runtime.core.setObservationConsent('device', true);
-const admittedAndroidSample = runtime.core.admitObservation(buildAndroidTelemetryObservation(androidInput({ telemetry: androidTelemetry({ battery01: 0.71, sampledAt: 3000 }) })), { now: 3000 });
+const directAndroidProjection = buildAndroidTelemetryObservation(androidInput({
+  telemetry: androidTelemetry({ battery01: 0.71, sampledAt: 3000 }),
+}));
+assert.ok(directAndroidProjection);
+directAndroidProjection.payload.subject = 'caller-projected-telemetry';
+const admittedAndroidSample = runtime.core.admitObservation(directAndroidProjection, { now: 3000 });
 assert.equal(admittedAndroidSample.status, 'accepted');
 assert.equal(admittedAndroidSample.observation?.isRealCapture, false,
   'calling the projection adapter directly cannot assert that a host sample came from the runtime bridge');
 assert.equal(admittedAndroidSample.observation?.provenance, 'unresolved');
 const groundedAndroidDevice = runtime.core.groundedWorldSnapshot().entities.find(
-  row => row.label === 'android-device-telemetry',
+  row => row.label === 'caller-projected-telemetry',
 );
 assert.equal(groundedAndroidDevice?.modalityEvidenceKinds.device, 'unresolved',
   'a caller-projected telemetry object remains unresolved without the OrganismRuntime sampling boundary');
