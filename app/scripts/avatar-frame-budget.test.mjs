@@ -129,3 +129,10 @@ test("the 3D render loop is active only while the page and avatar are visible", 
   assert.equal(shouldRunAvatarRenderLoop(true, false), false);
   assert.equal(shouldRunAvatarRenderLoop(false, false), false);
 });
+
+
+test("WebGL context loss suspends rendering until the browser restores the context", () => {
+  assert.equal(shouldRunAvatarRenderLoop(true, true, false), false);
+  assert.equal(shouldRunAvatarRenderLoop(true, true, true), true);
+  assert.equal(shouldRunAvatarRenderLoop(false, true, true), false);
+});
