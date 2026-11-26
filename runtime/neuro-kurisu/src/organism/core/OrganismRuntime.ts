@@ -2793,43 +2793,105 @@ export class OrganismRuntime {
   get organismSystemFabric() { return this.core.organismSystemFabric; }
   embodimentDiagnostics(){ return this.embodiment.sensorDiagnosticsSnapshot(); }
   async stop(): Promise<void> {
-    // Stop is a durability boundary, not merely a scheduler shutdown.  The previous
-    // implementation closed runtime clocks/ledgers without forcing the core/world
-    // stores to persist the final in-memory cycle.  On mobile this is especially
-    // dangerous because checkpoint cadence is deliberately throttled.
+    // Stop is a durability boundary, not merely a scheduler shutdown. All canonical
+    // checkpoint owners are committed together by Core's verified envelope.
     this.stopping = true;
-    this.clockScheduler.stop();
-    await this.clockScheduler.drain();
-    await this.trustedShadowLearningScheduler?.drain();
-    await this.queue.catch(() => undefined);
+    try {
+      this.clockScheduler.stop();
+      await this.clockScheduler.drain();
+      await this.trustedShadowLearningScheduler?.drain();
+      await this.queue.catch(() => undefined);
 
-    // All queued cognitive work has drained, so the final flush is now serialized
-    // with the same queue used by step()/tool calls.  This closes the crash/restart
-    // window without making every cycle pay a synchronous disk write.
-    await this.enqueue(async () => {
-      // Capture the closure before the single durable flush. A previous implementation
-      // flushed twice here, which is disproportionately expensive because a full core
-      // projection serializes several MB of state on a phone.
-      const runtimeView = this.core.runtimeClosureOperationalSnapshot();
-      this.runtimeClosure.durable({
-        at: Date.now(),
-        tick: runtimeView.tick,
-        stateTick: runtimeView.tick,
-        replaySignature: runtimeView.replaySignature,
-        continuousTick: runtimeView.continuous?.tick,
-        continuityProcessed: runtimeView.continuous?.processed,
-        memoryCount: runtimeView.memoryCount,
+      // Drain cognitive work before the one canonical save. Do not let diagnostics
+      // claim durability until both the Core envelope and append-only continuity log
+      // have crossed their own persistence boundaries.
+      await this.enqueue(async () => {
+        const runtimeView = this.core.runtimeClosureOperationalSnapshot();
+        this.runtimeClosure.durable({
+          at: Date.now(),
+          tick: runtimeView.tick,
+          stateTick: runtimeView.tick,
+          replaySignature: runtimeView.replaySignature,
+          continuousTick: runtimeView.continuous?.tick,
+          continuityProcessed: runtimeView.continuous?.processed,
+          memoryCount: runtimeView.memoryCount,
+        });
+        this.core.setRuntimeClosure(this.runtimeClosure.snapshot());
+        await this.core.flush();
+
+        const checkpointValidation = this.core.validateRuntimeCheckpointEnvelope(
+          this.core.systemSnapshot().runtimeCheckpointEnvelope,
+        );
+        const checkpointOwnerDurability = checkpointValidation.ok ? 'durable' : 'failed';
+        if (!checkpointValidation.ok) {
+          await this.journal.write('warn', 'runtime.checkpoint-envelope.persist-unverified', {
+            tick: runtimeView.tick,
+            reason: checkpointValidation.reason,
+          }).catch(() => {});
+        }
+
+        let continuityFlushFailure: string | null = null;
+        try {
+          await this.continuityLedger.flush();
+        } catch (error) {
+          continuityFlushFailure = String((error as any)?.message ?? error).slice(0, 180);
+        }
+
+        // close() performs a final retry if the explicit flush failed, then releases
+        // the file handle. Keep the first failure in the receipt even if that retry
+        // succeeds: the original durability boundary was not clean.
+        let continuityCloseFailure: string | null = null;
+        try {
+          await this.continuityLedger.close();
+        } catch (error) {
+          continuityCloseFailure = String((error as any)?.message ?? error).slice(0, 180);
+        }
+
+        const continuityDiagnostics = this.continuityLedger.diagnostics();
+        const continuityFailure = continuityFlushFailure
+          ?? continuityCloseFailure
+          ?? continuityDiagnostics.lastDurabilityWarning
+          ?? continuityDiagnostics.lastError
+          ?? (continuityDiagnostics.pendingLines > 0 || continuityDiagnostics.pendingBytes > 0
+            ? 'pending-buffer-remains'
+            : null);
+        const continuityLedgerDurability = continuityFailure ? 'failed' : 'durable';
+        if (continuityFailure) {
+          await this.journal.write('warn', 'runtime.continuity-ledger.persist-failed', {
+            tick: runtimeView.tick,
+            message: continuityFailure,
+          }).catch(() => {});
+        }
+
+        const durability = {
+          core: 'durable',
+          runtimeCheckpointEnvelope: checkpointOwnerDurability,
+          world: checkpointOwnerDurability,
+          openLoop: checkpointOwnerDurability,
+          cognitiveSpine: checkpointOwnerDurability,
+          riskAwareRecovery: checkpointOwnerDurability,
+          cognitiveHealth: checkpointValidation.ok && checkpointValidation.snapshots.cognitiveHealth == null
+            ? 'not-configured'
+            : checkpointOwnerDurability,
+          continuityLedger: continuityLedgerDurability,
+        } as const;
+        const complete = Object.values(durability).every(status => status !== 'failed');
+        await this.journal.write(
+          complete ? 'info' : 'warn',
+          complete ? 'runtime.stop.durable' : 'runtime.stop.partial',
+          {
+            tick: runtimeView.tick,
+            worldTick: this.environment.snapshot().tick,
+            overall: complete ? 'durable' : 'partial',
+            durability,
+          },
+        ).catch(() => {});
       });
-      this.core.setRuntimeClosure(this.runtimeClosure.snapshot());
-      await this.core.flush();
-      await this.journal.write('info', 'runtime.stop.durable', {
-        tick: runtimeView.tick,
-        worldTick: this.environment.snapshot().tick,
-      }).catch(() => {});
-    });
-
-    await this.continuityLedger.flush().catch(() => {});
-    await this.continuityLedger.close();
+    } finally {
+      // Core can fail before the normal journal flush. Always release the file handle
+      // and make a last best-effort attempt to drain buffered diagnostic frames.
+      await this.continuityLedger.close();
+    }
   }
 
   private async persistCognitiveSpineSchedule(): Promise<void> {
