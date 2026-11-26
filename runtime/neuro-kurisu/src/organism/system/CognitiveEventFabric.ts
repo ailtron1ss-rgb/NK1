@@ -1,6 +1,6 @@
 import { types as nodeUtilTypes } from 'node:util';
 export { normalizeMetacognitiveEpisode } from '../cognition/MetacognitiveEpisode.ts';
-import { validateCognitiveStageReceipt, type CognitiveStageReceipt, type CognitiveStageOwnerName } from './CognitiveStageReceipt.ts';
+import { validateCognitiveStageReceipt, validateCognitiveSubsystemInvocationReceipt, COGNITIVE_SUBSYSTEM_OWNERS, type CognitiveStageReceipt, type CognitiveStageOwnerName, type CognitiveSubsystemInvocationReceipt } from './CognitiveStageReceipt.ts';
 import { sha256Stable } from '../core/StableSerialization.ts';
 
 /**
@@ -62,6 +62,11 @@ export interface OperationalCycleLineageCheck {
   ownerEvidenceComplete: boolean;
   missingOwnerEvidenceStages: string[];
   invalidOwnerEvidence: string[];
+  subsystemInvocationVerification: 'not-requested'|'verified'|'incomplete';
+  subsystemInvocationComplete?: boolean;
+  missingSubsystemOwners: string[];
+  invalidSubsystemOwnerEvidence: string[];
+  skippedSubsystemOwners: string[];
   /** Cross-journal verification is opt-in for backward-compatible direct callers. */
   evidenceVerification: 'not-requested'|'verified'|'incomplete';
   evidenceComplete?: boolean;
@@ -547,8 +552,25 @@ export class CognitiveEventFabric {
     outcome?:OperationalCyclePhaseInput;
     learning?:OperationalCyclePhaseInput;
     selfUpdate?:OperationalCyclePhaseInput;
+    subsystemReceipts?: readonly CognitiveSubsystemInvocationReceipt[];
     at?:number;
   }){
+    let normalizedSubsystemReceipts:CognitiveSubsystemInvocationReceipt[]|undefined;
+    if(input.subsystemReceipts!==undefined){
+      if(!Array.isArray(input.subsystemReceipts)||nodeUtilTypes.isProxy(input.subsystemReceipts))throw new Error('invalid-subsystem-invocation-receipts:not-plain-array');
+      const cycleId='nk1-cycle:'+input.tick;
+      const found=new Map<string,CognitiveSubsystemInvocationReceipt>();
+      for(const raw of input.subsystemReceipts){
+        const validation=validateCognitiveSubsystemInvocationReceipt(raw,{tick:input.tick,cycleId});
+        if(!validation.ok)throw new Error('invalid-subsystem-invocation-receipt:'+validation.issues.join(','));
+        if(found.has(validation.receipt.system))throw new Error('invalid-subsystem-invocation-receipts:duplicate-owner');
+        found.set(validation.receipt.system,validation.receipt);
+      }
+      const missing=COGNITIVE_SUBSYSTEM_OWNERS.filter(owner=>!found.has(owner));
+      if(missing.length)throw new Error('invalid-subsystem-invocation-receipts:missing:'+missing.join(','));
+      if(!input.selfUpdate)throw new Error('invalid-subsystem-invocation-receipts:self-update-phase-required');
+      normalizedSubsystemReceipts=COGNITIVE_SUBSYSTEM_OWNERS.map(owner=>found.get(owner)!);
+    }
     const ids:Partial<Record<'observation'|'prediction'|'appraisal'|'attention'|'memory'|'goal'|'plan'|'action'|'outcome'|'learning'|'selfUpdate',string>>={};
     const parents=(...eventIds:(string|undefined)[])=>eventIds.filter((id):id is string=>Boolean(id));
     if(input.observation){const e=this.append({tick:input.tick,stage:'observation',source:input.observation.source??'runtime',external:input.observation.external,confidence01:input.observation.confidence01,payload:input.observation.payload,at:input.at});ids.observation=e.id;}
@@ -579,7 +601,7 @@ export class CognitiveEventFabric {
     if(input.action){const e=this.append({tick:input.tick,stage:'action',source:input.action.source??'action',parentIds:parents(ids.plan,ids.prediction,ids.observation),confidence01:input.action.confidence01,payload:input.action.payload,at:input.at});ids.action=e.id;}
     if(input.outcome){const e=this.append({tick:input.tick,stage:'outcome',source:input.outcome.source??'outcome',parentIds:parents(ids.action,ids.prediction),external:input.outcome.external,confidence01:input.outcome.confidence01,payload:input.outcome.payload,at:input.at});ids.outcome=e.id;}
     if(input.learning){const e=this.append({tick:input.tick,stage:'learning',source:input.learning.source??'learning',parentIds:parents(ids.outcome,ids.action),confidence01:input.learning.confidence01,payload:input.learning.payload,at:input.at});ids.learning=e.id;}
-    if(input.selfUpdate){const e=this.append({tick:input.tick,stage:'self-update',source:input.selfUpdate.source??'self-update',parentIds:parents(ids.learning,ids.outcome),confidence01:input.selfUpdate.confidence01,payload:input.selfUpdate.payload,at:input.at});ids.selfUpdate=e.id;}
+    if(input.selfUpdate){const payload={...(input.selfUpdate.payload??{}),...(normalizedSubsystemReceipts?{subsystemReceipts:normalizedSubsystemReceipts}:{})};const e=this.append({tick:input.tick,stage:'self-update',source:input.selfUpdate.source??'self-update',parentIds:parents(ids.learning,ids.outcome),confidence01:input.selfUpdate.confidence01,payload,at:input.at});ids.selfUpdate=e.id;}
     return ids;
   }
 
@@ -669,6 +691,7 @@ export class CognitiveEventFabric {
     stageIds: OperationalCycleStageIds,
     ownerReceipts?: readonly CognitiveStageReceipt[],
     runtimeEvidenceEvents?: readonly RuntimeEvidenceLink[],
+    subsystemReceipts?: readonly CognitiveSubsystemInvocationReceipt[],
   ): OperationalCycleLineageCheck {
     const required = ['observation','prediction','action','outcome','learning','self-update'] as const;
     const optional = ['appraisal','attention','memory','goal','plan'] as const;
@@ -755,6 +778,52 @@ export class CognitiveEventFabric {
       missingOwnerEvidenceStages.length === 0 &&
       invalidOwnerEvidence.length === 0 &&
       requiredOwnerStages.every(stage => expectedOwnerReceipts.has(stage));
+
+    const missingSubsystemOwners:string[]=[];
+    const invalidSubsystemOwnerEvidence:string[]=[];
+    const skippedSubsystemOwners:string[]=[];
+    let subsystemInvocationComplete:boolean|undefined;
+    let subsystemInvocationVerification:OperationalCycleLineageCheck['subsystemInvocationVerification']='not-requested';
+    if(subsystemReceipts!==undefined){
+      subsystemInvocationVerification='incomplete';
+      const expectedCycleId=cycleTick===null?'':'nk1-cycle:'+cycleTick;
+      const expected=new Map<string,CognitiveSubsystemInvocationReceipt>();
+      if(!Array.isArray(subsystemReceipts)||nodeUtilTypes.isProxy(subsystemReceipts)){
+        invalidSubsystemOwnerEvidence.push('subsystem-receipts:not-plain-array');
+      }else{
+        for(const raw of subsystemReceipts){
+          const validation=validateCognitiveSubsystemInvocationReceipt(raw,cycleTick===null?{}:{tick:cycleTick,cycleId:expectedCycleId});
+          if(!validation.ok){invalidSubsystemOwnerEvidence.push(...validation.issues);continue;}
+          const item=validation.receipt;
+          if(expected.has(item.system)){invalidSubsystemOwnerEvidence.push(item.system+':duplicate-owner-receipt');continue;}
+          expected.set(item.system,item);
+          if(item.status==='skipped')skippedSubsystemOwners.push(item.system);
+          if(item.status==='degraded'||item.status==='failed')invalidSubsystemOwnerEvidence.push(item.system+':invocation-'+item.status);
+        }
+      }
+      for(const owner of COGNITIVE_SUBSYSTEM_OWNERS)if(!expected.has(owner))missingSubsystemOwners.push(owner);
+      const selfUpdateEvent=found.get('self-update');
+      const rawPersisted=selfUpdateEvent?ownData(selfUpdateEvent.payload,'subsystemReceipts'):undefined;
+      if(!Array.isArray(rawPersisted)||nodeUtilTypes.isProxy(rawPersisted)){
+        invalidSubsystemOwnerEvidence.push('cef:self-update-subsystem-receipts-missing');
+      }else{
+        const persisted=new Map<string,CognitiveSubsystemInvocationReceipt>();
+        for(const raw of rawPersisted){
+          const validation=validateCognitiveSubsystemInvocationReceipt(raw,cycleTick===null?{}:{tick:cycleTick,cycleId:expectedCycleId});
+          if(!validation.ok){invalidSubsystemOwnerEvidence.push('cef:'+validation.issues.join(','));continue;}
+          if(persisted.has(validation.receipt.system)){invalidSubsystemOwnerEvidence.push('cef:'+validation.receipt.system+':duplicate-owner-receipt');continue;}
+          persisted.set(validation.receipt.system,validation.receipt);
+        }
+        for(const owner of COGNITIVE_SUBSYSTEM_OWNERS){
+          const supplied=expected.get(owner),stored=persisted.get(owner);
+          if(!supplied||!stored){if(!missingSubsystemOwners.includes(owner))missingSubsystemOwners.push(owner);continue;}
+          if(JSON.stringify(supplied)!==JSON.stringify(stored))invalidSubsystemOwnerEvidence.push(owner+':cef-subsystem-receipt-mismatch');
+        }
+        if(persisted.size!==COGNITIVE_SUBSYSTEM_OWNERS.length)invalidSubsystemOwnerEvidence.push('cef:subsystem-receipt-count-mismatch');
+      }
+      subsystemInvocationComplete=missingSubsystemOwners.length===0&&invalidSubsystemOwnerEvidence.length===0&&expected.size===COGNITIVE_SUBSYSTEM_OWNERS.length;
+      subsystemInvocationVerification=subsystemInvocationComplete?'verified':'incomplete';
+    }
 
     // Verify that the CEF phase nodes point to real events emitted by the
     // existing RuntimeEvidenceBus. This is a cross-reference check, not a
@@ -960,12 +1029,18 @@ export class CognitiveEventFabric {
     const fullStageCoverage = (11 - fullMissingStages.length) / 11;
     const fullEdgeCoverage = fullValidEdges / fullEdges.length;
     const evidenceIntegrity01 = runtimeEvidenceEvents === undefined ? 1 : evidenceComplete ? 1 : evidenceStageRefs.size / 4;
-    const fullIntegrity01 = runtimeEvidenceEvents === undefined
-      ? clamp01(.50 * fullStageCoverage + .50 * fullEdgeCoverage)
-      : clamp01(.45 * fullStageCoverage + .45 * fullEdgeCoverage + .10 * evidenceIntegrity01);
+    const subsystemIntegrity01 = subsystemReceipts === undefined ? 1 : subsystemInvocationComplete ? 1 : Math.max(0,(COGNITIVE_SUBSYSTEM_OWNERS.length-missingSubsystemOwners.length)/COGNITIVE_SUBSYSTEM_OWNERS.length);
+    const fullIntegrity01 = subsystemReceipts === undefined
+      ? runtimeEvidenceEvents === undefined
+        ? clamp01(.50 * fullStageCoverage + .50 * fullEdgeCoverage)
+        : clamp01(.45 * fullStageCoverage + .45 * fullEdgeCoverage + .10 * evidenceIntegrity01)
+      : runtimeEvidenceEvents === undefined
+        ? clamp01(.425 * fullStageCoverage + .425 * fullEdgeCoverage + .15 * subsystemIntegrity01)
+        : clamp01(.40 * fullStageCoverage + .40 * fullEdgeCoverage + .10 * evidenceIntegrity01 + .10 * subsystemIntegrity01);
     const coreComplete = missingStages.length === 0 && !coreInvalid && coreMissingEdges.length === 0;
     const fullComplete = fullMissingStages.length === 0 && invalidStages.length === 0 && fullMissingEdges.length === 0 &&
-      (runtimeEvidenceEvents === undefined || evidenceComplete === true);
+      (runtimeEvidenceEvents === undefined || evidenceComplete === true) &&
+      (subsystemReceipts === undefined || subsystemInvocationComplete === true);
 
     return {
       tick: cycleTick,
@@ -985,6 +1060,11 @@ export class CognitiveEventFabric {
       ownerEvidenceComplete,
       missingOwnerEvidenceStages,
       invalidOwnerEvidence,
+      subsystemInvocationVerification,
+      ...(subsystemInvocationComplete !== undefined ? {subsystemInvocationComplete} : {}),
+      missingSubsystemOwners,
+      invalidSubsystemOwnerEvidence,
+      skippedSubsystemOwners,
       evidenceVerification: runtimeEvidenceEvents === undefined ? 'not-requested' : evidenceComplete ? 'verified' : 'incomplete',
       ...(evidenceComplete !== undefined ? { evidenceComplete } : {}),
       missingEvidenceRefs,

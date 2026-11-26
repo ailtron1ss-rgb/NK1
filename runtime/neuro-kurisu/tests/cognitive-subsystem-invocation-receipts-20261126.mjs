@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import * as ReceiptContracts from '../src/organism/system/CognitiveStageReceipt.ts';
+import { CognitiveEventFabric } from '../src/organism/system/CognitiveEventFabric.ts';
 
 const validate = ReceiptContracts.validateCognitiveSubsystemInvocationReceipt;
 assert.equal(typeof validate, 'function', 'seven-owner invocation receipt validator must be part of the canonical receipt contract');
@@ -65,3 +66,52 @@ assert.equal(validate(new Proxy(receipts, {})).ok, false);
 console.log('COGNITIVE_SUBSYSTEM_INVOCATION_RECEIPTS=PASS', JSON.stringify({ owners: receipts.length, strictContracts: true, hostileInputs: true }));
 
 function systemMessage(system) { return system + ' invocation receipt should validate'; }
+
+
+const attentionReceipt = {
+  id:cycleId+':attention',cycleId,tick,stage:'attention',owner:'OrganismCore.attend',
+  status:'completed',inputRefs:[],outputRefs:['attention-state:'+tick],consumedStageReceipts:[],
+  outputHash:'b'.repeat(64),
+};
+const memoryReceipt = {
+  id:cycleId+':memory',cycleId,tick,stage:'memory',owner:'MemoryFabric.retrieveForCognition',
+  status:'completed_empty',inputRefs:['query-sha256:'+'c'.repeat(64)],outputRefs:[],consumedStageReceipts:[],
+  outputHash:'d'.repeat(64),
+};
+const fabric = new CognitiveEventFabric(128);
+const ids = fabric.recordOperationalCycle({
+  tick,
+  observation:{source:'runtime'},
+  prediction:{source:'reward-model'},
+  appraisal:{source:'homeostatic-appraisal'},
+  attention:{source:'OrganismCore.attend',receipt:attentionReceipt},
+  memory:{source:'MemoryFabric.retrieveForCognition',receipt:memoryReceipt},
+  goal:{source:'canonical-goal-selection'},
+  plan:{source:'plan-engine'},
+  action:{source:'organism-action-gate'},
+  outcome:{source:'shadow-simulator'},
+  learning:{source:'core.feedback'},
+  selfUpdate:{source:'core.lifecycle'},
+  subsystemReceipts:receipts,
+});
+const stageMap = {
+  observation:ids.observation,prediction:ids.prediction,appraisal:ids.appraisal,
+  attention:ids.attention,memory:ids.memory,goal:ids.goal,plan:ids.plan,
+  action:ids.action,outcome:ids.outcome,learning:ids.learning,'self-update':ids.selfUpdate,
+};
+const verified = fabric.verifyOperationalCycle(stageMap,[attentionReceipt,memoryReceipt],undefined,receipts);
+assert.equal(verified.subsystemInvocationVerification,'verified');
+assert.equal(verified.subsystemInvocationComplete,true);
+assert.equal(verified.missingSubsystemOwners.length,0);
+assert.equal(verified.fullComplete,true);
+assert.deepEqual(verified.skippedSubsystemOwners,[]);
+const missingOwner = fabric.verifyOperationalCycle(stageMap,[attentionReceipt,memoryReceipt],undefined,receipts.slice(0,6));
+assert.equal(missingOwner.subsystemInvocationComplete,false);
+assert.ok(missingOwner.missingSubsystemOwners.includes('research'));
+assert.equal(missingOwner.fullComplete,false);
+const tampered = receipts.map((receipt,i)=>i===0?{...receipt,outputHash:'e'.repeat(64)}:receipt);
+const mismatch = fabric.verifyOperationalCycle(stageMap,[attentionReceipt,memoryReceipt],undefined,tampered);
+assert.equal(mismatch.subsystemInvocationComplete,false);
+assert.ok(mismatch.invalidSubsystemOwnerEvidence.includes('self:cef-subsystem-receipt-mismatch'));
+
+console.log('COGNITIVE_SUBSYSTEM_INVOCATION_RECEIPTS=PASS', JSON.stringify({owners:receipts.length,cefProjection:true,strictCycleGate:true}));
