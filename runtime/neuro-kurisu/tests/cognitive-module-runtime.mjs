@@ -888,3 +888,37 @@ console.log('COGNITIVE_MODULE_CHECKPOINT_ATOMICITY=PASS');
   assert.equal(events.length, 0);
   assert.equal(statusOf(host, 'memory.pre-factory-admission'), 'failed');
 }
+
+
+// A failed non-disruptive checkpoint degrades module health while leaving the
+// module active. A later successful capture clears only that snapshot fault.
+{
+  let writeBlocked = true;
+  const store = {
+    async load() { return null; },
+    async save() {
+      if (writeBlocked) throw new Error('checkpoint-unavailable');
+    },
+  };
+  const events = [];
+  const host = runtime({ stateStore: store });
+  const fixture = moduleFixture('memory.health-checkpoint', events);
+  host.register({
+    manifest: manifest('memory.health-checkpoint'),
+    factory: () => fixture.module,
+  });
+  await host.activate('memory.health-checkpoint');
+
+  const failed = await host.snapshotAll();
+  assert.deepEqual(failed.failed.map(row => row.id), ['memory.health-checkpoint']);
+  assert.equal(statusOf(host, 'memory.health-checkpoint'), 'active');
+  const degraded = await host.health();
+  assert.equal(degraded.ok, false);
+  assert.match(degraded.modules[0].reason ?? '', /checkpoint-unavailable/);
+
+  writeBlocked = false;
+  const recovered = await host.snapshotAll();
+  assert.deepEqual(recovered, { captured: ['memory.health-checkpoint'], failed: [] });
+  assert.equal((await host.health()).ok, true);
+  await host.stopAll();
+}
