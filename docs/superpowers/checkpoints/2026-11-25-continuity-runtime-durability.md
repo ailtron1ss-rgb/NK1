@@ -18,7 +18,7 @@ The 2026-11-24 local checkpoint was built against the older archive commit `615f
 - Repairs an unterminated JSONL tail before reopening and reports recovered tail bytes.
 - Rejects a single frame larger than the journal cap before enqueueing.
 - Uses complete JSONL frames for bounded retention; compaction keeps recent complete records and replaces the file through temp-write, file fsync, rename and best-effort directory fsync.
-- Handles partial writes, fsyncs successful append batches, and attempts exact-boundary rollback on failure. If rollback itself fails, the next reopen truncates to the captured pre-append boundary before retrying, including when the uncertain tail happens to end with a newline.
+- Handles partial writes and fsyncs append batches. Before writing, it atomically persists a strict sidecar rollback marker (`.rollback`) containing the pre-append byte boundary, fsyncs the marker and parent directory, then appends and fsyncs the journal. The marker is removed only after the append commit. If rollback fails or the process dies, startup validates the durable marker, truncates to the exact pre-append boundary (including a complete-looking newline-terminated tail), fsyncs the journal, then removes and directory-syncs the marker. Malformed markers and lost boundaries fail closed.
 - Diagnostics expose pending data, recovered bytes, retention drops, the last I/O error and weaker directory-durability warnings.
 - Byte metrics count the actual append or replacement payload written.
 
@@ -47,7 +47,49 @@ Added workflow `.github/workflows/nk1-continuity-runtime-durability.yml` to run 
 ## Boundaries
 
 - This is a bounded diagnostic continuity journal, not a replacement for canonical organism state, MemoryOS2 or append-only action receipts.
-- GitHub Actions must complete before this work is marked CI-verified.
-- The current workflow typecheck may use Node strip-syntax mode if TypeScript compiler is unavailable; that is not semantic `tsc` verification.
+- Exact-head GitHub Actions verification is recorded below.
+- The dedicated continuity workflow itself reports Node strip-syntax-only validation when its runner lacks TypeScript. On this exact head, however, `NK1 Module Dependency Audit` ran `npm --prefix runtime/neuro-kurisu run typecheck` with `TYPECHECK=PASS mode=tsc compiler=PATH`; the integrated software baseline also ran semantic runtime typecheck with `compiler=app-lock`.
 - Independent power-loss testing and Android/Termux storage/latency soak remain outstanding.
 - No Release ZIP, release tag, `main` or `workpass70-source` content was changed.
+
+
+## 2026-11-26 — Durable rollback marker hardening
+
+### Regression-driven change
+
+The original in-memory-only `pendingRollbackSize` was insufficient after process death: a newline-terminated uncommitted append could be accepted by a fresh process because torn-tail repair only removes incomplete JSONL fragments.
+
+Added two regressions to `tests/continuity-ledger-durability-20261124.mjs`:
+
+- A fresh process must discard an uncertain, complete-looking frame using the persisted rollback marker, preserve earlier committed frames, report the exact removed byte count, and clear the marker after repair.
+- A malformed rollback marker must block new writes without truncating or accepting data.
+
+TDD evidence:
+- Corrected RED commit: `9d82730b211055222bee4221fd27c8cffd2e3667`.
+- Exact-head RED workflow: [45787202089](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45787202089). The four prior tests passed; both new tests failed for the intended reasons: the uncommitted tick 22 survived restart, and the malformed marker was ignored.
+- GREEN implementation commit: `68ab1dc154d0ad085f38a157de951f55e791fca6`.
+- Latest implementation blob: `738abd7a3629791d0b6ba9ddf4e077d56f3b7de1`.
+
+### Exact-head acceptance — 2026-11-26
+
+**Head:** `68ab1dc154d0ad085f38a157de951f55e791fca6`  
+**GitHub Actions:** 70/70 workflows SUCCESS; 70/70 check runs SUCCESS; 0 failures; 0 pending.
+
+Focused workflow results:
+- [Continuity runtime durability](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45787392976) — SUCCESS. Its 11 functional steps passed, including the formal durability gate, durable restart, FileStateStore crash recovery, kill/resume, longitudinal behavioral continuity, persistent continuity kernel, and organism integration.
+- [Cognitive Core Consolidation](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45787393015) — SUCCESS, including metacognitive episode runtime, active-information closed-loop regression, and runtime typecheck.
+- [Module Dependency Audit](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45787393091) — SUCCESS. Dependency graph: 2,705 source files scanned, 5,735 dependency edges, 0 cycles, 0 legacy leakage, 0 boundary violations; semantic TypeScript check reported `TYPECHECK=PASS mode=tsc compiler=PATH`.
+- [Integrated software baseline](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45787392971) — SUCCESS; runtime typecheck reported `compiler=app-lock`.
+- [Unified organism runtime](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45787392883) — SUCCESS, including continuity and organism integration.
+- [NeuroCore core regression validation](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45787393104) — SUCCESS.
+
+The dedicated continuity job's own `typecheck-runtime` step fell back to strip-syntax-only mode (747 files) because that runner did not have the TypeScript compiler. This limitation is explicit; separate same-head semantic TSC runs above succeeded.
+
+### Current integration and proof boundary
+
+- PR #1174 remains OPEN and DRAFT; no merge was performed.
+- Its base snapshot remains `9008a8982a5173304456bee2c604bd0bc8665964`; current `workpass70-source` is `7e601680c765d6dc94e51e4c8f5e729b48a6f56e`. Their histories have diverged since the PR's base and must be reconciled deliberately.
+- `OrganismCore.ts` and `runtime/neuro-kurisu/package.json` overlap with other current-source work (including PR #1170); do not merge blindly.
+- No Android/Termux storage, power-loss, latency, heap, or long-lived device soak was available in this CI run.
+- Independent review and current-source integration remain open. No claim of `PROVEN`, `DEVICE_VERIFIED`, or `RELEASED` is made.
+
