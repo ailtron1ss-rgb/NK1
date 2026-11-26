@@ -119,11 +119,11 @@ export class OperationalJournal {
         if (!isMissing(error)) throw error;
       }
     }
-    const lines = active.toString('utf8').split('\\n');
+    const lines = new TextDecoder().decode(active).split('\n');
     const completeLines = lines.slice(0, lines.length - 1).filter(Boolean);
     const first = completeLines[0];
     const last = completeLines[completeLines.length - 1];
-    const digest = (value:string):string => createHash('sha256').update(value,'utf8').digest('hex');
+    const digest = (value:string):string => createHash('sha256').update(value).digest('hex');
     return {
       version:1,
       retainedSegments,
