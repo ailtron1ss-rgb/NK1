@@ -28,5 +28,11 @@ jobs:
           cache: npm
           cache-dependency-path: runtime/neuro-kurisu/package-lock.json
       - run: npm ci --ignore-scripts --no-audit --no-fund
-      - name: Read-only subsystem port regression (red-first)
+      - name: Read-only subsystem port regression
         run: node --experimental-strip-types tests/cognitive-subsystem-port-probes-20261124.mjs
+      - name: Legacy subsystem accessor contract
+        run: node --experimental-strip-types tests/big-pass-48-subsystem-ports.mjs
+      - name: System contract cache and projection reuse
+        run: npm run test:big-pass-59
+      - name: Runtime typecheck
+        run: npm run typecheck
