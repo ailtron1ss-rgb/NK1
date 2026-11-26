@@ -125,6 +125,8 @@ assert.ok(delayedMetacognitiveEvent,
   'delayed outcome must still close a decision-scoped metacognitive episode using historical anchors');
 assert.equal(delayedMetacognitiveEvent.tick, firstDecisionTrace.tick,
   'the metacognitive episode remains anchored to the original decision tick');
+assert.equal(delayedMetacognitiveEvent.payload.outcomeTick, core.persisted.state.tick,
+  'the metacognitive episode must retain the later tick when the result was observed');
 const workspaceApplicationsAfterFirstFeedback = core.cognitiveRuntime.globalWorkspace.snapshot().learning.outcomesApplied;
 const cefTotalAfterFirstFeedback = core.cognitiveRuntime.cognitiveEventFabric.snapshot().total;
 await core.feedback({
