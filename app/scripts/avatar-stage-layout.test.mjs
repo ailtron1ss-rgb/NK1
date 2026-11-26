@@ -28,7 +28,7 @@ test("mode controls are a named toolbar with pressed state and mobile-sized targ
   const stage = await readFile(stagePath, "utf8");
   assert.match(stage, /role="toolbar" aria-label="Управление аватаром"/);
   assert.match(stage, /role="group" aria-label="Режим отображения персонажа"/);
-  assert.match(stage, /role="status" aria-live="polite" aria-label="Тип выбранного тела"/);
+  assert.match(stage, /role="status" aria-live="polite" aria-label="Тип выбранного тела и подтверждение кадра"/);
   for (const mode of ["live2d", "legacy", "original", "3d"]) {
     const pressed = `aria-pressed={mode === "${mode}"}`;
     const pressedAt = stage.indexOf(pressed);
