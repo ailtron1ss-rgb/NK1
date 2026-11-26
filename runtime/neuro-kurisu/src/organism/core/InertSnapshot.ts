@@ -3,6 +3,8 @@ import { types as nodeUtilTypes } from 'node:util';
 export interface InertSnapshotLimits {
   maxDepth?: number;
   maxProperties?: number;
+  /** Preserve NaN/Infinity as inert primitives only for owners that normalize every numeric field after cloning. */
+  allowNonFiniteNumbers?: boolean;
 }
 
 /**
@@ -32,7 +34,9 @@ export function cloneInertSnapshot<T = unknown>(
     if (depth > maxDepth) return invalid();
     if (value === null || value === undefined ||
         typeof value === 'string' || typeof value === 'boolean') return value;
-    if (typeof value === 'number') return Number.isFinite(value) ? value : invalid();
+    if (typeof value === 'number') {
+      return Number.isFinite(value) || limits.allowNonFiniteNumbers === true ? value : invalid();
+    }
     if (typeof value !== 'object' || nodeUtilTypes.isProxy(value)) return invalid();
     if (active.has(value)) return invalid();
 
