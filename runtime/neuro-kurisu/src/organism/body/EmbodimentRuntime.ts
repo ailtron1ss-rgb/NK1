@@ -1,3 +1,4 @@
+import { attestHostObservation } from './ObservationIntakeGate.ts';
 import { createHash } from 'node:crypto';
 import { sampleAndroidTelemetryDetailed, type TermuxCapabilities, type TermuxTtsOptions, detectTermuxCapabilities, synthesizeSpeechInput, type AndroidTelemetryDiagnostics } from './AndroidEmbodimentBridge.ts';
 import { buildVoicePlan, defaultVoiceRuntimeState, type VoiceRuntimeState, type VoicePlan } from './VoiceEmbodiment.ts';
@@ -108,7 +109,7 @@ export function buildAndroidTelemetryObservation(
   if (claims.length === 0) return null;
   payload.claim = claims.join(';');
 
-  return {
+  return attestHostObservation({
     id: 'android-telemetry:' + Math.floor(telemetry.sampledAt),
     sourceId: 'android-termux-primary',
     sourceKind: 'android-telemetry',
@@ -119,7 +120,7 @@ export function buildAndroidTelemetryObservation(
     sessionId: input.sessionId,
     provenance: 'host-interface',
     payload,
-  };
+  });
 }
 
 export interface VoiceInputResult {
