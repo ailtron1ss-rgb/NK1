@@ -2063,15 +2063,23 @@ export class OrganismCore {
             b1600Development01: Number((b1600 as any)?.stats?.last?.development ?? (b1600 as any)?.stats?.last?.developmentGain01 ?? .5),
         };
     }
-    private commitPersistentContinuity(reason = 'checkpoint') {
-        const material = this.continuityMaterial(this.persisted.state.at || Date.now());
-        const result = this.developmentalNeural.persistentContinuityKernel.commit(material, reason);
+    private preparePersistentContinuityCandidate(reason = 'checkpoint') {
+        const previousKernel = this.developmentalNeural.persistentContinuityKernel.snapshot();
+        const previousB1701 = this.developmentalNeural.b1701B2200UnifiedLifeContinuity.snapshot();
+        const kernelCandidate = new PersistentContinuityKernel();
+        kernelCandidate.restore(previousKernel);
+        const result = kernelCandidate.commit(this.continuityMaterial(this.persisted.state.at || Date.now()), reason);
         if (!result.ok)
             throw new Error(`Persistent continuity commit rejected: ${result.error}`);
-        this.developmentalNeural.b1701B2200UnifiedLifeContinuity.commitCheckpoint(reason);
-        this.persisted.system.persistentContinuityKernel = this.developmentalNeural.persistentContinuityKernel.snapshot();
-        this.persisted.system.b1701B2200UnifiedLifeContinuity = this.developmentalNeural.b1701B2200UnifiedLifeContinuity.snapshot();
-        return result;
+        const b1701Candidate = new B1701B2200UnifiedLifeContinuityCore();
+        b1701Candidate.restore(previousB1701);
+        b1701Candidate.commitCheckpoint(reason);
+        return {
+            previousKernel,
+            previousB1701,
+            kernel: kernelCandidate.snapshot(),
+            b1701: b1701Candidate.snapshot(),
+        };
     }
     checkpointProfile() { return this.lastCheckpointProfile ? { ...this.lastCheckpointProfile } : null; }
     private async checkpoint(force = false): Promise<void> {
@@ -2091,6 +2099,9 @@ export class OrganismCore {
         // canonicalNeuralSubstrate is projected by PersistenceProjectionCoordinator below.
         // Do not snapshot it once here and then immediately snapshot the same state again.
         let capabilityMs = 0, temporalMs = 0, projectionDecisionMs = 0, projectionMs = 0, recoveryMs = 0, integrityMs = 0, replayMs = 0, runtimeSyncMs = 0, stampMs = 0, saveMs = 0;
+        let continuityCandidate: ReturnType<OrganismCore['preparePersistentContinuityCandidate']> | null = null;
+        let recoveryCandidate: ReturnType<FailureRecoveryCertification['snapshot']> | null = null;
+        let recoveryBefore: ReturnType<FailureRecoveryCertification['snapshot']> | null = null;
         if (Date.now() - this.persistence.capabilityRefreshedAt > 60000) {
             const t = Date.now();
             await this.governanceSubsystem.capabilities.refresh();
@@ -2192,8 +2203,11 @@ export class OrganismCore {
             this.persisted.system.integrity = finalIntegrity;
             throw new Error(`Organism final integrity violation: ${finalIntegrity.violations.map(v => `${v.code}@${v.path}`).join(', ')}`);
         }
-        if (fullProjection)
-            this.commitPersistentContinuity('durable-checkpoint');
+        if (fullProjection) {
+            continuityCandidate = this.preparePersistentContinuityCandidate('durable-checkpoint');
+            this.persisted.system.persistentContinuityKernel = continuityCandidate.kernel;
+            this.persisted.system.b1701B2200UnifiedLifeContinuity = continuityCandidate.b1701;
+        }
         // Stamp once after the final durable-state mutations. The canonical hash excludes
         // `system`, so certificate metadata can be added afterwards without changing it.
         t = Date.now();
@@ -2202,14 +2216,34 @@ export class OrganismCore {
         if (fullProjection) {
             recoveryCheckpointHash = this.persisted.system.lastStateHash;
             t = Date.now();
-            this.organismSystems.governance.failureRecoveryCertification.checkpoint(this.persisted, Date.now(), recoveryCheckpointHash);
+            recoveryBefore = this.organismSystems.governance.failureRecoveryCertification.snapshot();
+            const recoveryCandidateOwner = new FailureRecoveryCertification();
+            recoveryCandidateOwner.restore(recoveryBefore);
+            recoveryCandidateOwner.checkpoint(this.persisted, Date.now(), recoveryCheckpointHash);
+            recoveryCandidate = recoveryCandidateOwner.snapshot();
             recoveryMs = Date.now() - t;
-            this.persisted.system.failureRecoveryCertification = this.organismSystems.governance.failureRecoveryCertification.snapshot();
+            this.persisted.system.failureRecoveryCertification = recoveryCandidate;
         }
         if (fullProjection) {
             this.persistence.persistenceFullCheckpointCount += 1;
             t = Date.now();
-            await this.store.save(this.persisted);
+            try {
+                await this.store.save(this.persisted);
+            }
+            catch (error) {
+                // Candidate receipts are not live owner commits until the canonical store accepts them.
+                if (continuityCandidate) {
+                    this.persisted.system.persistentContinuityKernel = continuityCandidate.previousKernel;
+                    this.persisted.system.b1701B2200UnifiedLifeContinuity = continuityCandidate.previousB1701;
+                }
+                if (recoveryBefore) this.persisted.system.failureRecoveryCertification = recoveryBefore;
+                throw error;
+            }
+            if (continuityCandidate) {
+                this.developmentalNeural.persistentContinuityKernel.restore(continuityCandidate.kernel);
+                this.developmentalNeural.b1701B2200UnifiedLifeContinuity.restore(continuityCandidate.b1701);
+            }
+            if (recoveryCandidate) this.organismSystems.governance.failureRecoveryCertification.restore(recoveryCandidate);
             this.persistence.persistenceProjectionCoordinator.commitMaterialization(projectionContext, this.persisted.state.tick);
             saveMs = Date.now() - t;
             const persistedMetrics = this.persistenceMetrics();
