@@ -529,5 +529,8 @@ console.log('COGNITIVE_MODULE_CHECKPOINT_ATOMICITY=PASS');
   assert.equal(statusOf(host, 'memory.oversized'), 'active');
   assert.ok(events.includes('resume:memory.oversized'));
   assert.ok(!events.includes('shutdown:memory.oversized'));
+  // The oversized state is intentionally rejected; restore a valid bounded
+  // snapshot before cleanup so stopAll can exercise the normal shutdown path.
+  fixture.module.snapshot = () => ({ value: fixture.state.value });
   await host.stopAll();
 }
