@@ -604,7 +604,9 @@ export class CognitiveModuleRuntime {
       record.module = null;
       record.status = 'stopped';
       record.lastError = undefined;
-      return envelope;
+      // The canonical state store owns the sealed envelope reference. Return
+      // a detached copy so callers cannot mutate persisted module state.
+      return envelope ? structuredClone(envelope) : null;
     } catch (error) {
       // Once shutdown has begun its partial effects are unknowable. Keep the
       // durable snapshot, quarantine the instance and never report it active.
