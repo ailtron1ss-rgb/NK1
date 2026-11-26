@@ -17,6 +17,7 @@ import { OrganismCore } from '../src/organism/core/OrganismCore.ts';
 import { MemoryStateStore } from '../src/organism/persistence/MemoryStateStore.ts';
 import { RuntimeEvidenceBus } from '../src/organism/system/RuntimeEvidenceBus.ts';
 import { buildCameraCaptureObservation } from '../src/organism/body/CameraEvidenceProcessor.ts';
+import { attestHostObservation } from '../src/organism/body/ObservationIntakeGate.ts';
 
 const options = { cycleResultMode: 'operational', checkpointMinIntervalMs: 0 };
 const makeCore = async (store = new MemoryStateStore()) => {
@@ -39,7 +40,7 @@ const observation = (overrides = {}) => ({
   ...overrides,
 });
 
-test('a consented real capture reaches the grounded world model', async () => {
+test('only runtime-attested camera capture reaches the grounded world model', async () => {
   const core = await makeCore();
   core.setObservationConsent('vision', true);
   const capture = buildCameraCaptureObservation({
@@ -61,7 +62,36 @@ test('a consented real capture reaches the grounded world model', async () => {
   assert.ok(capture, 'the host camera adapter must create a validated capture object');
   capture.payload.subject = 'desk';
   capture.payload.claim = 'present';
-  const admitted = core.admitObservation(capture);
+  // The builder is only a projection. Direct callers cannot turn its booleans and
+  // receipt-shaped fields into host authority.
+  const projectionOnly = core.admitObservation(capture);
+  assert.equal(projectionOnly.status, 'accepted');
+  assert.equal(projectionOnly.observation.isRealCapture, false);
+  assert.equal(projectionOnly.observation.provenance, 'unresolved');
+
+  const verifiedCapture = buildCameraCaptureObservation({
+    evidence: {
+      evidenceKind: 'camera-capture',
+      at: Date.now(),
+      cameraId: 0,
+      byteLength: 512,
+      sha256: 'e'.repeat(64),
+      captureQuality01: 0.9,
+      novelty01: 0.7,
+    },
+    executionId: 'e2e-runtime-camera-execution',
+    providerReceiptId: 'e2e-runtime-camera-provider-receipt',
+    sessionId: 'e2e-session',
+    receiptVerified: true,
+    consentGranted: true,
+  });
+  assert.ok(verifiedCapture);
+  verifiedCapture.payload.subject = 'desk';
+  verifiedCapture.payload.claim = 'present';
+  // Simulate the one privileged step performed by OrganismRuntime after verifying
+  // the ActionGateway result and exact provider receipt. Runtime integration tests
+  // separately cover that callsite.
+  const admitted = core.admitObservation(attestHostObservation(verifiedCapture));
   assert.equal(admitted.status, 'accepted');
   assert.equal(admitted.observation.isRealCapture, true);
 
@@ -186,7 +216,7 @@ test('cross-modality disagreement through the live core is preserved', async () 
   assert.ok(visionCapture);
   visionCapture.payload.subject = 'door';
   visionCapture.payload.claim = 'open';
-  core.admitObservation(visionCapture);
+  core.admitObservation(attestHostObservation(visionCapture));
   core.admitObservation(observation({
     modality: 'audio', sourceId: 'mic-0', sourceKind: 'microphone',
     provenance: 'provider-model-output',
