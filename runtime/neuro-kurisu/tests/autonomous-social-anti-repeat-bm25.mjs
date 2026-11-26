@@ -72,6 +72,7 @@ assert.equal(selected.initiative?.topic, freshCandidate,
   'a strongly repeated theme in delivered messages should lose to a fresh candidate without being globally banned');
 
 const noDeliveryHistory = new AutonomousSocialInitiativeEngine();
+noDeliveryHistory.setConsent(true); // No acknowledged-delivery history, but public selection is explicitly opted in.
 const noHistorySelection = noDeliveryHistory.cycle(runtimeInput(start, [
   { topic: repeatedCandidate, source: 'reflection', salience01: .92, freshness01: .86, interestFit01: .72, affectFit01: .65 },
   { topic: freshCandidate, source: 'reflection', salience01: .92, freshness01: .86, interestFit01: .72, affectFit01: .65 },
