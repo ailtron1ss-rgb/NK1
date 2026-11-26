@@ -180,7 +180,18 @@ assert.deepEqual(proxyRestored.snapshot(), defaultMultimodalState(), 'a hostile 
 // --- Defaults for null/undefined ----------------------------------------------
 const emptyRestored = new PerceptualEvidenceCompiler();
 emptyRestored.restore(undefined);
-assert.deepEqual(emptyRestored.snapshot(), defaultPerceptualEvidence());
+const emptySnapshot = emptyRestored.snapshot();
+const emptyDefaults = defaultPerceptualEvidence();
+const { lastHash: _actualProjectionHash, ...emptySnapshotWithoutHash } = emptySnapshot;
+const { lastHash: _defaultProjectionHash, ...emptyDefaultsWithoutHash } = emptyDefaults;
+assert.deepEqual(emptySnapshotWithoutHash, emptyDefaultsWithoutHash,
+  'restoring an empty perceptual evidence state must preserve conservative default metrics');
+assert.match(emptySnapshot.lastHash, /^[a-f0-9]{8}$/,
+  'restore must emit a deterministic projection fingerprint, even for empty state');
+const repeatedEmptyRestore = new PerceptualEvidenceCompiler();
+repeatedEmptyRestore.restore(undefined);
+assert.equal(repeatedEmptyRestore.snapshot().lastHash, emptySnapshot.lastHash,
+  'identical empty restore projections must produce the same digest');
 
 // --- P35 semantic world/body --------------------------------------------------
 const p35 = new P35SemanticWorldBodyEngine();

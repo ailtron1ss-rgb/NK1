@@ -24,6 +24,10 @@ assert.equal(reality.last?.source,'simulation');
 assert.equal(reality.last?.proofClass,'none');
 assert.equal(reality.last?.verified01,0);
 assert.equal(reality.last?.independent01,0);
-assert.ok((reality.last?.evidence01 ?? 0) > .5);
+assert.equal(reality.last?.evidence01, .18,
+  'telemetry-only Android observations must retain the conservative simulation evidence floor');
+assert.equal(reality.last?.verified01, 0);
+assert.equal(reality.last?.independent01, 0);
+assert.equal(reality.last?.proofClass, 'none');
 console.log(JSON.stringify({ok:true,tick:result.cycle.state.tick,worldRevision:world.revision,lastGroundedHash:world.lastHash,externalFact:world.facts.slice(-2),grounding:{source:reality.last?.source,verified01:reality.last?.verified01,evidence01:reality.last?.evidence01}}));
 await runtime.stop?.();
