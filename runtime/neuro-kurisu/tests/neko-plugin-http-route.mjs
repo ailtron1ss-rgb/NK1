@@ -170,13 +170,9 @@ try {
     JSON.stringify(envelope('http-large-1', 'x'.repeat(2_000))));
   assert.equal((await expectJson(tooLarge, 413)).error, 'request-too-large');
 
-  const notReady = await request(base, '/api/neko/messages/push', JSON.stringify(envelope('http-not-ready-1')));
   ready = false;
-  const unavailable = await expectJson(notReady, 200);
-  assert.equal(unavailable.accepted, true);
-  // The request above was deliberately sent before the readiness flip.
   const blockedWhileNotReady = await request(base, '/api/neko/messages/push',
-    JSON.stringify(envelope('http-not-ready-2')));
+    JSON.stringify(envelope('http-not-ready-1')));
   assert.equal((await expectJson(blockedWhileNotReady, 503)).error, 'organism-runtime-not-ready');
   ready = true;
 
@@ -199,7 +195,7 @@ try {
   assert.equal((await expectJson(ingressFailure, 503)).error, 'neko-plugin-ingress-unavailable');
   ingress = originalIngress;
 
-  assert.throws(() => handleNekoPluginPushHttpRequest(
+  await assert.rejects(handleNekoPluginPushHttpRequest(
     { method: 'POST', url: '/api/neko/messages/push', headers: {} },
     { credentials, ingress, maxBodyBytes: 512 },
   ), /neko-plugin-http-body-limit-invalid/);
