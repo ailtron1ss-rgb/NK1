@@ -509,7 +509,7 @@ export class OrganismRuntime {
     }
     const stateStore = this.cognitiveModuleCheckpointStore ?? canonicalStateStore;
     this.core = new OrganismCore(stateStore, { ...config, cycleResultMode:'operational' });
-    this.undoFirstWorkspaceRoot = stateStore instanceof FileStateStore ? stateStore.siblingPath('workspace') : null;
+    this.undoFirstWorkspaceRoot = canonicalStateStore instanceof FileStateStore ? canonicalStateStore.siblingPath('workspace') : null;
     const learningJournals = createDefaultLearningJournals(config.stateFile);
     this.core.configureP23LearningJournals(learningJournals);
     this.trustedShadowLearningScheduler = config.trustedShadowLearning?.enabled === true
