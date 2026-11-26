@@ -141,7 +141,13 @@ Envelope связывает module ID и module version, state schema version, t
 | Ошибка shutdown после сохранения | Состояние уже сохранено; экземпляр помечается failed, его нельзя объявлять active |
 | Ошибка health | Health result unhealthy, runtime не скрывает ошибку |
 
-Неопределённый результат остановки не трактуется как успешный shutdown. Успешный save предшествует shutdown; это не заменяет атомарный durable checkpoint всей системы — такой checkpoint остаётся обязанностью общей Persistence/Continuity линии.\n\nLifecycle barrier сериализует одиночную активацию, полный `activateAll()`, checkpoint, `deactivate()` и `stopAll()`. Поэтому зависимость нельзя остановить, пока зависимый модуль находится в `initializing` или уже `active`; проверка графа выполняется после завершения предшествующей lifecycle-операции.\n\n`stopAll()` идёт в обратном топологическом порядке и продолжает обработку независимых модулей после ошибки. Если остановить один или несколько модулей не удалось, host выбрасывает `module-stop-incomplete:<ids>` с массивом `failures` (module ID + причина). Зависимость активного модуля остаётся активной: ошибка одного dependent не должна заставить host выключить его prerequisite. После успешного `deactivate()` возвращается defensive copy sealed envelope, а не изменяемая ссылка на объект, которым владеет canonical checkpoint store.\n\nОшибка активации extension-модулей не является отказом Core: `OrganismRuntime.init()` продолжает запуск, сохраняет `activationError` в diagnostics и оставляет health degraded. Это не маскирует отказ: конкретный модуль остаётся `failed`, а `cognitiveModuleHealth().ok` остаётся false.
+Неопределённый результат остановки не трактуется как успешный shutdown. Успешный save предшествует shutdown; это не заменяет атомарный durable checkpoint всей системы — такой checkpoint остаётся обязанностью общей Persistence/Continuity линии.
+
+Lifecycle barrier сериализует одиночную активацию, полный `activateAll()`, checkpoint, `deactivate()` и `stopAll()`. Поэтому зависимость нельзя остановить, пока зависимый модуль находится в `initializing` или уже `active`; проверка графа выполняется после завершения предшествующей lifecycle-операции.\n\n`stopAll()` идёт в обратном топологическом порядке и продолжает обработку независимых модулей после ошибки. Если остановить один или несколько модулей не удалось, host выбрасывает `module-stop-incomplete:<ids>` с массивом `failures` (module ID + причина). Зависимость активного модуля остаётся активной: ошибка одного dependent не должна заставить host выключить его prerequisite. После успешного `deactivate()` возвращается defensive copy sealed envelope, а не изменяемая ссылка на объект, которым владеет canonical checkpoint store.\n\nОшибка активации extension-модулей не является отказом Core: `OrganismRuntime.init()` продолжает запуск, сохраняет `activationError` в diagnostics и оставляет health degraded. Это не маскирует отказ: конкретный модуль остаётся `failed`, а `cognitiveModuleHealth().ok` остаётся false.
+
+Сбой non-disruptive snapshot не останавливает модуль: после ошибки host сохраняет статус `active`, но помечает его health как degraded с причиной snapshot failure. Успешный последующий `snapshotAll()` очищает только этот transient snapshot fault; отдельная ошибка lifecycle/quiesce остаётся диагностируемой до успешного восстановления соответствующего lifecycle шага.
+
+При остановке Runtime пытается закрыть Continuity Ledger даже при ошибке финального Core checkpoint. Если одновременно не удалось корректно остановить модуль и записать canonical checkpoint, вызывающий код получает `AggregateError` с обеими первопричинами, а не только первую ошибку.
 
 ## 8. Использование
 
@@ -197,5 +203,7 @@ Envelope связывает module ID и module version, state schema version, t
 - canonical checkpoint round-trip через новый host;
 - сохранение последнего хорошего module snapshot при ошибке одного модуля;
 - фактический `OrganismRuntime.init → flush → stop → restart` integration path.
+- health degradation/recovery после временного snapshot failure;
+- закрытие Continuity Ledger и сохранение обеих причин при ошибке остановки + финального checkpoint;
 
 CI включает pinned TypeScript 5.8.3 semantic typecheck, оба module lifecycle/checkpoint regression suite, architecture dependency budget и core ownership audit. Это подтверждает интеграцию на CI, но не является доказательством полного Android/Termux power-loss soak, внешней sandbox isolation, hot swap или готовности всего NK1 к первому запуску.
