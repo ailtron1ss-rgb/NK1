@@ -67,7 +67,7 @@ export function normalizeEmbodimentIntentV1(value) {
   const speaking = value.speechPhase === "speaking";
   return {
     stateVersion: value.stateVersion,
-    frameTick: value.frameTick ?? null,
+    ...(value.frameTick === undefined ? {} : { frameTick: value.frameTick }),
     expression: value.expression,
     expressionIntensity: value.expressionIntensity,
     speaking,
