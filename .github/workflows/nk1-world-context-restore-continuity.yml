@@ -1,0 +1,33 @@
+name: NK1 world context restore continuity
+on:
+  pull_request:
+    branches: [workpass70-source]
+    paths:
+      - 'runtime/neuro-kurisu/src/organism/core/WorldSubsystemRuntime.ts'
+      - 'runtime/neuro-kurisu/src/organism/world/UnifiedLatentWorldState.ts'
+      - 'runtime/neuro-kurisu/src/organism/cognition/P27NeuralWorldFoundation.ts'
+      - 'runtime/neuro-kurisu/tests/world-context-restore-continuity-20261126.mjs'
+      - '.github/workflows/nk1-world-context-restore-continuity.yml'
+permissions:
+  contents: read
+concurrency:
+  group: nk1-world-context-restore-continuity-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  restore-continuity:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: runtime/neuro-kurisu
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: runtime/neuro-kurisu/package-lock.json
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: World context and P27 latent restore regression (red-first)
+        run: node --experimental-strip-types tests/world-context-restore-continuity-20261126.mjs
+      - name: Runtime typecheck
+        run: npm run typecheck
