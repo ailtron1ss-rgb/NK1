@@ -93,6 +93,7 @@ export interface ChatTurn {
   emotion?: EmotionLabel;
   option?: OptionKind;
   backend?: string;
+  delivery?: "sending" | "sent" | "unknown" | "rejected";
 }
 
 export interface CandidateScore {
@@ -179,11 +180,19 @@ export interface AvatarBrainEnvelopeV1 {
   frame: AvatarBrainProjectionV1;
 }
 
+export interface VoiceUiState {
+  speaking: boolean;
+  listening: boolean;
+  ttsAvailable: boolean;
+  sttAvailable: boolean;
+}
+
 export interface OrganismSnapshot {
   version: number;
   tick: number;
   at: number;
   awake: boolean;
+  voice: VoiceUiState;
   avatarBrain?: AvatarBrainEnvelopeV1 | null;
   needs: Needs;
   emotion: EmotionState;
@@ -225,6 +234,7 @@ export function emptySnapshot(): OrganismSnapshot {
     tick: 0,
     at: 0,
     awake: true,
+    voice: { speaking: false, listening: false, ttsAvailable: false, sttAvailable: false },
     avatarBrain: null,
     needs: {
       energy: 0.72,
