@@ -6,8 +6,8 @@
   "source": {
     "repository": "ailtron1ss-rgb/NK1",
     "canonicalBranch": "workpass70-source",
-    "canonicalHead": "9008a8982a5173304456bee2c604bd0bc8665964",
-    "treeSha": "864841c05b5810e9c218dcf973d1e8b7307cb75e",
+    "canonicalHead": "29ab13c98b3a603bc1667a99fffb8ee33dc9560d",
+    "treeSha": "f4a11dabb3ce566d05673bb85d6a819bae942c5c",
     "mainHead": "06e01cdd0a8e60ed70991f22e842887f544d1ebf",
     "latestRelease": {
       "tag": "Neuro",
@@ -86,7 +86,8 @@
   },
   "statusCounts": {
     "NOT_AUDITED": 136,
-    "TESTED_NOT_IN_SOURCE": 5,
+    "TESTED_NOT_IN_SOURCE": 4,
+    "MERGED_AWAITING_POST_MERGE_CI": 1,
     "CI_BLOCKED": 2,
     "STACKED_TESTED_NOT_IN_SOURCE": 1
   },
@@ -100,7 +101,8 @@
     "exactHeadGreenPercent": 4.17,
     "exactHeadFailures": 2,
     "notAudited": 136,
-    "note": "These are the initial exact-head/PR audit counts, not a claim that the other work is absent from source. Eight task IDs were audited: six have green Actions on PR heads but remain outside canonical source (one of them is stacked), and two have failing Actions. No T3 item is counted as complete because none of the audited items has yet been shown to satisfy the full canonical-source + integration + acceptance ladder."
+    "note": "Eight task IDs were audited. T3-022 is now merged into canonical source and awaits post-merge CI (5/30 completed successful at last refresh); five other tasks have green PR-head Actions but remain outside canonical source (one is stacked); two tasks have failing Actions. No T3 item is yet counted as fully verified complete.",
+    "mergedAwaitingPostMergeCI": 1
   },
   "tasks": [
     {
@@ -327,7 +329,7 @@
       "title": "Монотонный event order",
       "wave": "C",
       "secondaryWave": null,
-      "status": "TESTED_NOT_IN_SOURCE",
+      "status": "MERGED_AWAITING_POST_MERGE_CI",
       "countAsComplete": false,
       "linkedPR": 1189,
       "evidence": {
@@ -338,7 +340,19 @@
           "failed": 0
         },
         "draft": false,
-        "notes": "Exact-head Actions 66/66 success; open, not merged. PR body CI statement is stale. Bounded source review still required."
+        "notes": "PR #1189 merged into canonical source. Exact PR-head Actions were 66/66 successful. Post-merge workflow is not yet complete; do not count as verified complete until all required post-merge checks finish and acceptance is refreshed.",
+        "merged": true,
+        "mergeCommit": "29ab13c98b3a603bc1667a99fffb8ee33dc9560d",
+        "mergedAt": "2026-11-26T05:57:46Z",
+        "postMergeActions": {
+          "total": 30,
+          "completed": 5,
+          "success": 5,
+          "failed": 0,
+          "inProgress": 19,
+          "queued": 6,
+          "allHeadSha": "29ab13c98b3a603bc1667a99fffb8ee33dc9560d"
+        }
       }
     },
     {
