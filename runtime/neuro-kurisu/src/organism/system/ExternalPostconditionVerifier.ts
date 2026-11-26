@@ -93,6 +93,7 @@ export class ExternalPostconditionVerifier {
       const hash=String(artifact?.hash??'');
       const nonce=String(artifact?.captureNonce??'');
       const cameraExecutionId=String(artifact?.executionId??'');
+      const cameraDecisionId=String(result.decisionId??'');
       const capturedAt=Number(artifact?.capturedAt??0);
       const captureStartedAt=Number(artifact?.captureStartedAt??0);
       const ageMs=Date.now()-capturedAt;
@@ -101,12 +102,12 @@ export class ExternalPostconditionVerifier {
         captureInput && typeof captureInput==='object' &&
         captureInput.cameraId===cameraId && captureInput.retain===true &&
         /^exec-[a-z0-9-]{8,80}$/i.test(cameraExecutionId) &&
-        result.decisionId && artifact?.decisionId===result.decisionId &&
+        cameraDecisionId && artifact?.decisionId===cameraDecisionId &&
         isTrustedDecisionLinkedExternalPostcondition(captureProof,{
           toolId:'organism.device.capture',
           input:captureInput,
           executionId:cameraExecutionId,
-          decisionId:result.decisionId,
+          decisionId:cameraDecisionId,
         }) &&
         captureProof && typeof captureProof==='object' &&
         (captureProof as OutcomeVerification).verified===true &&
@@ -118,7 +119,7 @@ export class ExternalPostconditionVerifier {
       const cameraFrameValid=Boolean(
         contract.observation && (result.action==='explore'||result.action==='verify') &&
         result.status==='executed' && result.source==='android-termux' &&
-        result.semanticVision===true &&
+        artifact?.semanticVision===true &&
         artifact?.kind==='camera-capture' && artifact.retained===true &&
         artifact.sourceId==='android-termux.camera' && artifact.decisionId===result.decisionId &&
         Number.isSafeInteger(cameraId) && cameraId>=0 &&
