@@ -220,6 +220,34 @@ assert.equal(missingCredit.updated, false,
 assert.deepEqual(restoredDelayedWorkspace.snapshot().gateWeights, gateAfterFirstCredit,
   'unmatched outcomes must not change workspace parameters');
 
+const tamperedReceiptWorkspace = new GlobalWorkspaceSubstrateV2();
+tamperedReceiptWorkspace.compete([
+  { id: 'tamper-decision', source: 'decision', salience: .99,
+    features: [1, ...new Array(11).fill(0)], content: { action: 'explore' } },
+  { id: 'tamper-memory', source: 'memory', salience: .3,
+    features: [0, 1, ...new Array(10).fill(0)], content: { signal: 'memory' } },
+]);
+tamperedReceiptWorkspace.registerDecision({ decisionId: 'tamper-decision', tick: 6, action: 'explore', at: 600 });
+const tamperedReceiptState = tamperedReceiptWorkspace.snapshot();
+const tamperedReceipt = tamperedReceiptState.decisionReceipts[0];
+const tamperedDecisionCandidate = tamperedReceipt.coalition.find(candidate => candidate.source === 'decision');
+assert.ok(tamperedDecisionCandidate, 'the decision lane must be present in the stored coalition');
+tamperedDecisionCandidate.candidateAction = 'rest';
+tamperedDecisionCandidate.eligible = true;
+const tamperedRestore = new GlobalWorkspaceSubstrateV2();
+tamperedRestore.restore(tamperedReceiptState);
+const beforeTamperCredit = tamperedRestore.snapshot().gateWeights.slice();
+const tamperAttempt = tamperedRestore.learnOutcomeForDecision({
+  decisionId: 'tamper-decision', outcomeId: 'tamper-outcome',
+  reward01: .99, learningRate: .2, learningScale01: 1,
+});
+assert.equal(tamperAttempt.updated, false,
+  'a restored eligibility bit must not override the immutable decision action recorded in the receipt');
+assert.equal(tamperAttempt.reason, 'decision-action-not-in-coalition',
+  'mismatched persisted action provenance must fail closed');
+assert.deepEqual(tamperedRestore.snapshot().gateWeights, beforeTamperCredit,
+  'tampered decision receipts must not change workspace weights');
+
 const crossDecisionReuse = restoredDelayedWorkspace.learnOutcomeForDecision({
   decisionId: 'another-decision', outcomeId: 'outcome-credit-a',
   reward01: .1, learningRate: .2, learningScale01: 1,
