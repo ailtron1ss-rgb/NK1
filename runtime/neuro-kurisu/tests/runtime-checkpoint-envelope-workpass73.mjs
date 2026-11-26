@@ -159,6 +159,13 @@ try {
   }, 'malformed Proxy envelopes must be rejected without throwing through the validation boundary');
   assert.equal(hostileKeysResult.ok, false,
     'an object whose ownKeys trap fails must never be accepted as a checkpoint envelope');
+  const transparentProxyEnvelope = new Proxy(envelope, {});
+  let transparentProxyResult;
+  assert.doesNotThrow(() => {
+    transparentProxyResult = validateRuntimeCheckpointEnvelope(transparentProxyEnvelope);
+  }, 'a transparent Proxy must be rejected as checkpoint input rather than escape as a DataCloneError');
+  assert.equal(transparentProxyResult.ok, false,
+    'a Proxy-backed envelope is not accepted even when its traps delegate to a valid value');
   assert.equal(envelope.worldTick,envelopeSnapshots.world.snapshot.tick);
   assert.deepEqual(
     Object.keys(envelope.ownerHashes).sort(),
