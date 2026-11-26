@@ -14,7 +14,7 @@ test("Chat keeps send, sleep/wake, export and microphone feedback in Russian", a
     "Экспортировать историю чата",
     "Очистить историю чата",
     "Очистить только историю чата в этом браузере? Каноническая память не изменится.",
-    "Подключение к каноническому runtime…",
+    "ожидаем подтверждение канонического runtime…",
     "Runtime отключён. Черновик сообщения сохранится, если отправка не удастся.",
     "Напишите Курису…",
     "Сообщение для Курису",
@@ -82,7 +82,7 @@ test("Motivation explains goals and homeostatic drives in Russian", async () => 
     "Энергия",
     "Когнитивная нагрузка",
     "Социальная потребность",
-    "Давление отдыха",
+    "Давление сна",
     "Согласованность идентичности",
   ]) {
     assert.ok(motivation.includes(phrase), `missing localized motivation copy: ${phrase}`);
@@ -109,7 +109,7 @@ test("Runtime health translates controls and section labels while keeping raw di
     "Непрерывность сессии",
     "Запись непрерывности",
     "Очередь восстановления действий",
-    "Записей восстановления нет.",
+    "Runtime не вернул записей для восстановления.",
     "Причина:",
     "Результат:",
   ]) {
