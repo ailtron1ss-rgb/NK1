@@ -117,8 +117,12 @@ export function createAvatarFrameBudgetController(initial: AvatarFrameBudget): {
 /**
  * Decide whether a frame is due according to the current FPS budget.
  */
-export function shouldRunAvatarRenderLoop(pageVisible: boolean, intersectsViewport: boolean): boolean {
-  return pageVisible && intersectsViewport;
+export function shouldRunAvatarRenderLoop(
+  pageVisible: boolean,
+  intersectsViewport: boolean,
+  contextAvailable = true,
+): boolean {
+  return pageVisible === true && intersectsViewport === true && contextAvailable === true;
 }
 
 export function shouldRenderAvatarFrame(
