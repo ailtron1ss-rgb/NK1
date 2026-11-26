@@ -34,3 +34,33 @@ test("avatar mode controls announce the selected renderer and expose an accessib
   assert.match(stage, /title="NK1 Original · SVG-вектор, не полноценный rig"/);
   assert.match(stage, /title="3D preview · VRM\/GLB кандидат, не production body"/);
 });
+
+
+test("avatar stage mode, fallback and organism status labels are localized", async () => {
+  const stage = await readFile(stagePath, "utf8");
+
+  for (const phrase of [
+    "3D · предпросмотр",
+    "Модель Live2D недоступна",
+    "Открыть Legacy",
+    "Бодрствует",
+    "Спит",
+    "любопытство",
+    "Провайдер речи Termux:",
+    "Live2D недоступна",
+  ]) {
+    assert.ok(stage.includes(phrase), `missing localized avatar stage copy: ${phrase}`);
+  }
+
+  for (const stale of [
+    "Live2D unavailable",
+    "Open Legacy",
+    "Termux provider:",
+    "Static sprites ·",
+    "SVG vector ·",
+    "VRM / GLB · preview-кандидат",
+    ">3D · preview<",
+  ]) {
+    assert.ok(!stage.includes(stale), `stale English renderer text remains: ${stale}`);
+  }
+});
