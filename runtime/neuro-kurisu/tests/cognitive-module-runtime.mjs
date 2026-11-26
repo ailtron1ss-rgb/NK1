@@ -534,3 +534,63 @@ console.log('COGNITIVE_MODULE_CHECKPOINT_ATOMICITY=PASS');
   fixture.module.snapshot = () => ({ value: fixture.state.value });
   await host.stopAll();
 }
+
+
+// A checkpoint snapshot already in flight must finish before lifecycle shutdown.
+// Otherwise snapshotAll and deactivate can race, causing the durable adapter to
+// observe an old snapshot after the module has already been stopped.
+{
+  const events = [];
+  const store = memoryStore();
+  const host = runtime({ stateStore: store });
+  const fixture = moduleFixture('memory.snapshot-barrier', events);
+  let releaseSnapshot;
+  let notifySnapshotStarted;
+  const gate = new Promise(resolve => { releaseSnapshot = resolve; });
+  const started = new Promise(resolve => { notifySnapshotStarted = resolve; });
+  let firstSnapshot = true;
+  fixture.module.snapshot = async () => {
+    if (firstSnapshot) {
+      firstSnapshot = false;
+      const captured = structuredClone(fixture.state);
+      events.push('snapshot-barrier-start');
+      notifySnapshotStarted();
+      await gate;
+      events.push('snapshot-barrier-end');
+      return captured;
+    }
+    events.push('snapshot-shutdown-capture');
+    return structuredClone(fixture.state);
+  };
+
+  host.register({
+    manifest: manifest('memory.snapshot-barrier'),
+    factory: () => fixture.module,
+  });
+  await host.activate('memory.snapshot-barrier');
+
+  const checkpointing = host.snapshotAll();
+  await started;
+  fixture.state.value = 99;
+  const stopping = host.deactivate('memory.snapshot-barrier');
+  await Promise.resolve();
+  assert.equal(
+    events.includes('quiesce:memory.snapshot-barrier'),
+    false,
+    'deactivate must wait while a checkpoint snapshot is in flight',
+  );
+
+  releaseSnapshot();
+  const [checkpointResult, stoppedEnvelope] = await Promise.all([checkpointing, stopping]);
+  assert.deepEqual(checkpointResult, { captured: ['memory.snapshot-barrier'], failed: [] });
+  assert.equal(stoppedEnvelope.state.value, 99);
+  assert.ok(
+    events.indexOf('snapshot-barrier-end') < events.indexOf('quiesce:memory.snapshot-barrier'),
+    'checkpoint snapshot must complete before quiesce begins',
+  );
+  assert.ok(
+    events.indexOf('quiesce:memory.snapshot-barrier') < events.indexOf('snapshot-shutdown-capture'),
+  );
+  assert.equal(store.rows.get('memory.snapshot-barrier').state.value, 99);
+  assert.equal(statusOf(host, 'memory.snapshot-barrier'), 'stopped');
+}
