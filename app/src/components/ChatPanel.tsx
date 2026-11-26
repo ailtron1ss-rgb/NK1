@@ -53,10 +53,10 @@ export function ChatPanel() {
           </p>
         </div>
         <div className="flex gap-1">
-          <Button variant="ghost" size="icon" aria-label={snap.awake ? "Уложить спать" : "Разбудить"} onClick={snap.awake ? sleep : wake} disabled={connection.status !== "connected" || busy}>
+          <Button variant="ghost" size="icon" className="min-h-11 min-w-11" aria-label={snap.awake ? "Уложить спать" : "Разбудить"} onClick={snap.awake ? sleep : wake} disabled={connection.status !== "connected" || busy}>
             {snap.awake ? <Moon className="size-4" /> : <Sun className="size-4" />}
           </Button>
-          <Button variant="ghost" size="icon" aria-label="Экспортировать историю чата" title="Экспорт чата" onClick={() => {
+          <Button variant="ghost" size="icon" className="min-h-11 min-w-11" aria-label="Экспортировать историю чата" title="Экспорт чата" onClick={() => {
             const blob = new Blob([JSON.stringify({ exportedAt: new Date().toISOString(), turns: snap.chat }, null, 2)], { type: "application/json" });
             const url = URL.createObjectURL(blob);
             const anchor = document.createElement("a");
@@ -65,7 +65,7 @@ export function ChatPanel() {
             anchor.click();
             URL.revokeObjectURL(url);
           }}><Download className="size-4" /></Button>
-          <Button variant="ghost" size="icon" aria-label="Очистить историю чата" onClick={() => {
+          <Button variant="ghost" size="icon" className="min-h-11 min-w-11" aria-label="Очистить историю чата" onClick={() => {
             if (window.confirm("Очистить только историю чата в этом браузере? Каноническая память не изменится.")) reset();
           }} disabled={busy}><RotateCcw className="size-4" /></Button>
         </div>
@@ -139,6 +139,7 @@ export function ChatPanel() {
           type="button"
           size="icon"
           variant="outline"
+          className="min-h-11 min-w-11"
           aria-label={voiceInputStatus === "listening" || voiceInputStatus === "stop-unconfirmed" ? "Остановить запись с микрофона" : "Начать ввод с микрофона"}
           title={voiceInputStatus === "listening" ? "Остановить прослушивание" : voiceInputStatus === "requesting" ? "Ожидаем разрешение на микрофон" : voiceInputStatus === "stop-unconfirmed" ? "Повторить подтверждение остановки" : "Начать прослушивание"}
           disabled={voiceInputStatus === "requesting" || voiceInputStatus === "stopping" || (voiceInputStatus !== "listening" && voiceInputStatus !== "stop-unconfirmed" && (busy || connection.status !== "connected" || !snap.voice.sttAvailable))}
@@ -157,7 +158,7 @@ export function ChatPanel() {
             ? voiceInputStatus === "requesting" || voiceInputStatus === "stopping" ? <LoaderCircle className="size-4 animate-spin" /> : <MicOff className="size-4" />
             : <Mic className="size-4" />}
         </Button>
-        <Button type="submit" size="icon" disabled={busy || !text.trim()} aria-label="Отправить">
+        <Button type="submit" size="icon" className="min-h-11 min-w-11" disabled={busy || !text.trim()} aria-label="Отправить">
           <ArrowUp className="size-4" />
         </Button>
       </form>
