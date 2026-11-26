@@ -65,6 +65,7 @@ test('stop records partial durability when an optional checkpoint sidecar fails'
       world: 'durable',
       cognitiveSpine: 'failed',
       riskAwareRecovery: 'durable',
+      continuityLedger: 'durable',
     });
     assert.equal(stop.data.overall, 'partial');
     assert.equal(entries.some(entry => entry.event === 'runtime.stop.durable'), false);
@@ -84,6 +85,7 @@ test('stop records full durability only when core, world and both sidecars compl
       world: 'durable',
       cognitiveSpine: 'durable',
       riskAwareRecovery: 'durable',
+      continuityLedger: 'durable',
     });
     assert.equal(stop.data.overall, 'durable');
     assert.equal(entries.some(entry => entry.event === 'runtime.stop.partial'), false);
