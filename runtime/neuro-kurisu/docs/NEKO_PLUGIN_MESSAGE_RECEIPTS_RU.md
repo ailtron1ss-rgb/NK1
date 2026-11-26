@@ -47,3 +47,21 @@ Raw message text, prompt content, metadata and binary payload are never written 
 - Earlier version-1 snapshots are accepted as completed receipts and migrate to version 2 on the next successful write.
 
 This is a conservative at-most-once boundary, not a claim of exactly-once delivery. The helper supplies a durable host bootstrap primitive, but a separate transport host must use it; the canonical `runtime/neuro-kurisu/src/server/server.mjs` does not currently expose a N.E.K.O. `MESSAGE_PUSH` route. Transport-to-host wiring and device/reconnect soak therefore remain deployment acceptance gates.
+
+
+## Authenticated NK1 HTTP transport
+
+The canonical server now exposes `POST /api/neko/messages/push` when per-plugin credentials are configured. Set the server-only `NEKO_PLUGIN_CREDENTIALS_JSON` environment variable to a JSON object that maps each enabled plugin ID to its own random secret of at least 32 printable ASCII characters:
+
+```json
+{"notes":"replace-with-a-long-random-secret-of-at-least-32-characters"}
+```
+
+The request must carry both the existing NK1 API authorization (for remote API access) and these plugin-specific headers:
+
+- `X-Neko-Plugin-Id`: the configured plugin ID
+- `X-Neko-Plugin-Token`: that plugin's secret
+
+The server binds the header ID to both `identity.pluginId` and `payload.plugin_id` before calling the ingress. It then applies the existing allowlist, evidence-only runtime policy, durable pending/completed receipt protocol and replay protection. Receipt state is stored at `STATE/neko-plugin-message-receipts.json`; startup awaits its restore barrier before `runtimeReady` becomes true. A malformed or unreadable receipt file fails startup closed.
+
+This first HTTP transport is deliberately limited to `ai_behavior: "read"` with `visibility: []` (or no visibility field). It performs quiet cognitive ingestion without generating a user-visible answer. Requests that ask for `respond`, chat or HUD presentation are rejected with `neko-plugin-presentation-transport-not-configured`; they are not silently accepted or marked as displayed. A durable UI presenter and delivery acknowledgement contract are the next integration gate. With no `NEKO_PLUGIN_CREDENTIALS_JSON`, the route stays disabled and returns `neko-plugin-transport-not-configured`.
