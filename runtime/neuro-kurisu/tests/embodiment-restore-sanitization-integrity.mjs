@@ -329,3 +329,53 @@ assert.deepEqual(customPrototypeRestore.snapshot().recent, [], 'arrays with cust
 assert.equal(customFilterCalls, 0, 'custom array methods are never invoked during restore');
 
 console.log('EMBODIMENT_RESTORE_SANITIZATION_INTEGRITY=PASS');
+
+
+// The canonical Embodiment owner must restore from the exact shape emitted by
+// its own snapshot(), while remaining compatible with older long facet names.
+{
+  const source = new EmbodimentSubsystemRuntime();
+  source.p41SemanticPerception.ingest({
+    at: 4_000,
+    world: {
+      scene: 'round-trip-lab',
+      objects: [{
+        label: 'door',
+        trackId: 'round-trip-door-1',
+        confidence01: 0.87,
+        evidenceKind: 'model-output',
+      }],
+    },
+  });
+  const snapshot = source.snapshot();
+  assert.ok(snapshot.p41Semantic.entities.length > 0);
+  const restored = new EmbodimentSubsystemRuntime();
+  restored.restoreFromPersisted({
+    cognition: { perception: snapshot.perception },
+    embodiment: snapshot,
+    advanced: {},
+  });
+  const restoredP41 = restored.p41SemanticPerception.snapshot();
+  assert.equal(restoredP41.tick, snapshot.p41Semantic.tick);
+  assert.equal(restoredP41.scene.label, 'round-trip-lab');
+  assert.equal(restoredP41.entities[0]?.trackId, 'world:round-trip-door-1');
+
+  const legacy = new EmbodimentSubsystemRuntime();
+  legacy.restoreFromPersisted({
+    cognition: { perception: snapshot.perception },
+    embodiment: { p41SemanticPerception: snapshot.p41Semantic },
+    advanced: {},
+  });
+  assert.equal(legacy.p41SemanticPerception.snapshot().entities[0]?.trackId, 'world:round-trip-door-1');
+
+  let getterInvoked = false;
+  const hostileRoot = {};
+  Object.defineProperty(hostileRoot, 'embodiment', {
+    enumerable: true,
+    get() { getterInvoked = true; throw new Error('embodiment restore getter'); },
+  });
+  assert.doesNotThrow(() => legacy.restoreFromPersisted(hostileRoot));
+  assert.equal(getterInvoked, false, 'owner-level persisted input must be checked before property reads');
+}
+
+console.log('EMBODIMENT_SNAPSHOT_RESTORE_KEY_PARITY=PASS');
