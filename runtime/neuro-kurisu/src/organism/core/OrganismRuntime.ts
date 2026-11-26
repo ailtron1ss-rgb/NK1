@@ -2800,74 +2800,116 @@ export class OrganismRuntime {
   }
   embodimentDiagnostics(){ return this.embodiment.sensorDiagnosticsSnapshot(); }
   async stop(): Promise<void> {
-    // Stop is a durability boundary, not merely a scheduler shutdown.  The previous
-    // implementation closed runtime clocks/ledgers without forcing the core/world
-    // stores to persist the final in-memory cycle.  On mobile this is especially
-    // dangerous because checkpoint cadence is deliberately throttled.
-    this.stopping = true;
-    this.clockScheduler.stop();
-    await this.clockScheduler.drain();
-    await this.trustedShadowLearningScheduler?.drain();
-    await this.queue.catch(() => undefined);
-    let moduleStopError: unknown = null;
+    // Stop is a durability boundary, not merely a scheduler shutdown. Attempt
+    // every cleanup obligation even if a module, checkpoint, or ledger fails.
+    const stopErrors: unknown[] = [];
+    const capture = (error: unknown) => { stopErrors.push(error); };
 
-    // All queued cognitive work has drained, so the final flush is now serialized
-    // with the same queue used by step()/tool calls.  This closes the crash/restart
-    // window without making every cycle pay a synchronous disk write.
-    let durableStopError: unknown = null;
+    this.stopping = true;
+    try {
+      this.clockScheduler.stop();
+    } catch (error) {
+      capture(error);
+    }
+    try {
+      await this.clockScheduler.drain();
+    } catch (error) {
+      capture(error);
+    }
+    try {
+      await this.trustedShadowLearningScheduler?.drain();
+    } catch (error) {
+      capture(error);
+    }
+    await this.queue.catch(capture);
+
+    // All queued cognitive work has drained, so the final flush is serialized
+    // with the same queue used by step()/tool calls. Each persistence stage is
+    // isolated so a failed core checkpoint does not skip the world/sidecar work.
     try {
       await this.enqueue(async () => {
         if (this.cognitiveModuleRuntime) {
           try {
             await this.cognitiveModuleRuntime.stopAll();
           } catch (error) {
-            moduleStopError = error;
+            capture(error);
             await this.journal.write('error', 'runtime.cognitive-modules.stop-failed', {
               message: String(error instanceof Error ? error.message : error).slice(0, 180),
             }).catch(() => {});
           }
         }
-        // Capture the closure before the single durable flush. A previous implementation
-        // flushed twice here, which is disproportionately expensive because a full core
-        // projection serializes several MB of state on a phone.
-        const runtimeView = this.core.runtimeClosureOperationalSnapshot();
-        this.runtimeClosure.durable({
-          at: Date.now(),
-          tick: runtimeView.tick,
-          stateTick: runtimeView.tick,
-          replaySignature: runtimeView.replaySignature,
-          continuousTick: runtimeView.continuous?.tick,
-          continuityProcessed: runtimeView.continuous?.processed,
-          memoryCount: runtimeView.memoryCount,
-        });
-        this.core.setRuntimeClosure(this.runtimeClosure.snapshot());
-        await this.core.flush();
-        await this.persistCognitiveSpineSchedule();
-        await this.persistRiskAwareRecovery();
-        await this.checkpointWorld(true);
-        await this.journal.write('info', 'runtime.stop.durable', {
-          tick: runtimeView.tick,
-          worldTick: this.environment.snapshot().tick,
-        }).catch(() => {});
+
+        let runtimeView: ReturnType<OrganismCore['runtimeClosureOperationalSnapshot']> | null = null;
+        try {
+          // Capture the closure once; a full core projection serializes several MB
+          // on mobile, so shutdown must not pay for duplicate full-state flushes.
+          runtimeView = this.core.runtimeClosureOperationalSnapshot();
+          this.runtimeClosure.durable({
+            at: Date.now(),
+            tick: runtimeView.tick,
+            stateTick: runtimeView.tick,
+            replaySignature: runtimeView.replaySignature,
+            continuousTick: runtimeView.continuous?.tick,
+            continuityProcessed: runtimeView.continuous?.processed,
+            memoryCount: runtimeView.memoryCount,
+          });
+          this.core.setRuntimeClosure(this.runtimeClosure.snapshot());
+        } catch (error) {
+          capture(error);
+        }
+
+        try {
+          await this.core.flush();
+        } catch (error) {
+          capture(error);
+          await this.journal.write('error', 'runtime.stop.core-checkpoint-failed', {
+            message: String(error instanceof Error ? error.message : error).slice(0, 180),
+          }).catch(() => {});
+        }
+
+        try {
+          await this.persistCognitiveSpineSchedule();
+        } catch (error) {
+          capture(error);
+        }
+        try {
+          await this.persistRiskAwareRecovery();
+        } catch (error) {
+          capture(error);
+        }
+        try {
+          await this.checkpointWorld(true);
+        } catch (error) {
+          capture(error);
+        }
+        if (runtimeView) {
+          await this.journal.write('info', 'runtime.stop.durable', {
+            tick: runtimeView.tick,
+            worldTick: this.environment.snapshot().tick,
+          }).catch(() => {});
+        }
       });
     } catch (error) {
-      durableStopError = error;
-      await this.journal.write('error', 'runtime.stop.durable-failed', {
-        message: String(error instanceof Error ? error.message : error).slice(0, 180),
-      }).catch(() => {});
+      capture(error);
     }
 
-    // A rejected final checkpoint must not skip cleanup of the continuity ledger.
-    // Preserve both the module lifecycle failure and the durable checkpoint error.
-    await this.continuityLedger.flush().catch(() => {});
-    await this.continuityLedger.close();
-    const stopErrors = [moduleStopError, durableStopError].filter(
-      (error): error is Error => error instanceof Error,
-    );
+    // Flush and close are separate obligations: close is still attempted when
+    // flush rejects, and neither error can erase module/core shutdown failures.
+    try {
+      await this.continuityLedger.flush();
+    } catch (error) {
+      capture(error);
+    }
+    try {
+      await this.continuityLedger.close();
+    } catch (error) {
+      capture(error);
+    }
+
+    if (stopErrors.length === 1) throw stopErrors[0];
     if (stopErrors.length > 1) {
       throw new AggregateError(stopErrors, 'runtime-stop-incomplete');
     }
-    if (stopErrors.length === 1) throw stopErrors[0];
   }
 
   private async persistCognitiveSpineSchedule(): Promise<void> {
