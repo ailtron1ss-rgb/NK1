@@ -109,7 +109,8 @@ export class PerceptualEvidenceCompiler{
     this.refreshHash();
   }
   private refreshHash(){
-    this.refreshHash();
+    const digest=`${this.state.scene}|${this.state.evidence.slice(0,24).map(e=>`${e.modality}:${e.claim}:${e.confidence01.toFixed(2)}`).join('|')}|${JSON.stringify(this.state.metrics)}`;
+    this.state.lastHash=stableHash(digest);
   }
   snapshot(){return structuredClone(this.state);}
 
@@ -221,8 +222,7 @@ export class PerceptualEvidenceCompiler{
     const pending=semantic?.pending.filter(x=>x.status==='pending').sort((a,b)=>b.priority01-a.priority01)[0];
     this.state.activeQuery=pending?{id:pending.id,modality:pending.modality,query:pending.query,priority01:pending.priority01,expectedInformationGain01:pending.expectedInformationGain01,estimatedCost01:pending.estimatedCost01}:null;
     this.state.lastAt=at; this.state.updates++;
-    const digest=`${this.state.scene}|${this.state.evidence.slice(0,24).map(e=>`${e.modality}:${e.claim}:${e.confidence01.toFixed(2)}`).join('|')}|${JSON.stringify(this.state.metrics)}`;
-    this.state.lastHash=stableHash(digest);
+    this.refreshHash();
     return this.snapshot();
   }
   summary(){return {scene:this.state.scene,activeQuery:this.state.activeQuery,metrics:this.state.metrics,evidence:this.state.evidence.slice(0,24),lastHash:this.state.lastHash};}
