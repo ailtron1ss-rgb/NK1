@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { DEFAULT_RENDERER_MANIFESTS } from "../src/components/avatar/rendererRegistryDefaults.ts";
 import {
   SETTINGS_RENDERER_ID_BY_VIEW_MODE,
   SETTINGS_RENDERER_OPTIONS,
@@ -38,9 +39,8 @@ test("3D Settings option stays visibly preview-only when its manifest is not pro
 
 test("selector generation fails closed when a wired renderer is missing or duplicated", () => {
   assert.throws(() => buildSettingsRendererOptions([]), /missing renderer manifest/i);
-  const duplicate = SETTINGS_RENDERER_OPTIONS.map((option) => ({
-    rendererId: option.rendererId,
-    id: option.id,
-  }));
-  assert.equal(new Set(duplicate.map((item) => item.rendererId)).size, 4);
+  assert.throws(
+    () => buildSettingsRendererOptions([...DEFAULT_RENDERER_MANIFESTS, DEFAULT_RENDERER_MANIFESTS[0]]),
+    /duplicate renderer id/i,
+  );
 });
