@@ -30,6 +30,11 @@ import {
   resolveVrmFullBodyRig,
 } from "../src/components/avatar/vrmRuntimeAdapter.ts";
 import { originalStageChannelOffsets } from "../src/components/avatar/originalStageChannels.ts";
+import {
+  auditGenericGlbHumanoidScene,
+  resolveGenericGlbHumanoidRig,
+  applyGenericGlbFullBodyChannels,
+} from "../src/components/avatar/glbHumanoidMotorAdapter.ts";
 import { emptySnapshot } from "../src/organism/types.ts";
 
 function fakeBone() {
@@ -496,4 +501,94 @@ test("the default 3D asset is honestly marked remote and not production-ready",(
   const registry=createDefaultBodyRendererRegistry();
   assert.equal(registry.selectable().some((entry)=>entry.rendererId==="nk1-three-vrm3d"),false,
     "an externally hosted, visually unaccepted asset must not enter the production-ready selector");
+});
+
+
+function createGenericGlbRigFixture(options = {}) {
+  const nodes = new Map();
+  const add = (name, parentName = null) => {
+    const node = { name, isBone: true, parent: parentName ? nodes.get(parentName) : null, rotation: { x: 0, y: 0, z: 0 } };
+    nodes.set(name, node);
+    return node;
+  };
+  add("Hips");
+  add("Spine", "Hips");
+  add("Chest", "Spine");
+  add("Neck", "Chest");
+  add("Head", "Neck");
+  for (const side of ["Left", "Right"]) {
+    add(side + "Shoulder", "Chest");
+    add(side + "UpperArm", side + "Shoulder");
+    if (!(options.missing ?? []).includes(side + "LowerArm")) add(side + "LowerArm", side + "UpperArm");
+    add(side + "Hand", side + "UpperArm");
+    add(side + "UpperLeg", "Hips");
+    if (!(options.missing ?? []).includes(side + "LowerLeg")) add(side + "LowerLeg", side + "UpperLeg");
+    add(side + "Foot", side + "UpperLeg");
+  }
+  const root = {
+    name: "Scene",
+    traverse(callback) {
+      callback(this);
+      for (const node of nodes.values()) callback(node);
+    },
+  };
+  return { root, nodes };
+}
+
+test("generic GLB audit preserves real scene-node identity and connected humanoid ancestry", () => {
+  const fixture = createGenericGlbRigFixture();
+  const audit = auditGenericGlbHumanoidScene(fixture.root);
+  assert.equal(audit.mappingMethod, "conservative-name-heuristic");
+  assert.equal(audit.capabilities.fullBodyHumanoid, true);
+  assert.strictEqual(audit.nodes.hips, fixture.nodes.get("Hips"));
+  assert.strictEqual(audit.nodes.spine, fixture.nodes.get("Spine"));
+  assert.strictEqual(audit.nodes.leftLowerArm, fixture.nodes.get("LeftLowerArm"));
+  assert.strictEqual(audit.nodes.rightLowerLeg, fixture.nodes.get("RightLowerLeg"));
+  const rig = resolveGenericGlbHumanoidRig(audit);
+  assert.strictEqual(rig.spine, fixture.nodes.get("Spine"));
+  assert.strictEqual(rig.leftLowerArm, fixture.nodes.get("LeftLowerArm"));
+});
+
+test("generic GLB motor applies every declared 3D body channel additively over the current animation pose", () => {
+  const fixture = createGenericGlbRigFixture();
+  const audit = auditGenericGlbHumanoidScene(fixture.root);
+  const rig = resolveGenericGlbHumanoidRig(audit);
+  fixture.nodes.get("Spine").rotation.x = 0.1;
+  fixture.nodes.get("LeftLowerArm").rotation.z = -0.2;
+  const result = applyGenericGlbFullBodyChannels(rig, {
+    torsoPitch: 0.5,
+    leftElbow: 0.25,
+    rightElbow: -0.25,
+    leftHip: 0.5,
+    rightHip: -0.5,
+    leftKnee: 0.25,
+    rightKnee: -0.25,
+  });
+  assert.equal(result.applied, true);
+  assert.deepEqual(result.unsupportedChannels, []);
+  assert.deepEqual(new Set(result.appliedChannels), new Set([
+    "torsoPitch", "leftElbow", "rightElbow", "leftHip", "rightHip", "leftKnee", "rightKnee",
+  ]));
+  assert.ok(Math.abs(fixture.nodes.get("Spine").rotation.x - (0.1 + 0.2)) < 1e-9);
+  assert.ok(Math.abs(fixture.nodes.get("LeftLowerArm").rotation.z - (-0.2 + 0.35)) < 1e-9);
+  assert.ok(Math.abs(fixture.nodes.get("RightLowerArm").rotation.z + 0.35) < 1e-9);
+  assert.ok(Math.abs(fixture.nodes.get("LeftUpperLeg").rotation.z - 0.4) < 1e-9);
+  assert.ok(Math.abs(fixture.nodes.get("RightUpperLeg").rotation.z + 0.4) < 1e-9);
+  assert.ok(Math.abs(fixture.nodes.get("LeftLowerLeg").rotation.z - 0.35) < 1e-9);
+  assert.ok(Math.abs(fixture.nodes.get("RightLowerLeg").rotation.z + 0.35) < 1e-9);
+});
+
+test("generic GLB motor reports missing bones instead of claiming channels were applied", () => {
+  const fixture = createGenericGlbRigFixture({ missing: ["LeftLowerArm", "RightLowerLeg"] });
+  const rig = resolveGenericGlbHumanoidRig(auditGenericGlbHumanoidScene(fixture.root));
+  const result = applyGenericGlbFullBodyChannels(rig, {
+    leftElbow: 0.5,
+    rightKnee: 0.5,
+    torsoPitch: 0.25,
+  });
+  assert.equal(result.applied, true);
+  assert.deepEqual(result.appliedChannels, ["torsoPitch"]);
+  assert.deepEqual(new Set(result.unsupportedChannels), new Set(["leftElbow", "rightKnee"]));
+  assert.ok(!result.controlledBones.includes("leftLowerArm"));
+  assert.ok(!result.controlledBones.includes("rightLowerLeg"));
 });
