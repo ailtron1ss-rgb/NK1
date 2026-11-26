@@ -228,9 +228,9 @@ test("3D viewport exposes bounded zoom, pointer-wheel zoom and one-tap camera re
  const stage=await readFile(stagePath,"utf8");
  const controls=await import("../src/components/avatar/avatarViewportControls.ts");
  assert.equal(controls.resolveAvatarCameraDistance(6.65,-1),5.65);
- assert.equal(controls.resolveAvatarCameraDistance(4.7,-5),4.5);
- assert.equal(controls.resolveAvatarCameraDistance(8.8,5),9);
- assert.equal(controls.resolveAvatarCameraDistance(Number.NaN,Number.NaN),6.65);
+ assert.equal(controls.resolveAvatarCameraDistance(4.7,-5),controls.AVATAR_CAMERA_MIN_DISTANCE);
+ assert.equal(controls.resolveAvatarCameraDistance(8.8,5),controls.AVATAR_CAMERA_MAX_DISTANCE);
+ assert.equal(controls.resolveAvatarCameraDistance(Number.NaN,Number.NaN),controls.AVATAR_CAMERA_DEFAULT_DISTANCE);
  assert.match(stage,/aria-label="Управление масштабом 3D-модели"/);
  assert.match(stage,/aria-label="Приблизить 3D-модель"/);
  assert.match(stage,/aria-label="Отдалить 3D-модель"/);
