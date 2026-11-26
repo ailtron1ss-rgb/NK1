@@ -34,6 +34,22 @@ test('stop closes and drains the continuity ledger after a canonical Core checkp
     });
     await runtime.continuityLedger.flush();
     assert.equal(runtime.continuityLedger.diagnostics().open, true, 'fixture must own an open ledger handle');
+    await runtime.continuityLedger.record({
+      at: 1_795_000_000_001,
+      tick: 8,
+      stage: 'shutdown-regression-buffered',
+      action: 'reflect',
+      energy01: 0.7,
+      uncertainty01: 0.3,
+      predictionError01: 0.2,
+      selfPredictionError01: 0.2,
+      identityContinuity01: 0.9,
+      memoryCount: 3,
+      goalCount: 1,
+      stateBytes: 128,
+      replaySignature: 'shutdown-cleanup-buffered',
+    });
+    assert.equal(runtime.continuityLedger.diagnostics().pendingLines, 1, 'fixture must leave a frame buffered for stop()');
 
     runtime.core.flush = async () => { throw new Error('simulated canonical core checkpoint failure'); };
     await assert.rejects(runtime.stop(), /simulated canonical core checkpoint failure/);
@@ -43,8 +59,10 @@ test('stop closes and drains the continuity ledger after a canonical Core checkp
       false,
       'stop must close the continuity ledger even when an earlier canonical checkpoint fails',
     );
+    assert.equal(runtime.continuityLedger.diagnostics().pendingLines, 0, 'stop must drain buffered continuity frames');
     const persistedLines = await readFile(join(directory, 'organism.continuity.jsonl'), 'utf8');
-    assert.match(persistedLines, /shutdown-cleanup-fixture/, 'the diagnostic ledger must be drained before it is closed');
+    assert.match(persistedLines, /shutdown-cleanup-fixture/);
+    assert.match(persistedLines, /shutdown-cleanup-buffered/, 'the buffered diagnostic frame must be flushed before close');
   } finally {
     await runtime.continuityLedger.close();
     await rm(directory, { recursive: true, force: true });
