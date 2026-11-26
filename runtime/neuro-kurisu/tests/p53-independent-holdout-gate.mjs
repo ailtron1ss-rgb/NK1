@@ -61,4 +61,30 @@ assert.equal(restored.holdoutVerified, false);
 assert.deepEqual(restored.evidenceFingerprints, []);
 assert.equal(labRestore.promote(restored.id)?.status, 'promotable', 'legacy promote request cannot pass the gate');
 
+// 6. Sealed evidence is durable: shadow-only re-tests and the periodic cycle must
+//    not erase a measured sealed holdout (otherwise promotion is unreachable).
+const labDurable = new P53DevelopmentalSelfModificationLab();
+const d = labDurable.propose({ tick: 12, at: 1, predictionError01: .78, selfPredictionError01: .7, uncertainty01: .8, novelty01: .5, attention01: .4, identityContinuity01: .92 });
+const weakSealed = labDurable.test(d.id, { ...strongSignals, holdout: { observed01: .5, fingerprint: 'holdout-manifest-sha256-weak', independent: true } });
+assert.equal(weakSealed?.holdoutVerified, true);
+assert.equal(weakSealed?.status, 'testing', 'a sealed holdout that misses the quality bar is not promotable');
+const afterShadow = labDurable.test(d.id, strongSignals);
+assert.equal(afterShadow?.holdoutVerified, true, 'shadow-only re-test must not erase sealed evidence');
+assert.ok((afterShadow?.holdout01 ?? 0) > 0, 'preserved sealed holdout keeps its measured value');
+for (let tick = 12; tick <= 60; tick += 12) labDurable.periodic({ ...periodicInput, tick, at: tick });
+const survived = labDurable.snapshot().candidates.find(candidate => candidate.id === d.id);
+assert.equal(survived?.holdoutVerified, true, 'periodic() must not erase sealed holdout evidence');
+assert.equal(labDurable.snapshot().promotions, 0, 'a weak sealed holdout still cannot promote');
+
+// 7. Autonomous promotion needs two distinct sealed measurements, not repeats of one.
+const labAuto = new P53DevelopmentalSelfModificationLab();
+const e = labAuto.propose({ tick: 12, at: 1, predictionError01: .78, selfPredictionError01: .7, uncertainty01: .8, novelty01: .5, attention01: .4, identityContinuity01: .92 });
+labAuto.test(e.id, { ...strongSignals, holdout: { observed01: .95, fingerprint: 'holdout-manifest-sha256-aaa', independent: true } });
+labAuto.periodic({ ...periodicInput, tick: 24, at: 24, allowAutonomousPromotion: true });
+assert.equal(labAuto.snapshot().promotions, 0, 'one sealed measurement is not enough for autonomous promotion');
+labAuto.test(e.id, { ...strongSignals, holdout: { observed01: .95, fingerprint: 'holdout-manifest-sha256-bbb', independent: true } });
+assert.equal(labAuto.snapshot().candidates.find(candidate => candidate.id === e.id)?.evidenceCount, 2);
+labAuto.periodic({ ...periodicInput, tick: 36, at: 36, allowAutonomousPromotion: true });
+assert.equal(labAuto.snapshot().promotions, 1, 'two distinct sealed measurements satisfy the host-opted autonomous path');
+
 console.log('p53 independent holdout gate PASS');

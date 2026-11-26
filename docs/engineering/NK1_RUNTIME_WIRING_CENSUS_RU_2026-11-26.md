@@ -92,3 +92,25 @@ Baseline — это потолок: он может уменьшаться, но
 2. Дать P53 источник sealed holdout через тот же ledger; тогда `periodic()` сможет продвигаться только по настоящим свидетельствам.
 3. Разобрать семью continual/drift: либо подключить метрики к обучающему циклу, либо архивировать модули с манифестом (`docs/REPOSITORY_CLEANUP_AUDIT_WORKPASS72.md` — прецедент обратимого архива).
 4. Для каждой изолированной исследовательской семьи (`neuroforge`, `CodeAssimilation`, `ScientificQuestionBank`, `PerturbationalProbe`) принять явное решение: точка входа или архив.
+
+## 6. Дополнение: durable sealed holdout и census в CI
+
+### 6.1 Найденный дефект в собственном гейте P53
+
+Самопроверка предыдущего изменения выявила ошибку: `periodic()` вызывает `test(id, input)` без holdout, а `test()` перезаписывал `holdoutVerified = false` и `holdout01 = 0`. В живом организме `periodic()` крутится каждый тик, поэтому sealed-holdout, единожды полученный от host, стирался на следующем цикле и продвижение становилось недостижимым в принципе.
+
+Исправлено:
+
+1. Sealed-измерение теперь **durable**: shadow-only прогон (в том числе из `periodic()`) не стирает уже подтверждённый holdout, а только обновляет shadow-часть. Деградация качества по-прежнему снимает `promotable`.
+2. Отпечатки свидетельств помечаются видом (`sealed:` / `shadow:`). Автономный путь по `allowAutonomousPromotion` требует **двух разных sealed-измерений**, а не любых двух записей в `evidenceCount`; legacy-отпечатки без префикса sealed-свидетельством не считаются (fail-closed).
+3. Регрессии добавлены в `tests/p53-independent-holdout-gate.mjs` (сценарии 6–7): сохранение sealed-holdout после shadow-прогонов и `periodic()`, отказ автономного продвижения на одном измерении, разрешение на двух разных.
+
+### 6.2 Census подключён к CI
+
+`.github/workflows/nk1-runtime-wiring-census.yml` выполняет три шага — печать достижимости, `--strict` относительно baseline (потолок: падает только на новых orphans, печатает `RESOLVED=`) и контракт переписи — на push в `workpass70-source` и на PR, затрагивающий `runtime/neuro-kurisu/src/**`, скрипт переписи, baseline или сам workflow.
+
+Алиасы `npm run audit:wiring`, `audit:wiring:strict` и `test:wiring-census`, а также включение `test:p53:holdout-gate` в `test:p53` — отдельная мелкая правка `runtime/neuro-kurisu/package.json` (300 КБ, в этом проходе не заливалась через API); сами команды в CI уже вызывают те же скрипты напрямую.
+
+Прогон на этом изменении (те же команды, что в workflow): `node scripts/audit-runtime-wiring.mjs` — `ORPHANS=65`; `node scripts/audit-runtime-wiring.mjs --strict --baseline scripts/runtime-wiring-baseline.json` — `RUNTIME_WIRING_STRICT=PASS WIRING_NEW_ORPHANS=0`; `node --experimental-strip-types tests/runtime-wiring-census.mjs` — PASS (700/635/65); оба P53-теста PASS; `typecheck` `TYPECHECK=PASS mode=tsc`; `audit-architecture` `CLEAN_ARCHITECTURE=PASS`; `audit-core-ownership` `CORE_OWNERSHIP=PASS`; YAML разобран парсером (1 job, 6 steps).
+
+По-прежнему не доказано: P53 всё ещё не имеет автоматического источника sealed-артефактов (host должен его поставлять), `VerifiedOutcomePromotionGate` остаётся неподключённым к P23/P36, continual/drift и исследовательские семьи не тронуты.

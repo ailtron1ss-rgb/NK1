@@ -143,15 +143,21 @@ export class P53DevelopmentalSelfModificationLab {
     const holdoutFingerprint=typeof input.holdout?.fingerprint==='string'?input.holdout.fingerprint.trim():'';
     // Fail closed: only a sealed independent holdout, distinct from the shadow evaluation, counts.
     const holdoutVerified=input.holdout?.independent===true && Number.isFinite(input.holdout?.observed01) && holdoutFingerprint.length>0 && holdoutFingerprint!==shadowFingerprint;
+    // A sealed holdout measurement is durable evidence. A later shadow-only test —
+    // including the periodic cycle, which never carries sealed evidence — must not
+    // erase it, otherwise host-supplied evidence could never survive to promotion.
+    const sealedAlready=c.holdoutVerified===true;
     c.shadow01=clamp(c.baseline01 + targetSignal*.18 + change*.25 - input.uncertainty01*.08);
-    c.holdoutVerified=holdoutVerified;
-    c.holdout01=holdoutVerified?clamp(input.holdout!.observed01):0;
+    c.holdoutVerified=holdoutVerified||sealedAlready;
+    c.holdout01=holdoutVerified?clamp(input.holdout!.observed01):(sealedAlready?c.holdout01:0);
     c.identityPreservation01=clamp(Math.min(c.identityPreservation01,input.identityContinuity01));
     c.stability01=clamp((1-input.selfPredictionError01)*.38+(1-input.uncertainty01)*.24+input.causalAlignment01*.22+input.grounding01*.16);
     c.transfer01=clamp(c.holdout01*.55+c.stability01*.3+input.grounding01*.15);
     c.improvement01=clamp((c.holdout01-c.baseline01)*2.8);
     c.risk01=clamp(input.uncertainty01*.35+(1-c.identityPreservation01)*.45+Math.abs(c.delta)*1.8);
-    const evidenceFingerprint=hash(`${shadowFingerprint}|${holdoutVerified?holdoutFingerprint:'holdout:unverified'}`);
+    // Evidence is tagged by kind so a sealed measurement is never mistaken for a
+    // shadow repeat, and legacy untagged fingerprints never count as sealed.
+    const evidenceFingerprint=`${holdoutVerified?'sealed':'shadow'}:${hash(`${shadowFingerprint}|${holdoutVerified?holdoutFingerprint:'holdout:unverified'}`)}`;
     const novelEvidence=!c.evidenceFingerprints.includes(evidenceFingerprint);
     if(novelEvidence){c.evidenceFingerprints=[...c.evidenceFingerprints,evidenceFingerprint].slice(-8);c.evidenceCount++;}
     const ready=holdoutVerified && c.improvement01>=.08 && c.holdout01>=.62 && c.transfer01>=.60 && c.identityPreservation01>=.84 && c.risk01<.28 && c.stability01>=.58;
@@ -192,7 +198,8 @@ export class P53DevelopmentalSelfModificationLab {
     // sealed holdout evidence, so it must not promote on accumulated repetitions alone.
     if(input.allowAutonomousPromotion===true){
       for(const c of this.state.candidates.filter(c=>c.status==='promotable').slice(0,2)){
-        if(c.holdoutVerified && c.evidenceCount>=2 && input.identityContinuity01>=.86)this.promote(c.id,input.at);
+        const sealedEvidence=c.evidenceFingerprints.filter(f=>f.startsWith('sealed:')).length;
+        if(c.holdoutVerified && sealedEvidence>=2 && input.identityContinuity01>=.86)this.promote(c.id,input.at);
       }
     }
     this.state.candidates=this.state.candidates.slice(0,96);
