@@ -252,3 +252,18 @@ All three PRs use the same base `workpass70-source@7e601680...`; none is behind 
 The current GitHub Release listing still contains only 19-Oct-2026 assets (`Neuro_Kurisu_WORKPASS70_2026-10-19.zip` and `Neuro_Kurisu_WORKPASS70_HOTFIX1_2026-10-19.zip`). These aspect fixes are not included in either asset.
 
 The full Master Plan X is estimated at **36/100 ±8 pp** for engineering integration / verification as a whole. Device testing, independent sealed evaluation, full checkpoint crash/power-loss evidence, global writer census, semantic `tsc`, source/archive parity, license/SBOM and Release gates remain incomplete.
+
+
+### Runtime shutdown durability (PR #1202)
+
+| Interface / owner | Shutdown behavior | Failure semantics | Verification |
+|---|---|---|---|
+| Organism Core | Final `core.flush()` precedes sidecar and World completion receipt | Fail-fast; no completion receipt on failure | Focused test 4/4; exact-head NeuroCore regression |
+| World environment | Forced final `checkpointWorld(true)` | Fail-fast; no completion receipt on failure | Focused injected World-write failure test; unified runtime suite |
+| Cognitive spine sidecar | Save helper returns `durable` or `failed` | Best-effort save, but any failure makes overall shutdown `partial` | Focused injected sidecar-write failure test |
+| Risk-aware recovery sidecar | Save helper returns `durable` or `failed` | Best-effort save, but any failure makes overall shutdown `partial` | Success-path test + unified runtime suite |
+| Shutdown journal receipt | `runtime.stop.durable` only when all four stores report durable; otherwise `runtime.stop.partial` / warn with per-owner status | Receipt write remains diagnostic best effort | Focused success/partial assertions |
+
+- RED [45806050935](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45806050935); GREEN [45806383022](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45806383022), 4/4.
+- Exact-head `9678599bf6812a3a41042fac208d17b0f0560bcd`: **30/30 Actions workflows success**; Unified Organism Runtime [45806382842](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45806382842) 39/39 steps, NeuroCore regression [45806382657](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45806382657) 55/55, integrated software baseline [45806382669](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45806382669), startup smoke [45806383035](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45806383035) and Module Dependency Audit [45806384600](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45806384600) all passed.
+- PR [#1202](https://github.com/ailtron1ss-rgb/NK1/pull/1202) remains Draft / unmerged. This is not a cross-store atomic checkpoint protocol; power-loss/device recovery remains unproven.
