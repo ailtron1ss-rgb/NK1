@@ -6,7 +6,7 @@
 **Canonical source baseline:** `workpass70-source@7e601680c765d6dc94e51e4c8f5e729b48a6f56e`  
 **Master Plan X reference snapshot:** `9008a8982a5173304456bee2c604bd0bc8665964`  
 **Progress:** 30/100 — seven owners, runtime causal spine, one verified diagnostics defect fixed on an isolated branch, exact-head focused CI green  
-**Status:** this ledger branch remains documentation-only; implementation is tracked separately in Draft PR #1197 and is not yet in canonical source.
+**Status:** this ledger branch remains documentation-only; implementation is tracked separately in Draft PRs #1197, #1199 and #1201 and is not yet in canonical source.
 
 ## Safety and source-of-truth rules
 
@@ -203,3 +203,66 @@ The following seven owner runtime files were read from the canonical source bran
 - **TESTED:** focused regression, BigPass 48/59, module dependency, unified runtime, NeuroCore and integrated baseline workflows all passed on the isolated PR head.
 - **MEASURED:** only workflow/syntax validation timings; no target device latency, heap, power-loss or avatar/audio measurement.
 - **RELEASED:** not merged to canonical source, not included in main or Release ZIP.
+
+
+## Expanded integration pass — 26 Nov 2026 (later checkpoint)
+
+### Canonical source inventory refresh
+
+- Re-fetched the recursive git tree at `workpass70-source@7e601680c765d6dc94e51e4c8f5e729b48a6f56e`.
+- Exact tree response: **11,596 entries**, **10,676 blobs/files**, **3,857 source files** (`.ts/.tsx/.js/.mjs/.mts`), of which **747** are under `runtime/neuro-kurisu/src/organism/**`.
+- These are inventory counts for that immutable source SHA, not counts of complete features or unique cognitive capabilities.
+
+### Three reproduced defects and isolated fixes
+
+**A. Read-only diagnostics — PR #1197**
+
+- The original test-only RED exposed a side effect: the diagnostics agency port invoked active `multiProjectSchedule()`, which mutates the project scheduler's selected decision.
+- The production patch now uses `multiProjectScheduleSnapshot()`; the active command remains separate.
+- Added 34-port read-only probes across seven domains, bounded cache, sanitized status, per-domain aggregation and architecture/facade/Core projection.
+- A second RED exposed that caller-controlled `Error.name` could leak into diagnostic metadata. `safeErrorType` now returns the constant `Error` label without reading the message or name.
+- Exact-head focused run [45803686848](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45803686848): **PASS, 29/29 workflow steps**, including 34-port regression, BigPass 48/59, 18 memory-owner/lifecycle/restore checks, eleven-stage cycle, CEF lineage/restore, live owner receipts and runtime typecheck.
+- All GitHub Actions runs returned for HEAD `1bcb01118ab4aa3acf8fbab49449104c76df16a1`: **32/32 success**. The first clean development startup smoke attempt was transiently cancelled by the supervisor just after Vite reported ready; rerun attempt 2 of [45803686922](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45803686922) passed. This is exact PR-head CI evidence, not canonical merge evidence.
+
+**B. World context restore continuity — PR #1199**
+
+- RED [45803058277](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45803058277): after restore, the first changed grounded observation did not increment `passiveUpdates` (`0` rather than `1`).
+- Root cause: `WorldSubsystemRuntime.restoreFromPersisted()` cleared `lastWorldContext` even though `UnifiedLatentWorldState.currentObservation()` retained the canonical last context. The P27 latent cache was also read before its owner restore.
+- Fix: rehydrate the transition baseline from the canonical unified-latent observation after validation, restore P27 owner first, then copy its latent snapshot into the cache.
+- Focused regression [45803373594](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45803373594): **PASS**, regression and runtime typecheck.
+- Current PR #1199 HEAD `06a201449a2a4c6a9fd6adb16a4022629048bf69`: **13/13 Actions workflows success**, including Unified Organism Runtime 39/39, NeuroCore regression 55/55, Module Dependency Audit, World Perception, Memory Integrity, clean prototype startup, Action Gateway and Integrated Software Baseline.
+
+**C. Memory lifecycle replay result identity — PR #1201**
+
+- RED [45803492755](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45803492755): replaying an old encode command after a later content revision returned the active revision-tip ID rather than the original result ID.
+- Root cause: `replayMutationReceipt()` used `snapshotCurrentRevisionItem()`, which intentionally follows the revision chain. The receipt contract instead requires the exact original command result.
+- Fix: exact-ID read using `MemoryOS2.snapshotItem(receipt.memoryId)`; no additional mutation is performed.
+- Focused workflow [45803609717](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45803609717): **PASS**, new replay identity test + existing full WorkPass31 lifecycle receipt test + runtime typecheck.
+- Current PR #1201 HEAD `98fef39f97b2ef4a5343807eea76df91fb17c983`: **17/17 Actions workflows success**, including Memory Integrity 18/18, Unified Organism Runtime 39/39, Module Dependency, semantic retrieval accounting and integrated baseline.
+
+### Evidence classification at this checkpoint
+
+| Gate | Current evidence | Remaining condition |
+|---|---|---|
+| G0 source truth | Exact live source SHA + tree census | Refresh full branch/PR census and protect canonical source |
+| G1 ingress / provenance | Many exact-head ingress and Action Gateway checks pass | Full channel coverage and independent adversarial review |
+| G2 checkpoint / restore | Memory, World and CEF restore regressions pass on isolated PRs | One atomic generation across all owners/sidecars; device power-loss matrix |
+| G3 causal cognitive spine | Eleven-stage CEF, owner receipts and restart regressions pass | Measure completion/causal integrity on real operating sessions |
+| G4 action / outcome | ActionGateway, correlated postcondition and receipt work exists in source/PR workflows | Prove a complete single decision→external postcondition→durable outcome→credit chain on host |
+| G5 memory integrity | Canonical owner inspected; focused lifecycle, restore, projection and replay tests pass | Complete repo-wide writer census; independent RU/EN retrieval holdout and scale |
+| G6 goal / action causality | Endogenous goal coupling and P0 causal contracts have passing workflows | Independent end-to-end action/outcome attribution |
+| G7 agency / consent | Self-motivation, ActionGateway, delivery consent workflows are present | User-facing consent/revoke flows under real device/browser operation |
+| G8 world intelligence | Grounded perception and world restore checks pass | Calibrated prediction/transfer measurements and real external observations |
+| G9 embodiment / voice | Asset, speech gateway and software integration checks exist | Real microphone/ASR/TTS playback receipt, lip sync and interruption latency on device |
+| G10 app / device | Clean startup smoke passes on PR #1199 and rerun on #1197 | Actual Android/Termux phone soak, UI/browser acceptance and accessibility |
+| G11 independent evaluation | WorkPass108/110/learning tests exist and some exact-head checks pass | Sealed holdout, >=5 paired seeds, confidence intervals and independent evaluator |
+| G12 release / parity | Existing Release artifact identified | Source/ZIP parity, license/SBOM/asset provenance and a new approved Release |
+
+### Progress estimate and non-negotiable limits
+
+- **Master Plan X integration progress: approximately 36/100 (±8 pp).** The estimate increases from the prior 30 after three new source-backed defects were reproduced, fixed and tested, and broad exact-head workflow groups passed.
+- **Foundational source presence is substantially higher than overall readiness.** Seven physical owner classes, registry/composition, 11-stage causal ledger and many subsystem mechanisms are present. This does not imply that all are independently verified or deployed.
+- **Independent/device/release proof remains low.** No Android/Termux device soak, target mobile p95/heap/battery measurements, fully sealed RU/EN retrieval holdout, complete global writer census, or new Release was performed in this pass.
+- All three implementation PRs remain **Draft and unmerged**. The passing workflows run on their exact isolated PR heads; they do not change the canonical source readiness state.
+- Node typecheck scripts report `mode=node-strip-syntax-only`; semantic TypeScript compiler validation is not claimed.
+- `gearonone.zip`, `workpass70-source`, `main`, tags and published Releases remain untouched.
