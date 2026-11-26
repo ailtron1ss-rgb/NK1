@@ -1432,7 +1432,7 @@ export class OrganismCore {
                     const valid = Boolean(
                         receipt && isTrustedCameraCaptureReceipt(receipt) && decisionId &&
                         receipt.executionId === executionId && receipt.decisionId === decisionId &&
-                        receipt.cameraId === cameraId && receipt.retained === retain &&
+                        receipt.cameraId === cameraId && retain && receipt.retained === true &&
                         receipt.hash === String(result.hash ?? '') && receipt.size === Number(result.size ?? 0) &&
                         receipt.captureNonce === String(result.captureNonce ?? '') &&
                         receipt.providerReceiptId === String(result.providerReceiptId ?? '') &&
