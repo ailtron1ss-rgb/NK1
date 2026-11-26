@@ -125,6 +125,28 @@ assert.ok(delayedMetacognitiveEvent,
   'delayed outcome must still close a decision-scoped metacognitive episode using historical anchors');
 assert.equal(delayedMetacognitiveEvent.tick, firstDecisionTrace.tick,
   'the metacognitive episode remains anchored to the original decision tick');
+const workspaceApplicationsAfterFirstFeedback = core.cognitiveRuntime.globalWorkspace.snapshot().learning.outcomesApplied;
+const cefTotalAfterFirstFeedback = core.cognitiveRuntime.cognitiveEventFabric.snapshot().total;
+await core.feedback({
+  decisionId: firstDecisionId,
+  outcomeId: 'workspace-late-feedback-1',
+  success: .92,
+  reward: .88,
+  evidenceSource: 'device',
+});
+assert.equal(core.cognitiveRuntime.globalWorkspace.snapshot().learning.outcomesApplied,
+  workspaceApplicationsAfterFirstFeedback,
+  'replaying the same feedback ID must not apply workspace learning twice');
+assert.equal(core.cognitiveRuntime.cognitiveEventFabric.snapshot().total, cefTotalAfterFirstFeedback,
+  'replaying the same feedback ID must reuse causal event IDs without appending duplicates');
+await assert.rejects(() => core.feedback({
+  decisionId: firstDecisionId,
+  outcomeId: 'workspace-late-feedback-1',
+  success: .92,
+  reward: .87,
+  evidenceSource: 'device',
+}), /feedback-outcome-id-conflict/,
+  'reusing an outcome ID with different feedback content must fail closed');
 
 console.log('NK1_COGNITIVE_WORKSPACE_PREARBITRATION=PASS', JSON.stringify({
   order,
