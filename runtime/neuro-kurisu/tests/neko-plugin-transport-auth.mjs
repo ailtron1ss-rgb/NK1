@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import {
   authorizeNekoPluginTransport,
+  handleAuthenticatedNekoPluginPush,
   parseNekoPluginCredentials,
 } from '../src/server/neko-plugin-transport-auth.mjs';
 
@@ -82,3 +83,67 @@ assert.throws(() => parseNekoPluginCredentials(JSON.stringify(['not-a-map'])),
   /neko-plugin-credentials-map-invalid/);
 
 console.log('NEKO_PLUGIN_TRANSPORT_AUTH=PASS cases=10');
+
+
+let ingressCalls = 0;
+const fakeIngress = {
+  async handle(request) {
+    ingressCalls += 1;
+    assert.equal(request.identity.pluginId, 'notes');
+    return { accepted: true, cognitiveProcessed: true, replayed: false };
+  },
+};
+const transportArgs = {
+  credentials,
+  pluginIdHeader: 'notes',
+  tokenHeader: notesToken,
+  input: { identity, payload },
+  ingress: fakeIngress,
+};
+const handled = await handleAuthenticatedNekoPluginPush(transportArgs);
+assert.equal(handled.status, 200);
+assert.deepEqual(handled.body, { ok: true, accepted: true, cognitiveProcessed: true, replayed: false });
+assert.equal(ingressCalls, 1, 'authenticated read-only envelope enters the durable ingress exactly once');
+
+const deniedToken = await handleAuthenticatedNekoPluginPush({
+  ...transportArgs,
+  tokenHeader: 'wrong-token'.padEnd(notesToken.length, 'x'),
+});
+assert.equal(deniedToken.status, 401);
+assert.equal(ingressCalls, 1, 'failed authentication must not call the ingress');
+
+const deniedPresentation = await handleAuthenticatedNekoPluginPush({
+  ...transportArgs,
+  input: { identity, payload: { ...payload, ai_behavior: 'respond' } },
+});
+assert.equal(deniedPresentation.status, 409);
+assert.equal(ingressCalls, 1, 'respond/chat/HUD capability is not accepted before a durable presenter exists');
+
+const deniedVisibility = await handleAuthenticatedNekoPluginPush({
+  ...transportArgs,
+  input: { identity, payload: { ...payload, visibility: ['chat'] } },
+});
+assert.equal(deniedVisibility.status, 409);
+assert.equal(ingressCalls, 1, 'chat visibility must not cause an untracked presentation side effect');
+
+const invalidEnvelope = await handleAuthenticatedNekoPluginPush({
+  ...transportArgs,
+  input: { identity },
+});
+assert.equal(invalidEnvelope.status, 400);
+assert.equal(ingressCalls, 1);
+
+const conflictIngress = {
+  async handle() { return { accepted: false, errorCode: 'message-id-conflict' }; },
+};
+const conflict = await handleAuthenticatedNekoPluginPush({ ...transportArgs, ingress: conflictIngress });
+assert.equal(conflict.status, 409);
+assert.equal(conflict.body.errorCode, 'message-id-conflict');
+
+const unconfigured = await handleAuthenticatedNekoPluginPush({
+  ...transportArgs,
+  credentials: new Map(),
+});
+assert.equal(unconfigured.status, 503);
+
+console.log('NEKO_PLUGIN_HTTP_TRANSPORT=PASS cases=7');
