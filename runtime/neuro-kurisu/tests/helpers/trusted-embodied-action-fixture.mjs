@@ -40,6 +40,22 @@ export async function createTrustedEmbodiedActionFixture(action = 'explore', opt
     executionId: options.executionId ?? `exec-fixture-${String(fixtureSequence).padStart(8,'0')}`,
     decisionId: options.decisionId ?? `fixture-decision-${fixtureSequence}`,
     allowCamera: options.cameraAvailable === true,
-    captureCamera: options.cameraAvailable === true ? async () => ({ ok:true, path:'/tmp/nk1-fixture-camera.jpg', size:4, hash:'a'.repeat(64), executionId:`exec-camera-${fixtureSequence}`, providerReceiptId:`fixture-camera-${fixtureSequence}` }) : undefined,
+    captureCamera: options.cameraAvailable === true ? async () => ({
+      ok:true,
+      path:'/tmp/nk1-fixture-camera.jpg',
+      size:options.cameraSize ?? 4,
+      hash:options.cameraHash ?? 'a'.repeat(64),
+      executionId:options.cameraCaptureExecutionId ?? `exec-camera-${fixtureSequence}`,
+      providerReceiptId:options.cameraProviderReceiptId ?? `fixture-camera-${fixtureSequence}`,
+      verification:options.cameraCaptureVerification,
+      verificationInput:options.cameraCaptureVerificationInput,
+      cameraId:options.cameraId ?? 0,
+      capturedAt:options.cameraCapturedAt ?? 1_700_000_000_100 + fixtureSequence,
+      captureNonce:options.cameraNonce ?? `fixture-camera-nonce-${fixtureSequence}`,
+      sourceId:options.cameraSourceId ?? 'android-termux.camera',
+      retained:options.cameraRetained === true,
+      semanticVision:options.semanticVision === true,
+      decisionId:options.decisionId ?? `fixture-decision-${fixtureSequence}`,
+    }) : undefined,
   });
 }
