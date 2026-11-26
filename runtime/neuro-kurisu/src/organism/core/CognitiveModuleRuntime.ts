@@ -69,6 +69,8 @@ export interface CognitiveModuleRuntimeOptions {
   grants?: Record<string, readonly string[]>;
   stateStore?: CognitiveModuleStateStore;
   clock?: () => number;
+  /** Maximum UTF-8 JSON bytes accepted for one module snapshot (default 1 MiB). */
+  maxStateBytes?: number;
 }
 
 interface ModuleRecord {
@@ -107,75 +109,72 @@ function fail(code: string, detail?: string): Error {
   return new Error(detail ? `${code}:${detail}` : code);
 }
 
-function clonePlainData(value: unknown, path = '$', seen = new Set<object>()): unknown {
-  if (
-    value === null ||
-    typeof value === 'string' ||
-    typeof value === 'boolean'
-  ) return value;
+interface StateCloneBudget { bytes: number; readonly maxBytes: number; }
+const STATE_TEXT_ENCODER = new TextEncoder();
+const DEFAULT_MAX_MODULE_STATE_BYTES = 1024 * 1024;
+const MAX_MODULE_STATE_BYTES = 16 * 1024 * 1024;
 
-  if (typeof value === 'number') {
-    if (!Number.isFinite(value)) throw fail('module-state-not-json-safe', path);
+function chargeStateBytes(budget: StateCloneBudget | undefined, text: string, path: string): void {
+  if (!budget) return;
+  budget.bytes += STATE_TEXT_ENCODER.encode(text).byteLength;
+  if (budget.bytes > budget.maxBytes) throw fail('module-state-size-limit', `${path}:${budget.bytes}>${budget.maxBytes}`);
+}
+
+function clonePlainData(value: unknown, path = '$', seen = new Set<object>(), budget?: StateCloneBudget): unknown {
+  if (value === null || typeof value === 'string' || typeof value === 'boolean') {
+    chargeStateBytes(budget, JSON.stringify(value), path);
     return value;
   }
-
-  if (typeof value !== 'object') {
-    throw fail('module-state-not-json-safe', path);
+  if (typeof value === 'number') {
+    if (!Number.isFinite(value)) throw fail('module-state-not-json-safe', path);
+    chargeStateBytes(budget, JSON.stringify(value), path);
+    return value;
   }
+  if (typeof value !== 'object') throw fail('module-state-not-json-safe', path);
 
   const object = value as object;
   if (seen.has(object)) throw fail('module-state-cycle', path);
   seen.add(object);
-
   try {
     if (Array.isArray(value)) {
-      if (Object.getOwnPropertySymbols(value).length > 0) {
-        throw fail('module-state-symbol-key-rejected', path);
-      }
+      if (Object.getOwnPropertySymbols(value).length > 0) throw fail('module-state-symbol-key-rejected', path);
       const keys = Reflect.ownKeys(value);
-      if (keys.length !== value.length + 1) {
-        throw fail('module-state-array-shape-invalid', path);
-      }
+      if (keys.length !== value.length + 1) throw fail('module-state-array-shape-invalid', path);
+      chargeStateBytes(budget, '[', path);
       const out: unknown[] = [];
       for (let index = 0; index < value.length; index += 1) {
         const descriptor = Object.getOwnPropertyDescriptor(value, String(index));
         if (!descriptor || !descriptor.enumerable || 'get' in descriptor || 'set' in descriptor) {
           throw fail('module-state-array-element-invalid', `${path}[${index}]`);
         }
+        if (index > 0) chargeStateBytes(budget, ',', path);
         Object.defineProperty(out, String(index), {
-          value: clonePlainData(descriptor.value, `${path}[${index}]`, seen),
-          enumerable: true,
-          writable: true,
-          configurable: true,
+          value: clonePlainData(descriptor.value, `${path}[${index}]`, seen, budget),
+          enumerable: true, writable: true, configurable: true,
         });
       }
+      chargeStateBytes(budget, ']', path);
       return out;
     }
 
     const prototype = Object.getPrototypeOf(value);
-    if (prototype !== Object.prototype && prototype !== null) {
-      throw fail('module-state-non-plain-object', path);
-    }
-    if (Object.getOwnPropertySymbols(value).length > 0) {
-      throw fail('module-state-symbol-key-rejected', path);
-    }
-
-    const descriptors = Object.getOwnPropertyDescriptors(value);
+    if (prototype !== Object.prototype && prototype !== null) throw fail('module-state-non-plain-object', path);
+    if (Object.getOwnPropertySymbols(value).length > 0) throw fail('module-state-symbol-key-rejected', path);
+    const entries = Object.entries(Object.getOwnPropertyDescriptors(value));
+    chargeStateBytes(budget, '{', path);
     const out: Record<string, unknown> = {};
-    for (const [key, descriptor] of Object.entries(descriptors)) {
-      if (!descriptor.enumerable) {
-        throw fail('module-state-nonenumerable-key-rejected', `${path}.${key}`);
-      }
-      if ('get' in descriptor || 'set' in descriptor) {
-        throw fail('module-state-accessor-rejected', `${path}.${key}`);
-      }
+    for (let index = 0; index < entries.length; index += 1) {
+      const [key, descriptor] = entries[index];
+      if (!descriptor.enumerable) throw fail('module-state-nonenumerable-key-rejected', `${path}.${key}`);
+      if ('get' in descriptor || 'set' in descriptor) throw fail('module-state-accessor-rejected', `${path}.${key}`);
+      if (index > 0) chargeStateBytes(budget, ',', path);
+      chargeStateBytes(budget, `${JSON.stringify(key)}:`, `${path}.${key}`);
       Object.defineProperty(out, key, {
-        value: clonePlainData(descriptor.value, `${path}.${key}`, seen),
-        enumerable: true,
-        writable: true,
-        configurable: true,
+        value: clonePlainData(descriptor.value, `${path}.${key}`, seen, budget),
+        enumerable: true, writable: true, configurable: true,
       });
     }
+    chargeStateBytes(budget, '}', path);
     return out;
   } catch (error) {
     if (error instanceof Error && error.message.startsWith('module-state-')) throw error;
@@ -183,6 +182,10 @@ function clonePlainData(value: unknown, path = '$', seen = new Set<object>()): u
   } finally {
     seen.delete(object);
   }
+}
+
+function cloneBoundedState(value: unknown, maxBytes: number): unknown {
+  return clonePlainData(value, '$', new Set<object>(), { bytes: 0, maxBytes });
 }
 
 function cloneManifest(manifest: CognitiveModuleManifestV1): CognitiveModuleManifestV1 {
@@ -242,6 +245,7 @@ function validateManifest(
 function validateEnvelope(
   envelope: CognitiveModuleStateEnvelopeV1 | null,
   moduleId: string,
+  maxStateBytes: number,
 ): CognitiveModuleStateEnvelopeV1 | null {
   if (envelope == null) return null;
   if (typeof envelope !== 'object' || envelope.schemaVersion !== 1) {
@@ -263,7 +267,7 @@ function validateEnvelope(
     moduleVersion: envelope.moduleVersion,
     stateSchemaVersion: envelope.stateSchemaVersion,
     capturedAt: envelope.capturedAt,
-    state: clonePlainData(envelope.state),
+    state: cloneBoundedState(envelope.state, maxStateBytes),
   };
 }
 
@@ -282,6 +286,7 @@ export class CognitiveModuleRuntime {
   private readonly grants: Map<string, ReadonlySet<string>>;
   private stateStore?: CognitiveModuleStateStore;
   private readonly clock: () => number;
+  private readonly maxStateBytes: number;
   private readonly records = new Map<string, ModuleRecord>();
 
   constructor(options: CognitiveModuleRuntimeOptions = {}) {
@@ -297,6 +302,10 @@ export class CognitiveModuleRuntime {
     );
     this.stateStore = options.stateStore;
     this.clock = options.clock ?? Date.now;
+    this.maxStateBytes = options.maxStateBytes ?? DEFAULT_MAX_MODULE_STATE_BYTES;
+    if (!Number.isSafeInteger(this.maxStateBytes) || this.maxStateBytes < 1 || this.maxStateBytes > MAX_MODULE_STATE_BYTES) {
+      throw fail('invalid-module-state-size-limit');
+    }
   }
 
   /**
@@ -416,7 +425,7 @@ export class CognitiveModuleRuntime {
       if (this.stateStore) {
         let stored: CognitiveModuleStateEnvelopeV1 | null;
         try {
-          stored = validateEnvelope(await this.stateStore.load(id), id);
+          stored = validateEnvelope(await this.stateStore.load(id), id, this.maxStateBytes);
         } catch (error) {
           throw fail('module-state-load-failed', error instanceof Error ? error.message : id);
         }
@@ -431,11 +440,11 @@ export class CognitiveModuleRuntime {
               throw fail('module-state-migration-required', id);
             }
             try {
-              state = clonePlainData(await created.migrateState(
+              state = cloneBoundedState(await created.migrateState(
                 state,
                 stored.stateSchemaVersion,
                 record.manifest.stateSchemaVersion,
-              ));
+              ), this.maxStateBytes);
             } catch (error) {
               throw fail('module-state-migration-failed', error instanceof Error ? error.message : id);
             }
@@ -512,7 +521,7 @@ export class CognitiveModuleRuntime {
         throw fail('module-quiesce-failed', error instanceof Error ? error.message : id);
       }
 
-      const state = clonePlainData(await module.snapshot());
+      const state = cloneBoundedState(await module.snapshot(), this.maxStateBytes);
       envelope = {
         schemaVersion: 1,
         moduleId: id,
@@ -593,7 +602,7 @@ export class CognitiveModuleRuntime {
       const record = this.records.get(id);
       if (record?.status !== 'active' || !record.module) continue;
       try {
-        const state = clonePlainData(await record.module.snapshot());
+        const state = cloneBoundedState(await record.module.snapshot(), this.maxStateBytes);
         const capturedAt = this.clock();
         if (!Number.isFinite(capturedAt) || capturedAt < 0) {
           throw fail('module-state-time-invalid', id);
