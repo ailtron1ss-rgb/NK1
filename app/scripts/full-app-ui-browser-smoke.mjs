@@ -62,7 +62,8 @@ async function smokeProfile(profile) {
   await page.getByRole("heading", { name: "Cognitive cycle" }).waitFor({ state: "visible" });
   const messageInput = page.getByPlaceholder("Write to Kurisu…");
   await messageInput.waitFor({ state: "visible" });
-  const send = page.getByRole("button", { name: "Send" });
+  const chatForm = messageInput.locator("xpath=ancestor::form");
+  const send = chatForm.getByRole("button", { name: "Send", exact: true });
   check(profile.name + ": Send is disabled before input", await send.isDisabled());
   await messageInput.fill("UI smoke only — message is not submitted");
   check(profile.name + ": Send enables for non-empty input", !(await send.isDisabled()));
