@@ -791,3 +791,38 @@ console.log('COGNITIVE_MODULE_CHECKPOINT_ATOMICITY=PASS');
     'mutating the returned lifecycle result must not mutate the stored checkpoint',
   );
 }
+
+
+// Legacy V1 snapshots without a digest remain readable. The next successful
+// non-disruptive checkpoint upgrades the same module state to a sealed envelope.
+{
+  const store = memoryStore([{
+    schemaVersion: 1,
+    moduleId: 'memory.legacy-integrity',
+    moduleVersion: '1.0.0',
+    stateSchemaVersion: 1,
+    capturedAt: 10,
+    state: { value: 23 },
+  }]);
+  const events = [];
+  const fixture = moduleFixture('memory.legacy-integrity', events);
+  const host = runtime({ stateStore: store });
+  host.register({
+    manifest: manifest('memory.legacy-integrity'),
+    factory: () => fixture.module,
+  });
+
+  await host.activate('memory.legacy-integrity');
+  assert.equal(fixture.state.value, 23);
+  assert.equal(store.rows.get('memory.legacy-integrity').stateHashSha256, undefined,
+    'restore alone must not silently rewrite legacy persistence');
+
+  const captured = await host.snapshotAll();
+  assert.deepEqual(captured, { captured: ['memory.legacy-integrity'], failed: [] });
+  assert.match(
+    store.rows.get('memory.legacy-integrity').stateHashSha256 ?? '',
+    /^[a-f0-9]{64}$/,
+    'the next successful checkpoint must upgrade the legacy envelope',
+  );
+  await host.stopAll();
+}
