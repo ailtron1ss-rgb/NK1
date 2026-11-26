@@ -79,11 +79,82 @@ export class ExternalPostconditionVerifier {
   async assess(result:EmbodiedActionResult):Promise<OutcomeVerification> {
     if(!isTrustedEmbodiedActionResult(result)) return noVerification('untrusted-embodied-action-result');
     if(result.realityClass==='device-telemetry') return noVerification('device-telemetry-is-not-world-observation');
-    if(result.realityClass==='camera-artifact') return noVerification('camera-artifact-requires-semantic-world-observation-receipt');
+
     const binding=bindingFor(result);
     if(!binding) return noVerification('missing-host-owned-execution-or-decision-binding');
 
     const contract=this.actionContract(result.action);
+    if(result.realityClass==='camera-artifact') {
+      const artifact=result.artifact;
+      const captureInput=result.captureVerificationInput;
+      const captureProof=result.captureVerification;
+      const cameraId=Number(artifact?.cameraId);
+      const size=Number(artifact?.size);
+      const hash=String(artifact?.hash??'');
+      const nonce=String(artifact?.captureNonce??'');
+      const cameraExecutionId=String(artifact?.executionId??'');
+      const capturedAt=Number(artifact?.capturedAt??0);
+      const captureStartedAt=Number(artifact?.captureStartedAt??0);
+      const ageMs=Date.now()-capturedAt;
+      const capturePostcondition=`android-camera-frame:${cameraId}:${hash}:${size}:${nonce}`;
+      const captureBindingValid=Boolean(
+        captureInput && typeof captureInput==='object' &&
+        captureInput.cameraId===cameraId && captureInput.retain===true &&
+        /^exec-[a-z0-9-]{8,80}$/i.test(cameraExecutionId) &&
+        result.decisionId && artifact?.decisionId===result.decisionId &&
+        isTrustedDecisionLinkedExternalPostcondition(captureProof,{
+          toolId:'organism.device.capture',
+          input:captureInput,
+          executionId:cameraExecutionId,
+          decisionId:result.decisionId,
+        }) &&
+        captureProof && typeof captureProof==='object' &&
+        (captureProof as OutcomeVerification).verified===true &&
+        (captureProof as OutcomeVerification).basis==='external-postcondition' &&
+        (captureProof as OutcomeVerification).externalObservation===true &&
+        (captureProof as OutcomeVerification).expectedPostcondition===capturePostcondition &&
+        (captureProof as OutcomeVerification).observedPostcondition===capturePostcondition
+      );
+      const cameraFrameValid=Boolean(
+        contract.observation && (result.action==='explore'||result.action==='verify') &&
+        result.status==='executed' && result.source==='android-termux' &&
+        result.semanticVision===true &&
+        artifact?.kind==='camera-capture' && artifact.retained===true &&
+        artifact.sourceId==='android-termux.camera' && artifact.decisionId===result.decisionId &&
+        Number.isSafeInteger(cameraId) && cameraId>=0 &&
+        /^[a-f0-9]{64}$/i.test(hash) && Number.isSafeInteger(size) && size>0 &&
+        /^[a-f0-9-]{20,64}$/i.test(nonce) &&
+        Number.isFinite(captureStartedAt) && Number.isFinite(capturedAt) &&
+        capturedAt>=captureStartedAt && capturedAt-captureStartedAt<=30_000 &&
+        ageMs>=-2_000 && ageMs<=30_000 &&
+        captureBindingValid
+      );
+      if(!cameraFrameValid) return noVerification('camera-frame-lacks-fresh-decision-bound-host-observation-proof');
+
+      const context:OutcomeVerificationContext={
+        toolId:binding.toolId,input:binding.input,
+        result:structuredClone(result) as unknown as Record<string,unknown>,
+        executionId:binding.executionId,decisionId:binding.decisionId,
+      };
+      return this.verifier.verify(context,async isolated=>{
+        const observed=isolated.result as unknown as EmbodiedActionResult;
+        const inputFingerprint=typeof isolated.input.resultFingerprint==='string'?isolated.input.resultFingerprint:'';
+        let exact=false;
+        try {
+          exact=Boolean(inputFingerprint && sha256Stable(observed)===inputFingerprint &&
+            observed.executionId===binding.executionId && observed.decisionId===binding.decisionId &&
+            observed.action===result.action);
+        } catch { exact=false; }
+        if(!exact) return noVerification('camera-frame-embodied-result-fingerprint-mismatch');
+        return {
+          verified:true,basis:'external-postcondition',confidence01:.99,externalObservation:true,
+          observationId:`camera-frame-observation:${nonce}`,
+          expectedPostcondition:capturePostcondition,observedPostcondition:capturePostcondition,
+          notes:'fresh-retained-host-camera-frame-bound-to-action-gateway-execution-and-decision',
+        };
+      });
+    }
+
     const threshold=Math.max(.8,contract.minIndependent01);
     const context:OutcomeVerificationContext={
       toolId:binding.toolId,
