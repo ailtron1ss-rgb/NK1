@@ -19,10 +19,6 @@ test("Settings voice and avatar controls use Russian labels and descriptions", a
     "Общие настройки главного экрана и панели аватара",
     "Подключение runtime",
     "2.5D · не включён",
-    "Подключение",
-    "Подключено",
-    "Показан последний подтверждённый снимок.",
-    "Повторить",
   ]) {
     assert.ok(settings.includes(phrase), `missing localized settings copy: ${phrase}`);
   }
@@ -45,6 +41,9 @@ test("Settings voice and avatar controls use Russian labels and descriptions", a
   assert.match(settings, /aria-describedby="voice-replies-description"/,
     "the speech switch must expose its safety/behavior description");
   assert.match(settings, /id="voice-replies-description"/);
+  for (const phrase of ["Подключение", "Подключено", "Показан последний подтверждённый снимок.", "Повторить"]) {
+    assert.ok(connection.includes(phrase), `missing localized connection copy: ${phrase}`);
+  }
   for (const stale of ["Connecting", "Connected", "Degraded", "Offline", "Language fallback", "Retry", "Refresh canonical runtime connection"]) {
     assert.ok(!connection.includes(stale), `stale English connection status remains: ${stale}`);
   }
