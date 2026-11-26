@@ -78,6 +78,7 @@ function acknowledge(engine, at, topic, source) {
 
 {
   const engine = new AutonomousSocialInitiativeEngine();
+  engine.setConsent(true);
   const result = engine.cycle(input(start, [
     candidate('A new reflection about embodied prediction under tactile uncertainty', 'reflection'),
   ]));
@@ -87,6 +88,7 @@ function acknowledge(engine, at, topic, source) {
 
 {
   const engine = new AutonomousSocialInitiativeEngine();
+  engine.setConsent(true);
   const deferred = engine.cycle(input(start, [
     candidate('A deferred active goal about adaptive reasoning under uncertainty', 'active-goal'),
   ]));

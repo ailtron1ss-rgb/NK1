@@ -460,7 +460,10 @@ export class AutonomousSocialInitiativeEngine {
     if (!this.state.startedAt) this.state.startedAt = at;
     if (input.externalInput) this.state.lastExternalInputAt = at;
     this.expirePending(at);
-    const hasPending = this.state.initiatives.some(item => (item.status === 'planned' || item.status === 'ready') && item.internalOnly !== true);
+    const hasPendingDelivery = this.state.initiatives.some(item =>
+      (item.status === 'planned' || item.status === 'ready') && item.internalOnly !== true);
+    const hasPendingInternalPlan = this.state.initiatives.some(item =>
+      item.status === 'planned' && item.internalOnly === true);
     const deliveryAllowed = this.mayDeliverUserVisible(at);
     if (!this.state.consentGranted) this.state.suppressedByConsent = Math.min(MAX_SOCIAL_COUNTER, this.state.suppressedByConsent + 1);
     else if (!deliveryAllowed) this.state.suppressedByQuietHours = Math.min(MAX_SOCIAL_COUNTER, this.state.suppressedByQuietHours + 1);
@@ -472,7 +475,8 @@ export class AutonomousSocialInitiativeEngine {
     const autonomous = !input.externalInput && input.identity01 > .5 && input.energy01 > .28;
     const timingAllows = at - quietSince >= (this.state.lastExternalInputAt ? quietPeriodMs : startupGraceMs)
       && at - this.state.lastInitiativeAt >= cooldownMs;
-    const mayInitiate = autonomous && timingAllows && !hasPending && pressure > .48;
+    const mayInitiate = autonomous && timingAllows && !hasPendingDelivery
+      && (deliveryAllowed || !hasPendingInternalPlan) && pressure > .48;
     if (!mayInitiate) {
       if (pressure < .25 && !hasPending) this.state.deferred++;
       return { shouldInitiate: false, initiative: null, internalPlan: null };
@@ -648,6 +652,15 @@ export class AutonomousSocialInitiativeEngine {
     this.expirePending(at);
     if(!this.mayDeliverUserVisible(at))return null;
     const item = this.state.initiatives.find(i => i.status === 'planned' && i.internalOnly !== true
+      && at >= i.createdAt && at - i.createdAt <= INITIATIVE_PENDING_TTL_MS);
+    return item ? structuredClone(item) : null;
+  }
+
+  /** Read the pending private cognitive candidate without exposing it to delivery APIs. */
+  latestInternalPlan(now = Date.now()): SocialInitiative | null {
+    const at = safeTime(now) ?? Date.now();
+    this.expirePending(at);
+    const item = this.state.initiatives.find(i => i.status === 'planned' && i.internalOnly === true
       && at >= i.createdAt && at - i.createdAt <= INITIATIVE_PENDING_TTL_MS);
     return item ? structuredClone(item) : null;
   }
