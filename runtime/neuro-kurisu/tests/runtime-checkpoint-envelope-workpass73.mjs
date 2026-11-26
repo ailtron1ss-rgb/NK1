@@ -7,15 +7,35 @@ import { FileStateStore } from '../src/organism/persistence/FileStateStore.ts';
 import { WorldEnvironment } from '../src/organism/world/WorldEnvironment.ts';
 import { CognitiveImmuneSystem } from '../src/organism/cognition/CognitiveImmuneSystem.ts';
 import { validateRuntimeCheckpointEnvelope } from '../src/organism/system/RuntimeCheckpointEnvelope.ts';
+import { OperationalJournal } from '../src/organism/persistence/OperationalJournal.ts';
 
 const directory=await mkdtemp(path.join(os.tmpdir(),'nk-runtime-checkpoint-envelope-'));
 const stateFile=path.join(directory,'organism.json');
 const worldStateFile=path.join(directory,'world.json');
 const sidecar=(name)=>stateFile+'.'+name+'.json';
 const backingWorldStore=new FileStateStore(worldStateFile);
+const checkpointJournalState={
+  version:1,retainedSegments:0,retainedBytes:0,
+  activeSegmentId:null,activeSegmentBytes:0,activeSegmentRecords:0,activeSegmentTailSha256:null,
+};
+const journalCursorFile=path.join(directory,'cursor-probe.operational.jsonl');
+const cursorProbeJournal=new OperationalJournal(journalCursorFile);
 let failNextWorldSave=false;
 const journalEvents=[];
-const journal={write:async(level,event,data)=>{journalEvents.push({level,event,data});}};
+const journal={
+  flush:async()=>{},
+  cursor:async()=>({...checkpointJournalState}),
+  write:async(level,event,data)=>{
+    journalEvents.push({level,event,data});
+    const line=JSON.stringify({level,event,data})+'\\n';
+    checkpointJournalState.activeSegmentBytes+=Buffer.byteLength(line);
+    checkpointJournalState.retainedBytes=checkpointJournalState.activeSegmentBytes;
+    checkpointJournalState.activeSegmentRecords+=1;
+    checkpointJournalState.retainedSegments=1;
+    checkpointJournalState.activeSegmentId='a'.repeat(64);
+    checkpointJournalState.activeSegmentTailSha256='b'.repeat(64);
+  },
+};
 const faultingWorldStore={
   load:()=>backingWorldStore.load(),
   save:async(value)=>{
@@ -37,6 +57,18 @@ let first;
 let restarted;
 let legacy;
 try {
+  await cursorProbeJournal.write('info','runtime.checkpoint-envelope.restored',{generation:1});
+  const cursorProbe=await cursorProbeJournal.cursor();
+  assert.equal(cursorProbe.version,1,'OperationalJournal must expose a versioned durable cursor');
+  assert.equal(cursorProbe.activeSegmentRecords,1,'cursor must count the committed active-segment record');
+  assert.equal(cursorProbe.activeSegmentBytes,(await readFile(journalCursorFile)).byteLength,
+    'cursor byte offset must match the actual durable active journal segment');
+  assert.equal(cursorProbe.retainedBytes,cursorProbe.activeSegmentBytes);
+  assert.match(cursorProbe.activeSegmentId,/^[a-f0-9]{64}$/);
+  assert.match(cursorProbe.activeSegmentTailSha256,/^[a-f0-9]{64}$/);
+  assert.equal(cursorProbeJournal.metrics().fsyncs,1,
+    'a successful checkpoint recovery receipt must force an OperationalJournal fsync');
+
   await backingWorldStore.save(new WorldEnvironment().persisted());
   first=createRuntime();
   await first.init();
@@ -66,12 +98,22 @@ try {
 
   const persisted=JSON.parse(await readFile(stateFile,'utf8'));
   const envelope=persisted.system?.runtimeCheckpointEnvelope;
-  assert.ok(envelope&&envelope.version===1,
+  assert.ok(envelope&&envelope.version===2,
     'a durable Core flush must commit a versioned runtime checkpoint envelope in the canonical Core file');
   assert.ok(Number.isSafeInteger(envelope.generation)&&envelope.generation>=1,
     'the envelope must carry a monotonic generation');
   assert.ok(typeof envelope.checkpointId==='string'&&envelope.checkpointId.length>=16,
     'the envelope must identify this exact checkpoint');
+  assert.equal(envelope.journalOffset.version,1,
+    'the canonical generation must bind the durable OperationalJournal cursor');
+  assert.ok(envelope.journalOffset.activeSegmentBytes>=0&&Number.isSafeInteger(envelope.journalOffset.activeSegmentRecords),
+    'the journal cursor must expose bounded active-segment byte and record offsets');
+  assert.match(envelope.manifestHash,/^[a-f0-9]{64}$/,
+    'the canonical manifest must have a SHA-256 digest');
+  const tamperedJournalOffset=structuredClone(envelope);
+  tamperedJournalOffset.journalOffset.activeSegmentBytes+=1;
+  assert.equal(validateRuntimeCheckpointEnvelope(tamperedJournalOffset).reason,'envelope-manifest-hash-mismatch',
+    'a journal offset mutation must invalidate the complete generation manifest');
   assert.equal(envelope.coreTick,persisted.state.tick,
     'the Core tick recorded in the envelope must match the Core snapshot committed in the same atomic file');
   const validatedEnvelope=validateRuntimeCheckpointEnvelope(envelope);
@@ -151,6 +193,15 @@ try {
   assert.deepEqual(restarted.cognitiveSpineScheduler.snapshot(),envelopeSnapshots.cognitiveSpine);
   assert.deepEqual(restarted.unifiedCycle.riskAwareRecoverySnapshot(),envelopeSnapshots.riskAwareRecovery);
   assert.deepEqual(restarted.cognitiveImmuneSystem.snapshot(),envelopeSnapshots.cognitiveHealth);
+  const recoveryReceipt=restarted.runtimeCheckpointDiagnostics().recoveryReceipt;
+  assert.equal(recoveryReceipt.outcome,'restored','startup must produce a structured recovery receipt');
+  assert.equal(recoveryReceipt.checkpointId,envelope.checkpointId);
+  assert.equal(recoveryReceipt.generation,envelope.generation);
+  assert.equal(recoveryReceipt.manifestHash,envelope.manifestHash);
+  assert.ok(typeof recoveryReceipt.receiptId==='string'&&recoveryReceipt.receiptId.length>=16);
+  assert.ok(journalEvents.some(row=>row.event==='runtime.checkpoint-envelope.restored'&&
+    row.data?.receiptId===recoveryReceipt.receiptId),
+    'the recovery receipt must be appended to the existing operational journal');
 
   const restoredGeneration=restarted.runtimeCheckpointDiagnostics().generation;
   await restarted.flush();
