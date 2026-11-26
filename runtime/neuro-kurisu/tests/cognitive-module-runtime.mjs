@@ -571,6 +571,7 @@ console.log('COGNITIVE_MODULE_CHECKPOINT_ATOMICITY=PASS');
 
   const checkpointing = host.snapshotAll();
   await started;
+  const duplicateCheckpoint = host.snapshotAll();
   fixture.state.value = 99;
   const stopping = host.deactivate('memory.snapshot-barrier');
   await Promise.resolve();
@@ -581,8 +582,15 @@ console.log('COGNITIVE_MODULE_CHECKPOINT_ATOMICITY=PASS');
   );
 
   releaseSnapshot();
-  const [checkpointResult, stoppedEnvelope] = await Promise.all([checkpointing, stopping]);
+  const [checkpointResult, duplicateResult, stoppedEnvelope] = await Promise.all([
+    checkpointing,
+    duplicateCheckpoint,
+    stopping,
+  ]);
   assert.deepEqual(checkpointResult, { captured: ['memory.snapshot-barrier'], failed: [] });
+  assert.deepEqual(duplicateResult, { captured: ['memory.snapshot-barrier'], failed: [] });
+  assert.equal(events.filter(event => event === 'snapshot-barrier-start').length, 1,
+    'overlapping checkpoint callers must share one capture per module');
   assert.equal(stoppedEnvelope.state.value, 99);
   assert.ok(
     events.indexOf('snapshot-barrier-end') < events.indexOf('quiesce:memory.snapshot-barrier'),
