@@ -76,20 +76,38 @@ export class EmbodimentSubsystemRuntime {
   };
 
   restoreFromPersisted(input: { cognition?: any; embodiment?: any; advanced?: any }) {
-    const cognition=input.cognition ?? {}; const embodiment=input.embodiment ?? {}; const advanced=input.advanced ?? {};
-    this.perception.restore(cognition.perception);
-    this.multimodal.restore(embodiment.multimodal);
-    this.perceptualEvidence.restore(embodiment.perceptualEvidence);
-    this.p35SemanticWorldBody.restore(embodiment.p35);
-    this.p37EmbodiedSensorium.restore(embodiment.p37);
-    this.p40SemanticIntelligence.restore(embodiment.p40SemanticIntelligence);
-    this.p41SemanticPerception.restore(embodiment.p41SemanticPerception);
-    this.p41NativePerception.restore(embodiment.p41NativePerception);
-    this.p41TemporalPerception.restore(embodiment.p41TemporalPerception);
-    this.p42Experience.restore(embodiment.p42Experience);
-    this.p43Imagery.restore(embodiment.p43Imagery);
-    this.p66InteroceptiveHomeostasis.restore(advanced.p66InteroceptiveHomeostasis);
-    this.perceptionRouting = sanitizePerceptionRoutingState(embodiment.perceptionRouting);
+    const root=isPlainDataRecord(input)?input:{};
+    const cognitionValue=ownDataValue(root,'cognition');
+    const embodimentValue=ownDataValue(root,'embodiment');
+    const advancedValue=ownDataValue(root,'advanced');
+    const cognition=isPlainDataRecord(cognitionValue)?cognitionValue:{};
+    const embodiment=isPlainDataRecord(embodimentValue)?embodimentValue:{};
+    const advanced=isPlainDataRecord(advancedValue)?advancedValue:{};
+    this.perception.restore(ownDataValue(cognition,'perception'));
+    this.multimodal.restore(ownDataValue(embodiment,'multimodal'));
+    this.perceptualEvidence.restore(ownDataValue(embodiment,'perceptualEvidence'));
+    this.p35SemanticWorldBody.restore(ownDataValue(embodiment,'p35'));
+    this.p37EmbodiedSensorium.restore(ownDataValue(embodiment,'p37'));
+    this.p40SemanticIntelligence.restore(ownDataValue(embodiment,'p40SemanticIntelligence'));
+    // Accept both the stable facet names and this owner's snapshot names. Older
+    // persisted projections use the long names; snapshot() emits the short names.
+    this.p41SemanticPerception.restore(
+      ownDataValue(embodiment,'p41SemanticPerception') ?? ownDataValue(embodiment,'p41Semantic'),
+    );
+    this.p41NativePerception.restore(
+      ownDataValue(embodiment,'p41NativePerception') ?? ownDataValue(embodiment,'p41Native'),
+    );
+    this.p41TemporalPerception.restore(
+      ownDataValue(embodiment,'p41TemporalPerception') ?? ownDataValue(embodiment,'p41Temporal'),
+    );
+    this.p42Experience.restore(
+      ownDataValue(embodiment,'p42Experience') ?? ownDataValue(embodiment,'p42'),
+    );
+    this.p43Imagery.restore(
+      ownDataValue(embodiment,'p43Imagery') ?? ownDataValue(embodiment,'p43'),
+    );
+    this.p66InteroceptiveHomeostasis.restore(ownDataValue(advanced,'p66InteroceptiveHomeostasis'));
+    this.perceptionRouting = sanitizePerceptionRoutingState(ownDataValue(embodiment,'perceptionRouting'));
   }
 
   routePerception(event: PerceptionEvent, body?: OrganismBodyState) { this.perceptionRouting = routePerception(event, body, this.perceptionRouting); return this.perceptionRouting; }
