@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { OrganismCore } from '../src/organism/core/OrganismCore.ts';
 import { MemoryStateStore } from '../src/organism/persistence/MemoryStateStore.ts';
+import { GlobalWorkspaceSubstrateV2 } from '../src/organism/cognition/GlobalWorkspaceSubstrateV2.ts';
 
 // The current cycle's workspace coalition must be formed before P61/P64 arbitration,
 // and its ignition signal must be the signal consumed by that same arbitration.
@@ -73,4 +74,43 @@ console.log('NK1_COGNITIVE_WORKSPACE_PREARBITRATION=PASS', JSON.stringify({
   order,
   ignition01: competed.ignition01,
   arbitrationWorkspace01,
+}));
+
+
+// Admission is deterministic, bounded, duplicate-safe and independent of input ordering.
+const admissionCandidates = Array.from({ length: 80 }, (_, i) => ({
+  id: `candidate-${String(i).padStart(2, '0')}`,
+  source: i % 2 ? 'perception' : 'memory',
+  salience: i === 79 ? 1 : 0.2 + (i % 7) * 0.01,
+  features: [i === 79 ? 1 : 0.1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+}));
+const admissionA = new GlobalWorkspaceSubstrateV2();
+const admissionB = new GlobalWorkspaceSubstrateV2();
+const admittedA = admissionA.compete(admissionCandidates);
+const admittedB = admissionB.compete([...admissionCandidates].reverse());
+assert.deepEqual(admittedA.selectedIds, admittedB.selectedIds,
+  'candidate admission must not depend on producer array order');
+assert.ok(admittedA.selectedIds.includes('candidate-79'),
+  'a high-salience late candidate must not be silently dropped by first-64 truncation');
+assert.equal(admissionA.diagnostics().admission.admittedCount, 64,
+  'workspace admission must enforce its 64-candidate compute bound');
+
+const duplicateWorkspace = new GlobalWorkspaceSubstrateV2();
+const duplicateResult = duplicateWorkspace.compete([
+  { id: 'same-id', source: 'memory', salience: 0.1, features: new Array(12).fill(0) },
+  { id: 'same-id', source: 'perception', salience: 0.95, features: [1, ...new Array(11).fill(0)] },
+  { id: 'other-id', source: 'goal', salience: 0.5, features: new Array(12).fill(0) },
+]);
+assert.equal(duplicateResult.selectedIds.filter(id => id === 'same-id').length, 1,
+  'duplicate candidate identities must never occupy multiple coalition slots');
+assert.equal(duplicateWorkspace.diagnostics().admission.duplicateCount, 1,
+  'duplicate identity rejection must be observable in diagnostics');
+assert.equal(duplicateWorkspace.diagnostics().admission.uniqueCount, 2,
+  'the strongest version of a repeated candidate identity must be retained');
+
+console.log('NK1_GLOBAL_WORKSPACE_ADMISSION=PASS', JSON.stringify({
+  orderInvariant: true,
+  admitted: admissionA.diagnostics().admission.admittedCount,
+  overflow: admissionA.diagnostics().admission.overflowCount,
+  duplicates: duplicateWorkspace.diagnostics().admission.duplicateCount,
 }));
