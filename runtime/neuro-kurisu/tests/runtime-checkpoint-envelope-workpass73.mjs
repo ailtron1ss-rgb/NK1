@@ -100,6 +100,18 @@ try {
   const extendedEnvelope={...envelope,unexpectedPayload:new Array(1024).fill('unbounded')};
   assert.equal(validateRuntimeCheckpointEnvelope(extendedEnvelope).ok,false,
     'unknown top-level fields must be rejected instead of being cloned into canonical state');
+
+  // A hostile object can pass the prototype check and still throw from ownKeys.
+  // Validation must reject it as data, not let a Proxy trap crash runtime startup.
+  const hostileKeysEnvelope = new Proxy(envelope, {
+    ownKeys() { throw new Error('hostile-ownKeys-trap'); },
+  });
+  let hostileKeysResult;
+  assert.doesNotThrow(() => {
+    hostileKeysResult = validateRuntimeCheckpointEnvelope(hostileKeysEnvelope);
+  }, 'malformed Proxy envelopes must be rejected without throwing through the validation boundary');
+  assert.equal(hostileKeysResult.ok, false,
+    'an object whose ownKeys trap fails must never be accepted as a checkpoint envelope');
   assert.equal(envelope.worldTick,envelopeSnapshots.world.snapshot.tick);
   assert.deepEqual(
     Object.keys(envelope.ownerHashes).sort(),
