@@ -208,6 +208,8 @@ export class MemoryWritePolicy {
   observeReinforcement(input: { tick: number; id: string; salience01?: number; predictionError01?: number }): { observations: number; promoteEligible: boolean } {
     const key = String(input.id);
     const history = this.history(key);
+    // `off` means no state and no cost, exactly like decide() and evictionWeight01().
+    if (this.mode === 'off') return { observations: history.observations, promoteEligible: false };
     const salience = clamp01(Number(input.salience01 ?? history.lastSalience01));
     const observedError = Number(input.predictionError01);
     const error = Number.isFinite(observedError) ? clamp01(observedError) : history.lastError01;
@@ -236,6 +238,7 @@ export class MemoryWritePolicy {
    * have chosen so the difference stays visible before anything depends on it.
    */
   planDeepWork(candidates: Array<{ id?: string; predictionError01?: number; uncertainty01?: number }>): { mask: boolean[]; deepCount: number; deepFraction01: number; reason: string } {
+    if (this.mode === 'off') return { mask: candidates.map(() => false), deepCount: 0, deepFraction01: 0, reason: 'empty' };
     const difficulties = candidates.map(candidate => this.deepWork.difficulty({
       deltaMagnitude: clamp01(Number(candidate.predictionError01 ?? 0)),
       updateClip: 1,

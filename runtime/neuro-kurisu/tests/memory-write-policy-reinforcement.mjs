@@ -61,6 +61,17 @@ assert.equal(flatPlan.deepCount, 1, `identically difficult batch must route the 
 assert.equal(flatPlan.reason, 'raised-to-minimum');
 assert.ok(plan.deepFraction01 > 0.25 && plan.deepFraction01 < 0.95, `varied batch must be split, got ${plan.deepFraction01}`);
 
+// --- `off` must cost nothing: no state, no counters, same as decide()/evictionWeight01() ---
+const offPolicy = new MemoryWritePolicy({ mode: 'off' });
+const offReinforcement = offPolicy.observeReinforcement({ tick: 1, id: 'm-off', salience01: 0.5, predictionError01: 0.1 });
+assert.equal(offReinforcement.observations, 0, 'off mode must not accumulate history');
+const offPlan = offPolicy.planDeepWork(batch);
+assert.equal(offPlan.deepCount, 0);
+assert.equal(offPolicy.diagnostics().reinforcements, 0);
+assert.equal(offPolicy.diagnostics().deepWorkBatch.passes, 0);
+assert.equal(offPolicy.diagnostics().trackedMemories, 0);
+assert.equal(offPolicy.evictionWeight01('m-off'), 1);
+
 // --- the runtime feeds both streams from real cycles ---
 const cfg = { enableLanguage: false, checkpointMinIntervalMs: 0, checkpointMaxDirtyCycles: 1, cycleResultMode: 'operational', performanceProfile: 'mobile', enableWorldModel: true, enableSelfProjects: true, enableAgencyModel: true, enableLifelongLearning: true };
 const store = new MemoryStateStore();
