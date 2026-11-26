@@ -631,3 +631,21 @@ console.log(JSON.stringify({
   assert.equal(accessorInvoked, false);
   assert.equal(world.snapshot().revision, 0);
 }
+
+
+// A caller cannot manufacture a future supersedes edge to suppress a later
+// contradiction by naming an ID that is not currently retained.
+{
+  const graph = new PerceptualEpistemicGraph();
+  const dangling = graph.add({
+    at: 2_500,
+    modality: 'vision',
+    claim: 'door is open',
+    source: 'observed',
+    confidence01: 0.8,
+    supersedes: 'attacker-chosen-future-claim-id',
+  });
+  assert.equal(dangling?.source, 'derived');
+  assert.equal(dangling?.supersedes, undefined);
+  assert.equal(graph.snapshot().resolvedPairs, 0);
+}
