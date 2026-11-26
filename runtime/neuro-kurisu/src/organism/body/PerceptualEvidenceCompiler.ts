@@ -141,7 +141,7 @@ export class PerceptualEvidenceCompiler{
   }
 
   /** P2840: feed independently observed external outcomes back into next-cycle grounding. */
-  recordExternalEvidence(input:{at:number;claim:string;confidence01:number;parents?:string[];modality?:'sensor'|'world'|'fusion';verified?:boolean;verification?:unknown;embodiedAction?:EmbodiedActionResult}){
+  recordExternalEvidence(input:{at:number;claim:string;confidence01:number;parents?:string[];modality?:'sensor'|'vision'|'world'|'fusion';verified?:boolean;verification?:unknown;embodiedAction?:EmbodiedActionResult}){
     const confidence=clamp(input.confidence01);
     // `verified` remains accepted for compatibility but is never an authority.
     const independentlyVerified=isTrustedEmbodiedOutcomeVerification(input.verification,input.embodiedAction);
