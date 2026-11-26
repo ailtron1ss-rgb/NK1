@@ -499,3 +499,24 @@ test("Live2D is a real bundled Cubism rig, while SVG and Legacy remain honestly 
  assert.match(legacy, /ctx\.drawImage\(/);
  assert.match(legacy, /still|stills|static/i);
 });
+
+test("generic GLB full-body motor is wired after clip playback and only uses audited scene Bones", async () => {
+ const stage = await readFile(stagePath, "utf8");
+ const adapter = await readFile(path.join(root, "src/components/avatar/glbHumanoidMotorAdapter.ts"), "utf8");
+ assert.match(stage, /auditGenericGlbHumanoidScene\(root\)/);
+ assert.match(stage, /resolveGenericGlbHumanoidRig\(humanoidAudit\)/);
+ assert.match(stage, /applyGenericGlbFullBodyChannels\(rt\.glbRig,p\.bodyChannels\?\?\{\}\)/);
+ assert.match(stage, /glbRig:GenericGlbHumanoidRig\|null/);
+ assert.match(stage, /rt\.glbRig=vrm\?null:resolveGenericGlbHumanoidRig\(humanoidAudit\)/);
+ assert.match(stage, /applyVrmFullBodyChannels\(rt\.vrm,p\.bodyChannels\?\?\{\}\)/);
+ const mixerFrame = stage.indexOf("rt.mixer?.update(dt)");
+ const genericMotorFrame = stage.indexOf("applyGenericGlbFullBodyChannels(rt.glbRig,p.bodyChannels??{})");
+ assert.ok(mixerFrame >= 0 && genericMotorFrame > mixerFrame,
+  "generic GLB motor channels must blend on top of the clip pose, not be overwritten by AnimationMixer");
+ assert.match(adapter, /auditHumanoidRig\(nodes\)/);
+ assert.match(adapter, /node\.isBone !== true/);
+ assert.match(adapter, /torsoPitch: \{ role: "spine"/);
+ assert.match(adapter, /leftElbow: \{ role: "leftLowerArm"/);
+ assert.match(adapter, /leftHip: \{ role: "leftUpperLeg"/);
+ assert.match(adapter, /leftKnee: \{ role: "leftLowerLeg"/);
+});
