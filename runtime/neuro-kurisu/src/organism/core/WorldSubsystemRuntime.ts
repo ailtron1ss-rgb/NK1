@@ -413,10 +413,16 @@ export class WorldSubsystemRuntime {
     this.auroraKernel.restore(advanced.auroraKernel);
     this.worldLearningRestore(advanced.worldLearning);
     this.lastWorldLatentId=this.lastWorldLatentId ?? this.worldModel2.snapshot({clone:false}).latentState?.id ?? null;
-    this.lastWorldContext=null;
-    this.lastP27Latent=this.p27NeuralWorld.snapshot().latent;
+    // Rehydrate the transition baseline from the canonical latent observation;
+    // clearing it would make the first changed post-restart context look like a baseline.
+    const restoredObservation=this.unifiedLatentWorldState.currentObservation();
+    this.lastWorldContext=restoredObservation && isWorldContext(restoredObservation.context)
+      ? structuredClone(restoredObservation.context)
+      : null;
     this.p24WorldIdentity.restore(advanced.p24);
     this.p27NeuralWorld.restore(cognition.p27);
+    // The cached latent must be read after the canonical P27 owner is restored.
+    this.lastP27Latent=this.p27NeuralWorld.snapshot().latent;
     this.brainSubstrate.restore(cognition.brainSubstrate);
     this.p44PredictiveWorld.restore(learning.p44PredictiveWorld);
     this.p50CausalSelfWorld.restore(advanced.p50CausalSelfWorld);
