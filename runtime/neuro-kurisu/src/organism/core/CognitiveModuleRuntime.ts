@@ -490,25 +490,30 @@ export class CognitiveModuleRuntime {
   }
 
   async activateAll(): Promise<CognitiveModuleListItem[]> {
-    const order = this.topologicalOrder();
-    const activated: string[] = [];
-    try {
-      for (const id of order) {
-        if (this.records.get(id)?.status === 'active') continue;
-        await this.activate(id);
-        activated.push(id);
-      }
-      return this.list();
-    } catch (error) {
-      for (const id of activated.reverse()) {
-        try {
-          await this.deactivate(id);
-        } catch {
-          // Preserve the original activation failure; each failed stop remains visible.
+    // Treat the complete activation batch as one lifecycle transaction. A
+    // concurrent stopAll/deactivate cannot slip between independent modules
+    // and leave a late activation running after shutdown has returned.
+    return this.withSnapshotBarrier(async () => {
+      const order = this.topologicalOrder();
+      const activated: string[] = [];
+      try {
+        for (const id of order) {
+          if (this.records.get(id)?.status === 'active') continue;
+          await this.activateInternal(id);
+          activated.push(id);
         }
+        return this.list();
+      } catch (error) {
+        for (const id of activated.reverse()) {
+          try {
+            await this.deactivateInternal(id);
+          } catch {
+            // Preserve the original activation failure; each failed stop remains visible.
+          }
+        }
+        throw error;
       }
-      throw error;
-    }
+    });
   }
 
   async deactivate(id: string): Promise<CognitiveModuleStateEnvelopeV1 | null> {
@@ -616,11 +621,18 @@ export class CognitiveModuleRuntime {
   }
 
   async stopAll(): Promise<CognitiveModuleListItem[]> {
-    const order = this.topologicalOrder().reverse();
-    for (const id of order) {
-      if (this.records.get(id)?.status === 'active') await this.deactivate(id);
-    }
-    return this.list();
+    // Wait for in-flight activation and checkpoint work before inspecting
+    // statuses. Otherwise an initializing module can be skipped and become
+    // active immediately after stopAll reports completion.
+    return this.withSnapshotBarrier(async () => {
+      const order = this.topologicalOrder().reverse();
+      for (const id of order) {
+        if (this.records.get(id)?.status === 'active') {
+          await this.deactivateInternal(id);
+        }
+      }
+      return this.list();
+    });
   }
 
   /**
