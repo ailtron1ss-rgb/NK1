@@ -16,7 +16,7 @@ async function withRuntime(options, run) {
     intervalMs: 5_000,
     worldStateStore: {
       load: async () => null,
-      save: async state => { worldWrites.push(state); },
+      save: async state => { worldWrites.push(state); await options.worldSave?.(state); },
     },
     cognitiveSpineStore: {
       save: options.cognitiveSpineSave ?? (async () => {}),
@@ -37,7 +37,7 @@ async function withRuntime(options, run) {
     memoryCount: 2,
   });
   runtime.core.setRuntimeClosure = () => {};
-  runtime.core.flush = async () => {};
+  runtime.core.flush = options.coreFlush ?? (async () => {});
   runtime.clockScheduler.stop = () => {};
   runtime.clockScheduler.drain = async () => {};
   runtime.continuityLedger.flush = async () => {};
@@ -87,5 +87,25 @@ test('stop records full durability only when core, world and both sidecars compl
     });
     assert.equal(stop.data.overall, 'durable');
     assert.equal(entries.some(entry => entry.event === 'runtime.stop.partial'), false);
+  });
+});
+
+test('stop remains fail-fast when the canonical Core flush fails', async () => {
+  await withRuntime({
+    coreFlush: async () => { throw new Error('simulated core disk failure'); },
+  }, async ({ runtime, entries, worldWrites }) => {
+    await assert.rejects(runtime.stop(), /simulated core disk failure/);
+    assert.equal(worldWrites.length, 0, 'World flush must not be reported after Core durability fails');
+    assert.equal(entries.some(entry => entry.event === 'runtime.stop.durable' || entry.event === 'runtime.stop.partial'), false);
+  });
+});
+
+test('stop remains fail-fast when the canonical World checkpoint fails', async () => {
+  await withRuntime({
+    worldSave: async () => { throw new Error('simulated world disk failure'); },
+  }, async ({ runtime, entries, worldWrites }) => {
+    await assert.rejects(runtime.stop(), /simulated world disk failure/);
+    assert.equal(worldWrites.length, 1, 'World checkpoint must be attempted');
+    assert.equal(entries.some(entry => entry.event === 'runtime.stop.durable' || entry.event === 'runtime.stop.partial'), false);
   });
 });
