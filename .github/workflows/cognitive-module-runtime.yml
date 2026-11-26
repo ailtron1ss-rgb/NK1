@@ -15,10 +15,14 @@ on:
   pull_request:
     branches:
       - workpass70-source
+      - aspect/module-runtime-lifecycle-20261126
     paths:
       - 'runtime/neuro-kurisu/src/organism/index.ts'
       - 'runtime/neuro-kurisu/src/organism/core/CognitiveModuleRuntime.ts'
+      - 'runtime/neuro-kurisu/src/organism/core/CognitiveModuleRuntimePersistence.ts'
+      - 'runtime/neuro-kurisu/src/organism/core/CognitiveModuleCheckpointStore.ts'
       - 'runtime/neuro-kurisu/tests/cognitive-module-runtime.mjs'
+      - 'runtime/neuro-kurisu/tests/cognitive-module-runtime-persistence.mjs'
       - '.github/workflows/cognitive-module-runtime.yml'
   workflow_dispatch:
 
