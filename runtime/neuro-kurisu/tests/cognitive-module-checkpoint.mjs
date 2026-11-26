@@ -304,19 +304,27 @@ console.log('ORGANISM_RUNTIME_MODULE_INTEGRATION=PASS');
   const ledger = organism.continuityLedger;
   let flushCalls = 0;
   let closeCalls = 0;
-  ledger.flush = async () => { flushCalls += 1; };
-  ledger.close = async () => { closeCalls += 1; };
+  ledger.flush = async () => {
+    flushCalls += 1;
+    throw new Error('continuity-ledger-flush-offline');
+  };
+  ledger.close = async () => {
+    closeCalls += 1;
+    throw new Error('continuity-ledger-close-offline');
+  };
 
   await assert.rejects(
     organism.stop(),
     error => {
       assert.ok(error instanceof AggregateError,
-        'both the failed module stop and failed canonical checkpoint must be preserved');
+        'module, core checkpoint, ledger flush and ledger close failures must all be preserved');
       assert.match(error.errors[0]?.message ?? '', /module-stop-incomplete/);
       assert.match(error.errors[1]?.message ?? '', /cognitive-module-checkpoint-snapshot-incomplete/);
+      assert.match(error.errors[2]?.message ?? '', /continuity-ledger-flush-offline/);
+      assert.match(error.errors[3]?.message ?? '', /continuity-ledger-close-offline/);
       return true;
     },
   );
-  assert.equal(flushCalls, 1, 'continuity ledger must be flushed despite checkpoint failure');
-  assert.equal(closeCalls, 1, 'continuity ledger must always be closed after stop attempt');
+  assert.equal(flushCalls, 1, 'continuity ledger flush must be attempted despite checkpoint failure');
+  assert.equal(closeCalls, 1, 'continuity ledger close must still be attempted after flush failure');
 }
