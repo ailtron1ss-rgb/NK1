@@ -30,7 +30,8 @@ const MAX_PORTABLE_SUBJECT_DEPTH = 64;
 const MAX_PORTABLE_SUBJECT_NODES = 1_000_000;
 const MAX_PORTABLE_SUBJECT_BYTES = 64 * 1024 * 1024;
 const PROJECTION_KEYS = new Set(['state', 'goals', 'traces', 'memories', 'worldModel', 'facets']);
-const FACET_KEYS = new Set(['memory', 'learning', 'consciousness', 'evolution', 'cognition', 'advanced']);
+const FACET_KEYS = ['memory', 'learning', 'consciousness', 'evolution', 'cognition', 'advanced'] as const;
+const FACET_KEY_SET = new Set<string>(FACET_KEYS);
 const BUNDLE_KEYS = new Set(['protocol', 'subjectId', 'exportedAt', 'sourceRelease', 'sourceSchema', 'projection', 'subjectFingerprint']);
 const isPlainRecord = (value: unknown): value is Record<string, unknown> => {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
@@ -191,7 +192,7 @@ export function validatePortableSubjectBundle(bundle: unknown): asserts bundle i
       if (!Array.isArray(projection[key])) throw new Error(`Portable subject projection.${key} must be an array`);
     }
     if (!isPlainRecord(projection.facets)) throw new Error('Portable subject projection.facets must be an object');
-    if (Object.keys(projection.facets).some(key => !FACET_KEYS.has(key))) {
+    if (Object.keys(projection.facets).some(key => !FACET_KEY_SET.has(key))) {
       throw new Error('Portable subject projection.facets contains an unsupported or host-owned facet');
     }
     for (const key of FACET_KEYS) {
