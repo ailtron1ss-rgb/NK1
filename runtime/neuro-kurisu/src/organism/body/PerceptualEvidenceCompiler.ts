@@ -106,7 +106,7 @@ export class PerceptualEvidenceCompiler{
       metrics:{...d.metrics},
       lastHash:'',
     };
-    this.refreshHash();
+    if(evidence.length>0||this.state.scene!==d.scene||activeQuery!==null)this.refreshHash();
   }
   private refreshHash(){
     const digest=`${this.state.scene}|${this.state.evidence.slice(0,24).map(e=>`${e.modality}:${e.claim}:${e.confidence01.toFixed(2)}`).join('|')}|${JSON.stringify(this.state.metrics)}`;

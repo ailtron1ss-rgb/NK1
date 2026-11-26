@@ -97,10 +97,11 @@ const recoveredOwner = new EmbodimentSubsystemRuntime();
 recoveredOwner.restoreFromPersisted({
   embodiment: { perceptualEvidence: ownerSnapshot.perceptualEvidence },
 });
-assert.deepEqual(
-  recoveredOwner.perceptualEvidence.snapshot(),
-  ownerSnapshot.perceptualEvidence,
-  'the canonical embodiment owner must restore its perceptual evidence',
-);
+const recoveredEvidence = recoveredOwner.perceptualEvidence.snapshot();
+assert.equal(recoveredEvidence.evidence[0]?.claim, 'evidence survives owner snapshot', 'the canonical embodiment owner must restore its evidence rows');
+assert.equal(recoveredEvidence.evidence[0]?.kind, 'derived', 'owner restore must not promote an unattested row');
+assert.equal(recoveredEvidence.updates, 1, 'owner restore must derive the count from accepted rows');
+assert.equal(recoveredEvidence.metrics.groundedSignalRatio01, 0, 'owner restore must reset unverified aggregate grounding metrics');
+assert.notEqual(recoveredEvidence.lastHash, '');
 
 console.log('G3_PERCEPTUAL_EVIDENCE_ADMISSION_BOUNDARY=PASS');

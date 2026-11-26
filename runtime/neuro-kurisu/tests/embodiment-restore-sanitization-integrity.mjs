@@ -99,19 +99,22 @@ const pe = evidence.snapshot();
 assert.equal(pe.updates, 0);
 assert.equal(pe.scene, defaultPerceptualEvidence().scene);
 assert.equal(pe.metrics.grounding01, defaultPerceptualEvidence().metrics.grounding01, 'string metric falls back');
-assert.equal(pe.metrics.conflict01, 1, 'metric above 1 clamps to 1');
-assert.equal(pe.metrics.unresolved01, 0, 'negative metric clamps to 0');
-assert.equal(pe.evidence.length, 1, 'only plain-record evidence rows survive; primitives are dropped');
+assert.equal(pe.metrics.conflict01, defaultPerceptualEvidence().metrics.conflict01, 'unverified aggregate metrics reset to defaults');
+assert.equal(pe.metrics.unresolved01, defaultPerceptualEvidence().metrics.unresolved01, 'unverified aggregate metrics reset to defaults');
+assert.equal(pe.evidence.length, 0, 'plain records without the required evidence schema are dropped');
 assert.equal(pe.activeQuery.modality, 'unknown');
 assert.equal(pe.activeQuery.priority01, 1);
 
 // A valid snapshot round-trips exactly.
 const evidenceSource = new PerceptualEvidenceCompiler();
-evidenceSource.recordExternalEvidence({ at: 10, claim: 'sensor:door-open', confidence01: 0.8, verified: true });
+evidenceSource.recordExternalEvidence({ at: 10, claim: 'sensor:door-open', confidence01: 0.8 });
 const evidenceSnapshot = evidenceSource.snapshot();
 const evidenceRestored = new PerceptualEvidenceCompiler();
 evidenceRestored.restore(evidenceSnapshot);
-assert.deepEqual(evidenceRestored.snapshot(), evidenceSnapshot, 'valid evidence snapshot must round-trip');
+assert.deepEqual(evidenceRestored.snapshot().evidence, evidenceSnapshot.evidence, 'valid accepted evidence rows must round-trip');
+assert.equal(evidenceRestored.snapshot().updates, 1, 'restore derives the update count from accepted rows');
+assert.deepEqual(evidenceRestored.snapshot().metrics, defaultPerceptualEvidence().metrics, 'restore resets aggregate metrics without host admission receipts');
+assert.notEqual(evidenceRestored.snapshot().lastHash, '', 'restore recomputes the evidence digest after resetting aggregates');
 
 // --- DeviceEvidenceLedger -----------------------------------------------------
 const ledger = new DeviceEvidenceLedger();
