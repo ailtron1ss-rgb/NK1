@@ -31,7 +31,7 @@ test("3D emits a renderer-submitted receipt only after the loaded model produces
   const receiptAt = three.indexOf("webgl-render-submitted");
   assert.ok(renderAt >= 0, "the 3D loop must render the scene");
   assert.ok(receiptAt > renderAt, "the receipt must be emitted after renderer.render returns");
-  assert.match(three, /p\.frameTick/);
+  assert.match(three, /frame\.frameTick/);
   assert.match(three, /rt\.loaded/);
   assert.match(three, /renderer\.info\.render\.calls\s*>\s*0/);
   assert.match(receiptContract, /visualCompletionVerified: false/);
@@ -41,7 +41,7 @@ test("AvatarStage surfaces current-tick receipts without claiming that pixels we
   assert.match(stage, /createAvatarPresentationReceipt/);
   assert.match(stage, /isCurrentAvatarPresentationReceipt/);
   assert.match(receiptContract, /visualCompletionVerified: false/);
-  assert.match(receiptContract, /Показ кадра не подтверждён/);
+  assert.match(receiptContract, /показ кадра не подтверждён/i);
   assert.match(stage, /parameters-observed/);
   assert.match(stage, /onFrameReceipt=/);
   assert.match(stage, /frameTick=\{snap\.tick\}/);
