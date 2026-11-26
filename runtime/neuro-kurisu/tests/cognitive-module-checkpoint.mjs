@@ -279,3 +279,44 @@ console.log('ORGANISM_RUNTIME_MODULE_INTEGRATION=PASS');
     'ordinary Core checkpointing must preserve quarantined module metadata for recovery',
   );
 }
+
+
+// Even when a module repeatedly fails snapshot during stop, the runtime must
+// close its continuity ledger. The final durable error and module shutdown
+// error are both surfaced, rather than leaking the ledger on an early throw.
+{
+  const { OrganismRuntime } = await import('../src/organism/core/OrganismRuntime.ts');
+  const durable = backingStore();
+  const events = [];
+  const broken = fixture(events);
+  broken.module.snapshot = () => { throw new Error('module-stop-snapshot-offline'); };
+  const host = new CognitiveModuleRuntime({ hostApiVersion: 1, grants: {} });
+  host.register({ manifest: manifest('memory.stop-failure'), factory: () => broken.module });
+  const organism = new OrganismRuntime({
+    stateFile: `/tmp/nk1-module-stop-failure-${process.pid}.json`,
+    stateStore: durable,
+    autoRun: false,
+    enableLanguage: false,
+    cognitiveModuleRuntime: host,
+  });
+  await organism.init();
+
+  const ledger = organism.continuityLedger;
+  let flushCalls = 0;
+  let closeCalls = 0;
+  ledger.flush = async () => { flushCalls += 1; };
+  ledger.close = async () => { closeCalls += 1; };
+
+  await assert.rejects(
+    organism.stop(),
+    error => {
+      assert.ok(error instanceof AggregateError,
+        'both the failed module stop and failed canonical checkpoint must be preserved');
+      assert.match(error.errors[0]?.message ?? '', /module-stop-incomplete/);
+      assert.match(error.errors[1]?.message ?? '', /cognitive-module-checkpoint-snapshot-incomplete/);
+      return true;
+    },
+  );
+  assert.equal(flushCalls, 1, 'continuity ledger must be flushed despite checkpoint failure');
+  assert.equal(closeCalls, 1, 'continuity ledger must always be closed after stop attempt');
+}
