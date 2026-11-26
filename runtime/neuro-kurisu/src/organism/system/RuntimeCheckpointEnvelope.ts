@@ -15,7 +15,7 @@ export interface RuntimeCheckpointOwnerSnapshots {
   cognitiveSpine: CognitiveSpineScheduleState;
   riskAwareRecovery: RiskAwareRecoveryControllerState;
   cognitiveHealth: unknown | null;
-  journalOffset?: OperationalJournalCursor;
+  journalOffset: OperationalJournalCursor;
 }
 export interface EncodedRuntimeCheckpointOwner {
   encoding:'deflate-raw+base64'; rawBytes:number; compressedBytes:number; payloadBase64:string;
@@ -32,7 +32,7 @@ export interface RuntimeCheckpointEnvelope extends RuntimeCheckpointEnvelopeBase
 export type AnyRuntimeCheckpointEnvelope = LegacyRuntimeCheckpointEnvelope | RuntimeCheckpointEnvelope;
 export interface RuntimeCheckpointEnvelopeInput {
   generation:number; checkpointId:string; coreTick:number; createdAt:number;
-  snapshots:RuntimeCheckpointOwnerSnapshots & { journalOffset:OperationalJournalCursor };
+  snapshots:RuntimeCheckpointOwnerSnapshots;
 }
 export type RuntimeCheckpointEnvelopeValidation =
   | {ok:true;envelope:AnyRuntimeCheckpointEnvelope;snapshots:RuntimeCheckpointOwnerSnapshots}
@@ -42,6 +42,10 @@ const MAX_OWNER_RAW_BYTES=16*1024*1024;
 const MAX_TOTAL_RAW_BYTES=24*1024*1024;
 const MAX_TOTAL_COMPRESSED_BYTES=8*1024*1024;
 const MAX_BASE64_LENGTH=Math.ceil(MAX_TOTAL_COMPRESSED_BYTES*4/3)+8;
+const LEGACY_EMPTY_JOURNAL_OFFSET:OperationalJournalCursor={
+  version:1,retainedSegments:0,retainedBytes:0,activeSegmentId:null,activeSegmentBytes:0,
+  activeSegmentRecords:0,activeSegmentTailSha256:null,fileSynced:true,directorySynced:false,
+};
 type PlainRecord=Record<string,unknown>;
 
 function isPlainRecord(value:unknown):value is PlainRecord {
@@ -243,6 +247,6 @@ export function validateRuntimeCheckpointEnvelope(value:unknown):RuntimeCheckpoi
   }
   if(payloadBytes!==declaredPayloadBytes||compressedBytes!==declaredCompressedBytes)
     return {ok:false,reason:'envelope-size-accounting-invalid'};
-  if(currentV2)snapshots.journalOffset=journalOffset as OperationalJournalCursor;
+  snapshots.journalOffset=currentV2?(journalOffset as OperationalJournalCursor):LEGACY_EMPTY_JOURNAL_OFFSET;
   return {ok:true,envelope:structuredClone(value) as unknown as AnyRuntimeCheckpointEnvelope,snapshots};
 }
