@@ -122,9 +122,8 @@ export function shouldRenderAvatarFrame(
   now: number,
   lastRenderedAt: number | null,
   budget: Pick<AvatarFrameBudget, "targetFps">,
-  active = true,
 ): boolean {
-  if (!active || !Number.isFinite(now) || now < 0) return false;
+  if (!Number.isFinite(now) || now < 0) return false;
   if (!Number.isFinite(budget.targetFps) || budget.targetFps <= 0 || budget.targetFps > 120) return false;
   if (lastRenderedAt === null) return true;
   if (!Number.isFinite(lastRenderedAt) || lastRenderedAt < 0 || now < lastRenderedAt) return false;
