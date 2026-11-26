@@ -299,6 +299,19 @@ export class AutonomousSocialInitiativeEngine {
       // Legacy pending thoughts remain private; staged messages are quarantined without
       // a timestamped affirmative user consent decision.
       for (const item of initiatives) {
+        // A private cognitive plan can never be a staged/deliverable message, even if
+        // a corrupted checkpoint claims that user consent is currently granted.
+        if (item.internalOnly === true && item.status === 'ready') {
+          item.status = 'deferred';
+          item.reason = 'private-plan-restored-as-deliverable';
+          item.message = undefined;
+          item.stagedAt = undefined;
+          item.deliveryLeaseUntil = undefined;
+          item.deliveryNextAttemptAt = undefined;
+          item.resolvedAt = Math.max(item.createdAt, Date.now());
+          privacyDeferredCount++;
+          continue;
+        }
         if (consentGranted || item.status === 'executed' || item.status === 'deferred') continue;
         if (item.status === 'ready') {
           item.status = 'deferred';

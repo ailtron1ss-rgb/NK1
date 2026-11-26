@@ -100,6 +100,12 @@ corruptedReady.restore({
 assert.equal(corruptedReady.latestReady(at), null);
 assert.equal(corruptedReady.acknowledge('private-ready-corruption', at), false);
 assert.equal(corruptedReady.snapshot().initiatives[0].status, 'deferred');
+assert.equal(corruptedReady.snapshot().initiatives[0].reason, 'private-plan-restored-as-deliverable');
 assert.equal(corruptedReady.snapshot().initiatives[0].message, undefined);
+assert.equal(corruptedReady.snapshot().initiatives[0].stagedAt, undefined);
+assert.equal(corruptedReady.snapshot().initiatives[0].deliveryLeaseUntil, undefined);
+assert.equal(corruptedReady.latestReady(at), null,
+  'a restored private plan must remain non-deliverable after the recovery pass');
+assert.equal(corruptedReady.snapshot().deferred, 1);
 
 console.log('AUTONOMY_INTERNAL_PLAN_BOUNDARY=PASS');
