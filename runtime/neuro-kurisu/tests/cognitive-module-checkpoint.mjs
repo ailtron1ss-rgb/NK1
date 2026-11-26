@@ -144,3 +144,52 @@ function persisted() {
 }
 
 console.log('COGNITIVE_MODULE_CHECKPOINT=PASS');
+
+// Exercise the actual OrganismRuntime composition root: activation occurs after
+// Core restore, flush captures live module state into the canonical store, and
+// stop/restart restores the same module state without a second durable file.
+{
+  const { OrganismRuntime } = await import('../src/organism/core/OrganismRuntime.ts');
+  const durable = backingStore();
+  const stateFile = `/tmp/nk1-cognitive-module-checkpoint-${process.pid}.json`;
+  const firstEvents = [];
+  const firstModule = fixture(firstEvents);
+  const firstHost = new CognitiveModuleRuntime({ hostApiVersion: 1, grants: {} });
+  firstHost.register({ manifest: manifest('memory.runtime-integration'), factory: () => firstModule.module });
+  const firstRuntime = new OrganismRuntime({
+    stateFile,
+    stateStore: durable,
+    autoRun: false,
+    enableLanguage: false,
+    cognitiveModuleRuntime: firstHost,
+  });
+  await firstRuntime.init();
+  assert.equal(firstRuntime.cognitiveModuleDiagnostics().enabled, true);
+  assert.equal(firstRuntime.cognitiveModuleDiagnostics().modules[0].status, 'active');
+  firstModule.state.counter = 99;
+  await firstRuntime.flush();
+  assert.equal(
+    durable.inspect().system.cognitiveModuleRuntime.modules[0].state.counter,
+    99,
+  );
+  await firstRuntime.stop();
+
+  const secondEvents = [];
+  const secondModule = fixture(secondEvents);
+  const secondHost = new CognitiveModuleRuntime({ hostApiVersion: 1, grants: {} });
+  secondHost.register({ manifest: manifest('memory.runtime-integration'), factory: () => secondModule.module });
+  const secondRuntime = new OrganismRuntime({
+    stateFile,
+    stateStore: durable,
+    autoRun: false,
+    enableLanguage: false,
+    cognitiveModuleRuntime: secondHost,
+  });
+  await secondRuntime.init();
+  assert.equal(secondModule.state.counter, 99);
+  assert.ok(secondEvents.indexOf('restore') < secondEvents.indexOf('initialize'));
+  await secondRuntime.stop();
+}
+
+console.log('ORGANISM_RUNTIME_MODULE_INTEGRATION=PASS');
+
