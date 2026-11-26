@@ -248,9 +248,9 @@ restoredGroundedWorld.restore({
     absenceEvidence01:0,observationCount:8,
   }],
   relations:[],
-  events:[{id:'persisted-event',label:'external-observed:door:door-open',confidence01:1,lastAt:2_000,persistence01:1,evidenceKind:'observed',modalityEvidenceKinds:{world:'observed'}}],
-  facts:['external-observed:door:door-open','shadow-divergence:door:0.9','derived-evidence:door:door-open'],
-  provenanceIds:['external-postcondition:exec-old-receipt','local-note:kept'],
+  events:[{id:'persisted-event',label:'external-observed:door:door-open',confidence01:1,lastAt:2_000,persistence01:1,evidenceKind:'observed',modalityEvidenceKinds:{world:'observed'}},{id:'persisted-event-upper',label:'EXTERNAL-OBSERVED:door:door-closed',confidence01:1,lastAt:1_999,persistence01:1,evidenceKind:'observed'}],
+  facts:['external-observed:door:door-open','shadow-divergence:door:0.9','EXTERNAL-OBSERVED:door:uppercase','SHADOW-DIVERGENCE:door:uppercase','derived-evidence:door:door-open'],
+  provenanceIds:['external-postcondition:exec-old-receipt','EXTERNAL-POSTCONDITION:exec-old-uppercase','local-note:kept'],
   lastHash:'caller-controlled-hash',
 });
 const restoredGroundedSnapshot = restoredGroundedWorld.snapshot();
@@ -260,6 +260,8 @@ assert.deepEqual(restoredGroundedSnapshot.facts,['derived-evidence:door:door-ope
 assert.equal(restoredGroundedSnapshot.events[0]?.label,'external-receipt:door:door-open');
 assert.equal(restoredGroundedSnapshot.events[0]?.confidence01,0);
 assert.deepEqual(restoredGroundedSnapshot.provenanceIds,['local-note:kept']);
+assert.equal(restoredGroundedSnapshot.events[1]?.label,'external-receipt:door:door-closed');
+assert.equal(restoredGroundedSnapshot.events[1]?.confidence01,0);
 
 // Keep the base truthfulness results above as one focused regression summary.
 console.log(JSON.stringify({
