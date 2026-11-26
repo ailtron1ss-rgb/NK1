@@ -19,6 +19,18 @@ Base: `workpass70-source @ 9008a8982a5173304456bee2c604bd0bc8665964`
 - Resource bounds cap the source snapshot, individual file, edit count, and replacement sizes.
 - Files are written exclusively into a unique workspace; a manifest is atomically renamed into place last. Partial materialization is removed on failure.
 
+## Signed evidence admission bridge
+
+`createCodeAssimilationSourceCandidateAuthorizationV1` composes the workspace host-admission callback with the existing Code Assimilation evidence verifier:
+
+1. A process-authenticated Ed25519 source-provenance receipt must bind the exact candidate ID, candidate fingerprint, source fingerprint, and source subject.
+2. A process-authenticated license-decision receipt must bind the same candidate and explicitly permit `modify`. A declared license string or a `study`-only / `research-only` receipt is insufficient.
+3. The workspace base SHA must equal the candidate's `baseRuntimeSha`.
+4. A mandatory host-owned verifier must independently confirm the supplied before-tree fingerprint belongs to that exact trusted checkout. False, throwing, or unavailable verification denies materialization.
+5. The returned admission receipt binds the deterministic workspace candidate ID, base SHA, and edit-set fingerprint.
+
+Receipts copied through JSON or restored across a process boundary are not authenticated by the current process-local receipt registry; persisted evidence must be verified again from its signed artifact before constructing the adapter. The adapter authorizes only modification into the non-executing candidate workspace. Execution, build, installation, activation, deployment, and redistribution remain separate gates.
+
 ## Explicit guarantees and non-guarantees
 
 - The manifest is `status: materialized` and `executionStatus: not-executed`.
