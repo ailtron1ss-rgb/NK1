@@ -185,7 +185,8 @@ export class CognitiveModuleCheckpointStore implements JsonStateStore<PersistedO
 /** The narrow host surface needed to bind module state to the canonical organism store. */
 export type CognitiveModuleRuntimeHost = Pick<
   CognitiveModuleRuntime,
-  'bindStateStore' | 'snapshotAll' | 'activateAll' | 'health' | 'stopAll' | 'list'
+  'bindStateStore' | 'snapshotAll' | 'activateAll' | 'health' | 'stopAll' | 'list' |
+  'connectCanonicalCheckpointStore'
 >;
 
 /**
