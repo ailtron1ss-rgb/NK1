@@ -276,3 +276,34 @@ The full Master Plan X is estimated at **36/100 ±8 pp** for engineering integra
 - The additional regression [RED 45811756331](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45811756331) proved that Core checkpoint failure skipped `ContinuityLedger.close()`, leaving a live file handle and pending diagnostics. The fix executes `close()` in a shutdown-wide `finally` block, while preserving fail-fast Core/World errors.
 - The GREEN test leaves one frame buffered, injects Core failure, then verifies that the stop rejection remains visible, the ledger handle is closed, the pending count is zero, and the frame was written. This tests actual cleanup, not only pre-flushed file state.
 - Remaining limitation: per-owner stores still write independently; no shared generation commit, rollback to a matched multi-store snapshot, or Android/Termux power-loss guarantee has been implemented.
+
+
+## 12. Checkpoint commit markers — 26 Nov 2026
+
+### C17 — Recovery liveness vs durable checkpoint commit
+
+| Element | Rule | Implementation evidence |
+|---|---|---|
+| RecoveryWatchdog heartbeat | May advance liveness/tick/learning counters; must not advance `lastCheckpointAt` | PR #1205 removes checkpoint timestamp from heartbeat |
+| Candidate checkpoint | Detached candidate timestamp may be embedded in the pending Core state image | `checkpointCandidate(at)` |
+| Durable commit | Live watchdog checkpoint marker changes only after canonical `store.save()` resolves | Core calls `commitCheckpoint(at)` after save |
+| Failed write | Prior in-memory checkpoint marker is restored and original error is rethrown | Injected Core/Watchdog store failure regression |
+
+- RED [45814877926](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45814877926), GREEN [45815058315](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45815058315).
+- PR [#1205](https://github.com/ailtron1ss-rgb/NK1/pull/1205), exact-head 32/32 Actions success.
+
+### C18 — Revision graph / token / scheduler materialization
+
+| Element | Rule | Implementation evidence |
+|---|---|---|
+| Projection pass | Select advanced projection groups without mutating live materialization owners | `PersistenceProjectionCoordinator.sync()` |
+| Candidate state | Persist a detached candidate for schedule, coarse graph and subsystem tokens in the same Core image as the corresponding advanced snapshots | `materializationCandidate()` |
+| Live commit | Advance scheduler, graph and token owners only after canonical store success | `commitMaterialization()` called after `store.save()` |
+| Failed write | Do not mark dirty revisions as materialized; preserve the prior durable graph and tokens | Failure-injection regression with a real Core and MemoryStateStore |
+
+- RED [45815366152](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45815366152), GREEN [45816034171](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45816034171).
+- PR [#1206](https://github.com/ailtron1ss-rgb/NK1/pull/1206), exact-head 32/32 Actions success.
+
+### Current transaction boundary
+
+C17/C18 establish better commit semantics for the **canonical Core store**. They do not make all independent sidecar stores atomic. `PersistentContinuityKernel`, B1701 continuity receipts and `FailureRecoveryCertification` are still advanced before Core store save and require a separate failure-injection audit. The cross-store checkpoint generation manifest and real device power-loss recovery remain open.
