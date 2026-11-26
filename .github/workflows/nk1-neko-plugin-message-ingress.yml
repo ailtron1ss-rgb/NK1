@@ -21,9 +21,15 @@ on:
     branches: [workpass70-source]
     paths:
       - "runtime/neuro-kurisu/src/organism/integration/neko/PluginMessageIngress.ts"
+      - "runtime/neuro-kurisu/src/organism/integration/neko/PluginMessageIngressHost.ts"
+      - "runtime/neuro-kurisu/src/server/server.mjs"
+      - "runtime/neuro-kurisu/src/server/neko-plugin-transport-auth.mjs"
       - "runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts"
       - "runtime/neuro-kurisu/src/organism/cognition/CognitiveImmuneSystem.ts"
       - "runtime/neuro-kurisu/tests/neko-plugin-message-ingress.mjs"
+      - "runtime/neuro-kurisu/tests/neko-plugin-message-receipt-persistence.mjs"
+      - "runtime/neuro-kurisu/tests/neko-plugin-message-host-bootstrap.mjs"
+      - "runtime/neuro-kurisu/tests/neko-plugin-transport-auth.mjs"
       - "runtime/neuro-kurisu/tests/cognitive-immune-plugin-runtime-gate.mjs"
       - ".github/workflows/nk1-neko-plugin-message-ingress.yml"
 
