@@ -101,8 +101,13 @@ export interface CognitiveEventFabricSnapshot {
 }
 
 const clamp01=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
-const validDecisionId=(value:unknown):value is string=>
-  typeof value==='string'&&value.length>0&&value.length<=180&&value.trim()===value&&!/[\\u0000-\\u001f\\u007f]/u.test(value);
+const validDecisionId=(value:unknown):value is string=>{
+  if(typeof value!=='string'||value.length===0||value.length>180||value.trim()!==value)return false;
+  for(let index=0;index<value.length;index++){
+    const code=value.charCodeAt(index);
+    if(code<=0x1f||code===0x7f)return false;
+  }
+  return true;}
 const isRecord=(value:unknown):value is Record<string,unknown>=>value!==null&&typeof value==='object'&&!Array.isArray(value);
 /** Read persisted snapshot fields without invoking accessor properties. */
 const ownData=(value:unknown,key:string):unknown=>{

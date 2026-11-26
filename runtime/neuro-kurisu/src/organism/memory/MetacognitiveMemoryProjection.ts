@@ -9,9 +9,14 @@ const HASH = /^[a-f0-9]{64}$/i;
 const REFLECTION_KINDS = new Set(['none', 'calibration', 'contradiction', 'limitation', 'insight']);
 const CORRECTION_DISPOSITIONS = new Set(['none', 'staged', 'accepted', 'rejected', 'rolled-back']);
 const clamp01 = (value: number): number => Math.max(0, Math.min(1, Number.isFinite(value) ? value : 0));
-const validDecisionId = (value: unknown): value is string =>
-  typeof value === 'string' && value.length > 0 && value.length <= 180
-  && value.trim() === value && !/[\\u0000-\\u001f\\u007f]/u.test(value);
+const validDecisionId = (value: unknown): value is string => {
+  if (typeof value !== 'string' || value.length === 0 || value.length > 180 || value.trim() !== value) return false;
+  for (let index = 0; index < value.length; index += 1) {
+    const code = value.charCodeAt(index);
+    if (code <= 0x1f || code === 0x7f) return false;
+  }
+  return true;
+}
 
 type EpisodeProjection = {
   id: string;
