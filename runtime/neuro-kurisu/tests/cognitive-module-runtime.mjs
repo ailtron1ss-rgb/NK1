@@ -351,4 +351,50 @@ async function expectReject(promise, pattern) {
   assert.ok(!events.includes('resume:memory.index'));
 }
 
+// Snapshot serialization preserves own data keys such as "__proto__" without
+// changing the clone's prototype or dropping the property.
+{
+  const store = memoryStore();
+  const events = [];
+  const fixture = moduleFixture('memory.index', events);
+  const state = {};
+  Object.defineProperty(state, '__proto__', {
+    enumerable: true,
+    configurable: true,
+    writable: true,
+    value: { marker: 'ordinary-data' },
+  });
+  fixture.module.snapshot = () => state;
+  const host = runtime({ stateStore: store });
+  host.register({ manifest: manifest('memory.index'), factory: () => fixture.module });
+  await host.activate('memory.index');
+  await host.deactivate('memory.index');
+  const saved = store.rows.get('memory.index').state;
+  assert.equal(Object.getPrototypeOf(saved), Object.prototype);
+  assert.equal(Object.prototype.hasOwnProperty.call(saved, '__proto__'), true);
+  assert.deepEqual(saved.__proto__, { marker: 'ordinary-data' });
+}
+
+// Accessor-backed snapshots are rejected without invoking getters, and the
+// previously active module is resumed rather than being falsely stopped.
+{
+  const events = [];
+  let getterInvoked = false;
+  const fixture = moduleFixture('memory.index', events);
+  fixture.module.snapshot = () => Object.defineProperty({}, 'secret', {
+    enumerable: true,
+    get() {
+      getterInvoked = true;
+      return 'should-not-run';
+    },
+  });
+  const host = runtime({ stateStore: memoryStore() });
+  host.register({ manifest: manifest('memory.index'), factory: () => fixture.module });
+  await host.activate('memory.index');
+  await expectReject(host.deactivate('memory.index'), /module-state-accessor-rejected/);
+  assert.equal(getterInvoked, false);
+  assert.equal(statusOf(host, 'memory.index'), 'active');
+  assert.ok(events.includes('resume:memory.index'));
+}
+
 console.log('COGNITIVE_MODULE_RUNTIME=PASS');
