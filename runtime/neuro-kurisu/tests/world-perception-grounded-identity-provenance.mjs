@@ -412,3 +412,89 @@ console.log(JSON.stringify({
   assert.equal(replay.revision, first.revision);
   assert.equal(world.snapshot().events.length, 1);
 }
+
+
+// P41 restore is also a trust boundary: hostile top-level Proxy/accessor state,
+// malformed rows and unbounded saved gauges must not cross into live cognition.
+{
+  let proxyTrapInvoked = false;
+  const proxy = new Proxy({ tick: 999, metrics: { grounding01: 1 } }, {
+    get() { proxyTrapInvoked = true; throw new Error('p41-proxy-get'); },
+    ownKeys() { proxyTrapInvoked = true; throw new Error('p41-proxy-ownKeys'); },
+  });
+  const isolated = new P41SemanticPerceptionEngine();
+  assert.doesNotThrow(() => isolated.restore(proxy), 'P41 restore must fail closed for a Proxy instead of throwing');
+  assert.equal(proxyTrapInvoked, false, 'P41 restore must detect Proxy values before reflection');
+  assert.equal(isolated.snapshot().tick, 0);
+
+  let nestedGetterInvoked = false;
+  const hostileEntity = {
+    id: 'p41-hostile-entity',
+    label: 'door',
+    kind: 'object',
+    salience01: 1,
+    present01: 1,
+    firstSeenAt: 100,
+    lastSeenAt: 200,
+    observations: 10,
+    modalities: ['vision'],
+    position: null,
+  };
+  Object.defineProperty(hostileEntity, 'confidence01', {
+    enumerable: true,
+    get() { nestedGetterInvoked = true; return 1; },
+  });
+  const nested = new P41SemanticPerceptionEngine();
+  nested.restore({
+    version: 1,
+    tick: 2,
+    scene: { label: 'lab', confidence01: 0.9, stability01: 0.9, at: 200 },
+    entities: [hostileEntity],
+  });
+  assert.equal(nestedGetterInvoked, false, 'nested P41 records must be checked by own data descriptors');
+  assert.equal(nested.snapshot().entities.length, 0, 'an entity with an accessor must be rejected');
+
+  const bounded = new P41SemanticPerceptionEngine();
+  bounded.restore({
+    version: 1,
+    tick: 77,
+    scene: { label: 'lab', confidence01: 4, stability01: -3, at: 500 },
+    sceneEvidenceKind: 'observed',
+    relations: [{
+      id: 'rel-1', from: 'door', relation: 'is', to: 'open',
+      confidence01: 7, modality: 'world', evidenceKind: 'observed', at: 500,
+    }],
+    metrics: {
+      grounding01: 9,
+      temporalBinding01: -1,
+      objectPermanence01: 0.4,
+      crossModalAgreement01: 1.5,
+      crossModalEvidenceCoverage01: 0.7,
+      outcomeAlignment01: 0.8,
+      activePerceptionUtility01: 0.2,
+      unresolvedRate01: 0.1,
+      updates: 900_000,
+      sceneContinuity01: 0.3,
+      temporalGrounding01: 0.4,
+      evidenceTraceability01: 0.5,
+      epistemicContradictions: 800_000,
+    },
+    actionBias: { respond: 500, explore: -500 },
+    modalityReliability: {
+      vision: { reliability01: 8, observations: 900_000, calibrationSamples: 99_999 },
+    },
+  });
+  const snapshot = bounded.snapshot();
+  assert.ok(snapshot.scene.confidence01 >= 0 && snapshot.scene.confidence01 <= 1);
+  assert.ok(snapshot.scene.stability01 >= 0 && snapshot.scene.stability01 <= 1);
+  assert.equal(snapshot.sceneEvidenceKind, 'derived');
+  assert.equal(snapshot.relations[0]?.confidence01, 1);
+  assert.equal(snapshot.relations[0]?.evidenceKind, 'derived');
+  assert.equal(snapshot.metrics.grounding01 <= 1, true);
+  assert.equal(snapshot.metrics.temporalBinding01 >= 0, true);
+  assert.equal(snapshot.metrics.updates <= 900_000, true);
+  assert.equal(Math.abs(snapshot.actionBias.respond) <= 1, true);
+  assert.equal(Math.abs(snapshot.actionBias.explore) <= 1, true);
+  assert.equal(snapshot.modalityReliability.vision.reliability01 <= 1, true);
+  assert.equal(snapshot.modalityReliability.vision.observations <= 900_000, true);
+}
