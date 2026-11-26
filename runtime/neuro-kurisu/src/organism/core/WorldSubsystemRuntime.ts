@@ -1,6 +1,7 @@
 import { probeOrganismSystem, type OrganismSystemHealthSnapshot } from './OrganismSystemContract.ts';
 import { WorldModel } from '../world/WorldModel.ts';
 import type { ActionKind } from './types.ts';
+import { AuroraPredictiveKernel, type AuroraBudget, type AuroraDecision, type AuroraObservationCandidate } from '../world/AuroraPredictiveKernel.ts';
 import type { InternalWorldState } from '../world/WorldModel.ts';
 import type { WorldContext, WorldTransitionForOrganism } from './types.ts';
 import { ActiveInferenceEngine } from '../world/ActiveInferenceEngine.ts';
@@ -84,6 +85,8 @@ export class WorldSubsystemRuntime {
   readonly worldModelEnsemble = new WorldModelEnsembleController();
   /** Canonical observation→latent→prediction ticket authority. Specialized world models remain contributors. */
   readonly unifiedLatentWorldState = new UnifiedLatentWorldState();
+  /** Bounded decision-time executive over the canonical world and predictor owners. */
+  readonly auroraKernel = new AuroraPredictiveKernel();
 
   /** Unified world-learning state is deliberately derived from persisted model state.
    * It owns cross-model coordination, not a second copy of the learned world. */
@@ -130,6 +133,72 @@ export class WorldSubsystemRuntime {
     this.worldLearningStats.lastAt=Date.now();
     const modelAgreement=this.worldModelAgreement();
     return { worldLatent, p27Latent, unifiedLatent, passiveError01, modelAgreement01:modelAgreement };
+  }
+
+  evaluateAuroraDecision(input:{
+    prediction:{action:string;utility01:number;confidence01:number;uncertainty01:number};
+    budget?:AuroraBudget;
+    observations?:AuroraObservationCandidate[];
+  }):AuroraDecision{
+    const snapshot=this.groundedWorld.snapshot();
+    const now=Date.now();
+    const stale=!snapshot.revision||!snapshot.lastAt||snapshot.lastAt>now+30_000||now-snapshot.lastAt>120_000;
+    const entities=(snapshot.entities??[]).filter(entity=>
+      Number.isFinite(entity.lastSeenAt)&&entity.lastSeenAt<=now&&now-entity.lastSeenAt<=120_000);
+    const rows=entities.map(entity=>{
+      const kinds=Object.values(entity.modalityEvidenceKinds??{});
+      const sourceBound=Array.isArray(entity.sourceIds)&&entity.sourceIds.some(source=>typeof source==='string'&&source.trim().length>0);
+      return {
+        observed:sourceBound&&kinds.includes('observed'),
+        inferred:kinds.includes('model-output')||kinds.includes('derived'),
+        conflict:kinds.includes('conflict'),
+        unresolved:kinds.includes('unresolved')||entity.presenceStatus==='unknown',
+        confidence01:clamp(entity.confidence01),
+      };
+    });
+    for(const event of snapshot.events??[]){
+      const kinds=Object.values(event.modalityEvidenceKinds??{});
+      rows.push({
+        observed:false,
+        inferred:kinds.includes('model-output')||kinds.includes('derived')||event.evidenceKind==='model-output'||event.evidenceKind==='derived',
+        conflict:kinds.includes('conflict')||event.evidenceKind==='conflict',
+        unresolved:kinds.includes('unresolved')||event.evidenceKind==='unresolved',
+        confidence01:clamp(event.confidence01),
+      });
+    }
+    const observed=rows.filter(row=>row.observed);
+    const inferred=rows.filter(row=>row.inferred);
+    const conflicts=rows.filter(row=>row.conflict);
+    const unresolved=rows.filter(row=>row.unresolved);
+    const evidenceRows=observed.length?observed:inferred;
+    const evidenceClass=stale||(!observed.length&&!inferred.length)
+      ?'unknown'
+      :observed.length&&inferred.length?'mixed'
+        :observed.length?'observed':'inferred';
+    const evidenceConfidence01=evidenceRows.length
+      ?clamp(evidenceRows.reduce((sum,row)=>sum+row.confidence01,0)/evidenceRows.length*(observed.length?1:.55))
+      :0;
+    const latent=this.unifiedLatentWorldState.currentLatent();
+    const p27=this.p27NeuralWorld.snapshot().world;
+    const ensemble=this.worldModelEnsemble.summary();
+    const ageMs=snapshot.lastAt>0?Math.max(0,now-snapshot.lastAt):Number.POSITIVE_INFINITY;
+    const agePressure=Number.isFinite(ageMs)?clamp((ageMs-15_000)/105_000):1;
+    const worldUncertainty=stale?1:clamp(Math.max(snapshot.uncertainty01,latent?.uncertainty01??0,agePressure*.8));
+    return this.auroraKernel.evaluate({
+      prediction:input.prediction,
+      worldSignal:{
+        revision:snapshot.revision,
+        evidenceClass,
+        evidenceConfidence01,
+        uncertainty01:worldUncertainty,
+        conflict01:rows.length?clamp(conflicts.length/rows.length):1,
+        unresolved01:rows.length?clamp(unresolved.length/rows.length):1,
+        modelDisagreement01:ensemble.predictions>0?clamp(ensemble.meanDisagreement01):.25,
+        predictionError01:p27.samples>0?clamp(p27.predictionError01):.5,
+      },
+      budget:input.budget,
+      observations:input.observations,
+    });
   }
 
   private contextSignature(context:WorldContext):string{
@@ -184,15 +253,24 @@ export class WorldSubsystemRuntime {
    */
   predictForDecision(action:ActionKind, baseReward:number, uncertainty01:number, organismState?:import('./types.ts').OrganismState){
     const integrated=this.predictIntegrated(action,baseReward,uncertainty01,undefined,organismState,true);
+    const auroraDecision=this.evaluateAuroraDecision({
+      prediction:{action,utility01:integrated.reward01,confidence01:integrated.confidence01,uncertainty01:integrated.uncertainty01},
+      budget:{
+        attention01:organismState?.attentionBudget??.5,
+        energy01:organismState?.needs?.energy??.5,
+      },
+    });
     return {
       action,
-      utility:integrated.reward01,
-      confidence:integrated.confidence01,
-      uncertainty:integrated.uncertainty01,
+      utility:auroraDecision.adjustedUtility01,
+      confidence:auroraDecision.effectiveConfidence01,
+      uncertainty:clamp(integrated.uncertainty01*.7+auroraDecision.epistemicPressure01*.3),
       predictionId:integrated.predictionId,
       sourcePredictionId:integrated.sourcePredictionId,
       modelAgreement01:integrated.modelAgreement01,
-      reasons:['integrated-world-model'],
+      reasons:['integrated-world-model',`aurora-${auroraDecision.directive}`],
+      recommendedHorizon:auroraDecision.recommendedHorizon,
+      auroraDecision,
       next: organismState ? ({energy:organismState.needs.energy,uncertainty:organismState.needs.uncertainty,cognitiveLoad:organismState.needs.cognitiveLoad,novelty:organismState.needs.novelty} satisfies InternalWorldState) : {energy:.5,uncertainty:.5,cognitiveLoad:.5,novelty:.5},
       worldEvidence:[],
     };
@@ -313,6 +391,7 @@ export class WorldSubsystemRuntime {
     this.groundedWorld.restore(advanced.groundedWorld);
     this.p83PersistentReality.restore(advanced.p83PersistentRealityModel);
     this.worldModelEnsemble.restore(advanced.worldModelEnsemble);
+    this.auroraKernel.restore(advanced.auroraKernel);
     this.worldLearningRestore(advanced.worldLearning);
     this.lastWorldLatentId=this.lastWorldLatentId ?? this.worldModel2.snapshot({clone:false}).latentState?.id ?? null;
     this.lastWorldContext=null;
@@ -330,7 +409,7 @@ export class WorldSubsystemRuntime {
 
   snapshot() { return {
     world:this.world.persisted(), activeInference:this.activeInference.snapshot(), residualWorld:this.residualWorld.snapshot(),
-    contextualWorld:this.contextualWorld.snapshot(), worldModel2:this.worldModel2.snapshot(), unifiedLatentWorldState:this.unifiedLatentWorldState.snapshot(), p24:this.p24WorldIdentity.snapshot(),
+    contextualWorld:this.contextualWorld.snapshot(), worldModel2:this.worldModel2.snapshot(), unifiedLatentWorldState:this.unifiedLatentWorldState.snapshot(), auroraKernel:this.auroraKernel.snapshot(), p24:this.p24WorldIdentity.snapshot(),
     p27:this.p27NeuralWorld.snapshot(), brainSubstrate:this.brainSubstrate.snapshot(), p44:this.p44PredictiveWorld.snapshot(), p50:this.p50CausalSelfWorld.snapshot(),
     p51:this.p51GroundedCausalWorkspace.snapshot(), p52:this.p52CounterfactualDevelopment.snapshot(),
     p57:this.p57RealityFirstObservatory.snapshot(), p79:this.p79EmbodiedSituationModel.snapshot(), groundedWorld:this.groundedWorld.snapshot(), p83PersistentRealityModel:this.p83PersistentReality.snapshot(),
