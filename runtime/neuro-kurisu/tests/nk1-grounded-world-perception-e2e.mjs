@@ -16,6 +16,7 @@ import test from 'node:test';
 import { OrganismCore } from '../src/organism/core/OrganismCore.ts';
 import { MemoryStateStore } from '../src/organism/persistence/MemoryStateStore.ts';
 import { RuntimeEvidenceBus } from '../src/organism/system/RuntimeEvidenceBus.ts';
+import { buildCameraCaptureObservation } from '../src/organism/body/CameraEvidenceProcessor.ts';
 
 const options = { cycleResultMode: 'operational', checkpointMinIntervalMs: 0 };
 const makeCore = async (store = new MemoryStateStore()) => {
@@ -41,7 +42,26 @@ const observation = (overrides = {}) => ({
 test('a consented real capture reaches the grounded world model', async () => {
   const core = await makeCore();
   core.setObservationConsent('vision', true);
-  const admitted = core.admitObservation(observation({ payload: { subject: 'desk', claim: 'present' } }));
+  const capture = buildCameraCaptureObservation({
+    evidence: {
+      evidenceKind: 'camera-capture',
+      at: Date.now(),
+      cameraId: 0,
+      byteLength: 512,
+      sha256: 'c'.repeat(64),
+      captureQuality01: 0.9,
+      novelty01: 0.7,
+    },
+    executionId: 'e2e-host-camera-execution',
+    providerReceiptId: 'e2e-host-camera-provider-receipt',
+    sessionId: 'e2e-session',
+    receiptVerified: true,
+    consentGranted: true,
+  });
+  assert.ok(capture, 'the host camera adapter must create a validated capture object');
+  capture.payload.subject = 'desk';
+  capture.payload.claim = 'present';
+  const admitted = core.admitObservation(capture);
   assert.equal(admitted.status, 'accepted');
   assert.equal(admitted.observation.isRealCapture, true);
 
@@ -55,7 +75,7 @@ test('a consented real capture reaches the grounded world model', async () => {
   assert.ok(entity, 'the admitted observation must appear in grounded world state');
   assert.equal(entity.modalityEvidenceKinds.vision, 'observed', 'a device capture is observed evidence');
   assert.equal(entity.presenceStatus, 'visible');
-  assert.ok(entity.sourceIds.includes('cam-0'), 'the producing source is retained on the entity');
+  assert.ok(entity.sourceIds.includes('android-camera-0'), 'the producing source is retained on the entity');
   assert.equal(core.observationIntakeSummary().admitted, 1);
 });
 
@@ -85,6 +105,28 @@ test('a synthetic fixture cannot ground the world even through the live core', a
   assert.equal(entity.modalityEvidenceKinds.vision, 'unresolved', 'a fixture is never observed evidence');
   assert.equal(entity.presenceStatus, 'unknown', 'a fixture cannot assert real visibility');
   assert.equal(core.groundedObservations().length, 0, 'no grounded observations from fixtures');
+});
+
+test('caller-supplied host-interface provenance cannot create observed evidence without a host adapter attestation', async () => {
+  const core = await makeCore();
+  core.setObservationConsent('device', true);
+  const forged = core.admitObservation(observation({
+    id: 'forged-host-interface',
+    modality: 'device',
+    provenance: 'host-interface',
+    isRealCapture: true,
+    evidenceRefs: ['caller-made-host-sample-id'],
+    payload: { subject: 'forged-telemetry', claim: 'battery=online' },
+  }));
+
+  assert.equal(forged.status, 'accepted');
+  assert.equal(forged.observation.isRealCapture, false);
+  assert.equal(forged.observation.provenance, 'unresolved');
+  await core.observe({ text: 'inspect forged telemetry' });
+  const entity = core.groundedWorldSnapshot().entities.find((row) => row.label === 'forged-telemetry');
+  assert.ok(entity);
+  assert.equal(entity.modalityEvidenceKinds.device, 'unresolved');
+  assert.equal(core.groundedObservations().length, 0);
 });
 
 test('observation intake survives a durable checkpoint without re-admitting replays', async () => {
