@@ -92,6 +92,8 @@ export interface AvatarRenderProjection {
   hasFreshTurn: boolean;
   /** Browser-confirmed speaking, not merely a pending speech lifecycle phase. */
   speaking: boolean;
+  /** Short-lived, evidence-backed UI contact pulse shared by renderers. */
+  interaction: { zone: "head" | "body"; pulse01: number; evidenceId: string } | null;
   mouthPose: MouthPose;
   voiceEmphasis: number;
 }
@@ -122,7 +124,32 @@ export function buildAvatarRenderProjection(input: AvatarRenderProjectionInput):
     x: clamp(baseGaze.x + valenceOffset, -0.4, 0.4, 0),
     y: clamp(baseGaze.y, -0.4, 0.4, 0),
   };
-  const gaze = avatarBrainGaze(brainFrame, fallbackGaze);
+  const brainGaze = avatarBrainGaze(brainFrame, fallbackGaze);
+  const rawInteraction = snapshot.avatarInteraction;
+  const interactionAgeMs = rawInteraction && Number.isFinite(rawInteraction.at)
+    ? snapshot.at - rawInteraction.at
+    : Number.POSITIVE_INFINITY;
+  const interaction = rawInteraction
+    && rawInteraction.schemaVersion === 1
+    && rawInteraction.kind === "avatar-contact"
+    && (rawInteraction.zone === "head" || rawInteraction.zone === "body")
+    && typeof rawInteraction.evidenceId === "string"
+    && rawInteraction.evidenceId.length > 0
+    && Number.isFinite(rawInteraction.at)
+    && rawInteraction.at >= 0
+    && Number.isFinite(snapshot.at)
+    && Number.isFinite(interactionAgeMs)
+    && interactionAgeMs >= 0
+    && interactionAgeMs <= 3_200
+    ? {
+      zone: rawInteraction.zone,
+      pulse01: clamp(rawInteraction.confidence01, 0, 1, 0) * Math.exp(-interactionAgeMs / 1_200),
+      evidenceId: rawInteraction.evidenceId,
+    }
+    : null;
+  const gaze = interaction
+    ? { ...brainGaze, y: clamp(brainGaze.y + (interaction.zone === "head" ? -0.035 : 0.045) * interaction.pulse01, -0.4, 0.4, 0) }
+    : brainGaze;
 
   const plannedMotorPlan = planAvatarMotorIntent({
     emotion: snapshot.emotion.label as EmotionLabel,
@@ -145,9 +172,16 @@ export function buildAvatarRenderProjection(input: AvatarRenderProjectionInput):
   });
   // The semantic planner remains the one action/gesture owner. The brain frame
   // can contribute bounded physical offsets without creating another motor plan.
-  const motorPlan = brainFrame
-    ? { ...plannedMotorPlan, headTilt: avatarBrainHeadTilt(brainFrame, plannedMotorPlan.headTilt) }
-    : plannedMotorPlan;
+  const canonicalHeadTilt = brainFrame
+    ? avatarBrainHeadTilt(brainFrame, plannedMotorPlan.headTilt)
+    : plannedMotorPlan.headTilt;
+  const touchHeadTilt = interaction
+    ? (interaction.zone === "head" ? 0.045 : 0.026) * interaction.pulse01
+    : 0;
+  const motorPlan = {
+    ...plannedMotorPlan,
+    headTilt: clamp(canonicalHeadTilt + touchHeadTilt, -0.25, 0.25, canonicalHeadTilt),
+  };
 
   return {
     action,
@@ -167,6 +201,7 @@ export function buildAvatarRenderProjection(input: AvatarRenderProjectionInput):
     },
     hasFreshTurn,
     speaking,
+    interaction,
     mouthPose: avatarBrainMouthPose(speaking ? normalizeMouthPose(input.mouthPose) : { ...CLOSED_MOUTH }, brainFrame, speaking),
     voiceEmphasis: speaking ? clamp(input.voiceEmphasis, 0, 1, 0) : 0,
   };

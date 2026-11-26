@@ -2500,12 +2500,30 @@ export class OrganismRuntime {
     });
   }
 
-  async injectExternalEvent(detail: string, importance = 0.5) {
+  async injectExternalEvent(
+    detail: string,
+    importance = 0.5,
+    options: { observedUserAction?: 'avatar-contact-head' | 'avatar-contact-body' } = {},
+  ) {
     return this.enqueue(async () => {
       this.embodiment.externalEvent(detail, importance);
       const body = this.embodiment.snapshot();
+      const observedUserAction = options.observedUserAction;
+      const socialEvidence = observedUserAction
+        ? this.core.recordObservedUserAction('user', observedUserAction, Date.now(), 0.72, 'interaction')
+        : null;
+      // Keep the original external stimulus in the canonical multimodal stream.
+      // It is a UI/device sensor observation, not a verified physical touch.
+      this.core.recordMultimodalObservation({
+        modality: 'sensor',
+        summary: detail,
+        confidence: 0.72,
+        salience: importance,
+        evidence: ['human-interface-event', 'source-unverified'],
+      });
       await this.core.observe({
-        worldEvent:{ type:'external_event', importance, payload:{ detail } },
+        worldEvent:{ type:observedUserAction ? 'avatar_contact' : 'external_event', importance, source:observedUserAction ? 'social' : 'world', payload:{ detail, ...(observedUserAction ? { action: observedUserAction } : {}) } },
+        ...(observedUserAction ? { socialSignal: 0.5 } : {}),
         novelty:importance,
         surprise:importance,
         embodiment:{
@@ -2520,7 +2538,11 @@ export class OrganismRuntime {
         },
       });
       await this.core.setEmbodiment(body, this.embodiment.eventLog());
-      return this.core.perceptionSnapshot();
+      return {
+        ...this.core.perceptionSnapshot(),
+        multimodal: this.core.multimodalSnapshot(),
+        ...(socialEvidence ? { socialEvidence } : {}),
+      };
     });
   }
   adaptiveDevelopmentSnapshot(){ return this.core.adaptiveDevelopmentSnapshot(); }

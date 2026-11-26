@@ -4570,10 +4570,10 @@ export class OrganismCore {
         const perceptionBody = buildPerceptionBody(this.persisted.facets.embodiment.body, observation, state.at);
         if (observation.embodiment)
             this.persisted.facets.embodiment.body = structuredClone(perceptionBody);
-        const perceptionEvent = this.config.enablePerception ? this.embodimentSubsystem.perception.perceive({ body: perceptionBody as any, world: normalizedObservation.worldContext, previousWorld: priorWorld as any, text: observation.text, surprise: observation.surprise, externalEvent: observation.worldEvent ? { detail: observation.worldEvent.type, importance: observation.worldEvent.importance, source: 'world' } : undefined }) : null;
+        const perceptionEvent = this.config.enablePerception ? this.embodimentSubsystem.perception.perceive({ body: perceptionBody as any, world: normalizedObservation.worldContext, previousWorld: priorWorld as any, text: observation.text, surprise: observation.surprise, externalEvent: observation.worldEvent ? { detail: typeof observation.worldEvent.payload?.detail === 'string' ? observation.worldEvent.payload.detail : observation.worldEvent.type, importance: observation.worldEvent.importance, source: observation.worldEvent.source ?? 'world' } : undefined }) : null;
         if (perceptionEvent) {
             this.persisted.facets.embodiment.perceptionRouting = this.embodimentSubsystem.routePerception(perceptionEvent, observation.embodiment as any);
-            const pressureType = perceptionEvent.kind === 'resource' ? 'goal' : perceptionEvent.kind === 'text-input' ? 'social' : 'curiosity';
+            const pressureType = perceptionEvent.kind === 'resource' ? 'goal' : (perceptionEvent.kind === 'text-input' || perceptionEvent.kind === 'social-input') ? 'social' : 'curiosity';
             this.cognitiveRuntime.cognitiveField.addPressure(pressureType, perceptionEvent.detail, perceptionEvent.confidence, [perceptionEvent.id], perceptionEvent.salience * 0.02);
             if (perceptionEvent.kind !== 'quiet')
                 this.persisted.facets.cognition.perception = this.embodimentSubsystem.perception.snapshot();
@@ -5312,10 +5312,16 @@ export class OrganismCore {
         // BIG PASS 94: evidence-first social mind. Perceptual person IDs are treated as stable
         // entity candidates, never as verified real-world identities.
         if (perceptionRefresh) {
-            for (const person of semanticP41.entities.filter(e => e.kind === 'person').slice(0, 8)) {
+            // A cached person entity is not a fresh observation of someone being
+            // visible now. Only a person independently seen by the vision modality
+            // in this exact perception cycle may refresh visual-presence evidence.
+            const freshlyVisiblePeople = semanticP41.entities.filter(e =>
+                e.kind === 'person' && e.modalities.includes('vision') && e.modalityLastSeenAt?.vision === state.at
+            ).slice(0, 8);
+            for (const person of freshlyVisiblePeople) {
                 this.cognitiveRuntime.socialMind.observePerson({ id: person.id, displayName: person.label, at: state.at, confidence01: person.confidence01, visible01: person.present01, source: 'vision', alias: person.label, position: person.position });
             }
-            for (const relation of semanticP41.relations.filter(r => r.modality === 'vision').slice(0, 16)) {
+            for (const relation of semanticP41.relations.filter(r => r.modality === 'vision' && r.at === state.at).slice(0, 16)) {
                 const person = semanticP41.entities.find(e => e.kind === 'person' && (e.id === relation.from || e.label === relation.from || e.id === relation.to || e.label === relation.to));
                 if (person) {
                     const target = person.id === relation.from || person.label === relation.from ? relation.to : relation.from;
@@ -11842,6 +11848,13 @@ export class OrganismCore {
     unifiedLearningTransferDiagnostics() { return this.developmentalNeural.unifiedLearning.transferDiagnostics(); }
     cognitiveDependencyDiagnostics() { return this.developmentalNeural.cognitiveDependencies.diagnostics(); }
     unifiedLearningPatterns(limit = 8) { return this.developmentalNeural.unifiedLearning.consolidate(limit); }
+    recordObservedUserAction(personId: string, action: string, at = Date.now(), confidence01 = 0.5, source: 'interaction' = 'interaction') {
+        if (!this.ready) throw new Error('OrganismCore.init() must be called first');
+        const evidence = this.cognitiveRuntime.socialMind.recordObservedUserAction(personId, action, at, confidence01, source);
+        this.persisted.facets.advanced.socialMind = this.cognitiveRuntime.socialMind.snapshot();
+        this.markPersistenceDirty();
+        return structuredClone(evidence);
+    }
     socialMindDiagnostics() { return this.cognitiveRuntime.socialMind.diagnostics(); }
     socialMindSnapshot() { return this.cognitiveRuntime.socialMind.snapshot(); }
     socialMindPerson(personId: string) { return this.cognitiveRuntime.socialMind.person(personId); }

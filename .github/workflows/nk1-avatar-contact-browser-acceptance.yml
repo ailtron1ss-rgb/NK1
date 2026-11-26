@@ -1,0 +1,117 @@
+name: NK1 Avatar Contact Browser Acceptance
+
+on:
+  pull_request:
+    branches: [workpass70-source]
+    paths:
+      - "app/src/components/Avatar3DStage.tsx"
+      - "app/src/components/AvatarStage.tsx"
+      - "app/src/components/avatar/avatarModelFitBounds.ts"
+      - "app/src/types/three.d.ts"
+      - "app/scripts/avatar-3d-stage.test.mjs"
+      - "app/scripts/avatar-contact-browser-acceptance.mjs"
+      - "app/scripts/avatar-contact-event.test.mjs"
+      - "app/scripts/original-2d-contact.test.mjs"
+      - "app/src/components/KurisuOriginalStage.tsx"
+      - "app/src/components/avatar/originalStageContact.ts"
+      - "app/scripts/avatar-contact-perception-route.test.mjs"
+      - "runtime/neuro-kurisu/src/organism/cognition/SocialMindKernel.ts"
+      - "runtime/neuro-kurisu/src/server/server.mjs"
+      - ".github/workflows/nk1-avatar-contact-browser-acceptance.yml"
+  push:
+    branches:
+      - workpass70-source
+      - aspect/avatar-visual-prototype-polish-20261124
+    paths:
+      - "app/src/components/Avatar3DStage.tsx"
+      - "app/src/components/AvatarStage.tsx"
+      - "app/src/components/avatar/avatarModelFitBounds.ts"
+      - "app/src/types/three.d.ts"
+      - "app/scripts/avatar-3d-stage.test.mjs"
+      - "app/scripts/avatar-contact-browser-acceptance.mjs"
+      - "app/scripts/avatar-contact-event.test.mjs"
+      - "app/scripts/avatar-contact-perception-route.test.mjs"
+      - "runtime/neuro-kurisu/src/organism/cognition/SocialMindKernel.ts"
+      - "runtime/neuro-kurisu/src/server/server.mjs"
+      - ".github/workflows/nk1-avatar-contact-browser-acceptance.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nk1-avatar-contact-browser-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  avatar-contact:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          package-manager-cache: false
+      - name: Install locked runtime dependencies
+        run: npm ci --prefix runtime/neuro-kurisu --ignore-scripts --no-audit --no-fund
+      - name: Install locked app dependencies
+        run: npm ci --prefix app --ignore-scripts --no-audit --no-fund
+      - name: Install headless Chromium
+        working-directory: app
+        run: npx playwright install --with-deps chromium
+      - name: App TypeScript check
+        run: npm --prefix app run typecheck
+      - name: 3D renderer and Three.js pointer-picking invariants
+        run: node --experimental-strip-types --test app/scripts/avatar-3d-stage.test.mjs
+      - name: Verify contact recorder and canonical event payload
+        run: node --experimental-strip-types --test app/scripts/avatar-contact-event.test.mjs
+      - name: Verify runtime perception and SocialMind evidence in isolation
+        run: node --experimental-strip-types app/scripts/avatar-contact-perception-route.test.mjs
+      - name: Start the real organism runtime behind the Vite proxy
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/nk1-avatar-runtime-state"
+          HOST=127.0.0.1 PORT=3310 STATE_DIR="$RUNNER_TEMP/nk1-avatar-runtime-state" NK_TEST_DISABLE_AUTORUN=1 \
+            npm --prefix runtime/neuro-kurisu start > "$RUNNER_TEMP/avatar-contact-runtime.log" 2>&1 &
+          echo $! > "$RUNNER_TEMP/avatar-contact-runtime.pid"
+          for attempt in $(seq 1 90); do
+            if curl --fail --silent "http://127.0.0.1:3310/api/health" > "$RUNNER_TEMP/avatar-contact-health.json"; then
+              if node -e 'const h=JSON.parse(require("fs").readFileSync(process.argv[1],"utf8")); process.exit(h.ready===true?0:1)' "$RUNNER_TEMP/avatar-contact-health.json"; then
+                exit 0
+              fi
+            fi
+            sleep 2
+          done
+          cat "$RUNNER_TEMP/avatar-contact-runtime.log"
+          exit 1
+      - name: Start the Vite app with the real organism API proxy
+        working-directory: app
+        run: |
+          set -euo pipefail
+          npm run dev > "$RUNNER_TEMP/avatar-contact-app.log" 2>&1 &
+          echo $! > "$RUNNER_TEMP/avatar-contact-app.pid"
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent "http://127.0.0.1:8080/" > /dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+          cat "$RUNNER_TEMP/avatar-contact-app.log"
+          exit 1
+      - name: Verify real Live2D, 3D and Legacy contacts on desktop and mobile
+        working-directory: app
+        env:
+          AVATAR_CONTACT_TIMEOUT_MS: "30000"
+        run: node scripts/avatar-contact-browser-acceptance.mjs http://127.0.0.1:8080
+      - name: Upload real-runtime browser acceptance logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nk1-avatar-contact-browser-acceptance
+          path: |
+            ${{ runner.temp }}/avatar-contact-app.log
+            ${{ runner.temp }}/avatar-contact-runtime.log
+            ${{ runner.temp }}/avatar-contact-health.json
+            ${{ runner.temp }}/avatar-contact-debug.png
+          if-no-files-found: warn
+          retention-days: 14

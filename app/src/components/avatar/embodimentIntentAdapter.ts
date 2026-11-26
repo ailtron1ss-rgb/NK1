@@ -229,3 +229,72 @@ export function resolveDepthRigPoseFromMotorFrame(
   }
   return { rigId: rig.id, deltas };
 }
+
+export type Live2DTapRecordStatus = "recording" | "recorded" | "error";
+export type Live2DTapRecordOutcome = "recorded" | "failed" | "invalid" | "throttled";
+
+export interface Live2DTapRecorderOptions {
+  recordExternalEvent: (
+    detail: string,
+    importance: number,
+    interaction: { protocolVersion: 1; kind: "avatar-contact"; zone: "head" | "body" },
+  ) => Promise<unknown>;
+  onStatus: (status: Live2DTapRecordStatus) => void;
+  now?: () => number;
+}
+
+const LIVE2D_TAP_COOLDOWN_MS = 1_500;
+const LIVE2D_TAP_IMPORTANCE = 0.24;
+
+/**
+ * Admit only the viewer's small, versioned head/body contact event. A tap is a
+ * low-salience sensory observation (never a chat turn or an implicit wake),
+ * and one in-flight request plus a short cooldown prevents event flooding.
+ */
+export function createLive2DTapRecorder(options: Live2DTapRecorderOptions) {
+  let lastAcceptedAt = Number.NEGATIVE_INFINITY;
+  let inFlight = false;
+  const now = options.now ?? Date.now;
+
+  return {
+    async record(value: unknown): Promise<Live2DTapRecordOutcome> {
+      if (value === null || typeof value !== "object" || Array.isArray(value)) return "invalid";
+      const event = value as Record<string, unknown>;
+      if (event.type !== "live2d_tap" || event.protocolVersion !== 1
+        || (event.zone !== "head" && event.zone !== "body")
+        || typeof event.nx !== "number" || !Number.isFinite(event.nx) || event.nx < 0 || event.nx > 1
+        || typeof event.ny !== "number" || !Number.isFinite(event.ny) || event.ny < 0 || event.ny > 1) {
+        return "invalid";
+      }
+
+      const at = now();
+      if (!Number.isFinite(at)) return "invalid";
+      if (inFlight || at - lastAcceptedAt < LIVE2D_TAP_COOLDOWN_MS) return "throttled";
+
+      inFlight = true;
+      lastAcceptedAt = at;
+      options.onStatus("recording");
+      const area = event.zone === "head" ? "головы" : "корпуса";
+      const detail = `Пользователь коснулся области ${area} аватара Курису через экранный интерфейс.`;
+      try {
+        const result = await options.recordExternalEvent(detail, LIVE2D_TAP_IMPORTANCE, {
+          protocolVersion: 1,
+          kind: "avatar-contact",
+          zone: event.zone,
+        });
+        if (result === null || typeof result !== "object" || Array.isArray(result)
+          || (result as Record<string, unknown>).ok !== true) {
+          options.onStatus("error");
+          return "failed";
+        }
+        options.onStatus("recorded");
+        return "recorded";
+      } catch {
+        options.onStatus("error");
+        return "failed";
+      } finally {
+        inFlight = false;
+      }
+    },
+  };
+}

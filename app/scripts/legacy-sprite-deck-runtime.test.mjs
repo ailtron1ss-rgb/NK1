@@ -18,7 +18,7 @@ test("legacy avatar keeps one animation loop while speaking and outfit values ch
 test("stale legacy sprite image callbacks cannot replace the newest requested sprite", () => {
   assert.match(source, /let cancelled = false;/);
   assert.match(source, /if \(cancelled\) return;\s*previousRef\.current = currentRef\.current;/);
-  assert.match(source, /if \(!cancelled\) setReady\(Boolean\(currentRef\.current\)\);/);
+  assert.match(source, /if \(!cancelled\) setAssetStatus\("error"\)/);
   assert.match(source, /cancelled = true;\s*img\.onload = null;\s*img\.onerror = null;/);
 });
 
@@ -57,4 +57,50 @@ test("sprite semantics take precedence over misleading legacy filenames and shee
   assert.match(engine, /dr_pepper_break: \['lab_steeple', 'sofa_phone'\]/);
   assert.match(engine, /visual review found several "lab_\*" filenames depict sleep, phone use or unrelated gestures/);
   assert.doesNotMatch(engine, /if \(preferLab\) \{\s*const labCandidates/);
+});
+
+
+test("legacy outfit preference hydrates after mount without SSR mismatch or default overwrite", () => {
+  assert.match(source, /const \[outfit, setOutfit\] = useState<VisualProfileId>\("lab_coat"\)/);
+  assert.match(source, /const \[preferencesHydrated, setPreferencesHydrated\] = useState\(false\)/);
+  assert.match(source, /setOutfit\(readStoredOutfit\(\)\)/);
+  assert.match(source, /setPreferencesHydrated\(true\)/);
+  assert.match(source, /if \(!preferencesHydrated\) return;/);
+  assert.doesNotMatch(source, /useState\(readStoredOutfit\)/);
+});
+
+test("legacy outfit picker exposes accessible disclosure and selected profile state", () => {
+  assert.match(source, /aria-expanded=\{open\}/);
+  assert.match(source, /aria-controls="legacy-outfit-options"/);
+  assert.match(source, /id="legacy-outfit-options"/);
+  assert.match(source, /aria-pressed=\{outfit === item\.id\}/);
+});
+
+
+test("legacy sprite loading exposes a terminal error instead of remaining stuck in loading", () => {
+  assert.match(source, /type SpriteAssetStatus = "loading" \| "ready" \| "error"/);
+  assert.match(source, /setAssetStatus\("loading"\)/);
+  assert.match(source, /if \(!cancelled\) setAssetStatus\("error"\)/);
+  assert.match(source, /assets unavailable/);
+  assert.match(source, /role="status" aria-live="polite"/);
+  assert.match(source, /предыдущий кадр сохранён/);
+});
+
+test("legacy deck renders the shared short-lived contact pulse without pretending still sprites are rigged", () => {
+  assert.match(source, /interaction\?: \{ zone: "head" \| "body"; pulse01: number; evidenceId: string \} \| null/);
+  assert.match(source, /const interactionRef = useRef\(interaction\)/);
+  assert.match(source, /interactionRef\.current = interaction/);
+  assert.match(source, /if \(d && touch && Number\.isFinite\(touch\.pulse01\) && touch\.pulse01 > 0\)/);
+  assert.match(source, /touch\.zone === "head" \? \.22 : \.64/);
+  assert.match(source, /ctx\.arc\(cx, contactY/);
+  assert.match(source, /still illustrations, not mouth-rigged frames/);
+});
+
+test("legacy contact hit testing only accepts points inside the current rendered sprite", () => {
+  assert.match(source, /const imageLayoutRef = useRef<\{ left: number; top: number; width: number; height: number \} \| null>\(null\)/);
+  assert.match(source, /const handleCanvasPointerUp = \(event: ReactPointerEvent<HTMLCanvasElement>\)/);
+  assert.match(source, /if \(x < layout\.left \|\| x > layout\.left \+ layout\.width \|\| y < layout\.top \|\| y > layout\.top \+ layout\.height\) return/);
+  assert.match(source, /withinSpriteY <= \.43 \? "head" : "body"/);
+  assert.match(source, /onPointerUp=\{handleCanvasPointerUp\}/);
+  assert.match(source, /onContact\(\{ zone: withinSpriteY/);
 });

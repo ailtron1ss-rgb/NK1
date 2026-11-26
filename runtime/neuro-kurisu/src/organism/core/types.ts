@@ -191,7 +191,7 @@ export interface OrganismObservation {
   surprise?: number;
   success?: number;
   reward?: number;
-  worldEvent?: { type: string; importance?: number; payload?: Record<string, unknown> };
+  worldEvent?: { type: string; importance?: number; source?: 'android' | 'world' | 'social' | 'internal'; payload?: Record<string, unknown> };
   worldContext?: WorldContext;
   socialSignal?: number;
   novelty?: number;

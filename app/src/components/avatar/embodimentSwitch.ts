@@ -46,6 +46,9 @@ export interface SwitchPlan {
   schemaVersion: 1;
   from: EmbodimentMode;
   to: EmbodimentMode;
+  /** Exact adapter identity; coarse mode alone cannot distinguish SVG from sprite fallback. */
+  fromRendererId: string | null;
+  toRendererId: string;
   stateRevision: number;
   preserved: SemanticBodyState;
   supportedPose: Partial<Record<BodyChannel, number>>;
@@ -67,6 +70,8 @@ const CHANNELS = new Set<BodyChannel>([
   "leftHand", "rightHand", "leftFingers", "rightFingers", "gazeX", "gazeY", "breath", "rootYaw",
 ]);
 const EXPRESSIONS = new Set<ExpressionChannel>(["neutral", "joy", "sadness", "anger", "anxiety", "curiosity", "protective", "surprise"]);
+const MODES = new Set<EmbodimentMode>(["live2d", "depth2d", "vrm3d"]);
+
 /** Cross-renderer body channels are normalized; adapters convert to native rig units. */
 const NORMALIZED_CHANNEL_LIMIT = 1;
 
@@ -94,15 +99,77 @@ export function validateSemanticBodyState(value: SemanticBodyState): boolean {
     && isNullableIdentifier(value.wardrobeId, 128);
 }
 
+function isPlainOwnDataRecord(value: unknown): Record<string, unknown> | null {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) return null;
+  try {
+    const prototype = Object.getPrototypeOf(value);
+    if (prototype !== Object.prototype && prototype !== null) return null;
+    const keys = Reflect.ownKeys(value);
+    if (keys.length > 32) return null;
+    const result: Record<string, unknown> = Object.create(null);
+    for (const key of keys) {
+      if (typeof key !== "string") return null;
+      const descriptor = Object.getOwnPropertyDescriptor(value, key);
+      if (!descriptor || !descriptor.enumerable || !("value" in descriptor)) return null;
+      result[key] = descriptor.value;
+    }
+    return result;
+  } catch {
+    return null;
+  }
+}
+
+function isUniqueKnownList<T extends string>(
+  value: unknown,
+  allowed: ReadonlySet<T>,
+  maxLength: number,
+): value is readonly T[] {
+  if (!Array.isArray(value)) return false;
+  try {
+    const length = Object.getOwnPropertyDescriptor(value, "length")?.value;
+    if (!Number.isSafeInteger(length) || (length as number) < 0 || (length as number) > maxLength) return false;
+    const keys = Reflect.ownKeys(value);
+    if (keys.length !== (length as number) + 1) return false;
+    const seen = new Set<string>();
+    for (let index = 0; index < (length as number); index += 1) {
+      const descriptor = Object.getOwnPropertyDescriptor(value, String(index));
+      if (!descriptor || !descriptor.enumerable || !("value" in descriptor)) return false;
+      const item = descriptor.value;
+      if (typeof item !== "string" || !item.trim() || !allowed.has(item as T) || seen.has(item)) return false;
+      seen.add(item);
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Fail closed at the renderer boundary; unknown capabilities must never be executed as if supported. */
+export function validateRendererCapabilities(value: unknown): value is RendererCapabilities {
+  const record = isPlainOwnDataRecord(value);
+  if (!record) return false;
+  return MODES.has(record.mode as EmbodimentMode)
+    && isBoundedNonBlankString(record.rendererId, 96)
+    && isUniqueKnownList(record.channels, CHANNELS, 64)
+    && isUniqueKnownList(record.expressions, EXPRESSIONS, 8)
+    && typeof record.supportsSpeechVisemes === "boolean"
+    && typeof record.supportsWorldTargets === "boolean"
+    && typeof record.supportsClothingLayers === "boolean"
+    && typeof record.supportsPhysics === "boolean";
+}
+
 /** Build a truthful handoff plan without mutating the canonical organism snapshot. */
 export function planEmbodimentSwitch(
   from: EmbodimentMode,
   capabilities: RendererCapabilities,
   state: SemanticBodyState,
+  fromRendererId: string | null = null,
 ): SwitchPlan {
   if (!validateSemanticBodyState(state)) throw new TypeError("invalid-semantic-body-state");
-  if (!capabilities.rendererId.trim() || !Array.isArray(capabilities.channels) || !Array.isArray(capabilities.expressions)) throw new TypeError("invalid-renderer-capabilities");
-  if (new Set(capabilities.channels).size !== capabilities.channels.length) throw new TypeError("duplicate-renderer-channel");
+  if (!validateRendererCapabilities(capabilities)
+    || (fromRendererId !== null && !isBoundedNonBlankString(fromRendererId, 96))) {
+    throw new TypeError("invalid-renderer-capabilities");
+  }
   const supported = new Set(capabilities.channels);
   const supportedPose: Partial<Record<BodyChannel, number>> = {};
   const unsupportedChannels: BodyChannel[] = [];
@@ -111,13 +178,22 @@ export function planEmbodimentSwitch(
     else unsupportedChannels.push(key);
   }
   return {
-    schemaVersion: 1, from, to: capabilities.mode, stateRevision: state.revision,
-    preserved: structuredCloneSafe(state), supportedPose, unsupportedChannels,
+    schemaVersion: 1,
+    from,
+    to: capabilities.mode,
+    fromRendererId,
+    toRendererId: capabilities.rendererId,
+    stateRevision: state.revision,
+    preserved: structuredCloneSafe(state),
+    supportedPose,
+    unsupportedChannels,
     expressionSupported: capabilities.expressions.includes(state.emotion),
     speechVisemesSupported: capabilities.supportsSpeechVisemes,
     worldTargetSupported: capabilities.supportsWorldTargets && Boolean(state.gaze.targetId),
     wardrobeSupported: capabilities.supportsClothingLayers && Boolean(state.wardrobeId),
-    requiresNeutralRebind: from !== capabilities.mode,
+    requiresNeutralRebind: fromRendererId !== null
+      ? fromRendererId !== capabilities.rendererId
+      : from !== capabilities.mode,
   };
 }
 

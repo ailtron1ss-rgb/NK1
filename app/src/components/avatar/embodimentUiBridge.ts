@@ -198,10 +198,13 @@ export function beginBodySwitch(
   to: UiRenderMode,
   state: SemanticBodyState,
 ): { plan: SwitchPlan; progress: BodySwitchProgress } {
-  const plan = planEmbodimentSwitch(CAPABILITY_TABLE[from].mode, CAPABILITY_TABLE[to], state);
+  const source = CAPABILITY_TABLE[from];
+  const target = CAPABILITY_TABLE[to];
+  const plan = planEmbodimentSwitch(source.mode, target, state, source.rendererId);
+  const sameRenderer = source.rendererId === target.rendererId;
   return {
-    plan: { ...plan, requiresNeutralRebind: from !== to },
-    progress: { progress: 0, committed: from === to },
+    plan,
+    progress: { progress: 0, committed: sameRenderer },
   };
 }
 

@@ -30,6 +30,11 @@ import {
   resolveVrmFullBodyRig,
 } from "../src/components/avatar/vrmRuntimeAdapter.ts";
 import { originalStageChannelOffsets } from "../src/components/avatar/originalStageChannels.ts";
+import {
+  auditGenericGlbHumanoidScene,
+  resolveGenericGlbHumanoidRig,
+  applyGenericGlbFullBodyChannels,
+} from "../src/components/avatar/glbHumanoidMotorAdapter.ts";
 import { emptySnapshot } from "../src/organism/types.ts";
 
 function fakeBone() {
@@ -50,7 +55,9 @@ function createFakeVrm(names) {
 const FULL_BODY_NAMES = ["head", "neck", "leftUpperArm", "rightUpperArm", "spine", "leftLowerArm", "rightLowerArm", "leftUpperLeg", "rightUpperLeg", "leftLowerLeg", "rightLowerLeg"];
 
 const baseManifest = () => ({
-  schemaVersion: 1,
+  schemaVersion: 2,
+  rigClass: "cubism-deform",
+  selectionRole: "primary",
   rendererId: "nk1-test-live2d",
   label: "Test Live2D",
   mode: "live2d",
@@ -73,6 +80,51 @@ test("accepts a well-formed capability manifest", () => {
 test("rejects a production-ready renderer that has no asset", () => {
   const codes = validateRendererCapabilityManifest({ ...baseManifest(), assetKind: "none" }).map((i) => i.code);
   assert.ok(codes.includes("inconsistent-production-ready"));
+});
+
+test("schema v2 requires a truthful rig class and a distinct selection role", () => {
+  const missingRig = validateRendererCapabilityManifest({ ...baseManifest(), rigClass: undefined }).map((issue) => issue.code);
+  const missingRole = validateRendererCapabilityManifest({ ...baseManifest(), selectionRole: undefined }).map((issue) => issue.code);
+  assert.ok(missingRig.includes("invalid-rig-class"));
+  assert.ok(missingRole.includes("invalid-selection-role"));
+});
+
+test("schema v1 remains readable for backwards compatibility", () => {
+  const legacy = { ...baseManifest(), schemaVersion: 1, rigClass: undefined, selectionRole: undefined };
+  assert.deepEqual(validateRendererCapabilityManifest(legacy), []);
+});
+
+test("preview candidates cannot masquerade as selectable production bodies", () => {
+  const issues = validateRendererCapabilityManifest({
+    ...baseManifest(),
+    selectionRole: "preview-only",
+    productionReady: true,
+  }).map((issue) => issue.code);
+  assert.ok(issues.includes("preview-cannot-be-selectable"));
+});
+
+test("rig classes must match the concrete asset type", () => {
+  const issues = validateRendererCapabilityManifest({
+    ...baseManifest(),
+    rigClass: "static-poses",
+    assetKind: "cubism-model",
+  }).map((issue) => issue.code);
+  assert.ok(issues.includes("rig-asset-mismatch"));
+});
+
+test("default registry declares truthful classes and excludes 3D preview from selectable bodies", () => {
+  const registry = createDefaultBodyRendererRegistry();
+  const manifests = registry.list();
+  assert.deepEqual(manifests.map((entry) => [entry.rendererId, entry.rigClass, entry.selectionRole]), [
+    ["nk1-live2d-cubism", "cubism-deform", "primary"],
+    ["nk1-original-svg-2d", "vector-driven", "fallback"],
+    ["nk1-legacy-sprites-2d", "static-poses", "fallback"],
+    ["nk1-three-vrm3d", "humanoid-skeleton", "preview-only"],
+  ]);
+  assert.deepEqual(registry.selectable().map((entry) => entry.rendererId), [
+    "nk1-live2d-cubism", "nk1-original-svg-2d", "nk1-legacy-sprites-2d",
+  ]);
+  assert.equal(registry.resolveByMode("live2d")?.rendererId, "nk1-live2d-cubism");
 });
 
 test("malformed channel arrays return diagnostics instead of throwing", () => {
@@ -112,7 +164,7 @@ test("registry fails closed on invalid or duplicate renderers", () => {
 test("registry exposes only selectable renderers and resolves by mode", () => {
   const registry = new BodyRendererRegistry();
   registry.register(baseManifest());
-  registry.register({ ...baseManifest(), rendererId: "nk1-test-2p5d", label: "2.5D", mode: "depth2d", assetKind: "none", productionReady: false, source: "none" });
+  registry.register({ ...baseManifest(), rendererId: "nk1-test-2p5d", label: "2.5D", mode: "depth2d", assetKind: "none", rigClass: "none", selectionRole: "preview-only", productionReady: false, source: "none" });
   assert.equal(registry.selectable().length, 1);
   assert.equal(registry.selectable()[0].rendererId, "nk1-test-live2d");
   assert.equal(registry.resolveByMode("depth2d")?.rendererId, "nk1-test-2p5d");
@@ -449,4 +501,96 @@ test("the default 3D asset is honestly marked remote and not production-ready",(
   const registry=createDefaultBodyRendererRegistry();
   assert.equal(registry.selectable().some((entry)=>entry.rendererId==="nk1-three-vrm3d"),false,
     "an externally hosted, visually unaccepted asset must not enter the production-ready selector");
+});
+
+
+function createGenericGlbRigFixture(options = {}) {
+  const nodes = new Map();
+  const add = (name, parentName = null) => {
+    const node = { name, isBone: true, parent: parentName ? nodes.get(parentName) : null, rotation: { x: 0, y: 0, z: 0 } };
+    nodes.set(name, node);
+    return node;
+  };
+  add("Hips");
+  add("Spine", "Hips");
+  add("Chest", "Spine");
+  add("Neck", "Chest");
+  add("Head", "Neck");
+  for (const side of ["Left", "Right"]) {
+    add(side + "Shoulder", "Chest");
+    add(side + "UpperArm", side + "Shoulder");
+    const hasLowerArm = !(options.missing ?? []).includes(side + "LowerArm");
+    if (hasLowerArm) add(side + "LowerArm", side + "UpperArm");
+    add(side + "Hand", hasLowerArm ? side + "LowerArm" : side + "UpperArm");
+    add(side + "UpperLeg", "Hips");
+    const hasLowerLeg = !(options.missing ?? []).includes(side + "LowerLeg");
+    if (hasLowerLeg) add(side + "LowerLeg", side + "UpperLeg");
+    add(side + "Foot", hasLowerLeg ? side + "LowerLeg" : side + "UpperLeg");
+  }
+  const root = {
+    name: "Scene",
+    traverse(callback) {
+      callback(this);
+      for (const node of nodes.values()) callback(node);
+    },
+  };
+  return { root, nodes };
+}
+
+test("generic GLB audit preserves real scene-node identity and connected humanoid ancestry", () => {
+  const fixture = createGenericGlbRigFixture();
+  const audit = auditGenericGlbHumanoidScene(fixture.root);
+  assert.equal(audit.mappingMethod, "conservative-name-heuristic");
+  assert.equal(audit.capabilities.fullBodyHumanoid, true);
+  assert.strictEqual(audit.nodes.hips, fixture.nodes.get("Hips"));
+  assert.strictEqual(audit.nodes.spine, fixture.nodes.get("Spine"));
+  assert.strictEqual(audit.nodes.leftLowerArm, fixture.nodes.get("LeftLowerArm"));
+  assert.strictEqual(audit.nodes.rightLowerLeg, fixture.nodes.get("RightLowerLeg"));
+  const rig = resolveGenericGlbHumanoidRig(audit);
+  assert.strictEqual(rig.spine, fixture.nodes.get("Spine"));
+  assert.strictEqual(rig.leftLowerArm, fixture.nodes.get("LeftLowerArm"));
+});
+
+test("generic GLB motor applies every declared 3D body channel additively over the current animation pose", () => {
+  const fixture = createGenericGlbRigFixture();
+  const audit = auditGenericGlbHumanoidScene(fixture.root);
+  const rig = resolveGenericGlbHumanoidRig(audit);
+  fixture.nodes.get("Spine").rotation.x = 0.1;
+  fixture.nodes.get("LeftLowerArm").rotation.z = -0.2;
+  const result = applyGenericGlbFullBodyChannels(rig, {
+    torsoPitch: 0.5,
+    leftElbow: 0.25,
+    rightElbow: -0.25,
+    leftHip: 0.5,
+    rightHip: -0.5,
+    leftKnee: 0.25,
+    rightKnee: -0.25,
+  });
+  assert.equal(result.applied, true);
+  assert.deepEqual(result.unsupportedChannels, []);
+  assert.deepEqual(new Set(result.appliedChannels), new Set([
+    "torsoPitch", "leftElbow", "rightElbow", "leftHip", "rightHip", "leftKnee", "rightKnee",
+  ]));
+  assert.ok(Math.abs(fixture.nodes.get("Spine").rotation.x - (0.1 + 0.2)) < 1e-9);
+  assert.ok(Math.abs(fixture.nodes.get("LeftLowerArm").rotation.z - (-0.2 + 0.35)) < 1e-9);
+  assert.ok(Math.abs(fixture.nodes.get("RightLowerArm").rotation.z + 0.35) < 1e-9);
+  assert.ok(Math.abs(fixture.nodes.get("LeftUpperLeg").rotation.z - 0.4) < 1e-9);
+  assert.ok(Math.abs(fixture.nodes.get("RightUpperLeg").rotation.z + 0.4) < 1e-9);
+  assert.ok(Math.abs(fixture.nodes.get("LeftLowerLeg").rotation.z - 0.35) < 1e-9);
+  assert.ok(Math.abs(fixture.nodes.get("RightLowerLeg").rotation.z + 0.35) < 1e-9);
+});
+
+test("generic GLB motor reports missing bones instead of claiming channels were applied", () => {
+  const fixture = createGenericGlbRigFixture({ missing: ["LeftLowerArm", "RightLowerLeg"] });
+  const rig = resolveGenericGlbHumanoidRig(auditGenericGlbHumanoidScene(fixture.root));
+  const result = applyGenericGlbFullBodyChannels(rig, {
+    leftElbow: 0.5,
+    rightKnee: 0.5,
+    torsoPitch: 0.25,
+  });
+  assert.equal(result.applied, true);
+  assert.deepEqual(result.appliedChannels, ["torsoPitch"]);
+  assert.deepEqual(new Set(result.unsupportedChannels), new Set(["leftElbow", "rightKnee"]));
+  assert.ok(!result.controlledBones.includes("leftLowerArm"));
+  assert.ok(!result.controlledBones.includes("rightLowerLeg"));
 });
