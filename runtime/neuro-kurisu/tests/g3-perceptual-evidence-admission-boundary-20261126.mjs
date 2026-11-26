@@ -14,6 +14,17 @@ assert.equal(callerClaim.kind, 'derived', 'a caller-controlled boolean must neve
 assert.ok(compiler.snapshot().metrics.groundedSignalRatio01 < 0.06, 'caller flags must not boost grounded-signal ratio');
 assert.ok(compiler.snapshot().metrics.temporalBinding01 < 0.14, 'caller flags must not boost temporal binding');
 
+const beforeReplay = compiler.snapshot();
+const replayed = compiler.recordExternalEvidence({
+  at: 1_800_000_000_000,
+  claim: 'caller supplied verified flag',
+  confidence01: 0.99,
+  modality: 'sensor',
+  verified: true,
+});
+assert.deepEqual(compiler.snapshot(), beforeReplay, 'replaying an identical external event must not inflate counters or metrics');
+assert.deepEqual(replayed, callerClaim, 'replay must return the original derived row');
+
 const forged = new PerceptualEvidenceCompiler();
 forged.restore({
   version: 1,
@@ -48,6 +59,31 @@ assert.equal(restored.updates, 1, 'restore must derive counters from bounded acc
 assert.equal(restored.metrics.groundedSignalRatio01, 0, 'restore must not trust persisted aggregate grounding metrics');
 assert.equal(restored.metrics.temporalBinding01, 0.1, 'restore must reset unverifiable temporal aggregates');
 assert.notEqual(restored.lastHash, 'caller-controlled-hash', 'restore must recompute the evidence digest');
+
+const semanticIngress = new PerceptualEvidenceCompiler();
+semanticIngress.compile({
+  at: 1_800_000_000_002,
+  semantic: {
+    entities: [{
+      id: 'p41-entity-1',
+      label: 'unattested camera object',
+      present01: 0.9,
+      confidence01: 0.99,
+      modalities: ['vision'],
+      modalityEvidenceKinds: { vision: 'observed' },
+      modalityLastSeenAt: { vision: 1_800_000_000_002 },
+      lastSeenAt: 1_800_000_000_002,
+    }],
+    relations: [],
+    events: [],
+    scene: { label: 'unknown', at: 1_800_000_000_002, confidence01: 0 },
+    modalityReliability: {},
+    pending: [],
+    metrics: { crossModalAgreement01: 0.7 },
+  },
+});
+assert.equal(semanticIngress.snapshot().evidence[0]?.kind, 'derived', 'P41 output must not bypass the host-admission boundary');
+assert.equal(semanticIngress.snapshot().metrics.groundedSignalRatio01, 0, 'unattested P41 labels must not count as grounded observations');
 
 const owner = new EmbodimentSubsystemRuntime();
 owner.perceptualEvidence.recordExternalEvidence({

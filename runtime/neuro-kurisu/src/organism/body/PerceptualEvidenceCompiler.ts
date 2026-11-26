@@ -2,7 +2,7 @@ import type { P41PerceptionState } from '../cognition/P41SemanticPerception.ts';
 import type { P41NativePerceptionState } from '../cognition/P41NativePerception.ts';
 import type { P41TemporalPerceptionState } from '../cognition/P41TemporalPerceptionModel.ts';
 import type { MultimodalState } from './MultimodalPerception.ts';
-import { countOr, isPlainDataArray, isPlainDataRecord, ownDataValue, stringOr, timestampOr, unitOr } from './RestoreSanitizers.ts';
+import { isPlainDataArray, isPlainDataRecord, ownDataValue, stringOr, timestampOr, unitOr } from './RestoreSanitizers.ts';
 
 const clamp=(n:number)=>Math.max(0,Math.min(1,Number.isFinite(n)?n:0));
 const stableHash=(value:string)=>{let h=2166136261;for(let i=0;i<value.length;i++){h^=value.charCodeAt(i);h=Math.imul(h,16777619);}return (h>>>0).toString(16).padStart(8,'0');};
@@ -18,6 +18,37 @@ export interface PerceptualEvidenceRecord{
   kind:PerceptualEvidenceKind;
   parents:string[];
 }
+const EVIDENCE_MODALITIES = new Set<PerceptualEvidenceRecord['modality']>(['text','vision','audio','sensor','world','fusion']);
+const RESTORABLE_EVIDENCE_KINDS = new Set<PerceptualEvidenceKind>(['model-output','derived','conflict','unresolved']);
+const nonAuthoritativeKind=(kind:PerceptualEvidenceKind|undefined):PerceptualEvidenceKind=>kind==='observed'?'derived':(kind??'unresolved');
+
+function restoreEvidenceRecord(value:unknown):PerceptualEvidenceRecord|null{
+  if(!isPlainDataRecord(value))return null;
+  const id=ownDataValue(value,'id'), at=ownDataValue(value,'at');
+  const modality=ownDataValue(value,'modality'), claim=ownDataValue(value,'claim');
+  if(typeof id!=='string'||!id.trim()||id.length>180||
+    typeof at!=='number'||!Number.isSafeInteger(at)||at<0||
+    typeof modality!=='string'||!EVIDENCE_MODALITIES.has(modality as PerceptualEvidenceRecord['modality'])||
+    typeof claim!=='string'||!claim.trim())return null;
+  const confidence01=unitOr(ownDataValue(value,'confidence01'),0);
+  const rawKind=ownDataValue(value,'kind');
+  const kind:PerceptualEvidenceKind=rawKind==='observed'
+    ?'derived'
+    :typeof rawKind==='string'&&RESTORABLE_EVIDENCE_KINDS.has(rawKind as PerceptualEvidenceKind)
+      ?rawKind as PerceptualEvidenceKind
+      :'unresolved';
+  const rawParents=ownDataValue(value,'parents');
+  const parents=isPlainDataArray(rawParents,32)
+    ?rawParents.filter((parent):parent is string=>typeof parent==='string'&&Boolean(parent.trim())).slice(0,8).map(parent=>parent.trim().slice(0,180))
+    :[];
+  return {
+    id:id.trim(),at,modality:modality as PerceptualEvidenceRecord['modality'],
+    claim:claim.trim().slice(0,240),confidence01,
+    uncertainty01:unitOr(ownDataValue(value,'uncertainty01'),1-confidence01),
+    kind,parents,
+  };
+};
+
 export interface PerceptualEvidenceState{
   version:1;
   updates:number;
@@ -52,18 +83,8 @@ export class PerceptualEvidenceCompiler{
     const r=isPlainDataRecord(raw)?raw:{};
     const rawEvidence=ownDataValue(r,'evidence');
     const evidence=isPlainDataArray(rawEvidence,512)
-      ? rawEvidence.filter((row)=>isPlainDataRecord(row)).slice(0,96) as unknown as PerceptualEvidenceRecord[]
-      : [];
-    const rawMetrics=ownDataValue(r,'metrics');
-    const metrics={
-      grounding01:unitOr(ownDataValue(rawMetrics,'grounding01'),d.metrics.grounding01),
-      semanticCoverage01:unitOr(ownDataValue(rawMetrics,'semanticCoverage01'),d.metrics.semanticCoverage01),
-      crossModalAgreement01:unitOr(ownDataValue(rawMetrics,'crossModalAgreement01'),d.metrics.crossModalAgreement01),
-      temporalBinding01:unitOr(ownDataValue(rawMetrics,'temporalBinding01'),d.metrics.temporalBinding01),
-      groundedSignalRatio01:unitOr(ownDataValue(rawMetrics,'groundedSignalRatio01'),d.metrics.groundedSignalRatio01),
-      conflict01:unitOr(ownDataValue(rawMetrics,'conflict01'),d.metrics.conflict01),
-      unresolved01:unitOr(ownDataValue(rawMetrics,'unresolved01'),d.metrics.unresolved01),
-    };
+      ?rawEvidence.map(restoreEvidenceRecord).filter((row):row is PerceptualEvidenceRecord=>row!==null).slice(0,96)
+      :[];
     const rawQuery=ownDataValue(r,'activeQuery');
     const activeQuery=isPlainDataRecord(rawQuery)?{
       id:stringOr(ownDataValue(rawQuery,'id'),'',128),
@@ -75,34 +96,54 @@ export class PerceptualEvidenceCompiler{
     }:null;
     this.state={
       version:1,
-      updates:countOr(ownDataValue(r,'updates'),d.updates),
-      lastAt:timestampOr(ownDataValue(r,'lastAt'),d.lastAt),
+      // Aggregate counters and smoothed metrics are not admission evidence. Rebuild
+      // the bounded count from accepted rows and reset unverifiable aggregates.
+      updates:evidence.length,
+      lastAt:evidence.reduce((latest,row)=>Math.max(latest,row.at),0),
       scene:stringOr(ownDataValue(r,'scene'),d.scene,120),
       evidence,
       activeQuery,
-      metrics,
-      lastHash:typeof ownDataValue(r,'lastHash')==='string'?(ownDataValue(r,'lastHash') as string).slice(0,64):d.lastHash,
+      metrics:{...d.metrics},
+      lastHash:'',
     };
+    this.refreshHash();
+  }
+  private refreshHash(){
+    this.refreshHash();
   }
   snapshot(){return structuredClone(this.state);}
 
-  /** P2840: feed independently observed external outcomes back into next-cycle grounding. */
-  recordExternalEvidence(input:{at:number;claim:string;confidence01:number;parents?:string[];modality?:'sensor'|'world'|'fusion';verified?:boolean}){
+  /**
+   * External observations stay derived until a host-owned, cryptographically
+   * verified admission receipt is wired into this owner. Caller flags are ignored.
+   */
+  recordExternalEvidence(input:{at:number;claim:string;confidence01:number;parents?:string[];modality?:'sensor'|'world'|'fusion'}){
+    const at=timestampOr(input?.at,-1);
+    const claim=stringOr(input?.claim,'',240).trim();
+    if(at<0||!Number.isSafeInteger(at))throw new RangeError('external-perceptual-evidence-timestamp-invalid');
+    if(!claim)throw new TypeError('external-perceptual-evidence-claim-required');
     const confidence=clamp(input.confidence01);
+    const modality=input.modality&&EVIDENCE_MODALITIES.has(input.modality)?input.modality:'sensor';
+    const rawParents=input.parents;
+    const parents=isPlainDataArray(rawParents,32)
+      ?rawParents.filter((parent):parent is string=>typeof parent==='string'&&Boolean(parent.trim())).slice(0,8).map(parent=>parent.trim().slice(0,180))
+      :[];
     const record:PerceptualEvidenceRecord={
-      id:`pe-external-${stableHash(`${input.at}:${input.claim}:${confidence.toFixed(3)}`)}`,
-      at:input.at, modality:input.modality??'sensor', claim:String(input.claim).slice(0,240),
-      confidence01:confidence, uncertainty01:1-confidence, kind:input.verified?'observed':'derived', parents:[...(input.parents??[])].slice(0,8),
+      id:`pe-external-${stableHash(`${at}:${claim}:${confidence.toFixed(3)}`)}`,
+      at,modality,claim,confidence01:confidence,uncertainty01:1-confidence,
+      kind:'derived',parents,
     };
-    const existing=this.state.evidence.findIndex(x=>x.id===record.id);
-    if(existing<0) this.state.evidence=[record,...this.state.evidence].slice(0,96);
-    this.state.lastAt=input.at; this.state.updates++;
-    const observedBoost=input.verified?1:.45;
-    this.state.metrics.groundedSignalRatio01=clamp(this.state.metrics.groundedSignalRatio01*.92+.08*observedBoost);
-    this.state.metrics.grounding01=clamp(this.state.metrics.grounding01*.94+.06*confidence*observedBoost);
-    this.state.metrics.temporalBinding01=clamp(this.state.metrics.temporalBinding01*.94+.06*(input.verified?1:.55));
-    const digest=`${this.state.scene}|${this.state.evidence.slice(0,24).map(e=>`${e.modality}:${e.claim}:${e.confidence01.toFixed(2)}`).join('|')}|${JSON.stringify(this.state.metrics)}`;
-    this.state.lastHash=stableHash(digest);
+    const existing=this.state.evidence.findIndex(row=>row.id===record.id);
+    if(existing>=0)return structuredClone(this.state.evidence[existing]);
+    this.state.evidence=[record,...this.state.evidence].slice(0,96);
+    this.state.lastAt=Math.max(this.state.lastAt,at);
+    this.state.updates++;
+    // Derived input carries a deliberately bounded, non-observational influence.
+    const derivedWeight=.45;
+    this.state.metrics.groundedSignalRatio01=clamp(this.state.metrics.groundedSignalRatio01*.92+.08*derivedWeight);
+    this.state.metrics.grounding01=clamp(this.state.metrics.grounding01*.94+.06*confidence*derivedWeight);
+    this.state.metrics.temporalBinding01=clamp(this.state.metrics.temporalBinding01*.94+.06*.55);
+    this.refreshHash();
     return structuredClone(record);
   }
   compile(input:PerceptualEvidenceInput){
@@ -123,7 +164,7 @@ export class PerceptualEvidenceCompiler{
             claim:`entity:${e.id}:${e.label}`,
             confidence01:clamp(e.confidence01),
             uncertainty01:1-clamp(e.confidence01),
-            kind:evidenceKind,
+            kind:nonAuthoritativeKind(evidenceKind),
             parents:[e.id],
           });
         }
@@ -134,7 +175,7 @@ export class PerceptualEvidenceCompiler{
           at:r.at,modality:r.modality,
           claim:`relation:${r.id}:${r.from}:${r.relation}:${r.to}`,
           confidence01:clamp(r.confidence01),uncertainty01:1-clamp(r.confidence01),
-          kind:r.evidenceKind,
+          kind:nonAuthoritativeKind(r.evidenceKind),
           parents:[r.fromEntityId,r.toEntityId].filter((x):x is string=>Boolean(x)),
         });
       }
@@ -154,7 +195,7 @@ export class PerceptualEvidenceCompiler{
           });
         }
       }
-      if(semantic.scene.label!=='unknown') records.push({id:`pe-${stableHash(`scene:${semantic.scene.label}:${semantic.scene.at}`)}`,at:semantic.scene.at,modality:'fusion',claim:`scene:${semantic.scene.label}`,confidence01:semantic.scene.confidence01,uncertainty01:1-semantic.scene.confidence01,kind:semantic.sceneEvidenceKind??'unresolved',parents:[]});
+      if(semantic.scene.label!=='unknown') records.push({id:`pe-${stableHash(`scene:${semantic.scene.label}:${semantic.scene.at}`)}`,at:semantic.scene.at,modality:'fusion',claim:`scene:${semantic.scene.label}`,confidence01:semantic.scene.confidence01,uncertainty01:1-semantic.scene.confidence01,kind:nonAuthoritativeKind(semantic.sceneEvidenceKind),parents:[]});
     }
     if(native){
       for(const cue of native.semanticCues.slice(0,12)) records.push({id:`pe-${stableHash(`cue:${cue.id}`)}`,at:cue.at,modality:cue.modality,claim:`cue:${cue.label}`,confidence01:clamp(cue.confidence01),uncertainty01:1-clamp(cue.confidence01),kind:'derived',parents:[]});

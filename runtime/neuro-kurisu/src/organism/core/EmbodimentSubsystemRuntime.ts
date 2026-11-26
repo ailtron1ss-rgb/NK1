@@ -79,6 +79,7 @@ export class EmbodimentSubsystemRuntime {
     const cognition=input.cognition ?? {}; const embodiment=input.embodiment ?? {}; const advanced=input.advanced ?? {};
     this.perception.restore(cognition.perception);
     this.multimodal.restore(embodiment.multimodal);
+    this.perceptualEvidence.restore(embodiment.perceptualEvidence);
     this.p35SemanticWorldBody.restore(embodiment.p35);
     this.p37EmbodiedSensorium.restore(embodiment.p37);
     this.p40SemanticIntelligence.restore(embodiment.p40SemanticIntelligence);
@@ -95,7 +96,7 @@ export class EmbodimentSubsystemRuntime {
   perceptionRoutingSnapshot(){ return { ...this.perceptionRouting }; }
 
   snapshot() { return {
-    multimodal:this.multimodal.snapshot(), perception:this.perception.snapshot(), p35:this.p35SemanticWorldBody.snapshot(),
+    multimodal:this.multimodal.snapshot(), perceptualEvidence:this.perceptualEvidence.snapshot(), perception:this.perception.snapshot(), p35:this.p35SemanticWorldBody.snapshot(),
     p37:this.p37EmbodiedSensorium.snapshot(), p40SemanticIntelligence:this.p40SemanticIntelligence.snapshot(),
     p41Semantic:this.p41SemanticPerception.snapshot(), p41Native:this.p41NativePerception.snapshot(),
     p41Temporal:this.p41TemporalPerception.snapshot(), p42:this.p42Experience.snapshot(), p43:this.p43Imagery.snapshot(), p66InteroceptiveHomeostasis:this.p66InteroceptiveHomeostasis.snapshot(), perceptionRouting:this.perceptionRoutingSnapshot(),
