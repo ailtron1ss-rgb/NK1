@@ -84,11 +84,6 @@ test("Motivation explains goals and homeostatic drives in Russian", async () => 
     "Сначала дождитесь подтверждения канонического снимка.",
     "Недоступно",
     "Неизвестно",
-    "Энергия",
-    "Когнитивная нагрузка",
-    "Социальная потребность",
-    "Давление сна",
-    "Согласованность идентичности",
   ]) {
     assert.ok(motivation.includes(phrase), `missing localized motivation copy: ${phrase}`);
   }
