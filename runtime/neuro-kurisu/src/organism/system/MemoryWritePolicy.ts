@@ -273,8 +273,12 @@ export class MemoryWritePolicy {
     const history = this.perId.get(String(id));
     if (!history || history.observations < 1) return 1;
     const reliability = this.uncertainty.reliability01(this.channel);
-    const quality01 = clamp01(0.5 * reliability + 0.5 * (1 - history.lastError01));
-    const target = clamp(0.85 + 0.35 * quality01 - 0.15 * history.lastUpdate01, 0.85, 1.2);
+    // The memory's own error history must dominate the weight; a reliable channel may only
+    // modulate it. With the channel term first, a healthy channel pushed noisy memories above 1
+    // and protected exactly the records the policy is supposed to demote.
+    const localQuality01 = clamp01(1 - history.lastError01);
+    const quality01 = clamp01(0.7 * localQuality01 + 0.3 * reliability);
+    const target = clamp(1 + 0.4 * (quality01 - 0.5) - 0.15 * history.lastUpdate01, 0.85, 1.2);
     // A memory usually carries a single write-time observation, so scale the effect by how
     // much evidence exists; a uniform multiplier would not change eviction order at all.
     const confidence = Math.min(1, history.observations / 3);
