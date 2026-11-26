@@ -75,6 +75,13 @@ export interface MemoryWritePolicySnapshot {
   shallowSelections: number;
   evictionAdjusted: number;
   evictionShadowWouldAdjust: number;
+  reinforcements: number;
+  promoteEligible: number;
+  deepBatchPasses: number;
+  deepBatchCandidates: number;
+  deepBatchSelected: number;
+  deepBatchLastReason: string;
+  deepBatchRecent: Array<{ candidates: number; deepCount: number; reason: string }>;
   uncertainty: UncertaintyWriteSnapshot;
   hippo: HippoLegsSnapshot;
   perId: Record<string, PerIdHistory>;
@@ -114,6 +121,13 @@ export class MemoryWritePolicy {
   private shallowSelections = 0;
   private evictionAdjusted = 0;
   private evictionShadowWouldAdjust = 0;
+  private reinforcements = 0;
+  private promoteEligible = 0;
+  private deepBatchPasses = 0;
+  private deepBatchCandidates = 0;
+  private deepBatchSelected = 0;
+  private deepBatchLastReason = 'empty';
+  private deepBatchRecent: Array<{ candidates: number; deepCount: number; reason: string }> = [];
   private perId = new Map<string, PerIdHistory>();
   private recent: MemoryWritePolicySnapshot['recent'] = [];
 
@@ -181,6 +195,61 @@ export class MemoryWritePolicy {
       lastSalience01: salience,
       lastUpdate01: update,
     });
+    this.trimPerId();
+  }
+
+  /**
+   * Reinforcement evidence from retrieval. A write decision alone never sees how often a memory
+   * is actually used, so its history stopped at one observation and the promotion gate stayed
+   * unreachable (`minimumUpdates` defaults to 8). Retrieval is the missing evidence stream.
+   */
+  observeReinforcement(input: { tick: number; id: string; salience01?: number; predictionError01?: number }): { observations: number; promoteEligible: boolean } {
+    const key = String(input.id);
+    const history = this.history(key);
+    const salience = clamp01(Number(input.salience01 ?? history.lastSalience01));
+    const observedError = Number(input.predictionError01);
+    const error = Number.isFinite(observedError) ? clamp01(observedError) : history.lastError01;
+    const next: PerIdHistory = {
+      observations: history.observations + 1,
+      lastError01: error,
+      lastSalience01: salience,
+      lastUpdate01: Math.abs(salience - history.lastSalience01),
+    };
+    this.perId.set(key, next);
+    this.trimPerId();
+    this.reinforcements++;
+    const stability = this.fastSlow.decide({
+      updateCount: next.observations,
+      fastNorm: clamp01(salience),
+      lastErrorNorm: next.lastError01,
+      lastUpdateNorm: next.lastUpdate01,
+    });
+    if (stability.promote) this.promoteEligible++;
+    return { observations: next.observations, promoteEligible: stability.promote };
+  }
+
+  /**
+   * Route a real candidate batch instead of the single item `decide()` sees. Measurement only:
+   * the runtime keeps its own batch size, this records what the bounded fraction policy would
+   * have chosen so the difference stays visible before anything depends on it.
+   */
+  planDeepWork(candidates: Array<{ id?: string; predictionError01?: number; uncertainty01?: number }>): { mask: boolean[]; deepCount: number; deepFraction01: number; reason: string } {
+    const difficulties = candidates.map(candidate => this.deepWork.difficulty({
+      deltaMagnitude: clamp01(Number(candidate.predictionError01 ?? 0)),
+      updateClip: 1,
+      routeEntropy: Math.log(2) * clamp01(Number(candidate.uncertainty01 ?? 0)),
+      rank: 2,
+    }));
+    const selection = this.deepWork.select(difficulties, { forceDeep: false });
+    this.deepBatchPasses++;
+    this.deepBatchCandidates += candidates.length;
+    this.deepBatchSelected += selection.deepCount;
+    this.deepBatchLastReason = selection.reason;
+    this.deepBatchRecent = [{ candidates: candidates.length, deepCount: selection.deepCount, reason: selection.reason }, ...this.deepBatchRecent].slice(0, 8);
+    return { mask: selection.mask, deepCount: selection.deepCount, deepFraction01: selection.deepFraction01, reason: selection.reason };
+  }
+
+  private trimPerId(): void {
     while (this.perId.size > this.perIdLimit) {
       const oldest = this.perId.keys().next().value;
       if (oldest === undefined) break;
@@ -231,6 +300,16 @@ export class MemoryWritePolicy {
       shallowSelections: this.shallowSelections,
       evictionAdjusted: this.evictionAdjusted,
       evictionShadowWouldAdjust: this.evictionShadowWouldAdjust,
+      reinforcements: this.reinforcements,
+      promoteEligible: this.promoteEligible,
+      deepWorkBatch: {
+        passes: this.deepBatchPasses,
+        candidates: this.deepBatchCandidates,
+        selected: this.deepBatchSelected,
+        meanDeepFraction01: this.deepBatchCandidates > 0 ? this.deepBatchSelected / this.deepBatchCandidates : 0,
+        lastReason: this.deepBatchLastReason,
+        recent: this.deepBatchRecent.slice(0, 4),
+      },
       trackedMemories: this.perId.size,
       uncertainty: this.uncertainty.diagnostics(),
       fastSlow: this.fastSlow.diagnostics(),
@@ -256,6 +335,13 @@ export class MemoryWritePolicy {
       shallowSelections: this.shallowSelections,
       evictionAdjusted: this.evictionAdjusted,
       evictionShadowWouldAdjust: this.evictionShadowWouldAdjust,
+      reinforcements: this.reinforcements,
+      promoteEligible: this.promoteEligible,
+      deepBatchPasses: this.deepBatchPasses,
+      deepBatchCandidates: this.deepBatchCandidates,
+      deepBatchSelected: this.deepBatchSelected,
+      deepBatchLastReason: this.deepBatchLastReason,
+      deepBatchRecent: this.deepBatchRecent.slice(),
       uncertainty: this.uncertainty.snapshot(),
       hippo: this.hippo.snapshot(),
       perId: Object.fromEntries(this.perId),
@@ -276,6 +362,19 @@ export class MemoryWritePolicy {
     this.shallowSelections = Math.max(0, Math.floor(Number(raw?.shallowSelections ?? 0)));
     this.evictionAdjusted = Math.max(0, Math.floor(Number(raw?.evictionAdjusted ?? 0)));
     this.evictionShadowWouldAdjust = Math.max(0, Math.floor(Number(raw?.evictionShadowWouldAdjust ?? 0)));
+    this.reinforcements = Math.max(0, Math.floor(Number(raw?.reinforcements ?? 0)));
+    this.promoteEligible = Math.max(0, Math.floor(Number(raw?.promoteEligible ?? 0)));
+    this.deepBatchPasses = Math.max(0, Math.floor(Number(raw?.deepBatchPasses ?? 0)));
+    this.deepBatchCandidates = Math.max(0, Math.floor(Number(raw?.deepBatchCandidates ?? 0)));
+    this.deepBatchSelected = Math.max(0, Math.floor(Number(raw?.deepBatchSelected ?? 0)));
+    this.deepBatchLastReason = String(raw?.deepBatchLastReason ?? 'empty').slice(0, 40);
+    this.deepBatchRecent = Array.isArray(raw?.deepBatchRecent)
+      ? raw!.deepBatchRecent.slice(0, 8).map(row => ({
+        candidates: Math.max(0, Math.floor(Number(row?.candidates ?? 0))),
+        deepCount: Math.max(0, Math.floor(Number(row?.deepCount ?? 0))),
+        reason: String(row?.reason ?? '').slice(0, 40),
+      }))
+      : [];
     this.uncertainty.restore(raw?.uncertainty);
     this.hippo.restore(raw?.hippo);
     this.perId.clear();

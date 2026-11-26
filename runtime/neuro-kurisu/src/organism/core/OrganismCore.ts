@@ -5305,6 +5305,16 @@ export class OrganismCore {
         // This projection is the current retrieval result, including a valid empty result.
         // It must never retain the earlier partial recall or imply that stored memories were retrieved now.
         this.persisted.facets.memory.lastRetrievedMemoryIds = advancedRetrieved.map(m => m.id);
+        // The write policy only ever saw the write itself, so its history stayed at one
+        // observation per memory and the stability gate could never fire. Retrieval is the
+        // reinforcement evidence that makes the per-memory history real.
+        for (const retrieved of advancedRetrieved.slice(0, 4))
+            this.organismSystems.memory.memoryWritePolicy.observeReinforcement({
+                tick: state.tick,
+                id: retrieved.id,
+                salience01: Number(retrieved.salience ?? retrieved.confidence ?? 0.5),
+                predictionError01: Number(retrieved.predictionError ?? 0),
+            });
         let memoryWorldApplication: {
             strength01: number;
             applied: boolean;
@@ -8596,6 +8606,14 @@ export class OrganismCore {
                 procedural01: (m.kind === 'procedural' || m.id === memItem?.id && selectedAction !== 'wait' && state.lastActionSuccess === 1) ? 1 : 0, storageCost01: clamp((m.content?.length ?? 0) / 1800),
                 reinforcementGate01: selectedBgGate01, redundancy01: clamp(m.retrievalCount > 0 ? .8 : 0), semanticCompression01: clamp((m.content?.length ?? 0) / 1800)
             }));
+            // Measurement only: record what the bounded deep-fraction policy would route from the
+            // real candidate batch, instead of the single-item batch `decide()` sees per write.
+            this.organismSystems.memory.memoryWritePolicy.planDeepWork(consolidationCandidates.map((candidate: any) => ({
+                id: String(candidate.id ?? ''),
+                predictionError01: Number(candidate.predictionError01 ?? 0),
+                uncertainty01: Number(candidate.uncertainty01 ?? 0),
+            })));
+            this.persisted.system.memoryWritePolicy = this.organismSystems.memory.memoryWritePolicy.snapshot();
             const consolidation = this.memorySubsystem.memoryLifecycleAuthority.consolidate({ candidates: consolidationCandidates, batchSize: state.tick % 48 === 0 ? 12 : 4, pressure01: p66Homeostasis.pressure01, awake01: observation.embodiment?.awake === false ? 0 : 1 });
             const consolidationFeedback = this.memorySubsystem.consolidationController.applyOutcomeFeedback({ action: selectedAction, predicted01: clamp(selectedIntent?.predictedUtility ?? .5), actual01: clamp(state.lastActionSuccess == null ? .5 : (state.lastActionSuccess ? 1 : 0)), surprise01: state.predictionError, reinforcementGate01: selectedBgGate01 });
             this.persisted.facets.advanced.consolidationFeedback = consolidationFeedback;
