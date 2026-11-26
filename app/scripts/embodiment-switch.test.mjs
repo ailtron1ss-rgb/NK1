@@ -85,6 +85,33 @@ test("distinguishes different 2D source and target renderers with exact identity
   assert.equal(plan.requiresNeutralRebind, true);
 });
 
+test("rejects malformed renderer capabilities before planning a body handoff", () => {
+  const valid = {
+    mode: "vrm3d", rendererId: "vrm-main",
+    channels: ["headYaw", "leftElbow"], expressions: ["neutral", "curiosity"],
+    supportsSpeechVisemes: true, supportsWorldTargets: true,
+    supportsClothingLayers: true, supportsPhysics: true,
+  };
+  for (const malformed of [
+    null,
+    {},
+    { ...valid, rendererId: "   " },
+    { ...valid, rendererId: "x".repeat(97) },
+    { ...valid, mode: "not-a-renderer-mode" },
+    { ...valid, channels: ["not-a-body-channel"] },
+    { ...valid, channels: ["headYaw", "headYaw"] },
+    { ...valid, expressions: ["not-an-expression"] },
+    { ...valid, expressions: ["neutral", "neutral"] },
+    { ...valid, supportsPhysics: "yes" },
+  ]) {
+    assert.throws(
+      () => planEmbodimentSwitch("live2d", malformed, state),
+      /invalid-renderer-capabilities/,
+      "malformed capability manifests must fail closed",
+    );
+  }
+});
+
 test("shared pose blending is finite, bounded by endpoints and omits one-sided channels", () => {
   assert.deepEqual(blendSharedPose({ headYaw: -1, leftElbow: 0.2 }, { headYaw: 1, rightElbow: 0.9 }, 0.5), { headYaw: 0 });
   assert.deepEqual(blendSharedPose({ headYaw: 0 }, { headYaw: 1 }, 2), { headYaw: 1 });
