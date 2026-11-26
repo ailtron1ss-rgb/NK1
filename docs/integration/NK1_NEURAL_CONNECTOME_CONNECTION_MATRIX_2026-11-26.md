@@ -307,3 +307,50 @@ The full Master Plan X is estimated at **36/100 ±8 pp** for engineering integra
 ### Current transaction boundary
 
 C17/C18 establish better commit semantics for the **canonical Core store**. They do not make all independent sidecar stores atomic. `PersistentContinuityKernel`, B1701 continuity receipts and `FailureRecoveryCertification` are still advanced before Core store save and require a separate failure-injection audit. The cross-store checkpoint generation manifest and real device power-loss recovery remain open.
+
+
+## 13. Continuity and recovery owner commit boundary — 26 Nov 2026
+
+C19 extends the canonical Core save candidate to two additional receipt owners:
+
+| Owner | Previous behavior | Corrected commit rule | Verification |
+|---|---|---|---|
+| PersistentContinuityKernel | `commit()` advanced lineage sequence/hash before `store.save()` | Commit on detached kernel clone; replace live owner only after Core store success | RED 45817176036; GREEN 45817365876 |
+| B1701 Unified Life Continuity | `commitCheckpoint()` invoked verification and updated chain-check counters before save | Run verification on detached clone; restore live snapshot after commit | New assertion in 45817365876 |
+| FailureRecoveryCertification | `checkpoint()` incremented checkpoint sequence/history before save | Build certificate on detached clone and publish only after save | New assertion in 45817365876 |
+
+The expanded failure-injection test now verifies that on a rejected Core store write:
+- Persistent continuity head hash, headSeq, commit count and continuity scores remain unchanged;
+- B1701 checkpoint verification counters remain unchanged;
+- FailureRecoveryCertification checkpoint count, sequence and history remain unchanged;
+- revision graph/tokens and projection schedule markers remain dirty;
+- the backing store remains at the prior durable snapshot.
+
+After the next successful forced checkpoint, every candidate owner is committed once and the saved `PersistedOrganism.system` receipts exactly match the live owner snapshots.
+
+Focused GREEN [45817365876](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45817365876); latest exact-head Actions for PR #1206 `97ece3f...`: 32/32 success; Unified Organism Runtime 36/36 steps.
+
+### C20 — Outer Runtime sidecar persistence inventory
+
+The canonical source creates or uses these independent storage channels:
+
+| Owner/store | Default path / source | Current role |
+|---|---|---|
+| OrganismCore | `stateFile` through configured `JsonStateStore<PersistedOrganism>` | Canonical organism state and seven owner snapshots |
+| WorldEnvironment | configured/default sibling `.world.json` | World transitions and persistent environment |
+| ProceduralSkillLibrary | `.procedural-skills.json` | Procedural skill records |
+| CognitiveSpineScheduler | `.cognitive-spine.json` | Cognitive execution cadence/schedule |
+| RiskAwareRecoveryController | `.risk-aware-recovery.json` | Runtime recovery policy state |
+| CognitiveImmuneSystem | `.cognitive-health.json` | Health observations/signals |
+| AdaptiveSynapticMatrixEngine | `.synaptic-matrix.json` | Adapter candidate/reliability state |
+| OpenLoopRadar | `.open-loops.json` | Persistent unresolved obligations |
+| P23 retry backoff | `.p23-retry-backoff.json` | Revision retry state |
+| OperationalJournal | `.operational.jsonl` | Append-only operations/receipts |
+| ContinuityLedger | `.continuity.jsonl` | Append-only longitudinal diagnostics |
+| Learning journals / replay anchors | injected/configured stores | Learning and monotonic provenance |
+
+The shutdown receipt documented in PR #1202 covers four required stores (Core, World, cognitive spine, risk-aware recovery) and labels success/partial truthfully. It does not make the remaining sidecars part of one atomic transaction.
+
+**Unclosed C20 gap:** no shared checkpoint generation manifest currently proves that Core + World + all resume-critical registries are from one consistent generation after a process crash. Append-only operational/continuity journals may be explicitly best-effort, but resumable decision/memory/world/skill state needs an explicit policy.
+
+Next design: classify each store as `required`, `derived/rebuildable`, `best-effort` or `externally-transactional`; assign generation IDs and payload hashes; persist a prepare manifest; commit only after every required store has written; recover by selecting the highest fully committed generation or fail closed. This design is a proposed next step, not yet implemented.
