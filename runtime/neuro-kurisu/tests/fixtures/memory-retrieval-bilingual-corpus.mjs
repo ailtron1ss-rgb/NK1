@@ -7,7 +7,9 @@ import { fingerprintMemoryRetrievalDataset } from '../../src/organism/memory/Mem
 // each holdout row in its own independence group, and no train/holdout query overlap. Labels are
 // hand-authored and point at the one record that carries the cited code; this is a declared
 // fixture, not production evidence.
-export const CORPUS_NOW = Date.now();
+// Pinned, not Date.now(): a wall-clock anchor made the dataset fingerprint and the printed
+// metrics drift between runs, which is a flake waiting to happen in CI.
+export const CORPUS_NOW = Date.parse('2026-01-15T00:00:00.000Z');
 export const LABELLED_PER_LANGUAGE = 10;
 export const DISTRACTORS_PER_LANGUAGE = 20;
 

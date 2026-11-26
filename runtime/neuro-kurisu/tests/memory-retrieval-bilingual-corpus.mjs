@@ -46,8 +46,9 @@ assert.equal(report.languageStratification.gates.sufficientIndependentAnswerable
 assert.equal(report.languageStratification.gates.sufficientIndependentUnanswerableHoldoutGroupsPerLanguage, true);
 
 console.log(`MEMORY_RETRIEVAL_BILINGUAL_CORPUS=PASS ${JSON.stringify({
+    // Only the dataset fingerprint is printed: the corpus fingerprint hashes the live memory
+    // snapshot, whose internal decay clocks move, so it differs run to run by construction.
     datasetFingerprint: report.datasetFingerprint.slice(0, 12),
-    corpusFingerprint: report.corpusFingerprint.slice(0, 12),
     candidate: {
         recallAtK01: report.metrics.candidate.recallAtK01,
         mrr01: Number(report.metrics.candidate.mrr01.toFixed(4)),
