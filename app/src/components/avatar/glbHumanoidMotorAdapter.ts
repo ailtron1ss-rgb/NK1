@@ -28,7 +28,14 @@ export interface GenericGlbMotorApplyResult {
   readonly controlledBones: string[];
 }
 
-const ROLE_BY_CHANNEL: Readonly<Record<string, { role: HumanoidRole; axis: "x" | "z"; limit: number; boneName: string }>> = Object.freeze({
+type GenericGlbChannelMapping = {
+  role: keyof GenericGlbHumanoidRig;
+  axis: "x" | "z";
+  limit: number;
+  boneName: string;
+};
+
+const ROLE_BY_CHANNEL: Readonly<Partial<Record<BodyChannel, GenericGlbChannelMapping>>> = Object.freeze({
   torsoPitch: { role: "spine", axis: "x", limit: 0.4, boneName: "spine" },
   leftElbow: { role: "leftLowerArm", axis: "z", limit: 1.4, boneName: "leftLowerArm" },
   rightElbow: { role: "rightLowerArm", axis: "z", limit: 1.4, boneName: "rightLowerArm" },
@@ -98,17 +105,15 @@ export function applyGenericGlbFullBodyChannels(
   const unsupportedChannels: BodyChannel[] = [];
   const controlledBones: string[] = [];
 
-  for (const [channel, mapping] of Object.entries(ROLE_BY_CHANNEL) as [
-    BodyChannel,
-    (typeof ROLE_BY_CHANNEL)[string],
-  ][]) {
+  for (const [channel, mapping] of Object.entries(ROLE_BY_CHANNEL) as [BodyChannel, GenericGlbChannelMapping][]) {
+    if (!mapping) continue;
     const raw = channels?.[channel];
     if (raw === undefined) continue;
     if (typeof raw !== "number" || !Number.isFinite(raw)) {
       unsupportedChannels.push(channel);
       continue;
     }
-    const node = rig?.[mapping.role as keyof GenericGlbHumanoidRig] as GenericGlbMotorNode | null | undefined;
+    const node = rig?.[mapping.role];
     if (!isMotorNode(node)) {
       unsupportedChannels.push(channel);
       continue;
