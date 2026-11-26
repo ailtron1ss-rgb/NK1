@@ -142,3 +142,35 @@ flowchart LR
 - Independent memory/learning holdout and source/ZIP/license parity.
 
 **Status:** structural map established; method-level connectome and runtime verification remain in progress.
+
+
+## 8. Runtime call path confirmed by source inspection
+
+The first concrete end-to-end path is visible in `core/OrganismRuntime.ts`:
+
+1. **Construction:** `OrganismRuntime` constructs one `OrganismCore` from the configured `stateStore` and operational cycle mode. The runtime also owns one `CognitiveEventFabric` instance and one `UnifiedCognitiveCycle` instance.
+2. **Restore:** `OrganismRuntime.init()` calls `core.init()`, reads `core.systemSnapshot()`, restores runtime-owned `CognitiveEventFabric` and `UnifiedCognitiveCycle` state from the canonical system snapshot, and restores the other sidecars.
+3. **Input/perception:** the runtime converts multimodal interpretation inputs through `core.recordMultimodalObservation()` and `core.fuseMultimodalObservations()`. It explicitly avoids running a second runtime-local PerceptionEngine against the same raw sample.
+4. **Cognitive execution:** one `core.observe(...)` call executes the current observation. The runtime measures the Core perception snapshot around that call rather than re-processing the same sample.
+5. **Action and world outcome:** the runtime continues through planning/embodied execution and classifies the resulting world outcome as external or simulated; only externally grounded, verified and independent outcomes receive the corresponding evidence flags.
+6. **Causal trace:** `CognitiveEventFabric.recordOperationalCycle()` receives observation, prediction, appraisal, attention, memory, goal, plan, action, outcome, learning and self-update stage data. Attention and memory owner receipts are attached when available.
+7. **Lineage verification:** `verifyOperationalCycle()` checks the eleven stage IDs and owner receipts. `UnifiedCognitiveCycle.evaluate()` consumes the CEF lineage result; full completion requires both full lineage and owner evidence.
+8. **Persistence projection:** runtime snapshots are written back through `core.setRuntimeCognitiveEventFabric()` and `core.setRuntimeUnifiedCognitiveCycle()`; the metacognitive episode is sent through `core.recordMetacognitiveEpisode()`, which reports whether its canonical memory persistence succeeded.
+9. **Independent export:** `independentEvaluationEvidenceSnapshot()` exports a privacy-minimized bundle from the runtime-owned CEF, reality evidence and cycle counters.
+
+Useful source anchors (line numbers from the fetched current source response):
+- `OrganismRuntime` constructor / Core creation: approximately lines 430–560.
+- Runtime restore and CEF/UnifiedCycle restore: lines 619–702.
+- Single `core.observe()` and multimodal admission: lines 1210–1240.
+- Operational cycle trace and lineage verification: lines 1796–1865.
+- CEF and UnifiedCycle snapshot projection / metacognitive persistence: lines 1939–2016.
+- Independent evaluation evidence export: lines 2056–2065.
+
+### What this proves — and what it does not
+
+- **Source-present / connected path:** a single runtime owns the CEF and UnifiedCycle, invokes Core once for the cognitive observation, records the full eleven-stage trace, verifies lineage and projects runtime state back through Core persistence APIs.
+- **Not yet proven:** all eleven stages execute successfully on a real operational tick; every attention/memory receipt is always present and correctly bound; the complete checkpoint generation atomically includes every relevant sidecar; crash/power-loss recovery preserves all receipts; device/browser behavior and latency meet target thresholds.
+- **Do not create a second CEF or UnifiedCognitiveCycle inside Core.** The current source path treats these as runtime-owned components whose snapshots are persisted through Core's system snapshot boundary.
+- **Do not call simulated world outcomes externally verified.** The runtime's own metacognitive episode marks simulated outcomes as simulated and records their limitation.
+
+This moves the connection map beyond a component inventory: one causal runtime spine is source-visible. Its exact-source regression and failure-injection verification remains the next gate.
