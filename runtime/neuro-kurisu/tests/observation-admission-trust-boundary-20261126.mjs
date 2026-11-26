@@ -6,6 +6,7 @@ import { OutcomeVerificationService, isTrustedDecisionLinkedExternalPostconditio
 import { P41SemanticPerceptionEngine, defaultP41SemanticPerception } from '../src/organism/cognition/P41SemanticPerception.ts';
 import { PerceptualEpistemicGraph } from '../src/organism/cognition/PerceptualEpistemicGraph.ts';
 import { GroundedWorldState } from '../src/organism/world/GroundedWorldState.ts';
+import { RealityGroundingController } from '../src/organism/system/RealityGroundingController.ts';
 import { createTrustedEmbodiedActionFixture } from './helpers/trusted-embodied-action-fixture.mjs';
 
 const at=1_800_000_000_000;
@@ -112,6 +113,16 @@ const cameraProof=await new ExternalPostconditionVerifier().assess(cameraAction)
 assert.equal(cameraAction.realityClass,'camera-artifact');
 assert.equal(isTrustedEmbodiedOutcomeVerification(cameraProof,cameraAction),true,
   'fresh retained camera bytes plus exact decision-linked host capture proof may verify the frame observation');
+const realityGrounding=new RealityGroundingController();
+const cameraGrounding=realityGrounding.resolve({
+  tick:1,action:'explore',expectedReward01:.5,predictionConfidence01:.8,
+  simulatedReward01:.4,simulatedSurprise01:.2,simulatedSuccess01:.5,
+  embodiedAction:cameraAction,novelty01:.5,resource01:.8,contextKey:'g3-camera-frame',
+  postcondition:cameraProof,
+});
+assert.equal(cameraGrounding.source,'external','the verified camera frame must enter external-first grounding');
+assert.equal(cameraGrounding.proofClass,'independent-observation','the camera frame proof must be classified as independent observation');
+assert.equal(cameraGrounding.independent01,1);
 const wrongCameraClaim=untrustedCompiler.recordExternalEvidence({
   at:at+21,claim:'the door is open',confidence01:.99,modality:'vision',
   verification:cameraProof,embodiedAction:cameraAction,
