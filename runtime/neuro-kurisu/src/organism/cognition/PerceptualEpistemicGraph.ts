@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { countOr, isPlainDataArray, isPlainDataRecord, ownDataValue, stringOr, timestampOr, unitOr } from '../body/RestoreSanitizers.ts';
 const clamp=(n:number)=>Math.max(0,Math.min(1,Number.isFinite(n)?n:0));
 export type EpistemicSource='observed'|'model-output'|'derived'|'unresolved';
 export interface EvidenceClaim { id:string; at:number; modality:string; claim:string; source:EpistemicSource; confidence01:number; targetIds:string[]; supersedes?:string; }
@@ -108,40 +109,83 @@ function countContradictionPairs(claims:readonly EvidenceClaim[]):number{
   return Math.min(pairs,4096);
 }
 
-function safeCounter(value:unknown,ceiling:number):number{
-  const n=Number(value);
-  return Number.isSafeInteger(n)&&n>=0&&n<=ceiling?n:0;
-}
-
 export class PerceptualEpistemicGraph {
   private state=defaultEpistemicState();
   restore(raw?:Partial<EpistemicState>|null){
-    const d=defaultEpistemicState(); const r=raw??{};
-    this.state={...d,...r,
-      claims:Array.isArray(r.claims)?r.claims.slice(-256).map((claim:any)=>({
-        ...claim,
-        source:claim?.source==='observed'?'derived':
-          claim?.source==='model-output'||claim?.source==='derived'||claim?.source==='unresolved'?claim.source:'unresolved',
-      })):[],
-      contradictionPairs:safeCounter(r.contradictionPairs,4096),
-      resolvedPairs:safeCounter(r.resolvedPairs,4096),
-      corroboratedPairs:safeCounter(r.corroboratedPairs,1000),
-      meanConfidence01:clamp(Number(r.meanConfidence01??d.meanConfidence01)),
+    const d=defaultEpistemicState();
+    const r=isPlainDataRecord(raw)?raw:{};
+    const claims:EvidenceClaim[]=[];
+    const rawClaims=ownDataValue(r,'claims');
+    if(isPlainDataArray(rawClaims,1024)){
+      for(const candidate of rawClaims.slice(-256)){
+        if(!isPlainDataRecord(candidate))continue;
+        const id=stringOr(ownDataValue(candidate,'id'),'').trim().slice(0,180);
+        const modality=stringOr(ownDataValue(candidate,'modality'),'unknown',32).trim()||'unknown';
+        const claim=stringOr(ownDataValue(candidate,'claim'),'').trim().slice(0,360);
+        if(!id||!claim)continue;
+        const rawSource=ownDataValue(candidate,'source');
+        const source:EpistemicSource=rawSource==='observed'||rawSource==='derived'?'derived':
+          rawSource==='model-output'||rawSource==='unresolved'?rawSource:'unresolved';
+        const targetIdsRaw=ownDataValue(candidate,'targetIds');
+        const targetIds=isPlainDataArray(targetIdsRaw,64)
+          ?[...new Set(targetIdsRaw.filter((value):value is string=>typeof value==='string'&&Boolean(value.trim()))
+            .map(value=>value.trim().slice(0,180)))].slice(0,16)
+          :[];
+        const supersedes=stringOr(ownDataValue(candidate,'supersedes'),'',180).trim();
+        claims.push({
+          id,at:timestampOr(ownDataValue(candidate,'at'),0),modality,claim,source,
+          confidence01:unitOr(ownDataValue(candidate,'confidence01'),0),targetIds,
+          ...(supersedes?{supersedes}:{})
+        });
+      }
+    }
+    const ids=new Set(claims.map(row=>row.id));
+    for(const row of claims)if(row.supersedes&&!ids.has(row.supersedes))delete row.supersedes;
+    const modalityWitnesses=new Map<string,Set<string>>();
+    for(const row of claims){
+      const witnesses=modalityWitnesses.get(row.claim)??new Set<string>();
+      witnesses.add(row.modality);
+      modalityWitnesses.set(row.claim,witnesses);
+    }
+    let corroboratedPairs=0;
+    for(const witnesses of modalityWitnesses.values()){
+      const count=witnesses.size;
+      corroboratedPairs+=count*(count-1)/2;
+    }
+    const resolvedPairs=claims.filter(row=>Boolean(row.supersedes)).length;
+    const meanConfidence01=claims.length
+      ?clamp(claims.reduce((sum,row)=>sum+row.confidence01,0)/claims.length)
+      :d.meanConfidence01;
+    this.state={
+      version:1,
+      claims,
+      contradictionPairs:countContradictionPairs(claims),
+      resolvedPairs:Math.min(4096,resolvedPairs),
+      corroboratedPairs:Math.min(1000,corroboratedPairs),
+      meanConfidence01,
+      lastAt:claims.reduce((latest,row)=>Math.max(latest,row.at),0),
     };
-    // A restored window is the source of truth; recompute rather than trust a
-    // saved gauge that may predate the current detection rules.
-    this.state.contradictionPairs=countContradictionPairs(this.state.claims);
   }
   snapshot(){return structuredClone(this.state);}
   add(input:{at:number;modality:string;claim:string;source:EpistemicSource;confidence01:number;targetIds?:string[];supersedes?:string}){
-    // Perception input is untrusted: a malformed receipt must be refused, never throw.
-    if(!input||typeof input!=='object')return null;
-    if(typeof input.claim!=='string')return null;
-    const claim=input.claim.trim().slice(0,360); if(!claim)return null;
-    const at=Number.isFinite(input.at)?Number(input.at):0;
-    const modality=typeof input.modality==='string'&&input.modality.trim()?input.modality.trim().slice(0,32):'unknown';
-    const confidence01=clamp(input.confidence01);
-    const c:EvidenceClaim={id:idFor(modality,claim,at),at,modality,claim,source:input.source,confidence01,targetIds:Array.isArray(input.targetIds)?input.targetIds.slice(0,16):[],supersedes:input.supersedes};
+    // Refuse accessors/proxies and downgrade caller-supplied "observed" labels.
+    if(!isPlainDataRecord(input))return null;
+    const rawClaim=ownDataValue(input,'claim');
+    if(typeof rawClaim!=='string')return null;
+    const claim=rawClaim.trim().slice(0,360); if(!claim)return null;
+    const at=timestampOr(ownDataValue(input,'at'),0);
+    const modality=stringOr(ownDataValue(input,'modality'),'unknown',32).trim()||'unknown';
+    const confidence01=unitOr(ownDataValue(input,'confidence01'),0);
+    const rawSource=ownDataValue(input,'source');
+    const source:EpistemicSource=rawSource==='observed'||rawSource==='derived'?'derived':
+      rawSource==='model-output'||rawSource==='unresolved'?rawSource:'unresolved';
+    const rawTargets=ownDataValue(input,'targetIds');
+    const targetIds=isPlainDataArray(rawTargets,64)
+      ?[...new Set(rawTargets.filter((value):value is string=>typeof value==='string'&&Boolean(value.trim()))
+        .map(value=>value.trim().slice(0,180)))].slice(0,16)
+      :[];
+    const supersedes=stringOr(ownDataValue(input,'supersedes'),'',180).trim();
+    const c:EvidenceClaim={id:idFor(modality,claim,at),at,modality,claim,source,confidence01,targetIds,...(supersedes?{supersedes}:{})};
     const replayed=this.state.claims.find(x=>x.id===c.id);
     if(replayed)return structuredClone(replayed);
     const superseded=input.supersedes
