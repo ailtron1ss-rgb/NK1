@@ -1795,6 +1795,7 @@ export class OrganismRuntime {
     // Record causal-cycle completion only after feedback, model updates, and embodiment state updates have actually run.
     const cycleStageIds = this.cognitiveEventFabric.recordOperationalCycle({
       tick:cycle.state.tick,
+      decisionId:cycle.decision.id,
       observation:{source:externalPluginSource ? `neko-plugin:${externalPluginSource.pluginId}` : 'runtime',external:Boolean(externalText),confidence01:.72,payload:{predictionError:cycle.state.predictionError,selectedAction:internalAction,evidenceId:observationEvidence.id,...(externalPluginSource ? {externalSourceKind:externalPluginSource.kind,externalMessageId:externalPluginSource.messageId} : {})}},
       prediction:{source:'reward-model',confidence01:plan.steps[0]?.confidence ?? .5,payload:{predictionId:rewardPredictionId,evidenceId:predictionEvidence.id,action:worldAction,predicted01:expectedReward,shadowModel:true}},
       appraisal:{source:'homeostatic-appraisal',confidence01:clamp01(1-cycle.state.needs.uncertainty),payload:{energy01:cycle.state.needs.energy,cognitiveLoad01:cycle.state.needs.cognitiveLoad,uncertainty01:cycle.state.needs.uncertainty,novelty01:cycle.state.needs.novelty,socialNeed01:cycle.state.needs.socialNeed,goalPressure01:cycle.state.needs.goalPressure,predictionError01:cycle.state.predictionError}},
@@ -1887,6 +1888,7 @@ export class OrganismRuntime {
       id: `meta-cycle:${cycle.state.tick}`,
       cycleId: `cycle:${cycle.state.tick}`,
       cognitiveEventId: `cef:metacognitive:${cycle.state.tick}`,
+      decisionId: cycle.decision.id,
       tick: cycle.state.tick,
       at: cycle.state.at,
       parentEventIds: episodeParentIds,
@@ -1958,6 +1960,7 @@ export class OrganismRuntime {
         payload: {
           episodeId: episodeCandidate.id,
           cycleId: episodeCandidate.cycleId,
+          decisionId: episodeCandidate.decisionId,
           memoryOwner: 'MemoryOS2',
           predictionError01: episodeCandidate.outcome.predictionError01,
           outcomeProvenance: episodeCandidate.outcome.provenance,
