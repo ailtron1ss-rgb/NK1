@@ -514,7 +514,7 @@ test("generic GLB full-body motor is wired after clip playback and only uses aud
  assert.ok(mixerFrame >= 0 && genericMotorFrame > mixerFrame,
   "generic GLB motor channels must blend on top of the clip pose, not be overwritten by AnimationMixer");
  assert.match(adapter, /auditHumanoidRig\(nodes\)/);
- assert.match(adapter, /node\.isBone !== true/);
+ assert.match(adapter, /value\.isBone !== true/);
  assert.match(adapter, /torsoPitch: \{ role: "spine"/);
  assert.match(adapter, /leftElbow: \{ role: "leftLowerArm"/);
  assert.match(adapter, /leftHip: \{ role: "leftUpperLeg"/);
