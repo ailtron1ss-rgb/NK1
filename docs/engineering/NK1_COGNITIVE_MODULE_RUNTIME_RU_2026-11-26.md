@@ -110,9 +110,11 @@ Host использует тот же `JsonStateStore<PersistedOrganism>`, ко�
 4. при каждом полном durable checkpoint вызывает `snapshotAll()` для активных модулей без quiesce/shutdown;
 5. при остановке дренирует очередь, останавливает модули в обратном порядке и включает их финальные snapshots в единый `core.flush()`.
 
-`CognitiveModuleRuntime.bindStateStore()` разрешён только до активации. Это защищает от разделения состояния между разными persistence owners. `CognitiveModuleCheckpointStore` сохраняет последнюю успешную версию envelope, если текущий snapshot конкретного модуля не удался; ошибка фиксируется в `snapshotFailures`, а checkpoint самого организма продолжается.
+`CognitiveModuleRuntime.bindStateStore()` разрешён только до активации. Это защищает от разделения состояния между разными persistence owners. `CognitiveModuleCheckpointStore` сохраняет последнюю успешную версию envelope, если текущий snapshot конкретного модуля не удался, но **не коммитит новый checkpoint организма**: ошибка фиксируется в диагностике и передаётся вызывающему коду. После успешного повторного snapshot весь новый checkpoint фиксируется атомарно через прежний canonical store.
 
 Envelope связывает module ID и module version, state schema version, timestamp и snapshot state.
+
+Размер каждого module snapshot ограничен по UTF-8 JSON bytes: по умолчанию **1 MiB**, настраиваемый предел — от 1 байта до **16 MiB**. Лимит учитывает строки, ключи и структурные разделители и проверяется инкрементально при клонировании; он действует при snapshot, restore и миграции состояния. Превышение лимита отклоняет операцию до durable save. При неудачной штатной остановке модуль возобновляется через `resume`, если shutdown ещё не начался.
 
 Поддерживаются только JSON-подобные data values: null, строки, boolean, конечные числа, плотные массивы и plain objects. Циклы, getter/setter, symbol keys, дырявые массивы, пользовательские прототипы и функции отклоняются. Snapshot не должен выполнять пользовательский getter во время проверки.
 
