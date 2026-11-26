@@ -21,6 +21,7 @@ const sha = value => createHash('sha256').update(value).digest('hex');
 const now = 1_800_000_000_000;
 const roles = {
   source: { id: 'source-verifier-1', role: 'source-verifier' },
+  sbom: { id: 'sbom-scanner-1', role: 'sbom-scanner' },
   license: { id: 'license-reviewer-1', role: 'license-reviewer' },
 };
 const keys = Object.fromEntries(Object.keys(roles).map(name => [
@@ -85,11 +86,11 @@ function signedReceipt(candidate, name, licenseOverrides = {}) {
     candidateId: candidate.candidateId,
     candidateFingerprint: candidate.candidateFingerprint,
     sourceFingerprint: candidate.sourceFingerprint,
-    evidenceKind: name === 'source' ? 'source-provenance' : 'license-decision',
+    evidenceKind: name === 'source' ? 'source-provenance' : name === 'sbom' ? 'sbom' : 'license-decision',
     issuerId: identity.id,
     issuerRole: identity.role,
     issuedAt: now,
-    subjectFingerprint: name === 'source' ? candidate.sourceFingerprint : licenseDecision.licenseEvidenceFingerprint,
+    subjectFingerprint: name === 'source' ? candidate.sourceFingerprint : name === 'sbom' ? candidate.manifest.sbomFingerprint : licenseDecision.licenseEvidenceFingerprint,
     materialFingerprints: materialFingerprints(candidate),
     ...(licenseDecision ? { licenseDecision } : {}),
   };
@@ -105,6 +106,7 @@ function signedReceipt(candidate, name, licenseOverrides = {}) {
 
 const candidate = makeCandidate();
 const sourceReceipt = signedReceipt(candidate, 'source');
+const sbomReceipt = signedReceipt(candidate, 'sbom');
 const licenseReceipt = signedReceipt(candidate, 'license');
 const baseFile = { path: 'runtime/adapter.ts', content: 'export const adapter = 1;\n' };
 const replacement = 'export const adapter = 2;\n';
@@ -117,6 +119,7 @@ try {
   const authorization = createCodeAssimilationSourceCandidateAuthorizationV1({
     candidate,
     sourceProvenanceReceipt: sourceReceipt,
+    sbomReceipt,
     licenseDecisionReceipt: licenseReceipt,
     verifyBaseSnapshot: request => {
       hostCalls++;
@@ -211,7 +214,25 @@ try {
 
 assert.throws(() => createCodeAssimilationSourceCandidateAuthorizationV1({
   candidate,
+  sourceProvenanceReceipt: sourceReceipt,
+  licenseDecisionReceipt: licenseReceipt,
+  verifyBaseSnapshot: () => true,
+}), /sbom-receipt-required/,
+'a valid source and license receipt cannot bypass independent SBOM attestation');
+
+assert.throws(() => createCodeAssimilationSourceCandidateAuthorizationV1({
+  candidate,
+  sourceProvenanceReceipt: sourceReceipt,
+  sbomReceipt: signedReceipt(makeCandidate('d'.repeat(40)), 'sbom'),
+  licenseDecisionReceipt: licenseReceipt,
+  verifyBaseSnapshot: () => true,
+}), /sbom-receipt-required/,
+'an SBOM receipt bound to another immutable donor cannot authorize this candidate');
+
+assert.throws(() => createCodeAssimilationSourceCandidateAuthorizationV1({
+  candidate,
   sourceProvenanceReceipt: structuredClone(sourceReceipt),
+  sbomReceipt,
   licenseDecisionReceipt: licenseReceipt,
   verifyBaseSnapshot: () => true,
 }), /source-provenance-receipt-required/,
@@ -220,6 +241,7 @@ assert.throws(() => createCodeAssimilationSourceCandidateAuthorizationV1({
 assert.throws(() => createCodeAssimilationSourceCandidateAuthorizationV1({
   candidate,
   sourceProvenanceReceipt: sourceReceipt,
+  sbomReceipt,
   licenseDecisionReceipt: signedReceipt(candidate, 'license', { outcome: 'research-only', permittedUses: ['study'] }),
   verifyBaseSnapshot: () => true,
 }), /license-modify-approval-required/,
@@ -232,6 +254,7 @@ const otherSourceReceipt = signedReceipt(otherCandidate, 'source');
 assert.throws(() => createCodeAssimilationSourceCandidateAuthorizationV1({
   candidate,
   sourceProvenanceReceipt: otherSourceReceipt,
+  sbomReceipt,
   licenseDecisionReceipt: licenseReceipt,
   verifyBaseSnapshot: () => true,
 }), /source-provenance-receipt-required/,
@@ -241,6 +264,7 @@ const otherLicenseReceipt = signedReceipt(otherCandidate, 'license');
 assert.throws(() => createCodeAssimilationSourceCandidateAuthorizationV1({
   candidate,
   sourceProvenanceReceipt: sourceReceipt,
+  sbomReceipt,
   licenseDecisionReceipt: otherLicenseReceipt,
   verifyBaseSnapshot: () => true,
 }), /license-modify-approval-required/,
@@ -249,6 +273,7 @@ assert.throws(() => createCodeAssimilationSourceCandidateAuthorizationV1({
 assert.throws(() => createCodeAssimilationSourceCandidateAuthorizationV1({
   candidate,
   sourceProvenanceReceipt: sourceReceipt,
+  sbomReceipt,
   licenseDecisionReceipt: signedReceipt(candidate, 'license', { permittedUses: ['study', 'execute'] }),
   verifyBaseSnapshot: () => true,
 }), /license-modify-approval-required/,
@@ -257,6 +282,7 @@ assert.throws(() => createCodeAssimilationSourceCandidateAuthorizationV1({
 assert.throws(() => createCodeAssimilationSourceCandidateAuthorizationV1({
   candidate,
   sourceProvenanceReceipt: sourceReceipt,
+  sbomReceipt,
   licenseDecisionReceipt: structuredClone(licenseReceipt),
   verifyBaseSnapshot: () => true,
 }), /license-modify-approval-required/,
@@ -265,6 +291,7 @@ assert.throws(() => createCodeAssimilationSourceCandidateAuthorizationV1({
 assert.throws(() => createCodeAssimilationSourceCandidateAuthorizationV1({
   candidate,
   sourceProvenanceReceipt: sourceReceipt,
+  sbomReceipt,
   licenseDecisionReceipt: licenseReceipt,
 }), /host-verifier-required/,
 'a trusted host snapshot verifier is mandatory');

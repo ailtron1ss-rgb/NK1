@@ -24,6 +24,7 @@ export type CodeAssimilationBaseSnapshotVerifierV1 = (
 export interface CodeAssimilationSourceCandidateAdmissionOptionsV1 {
   candidate: unknown;
   sourceProvenanceReceipt: unknown;
+  sbomReceipt: unknown;
   licenseDecisionReceipt: unknown;
   /** Host-owned verification that the supplied snapshot is the exact trusted checkout at baseSha. */
   verifyBaseSnapshot: CodeAssimilationBaseSnapshotVerifierV1;
@@ -59,7 +60,7 @@ function validWorkspaceRequest(request: SourceCandidateAuthorizationRequestV1): 
 function sameCandidateReceipt(
   raw: unknown,
   candidate: CodeAssimilationCandidate,
-  evidenceKind: 'source-provenance' | 'license-decision',
+  evidenceKind: 'source-provenance' | 'sbom' | 'license-decision',
 ): raw is CodeAssimilationEvidenceReceipt {
   return isAuthenticatedCodeAssimilationEvidenceReceipt(raw) &&
     raw.evidenceKind === evidenceKind &&
@@ -89,6 +90,11 @@ export function createCodeAssimilationSourceCandidateAuthorizationV1(
   if (!sameCandidateReceipt(options.sourceProvenanceReceipt, candidate, 'source-provenance') ||
       options.sourceProvenanceReceipt.subjectFingerprint !== candidate.sourceFingerprint) {
     throw new Error('code-assimilation-source-provenance-receipt-required');
+  }
+  if (!candidate.manifest.dependencyLockFingerprint || !candidate.manifest.sbomFingerprint ||
+      !sameCandidateReceipt(options.sbomReceipt, candidate, 'sbom') ||
+      options.sbomReceipt.subjectFingerprint !== candidate.manifest.sbomFingerprint) {
+    throw new Error('code-assimilation-sbom-receipt-required');
   }
   if (!sameCandidateReceipt(options.licenseDecisionReceipt, candidate, 'license-decision') ||
       !isCodeAssimilationUseAllowed(
