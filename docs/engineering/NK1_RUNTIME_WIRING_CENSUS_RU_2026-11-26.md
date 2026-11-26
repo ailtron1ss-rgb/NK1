@@ -18,17 +18,19 @@
 | Метрика | Значение |
 |---|---|
 | Точек входа | 4 (`OrganismCore.ts`, `OrganismSystemFabric.ts`, `organism/index.ts`, `server/server.mjs`) |
-| Всего файлов источника | 4 692 (вместе с `.mjs`) |
-| Канонических модулей | 699 |
-| Достижимых | 627 |
-| Недостижимых (orphans) | 72 |
-| Доля подключения | 0,897 |
+| Всего файлов источника под `src/` | 760 (включая `.mjs`) |
+| Канонических модулей | 700 |
+| Достижимых | 635 |
+| Недостижимых (orphans) | 65 |
+| Доля подключения | 0,9071 |
 
-Перепись следует только относительным импортам проекта. Это значит:
+Перепись следует только относительным импортам проекта. Разбор импортов разделительный, без регулярок: первая версия использовала regex-литералы, и ошибка экранирования тихо обнуляла сканирование. Это значит:
 
 - модуль, импортируемый лишь тестом, в runtime **не** подключён — тест не является точкой входа;
 - модуль, который host подключает снаружи (например `OrganismAspectFabric` через `OrganismRuntime.attachAspectFabric`), тоже попадает в orphans: контракт attach — это host-side подключение, а не runtime-импорт;
 - dynamic `import('...')` с литеральным путём учитывается, шаблонные и вычисляемые пути — нет.
+
+Семь модулей, которые regex-версия ошибочно считала недостижимыми, теперь видны как подключённые: `NekoAudioFrameBuffer.ts`, `NekoVoiceTurnCoordinator.ts`, `CycleCompletenessPolicy.ts` и четыре `OmeStro*.ts`. Это исправление измерения, а не новое подключение; в baseline их уже нет.
 
 ### 2.1 Семьи неподключённых модулей (важнейшее)
 
@@ -36,11 +38,11 @@
 |---|---|---|
 | Проверяемое продвижение свидетельств | `VerifiedOutcomePromotionGate.ts`, `VerifiedOutcomeLedgerStore.ts`, `VerifiedOutcomeLedgerFileStore.ts`, `VerifiedReplayAdmission.ts` | Гейт продвижения по проверенным исходам существует как класс, но в runtime-путь не включён. Ни один цикл OrganismCore его не создаёт и не вызывает. Это главный незакрытый контракт «кандидат → проверка → продвижение». |
 | Host-evaluator P36 | `P36HostEvaluatorBootstrap.ts`, `P36VerifiedOutcomeLedgerEvaluator.ts` | Загрузчик подписанных независимых свидетельств готов, но runtime его не вызывает: нужен host-конфиг (публичные ключи верификаторов, манифест, каталог артефактов) и явная точка boot. |
-| Teacher/student дистилляция | `TeacherStudentDistillation*.ts` (4 файла), `TrainingEvidence*` | Кандидатный контур дистилляции изолирован; разрешения на его подключение к живому обучению нет. |
+| Teacher/student дистилляция | `TeacherStudentDistillation.ts`, `TeacherStudentDistillationGate.ts`, `TeacherStudentDistillationGateFileStore.ts`, `TeacherStudentDistillationTrainer.ts` | Кандидатный контур дистилляции изолирован; разрешения на его подключение к живому обучению нет. |
 | Continual/drift обучение | `ContinualOutcomeMatrix.ts`, `ContinualReplayBuffer.ts`, `PageHinkleyDriftDetector.ts`, `AdaptiveWindowDriftDetector.ts`, `DriftAwareLearningController.ts`, `PrioritizedReplaySampler.ts`, `ReservoirReplayPolicy.ts` | Метрики continual-обучения и политики replay измеримы, но обучающий цикл Core их не потребляет; часть используется только тестами. |
 | Neko plugin runtime | `NekoPluginGatewayRuntime.ts`, `NekoPluginEventBridge.ts`, `PluginMessageIngress.ts`, `PluginGatewayAdapter.ts` | Runtime плагинов Neko подключается host-слоем, а не Core; требует отдельного решения о точке входа, а не молчаливого импорта. |
 | Aspect fabric | `OrganismAspectFabric.ts`, `AspectIntegrationGraph.ts` | Композиция «один организм → 7 систем → 75 аспектов» подключается host-методом `OrganismRuntime.attachAspectFabric`; это осознанный attach-контракт. |
-| Прочие | `CodeAssimilation*.ts`, `OmeStro*.ts`, `Skeletal*3D.ts`, `neuroforge/*`, `BrainWideCausalBattery.ts` | Изолированные исследовательские/инструментальные модули. Каждый требует отдельного решения: подключить или архивировать с манифестом. |
+| Прочие | `CodeAssimilation*.ts`, `Skeletal*3D.ts`, `neuroforge/*`, `BrainWideCausalBattery.ts`, `ScientificQuestionBank.ts`, `PerturbationalProbe.ts` | Изолированные исследовательские/инструментальные модули. Каждый требует отдельного решения: подключить или архивировать с манифестом. |
 
 Список целиком зафиксирован в `runtime/neuro-kurisu/scripts/runtime-wiring-baseline.json`.
 
@@ -89,4 +91,4 @@ Baseline — это потолок: он может уменьшаться, но
 1. Подключить `VerifiedOutcomePromotionGate` к одному реальному пути продвижения (P23/P36) с host-owned ключами и регрессией на отказ при отсутствии подписи.
 2. Дать P53 источник sealed holdout через тот же ledger; тогда `periodic()` сможет продвигаться только по настоящим свидетельствам.
 3. Разобрать семью continual/drift: либо подключить метрики к обучающему циклу, либо архивировать модули с манифестом (`docs/REPOSITORY_CLEANUP_AUDIT_WORKPASS72.md` — прецедент обратимого архива).
-4. Для каждой изолированной исследовательской семьи (`OmeStro`, `neuroforge`, `CodeAssimilation`) принять явное решение: точка входа или архив.
+4. Для каждой изолированной исследовательской семьи (`neuroforge`, `CodeAssimilation`, `ScientificQuestionBank`, `PerturbationalProbe`) принять явное решение: точка входа или архив.
