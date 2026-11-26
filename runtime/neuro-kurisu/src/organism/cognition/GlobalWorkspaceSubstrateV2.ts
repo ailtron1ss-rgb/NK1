@@ -133,6 +133,8 @@ export class GlobalWorkspaceSubstrateV2 {
       if (!Array.isArray(v)) return matrix(rows, cols, seed, 0.03);
       return Array.from({ length: rows }, (_, i) => Array.isArray(v[i]) ? vector(v[i], cols) : matrix(1, cols, seed + i, 0.03)[0]);
     };
+    this.lastSelectedCandidates = [];
+    this.lastAdmission = { inputCount: 0, uniqueCount: 0, admittedCount: 0, duplicateCount: 0, invalidCount: 0, overflowCount: 0, admittedBySource: {} };
     this.state = {
       ...d,
       ...r,
@@ -154,8 +156,8 @@ export class GlobalWorkspaceSubstrateV2 {
               typeof (raw as any).action !== 'string') continue;
           const decisionId = String((raw as any).decisionId).trim();
           const action = String((raw as any).action).trim();
-          if (!decisionId || decisionId.length > 180 || /[\\u0000-\\u001f\\u007f]/.test(decisionId) ||
-              !action || action.length > 80 || /[\\u0000-\\u001f\\u007f]/.test(action) || seen.has(decisionId)) continue;
+          if (!decisionId || decisionId.length > 180 || /[\u0000-\u001f\u007f]/.test(decisionId) ||
+              !action || action.length > 80 || /[\u0000-\u001f\u007f]/.test(action) || seen.has(decisionId)) continue;
           const coalition = Array.isArray((raw as any).coalition) ? (raw as any).coalition.slice(0, d.capacity).flatMap((candidate: any) => {
             if (!candidate || typeof candidate.id !== 'string' || typeof candidate.source !== 'string') return [];
             const id = candidate.id.trim();
@@ -163,7 +165,7 @@ export class GlobalWorkspaceSubstrateV2 {
             const candidateAction = typeof candidate.candidateAction === 'string' &&
               candidate.candidateAction.trim().length > 0 &&
               candidate.candidateAction.trim().length <= 80 &&
-              !/[\\u0000-\\u001f\\u007f]/.test(candidate.candidateAction)
+              !/[\u0000-\u001f\u007f]/.test(candidate.candidateAction)
               ? candidate.candidateAction.trim()
               : null;
             return [{
@@ -182,7 +184,7 @@ export class GlobalWorkspaceSubstrateV2 {
             for (const rawId of (raw as any).outcomeIds) {
               if (typeof rawId !== 'string') continue;
               const id = rawId.trim();
-              if (!id || id.length > 180 || /[\\u0000-\\u001f\\u007f]/.test(id) ||
+              if (!id || id.length > 180 || /[\u0000-\u001f\u007f]/.test(id) ||
                   seenOutcomeIds.has(id) || outcomeIds.includes(id)) continue;
               seenOutcomeIds.add(id);
               outcomeIds.push(id);
@@ -415,8 +417,8 @@ export class GlobalWorkspaceSubstrateV2 {
   registerDecision(input: { decisionId: string; tick: number; action: string; at?: number }) {
     const decisionId = typeof input?.decisionId === 'string' ? input.decisionId.trim() : '';
     const action = typeof input?.action === 'string' ? input.action.trim() : '';
-    if (!decisionId || decisionId.length > 180 || /[\\u0000-\\u001f\\u007f]/.test(decisionId) ||
-        !action || action.length > 80 || /[\\u0000-\\u001f\\u007f]/.test(action)) {
+    if (!decisionId || decisionId.length > 180 || /[\u0000-\u001f\u007f]/.test(decisionId) ||
+        !action || action.length > 80 || /[\u0000-\u001f\u007f]/.test(action)) {
       return { recorded: false as const, replayed: false, reason: 'invalid-decision-identity' };
     }
     const rawTick = Number(input.tick ?? 0);
@@ -478,8 +480,8 @@ export class GlobalWorkspaceSubstrateV2 {
     const outcomeId = typeof input?.outcomeId === 'string' && input.outcomeId.trim()
       ? input.outcomeId.trim()
       : decisionId ? `workspace-outcome:${decisionId}` : '';
-    if (!decisionId || decisionId.length > 180 || /[\\u0000-\\u001f\\u007f]/.test(decisionId) ||
-        !outcomeId || outcomeId.length > 180 || /[\\u0000-\\u001f\\u007f]/.test(outcomeId)) {
+    if (!decisionId || decisionId.length > 180 || /[\u0000-\u001f\u007f]/.test(decisionId) ||
+        !outcomeId || outcomeId.length > 180 || /[\u0000-\u001f\u007f]/.test(outcomeId)) {
       return { updated: false as const, replayed: false, reason: 'invalid-outcome-identity' };
     }
     const receipt = this.state.decisionReceipts.find(candidate => candidate.decisionId === decisionId);
