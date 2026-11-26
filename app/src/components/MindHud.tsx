@@ -1,17 +1,18 @@
 import type { ReactNode } from "react";
 import type { Needs, OrganismSnapshot } from "@/organism/types";
 import type { UiConnectionState } from "@/organism/store";
+import { UI_ACTION_LABELS, UI_CONNECTION_STATUS_LABELS, UI_EMOTION_LABELS, UI_NEED_LABELS } from "@/organism/uiLabels";
 import { cn } from "@/lib/utils";
 
-const NEED_KEYS: Array<{ k: keyof Needs; label: string }> = [
-  { k: "energy", label: "energy" },
-  { k: "cognitiveLoad", label: "load" },
-  { k: "uncertainty", label: "uncertainty" },
-  { k: "socialNeed", label: "social" },
-  { k: "novelty", label: "novelty" },
-  { k: "sleepPressure", label: "sleep" },
-  { k: "identityCoherence", label: "identity" },
-  { k: "goalPressure", label: "goal" },
+const NEED_KEYS: Array<keyof Needs> = [
+  "energy",
+  "cognitiveLoad",
+  "uncertainty",
+  "socialNeed",
+  "novelty",
+  "sleepPressure",
+  "identityCoherence",
+  "goalPressure",
 ];
 
 export function MindHud({ snap, connection }: { snap: OrganismSnapshot; connection: UiConnectionState }) {
@@ -19,9 +20,9 @@ export function MindHud({ snap, connection }: { snap: OrganismSnapshot; connecti
   if (!hasCanonicalSnapshot) {
     return (
       <aside className="flex flex-col gap-3">
-        <Panel title="Canonical runtime">
-          <p className="text-sm text-fg">{connection.status === "connecting" ? "Connecting…" : "No canonical snapshot available"}</p>
-          <p className="mt-1 text-xs text-muted">{connection.lastError ?? "The HUD is waiting for a confirmed runtime snapshot. Boot defaults are not presented as live values."}</p>
+        <Panel title="Канонический runtime">
+          <p className="text-sm text-fg">{connection.status === "connecting" ? "Подключаемся…" : "Канонический снимок ещё недоступен"}</p>
+          <p className="mt-1 text-xs text-muted">{connection.lastError ?? "Панель ожидает подтверждённый снимок runtime. Начальные значения не выдаются за актуальные данные."}</p>
         </Panel>
       </aside>
     );
@@ -29,19 +30,19 @@ export function MindHud({ snap, connection }: { snap: OrganismSnapshot; connecti
   return (
     <aside className="flex flex-col gap-3">
       {connection.status !== "connected" ? (
-        <Panel title="Snapshot status">
-          <p className="text-xs text-muted">Showing the last confirmed snapshot. Connection: {connection.status}.</p>
+        <Panel title="Снимок состояния">
+          <p className="text-xs text-muted">Показан последний подтверждённый снимок. Соединение: {UI_CONNECTION_STATUS_LABELS[connection.status].toLowerCase()}.</p>
           {connection.lastError ? <p className="mt-1 break-words text-[10px] text-subtle">{connection.lastError}</p> : null}
         </Panel>
       ) : null}
-      <Panel title="Needs">
+      <Panel title="Потребности">
         <div className="space-y-2">
-          {NEED_KEYS.map(({ k, label }) => (
-            <Meter key={k} label={label} value={snap.needs[k]} />
+          {NEED_KEYS.map((key) => (
+            <Meter key={key} label={UI_NEED_LABELS[key]} value={snap.needs[key]} />
           ))}
         </div>
       </Panel>
-      <Panel title="Identity">
+      <Panel title="Идентичность">
         <p className="text-sm text-fg">{snap.identity.name}</p>
         <div className="mt-2 flex flex-wrap gap-1">
           {snap.identity.traitNames.slice(0, 8).map((trait) => (
@@ -49,28 +50,26 @@ export function MindHud({ snap, connection }: { snap: OrganismSnapshot; connecti
           ))}
         </div>
       </Panel>
-      <Panel title="Workspace">
+      <Panel title="Рабочее пространство">
         <ul className="space-y-1">
           {(snap.lastDecision?.workspace ?? []).map((id) => (
-            <li key={id} className="font-mono text-xs text-muted">
-              {id}
-            </li>
+            <li key={id} className="font-mono text-xs text-muted">{id}</li>
           ))}
         </ul>
         <p className="mt-2 text-xs leading-relaxed text-subtle">{snap.lastDecision?.reason}</p>
       </Panel>
-      <Panel title="Policy">
+      <Panel title="Политика выбора">
         <dl className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
-          <Row k="option" v={snap.lastOption} />
-          <Row k="value" v={snap.valueEstimate.toFixed(2)} />
-          <Row k="PE" v={snap.predictionError.toFixed(3)} />
-          <Row k="curiosity" v={snap.curiosity.toFixed(2)} />
-          <Row k="reward" v={snap.lastReward.toFixed(3)} />
-          <Row k="learn" v={String(snap.learnSteps)} />
+          <Row k="Действие" v={UI_ACTION_LABELS[snap.lastOption]} />
+          <Row k="Оценка ценности" v={snap.valueEstimate.toFixed(2)} />
+          <Row k="Ошибка предсказания" v={snap.predictionError.toFixed(3)} />
+          <Row k="Любопытство" v={snap.curiosity.toFixed(2)} />
+          <Row k="Награда" v={snap.lastReward.toFixed(3)} />
+          <Row k="Шаги обучения" v={String(snap.learnSteps)} />
         </dl>
         <div className="mt-3 space-y-1">
-          {(snap.lastDecision?.candidates ?? []).slice(0, 6).map((c) => (
-            <Meter key={c.action} label={c.action} value={normalizeScore(c.score, snap.lastDecision?.candidates ?? [])} />
+          {(snap.lastDecision?.candidates ?? []).slice(0, 6).map((candidate) => (
+            <Meter key={candidate.action} label={UI_ACTION_LABELS[candidate.action]} value={normalizeScore(candidate.score, snap.lastDecision?.candidates ?? [])} />
           ))}
         </div>
       </Panel>
@@ -80,14 +79,14 @@ export function MindHud({ snap, connection }: { snap: OrganismSnapshot; connecti
 
 export function CompactStatus({ snap, connection }: { snap: OrganismSnapshot; connection: UiConnectionState }) {
   if (connection.lastSyncedAt === null) {
-    return <div className="grid grid-cols-2 gap-2"><Chip k="runtime" v={connection.status} /><Chip k="state" v="unavailable" /></div>;
+    return <div className="grid grid-cols-2 gap-2"><Chip k="Соединение" v={UI_CONNECTION_STATUS_LABELS[connection.status]} /><Chip k="Снимок" v="Недоступен" /></div>;
   }
   return (
     <div className="grid grid-cols-2 gap-2">
-      <Chip k="emotion" v={snap.emotion.label} />
-      <Chip k="option" v={snap.lastOption} />
-      <Chip k="energy" v={snap.needs.energy.toFixed(2)} />
-      <Chip k="PE" v={snap.predictionError.toFixed(3)} />
+      <Chip k="Эмоция" v={UI_EMOTION_LABELS[snap.emotion.label]} />
+      <Chip k="Действие" v={UI_ACTION_LABELS[snap.lastOption]} />
+      <Chip k="Энергия" v={snap.needs.energy.toFixed(2)} />
+      <Chip k="Ошибка предсказания" v={snap.predictionError.toFixed(3)} />
     </div>
   );
 }
@@ -119,27 +118,19 @@ function Meter({ label, value }: { label: string; value: number }) {
         <span className="tabular-nums text-fg">{v.toFixed(2)}</span>
       </div>
       <div className="h-1.5 overflow-hidden rounded-full bg-elevated">
-        <div
-          className={cn("h-full rounded-full bg-accent")}
-          style={{ width: `${v * 100}%` }}
-        />
+        <div className={cn("h-full rounded-full bg-accent")} style={{ width: `${v * 100}%` }} />
       </div>
     </div>
   );
 }
 
 function Row({ k, v }: { k: string; v: string }) {
-  return (
-    <>
-      <dt className="text-subtle">{k}</dt>
-      <dd className="tabular-nums text-fg">{v}</dd>
-    </>
-  );
+  return <><dt className="text-subtle">{k}</dt><dd className="tabular-nums text-fg">{v}</dd></>;
 }
 
 function normalizeScore(score: number, all: Array<{ score: number }>) {
-  const min = Math.min(...all.map((a) => a.score));
-  const max = Math.max(...all.map((a) => a.score));
+  const min = Math.min(...all.map((candidate) => candidate.score));
+  const max = Math.max(...all.map((candidate) => candidate.score));
   if (max - min < 1e-6) return 0.5;
   return (score - min) / (max - min);
 }
