@@ -5,7 +5,7 @@
 **Work branch:** `aspect/neural-connectome-integration-20261126`  
 **Canonical source baseline:** `workpass70-source@7e601680c765d6dc94e51e4c8f5e729b48a6f56e`  
 **Master Plan X reference snapshot:** `9008a8982a5173304456bee2c604bd0bc8665964`  
-**Progress:** 20/100 — seven owner runtimes and dependency contracts inspected  
+**Progress:** 25/100 — seven owners, dependency graph and runtime causal spine mapped  
 **Status:** analysis/inventory only; no source runtime code integrated by this ledger commit.
 
 ## Safety and source-of-truth rules
@@ -89,7 +89,7 @@ The runtime cycle remains `Perceive → Appraise → Plan → Act → Reflect �
 - [ ] Selectively port and verify implementation changes on isolated aspect branches.
 - [ ] Complete integration, device/browser acceptance and release evidence.
 
-**Progress is 20/100.** This measures completion of the requested unified integration work, not the percentage of NK1 product readiness.
+**Progress is 25/100.** This measures completion of the requested unified integration work, not the percentage of NK1 product readiness.
 
 
 ## Census and architecture audit refinement — 26 Nov 2026
@@ -151,3 +151,14 @@ The following seven owner runtime files were read from the canonical source bran
 3. Trace each edge from observation admission through world/appraisal/attention/workspace/P61-P64/goal/plan/action/outcome/learning.
 4. Audit all writes into MemoryOS2 and all derived projections for single-writer compliance.
 5. Connect the event lineage to durable checkpoint/recovery without promoting the bounded CEF ring buffer into a second autobiography.
+
+
+## Runtime causal spine inspection — 26 Nov 2026
+
+- Read current-source `OrganismRuntime.ts` construction, restore, input/perception, core.observe, CEF cycle recording, lineage verification and persistence projection.
+- Confirmed the runtime constructs one Core and owns one runtime `CognitiveEventFabric` and one `UnifiedCognitiveCycle`; their snapshots are restored from and projected back through Core's system snapshot boundary. Do not create duplicate instances in Core.
+- Confirmed the runtime calls `core.recordMultimodalObservation()` / `core.fuseMultimodalObservations()` and then a single `core.observe()` for the same raw sample; source comments explicitly reject running a second runtime-local PerceptionEngine on that sample.
+- Confirmed `recordOperationalCycle()` receives all eleven stages and `verifyOperationalCycle()` feeds `UnifiedCognitiveCycle.evaluate()`. Full completion requires full lineage and owner evidence, not only stage counters.
+- Confirmed metacognitive episode persistence is attempted through `core.recordMetacognitiveEpisode()`; CEF stores the causal event and MemoryOS2 is named as the memory owner.
+- Created a second artifact: `docs/integration/NK1_NEURAL_CONNECTOME_CONNECTION_MATRIX_2026-11-26.md`, with owner graph, eleven-stage spine, 16 cross-domain edges, evidence requirements and source-backed runtime call path.
+- These are source-inspection findings. No runtime test was executed in this environment; exact-source CI, failure injection and device verification remain open.
