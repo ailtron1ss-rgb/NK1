@@ -86,7 +86,7 @@ async function smokeProfile(profile) {
     await page.screenshot({ path: path.join(outputDir, "full-app-desktop.png"), fullPage: true });
     await original.click();
     check("desktop: Original2D becomes selected", (await original.getAttribute("aria-pressed")) === "true");
-    await page.waitForFunction(() => document.querySelector('[role="status"][aria-label="Тип выбранного тела и подтверждение кадра"]')?.textContent?.includes("SVG DOM сформирован"), { timeout: 8_000 }).catch(() => null);
+    await page.waitForFunction(() => document.querySelector('[role="status"][aria-label="Тип выбранного тела и подтверждение кадра"]')?.textContent?.includes("SVG DOM сформирован"),, undefined, { timeout: 8_000 }).catch(() => null);
     const originalStatus = await status.innerText();
     check("desktop: Original2D DOM-commit receipt is exposed", originalStatus.includes("SVG DOM сформирован"), originalStatus);
     await legacy.click();
@@ -111,7 +111,6 @@ async function smokeProfile(profile) {
     tickText: [...document.querySelectorAll("header span")].map((node) => node.textContent?.trim()).filter(Boolean),
   }));
   check(profile.name + ": no page-level horizontal overflow", layout.documentWidth <= layout.viewportWidth + 1, JSON.stringify(layout));
-  const runtimeErrors = [...page.locator("text=/^Runtime:/").all ? [] : []];
   const visibleRuntimeErrors = await page.locator("div").filter({ hasText: /^Runtime:/ }).count();
   check(profile.name + ": no visible runtime error banner", visibleRuntimeErrors === 0, "runtime error banners=" + visibleRuntimeErrors);
 
