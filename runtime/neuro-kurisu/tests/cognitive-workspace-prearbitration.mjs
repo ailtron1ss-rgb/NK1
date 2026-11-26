@@ -57,6 +57,12 @@ assert.equal(arbitrationWorkspace01, competed.ignition01,
 const actionByCandidateId = new Map(workspaceInputs.map(candidate => [candidate.id, candidate.content?.action]));
 const sourceScoreByAction = new Map(workspaceInputs.map(candidate => [candidate.content?.action, candidate.features?.[0]]));
 const selectedActions = new Set(competed.selectedIds.map(id => actionByCandidateId.get(id)).filter(Boolean));
+const workspaceSourceById = new Map(workspaceInputs.map(candidate => [candidate.id, candidate.source]));
+const selectedSources = new Set(competed.selectedIds.map(id => workspaceSourceById.get(id)).filter(Boolean));
+assert.ok(selectedSources.has('decision'),
+  'the integrated workspace coalition must preserve a decision candidate for the canonical selector');
+assert.ok([...selectedSources].some(source => source !== 'decision'),
+  'the integrated workspace coalition must broadcast at least one non-decision cognitive domain');
 assert.ok(selectedActions.size > 0, 'the workspace must return a non-empty same-cycle coalition');
 const supportRows = arbitrationCandidateScores.map(candidate => ({
   action: candidate.action,

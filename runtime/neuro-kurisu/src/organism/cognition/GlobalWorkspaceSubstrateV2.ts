@@ -230,10 +230,20 @@ export class GlobalWorkspaceSubstrateV2 {
     const coalitionQuota = Math.max(1, Math.ceil(this.state.capacity / Math.max(1, coalitionSourceCount)));
     const coalition: typeof ranked = [];
     const coalitionSourceCounts = new Map<string, number>();
+    // Decision candidates remain represented so the workspace can influence the
+    // canonical selector; other domains enrich that decision rather than replace it.
+    const leadingDecision = ranked.find(item => item.c.source === 'decision');
+    if (leadingDecision) {
+      coalition.push(leadingDecision);
+      coalitionSourceCounts.set('decision', 1);
+    }
+    const selectedIds = new Set(coalition.map(item => item.c.id));
     for (const item of ranked) {
+      if (selectedIds.has(item.c.id)) continue;
       const count = coalitionSourceCounts.get(item.c.source) ?? 0;
       if (count >= coalitionQuota) continue;
       coalition.push(item);
+      selectedIds.add(item.c.id);
       coalitionSourceCounts.set(item.c.source, count + 1);
       if (coalition.length === this.state.capacity) break;
     }
