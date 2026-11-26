@@ -519,11 +519,13 @@ function createGenericGlbRigFixture(options = {}) {
   for (const side of ["Left", "Right"]) {
     add(side + "Shoulder", "Chest");
     add(side + "UpperArm", side + "Shoulder");
-    if (!(options.missing ?? []).includes(side + "LowerArm")) add(side + "LowerArm", side + "UpperArm");
-    add(side + "Hand", side + "UpperArm");
+    const hasLowerArm = !(options.missing ?? []).includes(side + "LowerArm");
+    if (hasLowerArm) add(side + "LowerArm", side + "UpperArm");
+    add(side + "Hand", hasLowerArm ? side + "LowerArm" : side + "UpperArm");
     add(side + "UpperLeg", "Hips");
-    if (!(options.missing ?? []).includes(side + "LowerLeg")) add(side + "LowerLeg", side + "UpperLeg");
-    add(side + "Foot", side + "UpperLeg");
+    const hasLowerLeg = !(options.missing ?? []).includes(side + "LowerLeg");
+    if (hasLowerLeg) add(side + "LowerLeg", side + "UpperLeg");
+    add(side + "Foot", hasLowerLeg ? side + "LowerLeg" : side + "UpperLeg");
   }
   const root = {
     name: "Scene",
