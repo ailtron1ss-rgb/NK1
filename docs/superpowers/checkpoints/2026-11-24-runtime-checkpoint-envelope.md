@@ -114,3 +114,51 @@ The live canonical source has advanced to `workpass70-source` @ `7e601680c765d6d
 - Reconcile/synchronize with the current `workpass70-source` head and rerun all required checks on the resulting exact head.
 - Real Android/Termux measurement: checkpoint payload and compressed bytes, p50/p95 save latency, peak heap, cold restart, and storage/power-loss recovery.
 - Keep PR #1170 Draft until these gates are addressed. No merge, canonical-source change, or Release publication is claimed by this addendum.
+
+
+---
+
+## Execution tracking update — 2026-11-26 12:48 UTC
+
+This update supersedes the older head/base relationship above where they differ. The historical records are retained.
+
+### Verified current PR state
+
+- PR #1170 remains OPEN / DRAFT; branch `aspect/p0-runtime-checkpoint-envelope-20261124`.
+- Current PR head: `236cbd10c083c1826193f1648acd8262f50a224e`.
+- Current target branch: `workpass70-source`; canonical SHA observed in this execution: `7e601680c765d6dc94e51e4c8f5e729b48a6f56e`.
+- Relative to its recorded base `29ab13c98b3a603bc1667a99fffb8ee33dc9560d`, PR #1170 contains 23 commits and the current canonical source contains 6 additional commits. Comparing the PR head directly to current source reports **diverged: 23 ahead / 6 behind**. This is a real sync requirement, despite GitHub's `mergeable=true` field.
+- Latest Actions run set retrieved for the exact PR head contains 76 completed runs, all with `conclusion=success`; this is not evidence for a future rebased/synchronized head.
+- The branch remains separate from canonical source; no merge, release, `main` update or ZIP change occurred.
+
+### Adjacent P0 integration dependency
+
+PR #1174 (ContinuityLedger / RecoveryWatchdog) has advanced since the first review:
+
+- Current head recorded in its checkpoint and PR metadata: `9e7294dc2ecdcea8ff87ba2f9e6e4f9502f2bfd5`; OPEN / DRAFT.
+- The earlier in-memory-only rollback-boundary finding is addressed on that branch by a durable `.rollback` write-ahead marker and restart-level regression for newline-terminated uncertain frames. The PR documents its red/green proof and 72/72 successful checks at code head `d032eb2…`; the latest documentation head has its own separate workflow matrix.
+- Relative to canonical `workpass70-source@7e601680…`, #1174 is divergent: **20 commits ahead / 15 behind** from its common ancestor. It overlaps #1170 in `OrganismCore.ts` and `runtime/neuro-kurisu/package.json`.
+- Both branches must be reconciled by persistence ownership and exact callsites. Do not merge either independently or assume the two independently green PRs are jointly green.
+
+### Integration decision
+
+Keep #1170 and #1174 Draft. The safe next operation is an owner-aware integration branch/sequence based on the live canonical source, preserving:
+1. one canonical Core save/checkpoint authority;
+2. RuntimeCheckpointEnvelope as a single-generation projection of runtime owners;
+3. ContinuityLedger's independent append-only journal and durable rollback boundary;
+4. RecoveryWatchdog checkpoint timestamps advanced only after successful canonical commit;
+5. package/workflow scripts without duplicate or conflicting entries.
+
+After reconciliation, rerun the full required exact-head Actions matrix and semantic TypeScript checks. Only then request independent review and consider merge readiness.
+
+### Master Plan X acceptance status for this aspect
+
+- Implementation on PR branch: **implemented**.
+- Focused and broad CI on recorded exact PR head: **passed** (76/76 runs).
+- Current-source synchronization: **not complete**.
+- Joint #1170 + #1174 integration: **not complete**.
+- Independent review: **not complete**.
+- Android/Termux measurements and physical power-loss soak: **not complete**.
+- Canonical source / release: **not merged / not released**.
+
+No device performance or physical durability claim is made.
