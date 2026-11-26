@@ -7064,6 +7064,20 @@ export class OrganismCore {
             content: { action: c.action, goalId: c.goalId ?? null },
         })), [state.needs.uncertainty, state.needs.novelty, state.predictionError, state.attentionBudget, ...centralBrainFrame.broadcast]);
         this.persisted.facets.cognition.globalWorkspace = globalWorkspace;
+        // Workspace ignition is the aggregate broadcast, while this bounded per-candidate
+        // support carries coalition membership into the same arbitration pass. Only selected
+        // candidates receive a small weight-scaled vote; the kernel gates still arbitrate them.
+        const workspaceCoalitionSupportById = new Map<string, number>(
+            globalWorkspace.selectedIds.map((candidateId, index) => [
+                candidateId,
+                Math.min(0.03, clamp(Number(globalWorkspace.weights[index] ?? 0)) * 0.06),
+            ]),
+        );
+        for (const candidate of governedCandidates) {
+            const support = workspaceCoalitionSupportById.get(candidate.id) ?? 0;
+            if (support > 0)
+                candidate.score = clamp(candidate.score + support);
+        }
         const integrationSignals = {
             identity01: identityContinuity.continuity,
             workspace01: globalWorkspace.ignition01,
