@@ -116,13 +116,15 @@ export class PerceptualEpistemicGraph {
     const r=isPlainDataRecord(raw)?raw:{};
     const claims:EvidenceClaim[]=[];
     const rawClaims=ownDataValue(r,'claims');
+    const seenClaimIds=new Set<string>();
     if(isPlainDataArray(rawClaims,1024)){
       for(const candidate of rawClaims.slice(-256)){
         if(!isPlainDataRecord(candidate))continue;
         const id=stringOr(ownDataValue(candidate,'id'),'').trim().slice(0,180);
         const modality=stringOr(ownDataValue(candidate,'modality'),'unknown',32).trim()||'unknown';
         const claim=stringOr(ownDataValue(candidate,'claim'),'').trim().slice(0,360);
-        if(!id||!claim)continue;
+        if(!id||!claim||seenClaimIds.has(id))continue;
+        seenClaimIds.add(id);
         const rawSource=ownDataValue(candidate,'source');
         const source:EpistemicSource=rawSource==='observed'||rawSource==='derived'?'derived':
           rawSource==='model-output'||rawSource==='unresolved'?rawSource:'unresolved';
@@ -140,7 +142,7 @@ export class PerceptualEpistemicGraph {
       }
     }
     const ids=new Set(claims.map(row=>row.id));
-    for(const row of claims)if(row.supersedes&&!ids.has(row.supersedes))delete row.supersedes;
+    for(const row of claims)if(row.supersedes&&(row.supersedes===row.id||!ids.has(row.supersedes)))delete row.supersedes;
     const modalityWitnesses=new Map<string,Set<string>>();
     for(const row of claims){
       const witnesses=modalityWitnesses.get(row.claim)??new Set<string>();
@@ -185,12 +187,15 @@ export class PerceptualEpistemicGraph {
         .map(value=>value.trim().slice(0,180)))].slice(0,16)
       :[];
     const supersedes=stringOr(ownDataValue(input,'supersedes'),'',180).trim();
-    const c:EvidenceClaim={id:idFor(modality,claim,at),at,modality,claim,source,confidence01,targetIds,...(supersedes?{supersedes}:{})};
-    const replayed=this.state.claims.find(x=>x.id===c.id);
+    const id=idFor(modality,claim,at);
+    const replayed=this.state.claims.find(x=>x.id===id);
     if(replayed)return structuredClone(replayed);
+    // Only an existing retained claim can be superseded; dangling caller-chosen
+    // IDs must never become future contradiction-suppression edges.
     const superseded=supersedes
-      ? this.state.claims.find(x=>x.id===supersedes&&x.id!==c.id)
+      ? this.state.claims.find(x=>x.id===supersedes&&x.id!==id)
       : undefined;
+    const c:EvidenceClaim={id,at,modality,claim,source,confidence01,targetIds,...(superseded?{supersedes:superseded.id}:{})};
     const similar=this.state.claims.filter(x=>x.claim===claim&&x.id!==c.id);
     const independentCorroboration=similar.filter(x=>x.modality!==modality);
     // Repeating the same proposition from the same modality is persistence,
@@ -203,7 +208,7 @@ export class PerceptualEpistemicGraph {
     // inflate it, and trimming the window must not freeze a stale number.
     this.state.contradictionPairs=countContradictionPairs(this.state.claims);
     this.state.meanConfidence01=clamp(this.state.claims.reduce((s,x)=>s+x.confidence01,0)/Math.max(1,this.state.claims.length));
-    this.state.lastAt=at; return structuredClone(c);
+    this.state.lastAt=Math.max(this.state.lastAt,at); return structuredClone(c);
   }
   recent(limit=32){return this.state.claims.slice(0,Math.max(1,Math.min(64,Math.floor(limit)))).map(x=>structuredClone(x));}
   /**
