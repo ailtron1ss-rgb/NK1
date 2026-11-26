@@ -280,7 +280,7 @@ function isModule(value: unknown): value is CognitiveModule {
 export class CognitiveModuleRuntime {
   private readonly hostApiVersion: number;
   private readonly grants: Map<string, ReadonlySet<string>>;
-  private readonly stateStore?: CognitiveModuleStateStore;
+  private stateStore?: CognitiveModuleStateStore;
   private readonly clock: () => number;
   private readonly records = new Map<string, ModuleRecord>();
 
@@ -297,6 +297,20 @@ export class CognitiveModuleRuntime {
     );
     this.stateStore = options.stateStore;
     this.clock = options.clock ?? Date.now;
+  }
+
+  /**
+   * Bind the host to the canonical persistence owner before any module starts.
+   * Rebinding after activation is rejected to prevent split-brain module state.
+   */
+  bindStateStore(stateStore: CognitiveModuleStateStore): void {
+    if (!stateStore || typeof stateStore.load !== 'function' || typeof stateStore.save !== 'function') {
+      throw fail('invalid-module-state-store');
+    }
+    if ([...this.records.values()].some(record => record.status !== 'registered')) {
+      throw fail('module-state-store-already-in-use');
+    }
+    this.stateStore = stateStore;
   }
 
   register(registration: CognitiveModuleRegistration): CognitiveModuleListItem {
