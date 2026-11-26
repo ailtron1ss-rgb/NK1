@@ -962,3 +962,27 @@ console.log('COGNITIVE_MODULE_CHECKPOINT_ATOMICITY=PASS');
   assert.equal(recovered.modules[0].reason, undefined);
   await host.stopAll();
 }
+
+
+// One optional module with a stalled health provider must not hang health
+// supervision for the whole organism. The host marks the probe unhealthy at
+// the configured deadline, even if the provider later resolves.
+{
+  const events = [];
+  const fixture = moduleFixture('world.stalled-health', events);
+  fixture.module.health = () => new Promise(resolve => {
+    setTimeout(() => resolve({ healthy: true }), 100);
+  });
+  const host = runtime({ healthTimeoutMs: 10 });
+  host.register({
+    manifest: manifest('world.stalled-health'),
+    factory: () => fixture.module,
+  });
+  await host.activate('world.stalled-health');
+
+  const health = await host.health();
+  assert.equal(health.ok, false);
+  assert.equal(health.modules[0].healthy, false);
+  assert.equal(health.modules[0].reason, 'module-health-timeout');
+  await host.stopAll();
+}
