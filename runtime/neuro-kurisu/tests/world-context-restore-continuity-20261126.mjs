@@ -75,3 +75,81 @@ assert.deepEqual(
 );
 
 console.log('WORLD_CONTEXT_RESTORE_CONTINUITY=PASS');
+
+
+// Empty snapshots are a supported first-boot/legacy state: they must not invent
+// a previous context or a phantom passive transition.
+const emptyRestore = new WorldSubsystemRuntime();
+emptyRestore.restoreFromPersisted({});
+const emptyPassiveBefore = emptyRestore.worldLearningSnapshot().stats.passiveUpdates;
+emptyRestore.observeGroundedContext(first);
+assert.equal(emptyRestore.worldLearningSnapshot().stats.passiveUpdates, emptyPassiveBefore);
+assert.deepEqual(emptyRestore.worldLearningSnapshot().p27Latent, emptyRestore.p27NeuralWorld.snapshot().latent);
+
+// Legacy snapshots may have WorldModel2 and P27 state but no unified latent
+// observation. Preserve their canonical P27 owner and do not hallucinate a
+// context baseline from unrelated legacy caches.
+const legacy = new WorldSubsystemRuntime();
+const legacyP27Owner = source.snapshot().p27;
+legacy.restoreFromPersisted({
+  cognition: { p27: legacyP27Owner },
+  advanced: {
+    worldModel2: snapshot.worldModel2,
+    // A legacy cached latent can be stale; the restored P27 owner is canonical.
+    worldLearning: { ...learningSnapshot, p27Latent: { id: 'legacy-stale-cache', vector: [99] } },
+  },
+});
+const legacyPassiveBefore = legacy.worldLearningSnapshot().stats.passiveUpdates;
+legacy.observeGroundedContext(next);
+assert.equal(legacy.worldLearningSnapshot().stats.passiveUpdates, legacyPassiveBefore);
+assert.deepEqual(legacy.worldLearningSnapshot().p27Latent, legacy.p27NeuralWorld.snapshot().latent);
+
+// Malformed persisted context and counters must fail closed. A corrupt latent
+// cache must not override P27 after its owner has been restored.
+const malformedUnified = {
+  ...snapshot.unifiedLatentWorldState,
+  currentObservation: {
+    id: 'malformed-observation',
+    context: { tick: 'not-a-tick', location: ['not-a-location'], facts: 'not-an-array' },
+  },
+};
+const malformed = new WorldSubsystemRuntime();
+malformed.restoreFromPersisted({
+  cognition: { p27: snapshot.p27 },
+  advanced: {
+    worldModel2: snapshot.worldModel2,
+    unifiedLatentWorldState: malformedUnified,
+    worldLearning: {
+      version: 1,
+      stats: {
+        observations: -9,
+        passiveUpdates: 2.5,
+        actionUpdates: Number.NaN,
+        lastPassiveError01: Number.NaN,
+        lastActionError01: 4.2,
+        modelAgreement01: Number.POSITIVE_INFINITY,
+        lastAt: -1,
+        brainActionSamples: -3,
+        brainValidated: 'yes',
+      },
+      lastWorldLatentId: { forged: true },
+      p27Latent: { id: 'forged-cache', vector: ['NaN', 999] },
+    },
+  },
+});
+const malformedStats = malformed.worldLearningSnapshot().stats;
+assert.equal(malformedStats.observations, 0);
+assert.equal(malformedStats.passiveUpdates, 0);
+assert.equal(malformedStats.actionUpdates, 0);
+assert.equal(malformedStats.lastPassiveError01, 0);
+assert.equal(malformedStats.lastActionError01, 0);
+assert.equal(malformedStats.modelAgreement01, 0);
+assert.equal(malformedStats.lastAt, 0);
+assert.equal(malformedStats.brainActionSamples, 0);
+assert.equal(malformedStats.brainValidated, false);
+assert.equal(typeof malformed.worldLearningSnapshot().lastWorldLatentId === 'string' || malformed.worldLearningSnapshot().lastWorldLatentId === null, true);
+assert.deepEqual(malformed.worldLearningSnapshot().p27Latent, malformed.p27NeuralWorld.snapshot().latent);
+const malformedPassiveBefore = malformedStats.passiveUpdates;
+malformed.observeGroundedContext(next);
+assert.equal(malformed.worldLearningSnapshot().stats.passiveUpdates, malformedPassiveBefore);
+
