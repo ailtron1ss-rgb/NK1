@@ -14,6 +14,10 @@ export type CognitiveStage = 'observation'|'prediction'|'appraisal'|'attention'|
 
 export interface CognitiveEventNode {
   id: string;
+  /** Monotonic local append order; independent of wall-clock movement. */
+  sequence?: number;
+  /** Lamport-style logical time advanced beyond the local clock and known parents. */
+  logicalTime?: number;
   tick: number;
   at: number;
   stage: CognitiveStage;
@@ -72,6 +76,10 @@ export interface CognitiveEventFabricSnapshot {
   version: 1;
   capacity: number;
   total: number;
+  /** Monotonic append-order watermark persisted independently of the bounded event buffer. */
+  sequenceWatermark?: number;
+  /** Lamport-style clock watermark persisted across restarts. */
+  logicalClock?: number;
   buffered: number;
   linkedParentEvents: number;
   danglingParentLinks: number;
@@ -139,6 +147,8 @@ export class CognitiveEventFabric {
   private readonly capacity:number;
   private events:CognitiveEventNode[]=[];
   private total=0;
+  private sequenceWatermark=0;
+  private logicalClock=0;
   private readonly receiptProjectionIndex=new Map<string,ToolReceiptProjectionIndexEntry>();
 
   constructor(capacity=512){this.capacity=Math.max(128,Math.min(4096,Math.floor(capacity)));}
@@ -147,7 +157,19 @@ export class CognitiveEventFabric {
     const recentRows=ownArray(ownData(raw,'recent'),this.capacity);
     const receiptEvents=ownArray(ownData(raw,'receiptEvents'),this.capacity);
     const rows=[...recentRows,...receiptEvents];
+    const rawTotal=ownData(raw,'total');
+    const legacyTotal=typeof rawTotal==='number'&&Number.isSafeInteger(rawTotal)&&rawTotal>=0
+      ? rawTotal : rows.length;
+    const rawSequenceWatermark=ownData(raw,'sequenceWatermark');
+    const rawLogicalClock=ownData(raw,'logicalClock');
+    let fallbackSequence=Math.max(
+      legacyTotal,
+      rows.length,
+      typeof rawSequenceWatermark==='number'&&Number.isSafeInteger(rawSequenceWatermark)&&rawSequenceWatermark>=0
+        ? rawSequenceWatermark : 0,
+    );
     const seen=new Set<string>();
+    const seenSequences=new Set<number>();
     const restored:CognitiveEventNode[]=[];
     for(const value of rows){
       if(!isRecord(value))continue;
@@ -156,7 +178,25 @@ export class CognitiveEventFabric {
       const stage=typeof rawStage==='string'?rawStage as CognitiveStage:undefined;
       // Causal ticks must be actual finite JSON numbers, never numeric-string coercions.
       if(!id||!COGNITIVE_STAGES.has(stage as CognitiveStage)||typeof tick!=='number'||!Number.isFinite(tick)||tick<0||seen.has(id))continue;
+      const rawSequence=ownData(value,'sequence');
+      let sequence:number;
+      if(rawSequence===undefined){
+        while(fallbackSequence>0&&seenSequences.has(fallbackSequence))fallbackSequence-=1;
+        if(fallbackSequence<=0)fallbackSequence=Math.max(1,seenSequences.size+1);
+        sequence=fallbackSequence;
+        fallbackSequence-=1;
+      }else{
+        if(typeof rawSequence!=='number'||!Number.isSafeInteger(rawSequence)||rawSequence<1||seenSequences.has(rawSequence))continue;
+        sequence=rawSequence;
+      }
+      const rawLogicalTime=ownData(value,'logicalTime');
+      const logicalTime=rawLogicalTime===undefined
+        ? sequence
+        : typeof rawLogicalTime==='number'&&Number.isSafeInteger(rawLogicalTime)&&rawLogicalTime>=1
+          ? rawLogicalTime : undefined;
+      if(logicalTime===undefined)continue;
       seen.add(id);
+      seenSequences.add(sequence);
       const rawAt=ownData(value,'at');
       const at=typeof rawAt==='number'&&Number.isFinite(rawAt)&&rawAt>=0?rawAt:0;
       const parentIds=ownArray(ownData(value,'parentIds'),12)
@@ -164,7 +204,7 @@ export class CognitiveEventFabric {
         .map(parent=>parent.trim().slice(0,180));
       const rawSource=ownData(value,'source'),rawExternal=ownData(value,'external'),rawConfidence=ownData(value,'confidence01');
       restored.push({
-        id,stage:stage as CognitiveStage,tick:Math.floor(tick),at,
+        id,sequence,logicalTime,stage:stage as CognitiveStage,tick:Math.floor(tick),at,
         source:typeof rawSource==='string'?rawSource.slice(0,120):'restored-unknown',
         parentIds,external:typeof rawExternal==='boolean'?rawExternal:false,
         confidence01:clamp01(typeof rawConfidence==='number'&&Number.isFinite(rawConfidence)?rawConfidence:.5),
@@ -172,6 +212,9 @@ export class CognitiveEventFabric {
       });
       if(restored.length>=this.capacity)break;
     }
+    // Persisted sequence is the canonical order. Snapshot array order is only a
+    // serialization detail and may differ after transport, compaction or merge.
+    restored.sort((a,b)=>(b.sequence??0)-(a.sequence??0));
     this.events=restored;
     this.receiptProjectionIndex.clear();
     const restoredById=new Map(this.events.map(event=>[event.id,event] as const));
@@ -221,31 +264,65 @@ export class CognitiveEventFabric {
         ...(receiptRevisions.length?{receiptRevisions:receiptRevisions.map(ref=>({revisionId:ref.observationId,eventId:ref.eventId,projectionHash:ref.projectionHash,projectedAt:ref.projectedAt}))}:{}),
       });
     }
-    const rawTotal=ownData(raw,'total');
-    this.total=Math.max(this.events.length,typeof rawTotal==='number'&&Number.isFinite(rawTotal)?Math.max(0,Math.floor(rawTotal)):this.events.length);
+    this.total=Math.max(this.events.length,legacyTotal);
+    const maxSequence=this.events.reduce((value,event)=>Math.max(value,event.sequence??0),0);
+    const maxLogicalTime=this.events.reduce((value,event)=>Math.max(value,event.logicalTime??0),0);
+    this.sequenceWatermark=Math.max(
+      this.total,maxSequence,
+      typeof rawSequenceWatermark==='number'&&Number.isSafeInteger(rawSequenceWatermark)&&rawSequenceWatermark>=0
+        ? rawSequenceWatermark : 0,
+    );
+    this.logicalClock=Math.max(
+      maxLogicalTime,
+      typeof rawLogicalClock==='number'&&Number.isSafeInteger(rawLogicalClock)&&rawLogicalClock>=0
+        ? rawLogicalClock : 0,
+    );
   }
   append(input:{id?:string;tick:number;stage:CognitiveStage;source:string;parentIds?:string[];external?:boolean;confidence01?:number;payload?:Record<string,unknown>;at?:number}):CognitiveEventNode{
     const at=Number.isFinite(input.at)?Number(input.at):Date.now();
     const suppliedId=typeof input.id==='string'?input.id.trim():'';
     if(input.id!==undefined&&(!suppliedId||suppliedId.length>180||/[\u0000-\u001f\u007f]/.test(suppliedId))) throw new Error('invalid-cognitive-event-id');
+    if(typeof input.tick!=='number'||!Number.isFinite(input.tick)||input.tick<0) throw new Error('invalid-cognitive-event-tick');
+    if(!COGNITIVE_STAGES.has(input.stage)) throw new Error('invalid-cognitive-event-stage');
+    const tick=Math.max(0,Math.floor(input.tick));
+    const source=String(input.source||'unknown').slice(0,120);
+    const parentIds=[...(input.parentIds??[])].map(String).slice(0,12);
+    const external=Boolean(input.external);
+    const confidence01=clamp01(input.confidence01??0.5);
+    const payload=cleanPayload(input.payload);
+    const contentFingerprint=sha256Stable({tick,stage:input.stage,source,parentIds,external,confidence01,payload});
     if(suppliedId){
       const prior=this.events.find(event=>event.id===suppliedId);
       if(prior){
-        if(prior.tick!==Math.max(0,Math.floor(input.tick))||prior.stage!==input.stage||prior.source!==String(input.source||'unknown').slice(0,120))
-          throw new Error('cognitive-event-id-conflict');
+        const priorFingerprint=sha256Stable({
+          tick:prior.tick,stage:prior.stage,source:prior.source,parentIds:prior.parentIds,
+          external:prior.external,confidence01:prior.confidence01,payload:prior.payload,
+        });
+        if(priorFingerprint!==contentFingerprint) throw new Error('cognitive-event-id-conflict');
+        // Wall-clock timestamp is intentionally excluded: replaying the same causal
+        // event later must preserve its original time and ordering receipt.
         return {...prior,parentIds:[...prior.parentIds],payload:{...prior.payload}};
       }
     }
+    const knownParentClock=parentIds.reduce((value,parentId)=>{
+      const parent=this.events.find(event=>event.id===parentId);
+      return Math.max(value,parent?.logicalTime??0);
+    },0);
+    const sequence=Math.max(this.sequenceWatermark,this.total)+1;
+    const logicalTime=Math.max(this.logicalClock,knownParentClock)+1;
     const event:CognitiveEventNode={
-      id:suppliedId||`cef:${at}:${Math.max(0,Math.floor(input.tick))}:${Math.random().toString(16).slice(2)}`,
-      tick:Math.max(0,Math.floor(input.tick)), at,
-      stage:input.stage, source:String(input.source||'unknown').slice(0,120),
-      parentIds:[...(input.parentIds??[])].map(String).slice(0,12),
-      external:Boolean(input.external), confidence01:clamp01(input.confidence01??0.5), payload:cleanPayload(input.payload),
+      id:suppliedId||('cef:'+at+':'+tick+':'+Math.random().toString(16).slice(2)),
+      sequence,logicalTime,
+      tick, at,
+      stage:input.stage, source,
+      parentIds,
+      external, confidence01, payload,
     };
     this.events.unshift(event);
     if(this.events.length>this.capacity)this.events=this.events.slice(0,this.capacity);
     this.total+=1;
+    this.sequenceWatermark=sequence;
+    this.logicalClock=logicalTime;
     this.pruneReceiptProjectionIndex();
     return {...event,parentIds:[...event.parentIds],payload:{...event.payload}};
   }
@@ -803,6 +880,6 @@ export class CognitiveEventFabric {
     // sanitized receipt nodes that still have live replay guards so restart restore
     // can retain exact causal links even when a receipt falls outside that window.
     const receiptEvents=this.events.filter(event=>receiptIds.has(event.id)&&!recentIds.has(event.id)).map(event=>({...event,parentIds:[...event.parentIds],payload:{...event.payload}}));
-    return{version:1,capacity:this.capacity,total:this.total,buffered:this.events.length,linkedParentEvents:linked,danglingParentLinks:dangling,lineageIntegrity01:clamp01(linked/Math.max(1,totalParentRefs)),cycleCoverage01:coreCoverage,coreCycleCoverage01:coreCoverage,fullCycleCoverage01:fullCoverage,causalDensity01:clamp01(linked/Math.max(1,this.events.length*2)),recentTicks,recent,receiptEvents,receiptProjectionIndex:[...this.receiptProjectionIndex.values()]};
+    return{version:1,capacity:this.capacity,total:this.total,sequenceWatermark:this.sequenceWatermark,logicalClock:this.logicalClock,buffered:this.events.length,linkedParentEvents:linked,danglingParentLinks:dangling,lineageIntegrity01:clamp01(linked/Math.max(1,totalParentRefs)),cycleCoverage01:coreCoverage,coreCycleCoverage01:coreCoverage,fullCycleCoverage01:fullCoverage,causalDensity01:clamp01(linked/Math.max(1,this.events.length*2)),recentTicks,recent,receiptEvents,receiptProjectionIndex:[...this.receiptProjectionIndex.values()]};
   }
 }
