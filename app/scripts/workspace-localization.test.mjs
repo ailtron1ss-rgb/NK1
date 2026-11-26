@@ -116,3 +116,27 @@ test("Runtime health translates controls and section labels while keeping raw di
     assert.ok(health.includes(phrase), `missing localized runtime health copy: ${phrase}`);
   }
 });
+
+
+test("Research Dock uses Russian approvals and preserves one-time consent before probes", async () => {
+  const research = await read("../src/research/ResearchDock.tsx");
+  for (const phrase of [
+    "Исследовательский мост",
+    "Панель предварительной проверки только для чтения.",
+    "Запустить проверку FwPKM",
+    "Просканировать канонический реестр",
+    "Требуется однократное разрешение",
+    "Она не начнётся без вашего разрешения именно на эту проверку.",
+    "Разрешить один запуск",
+    "Отказать",
+    "Только исследования",
+    "Управляемый режим",
+    "Проверка отклонена. Исследовательский код не запускался.",
+  ]) {
+    assert.ok(research.includes(phrase), `missing localized Research Dock copy: ${phrase}`);
+  }
+  assert.match(research, /resolveToolPermission\(ticket\.id,true\)/,
+    "explicit approval must remain required before running a probe");
+  assert.match(research, /resolveToolPermission\(approvalRequest\.id,false\)/,
+    "declining a probe must preserve the one-time permission gate");
+});
