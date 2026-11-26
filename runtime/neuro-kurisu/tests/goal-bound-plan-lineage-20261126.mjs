@@ -37,12 +37,16 @@ const sameContext = engine.validateContext(plan, goal, initialWorld, context);
 assert.deepEqual(sameContext, { valid: true, reason: 'ok' });
 
 let predictedWorld = initialWorld;
+const stepWorlds = [];
 for (let index = 0; index < plan.steps.length; index += 1) {
   const step = plan.steps[index];
+  stepWorlds.push(predictedWorld);
   assert.equal(step.preconditions.worldTick, predictedWorld.tick);
   assert.equal(step.preconditions.location, predictedWorld.location);
-  assert.equal(engine.validateStep(plan, index, predictedWorld).valid, true,
-    'each step must be bound to the exact predecessor world state');
+  const stepValidation = engine.validateStep(plan, index, predictedWorld);
+  assert.equal(stepValidation.valid, step.expectedOutcome.valid,
+    'a step is usable only when its exact precondition and simulator validity both pass');
+  if (!step.expectedOutcome.valid) assert.equal(stepValidation.reason, 'step-outcome-invalid');
   const projection = environment.project(step.environmentAction, predictedWorld);
   assert.equal(step.expectedOutcome.nextWorldTick, projection.next.tick);
   assert.equal(step.expectedOutcome.nextLocation, projection.next.location);
@@ -51,8 +55,18 @@ for (let index = 0; index < plan.steps.length; index += 1) {
   assert.ok(Number.isFinite(step.expectedOutcome.confidence));
   predictedWorld = projection.next;
 }
-const tamperedStepWorld = { ...initialWorld, energy: Math.max(0, initialWorld.energy - 0.1) };
-assert.equal(engine.validateStep(plan, 0, tamperedStepWorld).reason, 'step-precondition-mismatch');
+const validStepIndex = plan.steps.findIndex(step => step.expectedOutcome.valid);
+assert.notEqual(validStepIndex, -1, 'the deterministic fixture must contain at least one valid projected step');
+const validStepWorld = stepWorlds[validStepIndex];
+const tamperedStepWorld = { ...validStepWorld, location: validStepWorld.location === 'tampered-location' ? 'other-location' : 'tampered-location' };
+assert.equal(engine.validateStep(plan, validStepIndex, tamperedStepWorld).reason, 'step-precondition-mismatch');
+const invalidOutcomePlan = {
+  ...plan,
+  steps: plan.steps.map((step, index) => index === validStepIndex
+    ? { ...step, expectedOutcome: { ...step.expectedOutcome, valid: false } }
+    : step),
+};
+assert.equal(engine.validateStep(invalidOutcomePlan, validStepIndex, validStepWorld).reason, 'step-outcome-invalid');
 
 const changedGoal = { ...goal, progress: 0.3, updatedAt: goal.updatedAt + 1 };
 assert.equal(engine.validateContext(plan, changedGoal, initialWorld, context).reason, 'goal-version-mismatch');

@@ -22,7 +22,7 @@ export interface PlanBuildContext { decisionId?: string; tick?: number; }
 export type PlanValidationReason =
   | 'ok' | 'missing-lineage' | 'invalid-context' | 'decision-mismatch'
   | 'decision-tick-mismatch' | 'goal-version-mismatch' | 'world-version-mismatch'
-  | 'invalid-step-index' | 'step-precondition-mismatch';
+  | 'invalid-step-index' | 'step-precondition-mismatch' | 'step-outcome-invalid';
 export interface PlanValidation { valid: boolean; reason: PlanValidationReason; }
 export interface Plan {
   id: string; goalId?: string; title: string; steps: PlanStep[]; expectedValue: number;
@@ -186,9 +186,11 @@ export class PlanEngine {
   validateStep(plan: Plan, stepIndex: number, world: EnvironmentSnapshot): PlanValidation {
     if (!Number.isSafeInteger(stepIndex) || stepIndex < 0 || stepIndex >= (plan?.steps?.length ?? 0))
       return validation(false, 'invalid-step-index');
-    const pre = plan.steps[stepIndex]?.preconditions;
+    const step = plan.steps[stepIndex];
+    const pre = step?.preconditions;
     if (!pre || pre.worldTick !== world.tick || pre.location !== world.location || pre.worldFingerprint !== worldFingerprint(world))
       return validation(false, 'step-precondition-mismatch');
+    if (step.expectedOutcome?.valid !== true) return validation(false, 'step-outcome-invalid');
     return validation(true, 'ok');
   }
 }

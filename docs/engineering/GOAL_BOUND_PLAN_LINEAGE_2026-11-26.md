@@ -19,7 +19,7 @@ Previously a plan identified a goal by `goalId` but did not carry an integrity b
 - The world fingerprint binds the exact root world snapshot.
 - Each step has a predecessor world tick/location/fingerprint and a typed expected outcome.
 - The budget fallback follows the same lineage contract.
-- Runtime checks lineage and the first-step precondition before using a plan for rollout; stale or mismatched plans degrade to a non-mutating `observe` projection.
+- Runtime checks lineage, exact first-step preconditions, and simulator validity before using a plan for rollout; stale, mismatched, or impossible projected steps degrade to a non-mutating `observe` projection.
 - Existing goal selection, action arbitration, risk governance, and ActionGateway remain unchanged.
 
 ## Acceptance
