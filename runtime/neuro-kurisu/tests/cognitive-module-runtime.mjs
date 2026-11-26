@@ -826,3 +826,26 @@ console.log('COGNITIVE_MODULE_CHECKPOINT_ATOMICITY=PASS');
   );
   await host.stopAll();
 }
+
+
+// The registry limit must match the canonical checkpoint capacity. Reject the
+// excess registration before it can create a runtime that cannot be persisted.
+{
+  const host = runtime();
+  for (let index = 0; index < 256; index += 1) {
+    const id = `extension.module${index}`;
+    host.register({
+      manifest: manifest(id),
+      factory: () => moduleFixture(id, []).module,
+    });
+  }
+  assert.equal(host.list().length, 256);
+  assert.throws(
+    () => host.register({
+      manifest: manifest('extension.module256'),
+      factory: () => moduleFixture('extension.module256', []).module,
+    }),
+    /module-registry-capacity-exceeded/,
+  );
+  assert.equal(host.list().length, 256);
+}
