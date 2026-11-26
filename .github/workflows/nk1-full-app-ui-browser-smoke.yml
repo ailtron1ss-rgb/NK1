@@ -55,6 +55,8 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version-file: .python-version
+      - name: Validate browser smoke harness syntax
+        run: node --check app/scripts/full-app-ui-browser-smoke.mjs
       - name: Install locked app and runtime dependencies
         run: |
           npm ci --prefix app --no-audit --no-fund
