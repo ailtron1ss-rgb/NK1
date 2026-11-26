@@ -87,6 +87,8 @@ interface ModuleRecord {
   module: CognitiveModule | null;
   context: CognitiveModuleContext;
   status: CognitiveModuleStatus;
+  /** Last non-disruptive checkpoint failure; cleared after a successful snapshot. */
+  lastSnapshotError?: string;
   /** In-flight checkpoint capture; shutdown must wait for this durable adapter write. */
   snapshotInFlight?: Promise<void>;
   lastError?: string;
@@ -497,6 +499,7 @@ export class CognitiveModuleRuntime {
       }
 
       await created.initialize(record.context);
+      record.lastSnapshotError = undefined;
       record.status = 'active';
       return this.toListItem(record);
     } catch (error) {
@@ -612,6 +615,7 @@ export class CognitiveModuleRuntime {
       record.module = null;
       record.status = 'stopped';
       record.lastError = undefined;
+      record.lastSnapshotError = undefined;
       // The canonical state store owns the sealed envelope reference. Return
       // a detached copy so callers cannot mutate persisted module state.
       return envelope ? structuredClone(envelope) : null;
@@ -727,11 +731,14 @@ export class CognitiveModuleRuntime {
             stateHashSha256: sha256Stable(envelopeBase),
           };
           if (this.stateStore) await this.stateStore.save(envelope);
+          record.lastSnapshotError = undefined;
           captured.push(id);
         } catch (error) {
+          const reason = String(error instanceof Error ? error.message : error).slice(0, 180);
+          record.lastSnapshotError = reason;
           failed.push({
             id,
-            reason: String(error instanceof Error ? error.message : error).slice(0, 180),
+            reason,
           });
         }
       }
@@ -758,19 +765,20 @@ export class CognitiveModuleRuntime {
       }
       try {
         const result = await record.module.health();
-        const healthy = typeof result === 'boolean' ? result : result?.healthy === true;
+        const probeHealthy = typeof result === 'boolean' ? result : result?.healthy === true;
+        const diagnosticError = record.lastSnapshotError ?? record.lastError;
         modules.push({
           id: record.manifest.id,
           status: record.status,
-          healthy,
-          reason: typeof result === 'object' ? result.reason : undefined,
+          healthy: probeHealthy && !diagnosticError,
+          reason: diagnosticError ?? (typeof result === 'object' ? result.reason : undefined),
         });
       } catch {
         modules.push({
           id: record.manifest.id,
           status: record.status,
           healthy: false,
-          reason: 'health-probe-failed',
+          reason: record.lastSnapshotError ?? record.lastError ?? 'health-probe-failed',
         });
       }
     }
