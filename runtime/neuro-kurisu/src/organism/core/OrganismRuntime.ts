@@ -1741,7 +1741,7 @@ export class OrganismRuntime {
     this.core.recordRealityEvidence({tick:cycle.state.tick,realityClass:grounded.source==='external' ? 'device-observation' : 'simulator',claim:`action-consequence:${physicalAction}`,confidence01:grounded.evidence01,independenceKey:`consequence:${cycle.state.tick}:${embodiedAction.source}:${grounded.source}`,parentIds:[outcomeEvidence.id]});
     if(grounded.source==='external') {
       this.core.recordExternalPerceptualEvidence({
-        at:cycle.state.at,
+        at:embodiedAction.realityClass==='camera-artifact'?(embodiedAction.artifact?.capturedAt??cycle.state.at):cycle.state.at,
         modality:embodiedAction.realityClass==='camera-artifact'?'vision':embodiedAction.realityClass==='device-observation'?'sensor':'world',
         claim:embodiedAction.realityClass==='camera-artifact'
           ? `android-camera-frame:${embodiedAction.artifact?.cameraId ?? '?'}:${embodiedAction.artifact?.hash ?? 'missing-hash'}:${embodiedAction.artifact?.size ?? 0}:${embodiedAction.artifact?.captureNonce ?? 'missing-nonce'}`
