@@ -26,6 +26,8 @@ on:
       - "contracts/embodiment-intent.v1.schema.json"
       - "app/scripts/avatar-presentation-receipt.test.mjs"
       - "app/src/components/Avatar3DStage.tsx"
+      - "app/src/components/avatar/avatarFrameBudget.ts"
+      - "app/scripts/avatar-frame-budget.test.mjs"
       - "app/src/components/avatar/threeToonMaterials.ts"
       - "app/src/types/three.d.ts"
       - "app/scripts/avatar-3d-stage.test.mjs"
@@ -87,6 +89,8 @@ on:
       - "contracts/embodiment-intent.v1.schema.json"
       - "app/scripts/avatar-presentation-receipt.test.mjs"
       - "app/src/components/Avatar3DStage.tsx"
+      - "app/src/components/avatar/avatarFrameBudget.ts"
+      - "app/scripts/avatar-frame-budget.test.mjs"
       - "app/src/components/avatar/threeToonMaterials.ts"
       - "app/src/types/three.d.ts"
       - "app/scripts/avatar-3d-stage.test.mjs"
@@ -154,6 +158,8 @@ jobs:
         run: npm --prefix app run test:avatar-model-preflight
       - name: Test procedural and VRM 3D avatar contract
         run: node --test app/scripts/avatar-3d-stage.test.mjs
+      - name: Test adaptive mobile avatar frame budget
+        run: node --experimental-strip-types --test app/scripts/avatar-frame-budget.test.mjs
       - name: Test VRM affect-to-expression and speech coexistence
         run: npm --prefix app run test:vrm-runtime-adapter
       - name: Audit VRM 0.x/1.0 humanoid node maps and full-body capabilities
