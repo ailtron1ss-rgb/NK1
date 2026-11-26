@@ -391,3 +391,39 @@ console.log('ORGANISM_RUNTIME_MODULE_INTEGRATION=PASS');
   assert.equal(checkpoint.diagnostics().checkpointSaveError, null);
   assert.equal(checkpoint.diagnostics().capturedAt, 700);
 }
+
+
+// The outer module checkpoint is untrusted extension metadata too. A hostile
+// getter on its container must be quarantined without execution or Core failure.
+{
+  let getterCalls = 0;
+  const system = { release: 'test', organismCore: 'test', schemaVersion: 1 };
+  Object.defineProperty(system, 'cognitiveModuleRuntime', {
+    enumerable: true,
+    get() {
+      getterCalls += 1;
+      return { schemaVersion: 1, capturedAt: 10, modules: [] };
+    },
+  });
+  const hostilePersisted = {
+    schemaVersion: 1,
+    state: {},
+    goals: [],
+    traces: [],
+    memories: [],
+    worldModel: {},
+    facets: {},
+    system,
+  };
+  const hostileDelegate = {
+    async load() { return hostilePersisted; },
+    async save() {},
+  };
+  const checkpoint = new CognitiveModuleCheckpointStore(hostileDelegate);
+  const loaded = await checkpoint.load();
+  assert.equal(loaded, hostilePersisted,
+    'canonical organism data must remain available while optional metadata is quarantined');
+  assert.equal(getterCalls, 0,
+    'checkpoint quarantine must inspect descriptors and never execute metadata getters');
+  assert.match(checkpoint.diagnostics().checkpointLoadError ?? '', /accessor|descriptor|checkpoint-invalid/);
+}
