@@ -25,3 +25,18 @@ Full G3 still requires a host-owned signer/verifier and live context binding for
 ## Verification contract
 
 The PR workflow runs the admission/restore regression, P41 + grounded-world provenance ingress/restore, P2840 reality boundary, P2841 postcondition/world-integrity, P2842 active-perception runtime, and the runtime typecheck on the PR head. No merge, release, or readiness-gate closure is implied by the branch itself.
+
+
+## Extended restore-hardening pass — 2026-11-26
+
+The same G3 branch now hardens the full persisted perception chain rather than only the evidence compiler:
+
+- \`GroundedWorldState.restore()\` validates top-level and nested records using the shared restore sanitizer, rejects accessors/Proxy containers without evaluating them, bounds entities/relations/events/facts/provenance, clamps numeric ranges, requires a coordinate frame for world positions, revokes unverifiable external-observation markers, and recomputes its digest.
+- External-outcome event identity is now the executor \`executionId\` rather than timestamp + action. Duplicate deliveries do not advance world revision or append a second event; an untrusted diagnostic may be upgraded once only when the exact live verifier capability is later supplied.
+- \`P41SemanticPerceptionEngine.restore()\` reconstructs each entity, relation, event, snapshot and pending query from own data fields; invalid row shapes are discarded, evidence labels are downgraded, numeric gauges and modality reliability are bounded, and caller-supplied \`lastHash\` is discarded.
+- \`PerceptualContinuityModel.restore()\` and \`PerceptualEpistemicGraph.restore()\` reject hostile containers, validate nested rows and rebuild confidence/contradiction/resolution/corroboration summaries from retained accepted claims rather than trusting saved aggregate gauges.
+- \`PerceptualEpistemicGraph.add()\` and \`PerceptualEvidenceCompiler.recordExternalEvidence()\` reject Proxy/accessor inputs before reading producer-controlled properties. Caller-supplied \`observed\` is always demoted in the epistemic graph.
+- Regression coverage includes hostile nested getters, top-level and nested Proxy payloads, malformed scalar gauges, invalid coordinate frames, bogus digests, replayed executor IDs, P41 owner restore, and bounded continuity/epistemic counters.
+- G3 CI installs pinned TypeScript 5.8.3 and Node type declarations in the runner only, so the runtime typecheck can use semantic \`tsc\`; no project dependency or lockfile is modified by this verifier step.
+
+These changes improve restore/admission integrity; they do not convert the in-process verifier into a cryptographic attestation service. Device identity, consent/revocation, signed receipts, restart-surviving replay protection, Android/Termux soak and independent holdout remain open.
