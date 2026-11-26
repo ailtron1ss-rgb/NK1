@@ -108,6 +108,27 @@ assert.equal(duplicateWorkspace.diagnostics().admission.duplicateCount, 1,
 assert.equal(duplicateWorkspace.diagnostics().admission.uniqueCount, 2,
   'the strongest version of a repeated candidate identity must be retained');
 
+
+const sourceBalancedWorkspace = new GlobalWorkspaceSubstrateV2();
+const sourceBalancedCandidates = [
+  ...Array.from({ length: 80 }, (_, i) => ({
+    id: `dominant-${i}`, source: 'memory', salience: 0.95,
+    features: [0.8, ...new Array(11).fill(0)],
+  })),
+  ...Array.from({ length: 12 }, (_, i) => ({
+    id: `minority-${i}`, source: 'perception', salience: 0.45,
+    features: [0.3, ...new Array(11).fill(0)],
+  })),
+];
+sourceBalancedWorkspace.compete(sourceBalancedCandidates);
+const sourceAdmission = sourceBalancedWorkspace.diagnostics().admission.admittedBySource;
+assert.equal(sourceAdmission.memory, 32,
+  'a single high-volume source must not consume more than its initial fair share when another source is represented');
+assert.equal(sourceAdmission.perception, 12,
+  'lower-volume sources must retain admission even when a dominant source emits many higher-salience candidates');
+assert.equal(sourceBalancedWorkspace.diagnostics().admission.admittedCount, 44,
+  'unused admission capacity must remain available rather than fabricating candidates');
+
 console.log('NK1_GLOBAL_WORKSPACE_ADMISSION=PASS', JSON.stringify({
   orderInvariant: true,
   admitted: admissionA.diagnostics().admission.admittedCount,
