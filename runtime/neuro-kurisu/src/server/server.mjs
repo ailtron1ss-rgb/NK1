@@ -7,7 +7,7 @@ import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { OrganismRuntime } from '../organism/core/OrganismRuntime.ts';
 import { createFileBackedPluginMessageIngress } from '../organism/integration/neko/PluginMessageIngressHost.ts';
-import { authorizeNekoPluginTransport, parseNekoPluginCredentials } from './neko-plugin-transport-auth.mjs';
+import { handleAuthenticatedNekoPluginPush, parseNekoPluginCredentials } from './neko-plugin-transport-auth.mjs';
 import { NmcNLocalHttpPort } from '../organism/integration/nmcn/NmcNLocalHttpPort.ts';
 import { buildNmcNRuntimeInput, evaluateNmcNRuntime } from '../organism/integration/nmcn/NmcNRuntimeBridge.ts';
 import { Mem0PlatformAdapter } from '../organism/integration/mem0/Mem0PlatformAdapter.ts';
@@ -680,34 +680,15 @@ async function route(req, res) {
         if (req.method === 'POST' && url.pathname === '/api/neko/messages/push') {
             if (!runtimeReady)
                 return json(res, 503, { ok: false, error: 'organism-runtime-not-ready' });
-            if (!nekoPluginIngress || NEKO_PLUGIN_CREDENTIALS.size === 0)
-                return json(res, 503, { ok: false, error: 'neko-plugin-transport-not-configured' });
             const input = await body(req);
-            const transportAuth = authorizeNekoPluginTransport({
+            const response = await handleAuthenticatedNekoPluginPush({
                 credentials: NEKO_PLUGIN_CREDENTIALS,
                 pluginIdHeader: req.headers['x-neko-plugin-id'],
                 tokenHeader: req.headers['x-neko-plugin-token'],
-                identity: input?.identity,
-                payload: input?.payload,
+                input,
+                ingress: nekoPluginIngress,
             });
-            if (!transportAuth.allowed)
-                return json(res, 401, { ok: false, error: 'neko-plugin-auth-denied' });
-            if (!input || typeof input !== 'object' || Array.isArray(input)
-                || !input.payload || typeof input.payload !== 'object' || Array.isArray(input.payload))
-                return json(res, 400, { ok: false, error: 'invalid-neko-plugin-envelope' });
-            // This endpoint currently owns quiet evidence ingestion only. Chat/HUD delivery
-            // and response generation remain closed until a durable host presenter exists.
-            if (input.payload.ai_behavior !== 'read'
-                || (input.payload.visibility !== undefined
-                    && (!Array.isArray(input.payload.visibility) || input.payload.visibility.length !== 0)))
-                return json(res, 409, { ok: false, error: 'neko-plugin-presentation-transport-not-configured' });
-            const result = await nekoPluginIngress.handle(input);
-            const status = result.accepted ? 200
-                : result.errorCode === 'message-id-conflict' || result.errorCode === 'message-recovery-required' ? 409
-                : result.errorCode === 'plugin-not-allowed' || result.errorCode === 'policy-denied' ? 403
-                : result.errorCode === 'receipt-ledger-full' || result.errorCode === 'message-processing-failed' ? 503
-                : 400;
-            return json(res, status, { ok: result.accepted, ...result });
+            return json(res, response.status, response.body);
         }
         if (req.method === 'GET' && url.pathname === '/api/organism/evaluation/evidence') {
             if (!runtimeReady)
