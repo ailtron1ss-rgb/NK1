@@ -156,6 +156,10 @@ try {
   await canvas.click({ position: { x: mobileBounds.width * 0.5, y: mobileBounds.height * 0.75 } });
   const allEventsDeadline = Date.now() + timeoutMs;
   while (observedEvents.length < 4 && Date.now() < allEventsDeadline) await page.waitForTimeout(50);
+  // The shared production recorder applies one global 1.5 s cooldown across
+  // renderer modes. Let the final mobile Live2D tap leave that window before
+  // probing Original; a throttled (valid) tap is not a renderer failure.
+  await page.waitForTimeout(1_600);
   assert.deepEqual(observedEvents, [
     { detail: "Пользователь коснулся области головы аватара Курису через экранный интерфейс.", importance: 0.24, interaction: { protocolVersion: 1, kind: "avatar-contact", zone: "head" } },
     { detail: "Пользователь коснулся области корпуса аватара Курису через экранный интерфейс.", importance: 0.24, interaction: { protocolVersion: 1, kind: "avatar-contact", zone: "body" } },
@@ -222,6 +226,9 @@ try {
   await originalSvg.click({ position: { x: mobileOriginalBounds.width * 0.5, y: mobileOriginalBounds.height * 0.58 } });
   const originalMobileBodyDeadline = Date.now() + timeoutMs;
   while (observedEvents.length < 8 && Date.now() < originalMobileBodyDeadline) await page.waitForTimeout(50);
+  // The same recorder cooldown spans renderer switches. Do not begin the 3D
+  // acceptance until the final Original SVG event is eligible again.
+  await page.waitForTimeout(1_600);
   assert.equal(observedEvents[7]?.interaction?.zone, "body",
     "mobile Original 2D torso tap must use the canonical contact protocol");
 
