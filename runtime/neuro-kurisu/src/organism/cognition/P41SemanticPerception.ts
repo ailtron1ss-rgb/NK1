@@ -305,7 +305,7 @@ export class P41SemanticPerceptionEngine {
         const validImageBox=Boolean(imageBox&&typeof imageBoxCameraId==='number'&&Number.isSafeInteger(imageBoxCameraId)&&imageBoxCameraId>=0
           &&typeof imageBoxAt==='number'&&Number.isSafeInteger(imageBoxAt)&&imageBoxAt>=0&&imageBoxAt<=lastSeenAt
           &&typeof imageBoxConfidence01==='number'&&Number.isFinite(imageBoxConfidence01)&&imageBoxConfidence01>=.42&&imageBoxConfidence01<=1);
-        const imageFields=validImageBox?{
+        const imageFields=validImageBox&&imageBox?{
           imageBox,imageBoxCameraId:Number(imageBoxCameraId),imageBoxAt:Number(imageBoxAt),
           imageBoxConfidence01:Number(imageBoxConfidence01),
         }:{};
