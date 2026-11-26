@@ -1,5 +1,7 @@
 import type { PersistedOrganism } from './OrganismCore.ts';
-import type { ProjectionGroup } from '../persistence/AdvancedProjectionScheduler.ts';
+import type { ProjectionGroup, ProjectionScheduleState } from '../persistence/AdvancedProjectionScheduler.ts';
+import type { RevisionGraphState } from '../persistence/RevisionGraph.ts';
+import type { RevisionTokenRegistryState } from '../persistence/RevisionTokenRegistry.ts';
 
 export interface PersistenceProjectionContext { [key:string]: any; }
 const clamp = (x: number) => Math.max(0, Math.min(1, Number.isFinite(x) ? x : 0));
@@ -18,9 +20,9 @@ export class PersistenceProjectionCoordinator {
    * until the canonical PersistedOrganism store confirms the write.
    */
   private materializationCandidate(ctx: PersistenceProjectionContext, tick: number) {
-    const schedule = ctx.advancedProjectionScheduler.snapshot();
-    const graph = ctx.revisionGraph.currentSnapshot();
-    const tokens = ctx.revisionTokens.snapshot();
+    const schedule = ctx.advancedProjectionScheduler.snapshot() as ProjectionScheduleState;
+    const graph = ctx.revisionGraph.currentSnapshot() as RevisionGraphState;
+    const tokens = ctx.revisionTokens.snapshot() as RevisionTokenRegistryState;
     const pending = this.pendingMaterialization;
     if (pending && pending.tick === tick) {
       schedule.lastFullTick = tick;
