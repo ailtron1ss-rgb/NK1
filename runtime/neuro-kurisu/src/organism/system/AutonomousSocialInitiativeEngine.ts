@@ -637,7 +637,10 @@ export class AutonomousSocialInitiativeEngine {
     this.state.planned++;
     this.state.lastInitiativeAt = at;
     this.state.initiative01 = clamp(this.state.initiative01 * .9 + pressure * .1);
-    return { shouldInitiate: !initiative.internalOnly, initiative: structuredClone(initiative) };
+    if (initiative.internalOnly === true) {
+      return { shouldInitiate: false, initiative: null, internalPlan: structuredClone(initiative) };
+    }
+    return { shouldInitiate: true, initiative: structuredClone(initiative), internalPlan: null };
   }
 
   latestPlanned(now = Date.now()): SocialInitiative | null {
