@@ -22,6 +22,7 @@ async function clickUntilContact(canvas, bounds, expectedCount, yCandidates) {
     })(),
     pointerTrace: window.__nkAvatarPointerTrace ?? [],
     fitDiagnostics: element.getAttribute("data-avatar-fit-diagnostics"),
+    cameraFit: element.getAttribute("data-avatar-camera-fit"),
     lastRaycast: element.getAttribute("data-avatar-last-raycast"),
     readyText: document.body.innerText.match(/Модель загружена|Геометрия загружена|Модель не загружена|3D-рендерер недоступен/g) ?? [],
   }));
