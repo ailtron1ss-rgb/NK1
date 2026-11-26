@@ -319,7 +319,7 @@ export class GroundedWorldState {
     const eventRows=new Map(this.state.events.map(x=>[x.id,{...x}]));
     for(const x of (p?.events??[]).slice(0,64)){
       const modalityEvidenceKinds={...(x.modalityEvidenceKinds??{})};
-      const allEventKinds=Object.values(modalityEvidenceKinds).map(normalizeEvidence);
+      const allEventKinds=Object.values(modalityEvidenceKinds).map(kind=>normalizeEvidence(kind));
       const evidenceKind: 'observed'|'model-output'|'derived'|'conflict'|'unresolved'=allEventKinds.includes('conflict')?'conflict':allEventKinds.includes('observed')?'observed':allEventKinds.includes('model-output')?'model-output':allEventKinds.includes('derived')?'derived':normalizeEvidence(x.evidenceKind);
       const old=eventRows.get(x.id);
       eventRows.set(x.id,old?{
@@ -363,7 +363,7 @@ export class GroundedWorldState {
       tick:base?.tick??0,location,energy:base?.energy??.8,attention:base?.attention??.7,
       uncertainty,facts,
       objects:entities.filter(x=>x.kind!=='event'&&x.kind!=='concept').slice(0,64).map(x=>{
-        const evidenceKinds=Object.values(x.modalityEvidenceKinds??{}).map(normalizeEvidence);
+        const evidenceKinds=Object.values(x.modalityEvidenceKinds??{}).map(kind=>normalizeEvidence(kind));
         const canonicalKind: 'observed'|'model-output'|'derived'|'conflict'|'unresolved'=evidenceKinds.includes('conflict')?'conflict':evidenceKinds.includes('observed')?'observed':evidenceKinds.includes('model-output')?'model-output':evidenceKinds.includes('derived')?'derived':'unresolved';
         return {
           id:x.id,label:x.label,location,
