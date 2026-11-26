@@ -29,6 +29,38 @@ function asRecord(value: unknown): Record<string, unknown> | null {
     : null;
 }
 
+interface OwnDataProperty {
+  present: boolean;
+  valid: boolean;
+  value?: unknown;
+}
+
+/** Inspect persisted metadata without invoking user-defined getters/setters. */
+function ownDataProperty(record: Record<string, unknown>, key: string): OwnDataProperty {
+  try {
+    const descriptor = Object.getOwnPropertyDescriptor(record, key);
+    if (!descriptor) return { present: false, valid: true };
+    if (!descriptor.enumerable || 'get' in descriptor || 'set' in descriptor) {
+      return { present: true, valid: false };
+    }
+    return { present: true, valid: true, value: descriptor.value };
+  } catch {
+    return { present: true, valid: false };
+  }
+}
+
+function safeArrayItem(value: unknown[], index: number): OwnDataProperty {
+  try {
+    const descriptor = Object.getOwnPropertyDescriptor(value, String(index));
+    if (!descriptor || !descriptor.enumerable || 'get' in descriptor || 'set' in descriptor) {
+      return { present: Boolean(descriptor), valid: false };
+    }
+    return { present: true, valid: true, value: descriptor.value };
+  } catch {
+    return { present: true, valid: false };
+  }
+}
+
 /**
  * Bridges per-module snapshots into the organism's existing canonical
  * PersistedOrganism.system checkpoint. The module adapter is memory-only:
@@ -91,38 +123,89 @@ export class CognitiveModuleCheckpointStore implements JsonStateStore<PersistedO
     this.lastCapturedAt = 0;
     if (!persisted) return null;
 
-    const system = asRecord((persisted as unknown as Record<string, unknown>).system);
-    if (!system || !Object.prototype.hasOwnProperty.call(system, CHECKPOINT_FIELD)) return persisted;
-    const raw = asRecord(system[CHECKPOINT_FIELD]);
-    const capturedAt = raw?.capturedAt;
-    if (!raw || raw.schemaVersion !== 1 || !Array.isArray(raw.modules) ||
-        raw.modules.length > MAX_MODULES || typeof capturedAt !== 'number' ||
-        !Number.isFinite(capturedAt) || capturedAt < 0) {
+    const persistedRecord = asRecord(persisted);
+    if (!persistedRecord) return persisted;
+    const systemProperty = ownDataProperty(persistedRecord, 'system');
+    if (!systemProperty.valid) {
+      this.quarantineCheckpoint('cognitive-module-checkpoint-system-accessor-rejected');
+      return persisted;
+    }
+    const system = asRecord(systemProperty.value);
+    if (!system) return persisted;
+
+    const checkpointProperty = ownDataProperty(system, CHECKPOINT_FIELD);
+    if (!checkpointProperty.valid) {
+      this.quarantineCheckpoint('cognitive-module-checkpoint-metadata-accessor-rejected');
+      return persisted;
+    }
+    if (!checkpointProperty.present) return persisted;
+
+    const raw = asRecord(checkpointProperty.value);
+    if (!raw) {
       this.quarantineCheckpoint('cognitive-module-checkpoint-invalid');
+      return persisted;
+    }
+
+    const schemaProperty = ownDataProperty(raw, 'schemaVersion');
+    const capturedAtProperty = ownDataProperty(raw, 'capturedAt');
+    const modulesProperty = ownDataProperty(raw, 'modules');
+    const failuresProperty = ownDataProperty(raw, 'snapshotFailures');
+    const allowedKeys = new Set(['schemaVersion', 'capturedAt', 'modules', 'snapshotFailures']);
+    let unknownKey = false;
+    try {
+      unknownKey = Reflect.ownKeys(raw).some(key => typeof key !== 'string' || !allowedKeys.has(key));
+    } catch {
+      unknownKey = true;
+    }
+    const capturedAt = capturedAtProperty.value;
+    const modules = modulesProperty.value;
+    if (
+      unknownKey ||
+      !schemaProperty.valid || schemaProperty.value !== 1 ||
+      !capturedAtProperty.valid || typeof capturedAt !== 'number' ||
+      !Number.isFinite(capturedAt) || capturedAt < 0 ||
+      !modulesProperty.valid || !Array.isArray(modules) ||
+      modules.length > MAX_MODULES ||
+      !failuresProperty.valid
+    ) {
+      this.quarantineCheckpoint('cognitive-module-checkpoint-invalid-or-accessor-rejected');
       return persisted;
     }
     this.lastCapturedAt = capturedAt;
 
     try {
       const seen = new Set<string>();
-      for (const candidate of raw.modules) {
-        const envelope = asRecord(candidate);
-        const moduleId = typeof envelope?.moduleId === 'string' ? envelope.moduleId : '';
-        if (!moduleId || seen.has(moduleId)) {
-          throw new Error('cognitive-module-checkpoint-duplicate-or-invalid-id');
+      for (let index = 0; index < modules.length; index += 1) {
+        const item = safeArrayItem(modules, index);
+        const envelope = asRecord(item.value);
+        const idProperty = envelope ? ownDataProperty(envelope, 'moduleId') : { present: false, valid: false };
+        const moduleId = idProperty.value;
+        if (!item.valid || !envelope || !idProperty.valid ||
+            typeof moduleId !== 'string' || !moduleId || seen.has(moduleId)) {
+          throw new Error('cognitive-module-checkpoint-module-envelope-invalid-or-accessor-rejected');
         }
         seen.add(moduleId);
-        this.moduleStates.set(moduleId, candidate as CognitiveModuleStateEnvelopeV1);
+        this.moduleStates.set(moduleId, item.value as CognitiveModuleStateEnvelopeV1);
       }
 
-      if (Array.isArray(raw.snapshotFailures)) {
-        this.lastSnapshotFailures = raw.snapshotFailures
-          .slice(0, MAX_FAILURES)
-          .flatMap((item) => {
-            const row = asRecord(item);
-            if (typeof row?.id !== 'string' || typeof row.reason !== 'string') return [];
-            return [{ id: row.id.slice(0, 120), reason: row.reason.slice(0, 180) }];
-          });
+      if (failuresProperty.present) {
+        if (!Array.isArray(failuresProperty.value)) {
+          throw new Error('cognitive-module-checkpoint-snapshot-failures-invalid');
+        }
+        const rows = failuresProperty.value;
+        const nextFailures: Array<{ id: string; reason: string }> = [];
+        for (let index = 0; index < Math.min(rows.length, MAX_FAILURES); index += 1) {
+          const item = safeArrayItem(rows, index);
+          const row = asRecord(item.value);
+          const id = row ? ownDataProperty(row, 'id') : { present: false, valid: false };
+          const reason = row ? ownDataProperty(row, 'reason') : { present: false, valid: false };
+          if (!item.valid || !row || !id.valid || !reason.valid ||
+              typeof id.value !== 'string' || typeof reason.value !== 'string') {
+            throw new Error('cognitive-module-checkpoint-snapshot-failure-row-invalid');
+          }
+          nextFailures.push({ id: id.value.slice(0, 120), reason: reason.value.slice(0, 180) });
+        }
+        this.lastSnapshotFailures = nextFailures;
       }
     } catch (error) {
       this.quarantineCheckpoint(
