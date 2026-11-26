@@ -223,6 +223,10 @@ console.log('ORGANISM_RUNTIME_MODULE_INTEGRATION=PASS');
   );
   assert.equal(organism.cognitiveModuleDiagnostics().enabled, true);
   assert.equal(organism.cognitiveModuleDiagnostics().modules[0].status, 'failed');
+  assert.match(
+    organism.cognitiveModuleDiagnostics().activationError ?? '',
+    /optional-module-init-failure/,
+  );
   const health = await organism.cognitiveModuleHealth();
   assert.equal(health.ok, false);
   assert.equal(organism.core.operationalStatusSnapshot().tick, 0);
