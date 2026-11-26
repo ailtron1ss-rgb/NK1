@@ -2758,11 +2758,24 @@ export class OrganismRuntime {
       const cognitiveSpineDurability = await this.persistCognitiveSpineSchedule();
       const riskAwareRecoveryDurability = await this.persistRiskAwareRecovery();
       await this.checkpointWorld(true);
+      // The continuity ledger is diagnostic rather than canonical organism state,
+      // but its buffered frames are still a persisted sidecar and must be reported.
+      let continuityLedgerDurability: 'durable' | 'failed' = 'durable';
+      try {
+        await this.continuityLedger.flush();
+      } catch (error) {
+        continuityLedgerDurability = 'failed';
+        await this.journal.write('warn', 'runtime.continuity-ledger.persist-failed', {
+          tick: runtimeView.tick,
+          message: String((error as any)?.message ?? error).slice(0, 180),
+        }).catch(() => {});
+      }
       const durability = {
         core: 'durable',
         world: 'durable',
         cognitiveSpine: cognitiveSpineDurability,
         riskAwareRecovery: riskAwareRecoveryDurability,
+        continuityLedger: continuityLedgerDurability,
       } as const;
       const complete = Object.values(durability).every(status => status === 'durable');
       await this.journal.write(
