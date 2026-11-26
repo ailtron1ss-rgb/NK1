@@ -42,8 +42,8 @@ jobs:
         working-directory: runtime/neuro-kurisu
         run: node --experimental-sqlite --experimental-strip-types tests/cognitive-module-runtime.mjs
       - name: Typecheck runtime
-        run: npm run typecheck
+        run: npm --prefix runtime/neuro-kurisu run typecheck
       - name: Audit architecture boundaries
-        run: npm run audit:architecture
+        run: npm --prefix runtime/neuro-kurisu run audit:architecture
       - name: Audit canonical ownership
-        run: npm run audit:core-ownership
+        run: npm --prefix runtime/neuro-kurisu run audit:core-ownership
