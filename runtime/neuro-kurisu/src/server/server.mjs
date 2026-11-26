@@ -957,6 +957,10 @@ async function route(req, res) {
         if (req.method === 'GET' && url.pathname === '/api/organism/memory-strategy') {
             return json(res, 200, { ok: true, diagnostics: runtime.core.adaptiveMemoryStrategyReadoutDiagnostics(), readOnly: true });
         }
+        if (req.method === 'GET' && url.pathname === '/api/organism/memory/write-policy') {
+            // Assimilated write policy (neurocore-v143): read-only diagnostics.
+            return json(res, 200, { ok: true, diagnostics: runtime.core.memoryWritePolicySnapshot(), readOnly: true });
+        }
         if (req.method === 'GET' && url.pathname === '/api/organism/context-budget') {
             return json(res, 200, { ok: true, report: runtime.contextBudgetDiagnostics(), readOnly: true });
         }

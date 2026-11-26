@@ -392,6 +392,7 @@ export class PersistenceProjectionCoordinator {
     if (ctx.b334AutonomousProjectLifecycle?.snapshot) target.system.b334AutonomousProjectLifecycle=this.snapshotOnce('snap:b334AutonomousProjectLifecycle', ctx.b334AutonomousProjectLifecycle);
     target.system.advancedProjectionScheduleMetrics=ctx.advancedProjectionScheduler.metrics(target.state.tick);
     if (ctx.memoryRetentionEconomy?.snapshot) target.system.memoryRetentionEconomy=this.snapshotOnce('snap:memoryRetentionEconomy', ctx.memoryRetentionEconomy);
+    if (ctx.memoryWritePolicy?.snapshot) target.system.memoryWritePolicy=this.snapshotOnce('snap:memoryWritePolicy', ctx.memoryWritePolicy);
     if (ctx.behavioralInfluenceLedger?.snapshot) target.system.behavioralInfluenceLedger=this.snapshotOnce('snap:behavioralInfluenceLedger', ctx.behavioralInfluenceLedger);
     if (ctx.emotionAppraisal?.snapshot) target.system.emotionAppraisal=this.snapshotOnce('snap:emotionAppraisal', ctx.emotionAppraisal);
     if (ctx.worldSubsystem?.worldModelEnsemble?.snapshot) target.system.worldModelEnsemble=this.snapshotOnce('snap:worldModelEnsemble', ctx.worldSubsystem.worldModelEnsemble);

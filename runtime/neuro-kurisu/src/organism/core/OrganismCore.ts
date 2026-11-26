@@ -367,6 +367,7 @@ import { evaluatePortableSubjectFidelity, type PortableSubjectFidelityReport } f
 import { OrganismResourceAllocator, defaultOrganismResourceAllocation } from '../system/OrganismResourceAllocator.ts';
 import { UnifiedCognitiveSubstrate, defaultUnifiedCognitiveSubstrate } from './UnifiedCognitiveSubstrate.ts';
 import { MemoryRetentionEconomy, defaultMemoryRetentionEconomy } from '../system/MemoryRetentionEconomy.ts';
+import { type MemoryWritePolicySnapshot } from '../system/MemoryWritePolicy.ts';
 import { BehavioralInfluenceLedger, defaultBehavioralInfluenceLedger } from '../system/BehavioralInfluenceLedger.ts';
 import { CognitiveEventFabric, type CognitiveEventNode } from '../system/CognitiveEventFabric.ts';
 import { recordAndPersistMetacognitiveEpisode } from '../memory/MetacognitiveMemoryProjection.ts';
@@ -706,6 +707,7 @@ export interface OrganismSystemState {
     continuousCognitiveFabric?: import('../system/ContinuousCognitiveFabric.ts').ContinuousCognitiveSnapshot;
     runtimeClosure?: import('../system/RuntimeClosureLedger.ts').RuntimeClosureSnapshot;
     memoryRetentionEconomy?: import('../system/MemoryRetentionEconomy.ts').MemoryRetentionEconomyState;
+    memoryWritePolicy?: MemoryWritePolicySnapshot;
     behavioralInfluenceLedger?: import('../system/BehavioralInfluenceLedger.ts').BehavioralInfluenceLedgerState;
     emotionAppraisal?: import('../system/EmotionAppraisalEngine.ts').EmotionAppraisalState;
     worldModelEnsemble?: import('../system/WorldModelEnsembleController.ts').WorldEnsembleState;
@@ -1117,6 +1119,7 @@ function defaultPersisted(): PersistedOrganism {
             realityEvidenceLedger: undefined,
             unifiedCognitiveCycle: undefined,
             memoryRetentionEconomy: defaultMemoryRetentionEconomy(),
+            memoryWritePolicy: undefined,
             behavioralInfluenceLedger: defaultBehavioralInfluenceLedger(),
             emotionAppraisal: defaultEmotionAppraisalState(),
             worldModelEnsemble: undefined,
@@ -1714,6 +1717,7 @@ export class OrganismCore {
         this.developmentalNeural.b312ExecutiveDecisionHandoff.restore(this.persisted.system.b312ExecutiveDecisionHandoff ?? defaultB312DecisionHandoff());
         this.developmentalNeural.b313LongitudinalBehavioralDivergence.restore(this.persisted.system.b313LongitudinalBehavioralDivergence ?? defaultB313State());
         this.organismSystems.memory.memoryRetentionEconomy.restore(this.persisted.system.memoryRetentionEconomy);
+        this.organismSystems.memory.memoryWritePolicy.restore(this.persisted.system.memoryWritePolicy);
         this.organismSystems.governance.behavioralInfluenceLedger.restore(this.persisted.system.behavioralInfluenceLedger);
         this.cognitiveRuntime.cognitiveEventFabric.restore(this.persisted.system.cognitiveEventFabric);
         this.cognitiveRuntime.cognitiveResourceEconomy.restore(this.persisted.system.cognitiveResourceEconomy);
@@ -1981,7 +1985,7 @@ export class OrganismCore {
             b333AutonomousGoalGenesis: this.organismSystems.agency.b333AutonomousGoalGenesis,
             b334AutonomousProjectLifecycle: this.organismSystems.agency.b334AutonomousProjectLifecycle,
             b335AutonomousProjectHoldout: this.organismSystems.agency.b335AutonomousProjectHoldout,
-            memoryRetentionEconomy: this.organismSystems.memory.memoryRetentionEconomy, behavioralInfluenceLedger: this.organismSystems.governance.behavioralInfluenceLedger, emotionAppraisal: this.cognitiveRuntime.emotionAppraisal, memoryCausalEconomy: this.organismSystems.memory.memoryCausalEconomy,
+            memoryRetentionEconomy: this.organismSystems.memory.memoryRetentionEconomy, memoryWritePolicy: this.organismSystems.memory.memoryWritePolicy, behavioralInfluenceLedger: this.organismSystems.governance.behavioralInfluenceLedger, emotionAppraisal: this.cognitiveRuntime.emotionAppraisal, memoryCausalEconomy: this.organismSystems.memory.memoryCausalEconomy,
             activePerceptionExecutor: this.organismSystems.embodiment.activePerceptionExecutor, activePerceptionNeural: this.organismSystems.embodiment.activePerceptionNeural, worldCausalCalibration: this.organismSystems.world.worldCausalCalibration, selfModelValidation: this.organismSystems.governance.selfModelValidation, failureRecoveryCertification: this.organismSystems.governance.failureRecoveryCertification,
         };
     }
@@ -2631,6 +2635,7 @@ export class OrganismCore {
     memoryWorldCausalBridgeSnapshot() { return structuredClone(this.persisted.system.memoryWorldCausalBridge ?? this.organismSystems.memory.memoryWorldCausalBridge.snapshot()); }
     worldAgencyLearningCausalBridgeSnapshot() { return structuredClone(this.persisted.system.worldAgencyLearningCausalBridge ?? this.organismSystems.world.worldAgencyLearningCausalBridge.snapshot()); }
     memoryRetentionEconomySnapshot() { return structuredClone(this.persisted.system.memoryRetentionEconomy); }
+    memoryWritePolicySnapshot() { return structuredClone(this.organismSystems.memory.memoryWritePolicy.diagnostics()); }
     memoryCausalEconomySnapshot() { return structuredClone(this.organismSystems.memory.memoryCausalEconomy.snapshot()); }
     causalLifeGraphSnapshot() { return structuredClone(this.organismSystems.memory.causalLifeGraph.snapshot()); }
     causalLifeGraphSummary() { return this.organismSystems.memory.causalLifeGraph.summary(); }
@@ -8520,11 +8525,18 @@ export class OrganismCore {
             this.persisted.system.memoryCausalEconomy = this.organismSystems.memory.memoryCausalEconomy.snapshot();
         }
         if (memItem) {
+            // Assimilated write policy: bounded gain from channel reliability + error-regime shift.
+            // `shadow` (default) only records the decision; `active` applies it to the retention input.
+            const writePolicy = this.organismSystems.memory.memoryWritePolicy;
+            const writeDecision = writePolicy.decide({
+                tick: state.tick, id: memItem.id, salience01: memItem.salience,
+                predictionError01: memItem.predictionError, dormant: Boolean(memItem.dormant),
+            });
             const assessment = this.organismSystems.memory.memoryRetentionEconomy.assess({
                 tick: state.tick,
                 at: state.at,
                 id: memItem.id,
-                salience01: memItem.salience,
+                salience01: writeDecision.mode === 'active' ? clamp(memItem.salience * writeDecision.writeGain01) : memItem.salience,
                 identity01: memItem.identityRelevance,
                 goal01: memItem.goalRelevance,
                 social01: memItem.socialRelevance,
@@ -8545,7 +8557,7 @@ export class OrganismCore {
                 identityRelevance: clamp(memItem.identityRelevance * .96 + (emotionEpisode.appraisal.selfRelevance01 * .04)),
                 goalRelevance: clamp(memItem.goalRelevance * .94 + (emotionEpisode.appraisal.goalCongruence01 * .06)),
                 salience: clamp(memItem.salience * .82 + emotionEpisode.memorySalienceMultiplier01 * .18),
-                dormant: assessment.action !== 'retain',
+                dormant: assessment.action !== 'retain' && !(writeDecision.mode === 'active' && writeDecision.promote),
             }, `memory-economy:${assessment.consolidation}`) : null;
             if (memItem && assessment.id) {
                 this.organismSystems.memory.memoryRetentionEconomy.recordConsolidation({
@@ -8554,6 +8566,7 @@ export class OrganismCore {
                     goalGain01: clamp(emotionEpisode.appraisal.goalCongruence01 * .06), reason: assessment.reason,
                 });
                 this.organismSystems.memory.memoryRetentionEconomy.observeOutcome({ score01: assessment.score01, observedUtility01: clamp(Number(success ?? .5) * .62 + (1 - surprise) * .18 + emotionEpisode.appraisal.goalCongruence01 * .20), features: assessment.utility, learningRate01: .035 });
+                writePolicy.observeOutcome({ tick: state.tick, id: memItem.id, success01: Number(success ?? .5), predictionError01: memItem.predictionError, retentionScore01: assessment.score01 });
                 const opOpen = openOperationSemanticEvidence({ operationId: `memory-retention:${state.tick}:${memItem.id}`, owner: 'MemoryRetentionEconomy.assess', domain: 'memory', stateBefore: { id: memItem.id, score: assessment.score01, bytes: assessment.estimatedBytes }, input: { action: assessment.action, density: assessment.netValuePerByte01 }, expectedEffect: { dormant: assessment.action !== 'retain' }, evidenceKind: 'integration', openedAt: state.at });
                 const opClosed = closeOperationSemanticEvidence(opOpen, { dormant: assessment.action !== 'retain', score: assessment.score01 }, { action: assessment.action, consolidation: assessment.consolidation }, { effectMatched: Boolean(consolidated) && Boolean(assessment.action), invariant01: 1, closedAt: state.at });
                 this.persisted.system.operationSemanticEvidence = [...(this.persisted.system.operationSemanticEvidence ?? []), opClosed].slice(-256);
@@ -8561,6 +8574,7 @@ export class OrganismCore {
             if (consolidated)
                 this.memorySubsystem.fabric.projectCompatibility(48);
             this.persisted.system.memoryRetentionEconomy = this.organismSystems.memory.memoryRetentionEconomy.snapshot();
+            this.persisted.system.memoryWritePolicy = writePolicy.snapshot();
         }
         if (memItem && resultMode !== 'operational')
             this.persisted.facets.advanced.memoryFabric = this.memorySubsystem.fabric.snapshot();
