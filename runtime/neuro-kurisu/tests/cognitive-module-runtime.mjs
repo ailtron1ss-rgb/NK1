@@ -649,9 +649,10 @@ console.log('COGNITIVE_MODULE_CHECKPOINT_ATOMICITY=PASS');
   await expectReject(stoppingDependency, /active-dependent:memory\.dependent/);
   assert.equal(statusOf(host, 'core.dependency'), 'active');
   assert.equal(statusOf(host, 'memory.dependent'), 'active');
-  assert.ok(
-    events.indexOf('initialize-end:memory.dependent') < events.indexOf('quiesce:core.dependency'),
-    'dependent initialization must settle before dependency shutdown is evaluated',
+  assert.equal(
+    events.includes('quiesce:core.dependency'),
+    false,
+    'dependency deactivation must reject before quiescing while an active dependent exists',
   );
   await host.stopAll();
 }
