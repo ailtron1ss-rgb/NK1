@@ -125,4 +125,23 @@ assert.equal(narrowProposal.gate.accepted,false);
 assert.equal(narrowProposal.uniquePairedTasks,2);
 assert.equal(narrowProposal.gate.reason,'insufficient-independent-heldout-task-coverage');
 
+// An aggregate-only gain can hide a family that regressed. The canonical
+// VerifiedOutcomePromotionGate must veto promotion on the seed-clustered
+// family summaries, not only on the pooled estimate.
+const regressed = new VerifiedOutcomeLedger(manifest);
+for (let seed=1;seed<=5;seed++) for (let i=0;i<10;i++) {
+  const memory = i < 5;
+  for (const [method,passed] of [['baseline',memory],['candidate',!memory]]) {
+    assert.equal(recordSigned(regressed,'task-'+i,method,seed,passed).accepted,true);
+  }
+}
+const regressedProposal = proposeVerifiedSkillPromotion(regressed,'baseline','candidate',{
+  minPairedTasks:8,minAbsoluteGain:.05,minCompleteSeeds:3,
+});
+assert.equal(regressedProposal.gate.accepted,false);
+assert.equal(regressedProposal.gate.reason,'seed-clustered-family-regression');
+assert.equal(regressedProposal.seedClusteredEvaluation.absoluteGain,0,
+  'pooled gain is zero, so only family-level evidence can explain the rejection');
+assert.equal(regressedProposal.familyEvaluation.find(row=>row.family==='memory').absoluteGain,-1);
+
 console.log('P23_VERIFIED_SKILL_PROMOTION_PROPOSAL=PASS');

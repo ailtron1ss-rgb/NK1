@@ -47,7 +47,6 @@
     "organism/learning/TeacherStudentDistillationTrainer.ts",
     "organism/learning/VerifiedOutcomeLedgerFileStore.ts",
     "organism/learning/VerifiedOutcomeLedgerStore.ts",
-    "organism/learning/VerifiedOutcomePromotionGate.ts",
     "organism/learning/VerifiedReplayAdmission.ts",
     "organism/memory/LongMemEvalAdapter.ts",
     "organism/memory/MemoryRetrievalExperiment.ts",
