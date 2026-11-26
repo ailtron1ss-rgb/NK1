@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { AvatarStage } from "@/components/AvatarStage";
+import { DEFAULT_RENDERER_MANIFESTS } from "@/components/avatar/rendererRegistryDefaults";
 import { ChatPanel } from "@/components/ChatPanel";
 import { CompactStatus, MindHud } from "@/components/MindHud";
 import { Labs } from "@/components/Labs";
@@ -21,6 +22,16 @@ import { ConscioControlConsole } from "@/components/ConscioControlConsole";
 import { ConstitutionEvolutionConsole } from "@/components/ConstitutionEvolutionConsole";
 
 export const Route = createFileRoute("/")({ component: Home });
+
+const RENDERER_ASSET_LABELS: Record<string, string> = {
+  "cubism-model": "Деформируемый риг Cubism",
+  "svg-vector": "SVG-вектор",
+  "sprite-sheet": "Набор статичных PNG-поз",
+  gltf: "Модель GLB / glTF",
+  vrm: "Модель VRM",
+  "layered-depth-rig": "Многослойный 2.5D-риг",
+  none: "Без ассета",
+};
 
 function Home() {
   const snap = useKurisu((s) => s.snap) ?? emptySnapshot();
@@ -119,26 +130,36 @@ function Home() {
               <section className="rounded-xl border border-border bg-surface p-4" aria-label="Возможности рендереров">
                 <h3 className="font-display text-lg text-fg">Возможности рендереров</h3>
                 <p className="mt-1 text-xs leading-relaxed text-muted">Подписи отражают фактический тип рендерера, а не одинаковую степень готовности к выпуску.</p>
-                <div className="mt-3 space-y-3">
-                  <div>
-                    <p className="text-sm font-medium text-fg">Live2D · основной рендерер</p>
-                    <p className="text-xs text-muted">Деформируемый 2D-риг Cubism, выражения, движения и проекция речи.</p>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-fg">NK1 Original · векторный fallback</p>
-                    <p className="text-xs text-muted">Редактируемая SVG-сцена с ограниченной векторной анимацией, не полноценный скелетный риг.</p>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-fg">Legacy · спрайтовый fallback</p>
-                    <p className="text-xs text-muted">Статические PNG-позы с визуальными переходами; деформируемого рига нет.</p>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-fg">3D · предварительный просмотр</p>
-                    <p className="text-xs text-muted">Кандидат VRM/GLB; визуальная, мобильная и контактная приёмка остаются отдельными этапами.</p>
-                  </div>
-                  <div className="border-t border-border pt-3">
+                <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                  {DEFAULT_RENDERER_MANIFESTS.map((renderer) => (
+                    <article key={renderer.rendererId} className="min-w-0 rounded-lg border border-border bg-elevated/70 p-3">
+                      <div className="flex flex-wrap items-start justify-between gap-2">
+                        <h4 className="text-sm font-medium text-fg">{renderer.label}</h4>
+                        <span className={renderer.productionReady
+                          ? "rounded-full border border-border px-2 py-0.5 text-[9px] text-muted"
+                          : "rounded-full border border-amber-400/30 bg-amber-400/10 px-2 py-0.5 text-[9px] text-amber-200"
+                        }>
+                          {renderer.productionReady ? "Доступен в селекторе" : "Preview · не production"}
+                        </span>
+                      </div>
+                      <p className="mt-2 text-xs text-muted">
+                        {RENDERER_ASSET_LABELS[renderer.assetKind]} · {renderer.channels.length > 0
+                          ? `${renderer.channels.length} управляемых каналов`
+                          : "Нет управляемых каналов"}
+                      </p>
+                      <p className="mt-1 text-[10px] leading-relaxed text-subtle">
+                        {renderer.expressions.length} выражений · речь/viseme {renderer.supportsSpeechVisemes ? "поддерживается" : "не поддерживается"} · физика {renderer.supportsPhysics ? "есть" : "нет"}
+                      </p>
+                      {!renderer.productionReady ? (
+                        <p className="mt-2 border-t border-border pt-2 text-[10px] leading-relaxed text-muted">
+                          Требуется визуальная, мобильная и лицензионная приёмка.
+                        </p>
+                      ) : null}
+                    </article>
+                  ))}
+                  <div className="rounded-lg border border-dashed border-border p-3 sm:col-span-2">
                     <p className="text-sm font-medium text-muted">2.5D · пока недоступен</p>
-                    <p className="text-xs text-muted">Ожидает готовой многослойной графики, масок, pivot-точек и проверки на устройствах.</p>
+                    <p className="mt-1 text-xs text-muted">Ожидает готовой многослойной графики, масок, pivot-точек и проверки на устройствах.</p>
                   </div>
                 </div>
               </section>
