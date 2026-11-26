@@ -130,14 +130,14 @@ try {
   });
   const result = await workspace.prepare({
     baseSha: candidate.baseRuntimeSha,
-    files: baseFile,
+    files: [baseFile],
     edits: [{
       path: baseFile.path,
       expectedBeforeSha256: hashSourceCandidateTextV1(baseFile.content),
       replacement,
     }],
   });
-  assert.equal(result.created, true);
+  assert.equal(result.created, true, result.reason ?? 'candidate workspace should be admitted');
   assert.equal(result.executionStatus, 'not-executed');
   assert.equal(hostCalls, 1);
   assert.equal(hostRequest.baseSha, candidate.baseRuntimeSha);
@@ -161,7 +161,7 @@ try {
   });
   const wrongBase = await wrongBaseWorkspace.prepare({
     baseSha: 'c'.repeat(40),
-    files: baseFile,
+    files: [baseFile],
     edits: [{ path: baseFile.path, expectedBeforeSha256: hashSourceCandidateTextV1(baseFile.content), replacement }],
   });
   assert.equal(wrongBase.created, false);
@@ -180,7 +180,7 @@ try {
   });
   const rejected = await rejectedWorkspace.prepare({
     baseSha: candidate.baseRuntimeSha,
-    files: baseFile,
+    files: [baseFile],
     edits: [{ path: baseFile.path, expectedBeforeSha256: hashSourceCandidateTextV1(baseFile.content), replacement }],
   });
   assert.equal(rejected.created, false);
@@ -200,7 +200,7 @@ try {
   });
   const thrown = await throwingWorkspace.prepare({
     baseSha: candidate.baseRuntimeSha,
-    files: baseFile,
+    files: [baseFile],
     edits: [{ path: baseFile.path, expectedBeforeSha256: hashSourceCandidateTextV1(baseFile.content), replacement }],
   });
   assert.equal(thrown.created, false);
