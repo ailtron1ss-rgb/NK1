@@ -1,4 +1,5 @@
 import { connectCognitiveModuleRuntimeCheckpoint } from './CognitiveModuleCheckpointStore.ts';
+import { sha256Stable } from './StableSerialization.ts';
 import type { CognitiveModuleCheckpointStore } from './CognitiveModuleCheckpointStore.ts';
 import type { JsonStateStore } from '../persistence/FileStateStore.ts';
 import type { PersistedOrganism } from './OrganismCore.ts';
@@ -56,6 +57,8 @@ export interface CognitiveModuleStateEnvelopeV1 {
   stateSchemaVersion: number;
   capturedAt: number;
   state: unknown;
+  /** SHA-256 over the stable, normalized envelope; optional only for legacy snapshots. */
+  stateHashSha256?: string;
 }
 
 export interface CognitiveModuleStateStore {
@@ -268,14 +271,26 @@ function validateEnvelope(
   if (!Number.isFinite(envelope.capturedAt) || envelope.capturedAt < 0) {
     throw fail('module-state-time-invalid', moduleId);
   }
-  return {
-    schemaVersion: 1,
+  const normalized = {
+    schemaVersion: 1 as const,
     moduleId,
     moduleVersion: envelope.moduleVersion,
     stateSchemaVersion: envelope.stateSchemaVersion,
     capturedAt: envelope.capturedAt,
     state: cloneBoundedState(envelope.state, maxStateBytes),
   };
+  if (envelope.stateHashSha256 !== undefined) {
+    if (typeof envelope.stateHashSha256 !== 'string' || !/^[a-f0-9]{64}$/.test(envelope.stateHashSha256)) {
+      throw fail('module-state-hash-invalid', moduleId);
+    }
+    if (sha256Stable(normalized) !== envelope.stateHashSha256) {
+      throw fail('module-state-hash-mismatch', moduleId);
+    }
+    return { ...normalized, stateHashSha256: envelope.stateHashSha256 };
+  }
+  // Pre-digest V1 envelopes remain readable; the next successful snapshot
+  // upgrades them to the integrity-sealed representation.
+  return normalized;
 }
 
 function isModule(value: unknown): value is CognitiveModule {
@@ -560,17 +575,18 @@ export class CognitiveModuleRuntime {
       }
 
       const state = cloneBoundedState(await module.snapshot(), this.maxStateBytes);
-      envelope = {
-        schemaVersion: 1,
+      const envelopeBase = {
+        schemaVersion: 1 as const,
         moduleId: id,
         moduleVersion: record.manifest.version,
         stateSchemaVersion: record.manifest.stateSchemaVersion,
         capturedAt: this.clock(),
         state,
       };
-      if (!Number.isFinite(envelope.capturedAt) || envelope.capturedAt < 0) {
+      if (!Number.isFinite(envelopeBase.capturedAt) || envelopeBase.capturedAt < 0) {
         throw fail('module-state-time-invalid', id);
       }
+      envelope = { ...envelopeBase, stateHashSha256: sha256Stable(envelopeBase) };
       if (this.stateStore) {
         try {
           await this.stateStore.save(envelope);
@@ -688,13 +704,17 @@ export class CognitiveModuleRuntime {
           if (!Number.isFinite(capturedAt) || capturedAt < 0) {
             throw fail('module-state-time-invalid', id);
           }
-          const envelope: CognitiveModuleStateEnvelopeV1 = {
-            schemaVersion: 1,
+          const envelopeBase = {
+            schemaVersion: 1 as const,
             moduleId: record.manifest.id,
             moduleVersion: record.manifest.version,
             stateSchemaVersion: record.manifest.stateSchemaVersion,
             capturedAt,
             state,
+          };
+          const envelope: CognitiveModuleStateEnvelopeV1 = {
+            ...envelopeBase,
+            stateHashSha256: sha256Stable(envelopeBase),
           };
           if (this.stateStore) await this.stateStore.save(envelope);
           captured.push(id);
