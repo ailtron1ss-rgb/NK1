@@ -175,3 +175,12 @@ No device performance or physical durability claim is made.
 - This focused runner reports syntax-only validation of 748 TypeScript files because its workflow does not install the TypeScript compiler. Semantic `tsc` remains separately required from the checkpoint-specific and module-audit workflows.
 - This closes the observed test-order/shutdown regression on the focused run. It does not prove multi-process journal locking or physical power-loss safety.
 - The full PR matrix for the latest head must still complete with no failures; source synchronization, joint #1170/#1174 integration, independent review and Android/Termux soak remain open.
+
+
+### Follow-up: watchdog restart fixture — 2026-11-26
+
+- The subsequent full matrix exposed the same un-awaited async shutdown in `tests/big-pass-324-core-watchdog.mjs` (run [45796551314](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45796551314), step `Existing Core recovery-watchdog restart regression`).
+- The fixture now awaits `r1.stop()` and `r2.stop()` before reopening or deleting the shared journal paths. Commit: `a9a8116f2e738ae501ce5f5caa7356e0bb76c234`.
+- Exact-head workflow [NK1 P0 spine-only verified SelfAuthorship runtime parity](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45796759687) completed **SUCCESS** on that commit. The Core recovery-watchdog restart regression, subsequent runtime restart persistence regression and B306 attribution all passed.
+- The workflow's local typecheck is syntax-only (748 TypeScript files); semantic `tsc` remains a separate acceptance gate.
+- The latest full PR matrix was still running when this checkpoint was written; it must finish without failures on the final head.
