@@ -454,9 +454,14 @@ check('provenance: a synthetic fixture can never become a real-world observation
   assert.equal(liar.observation.isRealCapture, false, 'self-declared reality is discarded');
 });
 
-check('provenance: model output stays model-output in the world model', () => {
-  assert.equal(observationEvidenceKind('device-capture'), 'observed');
-  assert.equal(observationEvidenceKind('host-interface'), 'observed');
+check('provenance: physical capture requires the trusted host-attestation result', () => {
+  assert.equal(observationEvidenceKind('device-capture'), 'unresolved',
+    'a provenance string alone cannot assert a physical capture');
+  assert.equal(observationEvidenceKind('host-interface'), 'unresolved',
+    'a host-interface label alone cannot assert a physical sample');
+  assert.equal(observationEvidenceKind('device-capture', true), 'observed');
+  assert.equal(observationEvidenceKind('host-interface', true), 'observed');
+  assert.equal(observationEvidenceKind('device-capture', false), 'unresolved');
   assert.equal(observationEvidenceKind('provider-model-output'), 'model-output');
   assert.equal(observationEvidenceKind('derived'), 'derived');
   assert.equal(observationEvidenceKind('synthetic-fixture'), 'unresolved');
