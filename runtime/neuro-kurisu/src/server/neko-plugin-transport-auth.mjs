@@ -75,3 +75,54 @@ export function authorizeNekoPluginTransport({
     ? { allowed: true, pluginId: pluginIdHeader }
     : { allowed: false };
 }
+
+
+/**
+ * Execute the authenticated HTTP transport contract without depending on the
+ * server router. A request may enter the durable ingress only after credentials
+ * and envelope identities match, and the first transport remains read-only.
+ */
+export async function handleAuthenticatedNekoPluginPush({
+  credentials,
+  pluginIdHeader,
+  tokenHeader,
+  input,
+  ingress,
+} = {}) {
+  if (!(credentials instanceof Map) || credentials.size === 0
+      || !ingress || typeof ingress.handle !== 'function') {
+    return { status: 503, body: { ok: false, error: 'neko-plugin-transport-not-configured' } };
+  }
+
+  if (!input || typeof input !== 'object' || Array.isArray(input)
+      || !input.payload || typeof input.payload !== 'object' || Array.isArray(input.payload)) {
+    return { status: 400, body: { ok: false, error: 'invalid-neko-plugin-envelope' } };
+  }
+
+  const transportAuth = authorizeNekoPluginTransport({
+    credentials,
+    pluginIdHeader,
+    tokenHeader,
+    identity: input.identity,
+    payload: input.payload,
+  });
+  if (!transportAuth.allowed) {
+    return { status: 401, body: { ok: false, error: 'neko-plugin-auth-denied' } };
+  }
+
+  // Until a durable presentation receipt and host presenter are wired, never
+  // accept a request that expects a user-visible answer, chat or HUD side effect.
+  if (input.payload.ai_behavior !== 'read'
+      || (input.payload.visibility !== undefined
+        && (!Array.isArray(input.payload.visibility) || input.payload.visibility.length !== 0))) {
+    return { status: 409, body: { ok: false, error: 'neko-plugin-presentation-transport-not-configured' } };
+  }
+
+  const result = await ingress.handle(input);
+  const status = result.accepted ? 200
+    : result.errorCode === 'message-id-conflict' || result.errorCode === 'message-recovery-required' ? 409
+    : result.errorCode === 'plugin-not-allowed' || result.errorCode === 'policy-denied' ? 403
+    : result.errorCode === 'receipt-ledger-full' || result.errorCode === 'message-processing-failed' ? 503
+    : 400;
+  return { status, body: { ok: result.accepted, ...result } };
+}
