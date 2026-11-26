@@ -406,6 +406,10 @@ export class CognitiveModuleRuntime {
   }
 
   async activate(id: string): Promise<CognitiveModuleListItem> {
+    return this.withSnapshotBarrier(() => this.activateInternal(id));
+  }
+
+  private async activateInternal(id: string): Promise<CognitiveModuleListItem> {
     const record = this.records.get(id);
     if (!record) throw fail('unknown-cognitive-module', id);
     if (record.status === 'active') return this.toListItem(record);
