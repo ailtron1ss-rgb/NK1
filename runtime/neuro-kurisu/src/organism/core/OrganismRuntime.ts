@@ -2814,44 +2814,60 @@ export class OrganismRuntime {
     // All queued cognitive work has drained, so the final flush is now serialized
     // with the same queue used by step()/tool calls.  This closes the crash/restart
     // window without making every cycle pay a synchronous disk write.
-    await this.enqueue(async () => {
-      if (this.cognitiveModuleRuntime) {
-        try {
-          await this.cognitiveModuleRuntime.stopAll();
-        } catch (error) {
-          moduleStopError = error;
-          await this.journal.write('error', 'runtime.cognitive-modules.stop-failed', {
-            message: String(error instanceof Error ? error.message : error).slice(0, 180),
-          }).catch(() => {});
+    let durableStopError: unknown = null;
+    try {
+      await this.enqueue(async () => {
+        if (this.cognitiveModuleRuntime) {
+          try {
+            await this.cognitiveModuleRuntime.stopAll();
+          } catch (error) {
+            moduleStopError = error;
+            await this.journal.write('error', 'runtime.cognitive-modules.stop-failed', {
+              message: String(error instanceof Error ? error.message : error).slice(0, 180),
+            }).catch(() => {});
+          }
         }
-      }
-      // Capture the closure before the single durable flush. A previous implementation
-      // flushed twice here, which is disproportionately expensive because a full core
-      // projection serializes several MB of state on a phone.
-      const runtimeView = this.core.runtimeClosureOperationalSnapshot();
-      this.runtimeClosure.durable({
-        at: Date.now(),
-        tick: runtimeView.tick,
-        stateTick: runtimeView.tick,
-        replaySignature: runtimeView.replaySignature,
-        continuousTick: runtimeView.continuous?.tick,
-        continuityProcessed: runtimeView.continuous?.processed,
-        memoryCount: runtimeView.memoryCount,
+        // Capture the closure before the single durable flush. A previous implementation
+        // flushed twice here, which is disproportionately expensive because a full core
+        // projection serializes several MB of state on a phone.
+        const runtimeView = this.core.runtimeClosureOperationalSnapshot();
+        this.runtimeClosure.durable({
+          at: Date.now(),
+          tick: runtimeView.tick,
+          stateTick: runtimeView.tick,
+          replaySignature: runtimeView.replaySignature,
+          continuousTick: runtimeView.continuous?.tick,
+          continuityProcessed: runtimeView.continuous?.processed,
+          memoryCount: runtimeView.memoryCount,
+        });
+        this.core.setRuntimeClosure(this.runtimeClosure.snapshot());
+        await this.core.flush();
+        await this.persistCognitiveSpineSchedule();
+        await this.persistRiskAwareRecovery();
+        await this.checkpointWorld(true);
+        await this.journal.write('info', 'runtime.stop.durable', {
+          tick: runtimeView.tick,
+          worldTick: this.environment.snapshot().tick,
+        }).catch(() => {});
       });
-      this.core.setRuntimeClosure(this.runtimeClosure.snapshot());
-      await this.core.flush();
-      await this.persistCognitiveSpineSchedule();
-      await this.persistRiskAwareRecovery();
-      await this.checkpointWorld(true);
-      await this.journal.write('info', 'runtime.stop.durable', {
-        tick: runtimeView.tick,
-        worldTick: this.environment.snapshot().tick,
+    } catch (error) {
+      durableStopError = error;
+      await this.journal.write('error', 'runtime.stop.durable-failed', {
+        message: String(error instanceof Error ? error.message : error).slice(0, 180),
       }).catch(() => {});
-    });
+    }
 
+    // A rejected final checkpoint must not skip cleanup of the continuity ledger.
+    // Preserve both the module lifecycle failure and the durable checkpoint error.
     await this.continuityLedger.flush().catch(() => {});
     await this.continuityLedger.close();
-    if (moduleStopError) throw moduleStopError;
+    const stopErrors = [moduleStopError, durableStopError].filter(
+      (error): error is Error => error instanceof Error,
+    );
+    if (stopErrors.length > 1) {
+      throw new AggregateError(stopErrors, 'runtime-stop-incomplete');
+    }
+    if (stopErrors.length === 1) throw stopErrors[0];
   }
 
   private async persistCognitiveSpineSchedule(): Promise<void> {
