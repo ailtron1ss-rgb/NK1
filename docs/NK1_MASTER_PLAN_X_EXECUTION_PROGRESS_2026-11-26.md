@@ -34,14 +34,14 @@
 |---|---|---:|---|---:|
 | T3-020 | Current-cycle workspace | [#1186](https://github.com/ailtron1ss-rgb/NK1/pull/1186) | `a29e67f6…` | 73/73 PASS |
 | T3-022 | CEF monotonic order / logical time | [#1189](https://github.com/ailtron1ss-rgb/NK1/pull/1189) — **MERGED** | `9b131d1b…` → `29ab13c9…` | 66/66 PR-head PASS; post-merge 5/30 PASS, остальные running/queued |
-| T3-029 | Runtime checkpoint generation | [#1170](https://github.com/ailtron1ss-rgb/NK1/pull/1170) | `2095bce3…` | 75/75 PASS |
+| T3-029 | Runtime checkpoint generation | [#1170](https://github.com/ailtron1ss-rgb/NK1/pull/1170) — Draft, rebased | `c0f7a3e5…` | old head 75/75 PASS; new head 26 runs queued/in progress |
 | T3-031 | Crash-safe continuity journal | [#1174](https://github.com/ailtron1ss-rgb/NK1/pull/1174) | `e1f83557…` | 76/76 PASS |
 | T3-050 | Initiative lease / retry | [#1181](https://github.com/ailtron1ss-rgb/NK1/pull/1181) | `974c885b…` | 77/78; 1 failure |
 | T3-052 | Durable obligations outbox | [#1182](https://github.com/ailtron1ss-rgb/NK1/pull/1182) | `fb1c5ebb…` | 81/81 PASS |
 | T3-086 | World → appraisal/attention | [#1175](https://github.com/ailtron1ss-rgb/NK1/pull/1175) | `0d3b3824…` | 46/49; 3 failures |
 | T3-118 | Plugin/cognitive immune quarantine | [#1169](https://github.com/ailtron1ss-rgb/NK1/pull/1169) | `ed40b0a6…` | 23/23 PASS, but stacked on #1170 |
 
-Обновление после merge: #1189 слит в `workpass70-source` коммитом `29ab13c98b3a603bc1667a99fffb8ee33dc9560d`. Post-merge Actions на этом exact SHA: 30 всего, 5 success, 0 failures, 19 in progress, 6 queued на момент последней проверки. Пока workflow не завершатся, T3-022 остаётся `MERGED_AWAITING_POST_MERGE_CI`, не `VERIFIED_COMPLETE`. Остальные PR остаются открыты: #1186, #1170, #1174, #1182 — Draft; #1169 зависит от #1170; #1175 имеет `mergeable=false` и три ошибки; #1181 имеет одну ошибку.
+Обновление после merge: #1189 слит в `workpass70-source` коммитом `29ab13c98b3a603bc1667a99fffb8ee33dc9560d`. Post-merge Actions на этом exact SHA: 30 всего, 5 success, 0 failures, 19 in progress, 6 queued на момент последней проверки. Пока workflow не завершатся, T3-022 остаётся `MERGED_AWAITING_POST_MERGE_CI`, не `VERIFIED_COMPLETE`. Остальные PR остаются открыты: #1186, #1170, #1174, #1182 — Draft. #1170 синхронизирован с новым source через двухродительский merge-коммит `c0f7a3e5…`; его 26 новых Actions ещё выполняются. У PR #1170 остаются независимое ревью, semantic TypeScript typecheck и физический Android soak.  #1169 зависит от #1170; #1175 имеет `mergeable=false` и три ошибки; #1181 имеет одну ошибку.
 
 ## Исправления структуры волн
 
