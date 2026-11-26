@@ -46,9 +46,15 @@ function ownData(record:PlainRecord,key:string):unknown {
 }
 function safeCounter(value:unknown):value is number{return typeof value==='number'&&Number.isSafeInteger(value)&&value>=0;}
 function hasExactKeys(value:PlainRecord, expected:readonly string[]):boolean {
-  const actual=Object.keys(value).sort();
-  const wanted=[...expected].sort();
-  return actual.length===wanted.length&&actual.every((key,index)=>key===wanted[index]);
+  try {
+    const actual=Object.keys(value).sort();
+    const wanted=[...expected].sort();
+    return actual.length===wanted.length&&actual.every((key,index)=>key===wanted[index]);
+  } catch {
+    // A Proxy can pass the prototype check and still throw during own-key
+    // enumeration. Treat hostile/exotic input as invalid checkpoint data.
+    return false;
+  }
 }
 function sha256(value:Buffer):string{return createHash('sha256').update(value).digest('hex');}
 export function runtimeCheckpointOwnerHash(value:unknown):string {
