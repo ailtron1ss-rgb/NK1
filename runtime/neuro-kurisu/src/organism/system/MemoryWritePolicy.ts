@@ -191,16 +191,20 @@ export class MemoryWritePolicy {
   /**
    * Bounded multiplier for byte-budget eviction ranking: memories whose channel is reliable
    * and whose prediction error has been low are protected (weight > 1), noisy ones are
-   * evicted earlier (weight < 1). Unknown memories get exactly 1, so the default ordering is
-   * untouched. Only `active` returns a value other than 1; `shadow` records how often it would
-   * have changed the ranking.
+   * evicted earlier (weight < 1). Memories with no write-time observation get exactly 1, so the
+   * default ordering is untouched; with one observation the effect is scaled to a third. Only
+   * `active` returns a value other than 1; `shadow` records how often it would have.
    */
   evictionWeight01(id: string): number {
     const history = this.perId.get(String(id));
-    if (!history || history.observations < 3) return 1;
+    if (!history || history.observations < 1) return 1;
     const reliability = this.uncertainty.reliability01(this.channel);
     const quality01 = clamp01(0.5 * reliability + 0.5 * (1 - history.lastError01));
-    const weight = clamp(0.85 + 0.35 * quality01 - 0.15 * history.lastUpdate01, 0.85, 1.2);
+    const target = clamp(0.85 + 0.35 * quality01 - 0.15 * history.lastUpdate01, 0.85, 1.2);
+    // A memory usually carries a single write-time observation, so scale the effect by how
+    // much evidence exists; a uniform multiplier would not change eviction order at all.
+    const confidence = Math.min(1, history.observations / 3);
+    const weight = 1 + (target - 1) * confidence;
     if (this.mode === 'off') return 1;
     if (Math.abs(weight - 1) < 0.01) return 1;
     if (this.mode === 'active') { this.evictionAdjusted++; return weight; }

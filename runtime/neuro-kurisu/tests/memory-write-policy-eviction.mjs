@@ -78,6 +78,14 @@ assert.ok(Number.isFinite(boundedResult.usedBytes));
   assert.equal(restored.diagnostics().evictionAdjusted, activeAdjusted, 'counters must survive restore');
   assert.equal(restored.evictionWeight01('stable'), stableWeight, 'weights must survive restore');
 
+  // One write-time observation carries real but weak evidence: the effect is scaled to a third
+  // instead of being ignored, because a uniform multiplier would not change eviction order.
+  const single = new MemoryWritePolicy({ mode: 'active' });
+  single.observeOutcome({ tick: 0, id: 'once', success01: 0.8, predictionError01: 0.05, retentionScore01: 0.6 });
+  const singleWeight = single.evictionWeight01('once');
+  assert.ok(singleWeight > 1 && singleWeight < stableWeight, `one observation must be weaker than six, got ${singleWeight}`);
+  assert.ok(single.evictionWeight01('never-seen') === 1, 'unobserved memory must keep the default order');
+
   const off = new MemoryWritePolicy({ mode: 'off' });
   for (let tick = 0; tick < 6; tick++) off.observeOutcome({ tick, id: 'stable', success01: 0.8, predictionError01: 0.05, retentionScore01: 0.6 });
   assert.equal(off.evictionWeight01('stable'), 1);
