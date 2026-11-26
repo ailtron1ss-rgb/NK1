@@ -7,7 +7,8 @@ import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { OrganismRuntime } from '../organism/core/OrganismRuntime.ts';
 import { createFileBackedPluginMessageIngress } from '../organism/integration/neko/PluginMessageIngressHost.ts';
-import { handleAuthenticatedNekoPluginPush, parseNekoPluginCredentials } from './neko-plugin-transport-auth.mjs';
+import { handleNekoPluginPushHttpRequest } from './neko-plugin-http-route.mjs';
+import { parseNekoPluginCredentials } from './neko-plugin-transport-auth.mjs';
 import { NmcNLocalHttpPort } from '../organism/integration/nmcn/NmcNLocalHttpPort.ts';
 import { buildNmcNRuntimeInput, evaluateNmcNRuntime } from '../organism/integration/nmcn/NmcNRuntimeBridge.ts';
 import { Mem0PlatformAdapter } from '../organism/integration/mem0/Mem0PlatformAdapter.ts';
@@ -677,16 +678,11 @@ async function route(req, res) {
         if (url.pathname === '/health' || url.pathname === '/api/health') {
             return json(res, 200, { ok: true, ready: runtimeReady, service: 'neuro-kurisu', version: RELEASE_CONTRACT.application, organismCore: RELEASE_CONTRACT.organismCore, schemaVersion: RELEASE_CONTRACT.stateSchema, tick: runtimeReady ? runtime.core.operationalStatusSnapshot().tick : 0, uptimeSec: Math.round(process.uptime()), bodySource: runtimeReady ? runtime.embodiment.snapshot().telemetry.source : 'initializing', actionLedger: runtimeReady ? runtime.core.actionExecutionLedgerMetrics() : null, language: languageCapabilitySnapshot() });
         }
-        if (req.method === 'POST' && url.pathname === '/api/neko/messages/push') {
-            if (!runtimeReady)
-                return json(res, 503, { ok: false, error: 'organism-runtime-not-ready' });
-            const input = await body(req);
-            const response = await handleAuthenticatedNekoPluginPush({
+        if (url.pathname === '/api/neko/messages/push') {
+            const response = await handleNekoPluginPushHttpRequest(req, {
                 credentials: NEKO_PLUGIN_CREDENTIALS,
-                pluginIdHeader: req.headers['x-neko-plugin-id'],
-                tokenHeader: req.headers['x-neko-plugin-token'],
-                input,
                 ingress: nekoPluginIngress,
+                ready: runtimeReady,
             });
             return json(res, response.status, response.body);
         }
