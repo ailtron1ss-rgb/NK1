@@ -94,13 +94,13 @@
     "verifiedComplete": 0,
     "total": 144,
     "verifiedCompletePercent": 0,
-    "audited": 9,
-    "auditedPercent": 6.25,
+    "audited": 8,
+    "auditedPercent": 5.56,
     "exactHeadGreenOnPR": 6,
     "exactHeadGreenPercent": 4.17,
     "exactHeadFailures": 2,
-    "notAudited": 135,
-    "note": "These are the initial exact-head/PR audit counts, not a claim that the other work is absent from source. No T3 item is counted as complete in this first pass because no audited item has yet been shown to satisfy the full canonical-source + integration + acceptance ladder."
+    "notAudited": 136,
+    "note": "These are the initial exact-head/PR audit counts, not a claim that the other work is absent from source. Eight task IDs were audited: six have green Actions on PR heads but remain outside canonical source (one of them is stacked), and two have failing Actions. No T3 item is counted as complete because none of the audited items has yet been shown to satisfy the full canonical-source + integration + acceptance ladder."
   },
   "tasks": [
     {
