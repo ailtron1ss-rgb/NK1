@@ -366,7 +366,7 @@ console.log(JSON.stringify({
   assert.equal(snapshot.uncertainty01, 0.5);
   assert.equal(snapshot.confidence01, 0);
   assert.equal(snapshot.entities.length, 1);
-  assert.equal(snapshot.entities[0].confidence01, 1);
+  assert.equal(snapshot.entities[0].confidence01, 0, 'out-of-range persisted confidence fails closed to the safe default');
   assert.equal(snapshot.entities[0].present01, 0);
   assert.equal(snapshot.entities[0].firstSeenAt, 1_000);
   assert.equal(snapshot.entities[0].lastSeenAt, 1_000);
