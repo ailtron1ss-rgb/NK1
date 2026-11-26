@@ -1,5 +1,6 @@
 import type { AvatarViewMode } from "@/organism/store";
-import type { AvatarAssetKind, BodyRendererCapabilityManifest } from "./rendererCapabilityManifest";
+import type { BodyRendererCapabilityManifest } from "./rendererCapabilityManifest";
+import { AVATAR_ASSET_KIND_LABELS } from "./rendererPresentation";
 import { DEFAULT_RENDERER_MANIFESTS } from "./rendererRegistryDefaults.ts";
 
 /**
@@ -12,16 +13,6 @@ export const SETTINGS_RENDERER_ID_BY_VIEW_MODE: Readonly<Record<AvatarViewMode, 
   original: "nk1-original-svg-2d",
   legacy: "nk1-legacy-sprites-2d",
   "3d": "nk1-three-vrm3d",
-};
-
-const ASSET_KIND_LABELS: Record<AvatarAssetKind, string> = {
-  none: "без отдельного ассета",
-  "sprite-sheet": "статичные PNG-позы",
-  "svg-vector": "векторная SVG-сцена",
-  "cubism-model": "деформируемый риг Cubism",
-  "layered-depth-rig": "многослойный 2.5D-риг",
-  gltf: "модель GLB / glTF",
-  vrm: "гуманоидная модель VRM",
 };
 
 export interface SettingsRendererOption {
@@ -57,7 +48,7 @@ export function buildSettingsRendererOptions(
         rendererId,
         label: productionReady ? renderer.label : `${renderer.label} · предпросмотр`,
         description: [
-          ASSET_KIND_LABELS[renderer.assetKind],
+          AVATAR_ASSET_KIND_LABELS[renderer.assetKind],
           `${renderer.channels.length} управляемых каналов`,
           `${renderer.expressions.length} выражений`,
           `речь и viseme: ${renderer.supportsSpeechVisemes ? "поддерживаются" : "не поддерживаются"}`,
