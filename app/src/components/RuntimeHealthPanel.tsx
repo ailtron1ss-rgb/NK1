@@ -128,7 +128,7 @@ export function RuntimeHealthPanel() {
   return (
     <section className="rounded-xl border border-border bg-surface p-4 md:p-5" aria-label="Состояние runtime и восстановление действий">
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div><p className="text-xs uppercase tracking-widest text-subtle">Операции runtime</p><h2 className="font-display text-xl text-fg">Состояние и восстановление</h2><p className="mt-1 text-xs text-muted">Операционные показатели, непрерывность сессии и неподтверждённые результаты внешних действий.</p></div>
+        <div><p className="text-xs uppercase tracking-widest text-subtle">Операции runtime</p><h2 className="font-display text-xl text-fg">Здоровье и восстановление</h2><p className="mt-1 text-xs text-muted">Операционные показатели, непрерывность сессии и неподтверждённые результаты внешних действий.</p></div>
         <div className="flex gap-1">
           <Button type="button" variant="ghost" size="sm" disabled={busy} onClick={() => void refresh()}><RefreshCw className="mr-1.5 size-3.5" />Обновить</Button>
           <Button type="button" variant="ghost" size="sm" disabled={!exportData} onClick={exportSnapshot}><Download className="mr-1.5 size-3.5" />Экспортировать</Button>
