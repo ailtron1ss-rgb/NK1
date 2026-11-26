@@ -114,7 +114,7 @@ function Home() {
       ) : null}
 
       {section === "avatar" ? (
-        <section className="mx-auto max-w-7xl space-y-4" aria-label="Avatar">
+        <section className="mx-auto max-w-7xl space-y-4" aria-label="Аватар">
           <header>
             <p className="text-xs uppercase tracking-widest text-subtle">Воплощение · Панель рендереров</p>
             <h2 className="font-display text-2xl text-fg md:text-3xl">Курису · Аватар</h2>
