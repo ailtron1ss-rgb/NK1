@@ -65,3 +65,39 @@ The real-runtime checkpoint regression exercises generation advancement across r
 - Independent review of PR #1170.
 - Real Android/Termux soak: checkpoint payload size, p50/p95 latency, peak heap, cold restart and storage/power-loss recovery.
 - Keep Draft until those review and device gates are complete. No merge or release is implied by the source changes.
+
+---
+
+## Live verification addendum — 2026-11-26
+
+This addendum supersedes the earlier “in progress / pending” CI wording above; the earlier section is retained as the historical checkpoint record.
+
+### Exact implementation head
+
+- PR: [#1170](https://github.com/ailtron1ss-rgb/NK1/pull/1170)
+- Branch: `aspect/p0-runtime-checkpoint-envelope-20261124`
+- Exact head: `b52bec76dc98e09430ed37b8a9d387e5bb636109`
+- PR base at verification: `workpass70-source` @ `29ab13c98b3a603bc1667a99fffb8ee33dc9560d`
+- PR state: Open / Draft; GitHub reported mergeable and clean at the time of verification.
+- PR exact-head checks: **76/76 completed SUCCESS**, zero failed, cancelled, or pending.
+
+### Focused runtime proof
+
+The exact-head run [NK1 Cognitive Core Consolidation #647](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45770053994) completed successfully. Its steps explicitly show:
+- Runtime checkpoint generation and mixed-sidecar recovery — completed successfully.
+- Runtime checkpoint projection failure matrix and invalid-envelope quarantine — completed successfully.
+- Pinned TypeScript 5.8.3 / Node typings installation — completed successfully.
+- Runtime typecheck — completed successfully.
+
+The exact-head [Module Dependency Audit #1558](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45770054037) also completed its “Typecheck runtime” step successfully. The broader [Core regression validation #8591](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45770053761) completed runtime typecheck, app typecheck and app build successfully.
+
+### Current-source relationship and integration status
+
+The live canonical source has advanced to `workpass70-source` @ `7e601680c765d6dc94e51e4c8f5e729b48a6f56e`. Compared with PR #1170's base, the current source is six commits ahead and has no commits behind that base. Therefore the PR's clean mergeability signal is not a substitute for synchronizing it against the current source and re-running exact-head CI before integration.
+
+### Remaining acceptance gates
+
+- Independent code review of PR #1170.
+- Reconcile/synchronize with the current `workpass70-source` head and rerun all required checks on the resulting exact head.
+- Real Android/Termux measurement: checkpoint payload and compressed bytes, p50/p95 save latency, peak heap, cold restart, and storage/power-loss recovery.
+- Keep PR #1170 Draft until these gates are addressed. No merge, canonical-source change, or Release publication is claimed by this addendum.
