@@ -37,7 +37,7 @@ const RIG_COPY: Record<AvatarRigClass, { label: string; description: string }> =
   },
   "humanoid-skeleton": {
     label: "гуманоидный скелет VRM / GLB",
-    description: "VRM / GLB · гуманоидная 3D-модель для предпросмотра",
+    description: "VRM / GLB · гуманоидная 3D-модель",
   },
 };
 
