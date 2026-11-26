@@ -2335,6 +2335,12 @@ export class OrganismCore {
         const architecture=this.organismSystems.cognitiveArchitecture();
         const health=this.organismSystems.health();
         const subsystemHealth=this.cognitiveRuntime.cognitiveSubsystemRegistry.health();
+        const unavailableSystems=health.filter(item=>!item.available).map(item=>item.systemName);
+        const unavailableSubsystems=subsystemHealth
+            .filter(item=>!item.available)
+            .map(item=>({ name:item.name, failedPorts:[...item.failedPorts] }));
+        const totalProbes=subsystemHealth.reduce((sum,item)=>sum+item.probeCount,0);
+        const failedProbes=subsystemHealth.reduce((sum,item)=>sum+item.failedProbeCount,0);
         const status=this.operationalStatusSnapshot();
         return { ...architecture, runtimeSnapshot:{
             tick:Number.isFinite(status.tick)?status.tick:0,
@@ -2351,6 +2357,25 @@ export class OrganismCore {
                 probeKind:item.probeKind,
                 evidence:item.evidence,
             })),
+            snapshotHealth:{
+                status:unavailableSystems.length===0&&unavailableSubsystems.length===0?'healthy':'degraded',
+                basis:'read-only-snapshot',
+                physicalSystems:{
+                    total:health.length,
+                    available:health.length-unavailableSystems.length,
+                    unavailable:unavailableSystems,
+                },
+                subsystemDomains:{
+                    total:subsystemHealth.length,
+                    available:subsystemHealth.length-unavailableSubsystems.length,
+                    unavailable:unavailableSubsystems,
+                },
+                probes:{
+                    total:totalProbes,
+                    failed:failedProbes,
+                    failedPorts:unavailableSubsystems.flatMap(domain=>domain.failedPorts.map(port=>({domain:domain.name,port}))),
+                },
+            },
         } };
     }
     organismSystemExecutionOrder() { return this.organismSystems.executionOrder(); }

@@ -166,6 +166,13 @@ function createAccessors(overrides = {}) {
   assert.equal(health.reduce((sum, row) => sum + row.failedProbeCount, 0), 0);
   assert.equal(architecture.runtimeSnapshot.cognitiveSubsystems.length, 7);
   assert.ok(architecture.runtimeSnapshot.cognitiveSubsystems.every(row => row.evidence === 'snapshot-only'));
+  assert.deepEqual(architecture.runtimeSnapshot.snapshotHealth, {
+    status:'healthy',
+    basis:'read-only-snapshot',
+    physicalSystems:{ total:7, available:7, unavailable:[] },
+    subsystemDomains:{ total:7, available:7, unavailable:[] },
+    probes:{ total:34, failed:0, failedPorts:[] },
+  });
   assert.ok(details.every(row => row.probeKind === 'read-only-snapshot' && row.evidence === 'snapshot-only'));
   const schedule = details.find(row => row.domain === 'agency' && row.port === 'multiProjectSchedule');
   assert.equal(schedule.status, 'empty');
