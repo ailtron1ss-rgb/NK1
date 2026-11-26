@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
 import { P41SemanticPerceptionEngine } from '../src/organism/cognition/P41SemanticPerception.ts';
+import { PerceptualContinuityModel } from '../src/organism/cognition/PerceptualContinuityModel.ts';
+import { PerceptualEpistemicGraph } from '../src/organism/cognition/PerceptualEpistemicGraph.ts';
 import { GroundedWorldState } from '../src/organism/world/GroundedWorldState.ts';
 import { PerceptualEvidenceCompiler } from '../src/organism/body/PerceptualEvidenceCompiler.ts';
 import { normalizeWorldContext } from '../src/organism/core/WorldContextNormalizer.ts';
@@ -497,4 +499,96 @@ console.log(JSON.stringify({
   assert.equal(Math.abs(snapshot.actionBias.explore) <= 1, true);
   assert.equal(snapshot.modalityReliability.vision.reliability01 <= 1, true);
   assert.equal(snapshot.modalityReliability.vision.observations <= 900_000, true);
+}
+
+
+// Nested continuity and epistemic owners must apply the same restore boundary
+// rather than trusting aggregate gauges or invoking nested Proxy/accessor data.
+{
+  let continuityTrap = false;
+  const continuityProxy = new Proxy({ transitions: 999, scenes: [] }, {
+    get() { continuityTrap = true; throw new Error('continuity-proxy-get'); },
+    ownKeys() { continuityTrap = true; throw new Error('continuity-proxy-ownKeys'); },
+  });
+  const continuity = new PerceptualContinuityModel();
+  assert.doesNotThrow(() => continuity.restore(continuityProxy));
+  assert.equal(continuityTrap, false);
+  assert.equal(continuity.snapshot().transitions, 0);
+
+  let epistemicTrap = false;
+  const epistemicProxy = new Proxy({ claims: [], contradictionPairs: 4096 }, {
+    get() { epistemicTrap = true; throw new Error('epistemic-proxy-get'); },
+    ownKeys() { epistemicTrap = true; throw new Error('epistemic-proxy-ownKeys'); },
+  });
+  const graph = new PerceptualEpistemicGraph();
+  assert.doesNotThrow(() => graph.restore(epistemicProxy));
+  assert.equal(epistemicTrap, false);
+  assert.equal(graph.snapshot().contradictionPairs, 0);
+
+  let claimGetterInvoked = false;
+  const hostileClaim = {
+    id: 'claim-hostile',
+    at: 100,
+    modality: 'vision',
+    claim: 'door is open',
+    source: 'observed',
+    confidence01: 1,
+    targetIds: [],
+  };
+  Object.defineProperty(hostileClaim, 'confidence01', {
+    enumerable: true,
+    get() { claimGetterInvoked = true; return 1; },
+  });
+  graph.restore({
+    version: 1,
+    claims: [
+      { id: 'claim-valid', at: 101, modality: 'vision', claim: 'door is open', source: 'observed', confidence01: 0.9, targetIds: [] },
+      hostileClaim,
+    ],
+    contradictionPairs: 4096,
+    resolvedPairs: 4096,
+    corroboratedPairs: 1000,
+    meanConfidence01: 1,
+    lastAt: 999_999_999,
+  });
+  const safeGraph = graph.snapshot();
+  assert.equal(claimGetterInvoked, false);
+  assert.equal(safeGraph.claims.length, 1, 'hostile evidence rows must be discarded without evaluating accessors');
+  assert.equal(safeGraph.claims[0].source, 'derived', 'persisted observed labels are not host admission receipts');
+  assert.equal(safeGraph.meanConfidence01, 0.9, 'mean confidence must be recomputed from accepted claims');
+  assert.equal(safeGraph.lastAt, 101, 'lastAt must be recomputed from accepted claim timestamps');
+  assert.equal(safeGraph.contradictionPairs, 0, 'contradiction gauge must be rebuilt from accepted claims');
+  assert.equal(safeGraph.resolvedPairs, 0, 'resolution count must be rebuilt from real accepted edges');
+  assert.equal(safeGraph.corroboratedPairs, 0, 'corroboration count must be rebuilt from distinct retained witnesses');
+
+  const continuitySafe = new PerceptualContinuityModel();
+  continuitySafe.restore({
+    version: 1,
+    scenes: [{
+      id: 'scene-1',
+      label: 'lab',
+      firstAt: 100,
+      lastAt: 200,
+      visits: 8_000_000_000,
+      stability01: 4,
+      transitions: -4,
+    }],
+    transitions: 9_999_999_999,
+    stableTransitions: -1,
+    objectPersistence01: 7,
+    sceneContinuity01: -2,
+    temporalGrounding01: 0.7,
+    lastScene: 'lab',
+    lastAt: 150,
+  });
+  const continuityState = continuitySafe.snapshot();
+  assert.equal(continuityState.scenes[0].lastAt, 150);
+  assert.equal(continuityState.scenes[0].firstAt, 100);
+  assert.equal(continuityState.scenes[0].visits, 1);
+  assert.equal(continuityState.scenes[0].stability01, 0);
+  assert.equal(continuityState.scenes[0].transitions, 0);
+  assert.equal(continuityState.transitions, 999_999_999);
+  assert.equal(continuityState.stableTransitions, 0);
+  assert.equal(continuityState.objectPersistence01, 0);
+  assert.equal(continuityState.sceneContinuity01, 0);
 }
