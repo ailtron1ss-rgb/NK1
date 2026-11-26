@@ -139,6 +139,55 @@ assert.equal(sourceAdmission.perception, 12,
 assert.equal(sourceBalancedWorkspace.diagnostics().admission.admittedCount, 64,
   'the second admission pass must fill remaining capacity with real candidates');
 
+
+ // Delayed outcome credit must remain bound to the decision-time coalition across
+ // a later competition and a process-style snapshot/restore boundary.
+const delayedWorkspace = new GlobalWorkspaceSubstrateV2();
+delayedWorkspace.compete([
+  { id: 'decision-credit-a', source: 'decision', salience: .96,
+    features: [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], content: { action: 'explore' } },
+  { id: 'memory-credit-a', source: 'memory', salience: .24,
+    features: [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], content: { signal: 'memory-context' } },
+]);
+const captureA = delayedWorkspace.registerDecision({ decisionId: 'decision-credit-a', tick: 4, action: 'explore', at: 400 });
+assert.equal(captureA.recorded, true,
+  'the workspace must capture a selected decision lane against the immutable decision identity');
+const checkpointWithOpenCredit = delayedWorkspace.snapshot();
+const restoredDelayedWorkspace = new GlobalWorkspaceSubstrateV2();
+restoredDelayedWorkspace.restore(checkpointWithOpenCredit);
+restoredDelayedWorkspace.compete([
+  { id: 'decision-credit-b', source: 'decision', salience: .96,
+    features: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], content: { action: 'rest' } },
+  { id: 'memory-credit-b', source: 'memory', salience: .24,
+    features: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], content: { signal: 'different-context' } },
+]);
+const gateBeforeDelayedCredit = restoredDelayedWorkspace.snapshot().gateWeights.slice();
+const delayedResult = restoredDelayedWorkspace.learnOutcomeForDecision({
+  decisionId: 'decision-credit-a', outcomeId: 'outcome-credit-a',
+  reward01: .98, learningRate: .2, learningScale01: 1,
+});
+assert.equal(delayedResult.updated, true,
+  'a delayed outcome must update the exact stored decision receipt after a newer competition');
+assert.ok(restoredDelayedWorkspace.snapshot().gateWeights[0] > gateBeforeDelayedCredit[0],
+  'the delayed outcome must update the captured decision feature, not the newer all-zero feature vector');
+const gateAfterFirstCredit = restoredDelayedWorkspace.snapshot().gateWeights.slice();
+const replayResult = restoredDelayedWorkspace.learnOutcomeForDecision({
+  decisionId: 'decision-credit-a', outcomeId: 'outcome-credit-a',
+  reward01: .98, learningRate: .2, learningScale01: 1,
+});
+assert.equal(replayResult.replayed, true,
+  'replaying the same outcome identity must not apply workspace learning twice');
+assert.deepEqual(restoredDelayedWorkspace.snapshot().gateWeights, gateAfterFirstCredit,
+  'duplicate outcome replay must leave learned workspace parameters unchanged');
+const missingCredit = restoredDelayedWorkspace.learnOutcomeForDecision({
+  decisionId: 'unknown-decision', outcomeId: 'unknown-outcome',
+  reward01: .1, learningRate: .2, learningScale01: 1,
+});
+assert.equal(missingCredit.updated, false,
+  'an outcome without a matching decision receipt must fail closed rather than credit the latest coalition');
+assert.deepEqual(restoredDelayedWorkspace.snapshot().gateWeights, gateAfterFirstCredit,
+  'unmatched outcomes must not change workspace parameters');
+
 console.log('NK1_GLOBAL_WORKSPACE_ADMISSION=PASS', JSON.stringify({
   orderInvariant: true,
   admitted: admissionA.diagnostics().admission.admittedCount,
