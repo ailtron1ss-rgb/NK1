@@ -55,7 +55,7 @@ import { withIndependentCandidateEvaluation } from '../learning/P23IndependentEv
 import type { IndependentCandidateEvaluationConfig } from '../learning/IndependentSkillCandidateEvaluator.ts';
 import { createHostOwnedIndependentEvaluationConfigFactory, type HostOwnedIndependentEvaluationFactoryOptions } from '../learning/HostOwnedIndependentEvaluationServices.ts';
 
-type RuntimeRuntimeOperationalJournalCursor = Awaited<ReturnType<OperationalJournal['cursor']>>;
+type RuntimeJournalCursor = Awaited<ReturnType<OperationalJournal['cursor']>>;
 
 export interface RuntimeCheckpointRecoveryReceipt {
   receiptId:string;
