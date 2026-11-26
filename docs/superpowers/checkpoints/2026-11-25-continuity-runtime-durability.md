@@ -93,3 +93,32 @@ The dedicated continuity job's own `typecheck-runtime` step fell back to strip-s
 - No Android/Termux storage, power-loss, latency, heap, or long-lived device soak was available in this CI run.
 - Independent review and current-source integration remain open. No claim of `PROVEN`, `DEVICE_VERIFIED`, or `RELEASED` is made.
 
+
+
+## 2026-11-26 follow-up — approval-ledger diagnostics and merged-head revalidation
+
+### One transient governance failure, then non-reproduction
+
+- On docs-only PR head `8b407d330dd16760a5b0375e4a557dd6e350ed75`, the `OmeStro 20 — Constitution Evolution` merge-ref workflow failed once: HTTP 409 instead of the expected 403 approval challenge.
+- The response body was initially hidden by the test assertion. Added diagnostic output in `tests/constitution-evolution-server.mjs`; the observed message was `ActionGateway did not create a ratification ticket`.
+- Inspection showed `ActionGateway.requestToolApproval` intentionally rolls back the in-memory request when durable permission-ledger persistence fails, but returned only generic `approval-storage-failed`. The Constitution Evolution Engine collapsed that to a generic missing-ticket error.
+- Added path-free, bounded persistence failure reasons (stable symbolic message or error code; otherwise `checkpoint-save-failed`) and propagated that reason through the Engine. The failure remains fail-closed: no ticket is fabricated, and the pending request is removed on failed persistence.
+- Added a unit regression with an injected failing ledger persister. It checks that the cause survives the ActionGateway → Constitution Engine boundary and that no pending request remains.
+
+TDD evidence:
+- RED test commit: `16f6c1be1429db08bc4e31a4b12d012fb36abfad`; workflow [45789564926](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45789564926) failed at the new assertion because the engine still emitted only the generic message.
+- GREEN implementation commits: `f5563b4167d136bbcdc531144456be0bdb368298` (ActionGateway) and `d032eb211b7d3d560e3687f3be3456b6ed96e355` (Constitution Evolution Engine).
+- Latest exact PR head: `d032eb211b7d3d560e3687f3be3456b6ed96e355`.
+- Latest exact-head matrix: **72/72 workflow runs SUCCESS and 72/72 check runs SUCCESS; 0 failure, 0 pending**.
+- `OmeStro 20 — Constitution Evolution` [45789787531](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45789787531) — SUCCESS, including runtime/app TSC, lifecycle/invariant tests, signed independent review, end-to-end server API / ActionGateway ratification / rollback, governance restore and P69-P73 persistence regression.
+- Continuity acceptance [45789787375](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45789787375) — SUCCESS; Continuity Ledger suite 6/6, RecoveryWatchdog checkpoint suite 6/6, persistence window, kill/resume, longitudinal continuity and organism integration passed.
+- Module audit [45789791058](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45789791058) — SUCCESS; 2,705 source files, 5,735 dependency edges, 0 missing dependencies, 0 cycles, 0 legacy leakage, 0 boundary violations, semantic TSC passed.
+- Integrated baseline [45789787638](https://github.com/ailtron1ss-rgb/NK1/actions/runs/45789787638) — SUCCESS; semantic runtime TSC `TYPECHECK=PASS mode=tsc compiler=app-lock`; full software baseline reported `SOFTWARE_BASELINE=PASS_WITH_EXTERNAL_GATES_PENDING`.
+- The dedicated continuity runner still uses strip-syntax-only validation because that runner has no TypeScript compiler; semantic TSC is separately verified at the same exact head by Module Audit and Integrated Baseline.
+
+The HTTP 409 was not reproduced on the latest complete 72/72 matrix. The root cause of that one earlier failed invocation is not established; it is recorded as a transient/non-reproduced integration failure, not as a proven fixed defect. The new safe diagnostic path remains useful for the next recurrence.
+
+### Current status boundary
+
+- Latest head remains PR-only and DRAFT; no integration to `workpass70-source`, no merge, no release, and no Android/Termux device verification.
+- PR branch divergence and Core/package overlap with current source remain integration blockers. Owner-aware checkpoint reconciliation with PR #1170 remains mandatory.
