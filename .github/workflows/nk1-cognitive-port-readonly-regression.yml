@@ -1,0 +1,32 @@
+name: NK1 cognitive port read-only regression
+on:
+  pull_request:
+    branches: [workpass70-source]
+    paths:
+      - 'runtime/neuro-kurisu/src/organism/core/CognitiveSubsystemRegistry.ts'
+      - 'runtime/neuro-kurisu/src/organism/core/CognitiveSubsystemPorts.ts'
+      - 'runtime/neuro-kurisu/src/organism/core/CognitiveSubsystemFacade.ts'
+      - 'runtime/neuro-kurisu/src/organism/core/OrganismCore.ts'
+      - 'runtime/neuro-kurisu/tests/cognitive-subsystem-port-probes-20261124.mjs'
+      - '.github/workflows/nk1-cognitive-port-readonly-regression.yml'
+permissions:
+  contents: read
+concurrency:
+  group: nk1-cognitive-port-readonly-regression-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  readonly-port-regression:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: runtime/neuro-kurisu
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: runtime/neuro-kurisu/package-lock.json
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Read-only subsystem port regression (red-first)
+        run: node --experimental-strip-types tests/cognitive-subsystem-port-probes-20261124.mjs
