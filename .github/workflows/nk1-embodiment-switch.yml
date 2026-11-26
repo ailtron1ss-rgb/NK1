@@ -41,6 +41,8 @@ on:
       - "app/src/components/avatar/vrmRuntimeAdapter.ts"
       - "app/scripts/vrm-runtime-adapter.test.mjs"
       - "app/scripts/body-systems.test.mjs"
+      - "app/src/components/avatar/avatarRendererPresentation.ts"
+      - "app/scripts/avatar-stage-layout.test.mjs"
       - "app/src/components/avatar/vrmHumanoidRigAudit.ts"
       - "app/src/components/avatar/vrmHumanoidNodeMap.ts"
       - "app/scripts/vrm-humanoid-rig-audit.test.mjs"
@@ -118,6 +120,8 @@ jobs:
         run: npm --prefix app run test:embodiment-switch
       - name: Test cognitive motion arbitration and renderer capability contracts
         run: npm --prefix app run test:body-systems
+      - name: Test accessible avatar renderer controls
+        run: node --test app/scripts/avatar-stage-layout.test.mjs
       - name: Test N.E.K.O.-derived semantic gesture cards and NK1 motion programs
         run: npm --prefix app run test:semantic-gesture-intent
       - name: Test shared grapheme-to-viseme articulation
