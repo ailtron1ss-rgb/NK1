@@ -89,10 +89,9 @@ function createPortsFromFabric(fabric:OrganismSystemFabric): CognitiveSubsystemP
 
 function safeErrorType(error:unknown):string {
   try {
-    if(error instanceof Error) {
-      const name=String(error.name||'Error').replace(/[^a-zA-Z0-9_.-]/g,'').slice(0,48);
-      return name||'Error';
-    }
+    // Error.name is caller-controlled and can itself contain private payloads.
+    // Keep diagnostics to a constant class label; never inspect message/name.
+    if(error instanceof Error) return 'Error';
   } catch { /* A hostile thrown value is intentionally not inspected further. */ }
   return 'ThrownValue';
 }
