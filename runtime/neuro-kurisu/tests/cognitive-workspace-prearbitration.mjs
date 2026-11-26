@@ -265,6 +265,36 @@ assert.equal(invalidRateResult.updated, true,
 assert.ok(restoredDelayedWorkspace.snapshot().gateWeights.every(Number.isFinite),
   'invalid external learning-rate values must never introduce NaN parameters');
 
+
+const boundedReceiptWorkspace = new GlobalWorkspaceSubstrateV2();
+for (let i = 0; i < 65; i++) {
+  boundedReceiptWorkspace.compete([{
+    id: `bounded-decision-${i}`, source: 'decision', salience: .9,
+    features: [1, ...new Array(11).fill(0)], content: { action: 'explore' },
+  }]);
+  const registration = boundedReceiptWorkspace.registerDecision({
+    decisionId: `bounded-trace-${i}`, tick: i, action: 'explore', at: i * 100,
+  });
+  assert.equal(registration.recorded, true,
+    'each unique decision must be recorded before the bounded receipt limit is reached');
+}
+assert.equal(boundedReceiptWorkspace.snapshot().decisionReceipts.length, 64,
+  'workspace decision receipts must remain bounded at 64');
+assert.equal(boundedReceiptWorkspace.diagnostics().expiredDecisionReceipts, 1,
+  'evicting the oldest still-open receipt must be counted, not hidden');
+assert.equal(boundedReceiptWorkspace.snapshot().decisionReceipts[0].decisionId, 'bounded-trace-1',
+  'capacity pressure must evict only the oldest receipt');
+assert.equal(boundedReceiptWorkspace.snapshot().decisionReceipts.at(-1).decisionId, 'bounded-trace-64',
+  'the newest decision receipt must remain available');
+assert.equal(boundedReceiptWorkspace.registerDecision({
+  decisionId: 'bounded-trace-64', tick: 64, action: 'explore', at: 6400,
+}).replayed, true,
+  're-registering an exact decision identity must not create a duplicate receipt');
+assert.equal(boundedReceiptWorkspace.registerDecision({
+  decisionId: 'bounded-trace-64', tick: 64, action: 'rest', at: 6400,
+}).reason, 'decision-id-conflict',
+  'reusing a decision ID with a conflicting action must be rejected');
+
 console.log('NK1_GLOBAL_WORKSPACE_ADMISSION=PASS', JSON.stringify({
   orderInvariant: true,
   admitted: admissionA.diagnostics().admission.admittedCount,
