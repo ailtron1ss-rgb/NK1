@@ -26,8 +26,10 @@ export const VRM3D_CHANNELS = ["torsoPitch", "leftElbow", "rightElbow", "leftHip
 
 export const DEFAULT_RENDERER_MANIFESTS: readonly BodyRendererCapabilityManifest[] = [
   {
-    schemaVersion: 1,
+    schemaVersion: 2,
     rendererId: "nk1-live2d-cubism",
+    rigClass: "cubism-deform",
+    selectionRole: "primary",
     label: "Live2D Cubism",
     mode: "live2d",
     assetKind: "cubism-model",
@@ -43,8 +45,10 @@ export const DEFAULT_RENDERER_MANIFESTS: readonly BodyRendererCapabilityManifest
     notes: "Bundled Cubism model with physics; limb channels are not driven yet.",
   },
   {
-    schemaVersion: 1,
+    schemaVersion: 2,
     rendererId: "nk1-original-svg-2d",
+    rigClass: "vector-driven",
+    selectionRole: "fallback",
     label: "NK1 Original 2D",
     mode: "live2d",
     assetKind: "svg-vector",
@@ -60,8 +64,10 @@ export const DEFAULT_RENDERER_MANIFESTS: readonly BodyRendererCapabilityManifest
     notes: "Flat SVG concept; yaw/pitch map to translation, roll to rotation, breath to a bounded scale. No skeletal joints.",
   },
   {
-    schemaVersion: 1,
+    schemaVersion: 2,
     rendererId: "nk1-legacy-sprites-2d",
+    rigClass: "static-poses",
+    selectionRole: "fallback",
     label: "Legacy sprites",
     mode: "live2d",
     assetKind: "sprite-sheet",
@@ -77,8 +83,10 @@ export const DEFAULT_RENDERER_MANIFESTS: readonly BodyRendererCapabilityManifest
     notes: "Static reaction frames; no independent channel control.",
   },
   {
-    schemaVersion: 1,
+    schemaVersion: 2,
     rendererId: "nk1-three-vrm3d",
+    rigClass: "humanoid-skeleton",
+    selectionRole: "preview-only",
     label: "Three.js VRM / 3D",
     mode: "vrm3d",
     assetKind: "gltf",
