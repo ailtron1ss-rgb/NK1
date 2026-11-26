@@ -10,6 +10,7 @@ import {
 
 const clamp=(n:number)=>Math.max(0,Math.min(1,Number.isFinite(n)?n:0));
 const EMBODIED_ACTION_TOOL_ID='organism.embodied.action';
+const consumedCameraCaptureProofs=new WeakSet<object>();
 
 interface ActionContract {
   observation:boolean;
@@ -103,19 +104,23 @@ export class ExternalPostconditionVerifier {
         captureInput.cameraId===cameraId && captureInput.retain===true &&
         /^exec-[a-z0-9-]{8,80}$/i.test(cameraExecutionId) &&
         cameraDecisionId && artifact?.decisionId===cameraDecisionId &&
+        captureProof && typeof captureProof==='object' &&
+        !consumedCameraCaptureProofs.has(captureProof as object) &&
         isTrustedDecisionLinkedExternalPostcondition(captureProof,{
           toolId:'organism.device.capture',
           input:captureInput,
           executionId:cameraExecutionId,
           decisionId:cameraDecisionId,
         }) &&
-        captureProof && typeof captureProof==='object' &&
         (captureProof as OutcomeVerification).verified===true &&
         (captureProof as OutcomeVerification).basis==='external-postcondition' &&
         (captureProof as OutcomeVerification).externalObservation===true &&
         (captureProof as OutcomeVerification).expectedPostcondition===capturePostcondition &&
         (captureProof as OutcomeVerification).observedPostcondition===capturePostcondition
       );
+      // A valid host receipt is consumed even when later semantic/freshness checks
+      // fail; the caller must acquire a new physical frame rather than replay proof.
+      if(captureBindingValid && captureProof && typeof captureProof==='object') consumedCameraCaptureProofs.add(captureProof as object);
       const cameraFrameValid=Boolean(
         contract.observation && (result.action==='explore'||result.action==='verify') &&
         result.status==='executed' && result.source==='android-termux' &&
