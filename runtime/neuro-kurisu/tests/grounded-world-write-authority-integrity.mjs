@@ -265,7 +265,7 @@ assert.equal(mixedContext.objects.find(object => object.label === 'tracked-chair
 assert.deepEqual(mixedWorld.snapshot().entities.find(entity => entity.label === 'tracked-chair')?.modalitySourceIds,
   { vision: ['camera-front'], sensor: ['host-sensor'] },
   'modality-specific source provenance must survive canonical world integration');
-assert.equal(mixedWorld.snapshot().events.find(event => event.id === 'mixed-event')?.evidenceKind, 'model-output',
+assert.equal(mixedWorld.snapshot().events.find(event => event.id === 'mixed-event-1')?.evidenceKind, 'model-output',
   'mixed-modality events must use the conservative evidence class');
 
 console.log('GROUNDED_WORLD_WRITE_AUTHORITY_INTEGRITY=PASS');
