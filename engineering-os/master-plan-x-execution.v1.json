@@ -1,0 +1,1619 @@
+{
+  "schemaVersion": 1,
+  "document": "Master Plan X / 2.0",
+  "project": "NeuroCore / NK1",
+  "updatedAt": "2026-11-26",
+  "source": {
+    "repository": "ailtron1ss-rgb/NK1",
+    "canonicalBranch": "workpass70-source",
+    "canonicalHead": "9008a8982a5173304456bee2c604bd0bc8665964",
+    "treeSha": "864841c05b5810e9c218dcf973d1e8b7307cb75e",
+    "mainHead": "06e01cdd0a8e60ed70991f22e842887f544d1ebf",
+    "latestRelease": {
+      "tag": "Neuro",
+      "name": "NeuroKurisu0.1",
+      "publishedAt": "2026-10-19",
+      "asset": "Neuro_Kurisu_WORKPASS70_2026-10-19.zip",
+      "sizeBytes": 135290615,
+      "metadataSha256": "c5cf6a63661e28b30f976d03c8839a231341d73a09489b9066f062e29b224286",
+      "independentParity": "UNVERIFIED"
+    },
+    "sourceReleaseStatus": "SOURCE_AHEAD_OF_RELEASE"
+  },
+  "countingRules": {
+    "denominator": 144,
+    "unit": "unique T3 task IDs",
+    "historicalListsExcluded": [
+      "75 aspects",
+      "121 work packages",
+      "205 reconstructed thematic works",
+      "144 T3 tasks",
+      "305 work units",
+      "1000 taxonomy units",
+      "20 streams",
+      "12 Prototype 0.1 waves"
+    ],
+    "doNotSumDifferentLevels": true,
+    "completeStatus": "VERIFIED_COMPLETE",
+    "completeDefinition": "Only count after current canonical-source integration, connected canonical runtime path where required, exact-head behavioral tests, independent acceptance evidence and device/release evidence when applicable. Open PR, green CI, class presence and documentation alone never count as complete.",
+    "unknownMeans": "NOT_AUDITED or UNVERIFIED; never PASS or FAIL."
+  },
+  "waveMap": {
+    "A": {
+      "name": "Truth & Project Control",
+      "tasks": "T3-001..T3-008"
+    },
+    "B": {
+      "name": "P0 Safety & Persistence",
+      "tasks": [
+        "T3-009..T3-019",
+        "T3-029..T3-036",
+        "T3-118"
+      ]
+    },
+    "C": {
+      "name": "Cognitive Spine & Agency",
+      "tasks": [
+        "T3-020..T3-028",
+        "T3-045..T3-063"
+      ]
+    },
+    "D": {
+      "name": "Memory & World",
+      "tasks": "T3-064..T3-088"
+    },
+    "E": {
+      "name": "Runtime Experience",
+      "tasks": [
+        "T3-089..T3-116",
+        "T3-131..T3-137"
+      ]
+    },
+    "F": {
+      "name": "Special Mechanisms & Research",
+      "tasks": "T3-117..T3-130"
+    },
+    "G": {
+      "name": "Release",
+      "tasks": "T3-138..T3-144"
+    },
+    "gaps": [
+      "T3-037..T3-044 are not assigned by the Master Plan's A-G mapping and need an explicit wave/priority decision; they remain UNASSIGNED, not silently dropped."
+    ],
+    "overlaps": [
+      "T3-118 appears in both B and F; assigned primary wave B (P0 security gate), with secondaryWave F retained for traceability and no duplicate denominator count."
+    ]
+  },
+  "statusCounts": {
+    "NOT_AUDITED": 136,
+    "TESTED_NOT_IN_SOURCE": 5,
+    "CI_BLOCKED": 2,
+    "STACKED_TESTED_NOT_IN_SOURCE": 1
+  },
+  "progress": {
+    "verifiedComplete": 0,
+    "total": 144,
+    "verifiedCompletePercent": 0,
+    "audited": 9,
+    "auditedPercent": 6.25,
+    "exactHeadGreenOnPR": 6,
+    "exactHeadGreenPercent": 4.17,
+    "exactHeadFailures": 2,
+    "notAudited": 135,
+    "note": "These are the initial exact-head/PR audit counts, not a claim that the other work is absent from source. No T3 item is counted as complete in this first pass because no audited item has yet been shown to satisfy the full canonical-source + integration + acceptance ladder."
+  },
+  "tasks": [
+    {
+      "id": "T3-001",
+      "title": "Единый реестр выполнения",
+      "wave": "A",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-002",
+      "title": "Связь 75 аспектов с 305 и 1 000 задачами",
+      "wave": "A",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-003",
+      "title": "Сводный реестр трёх мастер-планов",
+      "wave": "A",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-004",
+      "title": "Обновление основной документации",
+      "wave": "A",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-005",
+      "title": "Полный аудит веток и PR",
+      "wave": "A",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-006",
+      "title": "Точная проверка PR перед интеграцией",
+      "wave": "A",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-007",
+      "title": "Реестр фактической связности модулей",
+      "wave": "A",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-008",
+      "title": "Аудит покрытия проверками",
+      "wave": "A",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-009",
+      "title": "Единый Observation Envelope",
+      "wave": "B",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-010",
+      "title": "Host Attestation Verifier",
+      "wave": "B",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-011",
+      "title": "ObservationAdmissionGate",
+      "wave": "B",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-012",
+      "title": "Закрытие прямого обхода P41",
+      "wave": "B",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-013",
+      "title": "Защита MultimodalPerception",
+      "wave": "B",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-014",
+      "title": "Запрет caller boolean verified",
+      "wave": "B",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-015",
+      "title": "Consent и admission для сенсоров",
+      "wave": "B",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-016",
+      "title": "Replay protection и дедупликация",
+      "wave": "B",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-017",
+      "title": "Безопасный restore GroundedWorldState",
+      "wave": "B",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-018",
+      "title": "Crash-safe admission transaction",
+      "wave": "B",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-019",
+      "title": "Конфликтующие наблюдения",
+      "wave": "B",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-020",
+      "title": "Интеграция текущего workspace до арбитража",
+      "wave": "C",
+      "secondaryWave": null,
+      "status": "TESTED_NOT_IN_SOURCE",
+      "countAsComplete": false,
+      "linkedPR": 1186,
+      "evidence": {
+        "headSha": "a29e67f695ae984808c4754be24ac6d554d515f0",
+        "baseSha": "9008a8982a5173304456bee2c604bd0bc8665964",
+        "exactHeadActions": {
+          "success": 73,
+          "failed": 0
+        },
+        "draft": true,
+        "notes": "Exact-head Actions succeeded; open Draft PR, not merged. Runtime/test acceptance still requires source integration and revalidation."
+      }
+    },
+    {
+      "id": "T3-021",
+      "title": "Общий Decision ID для цикла",
+      "wave": "C",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-022",
+      "title": "Монотонный event order",
+      "wave": "C",
+      "secondaryWave": null,
+      "status": "TESTED_NOT_IN_SOURCE",
+      "countAsComplete": false,
+      "linkedPR": 1189,
+      "evidence": {
+        "headSha": "9b131d1bb84c24a08691d2699f138de521a0789b",
+        "baseSha": "9008a8982a5173304456bee2c604bd0bc8665964",
+        "exactHeadActions": {
+          "success": 66,
+          "failed": 0
+        },
+        "draft": false,
+        "notes": "Exact-head Actions 66/66 success; open, not merged. PR body CI statement is stale. Bounded source review still required."
+      }
+    },
+    {
+      "id": "T3-023",
+      "title": "Единая семантика неизвестного результата",
+      "wave": "C",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-024",
+      "title": "Causal trace между decision и outcome",
+      "wave": "C",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-025",
+      "title": "Отделение proposal от команды",
+      "wave": "C",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-026",
+      "title": "Проверка повторного цикла",
+      "wave": "C",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-027",
+      "title": "Упрощение orchestration в Core",
+      "wave": "C",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-028",
+      "title": "Сохранение архитектурных инвариантов",
+      "wave": "C",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-029",
+      "title": "Единая checkpoint generation",
+      "wave": "B",
+      "secondaryWave": null,
+      "status": "TESTED_NOT_IN_SOURCE",
+      "countAsComplete": false,
+      "linkedPR": 1170,
+      "evidence": {
+        "headSha": "2095bce3353daacb8eebe567a53b33ef32ff1931",
+        "baseSha": "9008a8982a5173304456bee2c604bd0bc8665964",
+        "exactHeadActions": {
+          "success": 75,
+          "failed": 0
+        },
+        "draft": true,
+        "notes": "Exact-head Actions success; open Draft PR, not merged. Independent review and device soak outstanding in PR checkpoint."
+      }
+    },
+    {
+      "id": "T3-030",
+      "title": "Проверка sidecar integrity",
+      "wave": "B",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-031",
+      "title": "Crash-safe continuity journal",
+      "wave": "B",
+      "secondaryWave": null,
+      "status": "TESTED_NOT_IN_SOURCE",
+      "countAsComplete": false,
+      "linkedPR": 1174,
+      "evidence": {
+        "headSha": "e1f83557bc8f5e7d9b304f943f8fce8d9c9b6192",
+        "baseSha": "9008a8982a5173304456bee2c604bd0bc8665964",
+        "exactHeadActions": {
+          "success": 76,
+          "failed": 0
+        },
+        "draft": true,
+        "notes": "Exact-head Actions success; dedicated continuity durability workflow passed; open Draft PR, not merged. Physical power-loss / storage-specific validation not established."
+      }
+    },
+    {
+      "id": "T3-032",
+      "title": "Atomic snapshot generation",
+      "wave": "B",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-033",
+      "title": "Migration doctor",
+      "wave": "B",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-034",
+      "title": "Backup/restore full rehearsal",
+      "wave": "B",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-035",
+      "title": "Restore failure containment",
+      "wave": "B",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-036",
+      "title": "Long-run durability",
+      "wave": "B",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-037",
+      "title": "Перенос tenant isolation package",
+      "wave": "UNASSIGNED",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-038",
+      "title": "Better Auth identity boundary",
+      "wave": "UNASSIGNED",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-039",
+      "title": "Подписанный app-to-runtime request",
+      "wave": "UNASSIGNED",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-040",
+      "title": "Runtime registry per subject",
+      "wave": "UNASSIGNED",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-041",
+      "title": "Изоляция persistence namespaces",
+      "wave": "UNASSIGNED",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-042",
+      "title": "Async/background job isolation",
+      "wave": "UNASSIGNED",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-043",
+      "title": "Multi-replica isolation",
+      "wave": "UNASSIGNED",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-044",
+      "title": "User lifecycle и удаление данных",
+      "wave": "UNASSIGNED",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-045",
+      "title": "Социальный feedback только к исходному решению",
+      "wave": "C",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-046",
+      "title": "Не подключать социальный ingress к общему singleton",
+      "wave": "C",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-047",
+      "title": "Внутренняя инициатива отдельно от отправки сообщения",
+      "wave": "C",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-048",
+      "title": "Настоящий opt-in по умолчанию",
+      "wave": "C",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-049",
+      "title": "User-controlled consent API и UI",
+      "wave": "C",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-050",
+      "title": "Lease и retry для инициатив",
+      "wave": "C",
+      "secondaryWave": null,
+      "status": "CI_BLOCKED",
+      "countAsComplete": false,
+      "linkedPR": 1181,
+      "evidence": {
+        "headSha": "974c885b42309ee3e1bf249e4b43f2706c5e3880",
+        "baseSha": "9008a8982a5173304456bee2c604bd0bc8665964",
+        "exactHeadActions": {
+          "success": 77,
+          "failed": 1
+        },
+        "draft": true,
+        "notes": "One exact-head CI failure; open Draft PR. Investigate the failed check before any integration."
+      }
+    },
+    {
+      "id": "T3-051",
+      "title": "Persist-before-ACK",
+      "wave": "C",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-052",
+      "title": "Общий durable delivery outbox",
+      "wave": "C",
+      "secondaryWave": null,
+      "status": "TESTED_NOT_IN_SOURCE",
+      "countAsComplete": false,
+      "linkedPR": 1182,
+      "evidence": {
+        "headSha": "fb1c5ebb0bcf5e458f806b687848df8936d5c5b0",
+        "baseSha": "9008a8982a5173304456bee2c604bd0bc8665964",
+        "exactHeadActions": {
+          "success": 81,
+          "failed": 0
+        },
+        "draft": true,
+        "notes": "Exact-head Actions success; open Draft PR, not merged. Confirm separation from social initiative ownership before merge."
+      }
+    },
+    {
+      "id": "T3-053",
+      "title": "Доставки в нескольких каналах",
+      "wave": "C",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-054",
+      "title": "Метрики качества инициативы",
+      "wave": "C",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-055",
+      "title": "Единая классификация риска действий",
+      "wave": "C",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-056",
+      "title": "Неизвестные high-risk tools",
+      "wave": "C",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-057",
+      "title": "Разрушающие plugin tools",
+      "wave": "C",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-058",
+      "title": "Сохранение реального approval actor",
+      "wave": "C",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-059",
+      "title": "Связь consent и approval ticket",
+      "wave": "C",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-060",
+      "title": "Credential isolation в subprocess",
+      "wave": "C",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-061",
+      "title": "Ограничение анонимных API попыток",
+      "wave": "C",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-062",
+      "title": "Универсальный cancellation contract",
+      "wave": "C",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-063",
+      "title": "Undo-First как набор компенсаций",
+      "wave": "C",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-064",
+      "title": "Единая память без конкурирующих хранилищ",
+      "wave": "D",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-065",
+      "title": "Полный write-restore equivalence",
+      "wave": "D",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-066",
+      "title": "Capacity tiers вместо одного hard cap",
+      "wave": "D",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-067",
+      "title": "Semantic retrieval без фальшивых embedding claims",
+      "wave": "D",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-068",
+      "title": "Independent retrieval evaluation",
+      "wave": "D",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-069",
+      "title": "Memory-to-action evaluation",
+      "wave": "D",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-070",
+      "title": "Belief revision и contradiction",
+      "wave": "D",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-071",
+      "title": "Bitemporal memory",
+      "wave": "D",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-072",
+      "title": "Forgetting и privacy tombstones",
+      "wave": "D",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-073",
+      "title": "Evidence freshness отдельно от access recency",
+      "wave": "D",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-074",
+      "title": "Consolidation policy",
+      "wave": "D",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-075",
+      "title": "Memory performance budget",
+      "wave": "D",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-076",
+      "title": "Полная жизнь skill candidate",
+      "wave": "D",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-077",
+      "title": "Proof-Carrying Skills",
+      "wave": "D",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-078",
+      "title": "Promotion после независимой проверки",
+      "wave": "D",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-079",
+      "title": "Проверка forgetting при обучении",
+      "wave": "D",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-080",
+      "title": "Адаптация без ложного self-credit",
+      "wave": "D",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-081",
+      "title": "Единая модель фактов и гипотез",
+      "wave": "D",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-082",
+      "title": "Object and Event Tracking",
+      "wave": "D",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-083",
+      "title": "Spatial frame consistency",
+      "wave": "D",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-084",
+      "title": "Prediction tickets",
+      "wave": "D",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-085",
+      "title": "Multi-horizon world prediction",
+      "wave": "D",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-086",
+      "title": "World → Appraisal → Attention",
+      "wave": "D",
+      "secondaryWave": null,
+      "status": "CI_BLOCKED",
+      "countAsComplete": false,
+      "linkedPR": 1175,
+      "evidence": {
+        "headSha": "0d3b38247810e8a05cac393280232dadd28c69d6",
+        "baseSha": "9008a8982a5173304456bee2c604bd0bc8665964",
+        "exactHeadActions": {
+          "success": 46,
+          "failed": 3
+        },
+        "draft": true,
+        "notes": "Three exact-head CI failures; mergeable=false. Grounded world→appraisal→attention change must not be integrated until failures are understood."
+      }
+    },
+    {
+      "id": "T3-087",
+      "title": "Active Perception / Value of Information",
+      "wave": "D",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-088",
+      "title": "Affordances and environment interaction",
+      "wave": "D",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-089",
+      "title": "Единственный model/provider registry",
+      "wave": "E",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-090",
+      "title": "Реальный local LLM runtime",
+      "wave": "E",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-091",
+      "title": "Fallback и circuit breaker",
+      "wave": "E",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-092",
+      "title": "Context budget allocator",
+      "wave": "E",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-093",
+      "title": "Provider privacy boundary",
+      "wave": "E",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-094",
+      "title": "Tool adapter contracts",
+      "wave": "E",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-095",
+      "title": "Модельная оценка по задачам",
+      "wave": "E",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-096",
+      "title": "Единый speech lifecycle",
+      "wave": "E",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-097",
+      "title": "ASR ingestion и transcript provenance",
+      "wave": "E",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-098",
+      "title": "Real playback ACK",
+      "wave": "E",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-099",
+      "title": "Lip-sync clock",
+      "wave": "E",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-100",
+      "title": "Interrupt and barge-in",
+      "wave": "E",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-101",
+      "title": "Свести текущие avatar PR без потери истории",
+      "wave": "E",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-102",
+      "title": "Live2D — единый runtime viewer",
+      "wave": "E",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-103",
+      "title": "Честные renderer receipts",
+      "wave": "E",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-104",
+      "title": "Original 2D",
+      "wave": "E",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-105",
+      "title": "Настоящий 2.5D asset pack",
+      "wave": "E",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-106",
+      "title": "3D model registry",
+      "wave": "E",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-107",
+      "title": "Human body rig and motion",
+      "wave": "E",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-108",
+      "title": "Avatar visual and device acceptance",
+      "wave": "E",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-109",
+      "title": "Единый affect-to-avatar frame",
+      "wave": "E",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-110",
+      "title": "UI как проекция canonical runtime",
+      "wave": "E",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-111",
+      "title": "Полноценный чат",
+      "wave": "E",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-112",
+      "title": "Consent center",
+      "wave": "E",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-113",
+      "title": "Runtime health dashboard",
+      "wave": "E",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-114",
+      "title": "Recovery UX",
+      "wave": "E",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-115",
+      "title": "Первый полноценный user journey",
+      "wave": "E",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-116",
+      "title": "Cross-browser и clean install",
+      "wave": "E",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-117",
+      "title": "NeuroForge",
+      "wave": "F",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-118",
+      "title": "Cognitive Immune hard gate",
+      "wave": "B",
+      "secondaryWave": "F",
+      "status": "STACKED_TESTED_NOT_IN_SOURCE",
+      "countAsComplete": false,
+      "linkedPR": 1169,
+      "evidence": {
+        "headSha": "ed40b0a6c16fface1d1971d87207b775634369b0",
+        "baseSha": "2095bce3353daacb8eebe567a53b33ef32ff1931",
+        "exactHeadActions": {
+          "success": 23,
+          "failed": 0
+        },
+        "draft": true,
+        "notes": "Exact-head Actions success, but stacked on PR #1170 rather than canonical source; not independently source-based and not merged. Revalidate after dependency integration."
+      }
+    },
+    {
+      "id": "T3-119",
+      "title": "Synaptic Commons",
+      "wave": "F",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-120",
+      "title": "Substrate Independence",
+      "wave": "F",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-121",
+      "title": "Adaptive Synaptic Matrix",
+      "wave": "F",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-122",
+      "title": "Neuro-Plastic Core / QLoRA",
+      "wave": "F",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-123",
+      "title": "Developmental Genome и Morphogenesis",
+      "wave": "F",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-124",
+      "title": "Cognitive Parliament / Science Republic",
+      "wave": "F",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-125",
+      "title": "Shared Future и Dyadic Mind",
+      "wave": "F",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-126",
+      "title": "Consequence Ecology",
+      "wave": "F",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-127",
+      "title": "Neural JIT, Layer Force и Hyper-Plastic Network",
+      "wave": "F",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-128",
+      "title": "Механизм intake для новых доноров",
+      "wave": "F",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-129",
+      "title": "Upstream comparison lab",
+      "wave": "F",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-130",
+      "title": "License/provenance for donor artifacts",
+      "wave": "F",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-131",
+      "title": "Mobile runtime profile",
+      "wave": "E",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-132",
+      "title": "Tick performance",
+      "wave": "E",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-133",
+      "title": "Background cognition budget",
+      "wave": "E",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-134",
+      "title": "Process lifecycle soak",
+      "wave": "E",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-135",
+      "title": "Offline behavior",
+      "wave": "E",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-136",
+      "title": "Diagnostics и observability",
+      "wave": "E",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-137",
+      "title": "Reliability fault injection",
+      "wave": "E",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-138",
+      "title": "Проверка исходного архива и baseline",
+      "wave": "G",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-139",
+      "title": "Полный release provenance",
+      "wave": "G",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-140",
+      "title": "Независимое извлечение Release ZIP",
+      "wave": "G",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-141",
+      "title": "Human license review",
+      "wave": "G",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-142",
+      "title": "Asset provenance",
+      "wave": "G",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-143",
+      "title": "Clean install и старт",
+      "wave": "G",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    },
+    {
+      "id": "T3-144",
+      "title": "Release gate и rollback",
+      "wave": "G",
+      "secondaryWave": null,
+      "status": "NOT_AUDITED",
+      "countAsComplete": false,
+      "linkedPR": null,
+      "evidence": null
+    }
+  ]
+}
