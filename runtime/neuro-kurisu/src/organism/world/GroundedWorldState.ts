@@ -189,7 +189,7 @@ export class GroundedWorldState {
         const id=stringOr(ownDataValue(value,'id'),'',180).trim();
         const originalLabel=stringOr(ownDataValue(value,'label'),'',240).trim();
         if(!id||!originalLabel)return [];
-        const revoked=originalLabel.startsWith('external-observed:');
+        const revoked=originalLabel.toLowerCase().startsWith('external-observed:');
         return [{
           id,label:revoked?'external-receipt:'+originalLabel.slice('external-observed:'.length):originalLabel,
           confidence01:revoked?0:unitOr(ownDataValue(value,'confidence01'),0),
