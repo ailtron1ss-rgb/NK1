@@ -458,39 +458,42 @@ export class CognitiveModuleRuntime {
     record.lastError = undefined;
     let created: CognitiveModule | null = null;
     try {
-      created = record.factory();
-      if (!isModule(created)) throw fail('invalid-cognitive-module', id);
-      record.module = created;
-
+      // Load, bound and verify persistent state before any module code is
+      // instantiated. A corrupt/unknown extension checkpoint must not trigger
+      // even a host-owned factory, whose constructor may otherwise have effects.
+      let stored: CognitiveModuleStateEnvelopeV1 | null = null;
       if (this.stateStore) {
-        let stored: CognitiveModuleStateEnvelopeV1 | null;
         try {
           stored = validateEnvelope(await this.stateStore.load(id), id, this.maxStateBytes);
         } catch (error) {
           throw fail('module-state-load-failed', error instanceof Error ? error.message : id);
         }
+      }
+      if (stored && stored.stateSchemaVersion > record.manifest.stateSchemaVersion) {
+        throw fail('module-state-schema-ahead', id);
+      }
 
-        if (stored) {
-          let state = stored.state;
-          if (stored.stateSchemaVersion > record.manifest.stateSchemaVersion) {
-            throw fail('module-state-schema-ahead', id);
+      created = record.factory();
+      if (!isModule(created)) throw fail('invalid-cognitive-module', id);
+      record.module = created;
+
+      if (stored) {
+        let state = stored.state;
+        if (stored.stateSchemaVersion < record.manifest.stateSchemaVersion) {
+          if (typeof created.migrateState !== 'function') {
+            throw fail('module-state-migration-required', id);
           }
-          if (stored.stateSchemaVersion < record.manifest.stateSchemaVersion) {
-            if (typeof created.migrateState !== 'function') {
-              throw fail('module-state-migration-required', id);
-            }
-            try {
-              state = cloneBoundedState(await created.migrateState(
-                state,
-                stored.stateSchemaVersion,
-                record.manifest.stateSchemaVersion,
-              ), this.maxStateBytes);
-            } catch (error) {
-              throw fail('module-state-migration-failed', error instanceof Error ? error.message : id);
-            }
+          try {
+            state = cloneBoundedState(await created.migrateState(
+              state,
+              stored.stateSchemaVersion,
+              record.manifest.stateSchemaVersion,
+            ), this.maxStateBytes);
+          } catch (error) {
+            throw fail('module-state-migration-failed', error instanceof Error ? error.message : id);
           }
-          await created.restore(state, record.manifest.stateSchemaVersion);
         }
+        await created.restore(state, record.manifest.stateSchemaVersion);
       }
 
       await created.initialize(record.context);
