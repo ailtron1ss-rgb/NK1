@@ -37,6 +37,8 @@ export class CognitiveModuleCheckpointStore implements JsonStateStore<PersistedO
   private readonly moduleStates = new Map<string, CognitiveModuleStateEnvelopeV1>();
   private snapshotProvider?: SnapshotProvider;
   private lastSnapshotFailures: Array<{ id: string; reason: string }> = [];
+  private readonly delegate: JsonStateStore<PersistedOrganism>;
+  private readonly clock: () => number;
 
   readonly moduleStateStore: CognitiveModuleStateStore = {
     load: async (moduleId) => {
@@ -55,9 +57,12 @@ export class CognitiveModuleCheckpointStore implements JsonStateStore<PersistedO
   };
 
   constructor(
-    private readonly delegate: JsonStateStore<PersistedOrganism>,
-    private readonly clock: () => number = Date.now,
-  ) {}
+    delegate: JsonStateStore<PersistedOrganism>,
+    clock: () => number = Date.now,
+  ) {
+    this.delegate = delegate;
+    this.clock = clock;
+  }
 
   bindSnapshotProvider(provider: SnapshotProvider): void {
     if (this.snapshotProvider) throw new Error('cognitive-module-checkpoint-provider-already-bound');
