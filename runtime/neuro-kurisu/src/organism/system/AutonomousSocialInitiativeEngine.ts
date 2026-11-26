@@ -454,7 +454,7 @@ export class AutonomousSocialInitiativeEngine {
     quietPeriodMs?: number;
     cooldownMs?: number;
     startupGraceMs?: number;
-  }): { shouldInitiate: boolean; initiative: SocialInitiative | null } {
+  }): { shouldInitiate: boolean; initiative: SocialInitiative | null; internalPlan: SocialInitiative | null } {
     const at = safeTime(input.at) ?? Date.now();
     this.state.cycles++;
     if (!this.state.startedAt) this.state.startedAt = at;
@@ -475,7 +475,7 @@ export class AutonomousSocialInitiativeEngine {
     const mayInitiate = autonomous && timingAllows && !hasPending && pressure > .48;
     if (!mayInitiate) {
       if (pressure < .25 && !hasPending) this.state.deferred++;
-      return { shouldInitiate: false, initiative: null };
+      return { shouldInitiate: false, initiative: null, internalPlan: null };
     }
 
     // Topics come from active goals, consolidated learning and reflective curiosity. Do not
@@ -528,7 +528,7 @@ export class AutonomousSocialInitiativeEngine {
         } } : {}),
       });
     }
-    if (!candidates.length) return { shouldInitiate: false, initiative: null };
+    if (!candidates.length) return { shouldInitiate: false, initiative: null, internalPlan: null };
 
     const sourceWeight: Record<SocialInitiativeTopicSource, number> = { 'active-goal': .10, memory: .075, reflection: .06, curiosity: .045 };
     const ranked = candidates.map(candidate => {

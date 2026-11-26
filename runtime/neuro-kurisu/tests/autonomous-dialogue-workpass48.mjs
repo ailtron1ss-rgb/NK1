@@ -83,6 +83,7 @@ assert.equal(restoredPrivate.latestReady(), null, 'unsafe persisted message must
 assert.doesNotMatch(JSON.stringify(restoredPrivate.snapshot()), /hunter2|curator@example\.com/, 'private persisted text must be removed from the restored initiative state');
 assert.equal(restoredPrivate.summary().deferred, 1, 'privacy-invalid restored work must be visibly deferred');
 const expressive = new AutonomousSocialInitiativeEngine();
+expressive.setConsent(true); // Expression-tone behavior is tested on the explicitly deliverable path.
 const direct = expressive.cycle(inputs(5000, { startupGraceMs: 0, quietPeriodMs: 0, cooldownMs: 0, emotionLabel: 'frustration', emotionConfidence01: .8, emotionArousal01: .82, topics: [{ topic: 'A distinct new question about how competing hypotheses should be tested', source: 'reflection' }] }));
 assert.equal(direct.initiative?.toneHint, 'direct', 'a high-confidence appraisal should shape expression');
 assert.equal(direct.initiative?.affect?.label, 'frustration');
