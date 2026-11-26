@@ -3,10 +3,10 @@ import { Button } from "@/components/ui/button";
 import { useKurisu } from "@/organism/store";
 
 const copy = {
-  connecting: { label: "Connecting", detail: "Waiting for the canonical runtime.", icon: Activity },
-  connected: { label: "Connected", detail: "The latest canonical snapshot is current.", icon: Wifi },
-  degraded: { label: "Degraded", detail: "Showing the last confirmed snapshot.", icon: AlertTriangle },
-  disconnected: { label: "Offline", detail: "No canonical snapshot is currently available.", icon: WifiOff },
+  connecting: { label: "Подключение", detail: "Ожидаем подтверждения канонического runtime.", icon: Activity },
+  connected: { label: "Подключено", detail: "Последний канонический снимок актуален.", icon: Wifi },
+  degraded: { label: "Ограниченный режим", detail: "Показан последний подтверждённый снимок.", icon: AlertTriangle },
+  disconnected: { label: "Нет соединения", detail: "Канонический снимок сейчас недоступен.", icon: WifiOff },
 } as const;
 
 export function ConnectionStatus() {
@@ -21,10 +21,10 @@ export function ConnectionStatus() {
         <Icon className="size-3.5" aria-hidden="true" />
         {state.label}
       </span>
-      {connection.serviceDegraded ? <span className="hidden text-[10px] text-amber-400 sm:inline">Language fallback</span> : null}
+      {connection.serviceDegraded ? <span className="hidden text-[10px] text-amber-400 sm:inline">Резервный языковой провайдер</span> : null}
       {connection.version ? (
         <span className="hidden text-[10px] tabular-nums text-subtle sm:inline">
-          {connection.version} · schema {connection.schemaVersion} · tick {connection.tick}
+          {connection.version} · схема {connection.schemaVersion} · такт {connection.tick}
         </span>
       ) : null}
       {connection.lastSyncedAt ? (
@@ -32,9 +32,9 @@ export function ConnectionStatus() {
           {new Date(connection.lastSyncedAt).toLocaleTimeString()}
         </span>
       ) : null}
-      <Button type="button" size="sm" variant="ghost" className="h-8 px-2" onClick={() => void refresh()} disabled={connection.status === "connecting"} aria-label="Refresh canonical runtime connection">
+      <Button type="button" size="sm" variant="ghost" className="h-8 px-2" onClick={() => void refresh()} disabled={connection.status === "connecting"} aria-label="Повторить подключение к каноническому runtime">
         <RefreshCw className="mr-1.5 size-3.5" aria-hidden="true" />
-        Retry
+        Повторить
       </Button>
     </div>
   );
