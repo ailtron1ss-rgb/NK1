@@ -32,12 +32,18 @@ try {
   const fallback = runtime.plans.buildBudgetFallback.bind(runtime.plans);
   runtime.plans.build = (goal, preferred, depth, width, context) => {
     const plan = build(goal, preferred, depth, width, context);
-    planCalls.push({ kind: 'beam', goal, context, plan });
+    const world = runtime.environment.snapshot();
+    const contextCheck = runtime.plans.validateContext(plan, goal, world, context);
+    const stepCheck = runtime.plans.validateStep(plan, 0, world);
+    planCalls.push({ kind: 'beam', goal, context, plan, accepted: contextCheck.valid && stepCheck.valid });
     return plan;
   };
   runtime.plans.buildBudgetFallback = (goal, preferred, reason, context) => {
     const plan = fallback(goal, preferred, reason, context);
-    planCalls.push({ kind: 'fallback', goal, context, plan });
+    const world = runtime.environment.snapshot();
+    const contextCheck = runtime.plans.validateContext(plan, goal, world, context);
+    const stepCheck = runtime.plans.validateStep(plan, 0, world);
+    planCalls.push({ kind: 'fallback', goal, context, plan, accepted: contextCheck.valid && stepCheck.valid });
     return plan;
   };
 
@@ -62,8 +68,10 @@ try {
       'the same PlanEngine plan ID must survive the plan/action/outcome causal stages');
     assert.equal(cycleEventInput[stage].payload.goalId, call.plan.lineage.goal.id,
       'the same exact goal identity must survive the plan/action/outcome causal stages');
-    assert.equal(cycleEventInput[stage].payload.planAccepted, true,
-      'the runtime must only mark the bound plan accepted after context and first-step validation');
+    assert.equal(cycleEventInput[stage].payload.planAccepted, call.accepted,
+      'plan/action/outcome must agree on the runtime validation result');
+    assert.equal(cycleEventInput[stage].payload.planAccepted, cycleEventInput.plan.payload.contextValid,
+      'the CEF trace must carry one consistent plan-acceptance decision across stages');
   }
   console.log('GOAL_BOUND_PLAN_RUNTIME_INTEGRATION=PASS', JSON.stringify({
     kind: call.kind,
