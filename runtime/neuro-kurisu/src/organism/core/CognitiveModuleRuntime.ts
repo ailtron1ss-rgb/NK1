@@ -626,10 +626,29 @@ export class CognitiveModuleRuntime {
     // active immediately after stopAll reports completion.
     return this.withSnapshotBarrier(async () => {
       const order = this.topologicalOrder().reverse();
+      const failures: Array<{ id: string; reason: string }> = [];
       for (const id of order) {
-        if (this.records.get(id)?.status === 'active') {
+        if (this.records.get(id)?.status !== 'active') continue;
+        try {
           await this.deactivateInternal(id);
+        } catch (error) {
+          // One failing module must not strand unrelated modules. A dependent
+          // that remains active will still protect its own dependencies through
+          // deactivateInternal's active-dependent guard.
+          failures.push({
+            id,
+            reason: String(error instanceof Error ? error.message : error).slice(0, 180),
+          });
         }
+      }
+      if (failures.length > 0) {
+        const detail = failures.map(row => row.id).join(',');
+        const error = fail('module-stop-incomplete', detail);
+        Object.defineProperty(error, 'failures', {
+          value: failures.map(row => ({ ...row })),
+          enumerable: true,
+        });
+        throw error;
       }
       return this.list();
     });
