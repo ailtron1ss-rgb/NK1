@@ -84,13 +84,14 @@ export function resolveAvatarDynamicsBoneRole(boneName: unknown): AvatarDynamics
   if (/(anchor|pinned|pinroot|base|root|attach)$/.test(name)) return null;
 
   const rawName = boneName.toLowerCase();
-  const sideSemantic = /(hair|fringe|strand|lock|coat|skirt|cape|mantle|ribbon|panel|sleeve|cuff|neural|synapse|filament|conduit|neurofiber)/.test(name);
   const leftSide = rawName.includes("left")
     || /(?:^|[-_.])l(?:[-_.]|$)/.test(rawName)
-    || (sideSemantic && /l(?:[-_.]|$)/.test(rawName));
+    || /(?:hairlock|hairfringe|strand|fringe|bang|tress)(?:tip|mid|root)?l(?:[-_.]|$)/.test(rawName)
+    || /(?:coatpanel|coathem|skirtpanel|mantletail|ribbon|sleevefollow|sleevecuff|sleeve|cuff)l(?:[-_.]|$)/.test(rawName);
   const rightSide = rawName.includes("right")
     || /(?:^|[-_.])r(?:[-_.]|$)/.test(rawName)
-    || (sideSemantic && /r(?:[-_.]|$)/.test(rawName));
+    || /(?:hairlock|hairfringe|strand|fringe|bang|tress)(?:tip|mid|root)?r(?:[-_.]|$)/.test(rawName)
+    || /(?:coatpanel|coathem|skirtpanel|mantletail|ribbon|sleevefollow|sleevecuff|sleeve|cuff)r(?:[-_.]|$)/.test(rawName);
   const side: -1 | 0 | 1 = leftSide ? -1 : rightSide ? 1 : 0;
   if (/(neural|synapse|filament|conduit|neurofiber)/.test(name)) {
     return { role: "neural-fiber", maxAngle: 0.035, distalWeight: 0.35, side };
