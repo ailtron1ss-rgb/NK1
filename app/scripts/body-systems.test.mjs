@@ -373,6 +373,17 @@ test("declared VRM 3D channels match the full-body bone applier", () => {
   for (const channel of ["torsoPitch", "leftElbow", "rightElbow", "leftHip", "rightHip", "leftKnee", "rightKnee"]) {
     assert.ok(declared.has(channel), `${channel} drives a real bone and must be declared`);
   }
+  for (const channel of ["leftAnkle", "rightAnkle"]) {
+    assert.ok(declared.has(channel), `${channel} drives a real foot bone and must be declared`);
+  }
+  for (const channel of ["leftWrist", "rightWrist", "leftHand", "rightHand", "leftFingers", "rightFingers"]) {
+    assert.equal(declared.has(channel), false, `${channel} is still unsupported and must not be advertised`);
+  }
+  const vrmManifest = DEFAULT_RENDERER_MANIFESTS.find((entry) => entry.rendererId === "nk1-three-vrm3d");
+  assert.ok(vrmManifest);
+  assert.ok(vrmManifest.joints.includes("leftFoot") && vrmManifest.joints.includes("rightFoot"),
+    "the rig manifest must list both normalized foot joints");
+
   // The head/gaze controller owns headYaw/headPitch/headRoll and shoulders; the
   // full-body pass must not claim them.
   for (const channel of ["leftShoulder", "rightShoulder", "headYaw", "headPitch", "headRoll"]) {
