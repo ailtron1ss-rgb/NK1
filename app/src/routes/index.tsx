@@ -13,6 +13,7 @@ import { RuntimeAtlas } from "@/components/RuntimeAtlas";
 import { LettaGovernanceConsole } from "@/components/LettaGovernanceConsole";
 import { ConscioControlConsole } from "@/components/ConscioControlConsole";
 import { ConstitutionEvolutionConsole } from "@/components/ConstitutionEvolutionConsole";
+import { RuntimeHealthPanel } from "@/components/RuntimeHealthPanel";
 
 export const Route = createFileRoute("/")({ component: Home });
 
@@ -40,13 +41,14 @@ function Home() {
           <p className="text-xs uppercase tracking-widest text-subtle">NeuroCore · digital organism</p>
           <h1 className="font-display text-3xl tracking-tight text-fg md:text-4xl">NeuroCore</h1>
         </div>
-        <p className="text-right text-xs text-muted">
+        <div className="flex flex-col items-end gap-1 text-right text-xs text-muted">
           NK1 cognitive runtime · persistent identity
           <br />
           <span className="tabular-nums">
             {snap.awake ? "awake" : "asleep"} · tick {snap.tick}
           </span>
-        </p>
+        </div>
+        <RuntimeHealthPanel />
       </header>
 
       <div className="mx-auto grid max-w-7xl gap-4 lg:grid-cols-[280px_minmax(0,1fr)_260px]">
