@@ -141,15 +141,21 @@ try {
   assert.ok(report.webgl.drawingBufferWidth > 0 && report.webgl.drawingBufferHeight > 0, "WebGL drawing buffer must be non-empty");
   await page.waitForTimeout(1_500);
 
-  // Request a one-frame GPU readback from the live render loop. Draw-call counts
-  // alone can pass while the default framebuffer remains visually empty.
+  // Request a one-frame GPU readback from this exact canvas instance. The full
+  // responsive page may mount both desktop and mobile avatar stages; a global
+  // querySelector can select a different canvas from the one we just requested.
+  await canvas.scrollIntoViewIfNeeded();
+  const pixelAuditCanvas = await canvas.elementHandle();
+  assert.ok(pixelAuditCanvas, "the selected 3D canvas must have a stable DOM element");
   await canvas.evaluate((element) => {
+    delete element.dataset.avatarPixelAudit;
+    delete element.dataset.avatarPixelAuditPng;
     element.dataset.avatarPixelAuditRequested = "true";
   });
-  await page.waitForFunction(() => {
-    const element = document.querySelector('canvas[aria-label="3D-модель Курису, потяните для поворота"]');
-    return typeof element?.dataset.avatarPixelAudit === "string";
-  }, undefined, { timeout: 10_000 });
+  await page.waitForFunction((element) => {
+    return element instanceof HTMLCanvasElement
+      && typeof element.dataset.avatarPixelAudit === "string";
+  }, pixelAuditCanvas, { timeout: 10_000 });
   report.modelPixelAudit = await canvas.evaluate((element) => JSON.parse(element.dataset.avatarPixelAudit || "null"));
   const pixelPng = await canvas.evaluate((element) => element.dataset.avatarPixelAuditPng || "");
   if (pixelPng.startsWith("data:image/png;base64,")) {
