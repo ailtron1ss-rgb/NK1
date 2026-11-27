@@ -10,7 +10,7 @@
 | Cognitive cycle | `UnifiedCognitiveCycle.ts` | IMPLEMENTED upstream | Keep strict-cycle and runtime-wiring tests in release gate |
 | Action permissions | `ActionGateway.ts` | Existing authority preserved | Audit all action callers; no direct execution shortcuts |
 | Local LLM | `OpenAICompatibleLocalChatProvider.ts` | OPTIONAL ADAPTER IMPLEMENTED upstream | Run llama.cpp handshake, generation, timeout and fallback tests |
-| 3D embodiment | `Avatar3DStage.tsx`, VRM/GLB adapters | RIG/RENDER PATH EXISTS; requested full body not accepted | Build anatomical articulated body + IK and validate model-less fallback |
+| 3D embodiment | `proceduralHumanoidRig.ts`, `Avatar3DStage.tsx`, existing `articulatedBodyParticles.ts` | IMPLEMENTED IN BRANCH: 61 bones / 60 joint pivots / 99 meshes; 18 particles / 17 constraints drive pivots and bilateral arm/leg IK; 3D is default; tests authored, NOT RUN | Execute 10 focused rig tests + existing embodiment suites; then add surface deformation, contacts, gait and phone profiling |
 | Android/Termux | toolchain/startup scripts | DOCUMENTED; DEVICE UNVERIFIED | Test exact Node 24 / Python 3.11 and phone resource budgets |
 | Product identity | browser metadata, home screen, health endpoint | PARTIALLY MIGRATED to NeuroCore | Search/fix remaining visible old product labels without breaking compatibility |
 | Release acceptance | typecheck, app tests, runtime suites, CI, device tests | NOT YET VERIFIED for this branch | Run all gates and keep failure evidence |
