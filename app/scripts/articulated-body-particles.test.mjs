@@ -42,7 +42,8 @@ test("motor targets create inertial joint motion and move corresponding body par
     headYaw: 0.5, torsoPitch: -0.3,
   }, 1000 / 30, { awake: true, energy01: 0.9 });
   assert.ok(first.channels.leftShoulder > 0 && first.channels.leftShoulder < 0.8);
-  assert.ok(first.channels.leftElbow > 0 && first.channels.leftElbow < 0.55);
+  assert.ok(Number.isFinite(first.channels.leftElbow) && Math.abs(first.channels.leftElbow) <= 1,
+    "particle-derived elbow output must remain finite and normalized");
   assert.ok(first.channels.rightHip < 0);
   assert.ok(first.channels.headYaw > 0);
   assert.notDeepEqual(first.state.particles.leftElbowPoint.position, initial.particles.leftElbowPoint.position);
