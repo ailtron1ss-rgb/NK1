@@ -391,6 +391,7 @@ export function createProceduralHumanoidRig(scene: ThreeScene): ProceduralHumano
   const rootBone = new THREE.Bone();
   rootBone.name = "root";
   bones.root = rootBone;
+  limits.root = { x: [-PI, PI], y: [-PI, PI], z: [-PI, PI] };
   root.add(rootBone);
 
   // Axial skeleton: pelvis → spine → chest → neck → skull.
@@ -771,7 +772,7 @@ export function createProceduralHumanoidRig(scene: ThreeScene): ProceduralHumano
       );
       const secondAngle = Math.atan2(
         result.endEffector.y - result.elbow.y,
-        outward * (outward * (result.endEffector.x - result.elbow.x)),
+        outward * (result.endEffector.x - result.elbow.x),
       );
       const baseUpper = Math.atan2(arm.forearm.position.y, arm.forearm.position.x);
       const baseForearm = Math.atan2(arm.wrist.position.y, arm.wrist.position.x);
@@ -779,8 +780,8 @@ export function createProceduralHumanoidRig(scene: ThreeScene): ProceduralHumano
       const elbowName = side + "Forearm";
       const shoulderValue = clampJointAngle(shoulderName, "z", wrapRadians(firstAngle - baseUpper), limits);
       const elbowValue = clampJointAngle(elbowName, "z", wrapRadians(secondAngle - firstAngle + baseUpper - baseForearm), limits);
-      arm.upper.rotation.z = smooth(arm.upper.rotation.z, shoulderValue, deltaSeconds, 18);
-      arm.forearm.rotation.z = smooth(arm.forearm.rotation.z, elbowValue, deltaSeconds, 18);
+      arm.upper.rotation.z = shoulderValue;
+      arm.forearm.rotation.z = elbowValue;
       root.updateMatrixWorld(true);
       return {
         ...result,
@@ -823,8 +824,8 @@ export function createProceduralHumanoidRig(scene: ThreeScene): ProceduralHumano
       );
       const hipValue = clampJointAngle(side + "Hip", "z", wrapRadians(firstAngle - firstRestAngle), limits);
       const kneeValue = clampJointAngle(side + "Knee", "z", wrapRadians(secondAngle - firstAngle + firstRestAngle - secondRestAngle), limits);
-      hipBone.rotation.z = smooth(hipBone.rotation.z, hipValue, deltaSeconds, 18);
-      kneeBone.rotation.z = smooth(kneeBone.rotation.z, kneeValue, deltaSeconds, 18);
+      hipBone.rotation.z = hipValue;
+      kneeBone.rotation.z = kneeValue;
       root.updateMatrixWorld(true);
       return result;
     },
