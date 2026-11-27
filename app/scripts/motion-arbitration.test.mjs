@@ -64,7 +64,7 @@ test("explicit point gesture takes precedence over ordinary speech motion", () =
 
 const neutralCharacter = {
   valence01: 0.5, arousal01: 0.3, dominance01: 0.5, curiosity01: 0.25, warmth01: 0.5,
-  stress01: 0.25, confidence01: 0.7, cognitiveLoad01: 0.2, uncertainty01: 0.25,
+  stress01: 0.25, confidence01: 0.7, memoryRecall01: 0.2, cognitiveLoad01: 0.2, uncertainty01: 0.25,
   socialNeed01: 0.3, novelty01: 0.2, goalPressure01: 0.2, predictionError01: 0.2,
   traits: { curiosity: 0.7, warmth: 0.63, guardedness: 0.58, composure: 0.87, playfulness: 0.45, sarcasm: 0.68 },
   reducedMotion: false,
