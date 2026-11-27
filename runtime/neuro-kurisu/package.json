@@ -1061,6 +1061,7 @@
     "test:big-pass-323:kill-resume": "node --experimental-strip-types tests/big-pass-323-process-kill-resume.mjs",
     "audit:b323:reality": "npm run typecheck && npm run test:big-pass-323:kill-resume && npm run test:big-pass-321:device",
     "test:big-pass-324": "node --experimental-strip-types tests/big-pass-324-recovery-watchdog.mjs",
+    "test:watchdog-durable-commit": "node --experimental-strip-types --test tests/recovery-watchdog-durable-commit-20261127.mjs",
     "test:big-pass-324:core": "node --experimental-strip-types tests/big-pass-324-core-watchdog.mjs",
     "test:big-pass-325": "node --experimental-strip-types tests/big-pass-325-recovery-autobiography.mjs",
     "test:big-pass-326-recovery-causal-influence": "node --experimental-strip-types tests/big-pass-326-recovery-causal-influence.mjs",
