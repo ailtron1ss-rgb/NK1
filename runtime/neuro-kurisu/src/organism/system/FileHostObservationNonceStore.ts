@@ -75,7 +75,7 @@ function validKey(value: unknown): value is HostObservationNonceKey {
 
 function tupleDigest(key: HostObservationNonceKey): string {
   return createHash('sha256')
-    .update(JSON.stringify([key.issuerId, key.deviceId, key.sessionId, key.nonce]), 'utf8')
+    .update(Buffer.from(JSON.stringify([key.issuerId, key.deviceId, key.sessionId, key.nonce]), 'utf8'))
     .digest('hex');
 }
 
