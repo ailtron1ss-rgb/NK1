@@ -58,9 +58,9 @@ test("audit reports actual secondary bone chains, authored morphs and tagged neu
     },
   }));
   mesh.material.emissiveMap = null;
-  attach(root, node("HAIR_front_strand_L", { isSkinnedMesh: true }));
-  attach(root, node("CLOTH_labcoat_main", { isSkinnedMesh: true }));
-  attach(root, node("CLOTH_lower_sleeve_L", { isSkinnedMesh: true }));
+  attach(root, node("HAIR_front_strand_L", { isMesh: true }));
+  attach(root, node("CLOTH_labcoat_main", { isMesh: true }));
+  attach(root, node("CLOTH_lower_sleeve_L", { isMesh: true }));
 
   const report = auditAvatarSecondaryScene(root);
   assert.equal(report.schemaVersion, 1);
