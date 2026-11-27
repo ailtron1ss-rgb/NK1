@@ -15,7 +15,6 @@ import { fingerprintAvatarModel } from "./avatar/avatarModelFingerprint";
 import { preflightAvatarModel } from "./avatar/avatarModelPreflight";
 import { disposeThreeObjectTree } from "./avatar/threeResourceDisposal";
 import { applyAnimeToonMaterials, getSharedAnimeGradientTexture } from "./avatar/threeToonMaterials";
-import { KURISU_HYBRID_MODEL } from "./avatar/avatarModelCatalog";
 import { resolveGlbMouthMorphWeights } from "./avatar/glbMouthMorphAdapter";
 import { resolveGlbFacialMorphWeights } from "./avatar/glbFacialMorphAdapter";
 import { resolveGlbSecondaryBoneRotation } from "./avatar/glbSecondaryMotionAdapter";
@@ -65,30 +64,6 @@ export function Avatar3DStage(props:Props){
   },()=>{if(token!==loadToken.current)return;setState("error");setMessage("Не прочитан бинарный VRM/GLB. Нужен самодостаточный файл с геометрией и текстурами внутри.");});
   }catch(e){if(token!==loadToken.current)return;setState("error");setMessage(e instanceof Error?e.message:"Ошибка чтения модели.");}
  },[]);
- const loadBundledModel=useCallback(async()=>{
-  const token=++loadToken.current;
-  setState("loading");setMessage("Загрузка закреплённой совместимой VRM/GLB-модели и проверка SHA-256…");
-  try{
-   const response=await fetch(KURISU_HYBRID_MODEL.url,{mode:"cors",credentials:"omit",cache:"force-cache",signal:AbortSignal.timeout(25_000)});
-   if(token!==loadToken.current)return;
-   if(!response.ok)throw new Error(`Не удалось получить внешнюю модель (HTTP ${response.status}).`);
-   const contentType=(response.headers.get("content-type")??"").split(";")[0].trim().toLowerCase();
-   if(contentType!=="model/gltf-binary")throw new Error("CDN вернул неожиданный тип содержимого; GLB не будет передан парсеру.");
-   const declaredLength=Number(response.headers.get("content-length"));
-   if(Number.isFinite(declaredLength)&&declaredLength>0&&declaredLength!==KURISU_HYBRID_MODEL.sizeBytes)throw new Error("Content-Length модели не совпадает с закреплённым манифестом.");
-   const blob=await response.blob();
-   if(token!==loadToken.current)return;
-   if(blob.size!==KURISU_HYBRID_MODEL.sizeBytes)throw new Error("Размер онлайн-модели не совпадает с закреплённым манифестом.");
-   const data=await blob.arrayBuffer();
-   const fingerprint=await fingerprintAvatarModel(data);
-   if(token!==loadToken.current)return;
-   if(fingerprint!==KURISU_HYBRID_MODEL.sha256)throw new Error("SHA-256 модели не совпадает; загрузка заблокирована.");
-   await loadModel(blob,KURISU_HYBRID_MODEL.filename,true);
-  }catch(error){
-   if(token!==loadToken.current)return;
-   setState("error");setMessage(error instanceof Error?error.message:"Не удалось загрузить совместимую онлайн-модель.");
-  }
- },[loadModel]);
  useEffect(()=>{
   const el=host.current;if(!el)return;let renderer:any;let raf=0;let scheduleTimer:number|null=null;let observer:ResizeObserver|null=null;let intersectionObserver:IntersectionObserver|null=null;let disposed=false;
   const browserNavigator=navigator as Navigator & { deviceMemory?: number; connection?: { saveData?: boolean } };
@@ -161,7 +136,7 @@ export function Avatar3DStage(props:Props){
    setStorageMessage("IndexedDB недоступна. Встроенное тело NeuroCore остаётся активным; внешний файл можно подключить вручную.");
   });
   return()=>{cancelled=true;loadToken.current++;};
- },[ready,loadModel,loadBundledModel]);
+ },[ready,loadModel]);
  const onFile=(event:ChangeEvent<HTMLInputElement>)=>{const file=event.currentTarget.files?.[0];event.currentTarget.value="";if(!file)return;const ext=file.name.toLowerCase().split(".").pop();if(ext!=="vrm"&&ext!=="glb"){setState("error");setMessage("Поддерживаются бинарные модели .vrm и .glb.");return;}void loadModel(file,file.name,true);};
  const onRemoteModel=async()=>{
   remoteLoadAbort.current?.abort();
@@ -184,7 +159,6 @@ export function Avatar3DStage(props:Props){
   {state==="webgl-unavailable"?<div className="absolute inset-0 z-10 grid place-items-center p-6"><div className="max-w-sm rounded-xl border border-white/15 bg-black/70 p-4 text-center text-white"><p className="text-sm font-semibold">3D-рендерер недоступен</p><p className="mt-2 text-xs text-white/70">{message}</p>{props.onReturnTo2D?<button type="button" onClick={props.onReturnTo2D} className="mt-3 rounded-md border border-white/20 px-3 py-2 text-xs">Открыть Live2D</button>:null}</div></div>:null}
 
   <div className="absolute right-3 top-3 z-20 flex max-w-[90%] flex-wrap justify-end gap-1.5">
-   <button type="button" onClick={()=>void loadBundledModel()} disabled={!ready||state==="loading"} className="rounded-md border border-cyan-100/25 bg-slate-950/75 px-2.5 py-1.5 text-[10px] font-mono text-cyan-50 hover:border-cyan-100/55">Внешняя модель (онлайн)</button>
    <button type="button" onClick={()=>void fileInput.current?.click()} disabled={!ready||state==="loading"} className="rounded-md border border-cyan-100/25 bg-slate-950/75 px-2.5 py-1.5 text-[10px] font-mono text-cyan-50 hover:border-cyan-100/55">Загрузить VRM/GLB</button>
    {modelName?<button type="button" onClick={()=>void reset()} className="rounded-md border border-white/15 bg-slate-950/75 px-2.5 py-1.5 text-[10px] font-mono text-white/80">Сбросить</button>:null}
    <input ref={fileInput} type="file" accept=".vrm,.glb,model/gltf-binary" onChange={onFile} className="hidden" aria-label="Выберите локальную VRM или GLB модель"/>
