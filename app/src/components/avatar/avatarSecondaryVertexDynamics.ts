@@ -151,10 +151,22 @@ export function injectAvatarSecondaryVertexShader(
   if (shader.vertexShader.includes(SHADER_MARKER)) return true;
   const commonAnchor = "#include <common>";
   const skinningAnchor = "#include <skinning_vertex>";
+  if (!uniforms || typeof uniforms !== "object" || Array.isArray(uniforms)) return false;
   const uniformRecord = uniforms as Record<string, AvatarSecondaryVertexUniform>;
-  for (const name of REQUIRED_UNIFORMS) {
-    const uniform = uniformRecord[name];
-    if (!uniform || typeof uniform.value !== "number" || !Number.isFinite(uniform.value)) return false;
+  let uniformEntries: Array<[string, AvatarSecondaryVertexUniform]>;
+  try {
+    uniformEntries = Object.entries(uniformRecord) as Array<[string, AvatarSecondaryVertexUniform]>;
+    // Validate every supplied uniform before touching the shader. Extra uniforms are
+    // allowed, but malformed names/values must fail closed with no partial mutation.
+    for (const [name, uniform] of uniformEntries) {
+      if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(name)
+        || !uniform || typeof uniform.value !== "number" || !Number.isFinite(uniform.value)) return false;
+    }
+    for (const name of REQUIRED_UNIFORMS) {
+      if (!Object.prototype.hasOwnProperty.call(uniformRecord, name)) return false;
+    }
+  } catch {
+    return false;
   }
   if (!shader.vertexShader.includes(commonAnchor) || !shader.vertexShader.includes(skinningAnchor)) return false;
 
@@ -200,8 +212,7 @@ uniform float nk1SecondaryHair;
   if (vertexShader === shader.vertexShader) return false;
 
   shader.vertexShader = vertexShader;
-  for (const [name, uniform] of Object.entries(uniforms)) {
-    if (!uniform || typeof uniform.value !== "number" || !Number.isFinite(uniform.value)) return false;
+  for (const [name, uniform] of uniformEntries) {
     shader.uniforms[name] = uniform;
   }
   return true;
