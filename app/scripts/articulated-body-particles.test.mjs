@@ -229,3 +229,143 @@ test("a lifted swing foot clears the ground contact band instead of being snappe
       + state.particles.leftToePoint.position.y + " targetY="
       + state.particles.leftToePoint.target.y);
 });
+
+
+function hingeFlexionRadians(state, parentId, jointId, childId) {
+  const parent = state.particles[parentId].position;
+  const joint = state.particles[jointId].position;
+  const child = state.particles[childId].position;
+  const a = { x: parent.x - joint.x, y: parent.y - joint.y, z: parent.z - joint.z };
+  const b = { x: child.x - joint.x, y: child.y - joint.y, z: child.z - joint.z };
+  const dot = a.x * b.x + a.y * b.y + a.z * b.z;
+  const magnitude = Math.hypot(a.x, a.y, a.z) * Math.hypot(b.x, b.y, b.z);
+  const internal = Math.acos(Math.max(-1, Math.min(1, dot / Math.max(magnitude, 1e-9))));
+  return Math.PI - internal;
+}
+
+function alignParticleAlong(source, joint, destination) {
+  const dx = source.x - joint.x, dy = source.y - joint.y, dz = source.z - joint.z;
+  const sourceLength = Math.hypot(dx, dy, dz);
+  const destinationLength = Math.hypot(destination.x - joint.x, destination.y - joint.y, destination.z - joint.z);
+  return {
+    x: joint.x + dx / sourceLength * destinationLength,
+    y: joint.y + dy / sourceLength * destinationLength,
+    z: joint.z + dz / sourceLength * destinationLength,
+  };
+}
+
+test("elbow hinge cannot fold beyond the anatomical flexion limit", () => {
+  const previous = createAvatarArticulatedBodyState();
+  const shoulder = previous.particles.leftShoulderPoint.position;
+  const elbow = previous.particles.leftElbowPoint.position;
+  const wrist = previous.particles.leftWristPoint;
+  const oldWrist = { ...wrist.position };
+  wrist.position = alignParticleAlong(shoulder, elbow, wrist.position);
+  const wristShift = {
+    x: wrist.position.x - oldWrist.x,
+    y: wrist.position.y - oldWrist.y,
+    z: wrist.position.z - oldWrist.z,
+  };
+  const hand = previous.particles.leftHandPoint;
+  hand.position = {
+    x: hand.position.x + wristShift.x,
+    y: hand.position.y + wristShift.y,
+    z: hand.position.z + wristShift.z,
+  };
+  wrist.velocity = { x: 0, y: 0, z: 0 };
+  hand.velocity = { x: 0, y: 0, z: 0 };
+  assert.ok(hingeFlexionRadians(previous, "leftShoulderPoint", "leftElbowPoint", "leftWristPoint") > 179 * Math.PI / 180,
+    "elbow fixture must begin beyond the allowed hinge range");
+  for (const id of ["leftShoulderPoint", "leftElbowPoint", "leftWristPoint", "leftHandPoint"]) {
+    previous.particles[id].mass = 20;
+  }
+  const result = stepAvatarArticulatedBody(previous, {}, 1000 / 60, { awake: true, energy01: 1 });
+  const flexion = hingeFlexionRadians(result.state, "leftShoulderPoint", "leftElbowPoint", "leftWristPoint");
+  assert.ok(flexion <= 150 * Math.PI / 180 + 0.02,
+    "left elbow flexion must stay at or below 150 degrees; got " + (flexion * 180 / Math.PI).toFixed(2));
+  assert.ok(result.jointLimits.correctionDegrees.leftElbow > 0);
+  assert.ok(result.jointLimits.flexionDegrees.leftElbow <= 150.02);
+  const wristHandLength = Math.hypot(
+    result.state.particles.leftHandPoint.position.x - result.state.particles.leftWristPoint.position.x,
+    result.state.particles.leftHandPoint.position.y - result.state.particles.leftWristPoint.position.y,
+    result.state.particles.leftHandPoint.position.z - result.state.particles.leftWristPoint.position.z,
+  );
+  const expectedHandLength = previous.segments.find((x) => x.from === "leftWristPoint" && x.to === "leftHandPoint").restLength;
+  assert.ok(Math.abs(wristHandLength - expectedHandLength) < 0.02);
+});
+
+test("knee hinge cannot hyperflex while the foot chain follows the lower leg", () => {
+  const previous = createAvatarArticulatedBodyState();
+  const hip = previous.particles.rightHipPoint.position;
+  const knee = previous.particles.rightKneePoint.position;
+  const ankle = previous.particles.rightAnklePoint;
+  const oldAnkle = { ...ankle.position };
+  ankle.position = alignParticleAlong(hip, knee, ankle.position);
+  assert.ok(hingeFlexionRadians(previous, "rightHipPoint", "rightKneePoint", "rightAnklePoint") > 179 * Math.PI / 180,
+    "knee fixture must begin beyond the allowed hinge range");
+  const shift = {
+    x: ankle.position.x - oldAnkle.x,
+    y: ankle.position.y - oldAnkle.y,
+    z: ankle.position.z - oldAnkle.z,
+  };
+  for (const id of ["rightHipPoint", "rightKneePoint", "rightAnklePoint", "rightHeelPoint", "rightToePoint"]) {
+    previous.particles[id].mass = 20;
+  }
+  for (const id of ["rightHeelPoint", "rightToePoint"]) {
+    const point = previous.particles[id];
+    point.position = { x: point.position.x + shift.x, y: point.position.y + shift.y, z: point.position.z + shift.z };
+  }
+  const result = stepAvatarArticulatedBody(previous, {}, 1000 / 60, { awake: true, energy01: 1, groundEnabled: false });
+  const flexion = hingeFlexionRadians(result.state, "rightHipPoint", "rightKneePoint", "rightAnklePoint");
+  assert.ok(flexion <= 150 * Math.PI / 180 + 0.02,
+    "right knee flexion must stay at or below 150 degrees; got " + (flexion * 180 / Math.PI).toFixed(2));
+  assert.ok(result.jointLimits.correctionDegrees.rightKnee > 0);
+  assert.ok(result.jointLimits.flexionDegrees.rightKnee <= 150.02);
+  const lowerLegLength = Math.hypot(
+    result.state.particles.rightAnklePoint.position.x - result.state.particles.rightKneePoint.position.x,
+    result.state.particles.rightAnklePoint.position.y - result.state.particles.rightKneePoint.position.y,
+    result.state.particles.rightAnklePoint.position.z - result.state.particles.rightKneePoint.position.z,
+  );
+  assert.ok(Math.abs(lowerLegLength - previous.segments.find(x => x.from === "rightKneePoint" && x.to === "rightAnklePoint").restLength) < 0.02,
+    "knee hinge projection must preserve the lower-leg segment length");
+});
+
+test("elbow and knee hinge limits are symmetric and expose finite correction diagnostics", () => {
+  const previous = createAvatarArticulatedBodyState();
+  const fixtures = [
+    { key: "rightElbow", parent: "rightShoulderPoint", joint: "rightElbowPoint", child: "rightWristPoint", distal: ["rightHandPoint"] },
+    { key: "leftKnee", parent: "leftHipPoint", joint: "leftKneePoint", child: "leftAnklePoint", distal: ["leftHeelPoint", "leftToePoint"] },
+  ];
+  for (const fixture of fixtures) {
+    const joint = previous.particles[fixture.joint];
+    const child = previous.particles[fixture.child];
+    const oldPosition = { ...child.position };
+    child.position = alignParticleAlong(previous.particles[fixture.parent].position, joint.position, child.position);
+    const shift = {
+      x: child.position.x - oldPosition.x,
+      y: child.position.y - oldPosition.y,
+      z: child.position.z - oldPosition.z,
+    };
+    for (const id of [fixture.parent, fixture.joint, fixture.child, ...fixture.distal]) {
+      previous.particles[id].mass = 20;
+      previous.particles[id].velocity = { x: 0, y: 0, z: 0 };
+    }
+    for (const id of fixture.distal) {
+      const point = previous.particles[id];
+      point.position = { x: point.position.x + shift.x, y: point.position.y + shift.y, z: point.position.z + shift.z };
+    }
+  }
+  const result = stepAvatarArticulatedBody(previous, {}, 1000 / 60, {
+    awake: true, energy01: 1, groundEnabled: false,
+  });
+  for (const key of ["leftElbow", "rightElbow", "leftKnee", "rightKnee"]) {
+    assert.ok(result.jointLimits.flexionDegrees[key] <= 150.02,
+      key + " must stay within 150 degrees; got " + result.jointLimits.flexionDegrees[key]);
+    assert.ok(Number.isFinite(result.jointLimits.flexionDegrees[key]));
+    assert.ok(Number.isFinite(result.jointLimits.correctionDegrees[key]));
+  }
+  assert.ok(result.jointLimits.correctionDegrees.rightElbow > 0);
+  assert.ok(result.jointLimits.correctionDegrees.leftKnee > 0);
+  assert.ok(result.jointLimits.maxCorrectionDeg > 0);
+  assert.ok(everyNumberIsFinite(result.state));
+});
