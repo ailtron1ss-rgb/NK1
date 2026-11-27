@@ -124,8 +124,8 @@ export const HUMANOID_JOINT_LIMITS: Record<string, JointLimit> = {
   rightClavicle: { x: [-0.45, 0.45], y: [-0.35, 0.35], z: [-0.5, 0.5] },
   leftUpperArm: { x: [-1.2, 1.2], y: [-1.55, 1.55], z: [-2.25, 2.25] },
   rightUpperArm: { x: [-1.2, 1.2], y: [-1.55, 1.55], z: [-2.25, 2.25] },
-  leftForearm: { x: [-0.45, 0.45], y: [-0.45, 0.45], z: [-2.48, 0.12] },
-  rightForearm: { x: [-0.45, 0.45], y: [-0.45, 0.45], z: [-0.12, 2.48] },
+  leftForearm: { x: [-0.45, 0.45], y: [-0.45, 0.45], z: [-0.12, 2.48] },
+  rightForearm: { x: [-0.45, 0.45], y: [-0.45, 0.45], z: [-2.48, 0.12] },
   leftWrist: { x: [-0.65, 0.65], y: [-0.55, 0.55], z: [-0.75, 0.75] },
   rightWrist: { x: [-0.65, 0.65], y: [-0.55, 0.55], z: [-0.75, 0.75] },
   leftHip: { x: [-0.65, 0.65], y: [-0.45, 0.45], z: [-0.75, 0.75] },
@@ -447,11 +447,11 @@ export function createProceduralHumanoidRig(scene: THREE.Scene): ProceduralHuman
         const elbow = hasElbowMotor ? channel(key + "Elbow") * 0.78 : elbowFallback;
         targets[key + "Clavicle"] = { z: side * (0.06 + shoulder * 0.12) + channel(key + "ClavicleRoll", 0) };
         targets[key + "UpperArm"] = {
-          z: side * (shoulder + (input.speaking ? 0.06 : 0)),
+          z: -side * (shoulder + (input.speaking ? 0.06 : 0)),
           x: channel(key + "ShoulderPitch", 0),
           y: channel(key + "ShoulderYaw", side * -0.08),
         };
-        targets[key + "Forearm"] = { z: side * elbow + channel(key + "ForearmTwist", 0) };
+        targets[key + "Forearm"] = { z: -side * elbow + channel(key + "ForearmTwist", 0) };
         targets[key + "Wrist"] = { z: channel(key + "Wrist", 0) * 0.65, x: channel(key + "WristPitch", 0) * 0.55 };
         const fist = clamp(channel(key + "Fingers", channel(key + "Hand", input.action === "inspect" ? 0.12 : 0)), 0, 1);
         for (const finger of fingerNames) {
@@ -571,12 +571,12 @@ export function createProceduralHumanoidRig(scene: THREE.Scene): ProceduralHuman
         { x: outward * localTarget.x, y: localTarget.y },
         0.34,
         0.29,
-        1,
+        -1,
       );
       const shoulderName = side + "UpperArm";
       const elbowName = side + "Forearm";
       const shoulderValue = clampJointAngle(shoulderName, "z", outward * result.shoulder, limits);
-      const elbowValue = clampJointAngle(elbowName, "z", outward * result.elbowFlex, limits);
+      const elbowValue = clampJointAngle(elbowName, "z", outward * -1 * result.elbowFlex, limits);
       arm.upper.rotation.z = smooth(arm.upper.rotation.z, shoulderValue, deltaSeconds, 18);
       arm.forearm.rotation.z = smooth(arm.forearm.rotation.z, elbowValue, deltaSeconds, 18);
       root.updateMatrixWorld(true);
