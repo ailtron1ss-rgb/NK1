@@ -12,7 +12,7 @@ on:
       - "app/scripts/avatar-secondary-particle-solver.test.mjs"
       - "app/src/components/avatar/avatarCameraFraming.ts"
       - "app/src/components/avatar/avatarSecondaryAssetAudit.ts"
-      - "app/scripts/avatar-secondary-vertex-dynamics.test.mjs"
+      - "app/scripts/avatar-secondary-vertex-dynamics.test.mjs app/scripts/avatar-scene-bounds.test.mjs"
       - "app/scripts/avatar-camera-framing.test.mjs"
       - "app/scripts/avatar-neuroadaptive-dynamics.test.mjs"
       - "app/scripts/avatar-secondary-asset-audit.test.mjs"
