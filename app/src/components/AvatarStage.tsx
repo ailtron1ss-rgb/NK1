@@ -139,7 +139,7 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
   const [mouthPose, setMouthPose] = useState<MouthPose>(CLOSED_MOUTH);
   const [nativeSpeechProviderEvent, setNativeSpeechProviderEvent] = useState<NativeSpeechProviderEvent | null>(null);
   const [nativeSpeechConnection, setNativeSpeechConnection] = useState<NativeSpeechProviderConnection>("connecting");
-  const [mode, setMode] = useState<ViewMode>("live2d");
+  const [mode, setMode] = useState<ViewMode>("3d");
   const live2dPresentation = avatarRendererPresentation("live2d");
   const legacyPresentation = avatarRendererPresentation("legacy");
   const originalPresentation = avatarRendererPresentation("original");
@@ -156,6 +156,7 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
   // rAF loop and only feeds the handoff snapshot; it never drives a renderer directly.
   const motionStateRef = useRef<MotionArbitrationState>(defaultMotionArbitrationState());
   const articulatedBodyRef = useRef(createAvatarArticulatedBodyState());
+  const [articulatedBodyParticles, setArticulatedBodyParticles] = useState(articulatedBodyRef.current.particles);
   const motionChannelsRef = useRef<Partial<Record<BodyChannel, number>>>({});
   const latestMotionIntentRef = useRef<MotionIntent | null>(null);
   const latestGestureRef = useRef<{ programId: NonNullable<MotionIntent["gestureProgram"]>; expiresAtEpochMs: number } | null>(null);
@@ -338,6 +339,9 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
               },
             );
             articulatedBodyRef.current = particleStep.state;
+            // Throttle the 18-particle render projection to 20 Hz; the physics solver itself
+            // continues at the animation cadence and remains the one articulation authority.
+            if (particleStep.state.tick % 3 === 0) setArticulatedBodyParticles(particleStep.state.particles);
             const next = particleStep.channels;
             const previous = motionChannelsRef.current;
             const keys = new Set([...Object.keys(previous), ...Object.keys(next)]);
@@ -670,7 +674,7 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
           <button type="button" aria-label={live2dPresentation.ariaLabel} title={live2dPresentation.title} aria-pressed={mode === "live2d"} onClick={() => setMode("live2d")} className={cn("min-h-11 rounded px-3 py-2 text-xs font-mono focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent", mode === "live2d" ? "bg-accent text-accent-fg" : "text-white/80")}>Live2D</button>
           <button type="button" aria-label={legacyPresentation.ariaLabel} title={legacyPresentation.title} aria-pressed={mode === "legacy"} onClick={() => setMode("legacy")} className={cn("min-h-11 rounded px-3 py-2 text-xs font-mono focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent", mode === "legacy" ? "bg-accent text-accent-fg" : "text-white/80")}>Legacy</button>
           <button type="button" aria-label={originalPresentation.ariaLabel} title={originalPresentation.title} aria-pressed={mode === "original"} onClick={() => setMode("original")} className={cn("min-h-11 rounded px-3 py-2 text-xs font-mono focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent", mode === "original" ? "bg-accent text-accent-fg" : "text-white/80")}>NK1 Original</button>
-          <button type="button" aria-label={threeDPresentation.ariaLabel} title={threeDPresentation.title} aria-pressed={mode === "3d"} onClick={() => setMode("3d")} className={cn("min-h-11 rounded px-3 py-2 text-xs font-mono focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent", mode === "3d" ? "bg-accent text-accent-fg" : "text-white/80")}>3D · предпросмотр</button>
+          <button type="button" aria-label={threeDPresentation.ariaLabel} title={threeDPresentation.title} aria-pressed={mode === "3d"} onClick={() => setMode("3d")} className={cn("min-h-11 rounded px-3 py-2 text-xs font-mono focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent", mode === "3d" ? "bg-accent text-accent-fg" : "text-white/80")}>3D · тело NeuroCore</button>
         </div>
         <div role="status" aria-live="polite" aria-label="Тип выбранного тела и подтверждение кадра" className="basis-full space-y-0.5 px-2 text-[10px] leading-4 text-white/70 md:basis-full md:ml-1">
           <span className="block">{activeModePresentation.description}</span>
@@ -699,7 +703,7 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
           avatarBrainChannels={projection.brainChannels ?? undefined}
           frameTick={snap.tick}
           onFrameReceipt={recordPresentationReceipt}
-        /> : mode === "3d" ? <Avatar3DStage emotion={snap.emotion.label} action={snap.lastOption} motorPlan={projection.motorPlan} arousal={snap.emotion.arousal} valence={snap.emotion.valence} dominance={snap.emotion.dominance} energy={snap.needs.energy} cognitiveLoad={snap.needs.cognitiveLoad} uncertainty={snap.needs.uncertainty} socialNeed={snap.needs.socialNeed} novelty={snap.needs.novelty} goalPressure={snap.needs.goalPressure} curiosity={snap.curiosity} predictionError={snap.predictionError} traits={snap.identity.traits} gazeX={projection.gaze.x} gazeY={projection.gaze.y} speaking={projection.speaking} mouthPose={projection.mouthPose} thinking={thinking} awake={snap.awake} bodyChannels={{ ...projection.bodyChannels, ...motionChannels }} avatarBrainFrame={projection.brainFrame ?? undefined} frameTick={snap.tick} onFrameReceipt={recordPresentationReceipt} onReturnTo2D={() => setMode("live2d")} /> : <>
+        /> : mode === "3d" ? <Avatar3DStage emotion={snap.emotion.label} action={snap.lastOption} motorPlan={projection.motorPlan} arousal={snap.emotion.arousal} valence={snap.emotion.valence} dominance={snap.emotion.dominance} energy={snap.needs.energy} cognitiveLoad={snap.needs.cognitiveLoad} uncertainty={snap.needs.uncertainty} socialNeed={snap.needs.socialNeed} novelty={snap.needs.novelty} goalPressure={snap.needs.goalPressure} curiosity={snap.curiosity} predictionError={snap.predictionError} traits={snap.identity.traits} gazeX={projection.gaze.x} gazeY={projection.gaze.y} speaking={projection.speaking} mouthPose={projection.mouthPose} thinking={thinking} awake={snap.awake} bodyChannels={{ ...projection.bodyChannels, ...motionChannels }} avatarBrainFrame={projection.brainFrame ?? undefined} frameTick={snap.tick} onFrameReceipt={recordPresentationReceipt} bodyParticles={articulatedBodyParticles} onReturnTo2D={() => setMode("live2d")} /> : <>
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_30%,color-mix(in_oklab,var(--color-ember)_18%,transparent),transparent_62%)]" />
         <iframe ref={frame} title="Kurisu Live2D" src="/live2d/viewer.html?profile=auto" className={cn("relative z-10 h-[320px] w-full border-0 transition-opacity duration-300 md:h-[420px]", live ? "opacity-100" : "opacity-0")} allow="autoplay" />
         {!live ? <div className="absolute inset-0 z-[11] flex items-center justify-center p-6"><div className="max-w-sm rounded-xl border border-border bg-bg/85 p-4 text-center backdrop-blur"><p className="text-xs font-medium uppercase tracking-wider text-subtle">Модель Live2D недоступна</p><p className="mt-1 text-sm text-fg">Переключитесь на Legacy — там используются реальные legacy sprite-ассеты.</p><button type="button" onClick={() => setMode("legacy")} className="mt-3 rounded-md border border-border px-3 py-1.5 text-xs text-fg hover:bg-elevated">Открыть Legacy</button></div></div> : null}
