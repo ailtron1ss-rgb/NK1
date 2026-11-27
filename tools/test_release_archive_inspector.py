@@ -195,8 +195,8 @@ class ReleaseArchiveInspectorTests(unittest.TestCase):
 
     def test_rejects_casefold_collision_after_auto_prefix_mapping(self):
         self._write_archive({
-            "Neuro_Kurisu/README.md": b"NK1 source\n",
-            "readme.md": b"shadow\n",
+            "Neuro_Kurisu/README.md": b"NK1 source\\n",
+            "readme.md": b"shadow\\n",
         })
         result = audit_release_archive(self.archive, self.source)
         self.assertFalse(result["ok"])
@@ -205,7 +205,7 @@ class ReleaseArchiveInspectorTests(unittest.TestCase):
 
     def test_rejects_file_directory_collision_after_auto_prefix_mapping(self):
         with zipfile.ZipFile(self.archive, "w") as zipped:
-            zipped.writestr("Neuro_Kurisu/README.md", "NK1 source\n")
+            zipped.writestr("Neuro_Kurisu/README.md", "NK1 source\\n")
             zipped.writestr("README.md/", "")
         result = audit_release_archive(self.archive, self.source)
         self.assertFalse(result["ok"])
