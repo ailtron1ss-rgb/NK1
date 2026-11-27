@@ -298,6 +298,8 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
         thinking,
         awake: snap.awake,
         energy01: snap.needs.energy,
+        semanticAction: projection.motorPlan.action,
+        character: projection.character,
         gestureProgram: semanticGesture?.programId,
       }, deltaMs);
       motionStateRef.current = result.state;
@@ -305,7 +307,7 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
     } catch {
       // A malformed intent must never freeze or crash the panel; keep the last pose.
     }
-  }, [snap, thinking, voiceStatus]);
+  }, [snap, thinking, voiceStatus, projection.motorPlan.action]);
 
   // Aspect 11: plan a renderer handoff whenever the bodySwitch changes. The projection is
   // monotonic and derived from the canonical snapshot; it never mutates organism state.
