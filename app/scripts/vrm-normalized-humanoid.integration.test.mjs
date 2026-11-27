@@ -48,12 +48,24 @@ function createSyntheticHumanoid(metaVersion = "1") {
   }
 
   root.updateMatrixWorld(true);
+  const humanoidNodes = { ...nodes };
+  if (metaVersion === "0") {
+    // Match three-vrm's VRM 0.x loader remap:
+    // raw ThumbProximal -> normalized ThumbMetacarpal,
+    // raw ThumbIntermediate -> normalized ThumbProximal.
+    for (const side of ["left", "right"]) {
+      humanoidNodes[side + "ThumbMetacarpal"] = nodes[side + "ThumbProximal"];
+      humanoidNodes[side + "ThumbProximal"] = nodes[side + "ThumbIntermediate"];
+      delete humanoidNodes[side + "ThumbIntermediate"];
+    }
+  }
   const rawFingerBones = Object.entries(nodes)
     .filter(([name]) => /^(left|right)(Thumb|Index|Middle|Ring|Little)/.test(name))
     .map(([, value]) => value.node);
   return {
     root,
     nodes,
+    humanoidNodes,
     rawHead: head,
     rawNeck: neck,
     rawHips: hips,
@@ -68,7 +80,7 @@ function createSyntheticHumanoid(metaVersion = "1") {
 
 test("real three-vrm VRMHumanoid transfers NK1 normalized motor output into raw skeleton", () => {
   const fixture = createSyntheticHumanoid();
-  const humanoid = new VRMHumanoid(fixture.nodes, { autoUpdateHumanBones: false });
+  const humanoid = new VRMHumanoid(fixture.humanoidNodes, { autoUpdateHumanBones: false });
   let resetCount = 0;
   const vrm = {
     humanoid,
@@ -123,7 +135,7 @@ test("real three-vrm VRMHumanoid transfers NK1 normalized motor output into raw 
 
 test("real three-vrm transfers normalized torso/root yaw and ankle output to raw bones", () => {
   const fixture = createSyntheticHumanoid();
-  const humanoid = new VRMHumanoid(fixture.nodes, { autoUpdateHumanBones: false });
+  const humanoid = new VRMHumanoid(fixture.humanoidNodes, { autoUpdateHumanBones: false });
   const vrm = {
     humanoid,
     expressionManager: { resetValues() {} },
@@ -160,7 +172,7 @@ test("real three-vrm transfers normalized torso/root yaw and ankle output to raw
 for (const metaVersion of ["0", "1"]) {
   test(`real three-vrm transfers ${metaVersion}.x thumb and finger curl into the raw skeleton`, () => {
     const fixture = createSyntheticHumanoid(metaVersion);
-    const humanoid = new VRMHumanoid(fixture.nodes, { autoUpdateHumanBones: false });
+    const humanoid = new VRMHumanoid(fixture.humanoidNodes, { autoUpdateHumanBones: false });
     const vrm = {
       meta: { metaVersion },
       humanoid,
@@ -170,13 +182,11 @@ for (const metaVersion of ["0", "1"]) {
     configureVrmForNk1NormalizedMotorDrive(vrm);
     const driven = applyVrmFullBodyChannels(vrm, { leftFingers: 0.5, rightFingers: -0.5 });
     assert.equal(driven.controlledBones.length, 30);
-    if (metaVersion === "0") {
-      assert.ok(driven.controlledBones.includes("leftThumbIntermediate"));
-      assert.equal(driven.controlledBones.includes("leftThumbMetacarpal"), false);
-    } else {
-      assert.ok(driven.controlledBones.includes("leftThumbMetacarpal"));
-      assert.equal(driven.controlledBones.includes("leftThumbIntermediate"), false);
-    }
+    // VRMHumanoid exposes the canonical normalized role names for both
+    // spec versions; legacy raw names are remapped by the VRM 0.x importer.
+    assert.ok(driven.controlledBones.includes("leftThumbMetacarpal"));
+    assert.ok(driven.controlledBones.includes("leftThumbProximal"));
+    assert.equal(driven.controlledBones.includes("leftThumbIntermediate"), false);
 
     humanoid.update();
     const thumbMiddle = metaVersion === "0" ? fixture.nodes.leftThumbIntermediate.node : fixture.nodes.leftThumbProximal.node;
