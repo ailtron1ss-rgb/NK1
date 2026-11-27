@@ -184,7 +184,7 @@ export function injectAvatarSecondaryVertexShader(
 
   const declarations = `
 #define ${SHADER_MARKER}
-${particleDriven ? "attribute vec3 nk1SecondaryOffset;\\n" : ""}
+${particleDriven ? "attribute vec3 nk1SecondaryOffset;\n" : ""}
 uniform float nk1SecondaryTime;
 uniform float nk1SecondaryMotion;
 uniform float nk1SecondaryGait;
@@ -221,7 +221,7 @@ uniform float nk1SecondaryHair;
 }
 `;
   let vertexShader = shader.vertexShader.replace(commonAnchor, commonAnchor + declarations);
-  if (particleDriven) vertexShader = vertexShader.replace(skinningAnchor, "transformed += nk1SecondaryOffset;\\n" + skinningAnchor);
+  if (particleDriven) vertexShader = vertexShader.replace(skinningAnchor, "transformed += nk1SecondaryOffset;\n" + skinningAnchor);
   vertexShader = vertexShader.replace(skinningAnchor, skinningAnchor + displacement);
   if (vertexShader === shader.vertexShader) return false;
 
