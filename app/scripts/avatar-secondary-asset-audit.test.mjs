@@ -149,4 +149,6 @@ test("3D stage publishes an audit for the imported model and exposes it in an ac
   assert.match(stage, /secondaryAudit\.morphChannels/);
   assert.match(stage, /<details/);
   assert.match(stage, /Аудит физики/);
+  assert.match(stage, /secondaryAudit\.secondaryPhysicsReady/);
+  assert.match(stage, /нужны размеченные кости или morph-каналы/);
 });
