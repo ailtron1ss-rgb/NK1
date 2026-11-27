@@ -286,7 +286,7 @@ function resolveParticlePinMask(
     if (useExplicit) {
       const value = Number(explicitArray[index]);
       if (!Number.isFinite(value)) return null;
-      mask[index] = value >= 0.5 ? 1 : 0;
+      mask[index] = clamp01(value);
       continue;
     }
     const y = typeof position.getY === "function"

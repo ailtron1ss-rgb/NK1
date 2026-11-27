@@ -12,6 +12,7 @@ export interface AvatarSecondaryParticleState {
   rest: Float32Array;
   positions: Float32Array;
   previous: Float32Array;
+  /** 0 for hard pins, 1 for free vertices, and fractional values for soft attachments. */
   inverseMass: Float32Array;
   offsets: Float32Array;
   constraints: AvatarSecondaryParticleConstraint[];
@@ -29,6 +30,7 @@ export interface AvatarSecondaryParticleState {
 export interface AvatarSecondaryParticleInput {
   positions: ArrayLike<number>;
   indices?: ArrayLike<number> | null;
+  /** Per-vertex pin weight in [0, 1]: 0 is free, 1 is fixed, intermediate values are soft pins. */
   pinnedMask: ArrayLike<number>;
   role: "hair" | "garment";
 }
@@ -166,13 +168,12 @@ export function createAvatarSecondaryParticleState(
   for (let index = 0; index < vertexCount; index += 1) {
     const pin = Number(input.pinnedMask[index]);
     if (!Number.isFinite(pin)) return null;
-    if (pin >= 0.5) {
-      inverseMass[index] = 0;
-      pinnedCount += 1;
-    } else {
-      inverseMass[index] = 1;
-      movableCount += 1;
-    }
+    // Pin weights are normalized: 0 is free, 1 is hard-pinned, and the
+    // interval between them gives the vertex a proportional inverse mass.
+    const inverseMassWeight = 1 - clamp(pin, 0, 1);
+    inverseMass[index] = inverseMassWeight;
+    if (inverseMassWeight === 0) pinnedCount += 1;
+    else movableCount += 1;
   }
   if (pinnedCount < 2 || movableCount < 3) return null;
 
