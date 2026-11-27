@@ -12,17 +12,19 @@ import { OrganismRuntime } from '../src/organism/core/OrganismRuntime.ts';
 const { publicKey, privateKey } = generateKeyPairSync('ed25519');
 let now = Date.now();
 const consumedNonces = new Map();
+let nonceLedgerNow = Date.now();
 const revokedTickets = new Set();
 const nonceStore = {
   async consume(input) {
     const key = [input.issuerId, input.deviceId, input.sessionId, input.nonce].join('|');
     if (consumedNonces.has(key)) return false;
-    consumedNonces.set(key, input.receiptDigest);
+    consumedNonces.set(key, { receiptDigest: input.receiptDigest, retainUntil: input.retainUntil });
     return true;
   },
   async hasConsumed(input) {
     const key = [input.issuerId, input.deviceId, input.sessionId, input.nonce].join('|');
-    return consumedNonces.get(key) === input.receiptDigest;
+    const prior = consumedNonces.get(key);
+    return prior?.receiptDigest === input.receiptDigest && prior.retainUntil > nonceLedgerNow;
   },
 };
 const consentAuthority = {
@@ -242,6 +244,7 @@ assert.equal(owner.revokeAdmittedObservation('observation-door-open-001'), false
 
   const expiredAt = expiringReceipt.expiresAt + 1;
   now = expiredAt;
+  nonceLedgerNow = expiredAt;
   Date.now = () => expiredAt;
   try {
     const expiredSnapshot = expiringOwner.perceptualEvidence.snapshot();
@@ -267,10 +270,11 @@ assert.equal(owner.revokeAdmittedObservation('observation-door-open-001'), false
     now = previousClock;
     Date.now = () => previousClock;
     const clockRollbackReauthorization = await authority.reauthorizePersisted(expiringReceipt);
-    assert.equal(clockRollbackReauthorization.accepted, true);
-    const afterRollback = restoredExpiredOwner.recordAdmittedObservation(clockRollbackReauthorization.admission);
-    assert.equal(afterRollback.kind, 'unresolved');
-    assert.equal(afterRollback.expired, true);
+    assert.equal(clockRollbackReauthorization.accepted, false, 'the durable nonce ledger must enforce its own expiry even if the local wall clock rolls back');
+    assert.equal(clockRollbackReauthorization.reason, 'nonce-not-previously-consumed');
+    const afterRollback = restoredExpiredOwner.perceptualEvidence.snapshot().evidence.find(row => row.id === liveRow.id);
+    assert.equal(afterRollback?.kind, 'unresolved');
+    assert.equal(afterRollback?.expired, true);
   } finally {
     Date.now = previousDateNow;
     now = previousClock;
