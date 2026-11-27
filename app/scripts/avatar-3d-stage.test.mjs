@@ -144,14 +144,14 @@ test("3D GLB clip playback uses semantic resolution and crossfades without stopp
 });
 
 
-test("the procedural geometry is hidden until a verified external model loads",async()=>{
+test("the procedural humanoid is the default body and verified external models replace it",async()=>{
  const stage=await readFile(stagePath,"utf8");
- assert.match(stage,/const body=makeBody\(scene\);body\.root\.visible=false;/);
- assert.match(stage,/setState\("empty"\)/);
- assert.doesNotMatch(stage,/setState\("procedural"\)/);
- assert.doesNotMatch(stage,/rt\.body\.root\.visible=true/);
- assert.match(stage,/Показываем 3D-тело только после успешной загрузки и preflight/);
- assert.match(stage,/геометрическая заглушка скрыта/);
+ assert.match(stage,/const body=createProceduralHumanoidRig\(scene\);body\.root\.visible=true;/);
+ assert.match(stage,/setState\("procedural"\)/);
+ assert.match(stage,/rt\.body\.root\.visible=false/);
+ assert.match(stage,/rt\.body\.root\.visible=true/);
+ assert.match(stage,/Встроенное скелетно-мышечное тело NeuroCore активно/);
+ assert.match(stage,/Внешняя модель удалена\. Встроенное скелетно-мышечное тело NeuroCore снова активно/);
 });
 
 test("3D model failure presents a real retry/import/Live2D recovery path",async()=>{
@@ -162,17 +162,18 @@ test("3D model failure presents a real retry/import/Live2D recovery path",async(
  assert.match(parent,/onReturnTo2D=\{\(\) => setMode\("live2d"\)\}/);
 });
 
-test("reset hides the procedural body and disposes VRM resources through VRMUtils",async()=>{
+test("reset restores the procedural body and disposes VRM resources through VRMUtils",async()=>{
  const stage=await readFile(stagePath,"utf8");
  assert.match(stage,/if\(rt\.vrm\)VRMUtils\.deepDispose\(rt\.loaded\);else disposeTree\(rt\.loaded\)/);
- assert.match(stage,/rt\.body\.root\.visible=false/);
- assert.match(stage,/setState\(rt\?"empty":"webgl-unavailable"\)/);
+ assert.match(stage,/rt\.body\.root\.visible=true/);
+ assert.match(stage,/rt\.body\.resetPose\(\)/);
+ assert.match(stage,/setState\(rt\?"procedural":"webgl-unavailable"\)/);
 });
 
 
-test("hidden procedural fixture does not run its per-frame body animation",async()=>{
+test("hidden procedural body skips its rig update while an external model is active",async()=>{
  const stage=await readFile(stagePath,"utf8");
- assert.match(stage,/if\(b\.root\.visible\)\{/);
+ assert.match(stage,/if\(b\.root\.visible\)\{[\s\S]*?updateProceduralHumanoidRig\(b,/);
 });
 
 
