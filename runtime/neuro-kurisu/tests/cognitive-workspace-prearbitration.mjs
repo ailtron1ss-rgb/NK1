@@ -150,25 +150,33 @@ await assert.rejects(() => core.feedback({
 }), /feedback-outcome-id-conflict/,
   'reusing an outcome ID with different feedback content must fail closed');
 
-const beforeImplicitWorkspaceOutcomes = core.cognitiveRuntime.globalWorkspace.snapshot().learning.outcomesApplied;
+const observedWorkspaceOutcomeIds = [];
+const originalWorkspaceLearner = core.cognitiveRuntime.globalWorkspace.learnOutcomeForDecision.bind(
+  core.cognitiveRuntime.globalWorkspace,
+);
+core.cognitiveRuntime.globalWorkspace.learnOutcomeForDecision = input => {
+  observedWorkspaceOutcomeIds.push(input.outcomeId);
+  return originalWorkspaceLearner(input);
+};
 await core.feedback({
   decisionId: firstDecisionId,
   success: .71,
   reward: .42,
   evidenceSource: 'device',
 });
-const afterFirstImplicitWorkspaceOutcome = core.cognitiveRuntime.globalWorkspace.snapshot().learning.outcomesApplied;
-assert.equal(afterFirstImplicitWorkspaceOutcome, beforeImplicitWorkspaceOutcomes + 1,
-  'a payload-derived feedback ID must credit the original decision workspace receipt');
 await core.feedback({
   decisionId: firstDecisionId,
   success: .83,
   reward: .63,
   evidenceSource: 'device',
 });
-const afterSecondImplicitWorkspaceOutcome = core.cognitiveRuntime.globalWorkspace.snapshot().learning.outcomesApplied;
-assert.equal(afterSecondImplicitWorkspaceOutcome, afterFirstImplicitWorkspaceOutcome + 1,
-  'two distinct payload-derived outcomes for one decision must not collapse onto one fallback ID');
+assert.equal(observedWorkspaceOutcomeIds.length, 2,
+  'both distinct payload-derived feedback events must reach the workspace decision-credit learner');
+assert.ok(observedWorkspaceOutcomeIds.every(id =>
+  typeof id === 'string' && id.startsWith(`feedback:${firstDecisionId}:`)),
+  'workspace learning must receive the same canonical payload-derived ID used by CEF');
+assert.notEqual(observedWorkspaceOutcomeIds[0], observedWorkspaceOutcomeIds[1],
+  'different feedback payloads for one decision must not collapse to one workspace outcome ID');
 const implicitOutcomeIds = core.cognitiveRuntime.cognitiveEventFabric.recent(128)
   .filter(event => event.stage === 'outcome' && event.payload?.decisionId === firstDecisionId &&
     typeof event.payload?.outcomeId === 'string' && event.payload.outcomeId.startsWith(`feedback:${firstDecisionId}:`))
