@@ -119,7 +119,7 @@ export function signedObservationReceiptBytes(
   payload:SignedHostObservationReceiptPayload,
   algorithm:HostObservationSignatureAlgorithm,
 ):Buffer {
-  return Buffer.from(['NK1/HOST-OBSERVATION-RECEIPT/V1',algorithm,stableJson(payload)].join('\\n'),'utf8');
+  return Buffer.from(['NK1/HOST-OBSERVATION-RECEIPT/V1',algorithm,stableJson(payload)].join('\n'),'utf8');
 }
 
 const reject=(reason:ObservationAdmissionRejectReason):ObservationAdmissionResult=>({accepted:false,reason});
