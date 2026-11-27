@@ -14,16 +14,41 @@ export interface PlanStep {
   preconditions: PlanStepPreconditions; expectedOutcome: PlanStepExpectedOutcome;
 }
 export interface PlanGoalLineage { id: string | null; status: string | null; updatedAt: number | null; fingerprint: string | null; }
+export interface PlanRevisionHint {
+  source: 'verified-observed';
+  previousPlanId: string;
+  previousDecisionId: string;
+  previousTick: number;
+  goalId: string;
+  avoidFirstAction: EnvironmentAction;
+  predictedReward01: number;
+  actualReward01: number;
+  predictionError01: number;
+  revisionReadiness01: number;
+}
 export interface PlanLineage {
   version: 1; decisionId: string | null; decisionTick: number;
   goal: PlanGoalLineage; world: { tick: number; fingerprint: string };
+  revision: PlanRevisionHint | null;
 }
-export interface PlanBuildContext { decisionId?: string; tick?: number; }
+export interface PlanBuildContext {
+  decisionId?: string;
+  tick?: number;
+  /** One-cycle, independently verified feedback that may alter the next plan search only. */
+  revisionHint?: PlanRevisionHint;
+}
+export interface PlanRevisionEvent {
+  id: string;
+  tick: number;
+  stage: string;
+  external?: boolean;
+  payload?: Record<string, unknown>;
+}
 export type PlanValidationReason =
   | 'ok' | 'missing-lineage' | 'invalid-context' | 'decision-mismatch'
   | 'decision-tick-mismatch' | 'goal-version-mismatch' | 'world-version-mismatch'
   | 'invalid-step-index' | 'step-precondition-mismatch' | 'step-outcome-invalid'
-  | 'plan-integrity-mismatch';
+  | 'plan-integrity-mismatch' | 'revision-context-mismatch';
 export interface PlanValidation { valid: boolean; reason: PlanValidationReason; }
 export interface Plan {
   id: string; goalId?: string; title: string; steps: PlanStep[]; expectedValue: number;
@@ -49,6 +74,113 @@ const safeDecisionId = (v: unknown): string | null => {
   const id = v.trim();
   return id.length > 0 && id.length <= 256 && !/[\u0000-\u001f\u007f-\u009f]/u.test(id) ? id : null;
 };
+const MIN_REVISION_READINESS01 = 0.35;
+const MIN_REVISION_ERROR01 = 0.25;
+const MIN_VERIFIED_OUTCOME_QUALITY01 = 0.7;
+const safePlanId = (value: unknown): string | null =>
+  typeof value === 'string' && /^plan-[a-f0-9]{24}$/u.test(value) ? value : null;
+const finite01 = (value: unknown): value is number =>
+  typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 1;
+
+function normalizePlanRevisionHint(
+  value: unknown,
+  currentGoalId: string | null,
+  currentTick?: number,
+): PlanRevisionHint | null {
+  if (!value || typeof value !== 'object' || !currentGoalId
+    || typeof currentTick !== 'number' || !Number.isSafeInteger(currentTick) || currentTick < 1) return null;
+  const hint = value as Partial<PlanRevisionHint>;
+  const previousPlanId = safePlanId(hint.previousPlanId);
+  const previousDecisionId = safeDecisionId(hint.previousDecisionId);
+  const previousTick = hint.previousTick;
+  const goalId = safeDecisionId(hint.goalId);
+  const action = hint.avoidFirstAction;
+  const predicted = hint.predictedReward01;
+  const actual = hint.actualReward01;
+  const error = hint.predictionError01;
+  const readiness = hint.revisionReadiness01;
+  if (hint.source !== 'verified-observed' || !previousPlanId || !previousDecisionId
+    || typeof previousTick !== 'number' || !Number.isSafeInteger(previousTick)
+    || previousTick !== currentTick - 1 || goalId !== currentGoalId
+    || !envActions.includes(action as EnvironmentAction)
+    || !finite01(predicted) || !finite01(actual) || !finite01(error) || !finite01(readiness)
+    || readiness < MIN_REVISION_READINESS01
+    || Math.abs(predicted - actual) < MIN_REVISION_ERROR01
+    || Math.abs(Math.abs(predicted - actual) - error) > 1e-9) return null;
+  return {
+    source: 'verified-observed',
+    previousPlanId,
+    previousDecisionId,
+    previousTick,
+    goalId,
+    avoidFirstAction: action as EnvironmentAction,
+    predictedReward01: predicted,
+    actualReward01: actual,
+    predictionError01: error,
+    revisionReadiness01: readiness,
+  };
+}
+
+/**
+ * Derive a one-cycle plan revision hint from the canonical causal-event journal.
+ * Both the completed outcome and its accepted plan must match the immediately
+ * preceding tick, active goal, decision and plan. No simulated or weakly grounded
+ * outcome can steer the next plan search.
+ */
+export function derivePlanRevisionHint(
+  events: readonly PlanRevisionEvent[],
+  currentTick: number,
+  currentGoalId: string | null,
+  revisionReadiness01: number,
+): PlanRevisionHint | null {
+  if (!Number.isSafeInteger(currentTick) || currentTick < 1 || !currentGoalId
+    || !finite01(revisionReadiness01) || revisionReadiness01 < MIN_REVISION_READINESS01) return null;
+  const outcome = events.find(event => event.stage === 'outcome' && event.tick === currentTick - 1);
+  if (!outcome || outcome.external !== true || !outcome.payload) return null;
+  const payload = outcome.payload;
+  const planId = safePlanId(payload.planId);
+  const decisionId = safeDecisionId(payload.decisionId);
+  const goalId = safeDecisionId(payload.goalId);
+  const plannedAction = payload.plannedAction;
+  const predictedReward01 = payload.predictedReward01;
+  const actualReward01 = payload.actualReward01;
+  const verified01 = payload.verified01;
+  const independent01 = payload.independent01;
+  const evidence01 = payload.evidence01;
+  if (payload.planAccepted !== true || payload.realitySource !== 'external'
+    || !planId || !decisionId || goalId !== currentGoalId
+    || !envActions.includes(plannedAction as EnvironmentAction)
+    || !finite01(predictedReward01) || !finite01(actualReward01)
+    || !finite01(verified01) || !finite01(independent01) || !finite01(evidence01)
+    || verified01 < MIN_VERIFIED_OUTCOME_QUALITY01
+    || independent01 < MIN_VERIFIED_OUTCOME_QUALITY01
+    || evidence01 < MIN_VERIFIED_OUTCOME_QUALITY01) return null;
+
+  const planEvent = events.find(event => {
+    if (event.stage !== 'plan' || event.tick !== outcome.tick || !event.payload) return false;
+    return event.payload.planId === planId
+      && event.payload.decisionId === decisionId
+      && event.payload.goalId === currentGoalId
+      && event.payload.planAccepted === true
+      && event.payload.nextAction === plannedAction;
+  });
+  if (!planEvent) return null;
+  const predictionError01 = Math.abs(predictedReward01 - actualReward01);
+  if (predictionError01 < MIN_REVISION_ERROR01) return null;
+  return normalizePlanRevisionHint({
+    source: 'verified-observed',
+    previousPlanId: planId,
+    previousDecisionId: decisionId,
+    previousTick: outcome.tick,
+    goalId,
+    avoidFirstAction: plannedAction,
+    predictedReward01,
+    actualReward01,
+    predictionError01,
+    revisionReadiness01,
+  }, currentGoalId, currentTick);
+}
+
 function goalRevision(goal: OrganismGoal | null): PlanGoalLineage {
   if (!goal) return { id: null, status: null, updatedAt: null, fingerprint: null };
   const revision = {
@@ -66,6 +198,7 @@ function buildLineage(goal: OrganismGoal | null, world: EnvironmentSnapshot, con
     decisionId: context?.decisionId === undefined ? null : safeDecisionId(context.decisionId),
     decisionTick: typeof tick === 'number' && Number.isSafeInteger(tick) && tick >= 0 ? tick : world.tick,
     goal: goalRevision(goal), world: { tick: world.tick, fingerprint: worldFingerprint(world) },
+    revision: normalizePlanRevisionHint(context?.revisionHint, goal?.id ?? null, context?.tick),
   };
 }
 const stepPreconditions = (world: EnvironmentSnapshot): PlanStepPreconditions =>
@@ -137,6 +270,7 @@ export class PlanEngine {
     const width = Math.max(2, Math.min(6, Math.trunc(beamWidth)));
     const preferredEnv = actionMap[preferred], rootState = this.environment.snapshot();
     const lineage = buildLineage(goal, rootState, context);
+    const revisionHint = normalizePlanRevisionHint(context?.revisionHint, goal?.id ?? null, context?.tick);
     const root: Node = { state: rootState, actions: [], rewards: [], score: 0, confidence: 1 };
     let beam: Node[] = [root];
     const gamma = 0.84;
@@ -144,6 +278,7 @@ export class PlanEngine {
       const expanded: Node[] = [];
       for (const node of beam) {
         for (const action of envActions) {
+          if (d === 0 && revisionHint?.avoidFirstAction === action) continue;
           const projection = this.environment.project(action, node.state);
           const preferenceBonus = d === 0 && action === preferredEnv ? 0.12 : 0;
           const effectiveReward = projection.valid ? projection.reward : 0.05;
@@ -203,6 +338,9 @@ export class PlanEngine {
     const currentGoal = goalRevision(goal);
     if (lineage.goal.id !== currentGoal.id || lineage.goal.fingerprint !== currentGoal.fingerprint)
       return validation(false, 'goal-version-mismatch');
+    const expectedRevision = normalizePlanRevisionHint(context?.revisionHint, goal?.id ?? null, context?.tick);
+    if (sha256Stable(lineage.revision ?? null) !== sha256Stable(expectedRevision))
+      return validation(false, 'revision-context-mismatch');
     if (lineage.world.tick !== world.tick || lineage.world.fingerprint !== worldFingerprint(world))
       return validation(false, 'world-version-mismatch');
     return validation(true, 'ok');
