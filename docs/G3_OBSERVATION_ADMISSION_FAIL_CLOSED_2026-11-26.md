@@ -66,6 +66,12 @@ The code path and injected contracts exist, but **production host attestation is
 - Local revocation is represented by a persisted monotonic `revoked` marker. Core skips reauthorization for that row even if its old signature remains cryptographically valid; the marker is not cleared by receipt replay.
 - Android/Termux cold-start, process-kill/restart, storage-loss and real camera/audio capture soak remain outstanding, as do independent RU/EN holdout and device latency measurements.
 
+### Adjacent ownership boundaries still requiring explicit adapters
+
+- The merged P34 personhood layer stores consent-history records with the exact ActionGateway approval-ticket `referenceId`. This is a causal audit trail, not a live sensor-consent authority: it does not itself prove that a camera/microphone ticket is currently active, device-bound, modality-scoped or unrevoked. G3 therefore still requires a host adapter to the current permission/consent source; the historical P34 record must not be treated as the approval authority.
+- `GroundedWorldState.integrate()` deliberately downgrades caller-provided `evidenceKind: 'observed'` labels to `derived`. `GroundedSpatialMemoryBridge` projects only entities whose spatial modality remains explicitly admitted as observed. Thus caller-supplied world coordinates continue to be available as hypotheses but cannot become canonical MemoryOS2 spatial facts.
+- The signed host receipt currently admits an observation claim into the canonical Embodiment perceptual-evidence ledger. A structured, signed spatial-observation payload (stable entity identity, coordinate-frame ID, coordinates, visibility/capture metadata) and its explicit mapping into GroundedWorldState/MemoryOS2 have **not yet** been connected. This is an intentional open integration, not evidence that camera coordinates are already trusted spatial memory.
+
 ### Restart reauthorization invariants
 
 The host nonce ledger is the source of truth for the relation between a signed envelope and a previously consumed nonce. Reauthorization is read-only: it never creates or refreshes a nonce entry. The ledger query must match the full tuple `issuerId + deviceId + sessionId + nonce + receiptDigest`; matching only the nonce string would permit a different signed payload to inherit prior admission. Consent is rechecked at restart, so a revoked or superseded ticket invalidates the prior observation. The persisted revocation marker is an additional local monotonic guard and is deliberately stronger than signature validity.
