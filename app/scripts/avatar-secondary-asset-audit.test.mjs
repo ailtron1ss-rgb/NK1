@@ -70,6 +70,11 @@ test("audit reports actual secondary bone chains, authored morphs and tagged neu
   assert.equal(report.byRole.neuralFiber.boneCount, 1);
   assert.equal(report.skinnedMeshCount, 1);
   assert.equal(report.morphMeshCount, 1);
+  assert.equal(report.totalMeshNodeCount, 4);
+  assert.equal(report.byMeshRole.hair.meshNodeCount, 1);
+  assert.equal(report.byMeshRole.garment.meshNodeCount, 1);
+  assert.equal(report.byMeshRole.sleeve.meshNodeCount, 1);
+
   assert.deepEqual(report.morphChannels.map((item) => item.channel), ["cloth", "hair", "tissue", "neural"]);
   assert.equal(report.morphTargetCount, 6);
   assert.equal(report.taggedNeuralMaterialCount, 1);
@@ -112,6 +117,12 @@ test("audit keeps duplicate-named bones distinct and ignores detached or cyclic 
 
 test("hosted GLB descriptor audit resolves skin-joint ancestry, explicit node extras and material extras", () => {
   const report = auditAvatarSecondaryAssetDescriptor({
+    meshParts: [
+      { id: "hair-front", name: "HAIR_front_strand_L", skinned: true },
+      { id: "coat-main", name: "CLOTH_labcoat_main", skinned: true },
+      { id: "sleeve-left", name: "CLOTH_lower_sleeve_L", skinned: true },
+      { id: "hair-clip", name: "ACCESSORY_red_hairclip", skinned: true },
+    ],
     bones: [
       { id: "hair-mid", name: "Bone.002", parentId: "hair-root", metadata: { role: "hair", chainId: "fringe-left", side: "left" } },
       { id: "hair-tip", name: "Bone.003", parentId: "hair-mid", metadata: { role: "hair", chainId: "fringe-left", side: "left", distalWeight: 1 } },
