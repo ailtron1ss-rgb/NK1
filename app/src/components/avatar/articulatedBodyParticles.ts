@@ -5,8 +5,8 @@ export type ArticulatedBodyParticleId =
   | "pelvis" | "chest" | "neck" | "head"
   | "leftShoulderPoint" | "leftElbowPoint" | "leftWristPoint" | "leftHandPoint"
   | "rightShoulderPoint" | "rightElbowPoint" | "rightWristPoint" | "rightHandPoint"
-  | "leftHipPoint" | "leftKneePoint" | "leftAnklePoint"
-  | "rightHipPoint" | "rightKneePoint" | "rightAnklePoint";
+  | "leftHipPoint" | "leftKneePoint" | "leftAnklePoint" | "leftHeelPoint" | "leftToePoint"
+  | "rightHipPoint" | "rightKneePoint" | "rightAnklePoint" | "rightHeelPoint" | "rightToePoint";
 export interface ArticulatedBodyParticle {
   id: ArticulatedBodyParticleId; position: BodyVector3; velocity: BodyVector3;
   target: BodyVector3; mass: number; pinned: boolean;
@@ -22,10 +22,30 @@ export interface ArticulatedBodyParticleState {
   segments: readonly ArticulatedBodySegment[];
   maxConstraintError: number; particleCount: number;
 }
-export interface ArticulatedBodyStepOptions { awake: boolean; energy01: number; reducedMotion?: boolean; }
+export interface ArticulatedBodyStepOptions {
+  awake: boolean;
+  energy01: number;
+  reducedMotion?: boolean;
+  groundEnabled?: boolean;
+  /** Local body-space height of the support plane. */
+  groundY?: number;
+  /** Radius from the foot support point to the sole. */
+  footRadius?: number;
+  /** Tangential velocity removed on contact, from 0 (none) to 1 (full). */
+  footFriction?: number;
+  /** Extra target-height band that identifies a planted foot. */
+  groundContactMargin?: number;
+}
+export interface ArticulatedBodyContacts {
+  leftFoot: boolean;
+  rightFoot: boolean;
+  maxCorrection: number;
+  maxSlipSpeed: number;
+}
 export interface ArticulatedBodyStepResult {
   state: ArticulatedBodyParticleState; channels: Partial<Record<BodyChannel, number>>;
   substeps: number; simulatedMs: number; maxConstraintError: number;
+  contacts: ArticulatedBodyContacts;
 }
 
 const CHANNELS: readonly BodyChannel[] = [
@@ -41,29 +61,33 @@ const IDS: readonly ArticulatedBodyParticleId[] = [
   "pelvis","chest","neck","head",
   "leftShoulderPoint","leftElbowPoint","leftWristPoint","leftHandPoint",
   "rightShoulderPoint","rightElbowPoint","rightWristPoint","rightHandPoint",
-  "leftHipPoint","leftKneePoint","leftAnklePoint",
-  "rightHipPoint","rightKneePoint","rightAnklePoint",
+  "leftHipPoint","leftKneePoint","leftAnklePoint","leftHeelPoint","leftToePoint",
+  "rightHipPoint","rightKneePoint","rightAnklePoint","rightHeelPoint","rightToePoint",
 ];
 const PAIRS: readonly (readonly [ArticulatedBodyParticleId,ArticulatedBodyParticleId])[] = [
   ["pelvis","chest"],["chest","neck"],["neck","head"],
   ["chest","leftShoulderPoint"],["leftShoulderPoint","leftElbowPoint"],["leftElbowPoint","leftWristPoint"],["leftWristPoint","leftHandPoint"],
   ["chest","rightShoulderPoint"],["rightShoulderPoint","rightElbowPoint"],["rightElbowPoint","rightWristPoint"],["rightWristPoint","rightHandPoint"],
   ["pelvis","leftHipPoint"],["leftHipPoint","leftKneePoint"],["leftKneePoint","leftAnklePoint"],
+  ["leftAnklePoint","leftHeelPoint"],["leftHeelPoint","leftToePoint"],
   ["pelvis","rightHipPoint"],["rightHipPoint","rightKneePoint"],["rightKneePoint","rightAnklePoint"],
+  ["rightAnklePoint","rightHeelPoint"],["rightHeelPoint","rightToePoint"],
 ];
 const REST: Readonly<Record<ArticulatedBodyParticleId,BodyVector3>> = {
   pelvis:{x:0,y:0,z:0}, chest:{x:0,y:.5,z:0}, neck:{x:0,y:.8,z:0}, head:{x:0,y:1.04,z:0},
   leftShoulderPoint:{x:-.22,y:.73,z:0}, leftElbowPoint:{x:-.49,y:.51,z:0}, leftWristPoint:{x:-.57,y:.28,z:0}, leftHandPoint:{x:-.59,y:.17,z:0},
   rightShoulderPoint:{x:.22,y:.73,z:0}, rightElbowPoint:{x:.49,y:.51,z:0}, rightWristPoint:{x:.57,y:.28,z:0}, rightHandPoint:{x:.59,y:.17,z:0},
   leftHipPoint:{x:-.12,y:-.04,z:0}, leftKneePoint:{x:-.14,y:-.46,z:0}, leftAnklePoint:{x:-.14,y:-.86,z:0},
+  leftHeelPoint:{x:-.14,y:-.885,z:-.04}, leftToePoint:{x:-.14,y:-.885,z:.18},
   rightHipPoint:{x:.12,y:-.04,z:0}, rightKneePoint:{x:.14,y:-.46,z:0}, rightAnklePoint:{x:.14,y:-.86,z:0},
+  rightHeelPoint:{x:.14,y:-.885,z:-.04}, rightToePoint:{x:.14,y:-.885,z:.18},
 };
 const MASS: Readonly<Record<ArticulatedBodyParticleId,number>> = {
   pelvis:2.8,chest:2.1,neck:.55,head:.9,
   leftShoulderPoint:.55,leftElbowPoint:.42,leftWristPoint:.22,leftHandPoint:.18,
   rightShoulderPoint:.55,rightElbowPoint:.42,rightWristPoint:.22,rightHandPoint:.18,
-  leftHipPoint:.8,leftKneePoint:.58,leftAnklePoint:.3,
-  rightHipPoint:.8,rightKneePoint:.58,rightAnklePoint:.3,
+  leftHipPoint:.8,leftKneePoint:.58,leftAnklePoint:.3,leftHeelPoint:.16,leftToePoint:.11,
+  rightHipPoint:.8,rightKneePoint:.58,rightAnklePoint:.3,rightHeelPoint:.16,rightToePoint:.11,
 };
 const clamp=(v:number,min:number,max:number,fallback=0)=>Number.isFinite(v)?Math.max(min,Math.min(max,v)):fallback;
 const vec=(x=0,y=0,z=0):BodyVector3=>({x,y,z});
@@ -103,6 +127,8 @@ function poseTargets(ch:Readonly<Record<BodyChannel,number>>):Record<Articulated
     const hipId=(prefix+"HipPoint") as ArticulatedBodyParticleId;
     const kneeId=(prefix+"KneePoint") as ArticulatedBodyParticleId;
     const ankleId=(prefix+"AnklePoint") as ArticulatedBodyParticleId;
+    const heelId=(prefix+"HeelPoint") as ArticulatedBodyParticleId;
+    const toeId=(prefix+"ToePoint") as ArticulatedBodyParticleId;
     p[shoulderId]=add(p.chest,rotate(vec(side*.22,-.02,0),tp,ty,0));
     const shoulderRotation=side*g(sh)*.72;
     p[elbowId]=add(p[shoulderId],rotate(vec(side*.27,-.22,0),tp*.45,ty*.45,shoulderRotation));
@@ -111,7 +137,11 @@ function poseTargets(ch:Readonly<Record<BodyChannel,number>>):Record<Articulated
     p[hipId]=add(p.pelvis,vec(side*.12,-.04,0));
     const hipAngle=side*g(hip)*.58;
     p[kneeId]=add(p[hipId],rotate(vec(0,-.42,0),0,0,hipAngle));
-    p[ankleId]=add(p[kneeId],rotate(vec(0,-.4,0),0,0,hipAngle+side*g(kn)*.72+side*g(an)*.18));
+    // The ankle channel rotates the foot itself; it must not distort the shin segment.
+    p[ankleId]=add(p[kneeId],rotate(vec(0,-.4,0),0,0,hipAngle+side*g(kn)*.72));
+    const footPitch=g(an)*.5;
+    p[heelId]=add(p[ankleId],rotate(vec(0,-.025,-.04),footPitch,0,0));
+    p[toeId]=add(p[ankleId],rotate(vec(0,-.025,.18),footPitch,0,0));
   }
   const yaw=g("rootYaw")*.34;
   if(yaw!==0)for(const id of IDS){if(id!=="pelvis")p[id]=add(p.pelvis,rotate(sub(p[id],p.pelvis),0,yaw,0));}
@@ -210,6 +240,7 @@ function channelsFromSolvedParticles(
     const wrist=(prefix+"Wrist") as BodyChannel;
     const hip=(prefix+"Hip") as BodyChannel;
     const knee=(prefix+"Knee") as BodyChannel;
+    const ankle=(prefix+"Ankle") as BodyChannel;
     const shoulderPoint=(prefix+"ShoulderPoint") as ArticulatedBodyParticleId;
     const elbowPoint=(prefix+"ElbowPoint") as ArticulatedBodyParticleId;
     const wristPoint=(prefix+"WristPoint") as ArticulatedBodyParticleId;
@@ -217,16 +248,20 @@ function channelsFromSolvedParticles(
     const hipPoint=(prefix+"HipPoint") as ArticulatedBodyParticleId;
     const kneePoint=(prefix+"KneePoint") as ArticulatedBodyParticleId;
     const anklePoint=(prefix+"AnklePoint") as ArticulatedBodyParticleId;
+    const heelPoint=(prefix+"HeelPoint") as ArticulatedBodyParticleId;
+    const toePoint=(prefix+"ToePoint") as ArticulatedBodyParticleId;
     const shoulderLag=particleSegmentAngleLag(state,shoulderPoint,elbowPoint);
     const elbowLag=particleSegmentAngleLag(state,elbowPoint,wristPoint);
     const wristLag=particleSegmentAngleLag(state,wristPoint,handPoint);
     const hipLag=particleSegmentAngleLag(state,hipPoint,kneePoint);
     const kneeLag=particleSegmentAngleLag(state,kneePoint,anklePoint);
+    const ankleLag=particleVectorPitchLag(state,heelPoint,toePoint);
     adjust(shoulder,shoulderLag/(side*.72),1,.12);
     adjust(elbow,elbowLag/(side*.78),1,.12);
     adjust(wrist,(wristLag-elbowLag*.55)/(side*.4),1,.10);
     adjust(hip,hipLag/(side*.58),1,.12);
     adjust(knee,(kneeLag-hipLag)/(side*.72),1,.12);
+    adjust(ankle,ankleLag/.5,1,.10);
   }
   return channels;
 }
@@ -258,6 +293,19 @@ export function stepAvatarArticulatedBody(
   const substeps=duration<=0?0:Math.min(4,Math.max(1,Math.ceil(duration/(1000/60))));
   const dt=substeps?duration/substeps/1000:0;
   const energy=clamp(options?.energy01??.7,0,1,.7),awake=options?.awake===true,reduced=options?.reducedMotion===true;
+  const groundEnabled=options?.groundEnabled!==false;
+  const groundY=clamp(options?.groundY??-.9,-8,8,-.9);
+  const footRadius=clamp(options?.footRadius??.04,.005,.2,.04);
+  const footFriction=clamp(options?.footFriction??.72,0,1,.72);
+  const contactMargin=clamp(options?.groundContactMargin??.025,0,.25,.025);
+  const contactSurfaceY=groundY+footRadius;
+  const supportPoints=[
+    {id:"leftHeelPoint" as ArticulatedBodyParticleId,side:"left" as const},
+    {id:"leftToePoint" as ArticulatedBodyParticleId,side:"left" as const},
+    {id:"rightHeelPoint" as ArticulatedBodyParticleId,side:"right" as const},
+    {id:"rightToePoint" as ArticulatedBodyParticleId,side:"right" as const},
+  ] as const;
+  const contacts:ArticulatedBodyContacts={leftFoot:false,rightFoot:false,maxCorrection:0,maxSlipSpeed:0};
   const drive = !awake ? 0 : reduced ? 0.16 : 0.22 + energy * 0.78;
   const joints=zeroJoints();
   for(const key of CHANNELS){
@@ -287,8 +335,10 @@ export function stepAvatarArticulatedBody(
   };
   for(let step=0;step<substeps;step++){
     const before={} as Record<ArticulatedBodyParticleId,BodyVector3>;
+    const incomingVelocity={} as Record<ArticulatedBodyParticleId,BodyVector3>;
+    const projectedSupport=new Set<ArticulatedBodyParticleId>();
     for(const id of IDS){
-      const p=state.particles[id];before[id]={...p.position};if(p.pinned)continue;
+      const p=state.particles[id];before[id]={...p.position};incomingVelocity[id]={...p.velocity};if(p.pinned)continue;
       const stiffness=reduced?92:128,damping=reduced||!awake?22:18,gravity=awake?(1-energy)*.12:.18;
       const acceleration=add(mul(sub(p.target,p.position),stiffness/p.mass),
         add(mul(p.velocity,-damping/p.mass),vec(0,-gravity,0)));
@@ -305,6 +355,21 @@ export function stepAvatarArticulatedBody(
         a.position=add(a.position,mul(correction,wa/total));
         b.position=sub(b.position,mul(correction,wb/total));
       }
+      // Unilateral support-plane projection runs after every distance-constraint pass.
+      // Only a semantic stance target may contact the plane; a lifted swing foot stays free.
+      if(groundEnabled){
+        for(const support of supportPoints){
+          const p=state.particles[support.id];
+          // The floor constrains actual geometry even while a swing target is lifting.
+          // This prevents a delayed foot from remaining underground after take-off begins.
+          if(p.position.y<contactSurfaceY){
+            const correction=contactSurfaceY-p.position.y;
+            p.position.y=contactSurfaceY;
+            projectedSupport.add(support.id);
+            contacts.maxCorrection=Math.max(contacts.maxCorrection,correction);
+          }
+        }
+      }
       state.particles.pelvis.position={...state.particles.pelvis.target};
     }
     for(const id of IDS){
@@ -313,10 +378,32 @@ export function stepAvatarArticulatedBody(
       p.velocity=mul(p.velocity,(reduced || !awake) ? 0.78 : 0.9);
       p.position=vec(clamp(p.position.x,-2,2),clamp(p.position.y,-2,3),clamp(p.position.z,-2,2));
     }
+    if(groundEnabled){
+      for(const support of supportPoints){
+        const p=state.particles[support.id];
+        const touching=p.position.y<=contactSurfaceY+1e-4;
+        if(!touching)continue;
+        const incoming=incomingVelocity[support.id];
+        if(projectedSupport.has(support.id)||incoming.y<0){
+          // Zero restitution: a positional correction must not become an upward bounce.
+          p.velocity.y=0;
+        } else if(p.target.y<=contactSurfaceY+contactMargin){
+          // While the target remains planted, suppress positive velocity from PBD corrections.
+          p.velocity.y=Math.min(0,p.velocity.y);
+        }
+        const slip=Math.hypot(p.velocity.x,p.velocity.z);
+        contacts.maxSlipSpeed=Math.max(contacts.maxSlipSpeed,slip);
+        const tangentScale=1-footFriction;
+        p.velocity.x*=tangentScale;
+        p.velocity.z*=tangentScale;
+        if(support.side==="left")contacts.leftFoot=true;
+        else contacts.rightFoot=true;
+      }
+    }
   }
   state.maxConstraintError=constraintError(state);
   const channels=channelsFromSolvedParticles(joints,state);
-  return {state,channels,substeps,simulatedMs:duration,maxConstraintError:state.maxConstraintError};
+  return {state,channels,substeps,simulatedMs:duration,maxConstraintError:state.maxConstraintError,contacts};
 }
 export const AVATAR_ARTICULATED_BODY_PARTICLE_COUNT=IDS.length;
 export const AVATAR_ARTICULATED_BODY_SEGMENT_COUNT=PAIRS.length;
