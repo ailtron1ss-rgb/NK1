@@ -3,7 +3,7 @@ import type { P41NativePerceptionState } from '../cognition/P41NativePerception.
 import type { P41TemporalPerceptionState } from '../cognition/P41TemporalPerceptionModel.ts';
 import type { MultimodalState } from './MultimodalPerception.ts';
 import { isPlainDataArray, isPlainDataRecord, ownDataValue, stringOr, timestampOr, unitStrictOr, unitOr } from './RestoreSanitizers.ts';
-import { isTrustedObservationAdmission, type TrustedObservationAdmission } from '../system/SignedObservationAdmissionAuthority.ts';
+import { isTrustedObservationAdmission, type SignedHostObservationReceipt, type TrustedObservationAdmission } from '../system/SignedObservationAdmissionAuthority.ts';
 
 const clamp=(n:number)=>Math.max(0,Math.min(1,Number.isFinite(n)?n:0));
 const stableHash=(value:string)=>{let h=2166136261;for(let i=0;i<value.length;i++){h^=value.charCodeAt(i);h=Math.imul(h,16777619);}return (h>>>0).toString(16).padStart(8,'0');};
@@ -20,10 +20,63 @@ export interface PerceptualEvidenceRecord{
   parents:string[];
   /** Expiry exists only for live host admissions; persisted copies carry no trust. */
   expiresAt?:number;
+  /** Exact signed envelope retained for optional host-ledger reauthorization after restart. */
+  hostReceipt?:SignedHostObservationReceipt;
+  /** Local consent revocation is monotonic and survives process restart. */
+  revoked?:boolean;
 }
 const EVIDENCE_MODALITIES = new Set<PerceptualEvidenceRecord['modality']>(['text','vision','audio','sensor','world','fusion']);
 const RESTORABLE_EVIDENCE_KINDS = new Set<PerceptualEvidenceKind>(['model-output','derived','conflict','unresolved']);
 const nonAuthoritativeKind=(kind:PerceptualEvidenceKind|undefined):PerceptualEvidenceKind=>kind==='observed'?'derived':(kind??'unresolved');
+
+const HOST_RECEIPT_KEYS= new Set([
+  'version','issuerId','keyId','deviceId','sessionId','nonce','observationId','modality','claim',
+  'confidence01','capturedAt','issuedAt','expiresAt','consentTicketId','consentRevision','captureDigest',
+  'signatureAlgorithm','signature',
+]);
+function restoreHostReceipt(value:unknown):SignedHostObservationReceipt|undefined {
+  if(!isPlainDataRecord(value))return undefined;
+  const keys=Object.keys(value);
+  if(keys.length!==HOST_RECEIPT_KEYS.size||keys.some(key=>!HOST_RECEIPT_KEYS.has(key)))return undefined;
+  const version=ownDataValue(value,'version');
+  const issuerId=ownDataValue(value,'issuerId');
+  const keyId=ownDataValue(value,'keyId');
+  const deviceId=ownDataValue(value,'deviceId');
+  const sessionId=ownDataValue(value,'sessionId');
+  const nonce=ownDataValue(value,'nonce');
+  const observationId=ownDataValue(value,'observationId');
+  const modality=ownDataValue(value,'modality');
+  const claim=ownDataValue(value,'claim');
+  const confidence01=ownDataValue(value,'confidence01');
+  const capturedAt=ownDataValue(value,'capturedAt');
+  const issuedAt=ownDataValue(value,'issuedAt');
+  const expiresAt=ownDataValue(value,'expiresAt');
+  const consentTicketId=ownDataValue(value,'consentTicketId');
+  const consentRevision=ownDataValue(value,'consentRevision');
+  const captureDigest=ownDataValue(value,'captureDigest');
+  const signatureAlgorithm=ownDataValue(value,'signatureAlgorithm');
+  const signature=ownDataValue(value,'signature');
+  if(version!==1||typeof issuerId!=='string'||issuerId.length>160||
+    typeof keyId!=='string'||keyId.length>160||typeof deviceId!=='string'||deviceId.length>180||
+    typeof sessionId!=='string'||sessionId.length>128||typeof nonce!=='string'||nonce.length>128||
+    typeof observationId!=='string'||observationId.length>180||
+    typeof modality!=='string'||!EVIDENCE_MODALITIES.has(modality as PerceptualEvidenceRecord['modality'])||
+    typeof claim!=='string'||claim.length>240||typeof confidence01!=='number'||
+    typeof capturedAt!=='number'||!Number.isSafeInteger(capturedAt)||
+    typeof issuedAt!=='number'||!Number.isSafeInteger(issuedAt)||
+    typeof expiresAt!=='number'||!Number.isSafeInteger(expiresAt)||
+    typeof consentTicketId!=='string'||consentTicketId.length>180||
+    typeof consentRevision!=='number'||!Number.isSafeInteger(consentRevision)||
+    typeof captureDigest!=='string'||captureDigest.length!==64||
+    typeof signatureAlgorithm!=='string'||!['ed25519','rsa-sha256','ecdsa-sha256'].includes(signatureAlgorithm)||
+    typeof signature!=='string'||signature.length>4096)return undefined;
+  return {
+    version:1,issuerId,keyId,deviceId,sessionId,nonce,observationId,
+    modality:modality as SignedHostObservationReceipt['modality'],claim,confidence01,
+    capturedAt,issuedAt,expiresAt,consentTicketId,consentRevision,captureDigest,
+    signatureAlgorithm:signatureAlgorithm as SignedHostObservationReceipt['signatureAlgorithm'],signature,
+  };
+}
 
 function restoreEvidenceRecord(value:unknown):PerceptualEvidenceRecord|null{
   if(!isPlainDataRecord(value))return null;
@@ -50,6 +103,8 @@ function restoreEvidenceRecord(value:unknown):PerceptualEvidenceRecord|null{
     uncertainty01:unitStrictOr(ownDataValue(value,'uncertainty01'),1-confidence01),
     kind,parents,
     ...(typeof ownDataValue(value,'expiresAt')==='number'&&Number.isSafeInteger(ownDataValue(value,'expiresAt'))&&Number(ownDataValue(value,'expiresAt'))>=at?{expiresAt:Number(ownDataValue(value,'expiresAt'))}:{}),
+    ...(restoreHostReceipt(ownDataValue(value,'hostReceipt'))?{hostReceipt:restoreHostReceipt(ownDataValue(value,'hostReceipt'))}:{}),
+    ...(ownDataValue(value,'revoked')===true?{revoked:true}:{}),
   };
 };
 
@@ -130,15 +185,28 @@ export class PerceptualEvidenceCompiler{
     const prior=this.state.evidence.find(row=>row.id===id);
     if(prior){
       if(prior.claim!==admission.claim||prior.at!==admission.at||prior.modality!==admission.modality||
-        prior.confidence01!==admission.confidence01||prior.expiresAt!==admission.expiresAt) {
+        prior.confidence01!==admission.confidence01||prior.expiresAt!==admission.expiresAt||
+        prior.hostReceipt?.signature!==admission.signedReceipt.signature||
+        prior.hostReceipt?.keyId!==admission.signedReceipt.keyId) {
         throw new Error('host-observation-id-conflict');
+      }
+      if(prior.revoked===true)return structuredClone(prior);
+      if(prior.kind!=='observed'){
+        const upgraded:PerceptualEvidenceRecord={...prior,kind:'observed',expiresAt:admission.expiresAt,hostReceipt:structuredClone(admission.signedReceipt)};
+        const index=this.state.evidence.findIndex(row=>row.id===id);
+        this.state.evidence[index]=upgraded;
+        this.state.metrics.groundedSignalRatio01=clamp(this.state.metrics.groundedSignalRatio01*.92+.08);
+        this.state.metrics.grounding01=clamp(this.state.metrics.grounding01*.94+.06*admission.confidence01);
+        this.state.metrics.temporalBinding01=clamp(this.state.metrics.temporalBinding01*.94+.06);
+        this.refreshHash();
+        return structuredClone(upgraded);
       }
       return structuredClone(prior);
     }
     const record:PerceptualEvidenceRecord={
       id,at:admission.at,modality:admission.modality,claim:admission.claim,
       confidence01:admission.confidence01,uncertainty01:1-admission.confidence01,
-      kind:'observed',expiresAt:admission.expiresAt,
+      kind:'observed',expiresAt:admission.expiresAt,hostReceipt:structuredClone(admission.signedReceipt),revoked:false,
       parents:[`host-receipt:${admission.receiptDigest}`,`consent:${admission.consentTicketId}:${admission.consentRevision}`],
     };
     this.state.evidence=[record,...this.state.evidence].slice(0,96);
@@ -159,7 +227,7 @@ export class PerceptualEvidenceCompiler{
     const index=this.state.evidence.findIndex(row=>row.id===id&&row.kind==='observed');
     if(index<0)return false;
     const row=this.state.evidence[index];
-    this.state.evidence[index]={...row,kind:'unresolved',confidence01:0,uncertainty01:1,expiresAt:0};
+    this.state.evidence[index]={...row,kind:'unresolved',confidence01:0,uncertainty01:1,expiresAt:0,revoked:true};
     const defaults=defaultPerceptualEvidence();
     this.state.metrics={...defaults.metrics};
     this.refreshHash();
