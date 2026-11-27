@@ -1,0 +1,38 @@
+name: NK1 avatar neuroadaptive secondary dynamics
+
+on:
+  pull_request:
+    branches: [workpass70-source]
+    paths:
+      - "app/src/components/Avatar3DStage.tsx"
+      - "app/src/components/avatar/avatarNeuroAdaptiveDynamics.ts"
+      - "app/scripts/avatar-neuroadaptive-dynamics.test.mjs"
+      - "docs/avatar/NK1_NEUROADAPTIVE_ASSET_CONTRACT.md"
+      - ".github/workflows/nk1-avatar-neuroadaptive-dynamics.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nk1-avatar-neuroadaptive-dynamics
+  cancel-in-progress: true
+
+jobs:
+  avatar-neuroadaptive-dynamics:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - name: Install pinned app dependencies
+        run: npm ci --prefix app --ignore-scripts
+      - name: Test neuroadaptive dynamics and 3D-stage wiring
+        run: node --experimental-strip-types --test app/scripts/avatar-neuroadaptive-dynamics.test.mjs app/scripts/glb-avatar-expression-secondary-motion.test.mjs app/scripts/avatar-3d-glb-motion-integration.test.mjs
+      - name: App TypeScript check
+        run: npm --prefix app run typecheck
+      - name: App development-mode production bundle
+        run: npm --prefix app run build:dev
