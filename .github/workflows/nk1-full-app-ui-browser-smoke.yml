@@ -61,6 +61,24 @@ jobs:
         run: |
           npm ci --prefix app --no-audit --no-fund
           npm ci --prefix runtime/neuro-kurisu --no-audit --no-fund
+      - name: Disable unrelated Microsoft APT feed for browser dependency installation
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t microsoft_sources < <(
+            grep -RIl --include='*.list' --include='*.sources' 'packages.microsoft.com' /etc/apt/sources.list.d 2>/dev/null || true
+          )
+          for source in "${microsoft_sources[@]}"; do
+            sudo mv "$source" "${source}.nk1-disabled"
+            echo "Temporarily disabled unrelated APT source on this ephemeral runner: $source"
+          done
+          if (("${#microsoft_sources[@]}" == 0)); then
+            echo "No Microsoft APT source is configured; continuing with Ubuntu sources."
+          fi
+          if grep -RIl --include='*.list' --include='*.sources' 'packages.microsoft.com' /etc/apt/sources.list.d 2>/dev/null; then
+            echo "Microsoft APT source remains enabled after isolation." >&2
+            exit 1
+          fi
       - name: Install Chromium for the full application UI
         working-directory: app
         run: npx playwright install --with-deps chromium
