@@ -269,7 +269,7 @@ export interface AvatarNeuroAdaptiveMorphWeight {
   value: number;
 }
 
-const MORPH_CHANNELS = Object.freeze({
+export const AVATAR_NEUROADAPTIVE_MORPH_CHANNELS = Object.freeze({
   cloth: ["nk1clothsway", "clothsway"],
   hair: ["nk1hairsway", "hairsway"],
   tissue: ["nk1tissuebreath", "softtissuebreath"],
@@ -295,7 +295,7 @@ export function resolveNeuroAdaptiveMorphWeights(
     ["neural", activation],
   ];
   for (const [channel, value] of targets) {
-    const aliases = MORPH_CHANNELS[channel];
+    const aliases = AVATAR_NEUROADAPTIVE_MORPH_CHANNELS[channel];
     const match = aliases.map((alias) => byName.get(alias)).find(Boolean);
     if (!match || !Number.isInteger(match.index) || (match.index as number) < 0) continue;
     weights.push({ name: match.name, index: match.index as number, value: frame.awake ? value : value * 0.12 });
