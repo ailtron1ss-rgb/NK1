@@ -148,7 +148,6 @@ export function injectAvatarSecondaryVertexShader(
 ): boolean {
   if (!shader || typeof shader.vertexShader !== "string"
     || !shader.uniforms || typeof shader.uniforms !== "object") return false;
-  if (shader.vertexShader.includes(SHADER_MARKER)) return true;
   const commonAnchor = "#include <common>";
   const skinningAnchor = "#include <skinning_vertex>";
   if (!uniforms || typeof uniforms !== "object" || Array.isArray(uniforms)) return false;
@@ -169,6 +168,10 @@ export function injectAvatarSecondaryVertexShader(
     return false;
   }
   if (!shader.vertexShader.includes(commonAnchor) || !shader.vertexShader.includes(skinningAnchor)) return false;
+  if (shader.vertexShader.includes(SHADER_MARKER)) {
+    for (const [name, uniform] of uniformEntries) shader.uniforms[name] = uniform;
+    return true;
+  }
 
   const declarations = `
 #define ${SHADER_MARKER}
@@ -211,10 +214,8 @@ uniform float nk1SecondaryHair;
   vertexShader = vertexShader.replace(skinningAnchor, skinningAnchor + displacement);
   if (vertexShader === shader.vertexShader) return false;
 
+  for (const [name, uniform] of uniformEntries) shader.uniforms[name] = uniform;
   shader.vertexShader = vertexShader;
-  for (const [name, uniform] of uniformEntries) {
-    shader.uniforms[name] = uniform;
-  }
   return true;
 }
 
