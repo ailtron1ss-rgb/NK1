@@ -19,7 +19,7 @@ export function createUiSnapshotCommitGate() {
     },
 
     commit(ticket: number, apply: () => void): boolean {
-      if (!this.isCurrent(ticket)) return false;
+      if (!Number.isSafeInteger(ticket) || ticket <= 0 || ticket !== latestTicket) return false;
       apply();
       return true;
     },
