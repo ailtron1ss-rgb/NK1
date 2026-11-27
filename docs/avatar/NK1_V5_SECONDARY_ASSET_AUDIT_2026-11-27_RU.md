@@ -147,3 +147,15 @@ Source: `app/scripts/verify-hosted-kurisu-model.mjs`, workflow `NK1 Avatar Model
 6. После правки каждого mesh повторять этот sampler и сравнивать сохранение суммы весов, coverage основных joints и отсутствие unweighted vertices.
 
 Это карта текущих skin weights, а не результат изменения GLB: оригинальный v5 не изменён, Release не обновлялся.
+
+
+## Геометрическая модульность для runtime-диагностики
+
+По полному inventory GLB уже существуют отдельные узлы и meshes:
+
+- Волосы: `HAIR_back_mass`, `HAIR_crown`, `HAIR_fringe_center/left/right`, `HAIR_front_strand_L/R`, `HAIR_layer_L0-L2/R0-R2`, `HAIR_long_lock_L/R`.
+- Одежда: `CLOTH_labcoat_main`, `CLOTH_skirt`, `CLOTH_tie_blade/knot`, `CLOTH_lapel_left/right`, `CLOTH_collar_L/R`, `CLOTH_pocket_L/R`, `CLOTH_pocket_flap_L/R`, `CLOTH_button_0-3`, `CLOTH_hem_stitch`.
+- Рукава: `CLOTH_upper_sleeve_L/R`, `CLOTH_lower_sleeve_L/R`.
+
+В hosted audit inventory всего 101 mesh-node; 99 из них skinned к общей skin. Для текущей runtime-панели введён отдельный подсчёт mesh roles: hair / garment / sleeve. Он специально не повышает состояние `secondaryPhysicsReady`: наличие отдельных meshes не означает наличие вторичных костей или реальной симуляции.
+
