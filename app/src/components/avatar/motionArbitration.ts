@@ -60,6 +60,7 @@ export interface MotionArbitrationResult {
 export const MOTION_TRANSITION_MS = 260;
 const IDLE_BREATH_WEIGHT = 0.4;
 const MAX_LAYERS = 3;
+const EXPLICIT_GESTURE_PROGRAMS: ReadonlySet<SemanticGestureProgramId> = new Set(["nod", "shake", "wave", "clap", "bow", "point"]);
 
 const clamp01 = (value: unknown): number =>
   Number.isFinite(value) ? Math.max(0, Math.min(1, Number(value))) : 0;
@@ -87,7 +88,7 @@ export function resolvePrimaryProgram(intent: MotionIntent): MotionProgramId {
   const awake = intent.awake !== false;
   if (!awake) return "idle";
   if (intent.thinking) return "think";
-  if (intent.gestureProgram && ["nod", "shake", "wave", "clap", "bow"].includes(intent.gestureProgram)) return intent.gestureProgram;
+  if (intent.gestureProgram && EXPLICIT_GESTURE_PROGRAMS.has(intent.gestureProgram)) return intent.gestureProgram;
   if (intent.speaking && intent.action === "respond") return "respond";
   switch (intent.action) {
     case "explore":
@@ -113,7 +114,7 @@ function validateIntent(intent: MotionIntent): boolean {
     && typeof intent.thinking === "boolean"
     && typeof intent.awake === "boolean"
     && (intent.allowLocomotion === undefined || typeof intent.allowLocomotion === "boolean")
-    && (intent.gestureProgram === undefined || ["nod", "shake", "wave", "clap", "bow"].includes(intent.gestureProgram));
+    && (intent.gestureProgram === undefined || EXPLICIT_GESTURE_PROGRAMS.has(intent.gestureProgram));
 }
 
 const MOTION_PROGRAM_IDS: ReadonlySet<string> = new Set(Object.keys(MOTION_PROGRAMS));

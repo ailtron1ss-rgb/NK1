@@ -19,7 +19,7 @@ export type MotionProgramId =
   | "concern" | "respond" | "walk" | "turn" | "sit" | "stand" | "reach" | "point" | "wave" | "hold"
   | "nod" | "shake" | "clap" | "bow";
 
-export type SemanticGestureProgramId = "nod" | "shake" | "wave" | "clap" | "bow";
+export type SemanticGestureProgramId = "nod" | "shake" | "wave" | "clap" | "bow" | "point";
 
 export interface MotionKeyframe {
   /** Normalized time within the program, 0..1 inclusive and strictly increasing. */
@@ -59,7 +59,10 @@ const BODY_CHANNELS: ReadonlySet<BodyChannel> = new Set([
   "headYaw", "headPitch", "headRoll", "torsoYaw", "torsoPitch",
   "leftShoulder", "leftElbow", "leftWrist", "rightShoulder", "rightElbow", "rightWrist",
   "leftHip", "leftKnee", "leftAnkle", "rightHip", "rightKnee", "rightAnkle",
-  "leftHand", "rightHand", "leftFingers", "rightFingers", "gazeX", "gazeY", "breath", "rootYaw",
+  "leftHand", "rightHand", "leftFingers", "rightFingers",
+  "leftThumbCurl", "leftIndexCurl", "leftMiddleCurl", "leftRingCurl", "leftLittleCurl",
+  "rightThumbCurl", "rightIndexCurl", "rightMiddleCurl", "rightRingCurl", "rightLittleCurl",
+  "gazeX", "gazeY", "breath", "rootYaw",
 ]);
 
 export function validateMotionProgram(program: MotionProgram): MotionProgramIssue[] {
@@ -242,11 +245,22 @@ export const MOTION_PROGRAMS: Readonly<Record<MotionProgramId, MotionProgram>> =
   },
   point: {
     id: "point", durationMs: 1600, loop: false,
-    keyframes: [kf(0, { rightShoulder: 0, rightElbow: 0, rightHand: 0 }), kf(1, { rightShoulder: -0.45, rightElbow: 0.2, rightHand: 0.6 })],
+    // Reach, hold briefly, then release all joints so an expired action card
+    // cannot leave the avatar pointing indefinitely.
+    keyframes: [
+      kf(0, { rightShoulder: 0, rightElbow: 0, rightHand: 0, rightThumbCurl: 0, rightIndexCurl: 0, rightMiddleCurl: 0, rightRingCurl: 0, rightLittleCurl: 0 }),
+      kf(0.22, { rightShoulder: -0.45, rightElbow: 0.2, rightHand: 0.6, rightThumbCurl: 0.25, rightIndexCurl: -0.9, rightMiddleCurl: 0.75, rightRingCurl: 0.75, rightLittleCurl: 0.75 }),
+      kf(0.62, { rightShoulder: -0.45, rightElbow: 0.2, rightHand: 0.6, rightThumbCurl: 0.25, rightIndexCurl: -0.9, rightMiddleCurl: 0.75, rightRingCurl: 0.75, rightLittleCurl: 0.75 }),
+      kf(1, { rightShoulder: 0, rightElbow: 0, rightHand: 0, rightThumbCurl: 0, rightIndexCurl: 0, rightMiddleCurl: 0, rightRingCurl: 0, rightLittleCurl: 0 }),
+    ],
   },
   wave: {
     id: "wave", durationMs: 1200, loop: true,
-    keyframes: [kf(0, { rightShoulder: -0.6, rightElbow: 0.5, rightHand: 0.2 }), kf(0.5, { rightShoulder: -0.6, rightElbow: 0.5, rightHand: -0.2 }), kf(1, { rightShoulder: -0.6, rightElbow: 0.5, rightHand: 0.2 })],
+    keyframes: [
+      kf(0, { rightShoulder: -0.6, rightElbow: 0.5, rightHand: 0.2, rightFingers: 0.15 }),
+      kf(0.5, { rightShoulder: -0.6, rightElbow: 0.5, rightHand: -0.2, rightFingers: 0.15 }),
+      kf(1, { rightShoulder: -0.6, rightElbow: 0.5, rightHand: 0.2, rightFingers: 0.15 }),
+    ],
   },
   hold: {
     id: "hold", durationMs: 2000, loop: true,

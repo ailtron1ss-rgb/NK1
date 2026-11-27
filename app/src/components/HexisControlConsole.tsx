@@ -340,13 +340,13 @@ export function HexisControlConsole() {
         </Panel>
       </div>
 
-      <div className="mt-3 grid gap-3 lg:grid-cols-[1fr_1.5fr]">
+      <div className="mt-3 grid min-w-0 gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)]">
         <Panel title="Live Hexis state" icon={<Clock3 className="size-4" />}>
-          <pre className="max-h-80 overflow-auto rounded-md border border-border bg-bg p-3 text-[10px] leading-relaxed text-muted">{state ? fmt(state) : "Loading…"}</pre>
+          <pre className="max-h-80 min-w-0 max-w-full overflow-auto rounded-md border border-border bg-bg p-3 text-[10px] leading-relaxed text-muted">{state ? fmt(state) : "Loading…"}</pre>
         </Panel>
         <Panel title="Operation result" icon={<History className="size-4" />}>
           <div className="mb-2 text-xs text-muted">{message || "Choose an operation above."}</div>
-          <pre className="max-h-80 overflow-auto rounded-md border border-border bg-bg p-3 text-[10px] leading-relaxed text-muted">{panel || "No operation result."}</pre>
+          <pre className="max-h-80 min-w-0 max-w-full overflow-auto rounded-md border border-border bg-bg p-3 text-[10px] leading-relaxed text-muted">{panel || "No operation result."}</pre>
         </Panel>
       </div>
     </section>
@@ -354,5 +354,5 @@ export function HexisControlConsole() {
 }
 
 function Panel({ title, icon, children }: { title: string; icon: React.ReactNode; children: React.ReactNode }) {
-  return <section className="rounded-lg border border-border bg-bg/40 p-3"><div className="mb-3 flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-subtle">{icon}{title}</div>{children}</section>;
+  return <section className="min-w-0 rounded-lg border border-border bg-bg/40 p-3"><div className="mb-3 flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-subtle">{icon}{title}</div>{children}</section>;
 }

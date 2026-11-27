@@ -35,6 +35,7 @@ function makeIntent(version, phase, expression, token) {
     type: "kurisu_embodiment_intent",
     protocolVersion: 1,
     stateVersion: version,
+    frameTick: 1000 + version,
     sentAtEpochMs: Date.now(),
     speechEventId,
     audioClockId: "nk1-browser-acceptance-clock",
@@ -159,7 +160,10 @@ async function mountProfile(page, profile, screenshotPath) {
       height: canvas?.height || 0,
       hasWebGL: Boolean(gl),
       hasPixiLive2D: Boolean(window.PIXI?.live2d?.Live2DModel),
-      visiblePixels,
+      // This buffer readback is diagnostic only: preserveDrawingBuffer=false can make it empty.
+      // The compositor screenshot pixel sample above is the authoritative rendered-frame check.
+      webglReadbackAlphaPixels: visiblePixels,
+      webglReadbackMayBeEmpty: true,
     };
   });
   render.screenshotPixels = screenshotPixels;
@@ -233,11 +237,13 @@ try {
   const firstAck = await sendIntent(page, makeIntent(1, "speaking", "happy", 1));
   const modelAssetFailures = report.failedResponses.filter((item) => item.status >= 400 && /\/live2d\/Kurisu(?:\.mobile)?\//.test(new URL(item.url).pathname));
   assert.deepEqual(modelAssetFailures, [], "Live2D model assets must not return HTTP errors: " + JSON.stringify(modelAssetFailures));
+  assert.equal(firstAck.frameTick, 1001, "Live2D ACK must echo the canonical frame tick, not only the intent sequence");
   assert.ok(["parameters-observed", "accepted-unverified"].includes(firstAck.status));
   assert.equal(firstAck.expressionStatus, "started", "Live2D expression did not resolve");
   assert.equal(firstAck.motionStatus, "started", "Live2D motion did not resolve");
   report.intent.started = {
     status: firstAck.status,
+    frameTick: firstAck.frameTick,
     expressionStatus: firstAck.expressionStatus,
     motionStatus: firstAck.motionStatus,
     observedParameters: firstAck.observedParameters || {},
@@ -259,9 +265,11 @@ try {
   assert.equal(staleAckCount, ackCount, "duplicate stale stateVersion was not rejected");
 
   const cancelledAck = await sendIntent(page, makeIntent(2, "cancelled", "thinking", 2));
+  assert.equal(cancelledAck.frameTick, 1002, "cancellation ACK must remain bound to the canonical tick");
   assert.equal(cancelledAck.expressionStatus, "started");
   report.intent.cancelled = {
     status: cancelledAck.status,
+    frameTick: cancelledAck.frameTick,
     staleIntentRejected: true,
   };
 
@@ -276,6 +284,7 @@ try {
   report.profiles.push({ profile: "mobile", modelPath: mobile.ready.modelPath, render: mobile.render });
 
   const mobileAck = await sendIntent(page, makeIntent(1, "speaking", "happy", 1));
+  assert.equal(mobileAck.frameTick, 1001, "mobile viewer must echo the canonical tick");
   assert.equal(mobileAck.expressionStatus, "started");
   assert.equal(mobileAck.motionStatus, "started");
   const mobileDisposed = await unmountAndVerifyDisposal(page);

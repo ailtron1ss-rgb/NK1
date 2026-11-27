@@ -41,6 +41,7 @@ import { normalizeEmbodimentIntentV1 } from './embodiment-intent.mjs';
     const readback=pending.readback;
     send('live2d_intent_ack',{
       stateVersion:pending.stateVersion,
+      frameTick:pending.frameTick,
       status:readback.status,
       appliedRevision:pending.stateVersion,
       observedParameters:readback.observedParameters,
@@ -217,6 +218,7 @@ import { normalizeEmbodimentIntentV1 } from './embodiment-intent.mjs';
       lastIntentStateVersion=normalized.stateVersion;
       pendingIntentReadback={
         stateVersion:normalized.stateVersion,
+        frameTick:normalized.frameTick,
         expression:normalized.expression,
         expressionStatus:'not-requested',
         motionStatus:'not-requested',

@@ -41,6 +41,7 @@
     const readback=pending.readback;
     send('live2d_intent_ack',{
       stateVersion:pending.stateVersion,
+      frameTick:pending.frameTick,
       status:readback.status,
       appliedRevision:pending.stateVersion,
       observedParameters:readback.observedParameters,
@@ -242,6 +243,8 @@
   const finiteNumber=(value,min,max,fallback=0)=>typeof value==='number'&&Number.isFinite(value)?clamp(value,min,max):fallback;
   function sanitizeIntent(d){
     if(d.protocolVersion!==1||!Number.isSafeInteger(d.stateVersion)||d.stateVersion<=lastIntentStateVersion)return null;
+    const frameTick=d.frameTick===undefined?null:(Number.isSafeInteger(d.frameTick)&&d.frameTick>=0?d.frameTick:null);
+    if(d.frameTick!==undefined&&frameTick===null)return null;
     if(typeof d.sentAtEpochMs!=='number'||!Number.isFinite(d.sentAtEpochMs))return null;
     if(!['idle','starting','speaking','ended','cancelled','unknown'].includes(d.speechPhase))return null;
     const speechEventId=d.speechEventId===null?null:(typeof d.speechEventId==='string'&&d.speechEventId.length<=180?d.speechEventId:null);
@@ -264,6 +267,7 @@
     return {
       protocolVersion:1,
       stateVersion:d.stateVersion,
+      frameTick,
       sentAtEpochMs:d.sentAtEpochMs,
       speechEventId,
       audioClockId,
@@ -307,6 +311,7 @@
     }
     pendingIntentReadback={
       stateVersion:intent.stateVersion,
+      frameTick:intent.frameTick,
       expression:intent.expression,
       expressionStatus:'not-requested',
       motionStatus:'not-requested',
