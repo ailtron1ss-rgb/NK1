@@ -406,7 +406,7 @@ export function createProceduralHumanoidRig(scene: ThreeScene): ProceduralHumano
   const fingerNames = ["thumb", "index", "middle", "ring", "little"] as const;
   for (const side of [-1, 1] as const) {
     const key = side < 0 ? "left" : "right";
-    const clavicle = addBone(chest, key + "Clavicle", [side * 0.14, -0.02, 0], bones, limits);
+    const clavicle = addBone(chest, key + "Clavicle", [side * 0.14, 0.23, 0], bones, limits);
     const upper = addBone(clavicle, key + "UpperArm", [side * 0.08, 0, 0], bones, limits);
     const forearm = addBone(upper, key + "Forearm", [side * 0.348, 0, 0], bones, limits);
     const wrist = addBone(forearm, key + "Wrist", [side * 0.244, 0, 0], bones, limits);
@@ -596,7 +596,7 @@ export function createProceduralHumanoidRig(scene: ThreeScene): ProceduralHumano
         };
         targets[key + "Forearm"] = { z: side * (elbow - 0.552) + channel(key + "ForearmTwist", 0) };
         targets[key + "Wrist"] = { z: channel(key + "Wrist", 0) * 0.65, x: channel(key + "WristPitch", 0) * 0.55 };
-        const fist = clamp(channel(key + "Fingers", channel(key + "Hand", input.action === "inspect" ? 0.12 : 0)), 0, 1);
+        const fist = clamp(channel(key + "Fingers", channel(key + "Hand", channel(key + "Grip", input.action === "inspect" ? 0.12 : 0))), 0, 1);
         for (const finger of fingerNames) {
           const name = finger[0].toUpperCase() + finger.slice(1);
           const thumbFlex = finger === "thumb" ? 0.45 : 1;
@@ -771,7 +771,7 @@ export function createProceduralHumanoidRig(scene: ThreeScene): ProceduralHumano
       );
       const secondAngle = Math.atan2(
         result.endEffector.y - result.elbow.y,
-        outward * (result.endEffector.x - result.elbow.x),
+        outward * (outward * (result.endEffector.x - result.elbow.x)),
       );
       const baseUpper = Math.atan2(arm.forearm.position.y, arm.forearm.position.x);
       const baseForearm = Math.atan2(arm.wrist.position.y, arm.wrist.position.x);
