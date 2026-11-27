@@ -48,7 +48,7 @@ The same instances are injected into `MemoryFabric`; a new store is not created 
 
 ## Embodiment
 
-The application has a real Three.js scene path and VRM/GLB loading/rig adapters, along with the Live2D and legacy 2D presentation paths. Avatar state is driven by backend emotion, motor intent, body channels and animation projections. The current default procedural fallback is not yet accepted as the final anatomically detailed body requested for NeuroCore. The complete skeleton/IK/muscle articulation and phone performance path remain explicit open engineering work; do not represent a fallback mesh as a finished humanoid body.
+The default application mode is the built-in Three.js articulated body. The current branch defines 61 `THREE.Bone` nodes (60 movable bone pivots), 60 joint-limit records, and 99 separate part/muscle/clothing/face meshes parented to the bone hierarchy. It uses the existing NK1 18-particle / 17-segment constraint solver as its motion source. Absolute particle landmarks place the torso, neck, head, shoulders, hands and hip pivots; two-link IK solves both arms to wrist targets and both legs to ankle targets. Finger joints, head/eye/mouth expression, body channels and external VRM/GLB replacement are connected. The 3D body is a segmented bone-parented mesh rig, not yet a continuously skinned deformable surface. Full anatomical fidelity, contact/collision, gait, fine muscle deformation, and Android frame/RAM acceptance remain open. Test files have been added but are not yet reported as executed on this branch.
 
 ## Identity migration
 
