@@ -9228,6 +9228,16 @@ export class OrganismCore {
         }
         if (!this.ready)
             throw new Error('OrganismCore.init() must be called first');
+        const hasFeedbackSignal = [
+            outcome.success,
+            outcome.reward,
+            outcome.surprise,
+            outcome.observation?.success,
+        ].some(value => typeof value === 'number' && Number.isFinite(value))
+            || Boolean(outcome.worldTransition || outcome.worldEvent);
+        // A completely empty feedback envelope is not an observed neutral result.
+        // Do not run the large outcome-learning pipeline or decay state on absence.
+        if (!hasFeedbackSignal) return;
         const state = this.persisted.state;
         // P80 is read-only during feedback; keep one detached view instead of cloning it
         // repeatedly for each downstream learning/neural branch.
@@ -9241,7 +9251,11 @@ export class OrganismCore {
                 ? clamp(outcome.success)
                 : typeof outcome.reward === 'number' && Number.isFinite(outcome.reward)
                     ? clamp(0.5 + outcome.reward * 0.5)
-                    : null;
+                    : typeof outcome.worldTransition?.reward === 'number' && Number.isFinite(outcome.worldTransition.reward)
+                        ? clamp(0.5 + outcome.worldTransition.reward * 0.5)
+                        : typeof outcome.observation?.success === 'number' && Number.isFinite(outcome.observation.success)
+                            ? clamp(outcome.observation.success)
+                            : null;
         // Keep the last known action success as state, but do not manufacture a new
         // outcome sample when feedback carries neither success nor reward.
         const success = outcomeSuccessObserved ?? clamp(Number.isFinite(state.lastActionSuccess) ? state.lastActionSuccess : 0.5);
