@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { generateKeyPairSync, sign } from 'node:crypto';
-import { SignedObservationAdmissionAuthority, isTrustedObservationAdmission } from '../src/organism/system/SignedObservationAdmissionAuthority.ts';
+import { SignedObservationAdmissionAuthority, isTrustedObservationAdmission, signedObservationReceiptBytes } from '../src/organism/system/SignedObservationAdmissionAuthority.ts';
 import { stableJson } from '../src/organism/core/StableSerialization.ts';
 import { EmbodimentSubsystemRuntime } from '../src/organism/core/EmbodimentSubsystemRuntime.ts';
 import { OrganismCore } from '../src/organism/core/OrganismCore.ts';
@@ -58,7 +58,7 @@ function signedReceipt(overrides = {}) {
     captureDigest: 'a'.repeat(64),
     ...overrides,
   };
-  const signature = sign(null, Buffer.from(stableJson(payload)), privateKey).toString('base64');
+  const signature = sign(null, signedObservationReceiptBytes(payload, 'ed25519'), privateKey).toString('base64');
   return { ...payload, signatureAlgorithm: 'ed25519', signature };
 }
 
@@ -81,6 +81,12 @@ tampered.claim = 'door is closed';
 const tamperedResult = await authority.admit(tampered);
 assert.equal(tamperedResult.accepted, false);
 assert.equal(tamperedResult.reason, 'signature-invalid');
+const wrongAlgorithm = signedReceipt({ nonce: 'nonce-algorithm-substitution-0001' });
+wrongAlgorithm.signatureAlgorithm = 'rsa-sha256';
+const wrongAlgorithmResult = await authority.admit(wrongAlgorithm);
+assert.equal(wrongAlgorithmResult.accepted, false);
+assert.equal(wrongAlgorithmResult.reason, 'signature-invalid', 'the signed protocol domain must not permit algorithm substitution');
+
 const callerFlag = await authority.admit({ ...signedReceipt({ nonce: 'nonce-caller-flag-000000001' }), verified: true });
 assert.equal(callerFlag.accepted, false);
 assert.equal(callerFlag.reason, 'invalid-receipt');
