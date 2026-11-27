@@ -165,6 +165,15 @@ export function derivePlanRevisionHint(
     || independent01 < MIN_VERIFIED_OUTCOME_QUALITY01
     || evidence01 < MIN_VERIFIED_OUTCOME_QUALITY01) return null;
 
+  const actionEvent = events.find(event => {
+    if (event.stage !== 'action' || event.tick !== outcome.tick || !event.payload) return false;
+    return event.payload.planId === planId
+      && event.payload.decisionId === decisionId
+      && event.payload.goalId === currentGoalId
+      && event.payload.planAccepted === true
+      && event.payload.action === previousAction;
+  });
+  if (!actionEvent) return null;
   const planEvent = events.find(event => {
     if (event.stage !== 'plan' || event.tick !== outcome.tick || !event.payload) return false;
     return event.payload.planId === planId
