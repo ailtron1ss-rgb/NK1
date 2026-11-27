@@ -15,6 +15,7 @@ function node(name, options = {}) {
     parent: null,
     ...(options.morphTargetDictionary ? { morphTargetDictionary: options.morphTargetDictionary } : {}),
     ...(options.material ? { material: options.material } : {}),
+    ...(options.userData ? { userData: options.userData } : {}),
   };
   return value;
 }
@@ -108,12 +109,12 @@ test("audit keeps duplicate-named bones distinct and ignores detached or cyclic 
   assert.equal(report.byRole.hair.chainRoots, 2);
 });
 
-test("hosted GLB descriptor audit resolves skin-joint ancestry and glTF material extras", () => {
+test("hosted GLB descriptor audit resolves skin-joint ancestry, explicit node extras and material extras", () => {
   const report = auditAvatarSecondaryAssetDescriptor({
     bones: [
-      { id: "hair-mid", name: "HairLockR_Mid", parentId: "hair-root" },
-      { id: "hair-tip", name: "HairLockR_Tip", parentId: "hair-mid" },
-      { id: "coat-mid", name: "CoatPanelL_Mid", parentId: "coat-root" },
+      { id: "hair-mid", name: "Bone.002", parentId: "hair-root", metadata: { role: "hair", chainId: "fringe-left", side: "left" } },
+      { id: "hair-tip", name: "Bone.003", parentId: "hair-mid", metadata: { role: "hair", chainId: "fringe-left", side: "left", distalWeight: 1 } },
+      { id: "coat-mid", name: "Node_42", parentId: "coat-root", metadata: { role: "garment", chainId: "coat-right", side: "right" } },
     ],
     morphTargetNames: ["NK1_Cloth_Sway", "NK1_Hair_Sway", "happy"],
     materials: [
@@ -123,6 +124,7 @@ test("hosted GLB descriptor audit resolves skin-joint ancestry and glTF material
     skinnedMeshCount: 2,
     morphMeshCount: 1,
   });
+  assert.equal(report.byRole.hair.boneCount, 2);
   assert.equal(report.byRole.hair.chainRoots, 1);
   assert.equal(report.byRole.hair.maxChainDepth, 2);
   assert.equal(report.byRole.garment.chainRoots, 1);
@@ -130,6 +132,17 @@ test("hosted GLB descriptor audit resolves skin-joint ancestry and glTF material
   assert.equal(report.taggedNeuralMaterialCount, 1);
   assert.equal(report.skinnedMeshCount, 2);
   assert.equal(report.morphMeshCount, 1);
+});
+
+test("live Three.js scene audit reads explicit nk1Secondary metadata from node userData", () => {
+  const root = node("Scene");
+  attach(root, node("Bone.001", { isBone: true, userData: { nk1Secondary: { role: "hair", chainId: "bang-left", side: "left" } } }));
+  attach(root, node("Bone.002", { isBone: true, userData: { nk1Secondary: { role: "hair", chainId: "bang-left", side: "left", distalWeight: 1 } } }));
+  const report = auditAvatarSecondaryScene(root);
+  assert.equal(report.byRole.hair.boneCount, 2);
+  assert.equal(report.byRole.hair.chainRoots, 1);
+  assert.equal(report.byRole.hair.maxChainDepth, 1);
+  assert.equal(report.secondaryPhysicsReady, true);
 });
 
 test("neural-fabric material tag requires an explicit NK1 layer or semantic name", () => {
