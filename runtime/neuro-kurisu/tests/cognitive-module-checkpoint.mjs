@@ -520,3 +520,78 @@ console.log('ORGANISM_RUNTIME_MODULE_INTEGRATION=PASS');
   assert.equal(durableWrites, 0, 'non-plain system metadata must not reach durable storage');
 }
 
+
+
+// Verify the real durable JSON store, not only an in-memory delegate. A
+// successful checkpoint is copied into the FileStateStore backup generation;
+// after primary corruption, the normal backup-recovery path must restore the
+// same module state without any independent module-state file.
+{
+  const { mkdtemp, rm, writeFile } = await import('node:fs/promises');
+  const { tmpdir } = await import('node:os');
+  const { join } = await import('node:path');
+  const { FileStateStore } = await import('../src/organism/persistence/FileStateStore.ts');
+  const directory = await mkdtemp(join(tmpdir(), 'nk1-module-durable-'));
+  const statePath = join(directory, 'organism.json');
+  try {
+    const firstStore = new FileStateStore(statePath, {
+      encoding: 'json',
+      backupEverySaves: 1,
+      directoryFsyncEverySaves: 1,
+    });
+    const checkpoint = new CognitiveModuleCheckpointStore(firstStore);
+    await checkpoint.load();
+    const events = [];
+    const firstModule = fixture(events);
+    const firstHost = new CognitiveModuleRuntime({
+      hostApiVersion: 1,
+      grants: {},
+      stateStore: checkpoint.moduleStateStore,
+    });
+    firstHost.register({
+      manifest: manifest('memory.file-backed'),
+      factory: () => firstModule.module,
+    });
+    checkpoint.bindSnapshotProvider(() => firstHost.snapshotAll());
+    await firstHost.activateAll();
+
+    firstModule.state.counter = 101;
+    await checkpoint.save(persisted());
+    firstModule.state.counter = 102;
+    await checkpoint.save(persisted());
+    await firstHost.stopAll();
+
+    await writeFile(statePath, '{corrupted-primary', 'utf8');
+    const recoveryStore = new FileStateStore(statePath, {
+      encoding: 'json',
+      backupEverySaves: 1,
+    });
+    const recoveredCheckpoint = new CognitiveModuleCheckpointStore(recoveryStore);
+    const recoveredOrganism = await recoveredCheckpoint.load();
+    assert.ok(recoveredOrganism, 'FileStateStore must recover the canonical organism backup');
+    assert.equal(
+      recoveredOrganism.system.cognitiveModuleRuntime.modules[0].state.counter,
+      101,
+      'module state must be part of the same verified backup generation as organism state',
+    );
+
+    const restoredEvents = [];
+    const restoredModule = fixture(restoredEvents);
+    const restoredHost = new CognitiveModuleRuntime({
+      hostApiVersion: 1,
+      grants: {},
+      stateStore: recoveredCheckpoint.moduleStateStore,
+    });
+    restoredHost.register({
+      manifest: manifest('memory.file-backed'),
+      factory: () => restoredModule.module,
+    });
+    await restoredHost.activateAll();
+    assert.equal(restoredModule.state.counter, 101);
+    await restoredHost.stopAll();
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+}
+
+console.log('COGNITIVE_MODULE_FILE_BACKUP_RECOVERY=PASS');
