@@ -3,6 +3,7 @@ import type { P41NativePerceptionState } from '../cognition/P41NativePerception.
 import type { P41TemporalPerceptionState } from '../cognition/P41TemporalPerceptionModel.ts';
 import type { MultimodalState } from './MultimodalPerception.ts';
 import { isPlainDataArray, isPlainDataRecord, ownDataValue, stringOr, timestampOr, unitStrictOr, unitOr } from './RestoreSanitizers.ts';
+import { isTrustedObservationAdmission, type TrustedObservationAdmission } from '../system/SignedObservationAdmissionAuthority.ts';
 
 const clamp=(n:number)=>Math.max(0,Math.min(1,Number.isFinite(n)?n:0));
 const stableHash=(value:string)=>{let h=2166136261;for(let i=0;i<value.length;i++){h^=value.charCodeAt(i);h=Math.imul(h,16777619);}return (h>>>0).toString(16).padStart(8,'0');};
@@ -17,6 +18,8 @@ export interface PerceptualEvidenceRecord{
   uncertainty01:number;
   kind:PerceptualEvidenceKind;
   parents:string[];
+  /** Expiry exists only for live host admissions; persisted copies carry no trust. */
+  expiresAt?:number;
 }
 const EVIDENCE_MODALITIES = new Set<PerceptualEvidenceRecord['modality']>(['text','vision','audio','sensor','world','fusion']);
 const RESTORABLE_EVIDENCE_KINDS = new Set<PerceptualEvidenceKind>(['model-output','derived','conflict','unresolved']);
@@ -30,7 +33,7 @@ function restoreEvidenceRecord(value:unknown):PerceptualEvidenceRecord|null{
     typeof at!=='number'||!Number.isSafeInteger(at)||at<0||
     typeof modality!=='string'||!EVIDENCE_MODALITIES.has(modality as PerceptualEvidenceRecord['modality'])||
     typeof claim!=='string'||!claim.trim())return null;
-  const confidence01=unitOr(ownDataValue(value,'confidence01'),0);
+  const confidence01=unitStrictOr(ownDataValue(value,'confidence01'),0);
   const rawKind=ownDataValue(value,'kind');
   const kind:PerceptualEvidenceKind=rawKind==='observed'
     ?'derived'
@@ -44,8 +47,9 @@ function restoreEvidenceRecord(value:unknown):PerceptualEvidenceRecord|null{
   return {
     id:id.trim(),at,modality:modality as PerceptualEvidenceRecord['modality'],
     claim:claim.trim().slice(0,240),confidence01,
-    uncertainty01:unitOr(ownDataValue(value,'uncertainty01'),1-confidence01),
+    uncertainty01:unitStrictOr(ownDataValue(value,'uncertainty01'),1-confidence01),
     kind,parents,
+    ...(typeof ownDataValue(value,'expiresAt')==='number'&&Number.isSafeInteger(ownDataValue(value,'expiresAt'))&&Number(ownDataValue(value,'expiresAt'))>=at?{expiresAt:Number(ownDataValue(value,'expiresAt'))}:{}),
   };
 };
 
@@ -113,6 +117,53 @@ export class PerceptualEvidenceCompiler{
     this.state.lastHash=stableHash(digest);
   }
   snapshot(){return structuredClone(this.state);}
+
+  /**
+   * Accept one exact in-process token minted by SignedObservationAdmissionAuthority.
+   * Persisted copies lose observed status on restore; only a fresh signature,
+   * consent and durable nonce check can mint this capability again.
+   */
+  recordTrustedExternalEvidence(admission:TrustedObservationAdmission):PerceptualEvidenceRecord {
+    if(!isTrustedObservationAdmission(admission))throw new TypeError('untrusted-observation-admission');
+    const id=`pe-host-${stableHash(admission.observationId)}`;
+    const prior=this.state.evidence.find(row=>row.id===id);
+    if(prior){
+      if(prior.claim!==admission.claim||prior.at!==admission.at||prior.modality!==admission.modality||
+        prior.confidence01!==admission.confidence01||prior.expiresAt!==admission.expiresAt) {
+        throw new Error('host-observation-id-conflict');
+      }
+      return structuredClone(prior);
+    }
+    const record:PerceptualEvidenceRecord={
+      id,at:admission.at,modality:admission.modality,claim:admission.claim,
+      confidence01:admission.confidence01,uncertainty01:1-admission.confidence01,
+      kind:'observed',expiresAt:admission.expiresAt,
+      parents:[`host-receipt:${admission.receiptDigest}`,`consent:${admission.consentTicketId}:${admission.consentRevision}`],
+    };
+    this.state.evidence=[record,...this.state.evidence].slice(0,96);
+    this.state.lastAt=Math.max(this.state.lastAt,admission.at);
+    this.state.updates++;
+    // Only signed and consent-bound admissions may affect the grounded signal ratio.
+    this.state.metrics.groundedSignalRatio01=clamp(this.state.metrics.groundedSignalRatio01*.92+.08);
+    this.state.metrics.grounding01=clamp(this.state.metrics.grounding01*.94+.06*admission.confidence01);
+    this.state.metrics.temporalBinding01=clamp(this.state.metrics.temporalBinding01*.94+.06);
+    this.refreshHash();
+    return structuredClone(record);
+  }
+
+  /** Revocation is monotonic: it removes observed status and resets derived trust gauges. */
+  revokeTrustedExternalEvidence(observationId:string):boolean {
+    if(typeof observationId!=='string'||!observationId.trim()||observationId.length>180)return false;
+    const id=`pe-host-${stableHash(observationId)}`;
+    const index=this.state.evidence.findIndex(row=>row.id===id&&row.kind==='observed');
+    if(index<0)return false;
+    const row=this.state.evidence[index];
+    this.state.evidence[index]={...row,kind:'unresolved',confidence01:0,uncertainty01:1,expiresAt:0};
+    const defaults=defaultPerceptualEvidence();
+    this.state.metrics={...defaults.metrics};
+    this.refreshHash();
+    return true;
+  }
 
   /**
    * External observations stay derived until a host-owned, cryptographically
@@ -209,7 +260,13 @@ export class PerceptualEvidenceCompiler{
     const dedup=new Map<string,PerceptualEvidenceRecord>();
     const identity=(r:PerceptualEvidenceRecord)=>`${r.modality}:${r.claim}`;
     for(const r of records){const key=identity(r);const prev=dedup.get(key);if(!prev||r.at>prev.at)dedup.set(key,r);}
-    for(const r of this.state.evidence){const key=identity(r);if(!dedup.has(key))dedup.set(key,r);}
+    for(const r of this.state.evidence){
+      const liveHostAdmission=r.kind==='observed'&&typeof r.expiresAt==='number'&&r.expiresAt>Date.now();
+      if(r.kind==='observed'&&!liveHostAdmission)continue;
+      const key=identity(r);
+      const current=dedup.get(key);
+      if(!current||liveHostAdmission&&current.kind!=='observed')dedup.set(key,r);
+    }
     this.state.evidence=[...dedup.values()].sort((a,b)=>b.at-a.at).slice(0,96);
     const modalityReliability=semantic?Object.values(semantic.modalityReliability).map(x=>x.reliability01):[];
     const spread=modalityReliability.length?Math.max(...modalityReliability)-Math.min(...modalityReliability):0;
