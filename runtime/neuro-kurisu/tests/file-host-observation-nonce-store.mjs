@@ -58,7 +58,8 @@ try {
   {
     const directoryPath = join(root, 'corrupt-clock');
     const markerDay = new Date().toISOString().slice(0, 10);
-    await mkdir(join(directoryPath, 'clock-days'), { recursive: true });
+    await mkdir(directoryPath, { recursive: true, mode: 0o700 });
+    await mkdir(join(directoryPath, 'clock-days'), { recursive: true, mode: 0o700 });
     await writeFile(join(directoryPath, 'clock-days', markerDay), '{"version":1,"day":"forged","createdAt":0}', { mode: 0o600 });
     const corrupt = new FileHostObservationNonceStore({ directoryPath });
     await assert.rejects(corrupt.consume(baseKey()), /nonce-store-clock-marker-invalid/);
@@ -85,7 +86,8 @@ try {
     const key = baseKey({ nonce: 'nonce-tampered-record-0000001', retainUntil: Date.now() + 60_000 });
     const digest = createHash('sha256').update(JSON.stringify([key.issuerId, key.deviceId, key.sessionId, key.nonce])).digest('hex');
     const shard = join(directoryPath, 'nonces', digest.slice(0, 2));
-    await mkdir(shard, { recursive: true });
+    await mkdir(directoryPath, { recursive: true, mode: 0o700 });
+    await mkdir(shard, { recursive: true, mode: 0o700 });
     await writeFile(join(shard, digest + '.json'), '{"version":1,"tupleDigest":"forged"}', { mode: 0o600 });
     const tampered = new FileHostObservationNonceStore({ directoryPath });
     await assert.rejects(tampered.consume(key), /nonce-store-record-invalid/);
