@@ -152,6 +152,8 @@ test("attachment is limited to separate skinned hair locks and garment panels, n
   for (const part of excluded) assert.equal(part.material.userData?.nk1SecondaryVertexDynamics, undefined);
   assert.ok(bindings.every((binding) => binding.uniforms.nk1SecondaryAmplitude.value > 0));
   assert.ok(bindings.every((binding) => binding.uniforms.nk1SecondaryAmplitude.value < 0.02));
+  assert.ok(bindings[0].uniforms.nk1SecondaryAmplitude.value > bindings[1].uniforms.nk1SecondaryAmplitude.value);
+  assert.equal(bindings[2].uniforms.nk1SecondarySide.value, -1);
 });
 
 test("frame drive is deterministic, bounded, and respects sleep and device quality", () => {
