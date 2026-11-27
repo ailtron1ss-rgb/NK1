@@ -118,6 +118,7 @@ semanticEventIngress.compile({
       lastAt: 1_800_000_000_003,
       confidence01: 0.99,
       modalities: ['vision'],
+      evidenceKind: 'observed',
       modalityEvidenceKinds: { vision: 'observed' },
       modalityLastSeenAt: { vision: 1_800_000_000_003 },
     }],
