@@ -69,7 +69,8 @@ const invalidOutcomePlan = {
     ? { ...step, expectedOutcome: { ...step.expectedOutcome, valid: false } }
     : step),
 };
-assert.equal(engine.validateStep(invalidOutcomePlan, validStepIndex, validStepWorld).reason, 'step-outcome-invalid');
+assert.equal(engine.validateStep(invalidOutcomePlan, validStepIndex, validStepWorld).reason, 'plan-integrity-mismatch',
+  'mutating an existing plan outcome must fail the plan integrity check before step admission');
 
 const tamperedActionPlan = {
   ...plan,
