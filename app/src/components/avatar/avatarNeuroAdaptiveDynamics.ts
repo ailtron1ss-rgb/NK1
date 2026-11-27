@@ -125,7 +125,8 @@ function resolveTarget(
   const energy = clamp01(frame.energy);
   const activation = resolveNeuralActivation(frame);
   const quality = QUALITY_SCALE[frame.quality] ?? QUALITY_SCALE.balanced;
-  const motion = awakeScale * quality * (0.2 + energy * 0.35 + activation * 0.45);
+  const poseScale = awakeScale * quality;
+  const motion = poseScale * (0.2 + energy * 0.35 + activation * 0.45);
   const headYaw = readChannel(frame, "headYaw");
   const headPitch = readChannel(frame, "headPitch");
   const torsoYaw = readChannel(frame, "torsoYaw");
@@ -144,30 +145,30 @@ function resolveTarget(
   switch (bone.role) {
     case "hair":
       return {
-        x: (-headPitch * 0.14 + wave * 0.026 * motion) * distal,
-        y: (-headYaw * 0.15 - rootYaw * 0.055 + slowWave * 0.008 * motion) * distal,
-        z: (-headYaw * 0.07 + wave * 0.018 * motion + side * gait * 0.009) * distal,
+        x: (-headPitch * 0.14 * poseScale + wave * 0.026 * motion) * distal,
+        y: (-headYaw * 0.15 * poseScale - rootYaw * 0.055 * poseScale + slowWave * 0.008 * motion) * distal,
+        z: (-headYaw * 0.07 * poseScale + wave * 0.018 * motion + side * gait * 0.009 * poseScale) * distal,
       };
     case "sleeve": {
       const shoulder = readChannel(frame, side < 0 ? "leftShoulder" : "rightShoulder");
       const wrist = readChannel(frame, side < 0 ? "leftWrist" : "rightWrist");
       return {
-        x: (-torsoPitch * 0.035 + breath * 0.012 + wave * 0.009 * motion) * distal,
-        y: (-torsoYaw * 0.045 + wrist * 0.025) * distal,
-        z: (shoulder * 0.075 + side * gait * 0.012 + slowWave * 0.008 * motion) * distal,
+        x: (-torsoPitch * 0.035 * poseScale + breath * 0.012 * poseScale + wave * 0.009 * motion) * distal,
+        y: (-torsoYaw * 0.045 * poseScale + wrist * 0.025 * poseScale) * distal,
+        z: (shoulder * 0.075 * poseScale + side * gait * 0.012 * poseScale + slowWave * 0.008 * motion) * distal,
       };
     }
     case "garment":
       return {
-        x: (-torsoPitch * 0.11 + breath * 0.018 + wave * (0.012 + gait * 0.018) * motion) * distal,
-        y: (-torsoYaw * 0.12 - rootYaw * 0.08 + slowWave * 0.014 * motion) * distal,
-        z: (side * gait * 0.025 + torsoYaw * 0.035 + wave * 0.012 * motion) * distal,
+        x: (-torsoPitch * 0.11 * poseScale + breath * 0.018 * poseScale + wave * (0.012 + gait * 0.018) * motion) * distal,
+        y: (-torsoYaw * 0.12 * poseScale - rootYaw * 0.08 * poseScale + slowWave * 0.014 * motion) * distal,
+        z: (side * gait * 0.025 * poseScale + torsoYaw * 0.035 * poseScale + wave * 0.012 * motion) * distal,
       };
     case "neural-fiber":
       return {
-        x: (headPitch * 0.012 + torsoPitch * 0.01 + wave * 0.004 * activation) * distal,
-        y: (headYaw * 0.012 + torsoYaw * 0.012) * distal,
-        z: (side * slowWave * 0.004 * activation) * distal,
+        x: (headPitch * 0.012 + torsoPitch * 0.01 + wave * 0.004 * activation) * poseScale * distal,
+        y: (headYaw * 0.012 + torsoYaw * 0.012) * poseScale * distal,
+        z: side * slowWave * 0.004 * activation * poseScale * distal,
       };
   }
 }
