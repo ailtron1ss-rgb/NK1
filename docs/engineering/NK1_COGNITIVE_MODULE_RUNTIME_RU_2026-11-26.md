@@ -226,6 +226,7 @@ Lifecycle barrier сериализует одиночную активацию, 
 - canonical checkpoint round-trip через новый host;
 - сохранение последнего хорошего module snapshot при ошибке одного модуля;
 - фактический `OrganismRuntime.init → flush → stop → restart` integration path.
+- восстановление module snapshot из реального `FileStateStore` backup после повреждения primary JSON: module state находится в той же backup generation, отдельного durable файла нет.
 - health degradation/recovery после временного snapshot failure;
 - закрытие Continuity Ledger и сохранение обеих причин при ошибке остановки + финального checkpoint;
 
