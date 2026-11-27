@@ -109,3 +109,22 @@ test("out-of-range joint indices are rejected without mapping to a different bon
   assert.ok(report.warnings.includes("joint-index-out-of-range"));
   assert.equal(report.meshAudits[0].jointCoverage.some((item) => item.jointIndex === 99), false);
 });
+
+
+test("reports unweighted vertices and per-vertex weight-sum diagnostics without inventing influences", () => {
+  const { document, binaryChunk } = makeDocument();
+  const data = new DataView(binaryChunk.buffer);
+  // The third vertex has no active weights. This is reported as a gap.
+  data.setFloat32(44, 0, true);
+  data.setFloat32(48, 0, true);
+  data.setFloat32(52, 0, true);
+  data.setFloat32(56, 0, true);
+  const report = auditGlbSkinWeights(document, binaryChunk);
+  const mesh = report.meshAudits[0];
+  assert.equal(mesh.sampledVertices, 3);
+  assert.equal(mesh.unweightedSampleVertices, 1);
+  assert.equal(mesh.weightedSampleVertices, 2);
+  assert.ok(mesh.averageWeightSum01 > 0 && mesh.averageWeightSum01 < 1);
+  assert.equal(mesh.maxWeightSum01, 1);
+  assert.equal(mesh.unweightedSampleVertices + mesh.weightedSampleVertices, mesh.sampledVertices);
+});
