@@ -91,6 +91,9 @@ type SceneNodeLike = {
   name?: unknown;
   isBone?: unknown;
   isMesh?: unknown;
+  isLine?: unknown;
+  isLineSegments?: unknown;
+  isPoints?: unknown;
   isSkinnedMesh?: unknown;
   children?: unknown;
   parent?: unknown;
@@ -386,7 +389,7 @@ export function auditAvatarSecondaryScene(root: unknown): AvatarSecondaryAssetAu
       });
     }
     if (node.isSkinnedMesh === true) skinnedMeshCount += 1;
-    if (node.isMesh === true || node.isSkinnedMesh === true) {
+    if (node.isMesh === true || node.isSkinnedMesh === true || node.isLine === true || node.isLineSegments === true || node.isPoints === true) {
       meshParts.push({
         id,
         name: typeof node.name === "string" && node.name.trim() ? node.name : id,
