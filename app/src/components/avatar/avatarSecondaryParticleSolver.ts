@@ -16,7 +16,11 @@ export interface AvatarSecondaryParticleState {
   offsets: Float32Array;
   constraints: AvatarSecondaryParticleConstraint[];
   lambdas: Float32Array;
+  /** Opposite-vertex links across manifold interior edges; a bounded distance-based bend approximation. */
+  bendingConstraints: AvatarSecondaryParticleConstraint[];
+  bendingLambdas: Float32Array;
   compliance: number;
+  bendingCompliance: number;
   damping: number;
   maxOffset: number;
   completedSteps: number;
@@ -33,10 +37,11 @@ const FIXED_STEP_SECONDS = 1 / 60;
 const MAX_FRAME_SECONDS = FIXED_STEP_SECONDS * 4;
 const MAX_PARTICLES = 768;
 const MAX_CONSTRAINTS = 4_096;
+const MAX_BENDING_CONSTRAINTS = 4_096;
 const SOLVER_ITERATIONS = 5;
 const ROLE_LIMITS = Object.freeze({
-  hair: { maxOffset: 0.022, compliance: 0.0000018, damping: 0.055 },
-  garment: { maxOffset: 0.018, compliance: 0.0000035, damping: 0.075 },
+  hair: { maxOffset: 0.022, compliance: 0.0000018, bendingCompliance: 0.000018, damping: 0.055 },
+  garment: { maxOffset: 0.018, compliance: 0.0000035, bendingCompliance: 0.000035, damping: 0.075 },
 });
 
 const clamp = (value: number, min: number, max: number): number =>
@@ -46,25 +51,38 @@ function edgeKey(a: number, b: number): string {
   return a < b ? `${a}:${b}` : `${b}:${a}`;
 }
 
-function buildEdges(
+interface AvatarSecondaryParticleTopology {
+  constraints: AvatarSecondaryParticleConstraint[];
+  bendingConstraints: AvatarSecondaryParticleConstraint[];
+}
+
+/**
+ * Build unique triangle-edge constraints and one opposite-vertex link for
+ * each two-face manifold edge. Boundary and non-manifold edges are skipped:
+ * they do not provide an unambiguous pair of adjacent faces.
+ */
+function buildTopology(
   positions: ArrayLike<number>,
   vertexCount: number,
   indices?: ArrayLike<number> | null,
-): AvatarSecondaryParticleConstraint[] | null {
+): AvatarSecondaryParticleTopology | null {
   const edgeSet = new Set<string>();
   const constraints: AvatarSecondaryParticleConstraint[] = [];
+  const adjacentFaces = new Map<string, { a: number; b: number; opposites: number[] }>();
   if (indices && indices.length % 3 !== 0) return null;
   const triangleCount = indices ? Math.floor(indices.length / 3) : Math.floor(vertexCount / 3);
-  if (triangleCount < 2) return null;
+  if (triangleCount < 2 || triangleCount > MAX_CONSTRAINTS) return null;
 
-  const addEdge = (rawA: number, rawB: number): boolean => {
-    const a = Math.floor(rawA);
-    const b = Math.floor(rawB);
-    if (!Number.isInteger(a) || !Number.isInteger(b) || a < 0 || b < 0
-      || a >= vertexCount || b >= vertexCount) return false;
-    if (a === b) return true;
+  const addEdge = (rawA: number, rawB: number, rawOpposite: number): boolean => {
+    const a = Number(rawA);
+    const b = Number(rawB);
+    const opposite = Number(rawOpposite);
+    if (![a, b, opposite].every(Number.isInteger)
+      || a < 0 || b < 0 || opposite < 0
+      || a >= vertexCount || b >= vertexCount || opposite >= vertexCount
+      || a === b || a === opposite || b === opposite) return false;
+
     const key = edgeKey(a, b);
-    if (edgeSet.has(key)) return true;
     const ax = Number(positions[a * 3]);
     const ay = Number(positions[a * 3 + 1]);
     const az = Number(positions[a * 3 + 2]);
@@ -74,6 +92,12 @@ function buildEdges(
     if (![ax, ay, az, bx, by, bz].every(Number.isFinite)) return false;
     const length = Math.hypot(bx - ax, by - ay, bz - az);
     if (!Number.isFinite(length) || length < 1e-7) return true;
+
+    const incident = adjacentFaces.get(key) ?? { a, b, opposites: [] };
+    if (!incident.opposites.includes(opposite)) incident.opposites.push(opposite);
+    adjacentFaces.set(key, incident);
+
+    if (edgeSet.has(key)) return true;
     if (constraints.length >= MAX_CONSTRAINTS) return false;
     edgeSet.add(key);
     constraints.push({ a, b, restLength: length });
@@ -85,9 +109,33 @@ function buildEdges(
     const a = indices ? Number(indices[offset]) : offset;
     const b = indices ? Number(indices[offset + 1]) : offset + 1;
     const c = indices ? Number(indices[offset + 2]) : offset + 2;
-    if (!addEdge(a, b) || !addEdge(b, c) || !addEdge(c, a)) return null;
+    if (!addEdge(a, b, c) || !addEdge(b, c, a) || !addEdge(c, a, b)) return null;
   }
-  return constraints.length >= 5 ? constraints : null;
+
+  const bendingConstraints: AvatarSecondaryParticleConstraint[] = [];
+  const bendingSet = new Set<string>();
+  for (const { opposites } of adjacentFaces.values()) {
+    if (opposites.length !== 2 || opposites[0] === opposites[1]) continue;
+    const a = opposites[0];
+    const b = opposites[1];
+    const key = edgeKey(a, b);
+    if (bendingSet.has(key)) continue;
+    const ax = Number(positions[a * 3]);
+    const ay = Number(positions[a * 3 + 1]);
+    const az = Number(positions[a * 3 + 2]);
+    const bx = Number(positions[b * 3]);
+    const by = Number(positions[b * 3 + 1]);
+    const bz = Number(positions[b * 3 + 2]);
+    if (![ax, ay, az, bx, by, bz].every(Number.isFinite)) return null;
+    const restLength = Math.hypot(bx - ax, by - ay, bz - az);
+    if (!Number.isFinite(restLength)) return null;
+    if (restLength < 1e-7) continue;
+    if (bendingConstraints.length >= MAX_BENDING_CONSTRAINTS) return null;
+    bendingSet.add(key);
+    bendingConstraints.push({ a, b, restLength });
+  }
+
+  return constraints.length >= 5 ? { constraints, bendingConstraints } : null;
 }
 
 /**
@@ -128,8 +176,8 @@ export function createAvatarSecondaryParticleState(
   }
   if (pinnedCount < 2 || movableCount < 3) return null;
 
-  const constraints = buildEdges(rest, vertexCount, input.indices);
-  if (!constraints) return null;
+  const topology = buildTopology(rest, vertexCount, input.indices);
+  if (!topology) return null;
   const limits = ROLE_LIMITS[input.role];
   return {
     role: input.role,
@@ -139,9 +187,12 @@ export function createAvatarSecondaryParticleState(
     previous: new Float32Array(rest),
     inverseMass,
     offsets: new Float32Array(rest.length),
-    constraints,
-    lambdas: new Float32Array(constraints.length),
+    constraints: topology.constraints,
+    lambdas: new Float32Array(topology.constraints.length),
+    bendingConstraints: topology.bendingConstraints,
+    bendingLambdas: new Float32Array(topology.bendingConstraints.length),
     compliance: limits.compliance,
+    bendingCompliance: limits.bendingCompliance,
     damping: limits.damping,
     maxOffset: limits.maxOffset,
     completedSteps: 0,
@@ -185,7 +236,40 @@ function constrainOffset(state: AvatarSecondaryParticleState, vertex: number): v
   state.positions[offset + 2] = state.rest[offset + 2] + dz * scale;
 }
 
-/** Advance real vertex particles with fixed-step Verlet integration and XPBD edge constraints. */
+function solveDistanceConstraints(
+  state: AvatarSecondaryParticleState,
+  constraints: readonly AvatarSecondaryParticleConstraint[],
+  lambdas: Float32Array,
+  alpha: number,
+): void {
+  for (let index = 0; index < constraints.length; index += 1) {
+    const constraint = constraints[index];
+    const a = constraint.a * 3;
+    const b = constraint.b * 3;
+    const dx = state.positions[b] - state.positions[a];
+    const dy = state.positions[b + 1] - state.positions[a + 1];
+    const dz = state.positions[b + 2] - state.positions[a + 2];
+    const length = Math.hypot(dx, dy, dz);
+    if (!Number.isFinite(length) || length < 1e-8) continue;
+    const wa = state.inverseMass[constraint.a];
+    const wb = state.inverseMass[constraint.b];
+    const denominator = wa + wb + alpha;
+    if (denominator <= 0) continue;
+    const deltaLambda = (-(length - constraint.restLength) - alpha * lambdas[index]) / denominator;
+    lambdas[index] += deltaLambda;
+    const nx = dx / length;
+    const ny = dy / length;
+    const nz = dz / length;
+    state.positions[a] -= wa * nx * deltaLambda;
+    state.positions[a + 1] -= wa * ny * deltaLambda;
+    state.positions[a + 2] -= wa * nz * deltaLambda;
+    state.positions[b] += wb * nx * deltaLambda;
+    state.positions[b + 1] += wb * ny * deltaLambda;
+    state.positions[b + 2] += wb * nz * deltaLambda;
+  }
+}
+
+/** Advance real vertex particles with fixed-step Verlet integration and XPBD constraints. */
 export function stepAvatarSecondaryParticleState(
   state: AvatarSecondaryParticleState,
   frame: AvatarNeuroAdaptiveFrame,
@@ -225,35 +309,13 @@ export function stepAvatarSecondaryParticleState(
       state.positions[offset + 2] = z + vz + az * stepSeconds * stepSeconds;
     }
 
-    const lambdas = state.lambdas;
-    lambdas.fill(0);
+    state.lambdas.fill(0);
+    state.bendingLambdas.fill(0);
     const alpha = state.compliance / Math.max(1e-8, stepSeconds * stepSeconds);
+    const bendingAlpha = state.bendingCompliance / Math.max(1e-8, stepSeconds * stepSeconds);
     for (let iteration = 0; iteration < solverIterations; iteration += 1) {
-      for (let index = 0; index < state.constraints.length; index += 1) {
-        const constraint = state.constraints[index];
-        const a = constraint.a * 3;
-        const b = constraint.b * 3;
-        const dx = state.positions[b] - state.positions[a];
-        const dy = state.positions[b + 1] - state.positions[a + 1];
-        const dz = state.positions[b + 2] - state.positions[a + 2];
-        const length = Math.hypot(dx, dy, dz);
-        if (!Number.isFinite(length) || length < 1e-8) continue;
-        const wa = state.inverseMass[constraint.a];
-        const wb = state.inverseMass[constraint.b];
-        const denominator = wa + wb + alpha;
-        if (denominator <= 0) continue;
-        const deltaLambda = (-(length - constraint.restLength) - alpha * lambdas[index]) / denominator;
-        lambdas[index] += deltaLambda;
-        const nx = dx / length;
-        const ny = dy / length;
-        const nz = dz / length;
-        state.positions[a] -= wa * nx * deltaLambda;
-        state.positions[a + 1] -= wa * ny * deltaLambda;
-        state.positions[a + 2] -= wa * nz * deltaLambda;
-        state.positions[b] += wb * nx * deltaLambda;
-        state.positions[b + 1] += wb * ny * deltaLambda;
-        state.positions[b + 2] += wb * nz * deltaLambda;
-      }
+      solveDistanceConstraints(state, state.constraints, state.lambdas, alpha);
+      solveDistanceConstraints(state, state.bendingConstraints, state.bendingLambdas, bendingAlpha);
       for (let vertex = 0; vertex < state.vertexCount; vertex += 1) {
         if (state.inverseMass[vertex] !== 0) constrainOffset(state, vertex);
       }
@@ -276,5 +338,6 @@ export function resetAvatarSecondaryParticleState(state: AvatarSecondaryParticle
   state.previous.set(state.rest);
   state.offsets.fill(0);
   state.lambdas.fill(0);
+  state.bendingLambdas.fill(0);
   state.completedSteps = 0;
 }

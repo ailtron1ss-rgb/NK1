@@ -66,6 +66,8 @@ test("XPBD surface particles use real mesh vertices and pin the authored attachm
   assert.ok(state);
   assert.equal(state.vertexCount, 16);
   assert.ok(state.constraints.length >= 30);
+  assert.ok(state.bendingConstraints.length >= 1, "interior manifold edges must create opposite-vertex links");
+  assert.equal(state.bendingConstraints.length, state.bendingLambdas.length);
   assert.equal(state.inverseMass[12], 0);
   assert.equal(state.inverseMass[15], 0);
   assert.equal(state.inverseMass[0], 1);
@@ -176,4 +178,66 @@ test("invalid, oversized or under-constrained meshes fail closed", () => {
     pinnedMask: new Float32Array(16).fill(0),
     role: "garment",
   }), null);
+});
+
+
+test("interior manifold edges create unique opposite-vertex bend links", () => {
+  const mesh = grid();
+  const state = createAvatarSecondaryParticleState({
+    positions: mesh.positions,
+    indices: mesh.indices,
+    pinnedMask: mesh.pins,
+    role: "garment",
+  });
+  assert.ok(state);
+  const pairs = state.bendingConstraints.map(({ a, b }) => a < b ? `${a}:${b}` : `${b}:${a}`);
+  assert.equal(new Set(pairs).size, pairs.length, "a vertex pair may be constrained only once");
+  assert.ok(state.bendingConstraints.every((constraint) =>
+    Number.isInteger(constraint.a) && Number.isInteger(constraint.b)
+    && constraint.a !== constraint.b
+    && Number.isFinite(constraint.restLength) && constraint.restLength > 0));
+});
+
+test("non-manifold shared edges fail closed for bending instead of guessing adjacent faces", () => {
+  const positions = new Float32Array([
+    0, 0, 0,
+    1, 0, 0,
+    0.5, 1, 0,
+    0.5, -1, 0,
+    0.5, 0, 1,
+  ]);
+  const indices = new Uint16Array([0, 1, 2, 1, 0, 3, 0, 1, 4]);
+  const pinnedMask = new Float32Array([1, 1, 0, 0, 0]);
+  const state = createAvatarSecondaryParticleState({ positions, indices, pinnedMask, role: "hair" });
+  assert.ok(state);
+  assert.equal(state.bendingConstraints.length, 0,
+    "three faces sharing an edge do not define one unambiguous opposite-vertex pair");
+});
+
+test("bending links respond to a local out-of-plane deformation and reset clears their multipliers", () => {
+  const mesh = grid();
+  const state = createAvatarSecondaryParticleState({
+    positions: mesh.positions,
+    indices: mesh.indices,
+    pinnedMask: mesh.pins,
+    role: "garment",
+  });
+  assert.ok(state);
+  const vertex = 5;
+  state.positions[vertex * 3 + 2] = 0.012;
+  state.previous.set(state.positions);
+  const still = frame({
+    awake: false,
+    energy: 0,
+    arousal: 0,
+    curiosity: 0,
+    novelty: 0,
+    predictionError: 0,
+    bodyChannels: {},
+  });
+  stepAvatarSecondaryParticleState(state, still);
+  assert.ok(state.bendingLambdas.some((value) => Math.abs(value) > 1e-10),
+    "the bending pass must apply a correction to a local fold");
+  resetAvatarSecondaryParticleState(state);
+  assert.ok(state.bendingLambdas.every((value) => value === 0));
 });
