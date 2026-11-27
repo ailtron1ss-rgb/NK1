@@ -1,4 +1,4 @@
-import { BufferAttribute } from "three";
+import * as THREE from "three";
 import type { AvatarNeuroAdaptiveFrame } from "./avatarNeuroAdaptiveDynamics.ts";
 import { createAvatarSecondaryParticleState, stepAvatarSecondaryParticleState, type AvatarSecondaryParticleState } from "./avatarSecondaryParticleSolver.ts";
 
@@ -355,13 +355,13 @@ export function attachAvatarSecondaryVertexDynamics(
       try {
         patchedGeometry = geometry.clone();
         if (!patchedGeometry || patchedGeometry === geometry || typeof patchedGeometry.setAttribute !== "function") patchedGeometry = null;
-        else patchedGeometry.setAttribute("nk1SecondaryOffset", new BufferAttribute(particleState.offsets, 3));
+        else patchedGeometry.setAttribute("nk1SecondaryOffset", new THREE.BufferAttribute(particleState.offsets, 3));
       } catch {
         patchedGeometry?.dispose?.();
         patchedGeometry = null;
       }
     }
-    const activeParticleState = patchedGeometry ? particleState : undefined;
+    const activeParticleState = patchedGeometry && particleState ? particleState : undefined;
     const clonedMaterials: any[] = [];
     const patchedMaterials = originalMaterials.map((material: any) => {
       const patched = patchMaterial(material, uniforms, !!activeParticleState);
