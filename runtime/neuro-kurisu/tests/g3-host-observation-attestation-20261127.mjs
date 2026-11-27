@@ -1,9 +1,13 @@
 import assert from 'node:assert/strict';
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { generateKeyPairSync, sign } from 'node:crypto';
 import { SignedObservationAdmissionAuthority, isTrustedObservationAdmission, signedObservationReceiptBytes } from '../src/organism/system/SignedObservationAdmissionAuthority.ts';
 import { EmbodimentSubsystemRuntime } from '../src/organism/core/EmbodimentSubsystemRuntime.ts';
 import { OrganismCore } from '../src/organism/core/OrganismCore.ts';
 import { MemoryStateStore } from '../src/organism/persistence/MemoryStateStore.ts';
+import { OrganismRuntime } from '../src/organism/core/OrganismRuntime.ts';
 
 const { publicKey, privateKey } = generateKeyPairSync('ed25519');
 let now = Date.now();
@@ -281,3 +285,31 @@ restartedCore.stop?.();
 core.stop?.();
 
 console.log('G3_SIGNED_HOST_OBSERVATION_CORE_WIRING=PASS');
+
+const runtimeRoot = await mkdtemp(join(tmpdir(), 'nk1-g3-host-admission-'));
+const runtime = new OrganismRuntime({
+  stateFile: join(runtimeRoot, 'organism-state.json'),
+  enableLanguage: false,
+  autoRun: false,
+  observationAdmissionAuthority: authority,
+});
+try {
+  await runtime.init();
+  const runtimeReceipt = signedReceipt({
+    nonce: 'nonce-runtime-api-admission-0001',
+    observationId: 'observation-runtime-api-0001',
+  });
+  const runtimeAdmission = await runtime.admitObservationReceipt(runtimeReceipt);
+  assert.equal(runtimeAdmission.accepted, true, 'public Runtime API must forward signed host admission to the canonical Core');
+  assert.equal(runtimeAdmission.evidence.kind, 'observed');
+  const runtimeReplay = await runtime.admitObservationReceipt(runtimeReceipt);
+  assert.equal(runtimeReplay.accepted, false);
+  assert.equal(runtimeReplay.reason, 'nonce-replayed');
+  const runtimeRevocation = await runtime.revokeAdmittedObservation('observation-runtime-api-0001');
+  assert.equal(runtimeRevocation.revoked, true);
+} finally {
+  await runtime.stop();
+  await rm(runtimeRoot, { recursive: true, force: true });
+}
+console.log('G3_SIGNED_HOST_OBSERVATION_RUNTIME_API=PASS');
+
