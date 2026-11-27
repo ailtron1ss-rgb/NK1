@@ -1,4 +1,20 @@
-## Актуальный live checkpoint — 21 ноября 2026 (после интеграционных проходов)
+# NeuroCore / NK1 — объединённая продуктовая ветка
+
+**Product branch:** `neurocore-unified/main`  
+**Current upstream source:** `workpass70-source@3857e805b8224e7630ba1c7ef50e4bc930565b58`  
+**Source synchronization merge:** `e5fa0fbb41ed7190289e180c8e4eeaa743141169`  
+**Seed baseline:** `3526f61814e19f1f10766f3b2385488eb04e3d2e`  
+**Integration PR:** [#1221 — NeuroCore product line](https://github.com/ailtron1ss-rgb/NK1/pull/1221)  
+**Build-plan progress:** 59.75% (weighted engineering plan; not an intelligence or consciousness score)
+
+This is the current product-branch checkpoint as of 27 November 2026. The source branch and the release/metadata `main` branch are not modified by NeuroCore product work. Historical upstream checkpoint notes below are retained for provenance and must not be treated as live branch metadata.
+
+**Toolchain:** Node.js 24, Python 3.11.  
+**Acceptance status:** PR remains draft. Full branch CI and Android/Termux device acceptance are not yet complete. Do not treat the project as a release-ready phone install until those gates pass.
+
+---
+
+## Архивный upstream checkpoint — 21 ноября 2026 (исторические сведения)
 
 **Каноническая исходная ветка:** `workpass70-source` @ `ef3564c519e9f39f6d6e95834a2fcde202cdc8fa`.  
 **Текущий `main`:** `06e01cdd0a8e60ed70991f22e842887f544d1ebf`; release/metadata only.  
