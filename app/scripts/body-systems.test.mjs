@@ -47,7 +47,7 @@ function createFakeVrm(names) {
     bones,
   };
 }
-const FULL_BODY_NAMES = ["head", "neck", "leftUpperArm", "rightUpperArm", "spine", "leftLowerArm", "rightLowerArm", "leftUpperLeg", "rightUpperLeg", "leftLowerLeg", "rightLowerLeg"];
+const FULL_BODY_NAMES = ["head", "neck", "leftUpperArm", "rightUpperArm", "spine", "leftLowerArm", "rightLowerArm", "leftUpperLeg", "rightUpperLeg", "leftLowerLeg", "rightLowerLeg", "leftFoot", "rightFoot"];
 
 const baseManifest = () => ({
   schemaVersion: 1,
@@ -460,6 +460,19 @@ test("full-body apply is idempotent across frames and returns bones to rest", ()
   applyVrmFullBodyChannels(vrm, {});
   assert.equal(vrm.bones.get("spine").rotation.x, 0);
   assert.equal(vrm.bones.get("leftLowerLeg").rotation.z, 0);
+});
+
+test("full-body ankle channels drive normalized feet and return them to neutral", () => {
+  const vrm = createFakeVrm(FULL_BODY_NAMES);
+  const driven = applyVrmFullBodyChannels(vrm, { leftAnkle: 0.5, rightAnkle: -0.25 });
+  assert.deepEqual(driven.controlledBones.sort(), ["leftFoot", "rightFoot"]);
+  assert.equal(vrm.bones.get("leftFoot").rotation.x, 0.25);
+  assert.equal(vrm.bones.get("rightFoot").rotation.x, -0.125);
+
+  const neutral = applyVrmFullBodyChannels(vrm, {});
+  assert.equal(neutral.applied, false);
+  assert.equal(vrm.bones.get("leftFoot").rotation.x, 0);
+  assert.equal(vrm.bones.get("rightFoot").rotation.x, 0);
 });
 
 test("full-body apply ignores channels it cannot map and reports none written", () => {
