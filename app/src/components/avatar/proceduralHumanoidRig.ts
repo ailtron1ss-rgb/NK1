@@ -498,17 +498,31 @@ export function createProceduralHumanoidRig(scene: THREE.Scene): ProceduralHuman
         ["leftHipPoint", "leftHip"], ["rightHipPoint", "rightHip"],
       ];
       root.updateMatrixWorld(true);
-      const localParticleOffset = (sample: ArticulatedParticleFrame[ArticulatedBodyParticleId]) =>
-        new THREE.Vector3(
+      // The particle solver already rotates its point cloud by rootYaw. Convert that
+      // cloud back into local rig space; the root transform then applies yaw exactly once.
+      const particleYaw = channel("rootYaw", 0) * 0.34;
+      const particleCos = Math.cos(particleYaw);
+      const particleSin = Math.sin(particleYaw);
+      const toRigLocal = (x: number, y: number, z: number) => new THREE.Vector3(
+        x * particleCos - z * particleSin,
+        y,
+        x * particleSin + z * particleCos,
+      );
+      const localParticleOffset = (sample: ArticulatedBodyParticleFrame[ArticulatedBodyParticleId]) =>
+        toRigLocal(
           sample.position.x - sample.target.x,
           sample.position.y - sample.target.y,
           sample.position.z - sample.target.z,
         );
       let particleBindingsApplied = 0;
-      const particleTargetWorld = (sample: ArticulatedParticleFrame[ArticulatedBodyParticleId] | undefined) => {
+      const particleTargetWorld = (sample: ArticulatedBodyParticleFrame[ArticulatedBodyParticleId] | undefined) => {
         if (!sample) return null;
         const pelvisHeight = bones.pelvis.position.y;
-        return root.localToWorld(new THREE.Vector3(sample.position.x, pelvisHeight + sample.position.y, sample.position.z));
+        return root.localToWorld(toRigLocal(
+          sample.position.x,
+          pelvisHeight + sample.position.y,
+          sample.position.z,
+        ));
       };
       for (const [particleId, boneName] of particleBindings) {
         const sample = input.particles?.[particleId];
