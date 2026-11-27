@@ -92,7 +92,7 @@ export function normalizeEmbodimentIntentV1(value) {
     gazeY: value.gaze.y,
     gazeDriven: value.gaze.driven,
     headTilt: value.body.headTilt,
-    bodyChannels: value.body.channels ? Object.fromEntries(Object.entries(value.body.channels)) : {},
+    ...(value.body.channels === undefined ? {} : { bodyChannels: Object.fromEntries(Object.entries(value.body.channels)) }),
     gesture: value.body.gesture && value.speechPhase !== "cancelled",
     motionGroup: value.body.motionGroup,
     motionIndex: value.body.motionIndex,
