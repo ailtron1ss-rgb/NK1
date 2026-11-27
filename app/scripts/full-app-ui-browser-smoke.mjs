@@ -89,7 +89,7 @@ async function smokeProfile(profile) {
   }, { timeout: 45_000 }).catch(() => null);
 
   await page.goto(baseUrl + "/", { waitUntil: "domcontentloaded", timeout: 60_000 });
-  await page.getByRole("heading", { name: "Kurisu", exact: true }).waitFor({ state: "visible", timeout: 30_000 });
+  await page.getByRole("heading", { name: "NeuroCore", exact: true }).waitFor({ state: "visible", timeout: 30_000 });
   const snapshotResponse = await snapshotResponsePromise;
   check(profile.name + ": live organism snapshot", Boolean(snapshotResponse && snapshotResponse.status() === 200), snapshotResponse ? "HTTP " + snapshotResponse.status() : "ui-snapshot request missing or timed out");
 
