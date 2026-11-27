@@ -16,6 +16,10 @@ export interface GlbSkinWeightMeshAudit {
   skinIndex: number;
   vertexCount: number;
   sampledVertices: number;
+  weightedSampleVertices: number;
+  unweightedSampleVertices: number;
+  averageWeightSum01: number;
+  maxWeightSum01: number;
   jointCoverage: GlbSkinWeightJointCoverage[];
   warnings: string[];
 }
@@ -257,6 +261,10 @@ export function auditGlbSkinWeights(
     const jointStats = new Map<number, JointStats>();
     let vertexCount = 0;
     let sampledVertices = 0;
+    let weightedSampleVertices = 0;
+    let unweightedSampleVertices = 0;
+    let totalWeightSum = 0;
+    let maxWeightSum = 0;
     let successfulPrimitiveCount = 0;
 
     if (!mesh || !skin || !jointNodes || jointNodes.length === 0 || jointNodes.some((value) => value === null)) {
@@ -337,6 +345,12 @@ export function auditGlbSkinWeights(
             continue;
           }
           sampledVertices += 1;
+          const vertexWeightSum = [...perVertex.values()].reduce((sum, value) => sum + value, 0);
+          totalWeightSum += vertexWeightSum;
+          maxWeightSum = Math.max(maxWeightSum, vertexWeightSum);
+          if (vertexWeightSum > 0) weightedSampleVertices += 1;
+          else unweightedSampleVertices += 1;
+          if (vertexWeightSum > 1.01) meshWarnings.add("skin-weight-sum-exceeds-one");
           for (const [jointIndex, weight] of perVertex) {
             const stats = jointStats.get(jointIndex) ?? { weightedSampleCount: 0, weightSum: 0, maxWeight: 0 };
             stats.weightedSampleCount += 1;
@@ -353,6 +367,7 @@ export function auditGlbSkinWeights(
     totalSampledVertices += sampledVertices;
     const validJointNodes = jointNodes?.filter((value): value is number => value !== null) ?? [];
     const jointCoverage = toCoverage(jointStats, validJointNodes, nodes, sampledVertices);
+    const averageWeightSum01 = sampledVertices > 0 ? totalWeightSum / sampledVertices : 0;
 
     for (const warning of meshWarnings) globalWarnings.add(warning);
     meshAudits.push({
@@ -363,6 +378,10 @@ export function auditGlbSkinWeights(
       skinIndex,
       vertexCount,
       sampledVertices,
+      weightedSampleVertices,
+      unweightedSampleVertices,
+      averageWeightSum01,
+      maxWeightSum01,
       jointCoverage,
       warnings: [...meshWarnings],
     });
