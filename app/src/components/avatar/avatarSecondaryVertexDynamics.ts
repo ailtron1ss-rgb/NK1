@@ -222,7 +222,8 @@ function patchMaterial(
   material: any,
   uniforms: AvatarSecondaryVertexUniforms,
 ): any | null {
-  if (!material || (material.isMeshStandardMaterial !== true && material.isMeshPhysicalMaterial !== true)
+  const isNk1Toon = material?.isMeshToonMaterial === true || material?.userData?.nk1ToonConverted === true;
+  if (!material || (material.isMeshStandardMaterial !== true && material.isMeshPhysicalMaterial !== true && !isNk1Toon)
     || typeof material.clone !== "function") return null;
   let clone: any;
   try {
