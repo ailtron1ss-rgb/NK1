@@ -12,13 +12,15 @@
 
 ## Current source synchronization
 
-- Current source head incorporated: `workpass70-source@3857e805b8224e7630ba1c7ef50e4bc930565b58`
-- Source head tree SHA: `12b4b986310f3a52b3153e85ef988133b7b121fd`
+- Previous source head incorporated: `workpass70-source@3857e805b8224e7630ba1c7ef50e4bc930565b58` (tree `12b4b986310f3a52b3153e85ef988133b7b121fd`)
+- Current source head incorporated: `workpass70-source@8994a103f6b735f6347d77d926ee9c024a4d4f4d`
+- Current source head tree SHA: `850d417028657861168ad1508b6a446fb3054dd5`
 - Product branch: `neurocore-unified/main`
-- Two-parent synchronization commit: `e5fa0fbb41ed7190289e180c8e4eeaa743141169`
-- Merge parents: previous NeuroCore product head `da115797bc1d7feb9bd7acb4db0dce1fa5687a26` and current source head `3857e805b8224e7630ba1c7ef50e4bc930565b58`.
-- Git compare confirms the product branch is ahead of `workpass70-source` and behind by zero commits after synchronization.
-- The product branch retains its own source history and the 27 product changes. No direct write was made to `main` or `workpass70-source`.
+- First two-parent synchronization: `e5fa0fbb41ed7190289e180c8e4eeaa743141169` (product `da115797...` + source `3857e805b8224e7630ba1c7ef50e4bc930565b58`)
+- Latest two-parent synchronization: `cb1c22e3c6c7f4eba73ad00b213442cee71c65d2` (product `59b246e8201ec7fd94958af685536f624ccdc739` + source `8994a103f6b735f6347d77d926ee9c024a4d4f4d`)
+- Latest source update contains six donor-integration files: OpenClaw skill review import, schema-constrained llama.cpp output, two new contracts, donor review and focused workflow.
+- Git compare before the last source update showed the product branch ahead by 129 and behind by zero. The latest two-parent merge preserves source ancestry; recheck live compare before any future merge.
+- The product branch retains its NeuroCore integration history. No direct write was made to `main` or `workpass70-source`.
 
 The seed inventory counts above describe the original seed tree; they are not claimed as a re-count of the post-sync tree.
 
