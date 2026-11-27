@@ -18,7 +18,7 @@ import { KURISU_HYBRID_MODEL } from "./avatar/avatarModelCatalog";
 import { resolveGlbMouthMorphWeights } from "./avatar/glbMouthMorphAdapter";
 import { resolveGlbFacialMorphWeights } from "./avatar/glbFacialMorphAdapter";
 import { resolveGlbSecondaryBoneRotation } from "./avatar/glbSecondaryMotionAdapter";
-import { AvatarNeuroAdaptiveDynamics, isAvatarSecondaryDynamicsBoneCandidate, resolveAvatarDynamicsBoneRole, resolveNeuroAdaptiveMorphWeights, resolveNeuroAdaptiveNeuralMultiplier, type AvatarDynamicsQuality, type AvatarNeuroAdaptiveFrame } from "./avatar/avatarNeuroAdaptiveDynamics";
+import { AvatarNeuroAdaptiveDynamics, isAvatarSecondaryDynamicsBoneCandidate, resolveNeuroAdaptiveMorphWeights, resolveNeuroAdaptiveNeuralMultiplier, type AvatarDynamicsQuality, type AvatarNeuroAdaptiveFrame } from "./avatar/avatarNeuroAdaptiveDynamics";
 import { auditAvatarSecondaryScene, hasAvatarNeuralFabricEmission, isAvatarNeuralFabricMaterialTagged, type AvatarSecondaryAssetAudit } from "./avatar/avatarSecondaryAssetAudit";
 import { fetchRemoteAvatarModel } from "./avatar/remoteAvatarSource";
 import { applyAvatarAnimationFrame } from "./avatar/avatarAnimationRuntime";
