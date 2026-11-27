@@ -98,7 +98,7 @@ async function smokeProfile(profile) {
   const live2d = page.getByRole("button", { name: /Выбрать Live2D/ });
   const legacy = page.getByRole("button", { name: /Выбрать Legacy/ });
   const original = page.getByRole("button", { name: /Выбрать NK1 Original/ });
-  const threeD = page.getByRole("button", { name: /Выбрать 3D/ });
+  const threeD = page.getByRole("button", { name: /Выбрать NeuroCore 3D/ });
   for (const [name, control] of [["Live2D", live2d], ["Legacy", legacy], ["Original 2D", original], ["3D preview", threeD]]) {
     check(profile.name + ": visible " + name + " selector", await control.isVisible());
   }
