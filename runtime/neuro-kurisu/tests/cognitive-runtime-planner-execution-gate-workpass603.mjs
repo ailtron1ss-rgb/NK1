@@ -46,8 +46,11 @@ assert.match(runtimeSource,
   /const planningBudget = projectAllowed && !riskRecoveryApplied\s*\?\s*this\.core\.cognitiveBudgetSpend\('planning',[\s\S]*?:\s*\{ accepted: false \};/,
   'planning budget must require project permission and must be skipped for autonomous recovery overrides');
 assert.match(runtimeSource,
-  /const planBuildContext = \{ decisionId: cycle\.decision\.id, tick: cycle\.decision\.tick \};/,
-  'the canonical decision identity and tick must be passed into every plan build');
+  /const planBuildContext = \{\s*decisionId: cycle\.decision\.id,\s*tick: cycle\.decision\.tick,\s*\.\.\.\(revisionHint \? \{ revisionHint \} : \{\}\),\s*\};/,
+  'the canonical decision identity and tick must be passed alongside an optional grounded revision hint');
+assert.match(runtimeSource,
+  /derivePlanRevisionHint\(\s*this\.cognitiveEventFabric\.recent\(96\),\s*cycle\.state\.tick,\s*selectedGoal\?\.id \?\? null,\s*revisionReadiness01,/,
+  'adaptive revision must use the immediately retained canonical prior-cycle event journal and metacognitive readiness');
 assert.match(runtimeSource,
   /const planContextValidation = this\.plans\.validateContext\(plan, selectedGoal, before, planBuildContext\);/,
   'the runtime must reject a plan whose decision, goal or world revision no longer matches');
