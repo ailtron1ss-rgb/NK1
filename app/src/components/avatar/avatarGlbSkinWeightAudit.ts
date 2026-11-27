@@ -24,7 +24,7 @@ export interface GlbSkinWeightMeshAudit {
   vertexCount: number;
   sampledVertices: number;
   localBounds: GlbSkinWeightBounds | null;
-  worldBounds: GlbSkinWeightBounds | null;
+  nodeTransformBounds: GlbSkinWeightBounds | null;
   weightedSampleVertices: number;
   unweightedSampleVertices: number;
   averageWeightSum01: number;
@@ -432,7 +432,7 @@ export function auditGlbSkinWeights(
     let hasLocalBounds = false;
     let hasWorldBounds = false;
     const localBoundsAccumulator = emptyBounds();
-    const worldBoundsAccumulator = emptyBounds();
+    const nodeTransformBoundsAccumulator = emptyBounds();
     const worldMatrix = worldTransformResolver.resolve(nodeIndex);
     if (worldTransformResolver.hasCycle(nodeIndex)) meshWarnings.add("node-transform-cycle");
     let unweightedSampleVertices = 0;
@@ -512,7 +512,7 @@ export function auditGlbSkinWeights(
               meshWarnings.add("invalid-world-position");
               continue;
             }
-            updateBounds(worldBoundsAccumulator, worldPosition);
+            updateBounds(nodeTransformBoundsAccumulator, worldPosition);
             hasWorldBounds = true;
           }
         }
@@ -582,7 +582,7 @@ export function auditGlbSkinWeights(
       sampledVertices,
       boundsSampledVertices,
       localBounds: finalizeBounds(localBoundsAccumulator, hasLocalBounds),
-      worldBounds: finalizeBounds(worldBoundsAccumulator, hasWorldBounds),
+      nodeTransformBounds: finalizeBounds(nodeTransformBoundsAccumulator, hasWorldBounds),
       weightedSampleVertices,
       unweightedSampleVertices,
       averageWeightSum01,
