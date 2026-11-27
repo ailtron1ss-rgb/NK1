@@ -1690,9 +1690,9 @@ export class OrganismRuntime {
     });
     if (grounded.source==='external') {
       this.core.recordGroundedExternalOutcome({
-        at:cycle.state.at, action:String(embodiedAction.action), status:embodiedAction.status, proofClass:grounded.proofClass,
-        verified01:grounded.verified01, independent01:grounded.independent01, evidence01:grounded.evidence01,
-        consequence01:grounded.consequence01, claim:postcondition.notes??grounded.reason, provenanceId:`outcome:${cycle.state.tick}:${embodiedAction.executionId}`,
+        // Preserve exact process-local capabilities; scalar copies are not admission evidence.
+        embodiedAction,
+        postconditionVerification:postcondition,
         divergence01:shadowResolution.divergence01,
       });
     }
@@ -1809,8 +1809,8 @@ export class OrganismRuntime {
       this.core.recordExternalPerceptualEvidence({
         at:cycle.state.at,
         modality:embodiedAction.realityClass==='device-observation'?'sensor':'world',
-        claim:`external-outcome:${embodiedAction.action}:verified=${grounded.verified01.toFixed(2)}:independent=${grounded.independent01.toFixed(2)}:consequence=${grounded.consequence01.toFixed(2)}:shadowDivergence=${shadowResolution.divergence01.toFixed(2)}`,
-        confidence01:grounded.evidence01, verified:grounded.verified01>.5, parents:[outcomeEvidence.id,actionEvidence.id],
+        claim:`external-outcome-derived:${embodiedAction.action}:grounding-confidence=${grounded.evidence01.toFixed(2)}:candidate-independence=${grounded.independent01.toFixed(2)}:consequence=${grounded.consequence01.toFixed(2)}:shadow-divergence=${shadowResolution.divergence01.toFixed(2)}`,
+        confidence01:grounded.evidence01, parents:[outcomeEvidence.id,actionEvidence.id],
       });
     }
 
@@ -2874,6 +2874,18 @@ export class OrganismRuntime {
         await this.core.endBatch();
       }
     });
+  }
+
+  /** Verify and persist a host-signed observation through the canonical Core/Embodiment path. */
+  async admitObservationReceipt(receipt: unknown) {
+    if (!this.initialized) throw new Error('OrganismRuntime.init() must be called before host observation admission');
+    return this.enqueue(() => this.core.admitObservationReceipt(receipt));
+  }
+
+  /** Revoke a prior host observation and durably checkpoint the fail-closed downgrade. */
+  async revokeAdmittedObservation(observationId: string) {
+    if (!this.initialized) throw new Error('OrganismRuntime.init() must be called before observation revocation');
+    return this.enqueue(() => this.core.revokeAdmittedObservation(observationId));
   }
 
   /** Run one configured P23 candidate/shadow attempt through OrganismCore's durable trust boundary. */

@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
 import { P41SemanticPerceptionEngine } from '../src/organism/cognition/P41SemanticPerception.ts';
+import { PerceptualContinuityModel } from '../src/organism/cognition/PerceptualContinuityModel.ts';
+import { PerceptualEpistemicGraph } from '../src/organism/cognition/PerceptualEpistemicGraph.ts';
 import { GroundedWorldState } from '../src/organism/world/GroundedWorldState.ts';
 import { PerceptualEvidenceCompiler } from '../src/organism/body/PerceptualEvidenceCompiler.ts';
 import { normalizeWorldContext } from '../src/organism/core/WorldContextNormalizer.ts';
@@ -84,7 +86,7 @@ const staleEvidence = {
 };
 const staleWorld = stale.integrate({ at: staleAt, perception: state, evidence: staleEvidence });
 assert.ok(!stale.snapshot().provenanceIds.includes('stale-observed-receipt'));
-assert.ok(staleWorld.facts.includes('historical-observed-evidence:old:door-open'));
+assert.ok(staleWorld.facts.includes('historical-derived-evidence:old:door-open'));
 assert.ok(!staleWorld.facts.includes('observed-evidence:old:door-open'));
 
 // A same-cycle unresolved world summary must not downgrade a direct vision model result.
@@ -118,9 +120,35 @@ const observed = observedEngine.ingest({
   at: 3_000,
   world: { scene: 'office', evidenceKind: 'observed', objects: [{ label: 'door', trackId: 'door-1', sourceId: 'sensor', evidenceKind: 'observed' }], events: ['door-opened'] },
 });
-assert.equal(observed.entities.find(entity => entity.label === 'door')?.modalityEvidenceKinds?.world, 'observed');
-assert.equal(observed.sceneEvidenceKind, 'observed');
-assert.equal(observed.events.find(event => event.label === 'door-opened')?.evidenceKind, 'observed');
+assert.equal(observed.entities.find(entity => entity.label === 'door')?.modalityEvidenceKinds?.world, 'derived', 'caller-supplied observed labels are not admission receipts');
+assert.equal(observed.sceneEvidenceKind, 'derived');
+assert.equal(observed.events.find(event => event.label === 'door-opened')?.evidenceKind, 'derived');
+
+
+// Persisted P41 provenance labels are not host capabilities and must fail closed.
+const restoredP41 = new P41SemanticPerceptionEngine();
+restoredP41.restore({
+  sceneEvidenceKind: 'observed',
+  entities: [{
+    id:'restored-door',label:'door',kind:'object',confidence01:.99,salience01:.8,present01:1,
+    firstSeenAt:1,lastSeenAt:2,observations:9,modalities:['world'],position:null,
+    modalityEvidenceKinds:{world:'observed'},
+  }],
+  relations:[{id:'restored-rel',from:'door',relation:'is',to:'open',confidence01:.99,modality:'world',evidenceKind:'observed',at:2}],
+  events:[{id:'restored-event',label:'door-opened',confidence01:.99,modalities:['world'],startedAt:1,lastAt:2,persistence01:1,evidenceKind:'observed',modalityEvidenceKinds:{world:'observed'}}],
+  epistemic:{version:1,claims:[{id:'restored-claim',at:2,modality:'world',claim:'door is open',source:'observed',confidence01:1,targetIds:[]}],contradictionPairs:0,resolvedPairs:0,corroboratedPairs:0,meanConfidence01:1,lastAt:2},
+});
+const restoredP41State = restoredP41.snapshot();
+assert.equal(restoredP41State.sceneEvidenceKind,'derived');
+assert.equal(restoredP41State.entities[0]?.modalityEvidenceKinds?.world,'derived');
+assert.equal(restoredP41State.relations[0]?.evidenceKind,'derived');
+assert.equal(restoredP41State.events[0]?.evidenceKind,'derived');
+assert.equal(restoredP41State.events[0]?.modalityEvidenceKinds?.world,'derived');
+assert.equal(restoredP41State.epistemic?.claims[0]?.source,'derived');
+
+const sensorIngress = new P41SemanticPerceptionEngine().ingest({at:3_500,sensor:{location:'laboratory',freshness01:1}});
+assert.equal(sensorIngress.entities.find(entity=>entity.kind==='place')?.modalityEvidenceKinds?.sensor,'derived');
+assert.equal(sensorIngress.entities.find(entity=>entity.kind==='body')?.modalityEvidenceKinds?.sensor,'derived');
 
 // Explicit unknown flags must survive the untrusted world-context boundary.
 const normalized = normalizeWorldContext({
@@ -209,6 +237,32 @@ const spatialOutput = spatialWorld.objects.find(object => object.label === 'crat
 assert.deepEqual({ x: spatialOutput?.x, y: spatialOutput?.y, z: spatialOutput?.z, frame: spatialOutput?.coordinateFrameId },
   { x: -1.25, y: .75, z: 2.5, frame: 'depth-camera:world-v1' });
 
+
+// Restored evidence metadata cannot revive process-local observation authority.
+const restoredGroundedWorld = new GroundedWorldState();
+restoredGroundedWorld.restore({
+  version:1,revision:7,lastAt:2_000,location:'lab',uncertainty01:0,confidence01:1,
+  entities:[{
+    id:'persisted-door',label:'door',kind:'object',confidence01:1,present01:1,firstSeenAt:1,lastSeenAt:2_000,
+    modalities:['world'],modalityEvidenceKinds:{world:'observed'},presenceStatus:'visible',persistence01:1,
+    absenceEvidence01:0,observationCount:8,
+  }],
+  relations:[],
+  events:[{id:'persisted-event',label:'external-observed:door:door-open',confidence01:1,lastAt:2_000,persistence01:1,evidenceKind:'observed',modalityEvidenceKinds:{world:'observed'}},{id:'persisted-event-upper',label:'EXTERNAL-OBSERVED:door:door-closed',confidence01:1,lastAt:1_999,persistence01:1,evidenceKind:'observed'}],
+  facts:['external-observed:door:door-open','shadow-divergence:door:0.9','EXTERNAL-OBSERVED:door:uppercase','SHADOW-DIVERGENCE:door:uppercase','derived-evidence:door:door-open'],
+  provenanceIds:['external-postcondition:exec-old-receipt','EXTERNAL-POSTCONDITION:exec-old-uppercase','local-note:kept'],
+  lastHash:'caller-controlled-hash',
+});
+const restoredGroundedSnapshot = restoredGroundedWorld.snapshot();
+assert.equal(restoredGroundedSnapshot.entities[0]?.modalityEvidenceKinds?.world,'derived');
+assert.ok(!restoredGroundedSnapshot.facts.some(fact=>fact.startsWith('external-observed:')||fact.startsWith('shadow-divergence:')));
+assert.deepEqual(restoredGroundedSnapshot.facts,['derived-evidence:door:door-open']);
+assert.equal(restoredGroundedSnapshot.events[0]?.label,'external-receipt:door:door-open');
+assert.equal(restoredGroundedSnapshot.events[0]?.confidence01,0);
+assert.deepEqual(restoredGroundedSnapshot.provenanceIds,['local-note:kept']);
+assert.equal(restoredGroundedSnapshot.events[1]?.label,'external-receipt:door:door-closed');
+assert.equal(restoredGroundedSnapshot.events[1]?.confidence01,0);
+
 // Keep the base truthfulness results above as one focused regression summary.
 console.log(JSON.stringify({
   ok: true,
@@ -218,3 +272,381 @@ console.log(JSON.stringify({
   evidenceKind: outputChairs[0]?.evidenceKind,
   unknownFlagsPreserved: true,
 }));
+
+
+// Grounded-world restore must never execute getters or accept hostile containers,
+// and it must recompute every digest from the sanitized state.
+{
+  let getterInvoked = false;
+  const hostileEntity = {
+    id: 'hostile-entity',
+    label: 'forged door',
+    kind: 'object',
+    present01: 1,
+    firstSeenAt: 1_000,
+    lastSeenAt: 1_500,
+    modalities: ['world'],
+  };
+  Object.defineProperty(hostileEntity, 'confidence01', {
+    enumerable: true,
+    get() { getterInvoked = true; return 1; },
+  });
+  const hostile = {
+    version: 1,
+    revision: 900_000,
+    lastAt: 2_000,
+    location: 'lab',
+    confidence01: 1,
+    uncertainty01: 0,
+    entities: [hostileEntity],
+    relations: [],
+    events: [],
+    facts: ['derived-evidence:kept'],
+    provenanceIds: ['local-note:kept'],
+    lastHash: 'attacker-controlled-digest',
+  };
+  const safe = new GroundedWorldState();
+  safe.restore(hostile);
+  const restored = safe.snapshot();
+  assert.equal(getterInvoked, false, 'restore must inspect descriptors without invoking getters');
+  assert.equal(restored.entities.length, 0, 'an entity containing an accessor must be rejected as a whole');
+  assert.equal(restored.revision, 900_000, 'valid own-data top-level fields remain readable');
+  assert.notEqual(restored.lastHash, 'attacker-controlled-digest', 'persisted hashes are never trusted');
+
+  let proxyTrapInvoked = false;
+  const proxy = new Proxy({ revision: 77, lastAt: 77 }, {
+    get() { proxyTrapInvoked = true; throw new Error('proxy-get-trap'); },
+    ownKeys() { proxyTrapInvoked = true; throw new Error('proxy-ownKeys-trap'); },
+  });
+  const proxyRestored = new GroundedWorldState();
+  proxyRestored.restore(proxy);
+  assert.equal(proxyTrapInvoked, false, 'Proxy detection must happen before reflection or property reads');
+  assert.equal(proxyRestored.snapshot().revision, 0);
+  assert.equal(proxyRestored.snapshot().lastAt, 0);
+}
+
+// Restore sanitizes malformed counters, timestamps, relations, positions, facts,
+// and provenance rather than spreading arbitrary persisted values into the world.
+{
+  const safe = new GroundedWorldState();
+  safe.restore({
+    version: 1,
+    revision: -1,
+    lastAt: 2_000,
+    location: { injected: true },
+    uncertainty01: 4,
+    confidence01: Number.NaN,
+    entities: [{
+      id: 'entity-1',
+      label: 'crate',
+      kind: 'object',
+      confidence01: 2,
+      present01: -1,
+      firstSeenAt: 1_500,
+      lastSeenAt: 1_000,
+      modalities: ['world', 7, 'world'],
+      position: { x: 1, y: 2, z: 3 },
+      observationCount: -40,
+      persistence01: Number.POSITIVE_INFINITY,
+      absenceEvidence01: 0.3,
+    }],
+    relations: [
+      { id: 'relation-1', from: 'crate', relation: 'near', to: 'door', confidence01: 0.8, at: 1_700 },
+      { id: 'bad-relation', from: '', relation: 'near', to: 'door', confidence01: 9, at: 1_700 },
+    ],
+    events: [{
+      id: 'event-1', label: 'external-observed:door-open', confidence01: 1,
+      lastAt: 1_800, persistence01: 1, evidenceKind: 'observed',
+    }],
+    facts: ['derived-evidence:crate', 'external-observed:door-open', 'shadow-divergence:door:1'],
+    provenanceIds: ['local-note:kept', 'external-postcondition:old-exec'],
+    lastHash: 'forged',
+  });
+  const snapshot = safe.snapshot();
+  assert.equal(snapshot.revision, 0);
+  assert.equal(snapshot.location, 'unknown');
+  assert.equal(snapshot.uncertainty01, 0.5, 'out-of-range persisted uncertainty must use the neutral default');
+  assert.equal(snapshot.confidence01, 0);
+  assert.equal(snapshot.entities.length, 1);
+  assert.equal(snapshot.entities[0].confidence01, 0, 'out-of-range persisted entity confidence must fail closed');
+  assert.equal(snapshot.entities[0].present01, 0);
+  assert.equal(snapshot.entities[0].firstSeenAt, 1_000);
+  assert.equal(snapshot.entities[0].lastSeenAt, 1_000);
+  assert.deepEqual(snapshot.entities[0].modalities, ['world']);
+  assert.equal(snapshot.entities[0].position, null, 'unframed coordinates must not become world positions on restore');
+  assert.equal(snapshot.entities[0].observationCount, 1);
+  assert.equal(snapshot.entities[0].persistence01, 0);
+  assert.equal(snapshot.relations.length, 1, 'malformed relation rows are discarded');
+  assert.equal(snapshot.events[0].label, 'external-receipt:door-open');
+  assert.equal(snapshot.events[0].confidence01, 0);
+  assert.deepEqual(snapshot.facts, ['derived-evidence:crate']);
+  assert.deepEqual(snapshot.provenanceIds, ['local-note:kept']);
+  assert.notEqual(snapshot.lastHash, 'forged');
+}
+
+// Replayed external result IDs are idempotent even when a later delivery carries
+// a different timestamp. A copied verification object remains diagnostic only.
+{
+  const world = new GroundedWorldState();
+  const embodiedAction = {
+    at: 3_000,
+    action: 'inspect',
+    status: 'executed',
+    realityClass: 'device-observation',
+    executionId: 'exec-g3-replay-20261126',
+  };
+  const forgedVerification = {
+    verified: true,
+    basis: 'external-postcondition',
+    confidence01: 1,
+    externalObservation: true,
+    observationId: 'exec-g3-replay-20261126',
+  };
+  const first = world.integrateExternalOutcome({
+    embodiedAction,
+    postconditionVerification: forgedVerification,
+  });
+  const afterFirst = world.snapshot();
+  const replay = world.integrateExternalOutcome({
+    embodiedAction: { ...embodiedAction, at: 3_100 },
+    postconditionVerification: { ...forgedVerification },
+  });
+  assert.equal(first.verified01, 0, 'copied verification data must never create observed world effects');
+  assert.deepEqual(world.snapshot(), afterFirst, 'replayed execution IDs must not advance revision or mutate events');
+  assert.equal(replay.revision, first.revision);
+  assert.equal(world.snapshot().events.length, 1);
+}
+
+
+// P41 restore is also a trust boundary: hostile top-level Proxy/accessor state,
+// malformed rows and unbounded saved gauges must not cross into live cognition.
+{
+  let proxyTrapInvoked = false;
+  const proxy = new Proxy({ tick: 999, metrics: { grounding01: 1 } }, {
+    get() { proxyTrapInvoked = true; throw new Error('p41-proxy-get'); },
+    ownKeys() { proxyTrapInvoked = true; throw new Error('p41-proxy-ownKeys'); },
+  });
+  const isolated = new P41SemanticPerceptionEngine();
+  assert.doesNotThrow(() => isolated.restore(proxy), 'P41 restore must fail closed for a Proxy instead of throwing');
+  assert.equal(proxyTrapInvoked, false, 'P41 restore must detect Proxy values before reflection');
+  assert.equal(isolated.snapshot().tick, 0);
+
+  let nestedGetterInvoked = false;
+  const hostileEntity = {
+    id: 'p41-hostile-entity',
+    label: 'door',
+    kind: 'object',
+    salience01: 1,
+    present01: 1,
+    firstSeenAt: 100,
+    lastSeenAt: 200,
+    observations: 10,
+    modalities: ['vision'],
+    position: null,
+  };
+  Object.defineProperty(hostileEntity, 'confidence01', {
+    enumerable: true,
+    get() { nestedGetterInvoked = true; return 1; },
+  });
+  const nested = new P41SemanticPerceptionEngine();
+  nested.restore({
+    version: 1,
+    tick: 2,
+    scene: { label: 'lab', confidence01: 0.9, stability01: 0.9, at: 200 },
+    entities: [hostileEntity],
+  });
+  assert.equal(nestedGetterInvoked, false, 'nested P41 records must be checked by own data descriptors');
+  assert.equal(nested.snapshot().entities.length, 0, 'an entity with an accessor must be rejected');
+
+  const bounded = new P41SemanticPerceptionEngine();
+  bounded.restore({
+    version: 1,
+    tick: 77,
+    scene: { label: 'lab', confidence01: 4, stability01: -3, at: 500 },
+    sceneEvidenceKind: 'observed',
+    relations: [{
+      id: 'rel-1', from: 'door', relation: 'is', to: 'open',
+      confidence01: 7, modality: 'world', evidenceKind: 'observed', at: 500,
+    }],
+    metrics: {
+      grounding01: 9,
+      temporalBinding01: -1,
+      objectPermanence01: 0.4,
+      crossModalAgreement01: 1.5,
+      crossModalEvidenceCoverage01: 0.7,
+      outcomeAlignment01: 0.8,
+      activePerceptionUtility01: 0.2,
+      unresolvedRate01: 0.1,
+      updates: 900_000,
+      sceneContinuity01: 0.3,
+      temporalGrounding01: 0.4,
+      evidenceTraceability01: 0.5,
+      epistemicContradictions: 800_000,
+    },
+    actionBias: { respond: 500, explore: -500 },
+    modalityReliability: {
+      vision: { reliability01: 8, observations: 900_000, calibrationSamples: 99_999 },
+    },
+  });
+  const snapshot = bounded.snapshot();
+  assert.equal(snapshot.scene.confidence01, 0.12, 'invalid restored scene confidence must return to the conservative default');
+  assert.equal(snapshot.scene.stability01, 0.15, 'invalid restored scene stability must return to the conservative default');
+  assert.equal(snapshot.sceneEvidenceKind, 'derived');
+  assert.equal(snapshot.relations[0]?.confidence01, 0, 'out-of-range persisted relation confidence must fail closed');
+  assert.equal(snapshot.relations[0]?.evidenceKind, 'derived');
+  assert.equal(snapshot.modalityReliability.vision.reliability01, 0.38, 'invalid restored modality reliability must not be promoted by clamping');
+  assert.equal(snapshot.metrics.grounding01, 0.18, 'invalid restored grounding metrics must use the conservative default');
+  assert.equal(snapshot.metrics.temporalBinding01, 0.12, 'negative restored temporal metric must use the conservative default');
+  assert.equal(snapshot.metrics.updates <= 900_000, true);
+  assert.equal(Math.abs(snapshot.actionBias.respond) <= 1, true);
+  assert.equal(Math.abs(snapshot.actionBias.explore) <= 1, true);
+  assert.equal(snapshot.modalityReliability.vision.reliability01 <= 1, true);
+  assert.equal(snapshot.modalityReliability.vision.observations <= 900_000, true);
+}
+
+
+// Nested continuity and epistemic owners must apply the same restore boundary
+// rather than trusting aggregate gauges or invoking nested Proxy/accessor data.
+{
+  let continuityTrap = false;
+  const continuityProxy = new Proxy({ transitions: 999, scenes: [] }, {
+    get() { continuityTrap = true; throw new Error('continuity-proxy-get'); },
+    ownKeys() { continuityTrap = true; throw new Error('continuity-proxy-ownKeys'); },
+  });
+  const continuity = new PerceptualContinuityModel();
+  assert.doesNotThrow(() => continuity.restore(continuityProxy));
+  assert.equal(continuityTrap, false);
+  assert.equal(continuity.snapshot().transitions, 0);
+
+  let epistemicTrap = false;
+  const epistemicProxy = new Proxy({ claims: [], contradictionPairs: 4096 }, {
+    get() { epistemicTrap = true; throw new Error('epistemic-proxy-get'); },
+    ownKeys() { epistemicTrap = true; throw new Error('epistemic-proxy-ownKeys'); },
+  });
+  const graph = new PerceptualEpistemicGraph();
+  assert.doesNotThrow(() => graph.restore(epistemicProxy));
+  assert.equal(epistemicTrap, false);
+  assert.equal(graph.snapshot().contradictionPairs, 0);
+
+  let claimGetterInvoked = false;
+  const hostileClaim = {
+    id: 'claim-hostile',
+    at: 100,
+    modality: 'vision',
+    claim: 'door is open',
+    source: 'observed',
+    confidence01: 1,
+    targetIds: [],
+  };
+  Object.defineProperty(hostileClaim, 'confidence01', {
+    enumerable: true,
+    get() { claimGetterInvoked = true; return 1; },
+  });
+  graph.restore({
+    version: 1,
+    claims: [
+      { id: 'claim-valid', at: 101, modality: 'vision', claim: 'door is open', source: 'observed', confidence01: 0.9, targetIds: [] },
+      hostileClaim,
+    ],
+    contradictionPairs: 4096,
+    resolvedPairs: 4096,
+    corroboratedPairs: 1000,
+    meanConfidence01: 1,
+    lastAt: 999_999_999,
+  });
+  const safeGraph = graph.snapshot();
+  assert.equal(claimGetterInvoked, false);
+  assert.equal(safeGraph.claims.length, 1, 'hostile evidence rows must be discarded without evaluating accessors');
+  assert.equal(safeGraph.claims[0].source, 'derived', 'persisted observed labels are not host admission receipts');
+  assert.equal(safeGraph.meanConfidence01, 0.9, 'mean confidence must be recomputed from accepted claims');
+  assert.equal(safeGraph.lastAt, 101, 'lastAt must be recomputed from accepted claim timestamps');
+  assert.equal(safeGraph.contradictionPairs, 0, 'contradiction gauge must be rebuilt from accepted claims');
+  assert.equal(safeGraph.resolvedPairs, 0, 'resolution count must be rebuilt from real accepted edges');
+  assert.equal(safeGraph.corroboratedPairs, 0, 'corroboration count must be rebuilt from distinct retained witnesses');
+
+  const continuitySafe = new PerceptualContinuityModel();
+  continuitySafe.restore({
+    version: 1,
+    scenes: [{
+      id: 'scene-1',
+      label: 'lab',
+      firstAt: 100,
+      lastAt: 200,
+      visits: 8_000_000_000,
+      stability01: 4,
+      transitions: -4,
+    }],
+    transitions: 9_999_999_999,
+    stableTransitions: -1,
+    objectPersistence01: 7,
+    sceneContinuity01: -2,
+    temporalGrounding01: 0.7,
+    lastScene: 'lab',
+    lastAt: 150,
+  });
+  const continuityState = continuitySafe.snapshot();
+  assert.equal(continuityState.scenes[0].lastAt, 150);
+  assert.equal(continuityState.scenes[0].firstAt, 100);
+  assert.equal(continuityState.scenes[0].visits, 1);
+  assert.equal(continuityState.scenes[0].stability01, 0);
+  assert.equal(continuityState.scenes[0].transitions, 0);
+  assert.equal(continuityState.transitions, 0, 'unbounded persisted counters must reset rather than saturate into fabricated activity');
+  assert.equal(continuityState.stableTransitions, 0);
+  assert.equal(continuityState.objectPersistence01, 0.05, 'invalid persisted unit values must use conservative defaults');
+  assert.equal(continuityState.sceneContinuity01, 0.1, 'invalid persisted unit values must use conservative defaults');
+}
+
+
+// The public GroundedWorldState external-outcome ingress must not dereference
+// hostile top-level or nested Proxy/accessor payloads before validating them.
+{
+  const world = new GroundedWorldState();
+  let topTrap = false;
+  const topProxy = new Proxy({}, {
+    get() { topTrap = true; throw new Error('world-outcome-top-proxy'); },
+    ownKeys() { topTrap = true; throw new Error('world-outcome-top-proxy-keys'); },
+  });
+  assert.doesNotThrow(() => world.integrateExternalOutcome(topProxy));
+  assert.equal(topTrap, false);
+  assert.equal(world.snapshot().revision, 0);
+
+  let actionTrap = false;
+  const actionProxy = new Proxy({}, {
+    get() { actionTrap = true; throw new Error('world-outcome-action-proxy'); },
+    ownKeys() { actionTrap = true; throw new Error('world-outcome-action-proxy-keys'); },
+  });
+  assert.doesNotThrow(() => world.integrateExternalOutcome({
+    embodiedAction: actionProxy,
+    postconditionVerification: {},
+  }));
+  assert.equal(actionTrap, false);
+  assert.equal(world.snapshot().revision, 0);
+
+  let accessorInvoked = false;
+  const hostileInput = {};
+  Object.defineProperty(hostileInput, 'embodiedAction', {
+    enumerable: true,
+    get() { accessorInvoked = true; return {}; },
+  });
+  assert.doesNotThrow(() => world.integrateExternalOutcome(hostileInput));
+  assert.equal(accessorInvoked, false);
+  assert.equal(world.snapshot().revision, 0);
+}
+
+
+// A caller cannot manufacture a future supersedes edge to suppress a later
+// contradiction by naming an ID that is not currently retained.
+{
+  const graph = new PerceptualEpistemicGraph();
+  const dangling = graph.add({
+    at: 2_500,
+    modality: 'vision',
+    claim: 'door is open',
+    source: 'observed',
+    confidence01: 0.8,
+    supersedes: 'attacker-chosen-future-claim-id',
+  });
+  assert.equal(dangling?.source, 'derived');
+  assert.equal(dangling?.supersedes, undefined);
+  assert.equal(graph.snapshot().resolvedPairs, 0);
+}

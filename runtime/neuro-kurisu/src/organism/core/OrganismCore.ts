@@ -397,8 +397,16 @@ import { B304SemanticHoldoutLedger, defaultB304SemanticHoldoutState, type B304Se
 import { B305CriticalPathVerificationLedger, defaultB305CriticalPathState } from '../system/B305CriticalPathVerificationLedger.ts';
 import { clamp, goalVectorFallback } from './ExecutionPrimitives.ts';
 import type { ExternalProjectResearchResult } from '../system/ExternalProjectResearchTool.ts';
+import {
+  createFileBackedSignedObservationAdmissionAuthority,
+  type FileBackedSignedObservationAdmissionConfig,
+} from '../system/SignedObservationAdmissionAuthority.ts';
 const now = () => Date.now();
 export interface OrganismConfig {
+    /** Optional host-owned signed observation authority. Absent means G3 admission stays fail-closed. */
+    observationAdmissionAuthority?: import('../system/SignedObservationAdmissionAuthority.ts').SignedObservationAdmissionAuthority;
+    /** Explicit host configuration for the app-private durable nonce ledger. No default path or in-memory fallback exists. */
+    observationAdmissionConfig?: FileBackedSignedObservationAdmissionConfig;
     /** Host-owned verifier key lookup; private keys must remain outside NK1. */
     inventionVerifierKeyResolver?: import('../research/TheInventionLoop.ts').InventionVerifierKeyResolver;
     /** Optional host evaluator policy for preregistering each newly generated hypothesis. */
@@ -1372,6 +1380,17 @@ export class OrganismCore {
             enableB2522AdaptiveWorldModelMixtureRouter: config.enableB2522AdaptiveWorldModelMixtureRouter ?? true,
             enableB2523MultiHorizonCounterfactualVerifier: config.enableB2523MultiHorizonCounterfactualVerifier ?? true,
             ...config,
+            // Keep one canonical authority owner. A caller may inject a prebuilt
+            // authority or ask Core to create the durable file-backed one, never both.
+            observationAdmissionAuthority: (() => {
+                if (config.observationAdmissionAuthority && config.observationAdmissionConfig) {
+                    throw new Error('observation-admission-authority-configuration-conflict');
+                }
+                return config.observationAdmissionAuthority ??
+                    (config.observationAdmissionConfig
+                        ? createFileBackedSignedObservationAdmissionAuthority(config.observationAdmissionConfig)
+                        : undefined);
+            })(),
         } as Required<OrganismConfig>;
         if (config.inventionVerifierKeyResolver)
             this.organismSystems.configureInventionVerifierKeyResolver(config.inventionVerifierKeyResolver);
@@ -1615,6 +1634,28 @@ export class OrganismCore {
         this.organismSystems.self.p39Life.restore((this.persisted.facets.learning as any).p39);
         this.organismSystems.self.p40ModelEcology.restore((this.persisted.facets.learning as any).p40ModelEcology);
         this.organismSystems.embodiment.perceptualEvidence.restore((this.persisted.facets.embodiment as any).perceptualEvidence);
+        // Reauthorize only after all legacy owner restores; no later restore may
+        // downgrade a capability that has just been revalidated by the host.
+        // Persisted observed labels are inert until the host re-verifies the exact
+        // signed envelope, active consent binding and previously consumed nonce digest.
+        // Local revocation markers are monotonic and are never reauthorized.
+        const observationAuthority = this.config.observationAdmissionAuthority;
+        if (observationAuthority) {
+            const restoredHostEvidence = this.embodimentSubsystem.perceptualEvidence.snapshot().evidence;
+            for (const row of restoredHostEvidence) {
+                if (row.revoked === true || row.expired === true || !row.hostReceipt || row.kind === 'observed')
+                    continue;
+                const checked = await observationAuthority.reauthorizePersisted(row.hostReceipt);
+                if (!checked.accepted)
+                    continue;
+                try {
+                    this.embodimentSubsystem.recordAdmittedObservation(checked.admission);
+                } catch {
+                    // Invalid/conflicting persisted rows remain non-observational.
+                }
+            }
+            this.persisted.facets.embodiment.perceptualEvidence = this.embodimentSubsystem.perceptualEvidence.snapshot();
+        }
         this.developmentalNeural.cognitiveSpineScheduler.restore(this.persisted.system.cognitiveSpineSchedule);
         this.developmentalNeural.resourceAllocator.restore(this.persisted.system.resourceAllocation);
         this.developmentalNeural.unifiedCognitiveSubstrate.restore(this.persisted.system.unifiedCognitiveSubstrate);
@@ -3698,6 +3739,41 @@ export class OrganismCore {
         if (!this.ready)
             throw new Error('OrganismCore.init() must be called first');
         this.persisted.facets.embodiment.embodiedRecovery = structuredClone(result);
+    }
+    /**
+     * Verify a host-signed observation, admit it through the canonical embodiment
+     * owner, and durably checkpoint the resulting evidence facet. No caller flag
+     * or copied token can reach this path without the configured host authority.
+     */
+    async admitObservationReceipt(receipt: unknown) {
+        if (!this.ready)
+            throw new Error('OrganismCore.init() must be called first');
+        const authority = this.config.observationAdmissionAuthority;
+        if (!authority)
+            return { accepted: false as const, reason: 'authority-unavailable' as const };
+        let admission;
+        try {
+            admission = await authority.admit(receipt);
+        } catch {
+            return { accepted: false as const, reason: 'authority-unavailable' as const };
+        }
+        if (!admission.accepted)
+            return admission;
+        const evidence = this.embodimentSubsystem.recordAdmittedObservation(admission.admission);
+        this.persisted.facets.embodiment.perceptualEvidence = this.embodimentSubsystem.perceptualEvidence.snapshot();
+        await this.checkpoint(true);
+        return { ...admission, evidence };
+    }
+    /** Apply a canonical observation revocation and persist its fail-closed downgrade. */
+    async revokeAdmittedObservation(observationId: string) {
+        if (!this.ready)
+            throw new Error('OrganismCore.init() must be called first');
+        const revoked = this.embodimentSubsystem.revokeAdmittedObservation(observationId);
+        if (revoked) {
+            this.persisted.facets.embodiment.perceptualEvidence = this.embodimentSubsystem.perceptualEvidence.snapshot();
+            await this.checkpoint(true);
+        }
+        return { revoked };
     }
     async setEmbodiment(body: import('../body/EmbodiedBody.ts').OrganismBodyState, events: import('../body/EmbodiedBody.ts').OrganismBodyEvent[], meta?: {
         sensorFailures?: number;

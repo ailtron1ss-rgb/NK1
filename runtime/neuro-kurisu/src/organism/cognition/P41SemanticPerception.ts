@@ -1,8 +1,55 @@
 import type { ActionKind } from '../core/types.ts';
+import { boundedCountOr, countOr, finiteWithinOr, isPlainDataArray, isPlainDataRecord, ownDataValue, stringOr, timestampOr, unitStrictOr, unitOr } from '../body/RestoreSanitizers.ts';
 import { PerceptualContinuityModel, defaultPerceptualContinuityState, type ContinuityState } from './PerceptualContinuityModel.ts';
 import { PerceptualEpistemicGraph, defaultEpistemicState, type EpistemicState } from './PerceptualEpistemicGraph.ts';
 
 const clamp = (n:number) => Math.max(0, Math.min(1, Number.isFinite(n) ? n : 0));
+const admittedEvidenceKind=(value:unknown):P41EvidenceKind=>{
+  if(value==='model-output'||value==='derived'||value==='unresolved')return value;
+  // P41 inputs and snapshots do not carry the host admission capability.
+  // An observed label here is only a caller assertion, so it fails closed.
+  return value==='observed'?'derived':'unresolved';
+};
+const P41_MODALITIES:P41Modality[]=['text','vision','audio','sensor','world'];
+const P41_ACTIONS:ActionKind[]=['respond','explore','verify','rest','reflect','wait','defer'];
+const safeDataRecord=(value:unknown):Record<string,unknown>=>isPlainDataRecord(value)?value:{};
+const safeStrings=(value:unknown,maxItems:number,maxLength:number):string[]=>{
+  if(!isPlainDataArray(value,maxItems*4))return [];
+  return [...new Set(value.filter((item):item is string=>typeof item==='string'&&Boolean(item.trim()))
+    .map(item=>item.trim().slice(0,maxLength)))].slice(-maxItems);
+};
+const sanitizeModalityEvidenceKinds=(value:unknown):Partial<Record<P41Modality,P41EvidenceKind>>=>{
+  if(!isPlainDataRecord(value))return {};
+  return Object.fromEntries(P41_MODALITIES.filter(modality=>Object.prototype.hasOwnProperty.call(value,modality))
+    .map(modality=>[modality,admittedEvidenceKind(ownDataValue(value,modality))])) as Partial<Record<P41Modality,P41EvidenceKind>>;
+};
+const sanitizeModalityTimes=(value:unknown):Partial<Record<P41Modality,number>>=>{
+  if(!isPlainDataRecord(value))return {};
+  const rows:Partial<Record<P41Modality,number>>={};
+  for(const modality of P41_MODALITIES){
+    const at=ownDataValue(value,modality);
+    if(typeof at==='number'&&Number.isSafeInteger(at)&&at>=0)rows[modality]=at;
+  }
+  return rows;
+};
+const sanitizeP41Metrics=(value:unknown,defaults:P41PerceptionState['metrics']):P41PerceptionState['metrics']=>{
+  const row=safeDataRecord(value);
+  return {
+    grounding01:unitStrictOr(ownDataValue(row,'grounding01'),defaults.grounding01),
+    temporalBinding01:unitStrictOr(ownDataValue(row,'temporalBinding01'),defaults.temporalBinding01),
+    objectPermanence01:unitStrictOr(ownDataValue(row,'objectPermanence01'),defaults.objectPermanence01),
+    crossModalAgreement01:unitStrictOr(ownDataValue(row,'crossModalAgreement01'),defaults.crossModalAgreement01),
+    crossModalEvidenceCoverage01:unitStrictOr(ownDataValue(row,'crossModalEvidenceCoverage01'),defaults.crossModalEvidenceCoverage01),
+    outcomeAlignment01:unitStrictOr(ownDataValue(row,'outcomeAlignment01'),defaults.outcomeAlignment01),
+    activePerceptionUtility01:unitStrictOr(ownDataValue(row,'activePerceptionUtility01'),defaults.activePerceptionUtility01),
+    unresolvedRate01:unitStrictOr(ownDataValue(row,'unresolvedRate01'),defaults.unresolvedRate01),
+    updates:boundedCountOr(ownDataValue(row,'updates'),defaults.updates,1_000_000_000),
+    sceneContinuity01:unitStrictOr(ownDataValue(row,'sceneContinuity01'),defaults.sceneContinuity01),
+    temporalGrounding01:unitStrictOr(ownDataValue(row,'temporalGrounding01'),defaults.temporalGrounding01),
+    evidenceTraceability01:unitStrictOr(ownDataValue(row,'evidenceTraceability01'),defaults.evidenceTraceability01),
+    epistemicContradictions:boundedCountOr(ownDataValue(row,'epistemicContradictions'),defaults.epistemicContradictions,4096),
+  };
+};
 const now = () => Date.now();
 const MAX_TRACK_GAP_MS=30_000;
 const MAX_TRACK_ASSOCIATION_DISTANCE=.75;
@@ -211,41 +258,217 @@ export class P41SemanticPerceptionEngine {
   private readonly epistemic = new PerceptualEpistemicGraph();
 
   restore(raw?:Partial<P41PerceptionState>|null){
-    const d=defaultP41SemanticPerception(); const r=raw??{};
-    this.state={...d,...r,
-      scene:{...d.scene,...(r.scene??{})},
-      entities:Array.isArray(r.entities)?r.entities.slice(-192).map((entity:any)=>{
-        const imageBox=normalizedImageBox(entity?.imageBox);
-        const cameraId=Number.isSafeInteger(entity?.imageBoxCameraId)&&Number(entity.imageBoxCameraId)>=0?Number(entity.imageBoxCameraId):undefined;
-        const imageAt=Number.isFinite(entity?.imageBoxAt)&&Number(entity.imageBoxAt)>=0?Number(entity.imageBoxAt):undefined;
-        const boxConfidence=Number.isFinite(entity?.imageBoxConfidence01)&&Number(entity.imageBoxConfidence01)>=.42&&Number(entity.imageBoxConfidence01)<=1?Number(entity.imageBoxConfidence01):undefined;
-        const snapshotAt=Number(r.snapshots?.[0]?.at??entity?.lastSeenAt??0);
-        const validImageEvidence=Boolean(imageBox&&cameraId!==undefined&&imageAt!==undefined&&imageAt<=snapshotAt&&boxConfidence!==undefined);
-        return {
-          ...entity,
-          ...(validImageEvidence?{imageBox,imageBoxCameraId:cameraId,imageBoxAt:imageAt,imageBoxConfidence01:boxConfidence}:{imageBox:undefined,imageBoxCameraId:undefined,imageBoxAt:undefined,imageBoxConfidence01:undefined}),
-        };
-      }):[],
-      relations:Array.isArray(r.relations)?r.relations.slice(-384):[],
-      events:Array.isArray(r.events)?r.events.slice(-128):[],
-      snapshots:Array.isArray(r.snapshots)?r.snapshots.slice(-128):[],
-      pending:Array.isArray(r.pending)?r.pending.slice(-64):[],
-      modalityReliability:Object.fromEntries((Object.keys(d.modalityReliability) as P41Modality[]).map(modality=>[
-        modality,{...d.modalityReliability[modality],...(r.modalityReliability?.[modality]??{})}
-      ])) as P41PerceptionState['modalityReliability'],
-      actionBias:{...d.actionBias,...(r.actionBias??{})},
-      metrics:{...d.metrics,...(r.metrics??{})},
-      calibrationEvidenceIds:Array.isArray(r.calibrationEvidenceIds)?r.calibrationEvidenceIds.filter((x):x is string=>typeof x==='string').slice(-256):[],
-      nextTrackSequence:Number.isSafeInteger(r.nextTrackSequence)&&Number(r.nextTrackSequence)>=0?Number(r.nextTrackSequence):0,
-      continuity:d.continuity,
-      epistemic:d.epistemic,
+    const d=defaultP41SemanticPerception();
+    // P41 is a persistent trust boundary. Reject Proxy/accessor containers before
+    // object spread, iteration or nested reads can execute attacker-controlled code.
+    const r=isPlainDataRecord(raw)?raw:{};
+    const rawScene=ownDataValue(r,'scene');
+    const sceneRecord=safeDataRecord(rawScene);
+    const scene={
+      label:stringOr(ownDataValue(sceneRecord,'label'),d.scene.label,120),
+      confidence01:unitStrictOr(ownDataValue(sceneRecord,'confidence01'),d.scene.confidence01),
+      stability01:unitStrictOr(ownDataValue(sceneRecord,'stability01'),d.scene.stability01),
+      at:timestampOr(ownDataValue(sceneRecord,'at'),d.scene.at),
     };
-    this.continuity.restore(r.continuity as any);
-    this.epistemic.restore(r.epistemic as any);
+
+    const entities:P41PerceptualEntity[]=[];
+    const rawEntities=ownDataValue(r,'entities');
+    if(isPlainDataArray(rawEntities,768)){
+      for(const candidate of rawEntities.slice(-192)){
+        if(!isPlainDataRecord(candidate))continue;
+        const id=stringOr(ownDataValue(candidate,'id'),'').trim().slice(0,180);
+        const label=stringOr(ownDataValue(candidate,'label'),'').trim().slice(0,180);
+        if(!id||!label)continue;
+        const rawKind=ownDataValue(candidate,'kind');
+        const kind: P41EntityKind=(['person','object','place','event','concept','body','unknown'] as const)
+          .includes(rawKind as P41EntityKind)?rawKind as P41EntityKind:'unknown';
+        const modalities=safeStrings(ownDataValue(candidate,'modalities'),P41_MODALITIES.length,16)
+          .filter((value):value is P41Modality=>P41_MODALITIES.includes(value as P41Modality));
+        const firstSeenAt=timestampOr(ownDataValue(candidate,'firstSeenAt'),0);
+        const lastSeenAt=Math.max(firstSeenAt,timestampOr(ownDataValue(candidate,'lastSeenAt'),firstSeenAt));
+        const frame=stringOr(ownDataValue(candidate,'positionFrameId'),'',120).trim();
+        const position=frame?finitePosition(
+          ownDataValue(safeDataRecord(ownDataValue(candidate,'position')),'x'),
+          ownDataValue(safeDataRecord(ownDataValue(candidate,'position')),'y'),
+          ownDataValue(safeDataRecord(ownDataValue(candidate,'position')),'z'),
+        ):null;
+        const velocity=frame?finitePosition(
+          ownDataValue(safeDataRecord(ownDataValue(candidate,'velocity')),'x'),
+          ownDataValue(safeDataRecord(ownDataValue(candidate,'velocity')),'y'),
+          ownDataValue(safeDataRecord(ownDataValue(candidate,'velocity')),'z'),
+        ):null;
+        const rawBox=safeDataRecord(ownDataValue(candidate,'imageBox'));
+        const imageBox=normalizedImageBox(rawBox);
+        const imageBoxCameraId=ownDataValue(candidate,'imageBoxCameraId');
+        const imageBoxAt=ownDataValue(candidate,'imageBoxAt');
+        const imageBoxConfidence01=ownDataValue(candidate,'imageBoxConfidence01');
+        const validImageBox=Boolean(imageBox&&typeof imageBoxCameraId==='number'&&Number.isSafeInteger(imageBoxCameraId)&&imageBoxCameraId>=0
+          &&typeof imageBoxAt==='number'&&Number.isSafeInteger(imageBoxAt)&&imageBoxAt>=0&&imageBoxAt<=lastSeenAt
+          &&typeof imageBoxConfidence01==='number'&&Number.isFinite(imageBoxConfidence01)&&imageBoxConfidence01>=.42&&imageBoxConfidence01<=1);
+        const imageFields=validImageBox&&imageBox?{
+          imageBox,imageBoxCameraId:Number(imageBoxCameraId),imageBoxAt:Number(imageBoxAt),
+          imageBoxConfidence01:Number(imageBoxConfidence01),
+        }:{};
+        const modalityLastSeenAt=sanitizeModalityTimes(ownDataValue(candidate,'modalityLastSeenAt'));
+        for(const key of Object.keys(modalityLastSeenAt) as P41Modality[]){
+          modalityLastSeenAt[key]=Math.min(lastSeenAt,Math.max(firstSeenAt,modalityLastSeenAt[key]??firstSeenAt));
+        }
+        entities.push({
+          id,label,kind,
+          ...(stringOr(ownDataValue(candidate,'trackId'),'',120).trim()?{trackId:stringOr(ownDataValue(candidate,'trackId'),'',120).trim()}:{}),
+          ...(frame&&position?{positionFrameId:frame}:{}),
+          trackAliases:safeStrings(ownDataValue(candidate,'trackAliases'),16,120),
+          confidence01:unitStrictOr(ownDataValue(candidate,'confidence01'),0),
+          salience01:unitStrictOr(ownDataValue(candidate,'salience01'),0),
+          present01:unitStrictOr(ownDataValue(candidate,'present01'),0),
+          firstSeenAt,lastSeenAt,
+          observations:Math.max(1,boundedCountOr(ownDataValue(candidate,'observations'),1,1_000_000_000)),
+          modalities,
+          modalityLastSeenAt,
+          modalityEvidenceKinds:sanitizeModalityEvidenceKinds(ownDataValue(candidate,'modalityEvidenceKinds')),
+          position:frame?position:null,
+          ...imageFields,
+          velocity:frame?velocity:null,
+        });
+      }
+    }
+
+    const relations:P41PerceptualRelation[]=[];
+    const rawRelations=ownDataValue(r,'relations');
+    if(isPlainDataArray(rawRelations,1536)){
+      for(const candidate of rawRelations.slice(-384)){
+        if(!isPlainDataRecord(candidate))continue;
+        const id=stringOr(ownDataValue(candidate,'id'),'').trim().slice(0,180);
+        const from=stringOr(ownDataValue(candidate,'from'),'').trim().slice(0,180);
+        const relation=stringOr(ownDataValue(candidate,'relation'),'').trim().slice(0,100);
+        const to=stringOr(ownDataValue(candidate,'to'),'').trim().slice(0,180);
+        const modality=ownDataValue(candidate,'modality');
+        if(!id||!from||!relation||!to||!P41_MODALITIES.includes(modality as P41Modality))continue;
+        relations.push({
+          id,from,relation,to,
+          ...(stringOr(ownDataValue(candidate,'fromEntityId'),'',180).trim()?{fromEntityId:stringOr(ownDataValue(candidate,'fromEntityId'),'',180).trim()}:{}),
+          ...(stringOr(ownDataValue(candidate,'toEntityId'),'',180).trim()?{toEntityId:stringOr(ownDataValue(candidate,'toEntityId'),'',180).trim()}:{}),
+          confidence01:unitStrictOr(ownDataValue(candidate,'confidence01'),0),
+          modality:modality as P41Modality,
+          evidenceKind:admittedEvidenceKind(ownDataValue(candidate,'evidenceKind')),
+          at:timestampOr(ownDataValue(candidate,'at'),0),
+        });
+      }
+    }
+
+    const events:P41PerceptualEvent[]=[];
+    const rawEvents=ownDataValue(r,'events');
+    if(isPlainDataArray(rawEvents,512)){
+      for(const candidate of rawEvents.slice(-128)){
+        if(!isPlainDataRecord(candidate))continue;
+        const id=stringOr(ownDataValue(candidate,'id'),'').trim().slice(0,180);
+        const label=stringOr(ownDataValue(candidate,'label'),'').trim().slice(0,180);
+        if(!id||!label)continue;
+        const modalities=safeStrings(ownDataValue(candidate,'modalities'),P41_MODALITIES.length,16)
+          .filter((value):value is P41Modality=>P41_MODALITIES.includes(value as P41Modality));
+        const startedAt=timestampOr(ownDataValue(candidate,'startedAt'),0);
+        const lastAt=Math.max(startedAt,timestampOr(ownDataValue(candidate,'lastAt'),startedAt));
+        const modalityLastSeenAt=sanitizeModalityTimes(ownDataValue(candidate,'modalityLastSeenAt'));
+        for(const key of Object.keys(modalityLastSeenAt) as P41Modality[]){
+          modalityLastSeenAt[key]=Math.min(lastAt,Math.max(startedAt,modalityLastSeenAt[key]??startedAt));
+        }
+        events.push({
+          id,label,confidence01:unitStrictOr(ownDataValue(candidate,'confidence01'),0),modalities,
+          startedAt,lastAt,persistence01:unitStrictOr(ownDataValue(candidate,'persistence01'),0),
+          evidenceKind:admittedEvidenceKind(ownDataValue(candidate,'evidenceKind')),
+          modalityLastSeenAt,modalityEvidenceKinds:sanitizeModalityEvidenceKinds(ownDataValue(candidate,'modalityEvidenceKinds')),
+        });
+      }
+    }
+
+    const snapshots:P41PerceptualSnapshot[]=[];
+    const rawSnapshots=ownDataValue(r,'snapshots');
+    if(isPlainDataArray(rawSnapshots,512)){
+      for(const candidate of rawSnapshots.slice(-128)){
+        if(!isPlainDataRecord(candidate))continue;
+        const id=stringOr(ownDataValue(candidate,'id'),'').trim().slice(0,180);
+        const at=timestampOr(ownDataValue(candidate,'at'),0);
+        if(!id)continue;
+        snapshots.push({
+          id,tick:countOr(ownDataValue(candidate,'tick'),0),at,
+          scene:stringOr(ownDataValue(candidate,'scene'),'unknown',120),
+          entityIds:safeStrings(ownDataValue(candidate,'entityIds'),32,180),
+          eventIds:safeStrings(ownDataValue(candidate,'eventIds'),16,180),
+          relationIds:safeStrings(ownDataValue(candidate,'relationIds'),32,180),
+          uncertainty01:unitStrictOr(ownDataValue(candidate,'uncertainty01'),1),
+          coherence01:unitStrictOr(ownDataValue(candidate,'coherence01'),0),
+          selfLocation:stringOr(ownDataValue(candidate,'selfLocation'),'unknown',120),
+        });
+      }
+    }
+
+    const pending:P41PendingPerception[]=[];
+    const rawPending=ownDataValue(r,'pending');
+    if(isPlainDataArray(rawPending,256)){
+      for(const candidate of rawPending.slice(-64)){
+        if(!isPlainDataRecord(candidate))continue;
+        const id=stringOr(ownDataValue(candidate,'id'),'').trim().slice(0,180);
+        const modality=ownDataValue(candidate,'modality');
+        const status=ownDataValue(candidate,'status');
+        if(!id||!P41_MODALITIES.includes(modality as P41Modality)
+          ||!(['pending','fulfilled','expired','rejected'] as const).includes(status as P41PendingPerception['status']))continue;
+        const createdAt=timestampOr(ownDataValue(candidate,'createdAt'),0);
+        pending.push({
+          id,modality:modality as P41Modality,
+          query:stringOr(ownDataValue(candidate,'query'),'',240),
+          expectedInformationGain01:unitStrictOr(ownDataValue(candidate,'expectedInformationGain01'),0),
+          estimatedCost01:unitStrictOr(ownDataValue(candidate,'estimatedCost01'),1),
+          priority01:unitStrictOr(ownDataValue(candidate,'priority01'),0),
+          createdAt,expiresAt:Math.max(createdAt,timestampOr(ownDataValue(candidate,'expiresAt'),createdAt)),
+          status:status as P41PendingPerception['status'],
+        });
+      }
+    }
+
+    const rawReliability=safeDataRecord(ownDataValue(r,'modalityReliability'));
+    const modalityReliability=Object.fromEntries(P41_MODALITIES.map(modality=>{
+      const defaults=d.modalityReliability[modality];
+      const row=safeDataRecord(ownDataValue(rawReliability,modality));
+      return [modality,{
+        reliability01:unitStrictOr(ownDataValue(row,'reliability01'),defaults.reliability01),
+        observations:boundedCountOr(ownDataValue(row,'observations'),defaults.observations,1_000_000_000),
+        conflict01:unitStrictOr(ownDataValue(row,'conflict01'),defaults.conflict01),
+        latency01:unitStrictOr(ownDataValue(row,'latency01'),defaults.latency01),
+        reportedQuality01:unitStrictOr(ownDataValue(row,'reportedQuality01'),defaults.reportedQuality01),
+        serviceSuccess01:unitStrictOr(ownDataValue(row,'serviceSuccess01'),defaults.serviceSuccess01),
+        calibrationSamples:boundedCountOr(ownDataValue(row,'calibrationSamples'),defaults.calibrationSamples,1_000_000),
+        calibrationMae01:unitStrictOr(ownDataValue(row,'calibrationMae01'),defaults.calibrationMae01),
+        calibrationBias01:Math.max(-1,Math.min(1,Number.isFinite(ownDataValue(row,'calibrationBias01'))?Number(ownDataValue(row,'calibrationBias01')):defaults.calibrationBias01)),
+        lastVerifiedAt:timestampOr(ownDataValue(row,'lastVerifiedAt'),defaults.lastVerifiedAt),
+      }];
+    })) as P41PerceptionState['modalityReliability'];
+
+    const rawActionBias=safeDataRecord(ownDataValue(r,'actionBias'));
+    const actionBias=Object.fromEntries(P41_ACTIONS.map(action=>[
+      action,Math.max(-1,Math.min(1,Number.isFinite(ownDataValue(rawActionBias,action))?Number(ownDataValue(rawActionBias,action)):d.actionBias[action])),
+    ])) as P41PerceptionState['actionBias'];
+
+    this.state={
+      ...d,
+      version:1,
+      tick:boundedCountOr(ownDataValue(r,'tick'),0,1_000_000_000),
+      scene,
+      sceneEvidenceKind:admittedEvidenceKind(ownDataValue(r,'sceneEvidenceKind')),
+      entities,relations,events,snapshots,pending,modalityReliability,
+      actionBias,
+      metrics:sanitizeP41Metrics(ownDataValue(r,'metrics'),d.metrics),
+      calibrationEvidenceIds:safeStrings(ownDataValue(r,'calibrationEvidenceIds'),256,180),
+      nextTrackSequence:boundedCountOr(ownDataValue(r,'nextTrackSequence'),0,1_000_000_000),
+      lastCheckpointAt:timestampOr(ownDataValue(r,'lastCheckpointAt'),0),
+      // P41 does not yet produce a trusted persisted digest. Never retain a
+      // caller-authored lastHash as evidence of an authentic restore.
+      lastHash:'',
+    };
+    this.continuity.restore(ownDataValue(r,'continuity') as Partial<ContinuityState>|null);
+    this.epistemic.restore(ownDataValue(r,'epistemic') as Partial<EpistemicState>|null);
     this.state.continuity=this.continuity.snapshot();
     this.state.epistemic=this.epistemic.snapshot();
   }
-
   snapshot(){return structuredClone(this.state);}
 
   ingest(input:P41SemanticInput){
@@ -337,13 +560,15 @@ export class P41SemanticPerceptionEngine {
 
   ingestSensor(s:NonNullable<P41SemanticInput['sensor']>,at:number){
     const label=String(s.location??'host-local');
-    this.upsertEntity(label,'place',.82,.35,'sensor',at,null,'observed');
-    this.upsertEntity(`body@${label}`,'body',.92,.42,'sensor',at,null,'observed');
+    // A sensor payload without the host admission capability is useful input,
+    // but it must not cross the observed-evidence boundary by itself.
+    this.upsertEntity(label,'place',.82,.35,'sensor',at,null,'derived');
+    this.upsertEntity(`body@${label}`,'body',.92,.42,'sensor',at,null,'derived');
     this.recordModality('sensor',clamp(s.freshness01??.85),0);
   }
 
   ingestWorld(w:NonNullable<P41SemanticInput['world']>,at:number){
-    const sceneEvidenceKind=w.evidenceKind??'unresolved';
+    const sceneEvidenceKind=admittedEvidenceKind(w.evidenceKind);
     if(w.scene){
       const label=String(w.scene).slice(0,120);
       const sameSceneObservation=this.state.scene.at===at&&this.state.scene.label===label;
@@ -356,7 +581,7 @@ export class P41SemanticPerceptionEngine {
     for(const o of (w.objects??[]).slice(0,24)){
       const suppliedTrackId=cleanTrackId(o.trackId);
       const namespacedTrackId=suppliedTrackId?'world:'+(cleanTrackId(o.sourceId)||'canonical')+':'+suppliedTrackId:undefined;
-      const evidenceKind=o.evidenceKind??sceneEvidenceKind;
+      const evidenceKind=admittedEvidenceKind(o.evidenceKind??sceneEvidenceKind);
       const coordinateFrameId=cleanTrackId(o.coordinateFrameId);
       const position=coordinateFrameId?finitePosition(o.x,o.y,o.z):null;
       const entity=this.upsertEntity(String(o.label),o.kind??'object',clamp(o.confidence01??.35),.52,'world',at,position,evidenceKind,namespacedTrackId,position?coordinateFrameId:undefined);

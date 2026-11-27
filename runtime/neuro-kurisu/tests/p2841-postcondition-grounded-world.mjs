@@ -113,26 +113,49 @@ assert.equal(lateRow?.proofClass,'none');
 const world=new GroundedWorldState();
 const before=world.snapshot();
 const telemetryRow=world.integrateExternalOutcome({
-  at:telemetry.at,action:'explore',status:'executed',proofClass:'device-telemetry',
-  verified01:0,independent01:0,evidence01:0,consequence01:0,
-  claim:'fresh device telemetry only',provenanceId:`telemetry:${telemetry.executionId}`,divergence01:.42,
+  embodiedAction:telemetry,
+  postconditionVerification:telemetryVerification,
+  divergence01:.42,
 });
 const after=world.snapshot();
 assert.equal(telemetryRow.verified01,0);
 assert.deepEqual(after.facts,before.facts);
 assert.equal(after.confidence01,before.confidence01);
-assert.ok(after.events.some(x=>x.id===telemetryRow.eventId && x.label.startsWith('external-receipt:explore')));
+assert.ok(after.events.some(x=>x.id===telemetryRow.eventId && x.label.startsWith('external-receipt:explore:executed:device-telemetry')));
 
 const receiptWorld=new GroundedWorldState();
 const receiptBefore=receiptWorld.snapshot();
 const receiptRow=receiptWorld.integrateExternalOutcome({
-  at:receipt.at,action:'respond',status:'executed',proofClass:'stable-device-receipt',
-  verified01:0,independent01:0,evidence01:.26,consequence01:.18,
-  claim:'command accepted; effect unverified',provenanceId:`receipt:${receipt.executionId}`,divergence01:.7,
+  embodiedAction:receipt,
+  postconditionVerification:receiptVerification,
+  divergence01:.7,
 });
 const receiptAfter=receiptWorld.snapshot();
 assert.deepEqual(receiptAfter.facts,receiptBefore.facts);
 assert.equal(receiptAfter.confidence01,receiptBefore.confidence01);
-assert.ok(receiptAfter.events.some(x=>x.id===receiptRow.eventId && x.label.startsWith('external-receipt:respond')));
+assert.ok(receiptAfter.events.some(x=>x.id===receiptRow.eventId && x.label.startsWith('external-receipt:respond:executed:device-actuation')));
 
-console.log(JSON.stringify({ok:true,telemetryVerification,cameraVerification,receiptVerification,holdout:{early,ready}}));
+const forgedWorld = new GroundedWorldState();
+const forgedBefore = forgedWorld.snapshot();
+const forgedAction = structuredClone(receipt);
+const forgedVerification = {
+  verified: true,
+  basis: 'external-postcondition',
+  confidence01: 1,
+  externalObservation: true,
+  observationId: 'caller-forged-observation',
+  expectedPostcondition: 'door-open',
+  observedPostcondition: 'door-open',
+};
+const forgedRow = forgedWorld.integrateExternalOutcome({
+  embodiedAction: forgedAction,
+  postconditionVerification: forgedVerification,
+  divergence01: 1,
+});
+const forgedAfter = forgedWorld.snapshot();
+assert.equal(forgedRow.verified01, 0, 'copied action + caller-authored verification must not pass the in-process capability check');
+assert.deepEqual(forgedAfter.facts, forgedBefore.facts, 'caller-authored verified booleans must never create canonical world facts');
+assert.equal(forgedAfter.confidence01, forgedBefore.confidence01);
+assert.ok(forgedAfter.events.some(row=>row.id===forgedRow.eventId&&row.label.startsWith('external-receipt:respond')));
+
+console.log(JSON.stringify({ok:true,telemetryVerification,cameraVerification,receiptVerification,holdout:{early,ready},forgedAdmissionRejected:true}));
