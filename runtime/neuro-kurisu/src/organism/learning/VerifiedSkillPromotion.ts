@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import type { VerifiedOutcomeLedger } from './VerifiedOutcomeLedger.ts';
 import { hasAuthenticatedOutcomeEvidence } from './VerifiedOutcomeArtifact.ts';
 import { evaluateSkillRevision, type SkillRevisionGateOptions, type SkillRevisionGateResult } from './SkillRevisionGate.ts';
+import { evaluateOutcomePromotion } from './VerifiedOutcomePromotionGate.ts';
 import { buildVerifiedSessionDataset } from './VerifiedSessionDataset.ts';
 
 export interface VerifiedSkillPromotionOptions extends SkillRevisionGateOptions {
@@ -134,12 +135,23 @@ export function proposeVerifiedSkillPromotion(
   const familyEvaluation = ledger.comparePairedByFamilyAndSeed(baselineMethod, candidateMethod, 'holdout');
   const seedCoverageOkay = completePairedSeeds >= minCompleteSeeds && seedClusteredEvaluation.pairedN >= minCompleteSeeds;
   const minAbsoluteGain = Math.max(0, Math.min(1, Number.isFinite(options.minAbsoluteGain) ? options.minAbsoluteGain! : 0.02));
-  const seedClusteredGainOkay = seedClusteredEvaluation.absoluteGain >= minAbsoluteGain &&
-    seedClusteredEvaluation.approximate95CI !== null && seedClusteredEvaluation.approximate95CI[0] > 0 &&
+  const maxFamilyRegression = Math.max(0, Math.min(1, Number.isFinite(options.maxFamilyRegression) ? options.maxFamilyRegression! : 0.10));
+  // The conservative promotion criteria have exactly one owner: VerifiedOutcomePromotionGate.
+  // This proposal supplies seed-clustered summaries, so family counts recount the same
+  // complete seeds and are expected to exceed the aggregate sample. The additional
+  // bootstrap interval below is specific to seed clustering and stays here.
+  const promotionGate = evaluateOutcomePromotion(seedClusteredEvaluation, familyEvaluation, {
+    minPairedTasks: minCompleteSeeds,
+    minFamilies: 1,
+    minAbsoluteGain,
+    maxFamilyRegression,
+    requirePositiveConfidenceLowerBound: true,
+    pairedUnit: 'seed-cluster',
+  });
+  const seedClusteredGainOkay = promotionGate.eligible &&
     seedClusteredEvaluation.bootstrap95CI !== null && seedClusteredEvaluation.bootstrap95CI !== undefined &&
     seedClusteredEvaluation.bootstrap95CI[0] > 0;
-  const maxFamilyRegression = Math.max(0, Math.min(1, Number.isFinite(options.maxFamilyRegression) ? options.maxFamilyRegression! : 0.10));
-  const familyRegression = familyEvaluation.find(row => row.pairedN >= minCompleteSeeds && row.absoluteGain < -maxFamilyRegression);
+  const familyRegression = promotionGate.reasons.some(reason => reason.startsWith('family-regression:'));
   const minPairedTasks = boundedInteger(options.minPairedTasks, 8, 2, 10000);
   const finalGate: SkillRevisionGateResult = unauthenticatedEvidenceRows > 0 ? {
     ...gate, accepted: false, reason: 'unauthenticated-outcome-evidence',

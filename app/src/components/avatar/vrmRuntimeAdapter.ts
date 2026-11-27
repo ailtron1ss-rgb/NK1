@@ -115,8 +115,13 @@ export interface VrmNormalizedMotorFrame {
   socialNeed: number;
   uncertainty: number;
   speaking: boolean;
+  /** True when a native VRM look-at target owns eye gaze; prevents a duplicate head turn. */
+  gazeViaLookAt?: boolean;
   /** Shared semantic motor tilt; older callers may omit it. */
   headTilt?: number;
+  /** Particle-body pitch/roll from the canonical same-tick pose. */
+  headPitch?: number;
+  headRoll?: number;
   headYaw?: number;
   leftArmIntent?: number;
   rightArmIntent?: number;
@@ -133,6 +138,7 @@ export interface VrmNormalizedMotorRig {
 
 /** Optional full-body rig resolved from the same normalized humanoid surface. */
 export interface VrmFullBodyRig extends VrmNormalizedMotorRig {
+  hips: NormalizedBoneNode | null;
   spine: NormalizedBoneNode | null;
   leftLowerArm: NormalizedBoneNode | null;
   rightLowerArm: NormalizedBoneNode | null;
@@ -140,6 +146,12 @@ export interface VrmFullBodyRig extends VrmNormalizedMotorRig {
   rightUpperLeg: NormalizedBoneNode | null;
   leftLowerLeg: NormalizedBoneNode | null;
   rightLowerLeg: NormalizedBoneNode | null;
+  leftFoot: NormalizedBoneNode | null;
+  rightFoot: NormalizedBoneNode | null;
+  leftHand: NormalizedBoneNode | null;
+  rightHand: NormalizedBoneNode | null;
+  leftFingerBones: readonly VrmFingerBone[];
+  rightFingerBones: readonly VrmFingerBone[];
 }
 
 export interface VrmNormalizedMotorResult {
@@ -156,6 +168,19 @@ export interface VrmNormalizedMotorResult {
 
 const clampSigned = (value: number, min = -1, max = 1): number =>
   Number.isFinite(value) ? Math.max(min, Math.min(max, value)) : 0;
+
+/**
+ * Resolve a bounded target in raw-head local space for the official VRMLookAt
+ * target API. Positive X looks right; positive NK1 gazeY looks down.
+ */
+export function resolveVrmLookAtTargetOffset(gazeX: number, gazeY: number): { x: number; y: number; z: number } {
+  const horizontal = clampSigned(gazeX, -1, 1);
+  const vertical = clampSigned(gazeY, -1, 1);
+  const distance = 1.5;
+  const x = horizontal === 0 ? 0 : Math.tan(horizontal * 0.34) * distance;
+  const y = vertical === 0 ? 0 : -Math.tan(vertical * 0.25) * distance;
+  return { x, y, z: distance };
+}
 
 /**
  * Use the canonical VRM normalized proxy rig as the one humanoid command
@@ -215,22 +240,24 @@ export function applyVrmNormalizedMotorFrame(
     rightUpperArm: Boolean(rig.rightUpperArm),
   };
   const controlledBones: string[] = [];
-  const gazeX = clampSigned(frame.gazeX);
-  const gazeY = clampSigned(frame.gazeY);
+  const gazeX = frame.gazeViaLookAt === true ? 0 : clampSigned(frame.gazeX);
+  const gazeY = frame.gazeViaLookAt === true ? 0 : clampSigned(frame.gazeY);
   const load = clamp01(frame.cognitiveLoad);
   const energy = clamp01(frame.energy);
   const social = clamp01(frame.socialNeed);
   const uncertainty = clamp01(frame.uncertainty);
 
-  const headX = -gazeY * 0.12 - load * 0.035 + (1 - energy) * 0.04;
+  const headX = -gazeY * 0.12 - load * 0.035 + (1 - energy) * 0.04
+    + clampSigned(frame.headPitch ?? 0) * 0.12;
   const headY = gazeX * (0.22 - social * 0.05) + uncertainty * 0.025 + clampSigned(frame.headYaw ?? 0) * 0.055;
   const fallbackAffectRoll = frame.emotion === "sadness"
     ? 0.055
     : frame.emotion === "anger" || frame.emotion === "frustration" ? -0.04 : 0;
   // The shared projection is authoritative when supplied; legacy callers retain the prior affect-only roll.
-  const headZ = frame.headTilt === undefined
+  const headZBase = frame.headTilt === undefined
     ? fallbackAffectRoll
     : clampSigned(frame.headTilt, -0.15, 0.15);
+  const headZ = clampSigned(headZBase + clampSigned(frame.headRoll ?? 0) * 0.06, -0.22, 0.22);
 
   if (rig.head && rig.neck && rig.head !== rig.neck) {
     rig.neck.rotation.set(headX * 0.35, headY * 0.35, headZ * 0.35);
@@ -263,6 +290,44 @@ export function applyVrmNormalizedMotorFrame(
   };
 }
 
+interface VrmFingerBone {
+  name: string;
+  node: NormalizedBoneNode | null;
+  flex: number;
+}
+
+// VRMHumanoid exposes the same normalized thumb roles for VRM 0.x and 1.0.
+// three-vrm's loader remaps the legacy 0.x thumb Proximal/Intermediate nodes to
+// normalized Metacarpal/Proximal roles before this adapter sees the rig.
+const VRM_THUMB_SEGMENTS = [
+  { suffix: "ThumbMetacarpal", flex: 0.22 },
+  { suffix: "ThumbProximal", flex: 0.48 },
+  { suffix: "ThumbDistal", flex: 0.58 },
+] as const;
+
+const VRM_NON_THUMB_FINGER_SEGMENTS = [
+  { suffix: "IndexProximal", flex: 0.64 },
+  { suffix: "IndexIntermediate", flex: 0.78 },
+  { suffix: "IndexDistal", flex: 0.54 },
+  { suffix: "MiddleProximal", flex: 0.68 },
+  { suffix: "MiddleIntermediate", flex: 0.82 },
+  { suffix: "MiddleDistal", flex: 0.58 },
+  { suffix: "RingProximal", flex: 0.64 },
+  { suffix: "RingIntermediate", flex: 0.78 },
+  { suffix: "RingDistal", flex: 0.54 },
+  { suffix: "LittleProximal", flex: 0.58 },
+  { suffix: "LittleIntermediate", flex: 0.72 },
+  { suffix: "LittleDistal", flex: 0.5 },
+] as const;
+
+const resolveVrmFingerBones = (
+  side: "left" | "right",
+  resolve: (name: string) => NormalizedBoneNode | null,
+): readonly VrmFingerBone[] => [...VRM_THUMB_SEGMENTS, ...VRM_NON_THUMB_FINGER_SEGMENTS].map(({ suffix, flex }) => {
+  const name = side + suffix;
+  return { name, node: resolve(name), flex };
+});
+
 /**
  * Resolve the optional full-body normalized rig. Uses the same normalized proxy
  * surface as the gaze/gesture controller, so there is still one command surface.
@@ -280,6 +345,7 @@ export function resolveVrmFullBodyRig(vrm: VRM): VrmFullBodyRig {
   };
   return {
     ...base,
+    hips: resolve("hips"),
     spine: resolve("spine"),
     leftLowerArm: resolve("leftLowerArm"),
     rightLowerArm: resolve("rightLowerArm"),
@@ -287,6 +353,12 @@ export function resolveVrmFullBodyRig(vrm: VRM): VrmFullBodyRig {
     rightUpperLeg: resolve("rightUpperLeg"),
     leftLowerLeg: resolve("leftLowerLeg"),
     rightLowerLeg: resolve("rightLowerLeg"),
+    leftFoot: resolve("leftFoot"),
+    rightFoot: resolve("rightFoot"),
+    leftHand: resolve("leftHand"),
+    rightHand: resolve("rightHand"),
+    leftFingerBones: resolveVrmFingerBones("left", resolve),
+    rightFingerBones: resolveVrmFingerBones("right", resolve),
   };
 }
 
@@ -295,6 +367,10 @@ const CHANNEL_LIMIT: Record<string, number> = {
   leftShoulder: 0.7, rightShoulder: 0.7, leftElbow: 1.4, rightElbow: 1.4,
   leftHip: 0.8, rightHip: 0.8, leftKnee: 1.4, rightKnee: 1.4,
   leftAnkle: 0.5, rightAnkle: 0.5, rootYaw: 0.9,
+  leftWrist: 0.4, rightWrist: 0.4, leftHand: 0.35, rightHand: 0.35,
+  leftFingers: 0.85, rightFingers: 0.85,
+  leftThumbCurl: 0.85, leftIndexCurl: 0.85, leftMiddleCurl: 0.85, leftRingCurl: 0.85, leftLittleCurl: 0.85,
+  rightThumbCurl: 0.85, rightIndexCurl: 0.85, rightMiddleCurl: 0.85, rightRingCurl: 0.85, rightLittleCurl: 0.85,
 };
 
 const scaleChannel = (channel: BodyChannel, value: number): number => {
@@ -315,8 +391,9 @@ export interface VrmFullBodyApplyResult {
  * Upper-arm bones are intentionally NOT written here: the gaze/gesture
  * controller (`applyVrmNormalizedMotorFrame`) owns the shoulders via arm intents,
  * so writing them twice would double-drive the same bone. This function owns
- * elbow, hip, knee and spine. Channels without a mapping are ignored rather than
- * guessed, and it reports only the bones it actually wrote — never a visual claim.
+ * elbow, hip, knee, ankle/foot pitch, spine, wrist/palm rotation and optional finger
+ * curl. Optional finger joints are resolved per model; missing bones are ignored
+ * and never advertised as if they moved.
  */
 export function applyVrmFullBodyChannels(vrm: VRM, channels: Readonly<Partial<Record<BodyChannel, number>>>): VrmFullBodyApplyResult {
   const rig = resolveVrmFullBodyRig(vrm);
@@ -325,25 +402,58 @@ export function applyVrmFullBodyChannels(vrm: VRM, channels: Readonly<Partial<Re
   // owns the remaining bones, so it must do the same or the additive writes below
   // accumulate across frames. Reset every owned bone to identity first so a channel
   // that stops being emitted returns to rest instead of freezing at its last value.
-  const owned = [rig.spine, rig.leftLowerArm, rig.rightLowerArm, rig.leftUpperLeg, rig.rightUpperLeg, rig.leftLowerLeg, rig.rightLowerLeg];
+  const owned = [
+    rig.hips, rig.spine, rig.leftLowerArm, rig.rightLowerArm,
+    rig.leftUpperLeg, rig.rightUpperLeg, rig.leftLowerLeg, rig.rightLowerLeg,
+    rig.leftFoot, rig.rightFoot, rig.leftHand, rig.rightHand,
+    ...rig.leftFingerBones.map((finger) => finger.node),
+    ...rig.rightFingerBones.map((finger) => finger.node),
+  ];
   const resetSeen = new Set<NormalizedBoneNode>();
   for (const node of owned) {
     if (!node || resetSeen.has(node)) continue;
     resetSeen.add(node);
     node.rotation.set(0, 0, 0);
   }
-  const write = (node: NormalizedBoneNode | null, axis: "x" | "z", value: number, name: string) => {
+  const write = (node: NormalizedBoneNode | null, axis: "x" | "y" | "z", value: number, name: string) => {
     if (!node || value === 0) return;
     node.rotation[axis] = value;
-    controlledBones.push(name);
+    if (!controlledBones.includes(name)) controlledBones.push(name);
   };
   write(rig.spine, "x", scaleChannel("torsoPitch", channels.torsoPitch ?? 0), "spine");
+  write(rig.spine, "y", scaleChannel("torsoYaw", channels.torsoYaw ?? 0), "spine");
+  write(rig.hips, "y", scaleChannel("rootYaw", channels.rootYaw ?? 0), "hips");
   write(rig.leftLowerArm, "z", scaleChannel("leftElbow", channels.leftElbow ?? 0), "leftLowerArm");
   write(rig.rightLowerArm, "z", scaleChannel("rightElbow", channels.rightElbow ?? 0), "rightLowerArm");
   write(rig.leftUpperLeg, "z", scaleChannel("leftHip", channels.leftHip ?? 0), "leftUpperLeg");
   write(rig.rightUpperLeg, "z", scaleChannel("rightHip", channels.rightHip ?? 0), "rightUpperLeg");
   write(rig.leftLowerLeg, "z", scaleChannel("leftKnee", channels.leftKnee ?? 0), "leftLowerLeg");
   write(rig.rightLowerLeg, "z", scaleChannel("rightKnee", channels.rightKnee ?? 0), "rightLowerLeg");
+  write(rig.leftFoot, "x", scaleChannel("leftAnkle", channels.leftAnkle ?? 0), "leftFoot");
+  write(rig.rightFoot, "x", scaleChannel("rightAnkle", channels.rightAnkle ?? 0), "rightFoot");
+  // VRM normalized hand bones are the wrist joints: X bends the wrist, while Y
+  // rotates the palm around the forearm. Keep the two semantic channels on
+  // orthogonal axes of one joint and report that joint only once.
+  write(rig.leftHand, "x", scaleChannel("leftWrist", channels.leftWrist ?? 0), "leftHand");
+  write(rig.leftHand, "y", scaleChannel("leftHand", channels.leftHand ?? 0), "leftHand");
+  write(rig.rightHand, "x", scaleChannel("rightWrist", channels.rightWrist ?? 0), "rightHand");
+  write(rig.rightHand, "y", scaleChannel("rightHand", channels.rightHand ?? 0), "rightHand");
+  const applyFingerCurls = (side: "left" | "right", fingers: readonly VrmFingerBone[]) => {
+    const aggregateChannel = `${side}Fingers` as BodyChannel;
+    const aggregateCurl = scaleChannel(aggregateChannel, channels[aggregateChannel] ?? 0);
+    for (const finger of fingers) {
+      const digit = finger.name.slice(side.length).replace(/(?:Metacarpal|Proximal|Intermediate|Distal)$/, "");
+      const digitChannel = `${side}${digit}Curl` as BodyChannel;
+      // A present per-digit value overrides the aggregate even when it is exactly zero.
+      // That lets a point gesture keep the index extended while the other fingers curl.
+      const curl = channels[digitChannel] === undefined
+        ? aggregateCurl
+        : scaleChannel(digitChannel, channels[digitChannel] as number);
+      write(finger.node, "x", curl * finger.flex, finger.name);
+    }
+  };
+  applyFingerCurls("left", rig.leftFingerBones);
+  applyFingerCurls("right", rig.rightFingerBones);
   return {
     applied: controlledBones.length > 0,
     reason: controlledBones.length ? "full-body-channels-applied" : "no-supported-full-body-channels",

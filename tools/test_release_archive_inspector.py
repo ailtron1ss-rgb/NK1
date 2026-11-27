@@ -32,6 +32,9 @@ class ReleaseArchiveInspectorTests(unittest.TestCase):
         archive_hash = hashlib.sha256(self.archive.read_bytes()).hexdigest()
         result = audit_release_archive(self.archive, self.source, expected_sha256=archive_hash, expected_size=self.archive.stat().st_size)
         self.assertTrue(result["ok"], result["errors"])
+        self.assertTrue(result["sourceMatchOk"])
+        self.assertTrue(result["sourceMirrorOk"])
+        self.assertFalse(result["sourceMatchRequired"])
         self.assertTrue(result["archive"]["digestMatches"])
         self.assertTrue(result["archive"]["sizeMatches"])
         self.assertEqual(result["archive"]["fileCount"], 2)
@@ -65,6 +68,9 @@ class ReleaseArchiveInspectorTests(unittest.TestCase):
         self._write_archive({"README.md": b"old release\n", "legacy-only.txt": b"legacy file\n"})
         result = audit_release_archive(self.archive, self.source)
         self.assertTrue(result["ok"], result["errors"])
+        self.assertFalse(result["sourceMatchRequired"])
+        self.assertFalse(result["sourceMatchOk"])
+        self.assertFalse(result["sourceMirrorOk"])
         self.assertEqual(result["comparison"]["changedFileCount"], 1)
         self.assertEqual(result["comparison"]["changedFiles"][0]["path"], "README.md")
         self.assertEqual(result["comparison"]["archiveOnlyFiles"], ["legacy-only.txt"])
@@ -232,6 +238,62 @@ class ReleaseArchiveInspectorTests(unittest.TestCase):
         self.assertEqual(summary["sourceDirectoryAliases"], 0)
         self.assertEqual(summary["archiveDirectoryAliases"], 0)
         self.assertEqual(summary["archiveMappedPathCollisions"], 0)
+
+
+    def test_source_parity_is_separate_from_archive_integrity(self):
+        (self.source / "source-only.txt").write_text("new source\n", encoding="utf-8")
+        self._write_archive({
+            "README.md": b"older source\n",
+            "runtime/neuro-kurisu/package.json": (json.dumps({"name": "neuro-kurisu", "version": "35.90.0"}) + "\n").encode(),
+            "legacy-only.txt": b"legacy\n",
+        })
+        result = audit_release_archive(self.archive, self.source, require_source_match=True)
+        self.assertTrue(result["ok"], result["errors"])
+        self.assertTrue(result["archive"]["integrityOk"])
+        self.assertTrue(result["sourceMatchRequired"])
+        self.assertFalse(result["sourceMatchOk"])
+        self.assertFalse(result["sourceMirrorOk"])
+        self.assertEqual(result["comparison"]["changedFileCount"], 1)
+        self.assertEqual(result["comparison"]["archiveOnlyFileCount"], 1)
+        self.assertEqual(result["comparison"]["sourceOnlyFileCount"], 1)
+
+    def test_non_strict_cli_reports_drift_without_failing_historical_audit(self):
+        self._write_archive({"README.md": b"older source\\n"})
+        output = io.StringIO()
+        report_path = self.root / "historical-audit.json"
+        with contextlib.redirect_stdout(output):
+            status = main([
+                "--archive", str(self.archive),
+                "--source-root", str(self.source),
+                "--out", str(report_path),
+            ])
+        self.assertEqual(status, 0)
+        summary = json.loads(output.getvalue())
+        self.assertTrue(summary["integrityOk"])
+        self.assertFalse(summary["sourceMirrorOk"])
+        self.assertFalse(summary["sourceMatchRequired"])
+        report = json.loads(report_path.read_text(encoding="utf-8"))
+        self.assertEqual(report["comparison"]["changedFileCount"], 1)
+
+    def test_strict_source_match_cli_fails_source_mirror_without_relabeling_zip_integrity(self):
+        self._write_archive({"README.md": b"older source\n"})
+        output = io.StringIO()
+        report_path = self.root / "strict-audit.json"
+        with contextlib.redirect_stdout(output):
+            status = main([
+                "--archive", str(self.archive),
+                "--source-root", str(self.source),
+                "--out", str(report_path),
+                "--require-source-match",
+            ])
+        self.assertEqual(status, 2)
+        summary = json.loads(output.getvalue())
+        self.assertTrue(summary["ok"])
+        self.assertTrue(summary["integrityOk"])
+        self.assertFalse(summary["sourceMirrorOk"])
+        self.assertTrue(summary["sourceMatchRequired"])
+        report = json.loads(report_path.read_text(encoding="utf-8"))
+        self.assertEqual(report["sourceMatch"]["changedFileCount"], 1)
 
 if __name__ == "__main__":
     unittest.main()

@@ -58,6 +58,7 @@ test("canonical same-tick brain frame is folded into the one shared render proje
 
   const projection = buildAvatarRenderProjection(input(snapshot));
 
+  assert.equal(projection.tick, snapshot.tick, "the projection must retain the canonical organism tick independently of speech/intent sequences");
   assert.deepEqual(projection.brainFrame, snapshot.avatarBrain.frame);
   assert.equal(projection.expression, "focused", "canonical brain expression should win over renderer-local emotion mapping");
   assert.equal(projection.expressionIntensity, 0.86);
@@ -78,6 +79,15 @@ test("canonical same-tick brain frame is folded into the one shared render proje
   assert.equal(projection.bodyChannels.headYaw, -0.35);
   assert.equal(projection.bodyChannels.gazeX, 0.9);
   assert.equal(projection.bodyChannels.breath, 0.3);
+  assert.equal(projection.character.valence01, 0.72);
+  assert.equal(projection.character.arousal01, 0.61);
+  assert.equal(projection.character.dominance01, 0.68);
+  assert.equal(projection.character.curiosity01, 0.75);
+  assert.equal(projection.character.warmth01, 0.58);
+  assert.equal(projection.character.stress01, 0.14);
+  assert.equal(projection.character.reducedMotion, false);
+  assert.equal(projection.character.traits.curiosity, snapshot.identity.traits.curiosity);
+  assert.equal(projection.character.traits.guardedness, snapshot.identity.traits.guardedness);
 });
 
 test("stale brain frames fail closed and leave the existing renderer-neutral fallback intact", () => {
@@ -93,6 +103,10 @@ test("stale brain frames fail closed and leave the existing renderer-neutral fal
   assert.equal(projection.expression, "thinking");
   assert.deepEqual(projection.mouthPose, { open: 0.64, form: -0.35, viseme: "round" });
   assert.ok(Math.abs(projection.gaze.x - 0.042) < 1e-9);
+  assert.equal(projection.character.valence01, snapshot.emotion.valence,
+    "a stale brain frame must not leak its previous affect into the body");
+  assert.equal(projection.character.curiosity01, snapshot.curiosity,
+    "stale brain curiosity must fall back to the current organism");
 });
 
 test("all renderer components consume the same projection and Original2D owns no second planner", async () => {

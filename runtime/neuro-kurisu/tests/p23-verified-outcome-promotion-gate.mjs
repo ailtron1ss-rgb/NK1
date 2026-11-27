@@ -64,6 +64,30 @@ assert.throws(() => evaluateOutcomePromotion(summary(), [
 assert.throws(() => evaluateOutcomePromotion(summary(), families, { minPairedTasks: 0 }), /configuration/);
 assert.throws(() => evaluateOutcomePromotion(summary(), families, { maxFamilyRegression: -1 }), /configuration/);
 
+// Seed-clustered summaries recount the same complete seeds once per family, so
+// their family totals must exceed the aggregate sample instead of partitioning it.
+const seedAggregate = summary({ pairedN: 5, absoluteGain: 0.2, approximate95CI: [0.1, 0.3] });
+const seedFamilies = [
+  family('memory', { pairedN: 5, absoluteGain: 0.2 }),
+  family('tool-use', { pairedN: 5, absoluteGain: 0.2 }),
+];
+const seedClustered = evaluateOutcomePromotion(seedAggregate, seedFamilies, {
+  minPairedTasks: 3, minFamilies: 1, minAbsoluteGain: 0.02, maxFamilyRegression: 0.1,
+  pairedUnit: 'seed-cluster',
+});
+assert.equal(seedClustered.eligible, true, JSON.stringify(seedClustered.reasons));
+const seedClusteredAsTaskCells = evaluateOutcomePromotion(seedAggregate, seedFamilies, {
+  minPairedTasks: 3, minFamilies: 1,
+});
+assert.ok(seedClusteredAsTaskCells.reasons.includes('family-pair-count-mismatch'),
+  'task-cell comparisons must still partition the aggregate sample exactly');
+const seedStarved = evaluateOutcomePromotion(summary({ pairedN: 12, absoluteGain: 0.2 }), seedFamilies, {
+  minPairedTasks: 3, minFamilies: 1, pairedUnit: 'seed-cluster',
+});
+assert.ok(seedStarved.reasons.includes('family-pair-count-mismatch'),
+  'a family total below the seed-clustered aggregate is impossible and must fail closed');
+assert.throws(() => evaluateOutcomePromotion(summary(), families, { pairedUnit: 'mixed' }), /configuration/);
+
 // A caller may relax the confidence gate for exploratory diagnostics, but it
 // must be an explicit configuration change and is not the default.
 const exploratory = evaluateOutcomePromotion(summary({ approximate95CI: null }), families, {

@@ -1,0 +1,33 @@
+name: NK1 memory lifecycle replay result identity
+on:
+  pull_request:
+    branches: [workpass70-source]
+    paths:
+      - 'runtime/neuro-kurisu/src/organism/memory/MemoryFabric.ts'
+      - 'runtime/neuro-kurisu/tests/memory-lifecycle-replay-result-identity-20261126.mjs'
+      - '.github/workflows/nk1-memory-lifecycle-replay-identity.yml'
+permissions:
+  contents: read
+concurrency:
+  group: nk1-memory-lifecycle-replay-identity-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  replay-result-identity:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: runtime/neuro-kurisu
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: runtime/neuro-kurisu/package-lock.json
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Replay preserves the original command result identity (red-first)
+        run: node --experimental-strip-types tests/memory-lifecycle-replay-result-identity-20261126.mjs
+      - name: Existing memory lifecycle command regression
+        run: npm run test:memory-lifecycle-command-workpass31
+      - name: Runtime typecheck
+        run: npm run typecheck

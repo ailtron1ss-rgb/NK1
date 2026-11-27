@@ -16,7 +16,18 @@ on:
       - "app/scripts/live2d-intent-ack.test.mjs"
       - "runtime/neuro-kurisu/public/live2d/viewer.html"
       - "app/src/components/AvatarStage.tsx"
+      - "app/src/components/KurisuOriginalStage.tsx"
+      - "app/src/components/avatar/avatarPresentationReceipt.ts"
+      - "app/src/components/avatar/avatarRenderProjection.ts"
+      - "app/scripts/avatar-unified-brain-render-projection.test.mjs"
+      - "app/scripts/avatar-render-projection.test.mjs"
+      - "app/public/live2d/viewer.html"
+      - "runtime/neuro-kurisu/public/live2d/embodiment-intent.mjs"
+      - "contracts/embodiment-intent.v1.schema.json"
+      - "app/scripts/avatar-presentation-receipt.test.mjs"
       - "app/src/components/Avatar3DStage.tsx"
+      - "app/src/components/avatar/avatarFrameBudget.ts"
+      - "app/scripts/avatar-frame-budget.test.mjs"
       - "app/src/components/avatar/threeToonMaterials.ts"
       - "app/src/types/three.d.ts"
       - "app/scripts/avatar-3d-stage.test.mjs"
@@ -41,6 +52,8 @@ on:
       - "app/src/components/avatar/vrmRuntimeAdapter.ts"
       - "app/scripts/vrm-runtime-adapter.test.mjs"
       - "app/scripts/body-systems.test.mjs"
+      - "app/src/components/avatar/avatarRendererPresentation.ts"
+      - "app/scripts/avatar-stage-layout.test.mjs"
       - "app/src/components/avatar/vrmHumanoidRigAudit.ts"
       - "app/src/components/avatar/vrmHumanoidNodeMap.ts"
       - "app/scripts/vrm-humanoid-rig-audit.test.mjs"
@@ -66,7 +79,18 @@ on:
       - "app/scripts/live2d-intent-ack.test.mjs"
       - "runtime/neuro-kurisu/public/live2d/viewer.html"
       - "app/src/components/AvatarStage.tsx"
+      - "app/src/components/KurisuOriginalStage.tsx"
+      - "app/src/components/avatar/avatarPresentationReceipt.ts"
+      - "app/src/components/avatar/avatarRenderProjection.ts"
+      - "app/scripts/avatar-unified-brain-render-projection.test.mjs"
+      - "app/scripts/avatar-render-projection.test.mjs"
+      - "app/public/live2d/viewer.html"
+      - "runtime/neuro-kurisu/public/live2d/embodiment-intent.mjs"
+      - "contracts/embodiment-intent.v1.schema.json"
+      - "app/scripts/avatar-presentation-receipt.test.mjs"
       - "app/src/components/Avatar3DStage.tsx"
+      - "app/src/components/avatar/avatarFrameBudget.ts"
+      - "app/scripts/avatar-frame-budget.test.mjs"
       - "app/src/components/avatar/threeToonMaterials.ts"
       - "app/src/types/three.d.ts"
       - "app/scripts/avatar-3d-stage.test.mjs"
@@ -90,6 +114,8 @@ on:
       - "app/src/components/avatar/originalStageChannels.ts"
       - "app/src/components/avatar/vrmRuntimeAdapter.ts"
       - "app/scripts/body-systems.test.mjs"
+      - "app/src/components/avatar/avatarRendererPresentation.ts"
+      - "app/scripts/avatar-stage-layout.test.mjs"
       - "app/package.json"
       - ".github/workflows/nk1-embodiment-switch.yml"
 
@@ -118,6 +144,10 @@ jobs:
         run: npm --prefix app run test:embodiment-switch
       - name: Test cognitive motion arbitration and renderer capability contracts
         run: npm --prefix app run test:body-systems
+      - name: Test accessible avatar renderer controls
+        run: node --test app/scripts/avatar-stage-layout.test.mjs
+      - name: Test tick-bound cross-renderer presentation receipts
+        run: node --test app/scripts/avatar-presentation-receipt.test.mjs
       - name: Test N.E.K.O.-derived semantic gesture cards and NK1 motion programs
         run: npm --prefix app run test:semantic-gesture-intent
       - name: Test shared grapheme-to-viseme articulation
@@ -128,6 +158,8 @@ jobs:
         run: npm --prefix app run test:avatar-model-preflight
       - name: Test procedural and VRM 3D avatar contract
         run: node --test app/scripts/avatar-3d-stage.test.mjs
+      - name: Test adaptive mobile avatar frame budget
+        run: node --experimental-strip-types --test app/scripts/avatar-frame-budget.test.mjs
       - name: Test VRM affect-to-expression and speech coexistence
         run: npm --prefix app run test:vrm-runtime-adapter
       - name: Audit VRM 0.x/1.0 humanoid node maps and full-body capabilities

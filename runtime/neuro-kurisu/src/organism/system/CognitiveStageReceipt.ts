@@ -23,10 +23,43 @@ export interface CognitiveStageReceipt {
   outputHash?: string;
 }
 
+
+export type CognitiveSubsystemOwnerName = 'self'|'governance'|'memory'|'world'|'embodiment'|'agency'|'research';
+export type CognitiveSubsystemOperationName =
+  | 'autonomousPersonhood.plan' | 'cognitiveDomainClosure.begin'
+  | 'MemoryFabric.retrieveForCognition' | 'WorldSubsystemRuntime.observeGroundedContext'
+  | 'PerceptualEvidenceCompiler.compile' | 'AutonomousLearningMemoryGovernor.cycle'
+  | 'P77RealityExperimentOS.record';
+export type CognitiveSubsystemInvocationStatus = 'completed'|'completed_empty'|'skipped'|'degraded'|'failed';
+export interface CognitiveSubsystemInvocationReceipt {
+  id:string; cycleId:string; tick:number; system:CognitiveSubsystemOwnerName;
+  operation:CognitiveSubsystemOperationName; status:CognitiveSubsystemInvocationStatus;
+  inputRefs:string[]; outputRefs:string[]; outputHash:string; durationMs:number;
+}
+export type CognitiveSubsystemInvocationReceiptDraft = Omit<CognitiveSubsystemInvocationReceipt,'id'|'cycleId'|'tick'|'system'>;
+export const COGNITIVE_SUBSYSTEM_OPERATIONS: Readonly<Record<CognitiveSubsystemOwnerName,CognitiveSubsystemOperationName>> = {
+  self:'autonomousPersonhood.plan',
+  governance:'cognitiveDomainClosure.begin',
+  memory:'MemoryFabric.retrieveForCognition',
+  world:'WorldSubsystemRuntime.observeGroundedContext',
+  embodiment:'PerceptualEvidenceCompiler.compile',
+  agency:'AutonomousLearningMemoryGovernor.cycle',
+  research:'P77RealityExperimentOS.record',
+};
+export const COGNITIVE_SUBSYSTEM_OWNERS: readonly CognitiveSubsystemOwnerName[] = ['self','governance','memory','world','embodiment','agency','research'];
+const SUBSYSTEM_INVOCATION_STATUSES = new Set<CognitiveSubsystemInvocationStatus>(['completed','completed_empty','skipped','degraded','failed']);
+const SUBSYSTEM_RECEIPT_FIELDS = new Set(['id','cycleId','tick','system','operation','status','inputRefs','outputRefs','outputHash','durationMs']);
+type ExpectedSubsystemInvocationReceipt = {tick?:number;cycleId?:string;system?:CognitiveSubsystemOwnerName};
+type SubsystemInvocationValidationResult =
+  | {ok:true;receipt:CognitiveSubsystemInvocationReceipt}
+  | {ok:false;issues:string[]};
+
 export interface CognitiveCycleStageEvidence {
   tick: number;
   cycleId: string;
   receipts: CognitiveStageReceipt[];
+  /** Actual per-cycle calls into the seven OrganismSystemFabric owners. */
+  subsystemReceipts?: CognitiveSubsystemInvocationReceipt[];
   attention: {
     timing: 'pre-decision';
     target: string;
@@ -188,4 +221,50 @@ export function validateCognitiveStageReceipt(value: unknown, expected: Expected
       ...(typeof outputHash === 'string' ? { outputHash } : {}),
     },
   };
+}
+
+
+/** Validate one actual invocation receipt emitted by a canonical subsystem owner. */
+export function validateCognitiveSubsystemInvocationReceipt(value:unknown, expected:ExpectedSubsystemInvocationReceipt={}):SubsystemInvocationValidationResult {
+  const issues:string[]=[];
+  if(!isPlainRecord(value))return{ok:false,issues:['subsystem-receipt-not-plain-record']};
+  let descriptors:Record<string,PropertyDescriptor>;
+  try{descriptors=Object.getOwnPropertyDescriptors(value) as Record<string,PropertyDescriptor>;}
+  catch{return{ok:false,issues:['subsystem-receipt-unreadable']};}
+  for(const key of Reflect.ownKeys(descriptors)){
+    if(typeof key!=='string'||!SUBSYSTEM_RECEIPT_FIELDS.has(key))issues.push('subsystem-receipt-unknown-field');
+    const d=typeof key==='string'?descriptors[key]:undefined;
+    if(!d||!Object.prototype.hasOwnProperty.call(d,'value')||d.get!==undefined||d.set!==undefined||!d.enumerable)
+      issues.push('subsystem-receipt-accessor-or-non-enumerable-field');
+  }
+  const read=(key:string):unknown=>{const d=descriptors[key];return d&&Object.prototype.hasOwnProperty.call(d,'value')?d.value:undefined;};
+  const id=read('id'),cycleId=read('cycleId'),tick=read('tick'),system=read('system'),operation=read('operation'),status=read('status');
+  const inputRefs=readStringArray(read('inputRefs'),'subsystem-input-refs',16,issues);
+  const outputRefs=readStringArray(read('outputRefs'),'subsystem-output-refs',16,issues);
+  const outputHash=read('outputHash'),durationMs=read('durationMs');
+  if(typeof id!=='string'||!id.trim()||id.length>180)issues.push('subsystem-receipt-id-invalid');
+  if(typeof cycleId!=='string'||!cycleId.trim()||cycleId.length>180)issues.push('subsystem-receipt-cycle-id-invalid');
+  if(typeof tick!=='number'||!Number.isSafeInteger(tick)||tick<0)issues.push('subsystem-receipt-tick-invalid');
+  if(typeof system!=='string'||!COGNITIVE_SUBSYSTEM_OWNERS.includes(system as CognitiveSubsystemOwnerName))issues.push('subsystem-receipt-system-invalid');
+  else{
+    if(operation!==COGNITIVE_SUBSYSTEM_OPERATIONS[system as CognitiveSubsystemOwnerName])issues.push('subsystem-receipt-operation-mismatch');
+    if(typeof cycleId==='string'&&id!==cycleId+':'+system)issues.push('subsystem-receipt-id-mismatch');
+  }
+  if(typeof operation!=='string'||!Object.values(COGNITIVE_SUBSYSTEM_OPERATIONS).includes(operation as CognitiveSubsystemOperationName))issues.push('subsystem-receipt-operation-invalid');
+  if(typeof status!=='string'||!SUBSYSTEM_INVOCATION_STATUSES.has(status as CognitiveSubsystemInvocationStatus))issues.push('subsystem-receipt-status-invalid');
+  if(typeof outputHash!=='string'||!/^[a-f0-9]{64}$/i.test(outputHash))issues.push('subsystem-receipt-output-hash-invalid');
+  if(typeof durationMs!=='number'||!Number.isSafeInteger(durationMs)||durationMs<0||durationMs>300000)issues.push('subsystem-receipt-duration-invalid');
+  if(status==='completed'&&outputRefs.length===0)issues.push('subsystem-receipt-completed-without-output');
+  if(status==='completed_empty'&&(system!=='memory'||outputRefs.length!==0))issues.push('subsystem-receipt-completed-empty-invalid');
+  if(status==='skipped'&&outputRefs.length!==0)issues.push('subsystem-receipt-skipped-with-output');
+  if(expected.tick!==undefined&&tick!==expected.tick)issues.push('subsystem-receipt-tick-mismatch');
+  if(expected.cycleId!==undefined&&cycleId!==expected.cycleId)issues.push('subsystem-receipt-cycle-id-mismatch');
+  if(expected.system!==undefined&&system!==expected.system)issues.push('subsystem-receipt-system-mismatch');
+  if(issues.length)return{ok:false,issues:[...new Set(issues)]};
+  return{ok:true,receipt:{
+    id:id as string,cycleId:cycleId as string,tick:tick as number,
+    system:system as CognitiveSubsystemOwnerName,operation:operation as CognitiveSubsystemOperationName,
+    status:status as CognitiveSubsystemInvocationStatus,inputRefs,outputRefs,
+    outputHash:(outputHash as string).toLowerCase(),durationMs:durationMs as number,
+  }};
 }

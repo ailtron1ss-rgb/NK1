@@ -12,6 +12,8 @@ export type BodyChannel =
   | "leftShoulder" | "leftElbow" | "leftWrist" | "rightShoulder" | "rightElbow" | "rightWrist"
   | "leftHip" | "leftKnee" | "leftAnkle" | "rightHip" | "rightKnee" | "rightAnkle"
   | "leftHand" | "rightHand" | "leftFingers" | "rightFingers"
+  | "leftThumbCurl" | "leftIndexCurl" | "leftMiddleCurl" | "leftRingCurl" | "leftLittleCurl"
+  | "rightThumbCurl" | "rightIndexCurl" | "rightMiddleCurl" | "rightRingCurl" | "rightLittleCurl"
   | "gazeX" | "gazeY" | "breath" | "rootYaw";
 export type ExpressionChannel = "neutral" | "joy" | "sadness" | "anger" | "anxiety" | "curiosity" | "protective" | "surprise";
 export type SpeechPhase = "idle" | "starting" | "speaking" | "ended" | "cancelled" | "unknown";
@@ -64,7 +66,10 @@ const CHANNELS = new Set<BodyChannel>([
   "headYaw", "headPitch", "headRoll", "torsoYaw", "torsoPitch",
   "leftShoulder", "leftElbow", "leftWrist", "rightShoulder", "rightElbow", "rightWrist",
   "leftHip", "leftKnee", "leftAnkle", "rightHip", "rightKnee", "rightAnkle",
-  "leftHand", "rightHand", "leftFingers", "rightFingers", "gazeX", "gazeY", "breath", "rootYaw",
+  "leftHand", "rightHand", "leftFingers", "rightFingers",
+  "leftThumbCurl", "leftIndexCurl", "leftMiddleCurl", "leftRingCurl", "leftLittleCurl",
+  "rightThumbCurl", "rightIndexCurl", "rightMiddleCurl", "rightRingCurl", "rightLittleCurl",
+  "gazeX", "gazeY", "breath", "rootYaw",
 ]);
 const EXPRESSIONS = new Set<ExpressionChannel>(["neutral", "joy", "sadness", "anger", "anxiety", "curiosity", "protective", "surprise"]);
 /** Cross-renderer body channels are normalized; adapters convert to native rig units. */

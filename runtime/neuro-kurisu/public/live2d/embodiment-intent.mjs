@@ -7,6 +7,10 @@ const TOP_KEYS = [
 const MOUTH_KEYS = ["open", "form", "viseme"];
 const GAZE_KEYS = ["x", "y", "driven"];
 const BODY_KEYS = ["headTilt", "gesture", "motionGroup", "motionIndex", "motionToken"];
+const BODY_CHANNEL_KEYS = Object.freeze([
+  "headYaw", "headPitch", "headRoll", "torsoYaw", "torsoPitch", "gazeX", "gazeY", "breath",
+]);
+const BODY_CHANNEL_KEY_SET = new Set(BODY_CHANNEL_KEYS);
 const MOTION_COUNTS = Object.freeze({ Idle: 1, TapHead: 1, TapBody: 1, Special: 2 });
 const PHASES = new Set(["idle", "starting", "speaking", "ended", "cancelled", "unknown"]);
 const CLOCK_SOURCES = new Set([
@@ -23,7 +27,9 @@ const validId = (value, max) => value === null || (typeof value === "string" && 
 
 /** Strict protocol-v1 validation, including the motion groups actually shipped with the rig. */
 export function isEmbodimentIntentV1(value) {
-  if (!exactKeys(value, TOP_KEYS)) return false;
+  const hasFrameTick = Object.hasOwn(value, "frameTick");
+  if (!exactKeys(value, hasFrameTick ? [...TOP_KEYS, "frameTick"] : TOP_KEYS)) return false;
+  if (hasFrameTick && (!Number.isSafeInteger(value.frameTick) || value.frameTick < 0)) return false;
   if (value.type !== "kurisu_embodiment_intent" || value.protocolVersion !== 1) return false;
   if (!Number.isSafeInteger(value.stateVersion) || value.stateVersion < 1) return false;
   if (!finiteBetween(value.sentAtEpochMs, 0, Number.MAX_SAFE_INTEGER)) return false;
@@ -44,7 +50,8 @@ export function isEmbodimentIntentV1(value) {
       !finiteBetween(value.gaze.y, -1, 1) ||
       typeof value.gaze.driven !== "boolean") return false;
 
-  if (!exactKeys(value.body, BODY_KEYS) ||
+  const hasBodyChannels = isRecord(value.body) && Object.hasOwn(value.body, "channels");
+  if (!exactKeys(value.body, hasBodyChannels ? [...BODY_KEYS, "channels"] : BODY_KEYS) ||
       !finiteBetween(value.body.headTilt, -0.15, 0.15) ||
       typeof value.body.gesture !== "boolean" ||
       typeof value.body.motionGroup !== "string" ||
@@ -52,6 +59,16 @@ export function isEmbodimentIntentV1(value) {
       !Number.isSafeInteger(value.body.motionIndex) ||
       value.body.motionIndex < 0 || value.body.motionIndex >= MOTION_COUNTS[value.body.motionGroup] ||
       !Number.isSafeInteger(value.body.motionToken) || value.body.motionToken < 0) return false;
+  if (hasBodyChannels) {
+    const channels = value.body.channels;
+    if (!isRecord(channels) || Object.keys(channels).length > BODY_CHANNEL_KEYS.length) return false;
+    for (const key of Object.keys(channels)) {
+      const descriptor = Object.getOwnPropertyDescriptor(channels, key);
+      if (!BODY_CHANNEL_KEY_SET.has(key) || !descriptor ||
+          !Object.prototype.hasOwnProperty.call(descriptor, "value") ||
+          !finiteBetween(descriptor.value, -1, 1)) return false;
+    }
+  }
 
   if (value.speechPhase === "speaking" && (!value.speechEventId || !value.audioClockId)) return false;
   if (value.speechPhase === "cancelled" &&
@@ -65,6 +82,7 @@ export function normalizeEmbodimentIntentV1(value) {
   const speaking = value.speechPhase === "speaking";
   return {
     stateVersion: value.stateVersion,
+    ...(value.frameTick === undefined ? {} : { frameTick: value.frameTick }),
     expression: value.expression,
     expressionIntensity: value.expressionIntensity,
     speaking,
@@ -74,6 +92,7 @@ export function normalizeEmbodimentIntentV1(value) {
     gazeY: value.gaze.y,
     gazeDriven: value.gaze.driven,
     headTilt: value.body.headTilt,
+    ...(value.body.channels === undefined ? {} : { bodyChannels: Object.fromEntries(Object.entries(value.body.channels)) }),
     gesture: value.body.gesture && value.speechPhase !== "cancelled",
     motionGroup: value.body.motionGroup,
     motionIndex: value.body.motionIndex,

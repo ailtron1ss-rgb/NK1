@@ -33,6 +33,7 @@ const RULES: readonly GestureRule[] = Object.freeze([
   { id: "clap", priority: 92, pattern: /\b(?:claps?\s+(?:(?:her|his|their)\s+)?hands?|applauds?)\b|хлопает\s+в\s+ладоши|аплодирует/iu },
   { id: "nod", priority: 88, pattern: /\b(?:nods?|nodding|gives?\s+(?:(?:her|his|their)\s+)?nod)\b|кивает|кивнул(?:а|и)?|кивая|кивком/iu },
   { id: "shake", priority: 88, pattern: /\b(?:shakes?\s+(?:(?:her|his|their|my)\s+)?head|headshake)\b|качает\s+головой|покачал(?:а|и)?\s+головой|отрицательно\s+качает\s+головой/iu },
+  { id: "point", priority: 84, pattern: /\b(?:points?\s+(?:(?:with\s+(?:her|his|their)\s+index\s+finger)\s+)?(?:at|to|toward|towards)\b|points?\s+with\s+(?:her|his|their)\s+index\s+finger|indicates?\s+(?:the|a|an)\b)|(?:указывает|показывает)\s+(?:пальцем\s+)?(?:на|в)(?=\s|$|[.,!?;:])|указывает\s+пальцем/iu },
   { id: "wave", priority: 80, pattern: /\b(?:waves?\s+(?:at|hello|goodbye|to)\b|waves?\s+(?:(?:her|his|their)\s+)?hand)\b|машет\s+рукой|помахал(?:а|и)?|помахивает\s+рукой/iu },
   { id: "bow", priority: 80, pattern: /\b(?:bows?|makes?\s+a\s+bow)\b|кланяется|поклонил(?:а|и)?сь|делает\s+поклон/iu },
 ]);

@@ -1,0 +1,41 @@
+name: NK1 RecoveryWatchdog durable checkpoint commit semantics
+
+on:
+  pull_request:
+    branches: [workpass70-source]
+    paths:
+      - "runtime/neuro-kurisu/src/organism/persistence/RecoveryWatchdog.ts"
+      - "runtime/neuro-kurisu/src/organism/core/OrganismCore.ts"
+      - "runtime/neuro-kurisu/tests/recovery-watchdog-durable-commit-20261127.mjs"
+      - ".github/workflows/nk1-recovery-watchdog-durable-commit.yml"
+      - "runtime/neuro-kurisu/package.json"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nk1-recovery-watchdog-durable-commit-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  watchdog-durable-commit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: runtime/neuro-kurisu
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: runtime/neuro-kurisu/package-lock.json
+      - name: Install locked runtime dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Verify liveness and durable checkpoint semantics
+        run: node --experimental-strip-types --test tests/recovery-watchdog-durable-commit-20261127.mjs
+      - name: Existing Core/watchdog restart regression
+        run: npm run test:big-pass-324 && npm run test:big-pass-324:core
+      - name: Runtime typecheck
+        run: npm run typecheck

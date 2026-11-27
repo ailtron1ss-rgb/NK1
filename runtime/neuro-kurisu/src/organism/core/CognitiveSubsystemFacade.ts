@@ -23,6 +23,7 @@ export class CognitiveSubsystemFacade {
   constructor(context:CognitiveFacadeContext) { this.context=context; this.registry=new CognitiveSubsystemRegistry(context); }
   subsystems(){ return this.registry.all(); }
   subsystemHealth(){ return this.registry.health(); }
+  subsystemProbeDetails(force=false){ return this.registry.probeDetails(force); }
   subsystemManifest(){ return this.registry.manifest(); }
   snapshot(){ const s=this.context.snapshot(); return { state:s.state, goals:s.goals, cognition:s.facets?.cognition, consciousness:s.facets?.consciousness, memory:s.facets?.memory, embodiment:s.facets?.embodiment }; }
   budget(){ return this.context.snapshot().facets?.cognition?.budget; }

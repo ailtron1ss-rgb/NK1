@@ -41,10 +41,11 @@ import { normalizeEmbodimentIntentV1 } from './embodiment-intent.mjs';
     const readback=pending.readback;
     send('live2d_intent_ack',{
       stateVersion:pending.stateVersion,
+      frameTick:pending.frameTick,
       status:readback.status,
       appliedRevision:pending.stateVersion,
       observedParameters:readback.observedParameters,
-      requestedChannels:['headPose','gaze','mouth'],
+      requestedChannels:['headPose','torso','gaze','breath','mouth'],
       expression:pending.expression,
       expressionStatus:pending.expressionStatus,
       motionStatus:pending.motionStatus,
@@ -106,7 +107,7 @@ import { normalizeEmbodimentIntentV1 } from './embodiment-intent.mjs';
   function flushIntentParameterReadback(core){
     const pending=pendingIntentReadback;
     if(!pending||!core)return;
-    const ids=['ParamAngleX','ParamAngleY','ParamAngleZ','ParamEyeBallX','ParamEyeBallY','ParamMouthOpenY'];
+    const ids=['ParamAngleX','ParamAngleY','ParamAngleZ','ParamBodyAngleX','ParamBodyAngleY','ParamBreath','ParamEyeBallX','ParamEyeBallY','ParamMouthOpenY'];
     const observed={};
     let readable=typeof core.getParameterValueById==='function';
     if(readable){
@@ -128,12 +129,17 @@ import { normalizeEmbodimentIntentV1 } from './embodiment-intent.mjs';
   function applyModelParameterOverrides(){
     const core=model?.internalModel?.coreModel;
     if(!core)return;
-    addCoreOffset('ParamAngleX',clamp(bodySignal.gazeX,-.4,.4)*7,-30,30);
-    addCoreOffset('ParamAngleY',clamp(bodySignal.gazeY,-.4,.4)*5,-30,30);
-    addCoreOffset('ParamAngleZ',clamp(bodySignal.headTilt,-.15,.15)*35,-30,30);
-    const set=(key,value)=>{try{core.setParameterValueById(key,value,1)}catch{}};
+    const channels=bodySignal.bodyChannels&&typeof bodySignal.bodyChannels==='object'?bodySignal.bodyChannels:{};
+    const channel=(name,fallback=0)=>clamp(channels[name]===undefined?fallback:channels[name],-1,1);
     const gazeX=bodySignal.gazeDriven?clamp(bodySignal.gazeX,-.4,.4):0;
     const gazeY=bodySignal.gazeDriven?clamp(bodySignal.gazeY,-.4,.4):0;
+    addCoreOffset('ParamAngleX',clamp(channel('headYaw')*12+gazeX*7,-30,30),-30,30);
+    addCoreOffset('ParamAngleY',clamp(channel('headPitch')*12+gazeY*5,-30,30),-30,30);
+    addCoreOffset('ParamAngleZ',clamp(channel('headRoll',bodySignal.headTilt)*35,-30,30),-30,30);
+    addCoreOffset('ParamBodyAngleX',clamp(channel('torsoYaw')*12,-10,10),-10,10);
+    addCoreOffset('ParamBodyAngleY',clamp(channel('torsoPitch')*12,-10,10),-10,10);
+    addCoreOffset('ParamBreath',clamp(channel('breath',0),0,1)*.15,0,.15);
+    const set=(key,value)=>{try{core.setParameterValueById(key,value,1)}catch{}};
     set('ParamEyeBallX',clamp(gazeX+eyeX*.35,-1,1));
     set('ParamEyeBallY',clamp(gazeY+eyeY*.35,-1,1));
     set('ParamEyeLOpen',1-blinkT);set('ParamEyeROpen',1-blinkT);
@@ -217,6 +223,7 @@ import { normalizeEmbodimentIntentV1 } from './embodiment-intent.mjs';
       lastIntentStateVersion=normalized.stateVersion;
       pendingIntentReadback={
         stateVersion:normalized.stateVersion,
+        frameTick:normalized.frameTick,
         expression:normalized.expression,
         expressionStatus:'not-requested',
         motionStatus:'not-requested',

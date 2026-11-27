@@ -1,7 +1,36 @@
+import { types as nodeUtilTypes } from 'node:util';
 import { createCognitiveSubsystemPorts, type CognitiveSubsystemPorts, type CognitiveSubsystemName } from './CognitiveSubsystemPorts.ts';
 import { SubsystemFlightRecorder } from './SubsystemFlightRecorder.ts';
 import { OrganismSystemFabric } from './OrganismSystemFabric.ts';
-export interface CognitiveSubsystemHealth { name:CognitiveSubsystemName; available:boolean; probeMs:number; apiCount:number; checkedAt:number; ownership:'physical'|'mixed'|'adapter'; error?:string; }
+export type CognitiveSubsystemProbeStatus = 'ok'|'empty'|'throw'|'invalid';
+
+export interface CognitiveSubsystemProbe {
+  domain:CognitiveSubsystemName;
+  port:string;
+  status:CognitiveSubsystemProbeStatus;
+  available:boolean;
+  probeMs:number;
+  checkedAt:number;
+  keyCount:number;
+  probeKind:'read-only-snapshot';
+  evidence:'snapshot-only';
+  errorType?:string;
+}
+
+export interface CognitiveSubsystemHealth {
+  name:CognitiveSubsystemName;
+  available:boolean;
+  probeMs:number;
+  apiCount:number;
+  probeCount:number;
+  failedProbeCount:number;
+  failedPorts:string[];
+  checkedAt:number;
+  ownership:'physical'|'mixed'|'adapter';
+  probeKind:'read-only-snapshot';
+  evidence:'snapshot-only';
+  error?:string;
+}
 
 /** Physical registry boundary for Stage-2/3 extraction.
  * The registry no longer depends on OrganismCore; it consumes stable accessors.
@@ -59,28 +88,127 @@ function createPortsFromFabric(fabric:OrganismSystemFabric): CognitiveSubsystemP
   };
 }
 
+function safeErrorType(error:unknown):string {
+  try {
+    // Error.name is caller-controlled and can itself contain private payloads.
+    // Keep diagnostics to a constant class label; never inspect message/name.
+    if(error instanceof Error) return 'Error';
+  } catch { /* A hostile thrown value is intentionally not inspected further. */ }
+  return 'ThrownValue';
+}
+
+function inspectSnapshot(value:unknown):{status:'ok'|'empty'|'invalid';keyCount:number} {
+  if(value===null) return {status:'empty',keyCount:0};
+  if(typeof value!=='object' || Array.isArray(value) || nodeUtilTypes.isProxy(value)) {
+    return {status:'invalid',keyCount:0};
+  }
+  try {
+    const prototype=Object.getPrototypeOf(value);
+    if(prototype!==Object.prototype && prototype!==null) return {status:'invalid',keyCount:0};
+    const keys=Reflect.ownKeys(value);
+    let keyCount=0;
+    for(const key of keys) {
+      // Snapshot diagnostics are data-only: accessors, symbols and hidden fields
+      // are rejected instead of being evaluated or silently counted.
+      if(typeof key!=='string') return {status:'invalid',keyCount:0};
+      const descriptor=Object.getOwnPropertyDescriptor(value,key);
+      if(!descriptor
+        || !Object.prototype.hasOwnProperty.call(descriptor,'value')
+        || descriptor.get!==undefined
+        || descriptor.set!==undefined
+        || !descriptor.enumerable) {
+        return {status:'invalid',keyCount:0};
+      }
+      keyCount+=1;
+    }
+    return {status:'ok',keyCount};
+  } catch {
+    return {status:'invalid',keyCount:0};
+  }
+}
+
 export class CognitiveSubsystemRegistry {
   private readonly ports:CognitiveSubsystemPorts;
-  private lastHealthAt=0;
-  private lastHealth:CognitiveSubsystemHealth[]=[];
+  private lastProbeDetailsAt=0;
+  private lastProbeDetails:CognitiveSubsystemProbe[]=[];
+  private readonly probeCacheMs=2000;
   private readonly flightRecorder=new SubsystemFlightRecorder(16);
   constructor(source:Parameters<typeof createCognitiveSubsystemPorts>[0] | OrganismSystemFabric){
     this.ports=source instanceof OrganismSystemFabric ? createPortsFromFabric(source) : createCognitiveSubsystemPorts(source);
   }
   get(name:CognitiveSubsystemName){ return this.ports[name]; }
   all(){ return this.ports; }
-  health():CognitiveSubsystemHealth[]{
+
+  /**
+   * Read-only observation of every declared snapshot port. This does not prove
+   * that a subsystem was invoked on a live tick or that its behavior is correct.
+   */
+  probeDetails(force=false):CognitiveSubsystemProbe[]{
     const now=Date.now();
-    if(now-this.lastHealthAt<2000 && this.lastHealth.length) return this.lastHealth.map(x=>({...x}));
-    const rows=(Object.keys(this.ports) as CognitiveSubsystemName[]).map(name=>{
-      const ownership: CognitiveSubsystemHealth['ownership'] = ['self','world','memory','agency','embodiment','research','governance'].includes(name) ? 'physical' : 'adapter';
-      const at=Date.now(); const apiCount=Object.keys(this.ports[name] as unknown as Record<string,unknown>).length;
-      try{ this.ports[name].snapshot(); const probeMs=Date.now()-at; this.flightRecorder.record(name,{ok:true,latencyMs:probeMs}); return {name,available:true,probeMs,apiCount,checkedAt:Date.now(),ownership}; }
-      catch(error){ const probeMs=Date.now()-at; const message=String((error as any)?.message||error).slice(0,160); this.flightRecorder.record(name,{ok:false,latencyMs:probeMs,error:message}); return {name,available:false,probeMs,apiCount,checkedAt:Date.now(),ownership,error:message}; }
+    if(!force && now-this.lastProbeDetailsAt<this.probeCacheMs && this.lastProbeDetails.length) {
+      return this.lastProbeDetails.map(row=>({...row}));
+    }
+    const rows:CognitiveSubsystemProbe[]=[];
+    for(const domain of Object.keys(this.ports) as CognitiveSubsystemName[]) {
+      const ports=this.ports[domain] as unknown as Record<string,()=>unknown>;
+      for(const [port,probe] of Object.entries(ports)) {
+        const startedAt=Date.now();
+        let status:CognitiveSubsystemProbeStatus='invalid';
+        let keyCount=0;
+        let errorType:string|undefined;
+        try {
+          if(typeof probe!=='function') {
+            status='invalid';
+          } else {
+            const inspected=inspectSnapshot(probe());
+            status=inspected.status;
+            keyCount=inspected.keyCount;
+          }
+        } catch(error) {
+          status='throw';
+          errorType=safeErrorType(error);
+        }
+        const checkedAt=Date.now();
+        const probeMs=Math.max(0,checkedAt-startedAt);
+        const available=status==='ok'||status==='empty';
+        rows.push({
+          domain,port,status,available,probeMs,checkedAt,keyCount,
+          probeKind:'read-only-snapshot',evidence:'snapshot-only',
+          ...(errorType?{errorType}:{}),
+        });
+        this.flightRecorder.record(domain+'.'+port,{
+          ok:available,latencyMs:probeMs,at:checkedAt,
+          error:status==='throw'?'snapshot-threw:'+(errorType??'Error'):status==='invalid'?'invalid-snapshot-shape':undefined,
+        });
+      }
+    }
+    this.lastProbeDetailsAt=Date.now();
+    this.lastProbeDetails=rows;
+    return rows.map(row=>({...row}));
+  }
+
+  health():CognitiveSubsystemHealth[]{
+    const details=this.probeDetails();
+    return (Object.keys(this.ports) as CognitiveSubsystemName[]).map(name=>{
+      const domainRows=details.filter(row=>row.domain===name);
+      const failedPorts=domainRows.filter(row=>!row.available).map(row=>row.port);
+      const apiCount=Object.keys(this.ports[name] as unknown as Record<string,unknown>).length;
+      const ownership:CognitiveSubsystemHealth['ownership']=['self','world','memory','agency','embodiment','research','governance'].includes(name)?'physical':'adapter';
+      const probeMs=domainRows.reduce((sum,row)=>sum+row.probeMs,0);
+      const checkedAt=domainRows.reduce((latest,row)=>Math.max(latest,row.checkedAt),0);
+      return {
+        name,available:failedPorts.length===0,probeMs,apiCount,
+        probeCount:domainRows.length,failedProbeCount:failedPorts.length,failedPorts,checkedAt,ownership,
+        probeKind:'read-only-snapshot',evidence:'snapshot-only',
+        ...(failedPorts.length?{error:'unreadable snapshot ports: '+failedPorts.join(',').slice(0,120)}:{}),
+      };
     });
-    this.lastHealthAt=Date.now(); this.lastHealth=rows; return rows.map(x=>({...x}));
   }
   flightSnapshot(){ return this.flightRecorder.snapshot(); }
-  flightSummary(){ return this.flightRecorder.summary(); }
-  manifest(){ return (Object.keys(this.ports) as CognitiveSubsystemName[]).map(name=>({name,ownership:['self','world','memory','agency','embodiment','research','governance'].includes(name)?'physical':'adapter',api:Object.keys(this.ports[name] as unknown as Record<string,unknown>)})); }
+  flightSummary(){
+    const summary=this.flightRecorder.summary();
+    const probes=Object.keys(this.flightRecorder.snapshot()).length;
+    return {...summary,subsystems:Object.keys(this.ports).length,probes};
+  }
+  manifest(){ return (Object.keys(this.ports) as CognitiveSubsystemName[]).map(name=>({name,ownership:['self','world','memory','agency','embodiment','research','governance'].includes(name)?'physical':'adapter',api:Object.keys(this.ports[name] as unknown as Record<string,unknown>),probeKind:'read-only-snapshot' as const,evidence:'snapshot-only' as const})); }
 }

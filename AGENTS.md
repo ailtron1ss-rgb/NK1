@@ -115,3 +115,10 @@ Before a substantial pass, read:
 - Claims without read-sets are not freshness-verified. The coordinator is advisory until the isolated patch executor enforces this gate; never bypass it on protected or shared files.
 
 - Generate the dependency manifest with `npm run neurok-os:snapshot -- --paths src/a.ts,src/b.ts --out .neurok-os/read-set.json`; then include it in `npm run neurok-os:claims -- claim ... --readSetFile .neurok-os/read-set.json`. Re-run `verify` immediately before editing; a moved base SHA also invalidates the claim.
+
+## Assimilation of `research/` sources (wave 1, 2026-11-26)
+
+- `research/neurocore-v143` is the primary Python donor. Only *policies* (numbers, thresholds, rules) are portable; the runtime has no tensor layer, so porting `nn.Module` code would be decorative.
+- Wave 1 landed in `runtime/neuro-kurisu/src/organism/system/`: `UncertaintyWriteGate`, `HippoLegsCredit`, `FastSlowConsolidationGate`, `DeepWorkSelector`, owned by `MemoryWritePolicy` (state slice `system.memoryWritePolicy`, mode `shadow` by default, `NEURO_MEMORY_WRITE_POLICY=active` to apply).
+- Run `npm run test:assimilation-wave1` in `runtime/neuro-kurisu` before touching the memory write path. Register and wave 2/3 queue: `docs/ASSIMILATION_REGISTER_RU.md`.
+- Pre-existing red tests (fail on clean tree too): `big-pass-317-organism-reality-closure`, `big-pass-165-memory-economy`.

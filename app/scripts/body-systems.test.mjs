@@ -35,9 +35,10 @@ import { emptySnapshot } from "../src/organism/types.ts";
 function fakeBone() {
   return { rotation: { x: 0, y: 0, z: 0, set(x, y, z) { this.x = x; this.y = y; this.z = z; } } };
 }
-function createFakeVrm(names) {
+function createFakeVrm(names, metaVersion = "1") {
   const bones = new Map(names.map((name) => [name, fakeBone()]));
   return {
+    meta: { metaVersion },
     humanoid: {
       autoUpdateHumanBones: false,
       getNormalizedBoneNode(name) { return bones.get(name) ?? null; },
@@ -47,7 +48,22 @@ function createFakeVrm(names) {
     bones,
   };
 }
-const FULL_BODY_NAMES = ["head", "neck", "leftUpperArm", "rightUpperArm", "spine", "leftLowerArm", "rightLowerArm", "leftUpperLeg", "rightUpperLeg", "leftLowerLeg", "rightLowerLeg"];
+const FINGER_SUFFIXES = [
+  "ThumbMetacarpal", "ThumbProximal", "ThumbDistal",
+  "IndexProximal", "IndexIntermediate", "IndexDistal",
+  "MiddleProximal", "MiddleIntermediate", "MiddleDistal",
+  "RingProximal", "RingIntermediate", "RingDistal",
+  "LittleProximal", "LittleIntermediate", "LittleDistal",
+];
+
+const FULL_BODY_NAMES = [
+  "head", "neck", "hips", "leftUpperArm", "rightUpperArm", "spine",
+  "leftLowerArm", "rightLowerArm", "leftUpperLeg", "rightUpperLeg",
+  "leftLowerLeg", "rightLowerLeg", "leftFoot", "rightFoot", "leftHand", "rightHand",
+  ...FINGER_SUFFIXES.map((suffix) => "left" + suffix),
+  ...FINGER_SUFFIXES.map((suffix) => "right" + suffix),
+];
+
 
 const baseManifest = () => ({
   schemaVersion: 1,
@@ -117,6 +133,60 @@ test("registry exposes only selectable renderers and resolves by mode", () => {
   assert.equal(registry.selectable()[0].rendererId, "nk1-test-live2d");
   assert.equal(registry.resolveByMode("depth2d")?.rendererId, "nk1-test-2p5d");
   assert.equal(registry.resolveByMode("vrm3d"), null);
+});
+
+
+test("schema v2 requires truthful rig and selection metadata while schema v1 remains readable", () => {
+  const v2 = { ...baseManifest(), schemaVersion: 2, rigClass: "cubism-deform", selectionRole: "primary" };
+  assert.deepEqual(validateRendererCapabilityManifest(v2), []);
+  assert.ok(validateRendererCapabilityManifest({ ...v2, rigClass: undefined }).some((issue) => issue.code === "invalid-rig-class"));
+  assert.ok(validateRendererCapabilityManifest({ ...v2, selectionRole: undefined }).some((issue) => issue.code === "invalid-selection-role"));
+  assert.deepEqual(validateRendererCapabilityManifest({ ...baseManifest(), schemaVersion: 1 }), []);
+});
+
+test("schema v2 rejects selectable previews, missing assets and rig/asset mismatches", () => {
+  const preview = validateRendererCapabilityManifest({
+    ...baseManifest(), schemaVersion: 2, rigClass: "cubism-deform", selectionRole: "preview-only",
+  }).map((issue) => issue.code);
+  assert.ok(preview.includes("preview-cannot-be-selectable"));
+
+  const noAsset = validateRendererCapabilityManifest({
+    ...baseManifest(), schemaVersion: 2, assetKind: "none", rigClass: "none", selectionRole: "fallback",
+    productionReady: false,
+  }).map((issue) => issue.code);
+  assert.ok(noAsset.includes("selectable-role-needs-asset"));
+
+  const mismatch = validateRendererCapabilityManifest({
+    ...baseManifest(), schemaVersion: 2, rigClass: "static-poses", selectionRole: "primary",
+  }).map((issue) => issue.code);
+  assert.ok(mismatch.includes("rig-asset-mismatch"));
+});
+
+test("default registry distinguishes renderer rigs and keeps preview candidates out of selection", () => {
+  const registry = createDefaultBodyRendererRegistry();
+  assert.deepEqual(registry.list().map((entry) => [entry.rendererId, entry.rigClass, entry.selectionRole]), [
+    ["nk1-live2d-cubism", "cubism-deform", "primary"],
+    ["nk1-original-svg-2d", "vector-driven", "fallback"],
+    ["nk1-legacy-sprites-2d", "static-poses", "fallback"],
+    ["nk1-three-vrm3d", "humanoid-skeleton", "preview-only"],
+  ]);
+  assert.deepEqual(registry.selectable().map((entry) => entry.rendererId), [
+    "nk1-live2d-cubism", "nk1-original-svg-2d", "nk1-legacy-sprites-2d",
+  ]);
+  assert.equal(registry.get("nk1-three-vrm3d")?.productionReady, false);
+  assert.equal(registry.resolveSelectableByMode("vrm3d"), null);
+  assert.equal(registry.resolveSelectableByMode("depth2d"), null);
+  assert.equal(registry.list().some((entry) => entry.rigClass === "layered-depth-puppet" && entry.selectionRole !== "preview-only"), false);
+});
+
+test("registry resolves a canonical primary even when a fallback was registered first", () => {
+  const registry = new BodyRendererRegistry();
+  const primary = { ...baseManifest(), schemaVersion: 2, rendererId: "primary", rigClass: "cubism-deform", selectionRole: "primary" };
+  const fallback = { ...baseManifest(), schemaVersion: 2, rendererId: "fallback", rigClass: "vector-driven", selectionRole: "fallback", assetKind: "svg-vector" };
+  registry.register(fallback);
+  registry.register({ ...primary, rendererId: "preview", selectionRole: "preview-only", productionReady: false });
+  registry.register(primary);
+  assert.equal(registry.resolveByMode("live2d")?.rendererId, "primary");
 });
 
 test("motion programs validate their keyframe contract", () => {
@@ -319,6 +389,33 @@ test("declared VRM 3D channels match the full-body bone applier", () => {
   for (const channel of ["torsoPitch", "leftElbow", "rightElbow", "leftHip", "rightHip", "leftKnee", "rightKnee"]) {
     assert.ok(declared.has(channel), `${channel} drives a real bone and must be declared`);
   }
+  for (const channel of ["torsoYaw", "rootYaw"]) {
+    assert.ok(declared.has(channel), `${channel} drives a real normalized rig bone and must be declared`);
+  }
+  for (const channel of ["leftAnkle", "rightAnkle"]) {
+    assert.ok(declared.has(channel), `${channel} drives a real foot bone and must be declared`);
+  }
+  for (const channel of ["leftWrist", "rightWrist", "leftHand", "rightHand", "leftFingers", "rightFingers"]) {
+    assert.ok(declared.has(channel), `${channel} is backed by normalized hand/finger joints and must be declared`);
+  }
+  for (const channel of [
+    "leftThumbCurl", "leftIndexCurl", "leftMiddleCurl", "leftRingCurl", "leftLittleCurl",
+    "rightThumbCurl", "rightIndexCurl", "rightMiddleCurl", "rightRingCurl", "rightLittleCurl",
+  ]) {
+    assert.ok(declared.has(channel), `${channel} is backed by normalized digit joints and must be declared`);
+  }
+  const vrmManifest = DEFAULT_RENDERER_MANIFESTS.find((entry) => entry.rendererId === "nk1-three-vrm3d");
+  assert.ok(vrmManifest);
+  assert.ok(vrmManifest.joints.includes("hips") && vrmManifest.joints.includes("leftFoot") && vrmManifest.joints.includes("rightFoot"),
+    "the rig manifest must list normalized pelvis and foot joints");
+  assert.ok(vrmManifest.joints.includes("leftHand") && vrmManifest.joints.includes("rightHand"));
+  for (const suffix of FINGER_SUFFIXES) {
+    assert.ok(vrmManifest.joints.includes("left" + suffix), "left normalized finger joint " + suffix + " must be declared");
+    assert.ok(vrmManifest.joints.includes("right" + suffix), "right normalized finger joint " + suffix + " must be declared");
+  }
+  assert.equal(vrmManifest.joints.includes("leftThumbIntermediate"), false,
+    "the raw VRM 0.x thumb intermediate role is remapped by the loader, not exposed by VRMHumanoid");
+
   // The head/gaze controller owns headYaw/headPitch/headRoll and shoulders; the
   // full-body pass must not claim them.
   for (const channel of ["leftShoulder", "rightShoulder", "headYaw", "headPitch", "headRoll"]) {
@@ -328,11 +425,14 @@ test("declared VRM 3D channels match the full-body bone applier", () => {
 
 test("declared Live2D channels match what the viewer can actually drive", () => {
   const declared = new Set(LIVE2D_CHANNELS);
-  // The bundled viewer writes ParamAngleX/Y/Z, eye-ball and mouth params. It applies
-  // head roll, gaze and mouth, but has no breath parameter, so breath must not be declared.
-  assert.deepEqual([...declared].sort(), ["gazeX", "gazeY", "headRoll"].sort());
-  assert.equal(declared.has("breath"), false, "the Live2D viewer exposes no breath parameter");
-  assert.equal(declared.has("torsoYaw"), false, "the Live2D viewer drives no torso channel");
+  // The bundled Cubism model exposes real head, body-angle and breath parameters.
+  // Arms/fingers remain unsupported by this renderer and must stay absent.
+  assert.deepEqual([...declared].sort(), [
+    "gazeX", "gazeY", "headPitch", "headRoll", "headYaw",
+    "torsoPitch", "torsoYaw", "breath",
+  ].sort());
+  assert.equal(declared.has("leftShoulder"), false, "Cubism arm joints are not mapped as normalized shoulder channels");
+  assert.equal(declared.has("leftIndexCurl"), false, "Cubism does not advertise independent finger joints");
 });
 
 test("motion arbiter channels flow into the semantic pose but never override derived channels", () => {
@@ -347,12 +447,14 @@ test("motion arbiter channels flow into the semantic pose but never override der
     speechEventId: null,
     audioTimeMs: 0,
     mouth: null,
-    // headRoll is derived and must win; rightShoulder is new and must survive.
-    pose: { headRoll: 0.9, rightShoulder: -0.4, breath: 0.5 },
+    // headRoll is derived and must win; limb and per-digit channels must survive.
+    pose: { headRoll: 0.9, rightShoulder: -0.4, breath: 0.5, leftIndexCurl: -0.8, rightLittleCurl: 0.6 },
   });
   assert.equal(state.pose.headRoll, 0.2);
   assert.equal(state.pose.rightShoulder, -0.4);
   assert.equal(state.pose.breath, 0.5);
+  assert.equal(state.pose.leftIndexCurl, -0.8);
+  assert.equal(state.pose.rightLittleCurl, 0.6);
 });
 
 test("out-of-range arbiter channels are clamped at the semantic boundary", () => {
@@ -408,6 +510,34 @@ test("full-body apply is idempotent across frames and returns bones to rest", ()
   assert.equal(vrm.bones.get("leftLowerLeg").rotation.z, 0);
 });
 
+test("full-body ankle channels drive normalized feet and return them to neutral", () => {
+  const vrm = createFakeVrm(FULL_BODY_NAMES);
+  const driven = applyVrmFullBodyChannels(vrm, { leftAnkle: 0.5, rightAnkle: -0.25 });
+  assert.deepEqual(driven.controlledBones.sort(), ["leftFoot", "rightFoot"]);
+  assert.equal(vrm.bones.get("leftFoot").rotation.x, 0.25);
+  assert.equal(vrm.bones.get("rightFoot").rotation.x, -0.125);
+
+  const neutral = applyVrmFullBodyChannels(vrm, {});
+  assert.equal(neutral.applied, false);
+  assert.equal(vrm.bones.get("leftFoot").rotation.x, 0);
+  assert.equal(vrm.bones.get("rightFoot").rotation.x, 0);
+});
+
+test("full-body torso pitch/yaw share one spine receipt and root yaw returns to neutral", () => {
+  const vrm = createFakeVrm(FULL_BODY_NAMES);
+  const driven = applyVrmFullBodyChannels(vrm, { torsoPitch: 0.25, torsoYaw: 0.5, rootYaw: -0.5 });
+  assert.deepEqual(driven.controlledBones.sort(), ["hips", "spine"]);
+  assert.equal(vrm.bones.get("spine").rotation.x, 0.1);
+  assert.equal(vrm.bones.get("spine").rotation.y, 0.25);
+  assert.equal(vrm.bones.get("hips").rotation.y, -0.45);
+
+  const neutral = applyVrmFullBodyChannels(vrm, {});
+  assert.equal(neutral.applied, false);
+  assert.equal(vrm.bones.get("spine").rotation.x, 0);
+  assert.equal(vrm.bones.get("spine").rotation.y, 0);
+  assert.equal(vrm.bones.get("hips").rotation.y, 0);
+});
+
 test("full-body apply ignores channels it cannot map and reports none written", () => {
   const vrm = createFakeVrm(FULL_BODY_NAMES);
   const result = applyVrmFullBodyChannels(vrm, { gazeX: 0.4, breath: 0.6, leftShoulder: -0.3 });
@@ -449,4 +579,87 @@ test("the default 3D asset is honestly marked remote and not production-ready",(
   const registry=createDefaultBodyRendererRegistry();
   assert.equal(registry.selectable().some((entry)=>entry.rendererId==="nk1-three-vrm3d"),false,
     "an externally hosted, visually unaccepted asset must not enter the production-ready selector");
+});
+
+test("full-body wrist and palm channels drive separate normalized hand axes", () => {
+  const vrm = createFakeVrm(FULL_BODY_NAMES);
+  const driven = applyVrmFullBodyChannels(vrm, { leftWrist: 0.5, leftHand: 0.5, rightWrist: -0.5, rightHand: -0.5 });
+  assert.deepEqual(driven.controlledBones.sort(), ["leftHand", "rightHand"]);
+  assert.equal(vrm.bones.get("leftHand").rotation.x, 0.2);
+  assert.equal(vrm.bones.get("leftHand").rotation.y, 0.175);
+  assert.equal(vrm.bones.get("rightHand").rotation.x, -0.2);
+  assert.equal(vrm.bones.get("rightHand").rotation.y, -0.175);
+  const neutral = applyVrmFullBodyChannels(vrm, {});
+  assert.equal(neutral.applied, false);
+  for (const name of ["leftHand", "rightHand"]) {
+    assert.equal(vrm.bones.get(name).rotation.x, 0);
+    assert.equal(vrm.bones.get(name).rotation.y, 0);
+    assert.equal(vrm.bones.get(name).rotation.z, 0);
+  }
+});
+
+test("aggregate finger curl reaches all standard optional VRM finger segments and resets", () => {
+  const vrm = createFakeVrm(FULL_BODY_NAMES);
+  const driven = applyVrmFullBodyChannels(vrm, { leftFingers: 0.5, rightFingers: -0.5 });
+  assert.equal(driven.controlledBones.length, 30);
+  assert.ok(driven.controlledBones.includes("leftThumbMetacarpal"));
+  assert.ok(driven.controlledBones.includes("leftIndexIntermediate"));
+  assert.ok(driven.controlledBones.includes("rightLittleDistal"));
+  assert.equal(vrm.bones.get("leftIndexProximal").rotation.x, 0.425 * 0.64);
+  assert.equal(vrm.bones.get("leftIndexIntermediate").rotation.x, 0.425 * 0.78);
+  assert.equal(vrm.bones.get("rightMiddleDistal").rotation.x, -0.425 * 0.58);
+  const neutral = applyVrmFullBodyChannels(vrm, {});
+  assert.equal(neutral.applied, false);
+  for (const suffix of FINGER_SUFFIXES) {
+    assert.equal(vrm.bones.get("left" + suffix).rotation.x, 0);
+    assert.equal(vrm.bones.get("right" + suffix).rotation.x, 0);
+  }
+});
+
+test("VRM 0.x importer compatibility presents canonical normalized thumb roles", () => {
+  const vrm = createFakeVrm(FULL_BODY_NAMES, "0");
+  const driven = applyVrmFullBodyChannels(vrm, { leftFingers: 0.5, rightFingers: -0.5 });
+  assert.equal(driven.controlledBones.length, 30);
+  assert.ok(driven.controlledBones.includes("leftThumbMetacarpal"));
+  assert.ok(driven.controlledBones.includes("leftThumbProximal"));
+  assert.equal(driven.controlledBones.includes("leftThumbIntermediate"), false);
+  assert.equal(vrm.bones.get("leftThumbMetacarpal").rotation.x, 0.425 * 0.22);
+  assert.equal(vrm.bones.get("leftThumbProximal").rotation.x, 0.425 * 0.48);
+  assert.equal(vrm.bones.get("rightThumbMetacarpal").rotation.x, -0.425 * 0.22);
+
+  const neutral = applyVrmFullBodyChannels(vrm, {});
+  assert.equal(neutral.applied, false);
+  for (const suffix of FINGER_SUFFIXES) {
+    assert.equal(vrm.bones.get("left" + suffix).rotation.x, 0);
+    assert.equal(vrm.bones.get("right" + suffix).rotation.x, 0);
+  }
+});
+
+test("missing optional VRM finger joints are skipped without false control receipts", () => {
+  const vrm = createFakeVrm(FULL_BODY_NAMES.filter((name) => !FINGER_SUFFIXES.some((suffix) => name === "left" + suffix || name === "right" + suffix)));
+  const result = applyVrmFullBodyChannels(vrm, { leftFingers: 0.8, rightFingers: 0.8 });
+  assert.equal(result.applied, false);
+  assert.deepEqual(result.controlledBones, []);
+});
+
+
+test("per-digit VRM curl overrides aggregate hand curl and zero remains an explicit open finger", () => {
+  const vrm = createFakeVrm(FULL_BODY_NAMES);
+  const result = applyVrmFullBodyChannels(vrm, {
+    leftFingers: 0.25,
+    leftIndexCurl: -0.8,
+    leftMiddleCurl: 0,
+    leftRingCurl: 0.6,
+  });
+  assert.ok(result.controlledBones.includes("leftIndexProximal"));
+  assert.ok(result.controlledBones.includes("leftMiddleProximal") === false);
+  assert.equal(vrm.bones.get("leftIndexProximal").rotation.x, -0.68 * 0.64);
+  assert.equal(vrm.bones.get("leftMiddleProximal").rotation.x, 0);
+  assert.equal(vrm.bones.get("leftRingProximal").rotation.x, 0.51 * 0.64);
+  assert.equal(vrm.bones.get("leftLittleProximal").rotation.x, 0.2125 * 0.58);
+  const neutral = applyVrmFullBodyChannels(vrm, {});
+  assert.equal(neutral.applied, false);
+  for (const suffix of FINGER_SUFFIXES) {
+    assert.equal(vrm.bones.get("left" + suffix).rotation.x, 0);
+  }
 });

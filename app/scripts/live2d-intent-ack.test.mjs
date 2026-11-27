@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
+import { normalizeEmbodimentIntentV1 } from "../../runtime/neuro-kurisu/public/live2d/embodiment-intent.mjs";
 
 const viewers = await Promise.all([
   ["frontend", new URL("../public/live2d/viewer.html", import.meta.url)],
@@ -25,6 +26,13 @@ for (const item of viewers) {
     assert.match(viewer, /if\(pending\.expressionStatus==='pending'\|\|pending\.motionStatus==='pending'\)return;/);
     assert.match(viewer, /pending\.readback=/);
     assert.match(viewer, /pending\.stateVersion!==lastIntentStateVersion/);
+    assert.match(viewer, /frameTick:pending\.frameTick/);
+    if (name === "frontend") {
+      assert.match(viewer, /const frameTick=d\.frameTick===undefined\?null/);
+      assert.match(viewer, /frameTick,\s*sentAtEpochMs/);
+    } else {
+      assert.match(viewer, /frameTick:normalized\.frameTick/);
+    }
   });
 
   test(name + " partial ACK distinguishes command start from unavailable/failed action and never claims visual completion", () => {
@@ -54,6 +62,13 @@ for (const item of viewers) {
     assert.match(viewer, /typeof core\.getParameterValueById==='function'/);
     assert.match(viewer, /if\(Number\.isFinite\(value\)\)observed\[id\]=value;\s*else readable=false;/);
     assert.match(viewer, /reason:readable\?null:'core-parameter-readback-unavailable'/);
+    assert.match(viewer, /bodySignal\.bodyChannels/);
+    assert.match(viewer, /ParamBodyAngleX/);
+    assert.match(viewer, /ParamBodyAngleY/);
+    assert.match(viewer, /ParamBreath/);
+    assert.match(viewer, /headYaw/);
+    assert.match(viewer, /headPitch/);
+    assert.match(viewer, /headRoll/);
   });
 }
 
@@ -70,4 +85,41 @@ test("AvatarStage targets the frontend viewer whose ACK contract is covered abov
   assert.match(avatar, /isLive2DActionStatus\(ev\.data\.motionStatus\)/);
   assert.match(avatar, /partial ACK is never a renderer receipt/);
   assert.match(avatar, /latestIntentStateVersionRef\.current = intent\.stateVersion/);
+  assert.match(avatar, /frameTick: currentProjection\.tick/);
+  assert.match(avatar, /typeof frameTick === "number" && Number\.isSafeInteger\(frameTick\) && frameTick >= 0/);
+  assert.match(avatar, /createAvatarPresentationReceipt\("live2d", frameTick/);
+});
+
+test("runtime protocol-v1 normalizer preserves the canonical tick without breaking older intents", () => {
+  const base = {
+    type: "kurisu_embodiment_intent", protocolVersion: 1, stateVersion: 17,
+    sentAtEpochMs: 1_700_000_000_000, speechEventId: null, audioClockId: null,
+    speechPhase: "idle", audioTimeMs: 0, clockSource: "none", priority: 30,
+    cancellationToken: null, expression: "neutral", expressionIntensity: 0,
+    mouth: { open: 0.015, form: 0, viseme: "rest" },
+    gaze: { x: 0, y: 0, driven: true },
+    body: { headTilt: 0, gesture: false, motionGroup: "Idle", motionIndex: 0, motionToken: 0 },
+    voiceEmphasis: 0,
+  };
+  assert.equal(normalizeEmbodimentIntentV1({ ...base, frameTick: 42 }).frameTick, 42);
+  assert.equal(normalizeEmbodimentIntentV1(base).frameTick, undefined);
+  assert.equal(normalizeEmbodimentIntentV1({ ...base, frameTick: -1 }), null);
+  assert.equal(normalizeEmbodimentIntentV1({ ...base, frameTick: 1.25 }), null);
+  const channels = {
+    headYaw: 0.2, headPitch: -0.1, headRoll: 0.04,
+    torsoYaw: 0.08, torsoPitch: -0.06, gazeX: 0.3, gazeY: -0.2, breath: 0.7,
+  };
+  const withBodyChannels = normalizeEmbodimentIntentV1({
+    ...base, body: { ...base.body, channels },
+  });
+  assert.deepEqual(withBodyChannels.bodyChannels, channels);
+  assert.equal(normalizeEmbodimentIntentV1({
+    ...base, body: { ...base.body, channels: { ...channels, leftIndexCurl: 0.4 } },
+  }), null, "Live2D must reject channels it cannot drive");
+  assert.equal(normalizeEmbodimentIntentV1({
+    ...base, body: { ...base.body, channels: { ...channels, torsoPitch: 1.01 } },
+  }), null, "unbounded body channels must fail closed");
+  assert.equal(normalizeEmbodimentIntentV1({
+    ...base, body: { ...base.body, channels: { ...channels, breath: Number.NaN } },
+  }), null, "non-finite body channels must fail closed");
 });
