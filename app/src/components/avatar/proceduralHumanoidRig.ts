@@ -508,38 +508,43 @@ export function createProceduralHumanoidRig(scene: THREE.Scene): ProceduralHuman
         y,
         x * particleSin + z * particleCos,
       );
-      const localParticleOffset = (sample: ArticulatedBodyParticleFrame[ArticulatedBodyParticleId]) =>
-        toRigLocal(
+      const pelvisHeight = bones.pelvis.position.y;
+      const particleLocalPoint = (sample: ArticulatedBodyParticleFrame[ArticulatedBodyParticleId]) => {
+        const base = toRigLocal(sample.target.x, sample.target.y, sample.target.z);
+        const residual = toRigLocal(
           sample.position.x - sample.target.x,
           sample.position.y - sample.target.y,
           sample.position.z - sample.target.z,
         );
+        base.add(new THREE.Vector3(
+          clamp(residual.x, -0.055, 0.055),
+          clamp(residual.y, -0.055, 0.055),
+          clamp(residual.z, -0.055, 0.055),
+        ));
+        base.y += pelvisHeight;
+        return base;
+      };
       let particleBindingsApplied = 0;
       const particleTargetWorld = (sample: ArticulatedBodyParticleFrame[ArticulatedBodyParticleId] | undefined) => {
         if (!sample) return null;
-        const pelvisHeight = bones.pelvis.position.y;
-        return root.localToWorld(toRigLocal(
-          sample.position.x,
-          pelvisHeight + sample.position.y,
-          sample.position.z,
-        ));
+        return root.localToWorld(particleLocalPoint(sample));
       };
       for (const [particleId, boneName] of particleBindings) {
         const sample = input.particles?.[particleId];
         const bone = bones[boneName];
         const rest = restJointPositions[boneName];
         if (!bone || !rest) continue;
-        // Every frame starts at the immutable bind pose; missing samples cannot leave
-        // a stale offset from a previous frame.
+        // Bind-pose fallback keeps joints stable when a sample is absent.
         bone.position.copy(rest);
-        if (!sample) continue;
-        const rawResidual = localParticleOffset(sample);
-        const residual = new THREE.Vector3(
-          clamp(rawResidual.x, -0.055, 0.055),
-          clamp(rawResidual.y, -0.055, 0.055),
-          clamp(rawResidual.z, -0.055, 0.055),
-        );
-        bone.position.add(residual);
+        if (!sample || !bone.parent) {
+          root.updateMatrixWorld(true);
+          continue;
+        }
+        root.updateMatrixWorld(true);
+        const targetWorld = root.localToWorld(particleLocalPoint(sample));
+        bone.parent.updateWorldMatrix(true, false);
+        bone.position.copy(bone.parent.worldToLocal(targetWorld));
+        root.updateMatrixWorld(true);
         particleBindingsApplied++;
       }
 
