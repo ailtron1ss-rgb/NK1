@@ -183,7 +183,14 @@ function channelsFromSolvedParticles(
   const channels={} as Partial<Record<BodyChannel,number>>;
   for(const key of CHANNELS)channels[key]=joints[key].value;
   const adjust=(key:BodyChannel,lag:number,gain:number,limit=.14)=>{
-    channels[key]=clamp((channels[key]??0)+clamp(lag*gain,-limit,limit),-1,1);
+    const motor=clamp(channels[key]??0,-1,1);
+    const correction=clamp(lag*gain,-limit,limit);
+    let resolved=clamp(motor+correction,-1,1);
+    // Particle inertia may oppose the active motor while a limb catches up.
+    // It must never silently reverse the semantic action sign sent to renderers.
+    if(motor>1e-4)resolved=Math.max(0,resolved);
+    else if(motor< -1e-4)resolved=Math.min(0,resolved);
+    channels[key]=resolved;
   };
 
   // The torso/neck/head values are recovered from the solved particle skeleton,
