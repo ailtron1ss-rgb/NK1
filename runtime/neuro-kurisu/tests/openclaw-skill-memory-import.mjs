@@ -20,7 +20,7 @@ const files = [{
     '# GitHub skill',
     '',
     'Use the gh command to inspect repositories and pull requests.',
-  ].join('\\n'),
+  ].join(String.fromCharCode(10)),
 }];
 
 const before = runtime.fabric.canonicalSize();

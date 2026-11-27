@@ -13,7 +13,7 @@ const MAX_SECTION_CHARS = 500;
 const MAX_PREVIEWS = 8;
 const PREVIEW_TTL_MS = 30 * 60 * 1_000;
 
-export type NekoMarkdownSourceKind = 'user' | 'soul' | 'memory' | 'daily';
+export type NekoMarkdownSourceKind = 'user' | 'soul' | 'memory' | 'daily' | 'skill';
 export type NekoMarkdownMemoryKind = 'social' | 'identity' | 'semantic' | 'episodic';
 export type NekoMarkdownReviewStatus = 'ready' | 'quarantined';
 
@@ -205,6 +205,15 @@ function normalizePath(raw: string): string {
 function classifyPath(path: string): { kind: NekoMarkdownSourceKind; eventDate?: string } | null {
   const parts = path.split('/');
   const basename = parts[parts.length - 1] ?? '';
+  const skillsIndex = parts.map(part => part.toLowerCase()).lastIndexOf('skills');
+  const skillName = skillsIndex >= 0 ? parts[skillsIndex + 1] ?? '' : '';
+  if (basename.toUpperCase() === 'SKILL.MD' &&
+      skillsIndex >= 0 && skillsIndex + 2 === parts.length - 1 &&
+      /^[a-z0-9][a-z0-9._-]{0,79}$/i.test(skillName)) {
+    // OpenClaw skills are instruction-bearing data. Admit them only as
+    // reviewable external knowledge, never as executable skills or tool grants.
+    return { kind: 'skill' };
+  }
   if (ROOT_FILES.has(basename.toUpperCase())) {
     const kind = basename.toUpperCase().slice(0, -3).toLowerCase() as NekoMarkdownSourceKind;
     return { kind };
@@ -374,6 +383,7 @@ function sourceFormat(files: ParsedFile[]): 'openclaw' | 'hermes' {
 }
 
 function memoryKind(sourceKind: NekoMarkdownSourceKind): NekoMarkdownMemoryKind {
+  if (sourceKind === 'skill') return 'semantic';
   if (sourceKind === 'user') return 'social';
   if (sourceKind === 'soul') return 'semantic';
   if (sourceKind === 'daily') return 'episodic';
@@ -419,6 +429,7 @@ export class NekoExternalMarkdownMemoryAdapter {
         if (seen.has(dedupeKey)) continue;
         seen.add(dedupeKey);
         const warnings = suspiciousPatterns(text);
+        if (file.kind === 'skill') warnings.push('skill-content-requires-manual-review');
         const id = digest(`${file.path}\0${file.kind}\0${file.eventDate ?? ''}\0${normalizedText(text)}`);
         candidates.push({
           id,
