@@ -1,0 +1,50 @@
+name: NK1 local llama.cpp structured JSON output
+
+on:
+  pull_request:
+    branches: [workpass70-source]
+    paths:
+      - "runtime/neuro-kurisu/src/organism/integration/local/OpenAICompatibleLocalChatProvider.ts"
+      - "runtime/neuro-kurisu/tests/local-chat-structured-output-llama-server.mjs"
+      - ".github/workflows/nk1-local-llama-structured-json.yml"
+  push:
+    branches: [aspect/openclaw-skill-memory-import-20261127]
+    paths:
+      - "runtime/neuro-kurisu/src/organism/integration/local/OpenAICompatibleLocalChatProvider.ts"
+      - "runtime/neuro-kurisu/tests/local-chat-structured-output-llama-server.mjs"
+      - ".github/workflows/nk1-local-llama-structured-json.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nk1-local-llama-structured-json-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  local-structured-output:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: runtime/neuro-kurisu/package-lock.json
+      - name: Install locked runtime dependencies
+        working-directory: runtime/neuro-kurisu
+        run: npm ci
+      - name: llama.cpp schema-constrained structured output contract
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/local-chat-structured-output-llama-server.mjs
+      - name: Existing local chat provider regression
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/local-chat-provider-workpass40.mjs
+      - name: Local model ecology selection regression
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/local-llm-selection-workpass74.mjs
+      - name: Runtime typecheck
+        if: always()
+        working-directory: runtime/neuro-kurisu
+        run: npm run typecheck
