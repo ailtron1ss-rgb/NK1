@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  auditAvatarSecondaryAssetDescriptor,
   auditAvatarSecondaryScene,
   isAvatarNeuralFabricMaterialTagged,
 } from "../src/components/avatar/avatarSecondaryAssetAudit.ts";
@@ -103,6 +104,30 @@ test("audit keeps duplicate-named bones distinct and ignores detached or cyclic 
   const report = auditAvatarSecondaryScene(root);
   assert.equal(report.byRole.hair.boneCount, 3);
   assert.equal(report.byRole.hair.chainRoots, 2);
+});
+
+test("hosted GLB descriptor audit resolves skin-joint ancestry and glTF material extras", () => {
+  const report = auditAvatarSecondaryAssetDescriptor({
+    bones: [
+      { id: "hair-mid", name: "HairLockR_Mid", parentId: "hair-root" },
+      { id: "hair-tip", name: "HairLockR_Tip", parentId: "hair-mid" },
+      { id: "coat-mid", name: "CoatPanelL_Mid", parentId: "coat-root" },
+    ],
+    morphTargetNames: ["NK1_Cloth_Sway", "NK1_Hair_Sway", "happy"],
+    materials: [
+      { name: "Trim", extras: { nk1DynamicLayer: "neural" }, emissiveFactor: [0.1, 0.2, 0.3] },
+      { name: "Other", emissiveFactor: [1, 1, 1] },
+    ],
+    skinnedMeshCount: 2,
+    morphMeshCount: 1,
+  });
+  assert.equal(report.byRole.hair.chainRoots, 1);
+  assert.equal(report.byRole.hair.maxChainDepth, 2);
+  assert.equal(report.byRole.garment.chainRoots, 1);
+  assert.deepEqual(report.morphChannels.map((item) => item.channel), ["cloth", "hair"]);
+  assert.equal(report.taggedNeuralMaterialCount, 1);
+  assert.equal(report.skinnedMeshCount, 2);
+  assert.equal(report.morphMeshCount, 1);
 });
 
 test("neural-fabric material tag requires an explicit NK1 layer or semantic name", () => {
