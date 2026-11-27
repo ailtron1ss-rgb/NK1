@@ -14,7 +14,7 @@ const VIEW_LABELS: Record<AvatarViewMode, string> = {
   live2d: "Live2D",
   legacy: "Legacy",
   original: "NK1 Original",
-  "3d": "3D",
+  "3d": "NeuroCore 3D",
 };
 
 const RIG_COPY: Record<AvatarRigClass, { label: string; description: string }> = {
@@ -36,8 +36,8 @@ const RIG_COPY: Record<AvatarRigClass, { label: string; description: string }> =
     description: "2.5D · слоёная глубинная модель; доступность зависит от готового набора арта",
   },
   "humanoid-skeleton": {
-    label: "гуманоидный скелет VRM / GLB",
-    description: "VRM / GLB · гуманоидная 3D-модель",
+    label: "встроенный скелетно-мышечный rig NeuroCore",
+    description: "NeuroCore · процедурное тело с иерархией Bone, суставными ограничениями и управлением от физического контура частиц; VRM / GLB доступны как сменные модели",
   },
 };
 
