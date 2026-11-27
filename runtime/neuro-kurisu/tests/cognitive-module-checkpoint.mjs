@@ -461,3 +461,62 @@ console.log('ORGANISM_RUNTIME_MODULE_INTEGRATION=PASS');
   );
 }
 
+// The extension slot itself is untrusted. Never assign through an own or
+// inherited accessor and never accept a system object with a custom prototype.
+{
+  let accessorCalls = 0;
+  let inheritedSetterCalls = 0;
+  let durableWrites = 0;
+  const delegate = {
+    async load() { return null; },
+    async save() { durableWrites += 1; },
+  };
+  const checkpoint = new CognitiveModuleCheckpointStore(delegate, () => 901);
+
+  const ownAccessorSystem = {
+    release: 'test',
+    organismCore: 'test',
+    schemaVersion: 1,
+  };
+  Object.defineProperty(ownAccessorSystem, 'cognitiveModuleRuntime', {
+    enumerable: true,
+    configurable: true,
+    get() {
+      accessorCalls += 1;
+      return null;
+    },
+    set() {
+      accessorCalls += 1;
+    },
+  });
+  const ownAccessorPayload = persisted();
+  ownAccessorPayload.system = ownAccessorSystem;
+
+  await assert.rejects(
+    checkpoint.save(ownAccessorPayload),
+    /cognitive-module-checkpoint-extension-accessor-rejected/,
+  );
+  assert.equal(accessorCalls, 0, 'an own extension-slot accessor must never execute');
+  assert.equal(durableWrites, 0, 'an accessor-backed extension slot must not reach durable storage');
+
+  const inheritedSystem = Object.create({
+    set cognitiveModuleRuntime(_value) {
+      inheritedSetterCalls += 1;
+    },
+  });
+  Object.assign(inheritedSystem, {
+    release: 'test',
+    organismCore: 'test',
+    schemaVersion: 1,
+  });
+  const inheritedPayload = persisted();
+  inheritedPayload.system = inheritedSystem;
+
+  await assert.rejects(
+    checkpoint.save(inheritedPayload),
+    /cognitive-module-checkpoint-system-prototype-invalid/,
+  );
+  assert.equal(inheritedSetterCalls, 0, 'a custom prototype setter must never execute');
+  assert.equal(durableWrites, 0, 'non-plain system metadata must not reach durable storage');
+}
+
