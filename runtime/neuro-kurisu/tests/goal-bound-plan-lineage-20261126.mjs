@@ -68,6 +68,26 @@ const invalidOutcomePlan = {
 };
 assert.equal(engine.validateStep(invalidOutcomePlan, validStepIndex, validStepWorld).reason, 'step-outcome-invalid');
 
+const tamperedActionPlan = {
+  ...plan,
+  steps: plan.steps.map((step, index) => index === validStepIndex
+    ? { ...step, environmentAction: step.environmentAction === 'observe' ? 'inspect' : 'observe' }
+    : step),
+};
+assert.deepEqual(engine.validateStep(tamperedActionPlan, validStepIndex, validStepWorld),
+  { valid: false, reason: 'plan-integrity-mismatch' },
+  'a changed action must invalidate the plan even when the original precondition still matches');
+
+const tamperedOutcomePlan = {
+  ...plan,
+  steps: plan.steps.map((step, index) => index === validStepIndex
+    ? { ...step, expectedOutcome: { ...step.expectedOutcome, reward: step.expectedOutcome.reward + 0.125 } }
+    : step),
+};
+assert.equal(engine.validateContext(tamperedOutcomePlan, goal, initialWorld, context).reason,
+  'plan-integrity-mismatch',
+  'a changed expected outcome must invalidate the whole plan before runtime admission');
+
 const changedGoal = { ...goal, progress: 0.3, updatedAt: goal.updatedAt + 1 };
 assert.equal(engine.validateContext(plan, changedGoal, initialWorld, context).reason, 'goal-version-mismatch');
 const changedWorld = { ...initialWorld, uncertainty: Math.min(1, initialWorld.uncertainty + 0.1) };
