@@ -28,7 +28,8 @@ assert.ok(Number.isFinite(fallback.steps[0].confidence));
 assert.ok(Number.isFinite(fallback.expectedValue));
 assert.deepEqual(after, before,
   'fallback projection must remain pure and must not commit a world transition');
-assert.match(planEngineSource, /buildBudgetFallback\(goal: OrganismGoal \| null, preferred: ActionKind, reason: string\)/);
+assert.match(planEngineSource, /buildBudgetFallback\(goal: OrganismGoal \| null, preferred: ActionKind, reason: string(?:, context\?: PlanBuildContext)?\)/,
+  'the existing budget fallback retains its API while accepting optional decision-bound context');
 
 // Runtime contract: the recorded planning budget decision must actually gate the
 // expensive PlanEngine path; otherwise "budget-aware" planner metrics are cosmetic.
@@ -45,10 +46,25 @@ assert.match(runtimeSource,
   /const planningBudget = projectAllowed && !riskRecoveryApplied\s*\?\s*this\.core\.cognitiveBudgetSpend\('planning',[\s\S]*?:\s*\{ accepted: false \};/,
   'planning budget must require project permission and must be skipped for autonomous recovery overrides');
 assert.match(runtimeSource,
+  /const planBuildContext = \{\s*decisionId: cycle\.decision\.id,\s*tick: cycle\.decision\.tick,\s*\.\.\.\(revisionHint \? \{ revisionHint \} : \{\}\),\s*\};/,
+  'the canonical decision identity and tick must be passed alongside an optional grounded revision hint');
+assert.match(runtimeSource,
+  /derivePlanRevisionHint\(\s*this\.cognitiveEventFabric\.recent\(96\),\s*cycle\.state\.tick,\s*selectedGoal\?\.id \?\? null,\s*revisionReadiness01,/,
+  'adaptive revision must use the immediately retained canonical prior-cycle event journal and metacognitive readiness');
+assert.match(runtimeSource,
+  /const planContextValidation = this\.plans\.validateContext\(plan, selectedGoal, before, planBuildContext\);/,
+  'the runtime must reject a plan whose decision, goal or world revision no longer matches');
+assert.match(runtimeSource,
+  /const firstStepValidation = this\.plans\.validateStep\(plan, 0, before\);/,
+  'the runtime must validate first-step preconditions before rollout');
+assert.match(runtimeSource,
+  /const planStep = planStepValid \? plan\.steps\[0\] : undefined;/,
+  'only a validated first plan step may feed the rollout');
+assert.match(runtimeSource,
   /const autonomousRecoveryAllowed = !externalText && cycle\.decision\.userRequestedAction == null;/,
   'autonomous recovery must never override external turns or explicit user-selected actions');
 assert.match(runtimeSource,
-  /const plan = riskRecoveryApplied\s*\?\s*this\.plans\.buildBudgetFallback\(selectedGoal, internalAction, 'risk-aware-recovery-override'\)\s*:\s*planningBudget\.accepted && projectAllowed\s*\?\s*this\.plans\.build\([\s\S]*?:\s*this\.plans\.buildBudgetFallback\(/,
+  /const plan = riskRecoveryApplied\s*\?\s*this\.plans\.buildBudgetFallback\(selectedGoal, internalAction, 'risk-aware-recovery-override'(?:,\s*planBuildContext)?\)\s*:\s*planningBudget\.accepted && projectAllowed\s*\?\s*this\.plans\.build\([\s\S]*?:\s*this\.plans\.buildBudgetFallback\(/,
   'recovery overrides must use the one-step fallback and normal planning must remain budget-gated');
 assert.match(runtimeSource,
   /const worldRolloutAllowed = executionPlan\?\.run\?\.\['world-rollout'\] !== false && spineDecision\.run\['world-rollout'\];/,
