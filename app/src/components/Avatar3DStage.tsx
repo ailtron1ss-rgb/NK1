@@ -156,6 +156,136 @@ export function Avatar3DStage(props:Props){
     });
     root.updateMatrixWorld(true);
     const normalizedBounds=new THREE.Box3().setFromObject(root,true);
+    // Independently audit actual vertex deformation. This distinguishes a
+    // genuinely flat mesh / empty skin weights from a stale SkinnedMesh bound.
+    const skinAudit = {
+      meshCount: 0,
+      vertexCount: 0,
+      weightedVertexCount: 0,
+      zeroWeightVertexCount: 0,
+      missingSkinAttributeMeshes: 0,
+      invalidJointIndexCount: 0,
+      nonFiniteWeightCount: 0,
+      weightSumMin: Number.POSITIVE_INFINITY,
+      weightSumMax: 0,
+      transformedVertexBounds: new THREE.Box3(),
+      boneWorldBounds: new THREE.Box3(),
+      boneNames: [] as string[],
+    };
+    const auditVertex = new THREE.Vector3();
+    const boneNameSet = new Set<string>();
+    root.traverse((node: any) => {
+      if (node.isBone) {
+        const boneWorld = node.getWorldPosition(new THREE.Vector3());
+        skinAudit.boneWorldBounds.expandByPoint(boneWorld);
+        const boneName = String(node.name || "");
+        if (boneName && !boneNameSet.has(boneName)) {
+          boneNameSet.add(boneName);
+          skinAudit.boneNames.push(boneName);
+        }
+      }
+      if (!node.isSkinnedMesh) return;
+      skinAudit.meshCount++;
+      const attributes = node.geometry?.attributes;
+      const positions = attributes?.position;
+      const skinIndices = attributes?.skinIndex;
+      const skinWeights = attributes?.skinWeight;
+      if (!positions || !skinIndices || !skinWeights) {
+        skinAudit.missingSkinAttributeMeshes++;
+        return;
+      }
+      const vertexCount = Math.min(positions.count, skinIndices.count, skinWeights.count);
+      const boneCount = node.skeleton?.bones?.length ?? 0;
+      for (let index = 0; index < vertexCount; index++) {
+        const weights = [
+          skinWeights.getX(index), skinWeights.getY(index),
+          skinWeights.getZ(index), skinWeights.getW(index),
+        ];
+        const indices = [
+          skinIndices.getX(index), skinIndices.getY(index),
+          skinIndices.getZ(index), skinIndices.getW(index),
+        ];
+        let weightSum = 0;
+        let weighted = false;
+        for (let channel = 0; channel < 4; channel++) {
+          const weight = weights[channel];
+          const joint = indices[channel];
+          if (!Number.isFinite(weight)) {
+            skinAudit.nonFiniteWeightCount++;
+            continue;
+          }
+          weightSum += weight;
+          if (weight > 1e-5) {
+            weighted = true;
+            if (!Number.isInteger(joint) || joint < 0 || joint >= boneCount) {
+              skinAudit.invalidJointIndexCount++;
+            }
+          }
+        }
+        skinAudit.vertexCount++;
+        if (weighted) skinAudit.weightedVertexCount++;
+        else skinAudit.zeroWeightVertexCount++;
+        skinAudit.weightSumMin = Math.min(skinAudit.weightSumMin, weightSum);
+        skinAudit.weightSumMax = Math.max(skinAudit.weightSumMax, weightSum);
+        auditVertex.fromBufferAttribute(positions, index);
+        node.applyBoneTransform(index, auditVertex);
+        auditVertex.applyMatrix4(node.matrixWorld);
+        skinAudit.transformedVertexBounds.expandByPoint(auditVertex);
+      }
+    });
+    const skinVertexSize = new THREE.Vector3();
+    const skinBoneSize = new THREE.Vector3();
+    const skinVertexBounds = skinAudit.transformedVertexBounds.isEmpty()
+      ? null
+      : (() => {
+          skinAudit.transformedVertexBounds.getSize(skinVertexSize);
+          return {
+            min: {
+              x: skinAudit.transformedVertexBounds.min.x,
+              y: skinAudit.transformedVertexBounds.min.y,
+              z: skinAudit.transformedVertexBounds.min.z,
+            },
+            max: {
+              x: skinAudit.transformedVertexBounds.max.x,
+              y: skinAudit.transformedVertexBounds.max.y,
+              z: skinAudit.transformedVertexBounds.max.z,
+            },
+            size: { x: skinVertexSize.x, y: skinVertexSize.y, z: skinVertexSize.z },
+          };
+        })();
+    const skinBoneBounds = skinAudit.boneWorldBounds.isEmpty()
+      ? null
+      : (() => {
+          skinAudit.boneWorldBounds.getSize(skinBoneSize);
+          return {
+            min: {
+              x: skinAudit.boneWorldBounds.min.x,
+              y: skinAudit.boneWorldBounds.min.y,
+              z: skinAudit.boneWorldBounds.min.z,
+            },
+            max: {
+              x: skinAudit.boneWorldBounds.max.x,
+              y: skinAudit.boneWorldBounds.max.y,
+              z: skinAudit.boneWorldBounds.max.z,
+            },
+            size: { x: skinBoneSize.x, y: skinBoneSize.y, z: skinBoneSize.z },
+          };
+        })();
+    const skinningDiagnostics = {
+      meshCount: skinAudit.meshCount,
+      vertexCount: skinAudit.vertexCount,
+      weightedVertexCount: skinAudit.weightedVertexCount,
+      zeroWeightVertexCount: skinAudit.zeroWeightVertexCount,
+      missingSkinAttributeMeshes: skinAudit.missingSkinAttributeMeshes,
+      invalidJointIndexCount: skinAudit.invalidJointIndexCount,
+      nonFiniteWeightCount: skinAudit.nonFiniteWeightCount,
+      weightSumMin: Number.isFinite(skinAudit.weightSumMin) ? skinAudit.weightSumMin : null,
+      weightSumMax: skinAudit.weightSumMax,
+      transformedVertexBounds: skinVertexBounds,
+      boneWorldBounds: skinBoneBounds,
+      boneCount: skinAudit.boneNames.length,
+      boneNames: skinAudit.boneNames,
+    };
     const cameraBounds={
       min:{x:normalizedBounds.min.x,y:normalizedBounds.min.y,z:normalizedBounds.min.z},
       max:{x:normalizedBounds.max.x,y:normalizedBounds.max.y,z:normalizedBounds.max.z},
@@ -189,6 +319,7 @@ export function Avatar3DStage(props:Props){
     const sourceAxisDiagnostics = {
       boundsSize: { x: sourceSize.x, y: sourceSize.y, z: sourceSize.z },
       skinnedBoundsRefreshed,
+      skinning: skinningDiagnostics,
       headToHips: sourceHeadToHips,
       dominantBoundsAxis: sourceSize.x >= sourceSize.y && sourceSize.x >= sourceSize.z
         ? "x" : sourceSize.y >= sourceSize.z ? "y" : "z",
