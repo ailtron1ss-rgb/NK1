@@ -1,8 +1,25 @@
 import type { WorldContext } from '../core/types.ts';
 import type { P41PerceptionState } from '../cognition/P41SemanticPerception.ts';
 import type { PerceptualEvidenceState } from '../body/PerceptualEvidenceCompiler.ts';
+import type { EmbodiedActionResult } from '../body/EmbodiedActionExecutor.ts';
+import { boundedCountOr, countOr, isPlainDataArray, isPlainDataRecord, ownDataValue, stringOr, timestampOr, unitStrictOr, unitOr } from '../body/RestoreSanitizers.ts';
+import { isTrustedEmbodiedOutcomeVerification } from '../system/ExternalPostconditionVerifier.ts';
+import type { OutcomeVerification } from '../system/OutcomeVerificationService.ts';
 
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
+const admittedWorldEvidenceKind=(value:unknown):'observed'|'model-output'|'derived'|'conflict'|'unresolved'=>{
+  if(value==='model-output'||value==='derived'||value==='conflict'||value==='unresolved')return value;
+  // External data/state is not an admission receipt, including during restore.
+  return value==='observed'?'derived':'unresolved';
+};
+const sanitizeWorldModalityEvidence=(value:unknown):Record<string,'observed'|'model-output'|'derived'|'conflict'|'unresolved'>=>{
+  if(!isPlainDataRecord(value))return {};
+  const out:Record<string,'observed'|'model-output'|'derived'|'conflict'|'unresolved'>={};
+  for(const key of Object.keys(value).slice(0,8)){
+    out[key.slice(0,32)]=admittedWorldEvidenceKind(ownDataValue(value,key));
+  }
+  return out;
+};
 const norm=(x:string)=>String(x??'').trim().toLowerCase().slice(0,120);
 // Match P41 cleanTrackId: identity tokens retain case and only normalize Unicode/whitespace.
 const cleanIdentity=(value:unknown)=>{
@@ -11,12 +28,24 @@ const cleanIdentity=(value:unknown)=>{
 };
 const stableHash=(s:string)=>{let h=2166136261;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619);}return (h>>>0).toString(16).padStart(8,'0');};
 const normalizeImageBox=(value:unknown)=>{
-  if(!value||typeof value!=='object')return undefined;
-  const box=value as Record<string,unknown>;
-  if(![box.x,box.y,box.width,box.height].every(v=>typeof v==='number'&&Number.isFinite(v)))return undefined;
-  const x=Number(box.x),y=Number(box.y),width=Number(box.width),height=Number(box.height);
-  if(x<0||y<0||width<=0||height<=0||x+width>1.000001||y+height>1.000001)return undefined;
-  return {x,y,width,height};
+  if(!isPlainDataRecord(value))return undefined;
+  const x=ownDataValue(value,'x'),y=ownDataValue(value,'y'),width=ownDataValue(value,'width'),height=ownDataValue(value,'height');
+  if(![x,y,width,height].every(v=>typeof v==='number'&&Number.isFinite(v)))return undefined;
+  const nx=Number(x),ny=Number(y),nw=Number(width),nh=Number(height);
+  if(nx<0||ny<0||nw<=0||nh<=0||nx+nw>1.000001||ny+nh>1.000001)return undefined;
+  return {x:nx,y:ny,width:nw,height:nh};
+};
+const restoreVector=(value:unknown):{x:number;y:number;z:number}|null=>{
+  if(!isPlainDataRecord(value))return null;
+  const x=ownDataValue(value,'x'),y=ownDataValue(value,'y'),z=ownDataValue(value,'z');
+  if(![x,y,z].every(v=>typeof v==='number'&&Number.isFinite(v)))return null;
+  return {x:Number(x),y:Number(y),z:Number(z)};
+};
+const restoreStringList=(value:unknown,maxItems:number,maxLength:number):string[]=>{
+  if(!isPlainDataArray(value,maxItems*4))return [];
+  return [...new Set(value
+    .filter((item):item is string=>typeof item==='string'&&Boolean(item.trim()))
+    .map(item=>item.trim().slice(0,maxLength)))].slice(-maxItems);
 };
 
 export interface GroundedEntity {
@@ -71,78 +100,212 @@ export const defaultGroundedWorldState=():GroundedWorldStateSnapshot=>({version:
 
 export class GroundedWorldState {
   private state=defaultGroundedWorldState();
-  restore(raw?:Partial<GroundedWorldStateSnapshot>|null){
-    const d=defaultGroundedWorldState(); const r=raw??{};
-    this.state={...d,...r,
-      entities:Array.isArray(r.entities)?r.entities.slice(0,128).map((e:any)=>{
-        const imageBox=normalizeImageBox(e?.imageBox);
-        const imageBoxCameraId=Number.isSafeInteger(e?.imageBoxCameraId)&&Number(e.imageBoxCameraId)>=0?Number(e.imageBoxCameraId):undefined;
-        const imageBoxAt=Number.isFinite(e?.imageBoxAt)&&Number(e.imageBoxAt)>=0&&Number(e.imageBoxAt)<=Number(r.lastAt??0)?Number(e.imageBoxAt):undefined;
-        const imageBoxConfidence01=Number.isFinite(e?.imageBoxConfidence01)&&Number(e.imageBoxConfidence01)>=.42&&Number(e.imageBoxConfidence01)<=1?Number(e.imageBoxConfidence01):undefined;
-        const validImageEvidence=Boolean(imageBox&&imageBoxCameraId!==undefined&&imageBoxAt!==undefined&&imageBoxConfidence01!==undefined);
-        return {
-          ...e,
-          modalities:Array.isArray(e?.modalities)?[...new Set(e.modalities.filter((x:any)=>typeof x==='string'))]:[],
-          trackAliases:Array.isArray(e?.trackAliases)?[...new Set(e.trackAliases.filter((x:any)=>typeof x==='string'))].slice(-16):[],
-          sourceIds:Array.isArray(e?.sourceIds)?[...new Set(e.sourceIds.filter((x:any)=>typeof x==='string'))].slice(-16):[],
-          modalityEvidenceKinds:e?.modalityEvidenceKinds&&typeof e.modalityEvidenceKinds==='object'?{...e.modalityEvidenceKinds}:{},
-          ...(validImageEvidence?{imageBox,imageBoxCameraId,imageBoxAt,imageBoxConfidence01}:{imageBox:undefined,imageBoxCameraId:undefined,imageBoxAt:undefined,imageBoxConfidence01:undefined}),
-          presenceStatus:['visible','fading','unknown'].includes(e?.presenceStatus)?e.presenceStatus:'unknown',
-          persistence01:clamp(Number(e?.persistence01??0)),
-          absenceEvidence01:clamp(Number(e?.absenceEvidence01??0)),
-          observationCount:Math.max(1,Math.floor(Number(e?.observationCount??1))),
-          valueKnown:e?.valueKnown===true,
-          visibilityKnown:e?.visibilityKnown===true,
-          collectionKnown:e?.collectionKnown===true,
-        };
-      }):[],
-      relations:Array.isArray(r.relations)?r.relations.slice(0,256):[],
-      events:Array.isArray(r.events)?r.events.slice(0,96):[],
-      facts:Array.isArray(r.facts)?r.facts.slice(0,192):[],
-      provenanceIds:Array.isArray(r.provenanceIds)?r.provenanceIds.slice(0,128):[],
-    };
+
+  private refreshHash(){
+    const digest=[this.state.location,this.state.revision,this.state.facts.slice(-24).join('|'),this.state.events.slice(0,8).map(row=>row.id).join('|')].join('|');
+    this.state.lastHash=stableHash(digest);
   }
+
+  restore(raw?:Partial<GroundedWorldStateSnapshot>|null){
+    const d=defaultGroundedWorldState();
+    // Treat persisted state as untrusted input. Reject accessors/proxies before
+    // reading any property so restore never executes caller-defined code.
+    const r=isPlainDataRecord(raw)?raw:{};
+    const lastAt=timestampOr(ownDataValue(r,'lastAt'),0);
+    const revision=boundedCountOr(ownDataValue(r,'revision'),0,1_000_000_000);
+
+    const rawEntities=ownDataValue(r,'entities');
+    const entities:GroundedEntity[]=isPlainDataArray(rawEntities,512)
+      ?rawEntities.slice(0,128).flatMap((value,index)=>{
+        if(!isPlainDataRecord(value))return [];
+        const id=stringOr(ownDataValue(value,'id'),'',180).trim();
+        const label=stringOr(ownDataValue(value,'label'),'',180).trim();
+        if(!id||!label)return [];
+        const entityLastAt=Math.min(timestampOr(ownDataValue(value,'lastSeenAt'),lastAt),lastAt||timestampOr(ownDataValue(value,'lastSeenAt'),0));
+        const firstSeenAt=Math.min(timestampOr(ownDataValue(value,'firstSeenAt'),entityLastAt),entityLastAt);
+        const positionFrameId=stringOr(ownDataValue(value,'positionFrameId'),'',120).trim();
+        const position=positionFrameId?restoreVector(ownDataValue(value,'position')):null;
+        const velocity=positionFrameId?restoreVector(ownDataValue(value,'velocity')):null;
+        const box=normalizeImageBox(ownDataValue(value,'imageBox'));
+        const cameraId=ownDataValue(value,'imageBoxCameraId');
+        const imageAt=ownDataValue(value,'imageBoxAt');
+        const boxConfidence=ownDataValue(value,'imageBoxConfidence01');
+        const validImage=Boolean(
+          box&&typeof cameraId==='number'&&Number.isSafeInteger(cameraId)&&cameraId>=0
+          &&typeof imageAt==='number'&&Number.isSafeInteger(imageAt)&&imageAt>=0&&imageAt<=lastAt
+          &&typeof boxConfidence==='number'&&Number.isFinite(boxConfidence)&&boxConfidence>=.42&&boxConfidence<=1
+        );
+        const valueRaw=ownDataValue(value,'value');
+        const entity:GroundedEntity={
+          id,label,kind:stringOr(ownDataValue(value,'kind'),'unknown',48),
+          confidence01:unitStrictOr(ownDataValue(value,'confidence01'),0),
+          present01:unitStrictOr(ownDataValue(value,'present01'),0),
+          firstSeenAt,lastSeenAt:entityLastAt,
+          modalities:restoreStringList(ownDataValue(value,'modalities'),8,32),
+          trackAliases:restoreStringList(ownDataValue(value,'trackAliases'),16,120),
+          sourceIds:restoreStringList(ownDataValue(value,'sourceIds'),16,120),
+          modalityEvidenceKinds:sanitizeWorldModalityEvidence(ownDataValue(value,'modalityEvidenceKinds')),
+          presenceStatus:(['visible','fading','unknown'] as const).includes(ownDataValue(value,'presenceStatus') as 'visible'|'fading'|'unknown')
+            ?ownDataValue(value,'presenceStatus') as 'visible'|'fading'|'unknown':'unknown',
+          persistence01:unitStrictOr(ownDataValue(value,'persistence01'),0),
+          absenceEvidence01:unitStrictOr(ownDataValue(value,'absenceEvidence01'),0),
+          observationCount:Math.max(1,boundedCountOr(ownDataValue(value,'observationCount'),1,1_000_000_000)),
+          valueKnown:ownDataValue(value,'valueKnown')===true,
+          visibilityKnown:ownDataValue(value,'visibilityKnown')===true,
+          collectionKnown:ownDataValue(value,'collectionKnown')===true,
+          position,velocity,
+          ...(positionFrameId?{positionFrameId}:{}),
+          ...(stringOr(ownDataValue(value,'trackId'),'',120).trim()?{trackId:stringOr(ownDataValue(value,'trackId'),'',120).trim()}:{}),
+          ...(validImage?{imageBox:box!,imageBoxCameraId:Number(cameraId),imageBoxAt:Number(imageAt),imageBoxConfidence01:Number(boxConfidence)}:{}),
+          ...(typeof valueRaw==='number'&&Number.isFinite(valueRaw)?{value:valueRaw}:{}),
+        };
+        return [entity];
+      })
+      :[];
+
+    const rawRelations=ownDataValue(r,'relations');
+    const relations:GroundedRelation[]=isPlainDataArray(rawRelations,1024)
+      ?rawRelations.slice(0,256).flatMap(value=>{
+        if(!isPlainDataRecord(value))return [];
+        const id=stringOr(ownDataValue(value,'id'),'',180).trim();
+        const from=stringOr(ownDataValue(value,'from'),'',180).trim();
+        const relation=stringOr(ownDataValue(value,'relation'),'',100).trim();
+        const to=stringOr(ownDataValue(value,'to'),'',180).trim();
+        if(!id||!from||!relation||!to)return [];
+        const fromEntityId=stringOr(ownDataValue(value,'fromEntityId'),'',180).trim();
+        const toEntityId=stringOr(ownDataValue(value,'toEntityId'),'',180).trim();
+        return [{
+          id,from,relation,to,confidence01:unitStrictOr(ownDataValue(value,'confidence01'),0),
+          at:Math.min(timestampOr(ownDataValue(value,'at'),lastAt),lastAt),
+          ...(fromEntityId?{fromEntityId}:{}),...(toEntityId?{toEntityId}:{}),
+        }];
+      })
+      :[];
+
+    const rawEvents=ownDataValue(r,'events');
+    const events:GroundedEvent[]=isPlainDataArray(rawEvents,384)
+      ?rawEvents.slice(0,96).flatMap(value=>{
+        if(!isPlainDataRecord(value))return [];
+        const id=stringOr(ownDataValue(value,'id'),'',180).trim();
+        const originalLabel=stringOr(ownDataValue(value,'label'),'',240).trim();
+        if(!id||!originalLabel)return [];
+        const revoked=originalLabel.toLowerCase().startsWith('external-observed:');
+        return [{
+          id,label:revoked?'external-receipt:'+originalLabel.slice('external-observed:'.length):originalLabel,
+          confidence01:revoked?0:unitStrictOr(ownDataValue(value,'confidence01'),0),
+          lastAt:Math.min(timestampOr(ownDataValue(value,'lastAt'),lastAt),lastAt),
+          persistence01:revoked?0:unitStrictOr(ownDataValue(value,'persistence01'),0),
+          evidenceKind:admittedWorldEvidenceKind(ownDataValue(value,'evidenceKind')),
+          modalityEvidenceKinds:sanitizeWorldModalityEvidence(ownDataValue(value,'modalityEvidenceKinds')),
+        }];
+      })
+      :[];
+
+    const rawFacts=ownDataValue(r,'facts');
+    const facts=isPlainDataArray(rawFacts,1024)
+      ?rawFacts.filter((fact):fact is string=>typeof fact==='string'&&Boolean(fact.trim())
+        &&!fact.toLowerCase().startsWith('external-observed:')&&!fact.toLowerCase().startsWith('shadow-divergence:'))
+        .slice(-192).map(fact=>fact.trim().slice(0,240))
+      :[];
+    const rawProvenance=ownDataValue(r,'provenanceIds');
+    const provenanceIds=isPlainDataArray(rawProvenance,512)
+      ?rawProvenance.filter((id):id is string=>typeof id==='string'&&Boolean(id.trim())
+        &&!id.toLowerCase().startsWith('external-postcondition:'))
+        .slice(0,128).map(id=>id.trim().slice(0,192))
+      :[];
+
+    this.state={
+      version:1,
+      revision,
+      lastAt,
+      location:stringOr(ownDataValue(r,'location'),d.location,120),
+      uncertainty01:unitStrictOr(ownDataValue(r,'uncertainty01'),d.uncertainty01),
+      confidence01:unitStrictOr(ownDataValue(r,'confidence01'),d.confidence01),
+      entities,relations,events,facts,provenanceIds,lastHash:'',
+    };
+    // Never trust the persisted digest; derive it from the sanitized state.
+    this.refreshHash();
+  }
+
   snapshot(){return structuredClone(this.state);}
 
-  /** P2841: commit only externally evidenced consequences into the canonical grounded world. */
+  /**
+   * Commit a world consequence only when the exact executor result and exact
+   * verifier token are still trusted in this process. Numeric flags, labels,
+   * copied JSON and persisted receipts cannot authorize canonical world facts.
+   */
   integrateExternalOutcome(input:{
-    at:number; action:string; status:string; proofClass:string; verified01:number; independent01:number;
-    evidence01:number; consequence01:number; claim:string; provenanceId:string; divergence01:number;
+    embodiedAction:EmbodiedActionResult;
+    postconditionVerification:OutcomeVerification;
+    divergence01?:number;
   }){
-    const at=input.at;
-    const evidence=clamp(input.evidence01);
-    const verified=clamp(input.verified01);
-    const independent=clamp(input.independent01);
-    // A command receipt proves that the device accepted/executed a command, not
-    // that the intended world effect occurred. Only the canonical, independently
-    // verified postcondition may change grounded facts or world confidence.
-    const verifiedWorldEffect=input.proofClass==='independent-observation' && verified>=.8 && independent>=.8;
-    const confidence=verifiedWorldEffect?clamp(.48*evidence+.30*verified+.22*independent):0;
-    const eventId=`gw-external-${stableHash(`${at}:${input.action}:${input.provenanceId}`)}`;
-    const eventLabel=norm(`${verifiedWorldEffect?'external-observed':'external-receipt'}:${input.action}:${input.status}:${input.proofClass}`);
-    const fact=verifiedWorldEffect?norm(`external-observed:${input.action}:${input.claim}`):'';
-    const divergenceFact=verifiedWorldEffect?norm(`shadow-divergence:${input.action}:${input.divergence01.toFixed(3)}`):'';
-    const events=new Map(this.state.events.map(x=>[x.id,{...x}]));
+    // This public boundary may receive caller-controlled JavaScript values.
+    // Inspect own data descriptors first; a Proxy/accessor can never become
+    // an executable evidence source merely because it resembles a host receipt.
+    if(!isPlainDataRecord(input)){
+      return {revision:this.state.revision,eventId:'',confidence01:0,verified01:0,independent01:0,lastHash:this.state.lastHash};
+    }
+    const rawAction=ownDataValue(input,'embodiedAction');
+    const actionResult=isPlainDataRecord(rawAction)?rawAction as unknown as EmbodiedActionResult:null;
+    if(!actionResult){
+      return {revision:this.state.revision,eventId:'',confidence01:0,verified01:0,independent01:0,lastHash:this.state.lastHash};
+    }
+    const rawVerification=ownDataValue(input,'postconditionVerification');
+    const verification=isPlainDataRecord(rawVerification)?rawVerification as unknown as OutcomeVerification:null;
+    const atRaw=actionResult?ownDataValue(actionResult,'at'):undefined;
+    const at=typeof atRaw==='number'&&Number.isSafeInteger(atRaw)&&atRaw>=0?atRaw:this.state.lastAt;
+    const rawActionName=actionResult?ownDataValue(actionResult,'action'):undefined;
+    const action=typeof rawActionName==='string'?rawActionName.trim().slice(0,80)||'unknown':'unknown';
+    const rawStatus=actionResult?ownDataValue(actionResult,'status'):undefined;
+    const status=typeof rawStatus==='string'?rawStatus.slice(0,32):'unknown';
+    const rawRealityClass=actionResult?ownDataValue(actionResult,'realityClass'):undefined;
+    const realityClass=typeof rawRealityClass==='string'?rawRealityClass.slice(0,40):'unknown';
+    const rawExecutionId=actionResult?ownDataValue(actionResult,'executionId'):undefined;
+    const executionId=typeof rawExecutionId==='string'?rawExecutionId.slice(0,100):'unbound';
+    const trusted=Boolean(actionResult&&verification&&isTrustedEmbodiedOutcomeVerification(verification,actionResult));
+    const verifiedWorldEffect=Boolean(
+      trusted&&verification
+      &&ownDataValue(verification,'verified')===true
+      &&ownDataValue(verification,'externalObservation')===true
+      &&ownDataValue(verification,'basis')==='external-postcondition',
+    );
+    const confidence=verifiedWorldEffect&&verification?clamp(Number(ownDataValue(verification,'confidence01')??0)):0;
+    const divergence=clamp(Number(ownDataValue(input,'divergence01')??0));
+    // The executor ID is the idempotency key; timestamps are metadata, not identity.
+    const eventId='gw-external-'+stableHash(executionId==='unbound'?at+':'+action:executionId);
+    const existing=this.state.events.find(row=>row.id===eventId);
+    // Replays cannot advance the world revision or re-apply learning evidence.
+    // A prior diagnostic receipt may be upgraded once when the exact trusted
+    // verifier token subsequently becomes available for the same execution.
+    if(existing&&(!verifiedWorldEffect||existing.label.startsWith('external-observed:'))){
+      const previouslyVerified=existing.label.startsWith('external-observed:');
+      return {
+        revision:this.state.revision,eventId,confidence01:existing.confidence01,
+        verified01:previouslyVerified?1:0,independent01:previouslyVerified?1:0,lastHash:this.state.lastHash,
+      };
+    }
+    const eventLabel=norm((verifiedWorldEffect?'external-observed':'external-receipt')+':'+action+':'+status+':'+realityClass);
+    const observedPostcondition=verification?ownDataValue(verification,'observedPostcondition'):undefined;
+    const fact=verifiedWorldEffect?norm('external-observed:'+action+':'+(typeof observedPostcondition==='string'?observedPostcondition:'postcondition')):'';
+    const divergenceFact=verifiedWorldEffect?norm('shadow-divergence:'+action+':'+divergence.toFixed(3)):'';
+    const events=new Map(this.state.events.map(row=>[row.id,{...row}]));
     events.set(eventId,{
       id:eventId,label:eventLabel,confidence01:confidence,lastAt:at,
-      persistence01:verifiedWorldEffect?clamp(.12+.28*confidence+.18*input.consequence01):0,
+      persistence01:verifiedWorldEffect?clamp(.12+.28*confidence):0,
     });
     const facts=[...this.state.facts,fact,divergenceFact].filter(Boolean);
-    const provenance=[input.provenanceId,...this.state.provenanceIds].filter(Boolean);
+    const provenance=verifiedWorldEffect?['external-postcondition:'+executionId,...this.state.provenanceIds]:[...this.state.provenanceIds];
     const eventRows=[...events.values()].sort((a,b)=>b.lastAt-a.lastAt).slice(0,96);
     const nextConfidence=verifiedWorldEffect?clamp(this.state.confidence01*.82+confidence*.18):this.state.confidence01;
-    this.state={...this.state,revision:this.state.revision+1,lastAt:at,confidence01:nextConfidence,uncertainty01:clamp(1-nextConfidence),events:eventRows,facts:[...new Set(facts)].slice(-192),provenanceIds:[...new Set(provenance)].slice(0,128)};
-    const digest=`${this.state.location}|${this.state.revision}|${this.state.facts.slice(-24).join('|')}|${this.state.events.slice(0,8).map(x=>x.id).join('|')}`;
-    this.state.lastHash=stableHash(digest);
-    return {revision:this.state.revision,eventId,confidence01:confidence,verified01:verified,independent01:independent,lastHash:this.state.lastHash};
+    this.state={...this.state,revision:this.state.revision+1,lastAt:Math.max(this.state.lastAt,at),confidence01:nextConfidence,uncertainty01:clamp(1-nextConfidence),events:eventRows,facts:[...new Set(facts)].slice(-192),provenanceIds:[...new Set(provenance)].slice(0,128)};
+    this.refreshHash();
+    return {revision:this.state.revision,eventId,confidence01:confidence,verified01:verifiedWorldEffect?1:0,independent01:verifiedWorldEffect?1:0,lastHash:this.state.lastHash};
   }
 
   integrate(input:{at:number;base?:WorldContext|null;perception?:P41PerceptionState|null;evidence?:PerceptualEvidenceState|null;}):WorldContext{
     const at=input.at; const base=input.base; const p=input.perception; const e=input.evidence;
     const rows:GroundedEntity[]=this.state.entities.map(row=>({...row,modalities:[...row.modalities],trackAliases:[...(row.trackAliases??[])],sourceIds:[...(row.sourceIds??[])],modalityEvidenceKinds:{...(row.modalityEvidenceKinds??{})}}));
-    const normalizeEvidence=(value:unknown):'observed'|'model-output'|'derived'|'conflict'|'unresolved'=>{
-      return value==='observed'||value==='model-output'||value==='derived'||value==='conflict'||value==='unresolved'?value:'unresolved';
-    };
+    const normalizeEvidence=(value:unknown):'observed'|'model-output'|'derived'|'conflict'|'unresolved'=>admittedWorldEvidenceKind(value);
     const trackTokens=(entity:Pick<GroundedEntity,'id'|'trackId'|'trackAliases'>):string[]=>{
       const values:string[]=[];
       if(entity.id)values.push('id:'+entity.id);

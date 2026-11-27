@@ -56,8 +56,20 @@ export function finiteOr(value: unknown, fallback: number, min = -Infinity, max 
   if (typeof value !== 'number' || !Number.isFinite(value)) return fallback;
   return value < min ? min : value > max ? max : value;
 }
+/** Strict bounded restore: invalid persisted values are rejected, never saturated into stronger evidence. */
+export function finiteWithinOr(value: unknown, fallback: number, min = -Infinity, max = Infinity): number {
+  return typeof value === 'number' && Number.isFinite(value) && value >= min && value <= max ? value : fallback;
+}
 export function unitOr(value: unknown, fallback: number): number { return finiteOr(value, fallback, 0, 1); }
+/** Restored trust/quality values outside [0,1] are corrupt, not values to clamp upward. */
+export function unitStrictOr(value: unknown, fallback: number): number { return finiteWithinOr(value, fallback, 0, 1); }
 export function countOr(value: unknown, fallback: number): number { return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 ? value : fallback; }
+/** Reject counters outside the owner's budget instead of fabricating saturation at the maximum. */
+export function boundedCountOr(value: unknown, fallback: number, maximum: number): number {
+  return Number.isSafeInteger(maximum) && maximum >= 0 &&
+    typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 && value <= maximum
+    ? value : fallback;
+}
 export function timestampOr(value: unknown, fallback: number): number { return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : fallback; }
 export function stringOr(value: unknown, fallback: string, maxLength = 256): string { return typeof value === 'string' && value.length > 0 ? value.slice(0, maxLength) : fallback; }
 export function enumOr<T extends string>(value: unknown, allowed: ReadonlySet<T>, fallback: T): T { return typeof value === 'string' && allowed.has(value as T) ? value as T : fallback; }
