@@ -143,6 +143,19 @@ const priorOutcomeEvent = {
     evidence01: 0.9,
   },
 };
+const priorActionEvent = {
+  id: 'action:cycle-42',
+  tick: 42,
+  stage: 'action',
+  external: false,
+  payload: {
+    planId: plan.id,
+    decisionId: context.decisionId,
+    goalId: goal.id,
+    planAccepted: true,
+    action: 'verify',
+  },
+};
 const priorPlanEvent = {
   id: 'plan:cycle-42',
   tick: 42,
@@ -157,7 +170,7 @@ const priorPlanEvent = {
   },
 };
 const revisionHint = derivePlanRevisionHint(
-  [priorOutcomeEvent, priorPlanEvent], 43, goal.id, 0.8,
+  [priorOutcomeEvent, priorActionEvent, priorPlanEvent], 43, goal.id, 0.8,
 );
 assert.ok(revisionHint, 'a same-goal, immediately prior, independently verified high-error outcome must produce a revision hint');
 assert.equal(revisionHint.previousPlanId, plan.id);
@@ -183,6 +196,14 @@ assert.equal(engine.validateContext(revisedPlan, goal, initialWorld, {
   decisionId: revisionContext.decisionId, tick: revisionContext.tick,
 }).reason, 'revision-context-mismatch',
   'a revision-bearing plan must not validate without its exact revision evidence');
+
+assert.equal(derivePlanRevisionHint([priorOutcomeEvent, {
+  ...priorActionEvent,
+  payload: { ...priorActionEvent.payload, action: 'rest' },
+}, priorPlanEvent], 43, goal.id, 0.8), null,
+  'an action receipt for a different executed action must not be used as the prediction-error cause');
+assert.equal(derivePlanRevisionHint([priorOutcomeEvent, priorPlanEvent], 43, goal.id, 0.8), null,
+  'a plan and outcome without an exact executed-action receipt cannot form a revision');
 
 const simulatedRevisionEvent = {
   ...priorOutcomeEvent,
