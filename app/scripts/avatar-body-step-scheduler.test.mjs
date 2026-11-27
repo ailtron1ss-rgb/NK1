@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { test } from "node:test";
 
 import {
@@ -35,4 +36,13 @@ test("non-monotonic and non-finite timestamps fail closed", () => {
   assert.equal(shouldStepAvatarBodyMotion(999, 1000), false);
   assert.equal(shouldStepAvatarBodyMotion(Number.NaN, 1000), false);
   assert.equal(shouldStepAvatarBodyMotion(1050, Number.POSITIVE_INFINITY), false);
+});
+
+test("AvatarStage uses the 20 Hz scheduler for the actual physics loop", () => {
+  const stage = readFileSync(new URL("../src/components/AvatarStage.tsx", import.meta.url), "utf8");
+  assert.match(stage, /import \{ shouldStepAvatarBodyMotion \} from "\.\/avatar\/avatarBodyStepScheduler"/);
+  assert.match(stage, /if \(shouldStepAvatarBodyMotion\(now, lastStepAt\)\) \{/);
+  assert.match(stage, /stepAvatarArticulatedBody\([\s\S]*?deltaMs/);
+  assert.match(stage, /lastStepAt = now;/);
+  assert.doesNotMatch(stage, /if \(deltaMs >= 33\)/);
 });
