@@ -140,6 +140,10 @@ test("semantic side markers embedded before chain segments remain directional", 
   assert.equal(dynamics.resolveAvatarDynamicsBoneRole("MantleTailR_Tip")?.side, 1);
   assert.equal(dynamics.resolveAvatarDynamicsBoneRole("SleeveFollowL")?.side, -1);
   assert.equal(dynamics.resolveAvatarDynamicsBoneRole("SleeveCuffR")?.side, 1);
+  assert.equal(dynamics.resolveAvatarDynamicsBoneRole("coatHemPanel")?.side, 0);
+  assert.equal(dynamics.resolveAvatarDynamicsBoneRole("panel")?.side, 0);
+  assert.equal(dynamics.resolveAvatarDynamicsBoneRole("CoatPanelL_Mid")?.side, -1);
+  assert.equal(dynamics.resolveAvatarDynamicsBoneRole("CoatPanelR_Hem")?.side, 1);
   assert.equal(dynamics.resolveAvatarDynamicsBoneRole("RibbonL_Tip")?.side, -1);
 });
 
