@@ -95,6 +95,8 @@ console.log("HOSTED_KURISU_ASSET=PASS", JSON.stringify({
   animations: (document.animations ?? []).length,
   secondaryAssetAudit: {
     skinJoints: bones.length,
+    skinnedMeshes: secondaryAudit.skinnedMeshCount,
+    morphMeshes: secondaryAudit.morphMeshCount,
     recognizedSecondaryBones: secondaryAudit.recognizedBoneCount,
     unclassifiedBoneNames: secondaryAudit.unclassifiedBoneNames,
     byRole: secondaryAudit.byRole,
