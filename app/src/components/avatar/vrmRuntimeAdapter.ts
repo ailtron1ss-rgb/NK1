@@ -145,6 +145,10 @@ export interface VrmFullBodyRig extends VrmNormalizedMotorRig {
   rightLowerLeg: NormalizedBoneNode | null;
   leftFoot: NormalizedBoneNode | null;
   rightFoot: NormalizedBoneNode | null;
+  leftHand: NormalizedBoneNode | null;
+  rightHand: NormalizedBoneNode | null;
+  leftFingerBones: readonly VrmFingerBone[];
+  rightFingerBones: readonly VrmFingerBone[];
 }
 
 export interface VrmNormalizedMotorResult {
@@ -281,6 +285,38 @@ export function applyVrmNormalizedMotorFrame(
   };
 }
 
+interface VrmFingerBone {
+  name: string;
+  node: NormalizedBoneNode | null;
+  flex: number;
+}
+
+const VRM_FINGER_SEGMENTS = [
+  { suffix: "ThumbMetacarpal", flex: 0.22 },
+  { suffix: "ThumbProximal", flex: 0.48 },
+  { suffix: "ThumbDistal", flex: 0.58 },
+  { suffix: "IndexProximal", flex: 0.64 },
+  { suffix: "IndexIntermediate", flex: 0.78 },
+  { suffix: "IndexDistal", flex: 0.54 },
+  { suffix: "MiddleProximal", flex: 0.68 },
+  { suffix: "MiddleIntermediate", flex: 0.82 },
+  { suffix: "MiddleDistal", flex: 0.58 },
+  { suffix: "RingProximal", flex: 0.64 },
+  { suffix: "RingIntermediate", flex: 0.78 },
+  { suffix: "RingDistal", flex: 0.54 },
+  { suffix: "LittleProximal", flex: 0.58 },
+  { suffix: "LittleIntermediate", flex: 0.72 },
+  { suffix: "LittleDistal", flex: 0.5 },
+] as const;
+
+const resolveVrmFingerBones = (
+  side: "left" | "right",
+  resolve: (name: string) => NormalizedBoneNode | null,
+): readonly VrmFingerBone[] => VRM_FINGER_SEGMENTS.map(({ suffix, flex }) => {
+  const name = side + suffix;
+  return { name, node: resolve(name), flex };
+});
+
 /**
  * Resolve the optional full-body normalized rig. Uses the same normalized proxy
  * surface as the gaze/gesture controller, so there is still one command surface.
@@ -308,6 +344,10 @@ export function resolveVrmFullBodyRig(vrm: VRM): VrmFullBodyRig {
     rightLowerLeg: resolve("rightLowerLeg"),
     leftFoot: resolve("leftFoot"),
     rightFoot: resolve("rightFoot"),
+    leftHand: resolve("leftHand"),
+    rightHand: resolve("rightHand"),
+    leftFingerBones: resolveVrmFingerBones("left", resolve),
+    rightFingerBones: resolveVrmFingerBones("right", resolve),
   };
 }
 
@@ -316,6 +356,8 @@ const CHANNEL_LIMIT: Record<string, number> = {
   leftShoulder: 0.7, rightShoulder: 0.7, leftElbow: 1.4, rightElbow: 1.4,
   leftHip: 0.8, rightHip: 0.8, leftKnee: 1.4, rightKnee: 1.4,
   leftAnkle: 0.5, rightAnkle: 0.5, rootYaw: 0.9,
+  leftWrist: 0.4, rightWrist: 0.4, leftHand: 0.35, rightHand: 0.35,
+  leftFingers: 0.85, rightFingers: 0.85,
 };
 
 const scaleChannel = (channel: BodyChannel, value: number): number => {
@@ -336,8 +378,9 @@ export interface VrmFullBodyApplyResult {
  * Upper-arm bones are intentionally NOT written here: the gaze/gesture
  * controller (`applyVrmNormalizedMotorFrame`) owns the shoulders via arm intents,
  * so writing them twice would double-drive the same bone. This function owns
- * elbow, hip, knee, ankle/foot pitch and spine. Channels without a mapping are ignored rather than
- * guessed, and it reports only the bones it actually wrote — never a visual claim.
+ * elbow, hip, knee, ankle/foot pitch, spine, wrist/palm rotation and optional finger
+ * curl. Optional finger joints are resolved per model; missing bones are ignored
+ * and never advertised as if they moved.
  */
 export function applyVrmFullBodyChannels(vrm: VRM, channels: Readonly<Partial<Record<BodyChannel, number>>>): VrmFullBodyApplyResult {
   const rig = resolveVrmFullBodyRig(vrm);
@@ -346,7 +389,13 @@ export function applyVrmFullBodyChannels(vrm: VRM, channels: Readonly<Partial<Re
   // owns the remaining bones, so it must do the same or the additive writes below
   // accumulate across frames. Reset every owned bone to identity first so a channel
   // that stops being emitted returns to rest instead of freezing at its last value.
-  const owned = [rig.hips, rig.spine, rig.leftLowerArm, rig.rightLowerArm, rig.leftUpperLeg, rig.rightUpperLeg, rig.leftLowerLeg, rig.rightLowerLeg, rig.leftFoot, rig.rightFoot];
+  const owned = [
+    rig.hips, rig.spine, rig.leftLowerArm, rig.rightLowerArm,
+    rig.leftUpperLeg, rig.rightUpperLeg, rig.leftLowerLeg, rig.rightLowerLeg,
+    rig.leftFoot, rig.rightFoot, rig.leftHand, rig.rightHand,
+    ...rig.leftFingerBones.map((finger) => finger.node),
+    ...rig.rightFingerBones.map((finger) => finger.node),
+  ];
   const resetSeen = new Set<NormalizedBoneNode>();
   for (const node of owned) {
     if (!node || resetSeen.has(node)) continue;
@@ -369,6 +418,21 @@ export function applyVrmFullBodyChannels(vrm: VRM, channels: Readonly<Partial<Re
   write(rig.rightLowerLeg, "z", scaleChannel("rightKnee", channels.rightKnee ?? 0), "rightLowerLeg");
   write(rig.leftFoot, "x", scaleChannel("leftAnkle", channels.leftAnkle ?? 0), "leftFoot");
   write(rig.rightFoot, "x", scaleChannel("rightAnkle", channels.rightAnkle ?? 0), "rightFoot");
+  // VRM normalized hand bones are the wrist joints: X bends the wrist, while Y
+  // rotates the palm around the forearm. Keep the two semantic channels on
+  // orthogonal axes of one joint and report that joint only once.
+  write(rig.leftHand, "x", scaleChannel("leftWrist", channels.leftWrist ?? 0), "leftHand");
+  write(rig.leftHand, "y", scaleChannel("leftHand", channels.leftHand ?? 0), "leftHand");
+  write(rig.rightHand, "x", scaleChannel("rightWrist", channels.rightWrist ?? 0), "rightHand");
+  write(rig.rightHand, "y", scaleChannel("rightHand", channels.rightHand ?? 0), "rightHand");
+  const leftFingerCurl = scaleChannel("leftFingers", channels.leftFingers ?? 0);
+  for (const finger of rig.leftFingerBones) {
+    write(finger.node, "x", leftFingerCurl * finger.flex, finger.name);
+  }
+  const rightFingerCurl = scaleChannel("rightFingers", channels.rightFingers ?? 0);
+  for (const finger of rig.rightFingerBones) {
+    write(finger.node, "x", rightFingerCurl * finger.flex, finger.name);
+  }
   return {
     applied: controlledBones.length > 0,
     reason: controlledBones.length ? "full-body-channels-applied" : "no-supported-full-body-channels",
