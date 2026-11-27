@@ -1,7 +1,6 @@
 import * as THREE from "three";
 import {
   createAvatarParticleBody,
-  resetAvatarParticleBody,
   stepAvatarParticleBody,
   type AvatarParticleBodyState,
   type AvatarParticleTarget,
@@ -95,14 +94,14 @@ function resolveHumanoidNode(
   if (humanoid && typeof humanoid.getNormalizedBoneNode === "function") {
     try {
       const normalized = humanoid.getNormalizedBoneNode(definition.vrmName);
-      if (normalized?.isBone === true) return normalized as THREE.Object3D;
+      if (normalized?.isObject3D === true) return normalized as THREE.Object3D;
     } catch {
       // Continue with a conservative normalized name lookup for nonstandard VRM builds.
     }
   }
   for (const alias of definition.aliases) {
     const node = byName.get(alias);
-    if (node?.isBone === true) return node;
+    if ((node as any)?.isBone === true) return node;
   }
   return null;
 }
@@ -120,7 +119,7 @@ export function createAvatarParticleBodyRuntime(
   root.updateWorldMatrix(true, true);
   const byName = new Map<string, THREE.Object3D>();
   root.traverse((node) => {
-    if (node.isBone && !byName.has(normalizedBoneName(node.name))) {
+    if ((node as any).isBone === true && !byName.has(normalizedBoneName(node.name))) {
       byName.set(normalizedBoneName(node.name), node);
     }
   });
