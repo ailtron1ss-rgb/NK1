@@ -104,7 +104,7 @@ assert.equal(pe.metrics.conflict01, defaultPerceptualEvidence().metrics.conflict
 assert.equal(pe.metrics.unresolved01, defaultPerceptualEvidence().metrics.unresolved01, 'unverified aggregate metrics reset to defaults');
 assert.equal(pe.evidence.length, 0, 'plain records without the required evidence schema are dropped');
 assert.equal(pe.activeQuery.modality, 'unknown');
-assert.equal(pe.activeQuery.priority01, 1);
+assert.equal(pe.activeQuery.priority01, 0, 'invalid persisted query priority must return to its conservative default, not saturate into maximum priority');
 
 // A valid snapshot round-trips exactly.
 const evidenceSource = new PerceptualEvidenceCompiler();
