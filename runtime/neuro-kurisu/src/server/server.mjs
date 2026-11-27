@@ -1236,10 +1236,10 @@ async function route(req, res) {
             const correlationId=input.correlationId?String(input.correlationId):undefined;
             const actionInput={channel,target,payload:input.payload,...(correlationId?{correlationId}:{})};
             const approvalId=typeof input.approvalId==='string'?input.approvalId.slice(0,120):undefined;
-            const permission=await runtime.core.consumeDirectActionApproval('http.integration.outbound',actionInput,approvalId,{});
+            const permission=await runtime.runSerializedCoreMutation(() => runtime.core.consumeDirectActionApproval('http.integration.outbound',actionInput,approvalId,{}));
             if(!permission.ok) {
                 if(!approvalId && permission.reason==='user-approval-required') {
-                    const approval=await runtime.core.requestActionToolApproval('http.integration.outbound',actionInput,`outbound-${channel}`,{},'direct');
+                    const approval=await runtime.runSerializedCoreMutation(() => runtime.core.requestActionToolApproval('http.integration.outbound',actionInput,`outbound-${channel}`,{},'direct'));
                     return json(res,403,{ok:false,approvalRequired:true,error:permission.reason,approvalRequest:approval.request});
                 }
                 return json(res,403,{ok:false,error:permission.reason||'approval-invalid'});
@@ -1705,10 +1705,10 @@ async function route(req, res) {
             const correlationId=input.correlationId?String(input.correlationId):undefined;
             const actionInput={channel,target,payload:input.payload,...(correlationId?{correlationId}:{})};
             const approvalId=typeof input.approvalId==='string'?input.approvalId.slice(0,120):undefined;
-            const permission=await runtime.core.consumeDirectActionApproval('http.integration.outbound',actionInput,approvalId,{});
+            const permission=await runtime.runSerializedCoreMutation(() => runtime.core.consumeDirectActionApproval('http.integration.outbound',actionInput,approvalId,{}));
             if(!permission.ok) {
                 if(!approvalId && permission.reason==='user-approval-required') {
-                    const approval=await runtime.core.requestActionToolApproval('http.integration.outbound',actionInput,`will-channel-outbound-${channel}`,{},'direct');
+                    const approval=await runtime.runSerializedCoreMutation(() => runtime.core.requestActionToolApproval('http.integration.outbound',actionInput,`will-channel-outbound-${channel}`,{},'direct'));
                     return json(res,403,{ok:false,approvalRequired:true,error:permission.reason,approvalRequest:approval.request});
                 }
                 return json(res,403,{ok:false,error:permission.reason||'approval-invalid'});
@@ -1841,10 +1841,10 @@ async function route(req, res) {
             if (!text) return json(res, 400, { ok: false, error: 'empty-text' });
             const actionInput={text};
             const approvalId=typeof input.approvalId==='string'?input.approvalId.slice(0,120):undefined;
-            const permission=await runtime.core.consumeDirectActionApproval('http.voice.speak',actionInput,approvalId,{});
+            const permission=await runtime.runSerializedCoreMutation(() => runtime.core.consumeDirectActionApproval('http.voice.speak',actionInput,approvalId,{}));
             if(!permission.ok) {
                 if(!approvalId && permission.reason==='user-approval-required') {
-                    const request=await runtime.core.requestActionToolApproval('http.voice.speak',actionInput,'voice-output',{},'direct');
+                    const request=await runtime.runSerializedCoreMutation(() => runtime.core.requestActionToolApproval('http.voice.speak',actionInput,'voice-output',{},'direct'));
                     return json(res,403,{ok:false,approvalRequired:true,error:permission.reason,approvalRequest:request.request});
                 }
                 return json(res,403,{ok:false,error:permission.reason||'approval-invalid'});
@@ -1862,10 +1862,10 @@ async function route(req, res) {
         if (req.method === 'POST' && url.pathname === '/api/organism/voice/listen') {
             const input=await body(req);
             const approvalId=typeof input.approvalId==='string'?input.approvalId.slice(0,120):undefined;
-            const permission=await runtime.core.consumeDirectActionApproval('http.voice.listen',{},approvalId,{});
+            const permission=await runtime.runSerializedCoreMutation(() => runtime.core.consumeDirectActionApproval('http.voice.listen',{},approvalId,{}));
             if(!permission.ok) {
                 if(!approvalId && permission.reason==='user-approval-required') {
-                    const request=await runtime.core.requestActionToolApproval('http.voice.listen',{},'microphone-input',{},'direct');
+                    const request=await runtime.runSerializedCoreMutation(() => runtime.core.requestActionToolApproval('http.voice.listen',{},'microphone-input',{},'direct'));
                     return json(res,403,{ok:false,approvalRequired:true,error:permission.reason,approvalRequest:request.request});
                 }
                 return json(res,403,{ok:false,error:permission.reason||'approval-invalid'});
@@ -1907,10 +1907,10 @@ async function route(req, res) {
             const input = await body(req);
             const actionInput={deliberate:Boolean(input.deliberate),speak:Boolean(input.speak)};
             const approvalId=typeof input.approvalId==='string'?input.approvalId.slice(0,120):undefined;
-            const permission=await runtime.core.consumeDirectActionApproval('http.voice.turn',actionInput,approvalId,{});
+            const permission=await runtime.runSerializedCoreMutation(() => runtime.core.consumeDirectActionApproval('http.voice.turn',actionInput,approvalId,{}));
             if(!permission.ok) {
                 if(!approvalId && permission.reason==='user-approval-required') {
-                    const request=await runtime.core.requestActionToolApproval('http.voice.turn',actionInput,'voice-conversation-turn',{},'direct');
+                    const request=await runtime.runSerializedCoreMutation(() => runtime.core.requestActionToolApproval('http.voice.turn',actionInput,'voice-conversation-turn',{},'direct'));
                     return json(res,403,{ok:false,approvalRequired:true,error:permission.reason,approvalRequest:request.request});
                 }
                 return json(res,403,{ok:false,error:permission.reason||'approval-invalid'});
@@ -1943,10 +1943,10 @@ async function route(req, res) {
             if(speakReply) {
                 const actionInput={message,deliberate,speak:true};
                 const approvalId=typeof input.approvalId==='string'?input.approvalId.slice(0,120):undefined;
-                const permission=await runtime.core.consumeDirectActionApproval('http.voice.speak-reply',actionInput,approvalId,{});
+                const permission=await runtime.runSerializedCoreMutation(() => runtime.core.consumeDirectActionApproval('http.voice.speak-reply',actionInput,approvalId,{}));
                 if(!permission.ok) {
                     if(!approvalId && permission.reason==='user-approval-required') {
-                        const request=await runtime.core.requestActionToolApproval('http.voice.speak-reply',actionInput,'speak-chat-reply',{},'direct');
+                        const request=await runtime.runSerializedCoreMutation(() => runtime.core.requestActionToolApproval('http.voice.speak-reply',actionInput,'speak-chat-reply',{},'direct'));
                         return json(res,403,{ok:false,approvalRequired:true,error:permission.reason,approvalRequest:request.request});
                     }
                     return json(res,403,{ok:false,error:permission.reason||'approval-invalid'});
@@ -2241,7 +2241,7 @@ async function route(req, res) {
             const options = { idempotencyKey, ...(decisionId ? { decisionId } : {}), ...(typeof input.approvalId === 'string' && input.approvalId ? { approvalId: input.approvalId.slice(0,120) } : {}) };
             const result = await runtime.captureCamera(cameraId, retain, options);
             if(!result.ok && result.outcomeClass==='approval-required') {
-                const approval=await runtime.core.requestActionToolApproval('organism.device.capture',runtime.cameraCaptureToolInput(cameraId,retain),'physical-camera-capture',{...(decisionId?{decisionId}:{}),idempotencyKey},'execute');
+                const approval=await runtime.runSerializedCoreMutation(() => runtime.core.requestActionToolApproval('organism.device.capture',runtime.cameraCaptureToolInput(cameraId,retain),'physical-camera-capture',{...(decisionId?{decisionId}:{}),idempotencyKey},'execute'));
                 return json(res,403,{...result,approvalRequired:true,approvalRequest:approval.request});
             }
             const status = result.ok ? 200 : result.uncertain ? 409 : result.error === 'idempotency-key-required' ? 400 : 503;
@@ -2256,7 +2256,7 @@ async function route(req, res) {
             const options={ ...(idempotencyKey ? { idempotencyKey } : {}), ...(decisionId ? { decisionId } : {}), ...(typeof input.approvalId==='string'&&input.approvalId?{approvalId:input.approvalId.slice(0,120)}:{}) };
             const result = await runtime.captureCameraForCognition(cameraId, retain, options);
             if(!result.ok && !result.skipped && result.outcomeClass==='approval-required') {
-                const approval=await runtime.core.requestActionToolApproval('organism.device.capture',runtime.cameraCaptureToolInput(cameraId,retain),'camera-capture-if-useful',{...(decisionId?{decisionId}:{}),...(idempotencyKey?{idempotencyKey}:{})},'execute');
+                const approval=await runtime.runSerializedCoreMutation(() => runtime.core.requestActionToolApproval('organism.device.capture',runtime.cameraCaptureToolInput(cameraId,retain),'camera-capture-if-useful',{...(decisionId?{decisionId}:{}),...(idempotencyKey?{idempotencyKey}:{})},'execute'));
                 return json(res,403,{...result,approvalRequired:true,approvalRequest:approval.request});
             }
             const status = result.ok || result.skipped ? 200 : result.error === 'camera-capture-idempotency-key-required' ? 400 : result.uncertain ? 409 : 503;
@@ -2602,7 +2602,7 @@ async function route(req, res) {
             // The author identity is derived from the server's authenticated API mode, never from request JSON.
             const authorId = auth.reason === 'authenticated' ? 'api-token-owner' : 'loopback-owner';
             try {
-                const proposal = await runtime.core.constitutionEvolutionPropose({ ...input, authorId, submittedAt:Date.now() });
+                const proposal = await runtime.runSerializedCoreMutation(() => runtime.core.constitutionEvolutionPropose({ ...input, authorId, submittedAt:Date.now() }));
                 return json(res, 201, { ok:true, proposal });
             } catch (error) {
                 const message=String(error?.message||error).replace(/[\r\n\t]+/g,' ').slice(0,240);
@@ -2627,7 +2627,7 @@ async function route(req, res) {
                 if (!review) return json(res, 403, { ok:false, error:'constitution-review-attestation-invalid' });
                 try {
                     // The engine independently verifies the detached signature too; Core never receives an unsigned review DTO.
-                    const updated=await runtime.core.constitutionEvolutionReview(proposalId,input?.artifact);
+                    const updated=await runtime.runSerializedCoreMutation(() => runtime.core.constitutionEvolutionReview(proposalId,input?.artifact));
                     return json(res, 200, { ok:true, proposal:updated });
                 } catch (error) {
                     const message=String(error?.message||error).replace(/[\r\n\t]+/g,' ').slice(0,240);
@@ -2638,10 +2638,10 @@ async function route(req, res) {
                 const approvalId=typeof input?.approvalId==='string'?input.approvalId.slice(0,120):undefined;
                 try {
                     if (approvalId) {
-                        const updated=await runtime.core.constitutionEvolutionRatify(proposalId,approvalId);
+                        const updated=await runtime.runSerializedCoreMutation(() => runtime.core.constitutionEvolutionRatify(proposalId,approvalId));
                         return json(res, 200, { ok:true, proposal:updated });
                     }
-                    const request=await runtime.core.constitutionEvolutionRequestRatification(proposalId);
+                    const request=await runtime.runSerializedCoreMutation(() => runtime.core.constitutionEvolutionRequestRatification(proposalId));
                     const approvalRequest=runtime.core.actionToolPermissionsSnapshot().requests.find(row=>row.id===request.approvalRequestId);
                     if (!approvalRequest) return json(res, 503, { ok:false, error:'constitution-ratification-ticket-not-persisted' });
                     return json(res, 403, { ok:false, approvalRequired:true, error:'user-approval-required', approvalRequest });
@@ -2651,7 +2651,7 @@ async function route(req, res) {
                 }
             }
             try {
-                const revision=await runtime.core.constitutionEvolutionActivate(proposalId);
+                const revision=await runtime.runSerializedCoreMutation(() => runtime.core.constitutionEvolutionActivate(proposalId));
                 return json(res, 200, { ok:true, revision });
             } catch (error) {
                 const message=String(error?.message||error).replace(/[\r\n\t]+/g,' ').slice(0,240);
@@ -2667,10 +2667,10 @@ async function route(req, res) {
             if (!targetVersion || !reason) return json(res, 400, { ok:false, error:'rollback-target-and-reason-required' });
             try {
                 if (approvalId) {
-                    const revision=await runtime.core.constitutionEvolutionRollback(targetVersion,reason,approvalId);
+                    const revision=await runtime.runSerializedCoreMutation(() => runtime.core.constitutionEvolutionRollback(targetVersion,reason,approvalId));
                     return json(res, 200, { ok:true, revision });
                 }
-                const request=await runtime.core.constitutionEvolutionRequestRollback(targetVersion,reason);
+                const request=await runtime.runSerializedCoreMutation(() => runtime.core.constitutionEvolutionRequestRollback(targetVersion,reason));
                 const approvalRequest=runtime.core.actionToolPermissionsSnapshot().requests.find(row=>row.id===request.approvalRequestId);
                 if (!approvalRequest) return json(res, 503, { ok:false, error:'constitution-rollback-ticket-not-persisted' });
                 return json(res, 403, { ok:false, approvalRequired:true, error:'user-approval-required', approvalRequest });
@@ -2692,7 +2692,7 @@ async function route(req, res) {
             const options={...(decisionId?{decisionId}:{}),...(input.autonomous===true?{autonomous:true}:{}),...(Array.isArray(input.expectedOutputKeys)?{expectedOutputKeys:input.expectedOutputKeys.slice(0,32).map(String)}:{})};
             if(!id) return json(res,400,{ok:false,error:'missing-tool-id'});
             try {
-                const approval=await runtime.core.requestActionToolApproval(id,toolInput,reason,options,operation);
+                const approval=await runtime.runSerializedCoreMutation(() => runtime.core.requestActionToolApproval(id,toolInput,reason,options,operation));
                 if(!approval.created && !approval.request) return json(res,503,{ok:false,error:approval.error||'approval-request-failed'});
                 return json(res,201,{ok:true,approval:approval.request,created:approval.created});
             } catch(error) { return json(res,400,{ok:false,error:String(error?.message||error)}); }
@@ -2701,7 +2701,7 @@ async function route(req, res) {
             const input=await body(req);
             const requestId=String(input.requestId||'').trim().slice(0,120);
             if(!requestId) return json(res,400,{ok:false,error:'missing-approval-request-id'});
-            const result=await runtime.core.resolveActionToolApproval(requestId,input.approved===true);
+            const result=await runtime.runSerializedCoreMutation(() => runtime.core.resolveActionToolApproval(requestId,input.approved===true));
             return json(res,result.ok?200:409,result);
         }
         if (req.method === 'POST' && url.pathname === '/api/organism/tools/permissions/consume') {
@@ -2710,7 +2710,7 @@ async function route(req, res) {
             const approvalId=String(input.approvalId||'').trim().slice(0,120);
             const toolInput=input.toolInput&&typeof input.toolInput==='object'&&!Array.isArray(input.toolInput)?input.toolInput:{};
             if(!id||!approvalId) return json(res,400,{ok:false,error:'missing-tool-or-approval-id'});
-            const result=await runtime.core.consumeDirectActionApproval(id,toolInput,approvalId,{});
+            const result=await runtime.runSerializedCoreMutation(() => runtime.core.consumeDirectActionApproval(id,toolInput,approvalId,{}));
             return json(res,result.ok?200:403,result);
         }
         if (req.method === 'POST' && url.pathname === '/api/organism/tools/reconcile') {
@@ -2724,7 +2724,7 @@ async function route(req, res) {
                 const options = { ...(idempotencyKey ? { idempotencyKey } : {}), ...(decisionId ? { decisionId } : {}), ...(typeof input.approvalId === 'string' && input.approvalId ? { approvalId: input.approvalId.slice(0,120) } : {}), ...(Array.isArray(input.expectedOutputKeys) ? { expectedOutputKeys: input.expectedOutputKeys.slice(0, 32).map(String) } : {}) };
                 const result = await runtime.reconcileToolExecution(id, toolInput, reason, options);
                 if(!result.ok && result.outcomeClass==='approval-required' && !options.approvalId) {
-                    const approval=await runtime.core.requestActionToolApproval(id,toolInput,reason,options,'reconcile');
+                    const approval=await runtime.runSerializedCoreMutation(() => runtime.core.requestActionToolApproval(id,toolInput,reason,options,'reconcile'));
                     return json(res,403,{ok:false,approvalRequired:true,result,approvalRequest:approval.request});
                 }
                 // Recovery-required means the provider could not prove a final state.
@@ -2747,7 +2747,7 @@ async function route(req, res) {
                 const options = { ...(idempotencyKey ? { idempotencyKey } : {}), ...(decisionId ? { decisionId } : {}), ...(typeof input.approvalId === 'string' && input.approvalId ? { approvalId: input.approvalId.slice(0,120) } : {}) };
                 const result = await runtime.executeProjectTool(id, toolInput, reason, options);
                 if(!result.ok && result.outcomeClass==='approval-required') {
-                    const approvalRequest=result.approvalRequest ?? (await runtime.core.requestActionToolApproval(id,toolInput,reason,options,'execute')).request;
+                    const approvalRequest=result.approvalRequest ?? (await runtime.runSerializedCoreMutation(() => runtime.core.requestActionToolApproval(id,toolInput,reason,options,'execute'))).request;
                     return json(res,403,{...result,approvalRequired:true,approvalRequest});
                 }
                 if (result.idempotencyRequired) result.note = 'Supply a stable Idempotency-Key for this project step and reuse it for approval continuation and retries.';

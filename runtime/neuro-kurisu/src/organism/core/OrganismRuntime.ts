@@ -622,6 +622,15 @@ export class OrganismRuntime {
   }
 
   /**
+   * Serialize external API mutations with cognitive steps and voice turns.
+   * Core persistence must never race an open runtime mutation batch.
+   */
+  runSerializedCoreMutation<T>(work: () => Promise<T>): Promise<T> {
+    if (this.stopping) return Promise.reject(new Error('organism-runtime-stopping'));
+    return this.enqueue(work);
+  }
+
+  /**
    * Best-effort fan-out after successful ASR finalization. This is deliberately
    * synchronous and isolated: plugin transport failures cannot delay or steer the
    * current cognitive turn, and no plugin action result is consumed here.
