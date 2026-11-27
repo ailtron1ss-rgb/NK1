@@ -36,12 +36,12 @@ function Home() {
 
   return (
     <main className="min-h-dvh bg-bg px-3 py-4 md:px-6 md:py-6">
-      <header className="mx-auto mb-4 flex max-w-7xl items-end justify-between gap-4">
+      <header className="mx-auto mb-4 flex max-w-7xl flex-col items-stretch gap-3 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
         <div>
           <p className="text-xs uppercase tracking-widest text-subtle">NeuroCore · digital organism</p>
           <h1 className="font-display text-3xl tracking-tight text-fg md:text-4xl">NeuroCore</h1>
         </div>
-        <div className="flex flex-col items-end gap-1 text-right text-xs text-muted">
+        <div className="flex flex-col items-start gap-1 text-left text-xs text-muted sm:items-end sm:text-right">
           NK1 cognitive runtime · persistent identity
           <br />
           <span className="tabular-nums">
