@@ -123,9 +123,23 @@ test("sleep and low device quality reduce motion without unpinning the attachmen
     stepAvatarSecondaryParticleState(asleep, frame({ awake: false }));
     stepAvatarSecondaryParticleState(low, frame({ quality: "low" }));
   }
-  const magnitude = (state) => Math.hypot(...state.offsets);
-  assert.ok(magnitude(asleep) < magnitude(awake));
-  assert.ok(magnitude(low) < magnitude(awake));
+  const maxVertexOffset = (state) => {
+    let maximum = 0;
+    for (let vertex = 0; vertex < state.vertexCount; vertex += 1) {
+      const offset = vertex * 3;
+      maximum = Math.max(maximum, Math.hypot(
+        state.offsets[offset],
+        state.offsets[offset + 1],
+        state.offsets[offset + 2],
+      ));
+    }
+    return maximum;
+  };
+  assert.ok(maxVertexOffset(asleep) < maxVertexOffset(awake));
+  assert.ok(maxVertexOffset(low) <= low.maxOffset * 0.35 + 1e-6,
+    "low quality must use the reduced per-vertex displacement envelope");
+  assert.ok(maxVertexOffset(low) < maxVertexOffset(awake),
+    "low quality motion must remain below the high quality motion envelope");
   assert.equal(asleep.inverseMass[12], 0);
 });
 
@@ -205,9 +219,12 @@ test("non-manifold shared edges fail closed for bending instead of guessing adja
     0.5, 1, 0,
     0.5, -1, 0,
     0.5, 0, 1,
+    1.5, 0, 1,
   ]);
-  const indices = new Uint16Array([0, 1, 2, 1, 0, 3, 0, 1, 4]);
-  const pinnedMask = new Float32Array([1, 1, 0, 0, 0]);
+  // Three faces share edge 0–1 (non-manifold); a fourth disjoint face keeps
+  // the six-vertex surface eligible for the particle solver.
+  const indices = new Uint16Array([0, 1, 2, 1, 0, 3, 0, 1, 4, 2, 3, 5]);
+  const pinnedMask = new Float32Array([1, 1, 0, 0, 0, 0]);
   const state = createAvatarSecondaryParticleState({ positions, indices, pinnedMask, role: "hair" });
   assert.ok(state);
   assert.equal(state.bendingConstraints.length, 0,
