@@ -135,8 +135,8 @@ const priorOutcomeEvent = {
     goalId: goal.id,
     planAccepted: true,
     realitySource: 'external',
-    plannedAction: plan.steps[0].environmentAction,
-    predictedReward01: 0.9,
+    decisionAction: 'verify',
+    decisionPredicted01: 0.9,
     actualReward01: 0.1,
     verified01: 0.95,
     independent01: 0.92,
@@ -163,7 +163,8 @@ assert.ok(revisionHint, 'a same-goal, immediately prior, independently verified 
 assert.equal(revisionHint.previousPlanId, plan.id);
 assert.equal(revisionHint.previousDecisionId, context.decisionId);
 assert.equal(revisionHint.previousTick, 42);
-assert.equal(revisionHint.avoidFirstAction, plan.steps[0].environmentAction);
+assert.equal(revisionHint.previousAction, 'verify');
+assert.equal(revisionHint.avoidFirstAction, 'inspect');
 assert.ok(Math.abs(revisionHint.predictionError01 - 0.8) < 1e-12);
 
 const revisionContext = {
@@ -192,6 +193,11 @@ assert.equal(derivePlanRevisionHint([simulatedRevisionEvent, priorPlanEvent], 43
   'simulated outcomes cannot drive verified-outcome revision');
 assert.equal(derivePlanRevisionHint([priorOutcomeEvent, priorPlanEvent], 43, goal.id, 0.2), null,
   'low metacognitive revision readiness must retain the existing plan search');
+assert.equal(derivePlanRevisionHint([{
+  ...priorOutcomeEvent,
+  payload: { ...priorOutcomeEvent.payload, decisionAction: 'not-an-action' },
+}, priorPlanEvent], 43, goal.id, 0.8), null,
+  'unknown decision actions must not be converted into environment actions');
 assert.equal(derivePlanRevisionHint([priorOutcomeEvent, priorPlanEvent], 44, goal.id, 0.8), null,
   'stale outcomes must not steer a later, unrelated decision');
 assert.equal(derivePlanRevisionHint([priorOutcomeEvent, priorPlanEvent], 43, 'goal:other', 0.8), null,
