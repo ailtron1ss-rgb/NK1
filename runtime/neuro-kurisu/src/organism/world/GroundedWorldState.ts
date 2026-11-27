@@ -1,6 +1,6 @@
 import type { WorldContext } from '../core/types.ts';
 import type { P41PerceptionState } from '../cognition/P41SemanticPerception.ts';
-import type { PerceptualEvidenceState } from '../body/PerceptualEvidenceCompiler.ts';
+import { isTrustedPerceptualEvidenceSnapshot, type PerceptualEvidenceState } from '../body/PerceptualEvidenceCompiler.ts';
 
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
 const norm=(x:string)=>String(x??'').trim().toLowerCase().slice(0,120);
@@ -10,6 +10,10 @@ const cleanIdentity=(value:unknown)=>{
   return value.normalize('NFKC').replace(/[\r\n\t]+/g,' ').trim().slice(0,120);
 };
 const stableHash=(s:string)=>{let h=2166136261;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619);}return (h>>>0).toString(16).padStart(8,'0');};
+function normalizeEvidence(value:unknown,allowObserved=false):'observed'|'model-output'|'derived'|'conflict'|'unresolved'{
+  if(value==='observed')return allowObserved?'observed':'derived';
+  return value==='model-output'||value==='derived'||value==='conflict'||value==='unresolved'?value:'unresolved';
+}
 const normalizeImageBox=(value:unknown)=>{
   if(!value||typeof value!=='object')return undefined;
   const box=value as Record<string,unknown>;
@@ -85,7 +89,7 @@ export class GroundedWorldState {
           modalities:Array.isArray(e?.modalities)?[...new Set(e.modalities.filter((x:any)=>typeof x==='string'))]:[],
           trackAliases:Array.isArray(e?.trackAliases)?[...new Set(e.trackAliases.filter((x:any)=>typeof x==='string'))].slice(-16):[],
           sourceIds:Array.isArray(e?.sourceIds)?[...new Set(e.sourceIds.filter((x:any)=>typeof x==='string'))].slice(-16):[],
-          modalityEvidenceKinds:e?.modalityEvidenceKinds&&typeof e.modalityEvidenceKinds==='object'?{...e.modalityEvidenceKinds}:{},
+          modalityEvidenceKinds:e?.modalityEvidenceKinds&&typeof e.modalityEvidenceKinds==='object'?Object.fromEntries(Object.entries(e.modalityEvidenceKinds).map(([modality,kind])=>[modality,normalizeEvidence(kind)])): {},
           ...(validImageEvidence?{imageBox,imageBoxCameraId,imageBoxAt,imageBoxConfidence01}:{imageBox:undefined,imageBoxCameraId:undefined,imageBoxAt:undefined,imageBoxConfidence01:undefined}),
           presenceStatus:['visible','fading','unknown'].includes(e?.presenceStatus)?e.presenceStatus:'unknown',
           persistence01:clamp(Number(e?.persistence01??0)),
@@ -97,8 +101,8 @@ export class GroundedWorldState {
         };
       }):[],
       relations:Array.isArray(r.relations)?r.relations.slice(0,256):[],
-      events:Array.isArray(r.events)?r.events.slice(0,96):[],
-      facts:Array.isArray(r.facts)?r.facts.slice(0,192):[],
+      events:Array.isArray(r.events)?r.events.slice(0,96).map((event:any)=>({...event,evidenceKind:normalizeEvidence(event?.evidenceKind),modalityEvidenceKinds:event?.modalityEvidenceKinds&&typeof event.modalityEvidenceKinds==='object'?Object.fromEntries(Object.entries(event.modalityEvidenceKinds).map(([modality,kind])=>[modality,normalizeEvidence(kind)])): {}})):[],
+      facts:Array.isArray(r.facts)?r.facts.slice(0,192).filter((fact):fact is string=>typeof fact==='string').map(fact=>fact.replace(/^observed-evidence:/,'historical-derived-evidence:').replace(/^observed-event:/,'historical-derived-event:').replace(/^external-observed:/,'historical-external-observed:')):[],
       provenanceIds:Array.isArray(r.provenanceIds)?r.provenanceIds.slice(0,128):[],
     };
   }
@@ -139,10 +143,8 @@ export class GroundedWorldState {
 
   integrate(input:{at:number;base?:WorldContext|null;perception?:P41PerceptionState|null;evidence?:PerceptualEvidenceState|null;}):WorldContext{
     const at=input.at; const base=input.base; const p=input.perception; const e=input.evidence;
+    const trustedEvidence=isTrustedPerceptualEvidenceSnapshot(e);
     const rows:GroundedEntity[]=this.state.entities.map(row=>({...row,modalities:[...row.modalities],trackAliases:[...(row.trackAliases??[])],sourceIds:[...(row.sourceIds??[])],modalityEvidenceKinds:{...(row.modalityEvidenceKinds??{})}}));
-    const normalizeEvidence=(value:unknown):'observed'|'model-output'|'derived'|'conflict'|'unresolved'=>{
-      return value==='observed'||value==='model-output'||value==='derived'||value==='conflict'||value==='unresolved'?value:'unresolved';
-    };
     const trackTokens=(entity:Pick<GroundedEntity,'id'|'trackId'|'trackAliases'>):string[]=>{
       const values:string[]=[];
       if(entity.id)values.push('id:'+entity.id);
@@ -299,7 +301,7 @@ export class GroundedWorldState {
       return `${fresh?kind:'historical-'+kind}-relation:${x.from}:${x.relation}:${x.to}`;
     });
     const evidenceFacts=(e?.evidence??[]).slice(0,64).map(x=>{
-      const kind=normalizeEvidence(x.kind);
+      const kind=normalizeEvidence(x.kind,trustedEvidence);
       const fresh=Number.isFinite(x.at)&&x.at<=at&&at-x.at<=5_000;
       return `${fresh?kind:'historical-'+kind}-evidence:${x.claim}`;
     });
@@ -317,7 +319,7 @@ export class GroundedWorldState {
     const eventRows=new Map(this.state.events.map(x=>[x.id,{...x}]));
     for(const x of (p?.events??[]).slice(0,64)){
       const modalityEvidenceKinds={...(x.modalityEvidenceKinds??{})};
-      const allEventKinds=Object.values(modalityEvidenceKinds).map(normalizeEvidence);
+      const allEventKinds=Object.values(modalityEvidenceKinds).map(kind=>normalizeEvidence(kind));
       const evidenceKind: 'observed'|'model-output'|'derived'|'conflict'|'unresolved'=allEventKinds.includes('conflict')?'conflict':allEventKinds.includes('observed')?'observed':allEventKinds.includes('model-output')?'model-output':allEventKinds.includes('derived')?'derived':normalizeEvidence(x.evidenceKind);
       const old=eventRows.get(x.id);
       eventRows.set(x.id,old?{
@@ -350,7 +352,7 @@ export class GroundedWorldState {
       p.metrics.evidenceTraceability01*.15
     ):.25;
     const freshEvidence=(e?.evidence??[]).filter(x=>Number.isFinite(x.at)&&x.at<=at&&at-x.at<=5_000);
-    const observedRatio=freshEvidence.length?clamp(freshEvidence.filter(x=>x.kind==='observed').length/freshEvidence.length):0;
+    const observedRatio=trustedEvidence&&freshEvidence.length?clamp(freshEvidence.filter(x=>x.kind==='observed').length/freshEvidence.length):0;
     const confidence=clamp(semanticConfidence*.72+observedRatio*.28);
     const uncertainty=clamp(1-confidence);
     const location=norm(base?.location||p?.scene.label||this.state.location||'unknown');
@@ -361,7 +363,7 @@ export class GroundedWorldState {
       tick:base?.tick??0,location,energy:base?.energy??.8,attention:base?.attention??.7,
       uncertainty,facts,
       objects:entities.filter(x=>x.kind!=='event'&&x.kind!=='concept').slice(0,64).map(x=>{
-        const evidenceKinds=Object.values(x.modalityEvidenceKinds??{}).map(normalizeEvidence);
+        const evidenceKinds=Object.values(x.modalityEvidenceKinds??{}).map(kind=>normalizeEvidence(kind));
         const canonicalKind: 'observed'|'model-output'|'derived'|'conflict'|'unresolved'=evidenceKinds.includes('conflict')?'conflict':evidenceKinds.includes('observed')?'observed':evidenceKinds.includes('model-output')?'model-output':evidenceKinds.includes('derived')?'derived':'unresolved';
         return {
           id:x.id,label:x.label,location,

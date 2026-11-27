@@ -84,7 +84,7 @@ const staleEvidence = {
 };
 const staleWorld = stale.integrate({ at: staleAt, perception: state, evidence: staleEvidence });
 assert.ok(!stale.snapshot().provenanceIds.includes('stale-observed-receipt'));
-assert.ok(staleWorld.facts.includes('historical-observed-evidence:old:door-open'));
+assert.ok(staleWorld.facts.includes('historical-derived-evidence:old:door-open'));
 assert.ok(!staleWorld.facts.includes('observed-evidence:old:door-open'));
 
 // A same-cycle unresolved world summary must not downgrade a direct vision model result.
@@ -118,9 +118,9 @@ const observed = observedEngine.ingest({
   at: 3_000,
   world: { scene: 'office', evidenceKind: 'observed', objects: [{ label: 'door', trackId: 'door-1', sourceId: 'sensor', evidenceKind: 'observed' }], events: ['door-opened'] },
 });
-assert.equal(observed.entities.find(entity => entity.label === 'door')?.modalityEvidenceKinds?.world, 'observed');
-assert.equal(observed.sceneEvidenceKind, 'observed');
-assert.equal(observed.events.find(event => event.label === 'door-opened')?.evidenceKind, 'observed');
+assert.equal(observed.entities.find(entity => entity.label === 'door')?.modalityEvidenceKinds?.world, 'derived', 'caller-provided observed labels are not an admission proof');
+assert.equal(observed.sceneEvidenceKind, 'derived');
+assert.equal(observed.events.find(event => event.label === 'door-opened')?.evidenceKind, 'derived');
 
 // Explicit unknown flags must survive the untrusted world-context boundary.
 const normalized = normalizeWorldContext({

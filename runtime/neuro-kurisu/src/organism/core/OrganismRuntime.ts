@@ -1555,7 +1555,25 @@ export class OrganismRuntime {
         const keepForVision = retain || Boolean(this.config.visionBackend);
         const cameraKey = `autonomous-camera:${cycle.state.tick}:${cameraId}:${keepForVision ? 'path' : 'metadata'}`;
         const shot = await this.captureCameraDirect(cameraId, retain, { idempotencyKey: cameraKey, decisionId: cycle.decision.id, autonomous: true });
-        return { ok: shot.ok === true, path: 'path' in shot ? shot.path : undefined, size: 'size' in shot ? shot.size : undefined, hash: 'hash' in shot ? shot.hash : undefined, error: 'error' in shot ? shot.error : undefined, executionId: shot.executionId, providerReceiptId: 'providerReceiptId' in shot ? shot.providerReceiptId : undefined };
+        return {
+          ok: shot.ok === true,
+          path: 'path' in shot ? shot.path : undefined,
+          size: 'size' in shot ? shot.size : undefined,
+          hash: 'hash' in shot ? shot.hash : undefined,
+          error: 'error' in shot ? shot.error : undefined,
+          executionId: shot.executionId,
+          providerReceiptId: 'providerReceiptId' in shot ? shot.providerReceiptId : undefined,
+          verification: 'captureVerification' in shot ? shot.captureVerification : undefined,
+          verificationInput: 'captureVerificationInput' in shot ? shot.captureVerificationInput : undefined,
+          cameraId: 'cameraId' in shot ? shot.cameraId : undefined,
+          capturedAt: 'capturedAt' in shot ? shot.capturedAt : undefined,
+          captureStartedAt: 'captureStartedAt' in shot ? shot.captureStartedAt : undefined,
+          captureNonce: 'captureNonce' in shot ? shot.captureNonce : undefined,
+          sourceId: 'sourceId' in shot ? shot.sourceId : undefined,
+          retained: 'retained' in shot ? shot.retained : undefined,
+          semanticVision: 'semanticVision' in shot ? shot.semanticVision : undefined,
+          decisionId: cycle.decision.id,
+        };
       },
     });
     await this.core.setEmbodiedActionResult(embodiedAction);
@@ -1723,10 +1741,12 @@ export class OrganismRuntime {
     this.core.recordRealityEvidence({tick:cycle.state.tick,realityClass:grounded.source==='external' ? 'device-observation' : 'simulator',claim:`action-consequence:${physicalAction}`,confidence01:grounded.evidence01,independenceKey:`consequence:${cycle.state.tick}:${embodiedAction.source}:${grounded.source}`,parentIds:[outcomeEvidence.id]});
     if(grounded.source==='external') {
       this.core.recordExternalPerceptualEvidence({
-        at:cycle.state.at,
-        modality:embodiedAction.realityClass==='device-observation'?'sensor':'world',
-        claim:`external-outcome:${embodiedAction.action}:verified=${grounded.verified01.toFixed(2)}:independent=${grounded.independent01.toFixed(2)}:consequence=${grounded.consequence01.toFixed(2)}:shadowDivergence=${shadowResolution.divergence01.toFixed(2)}`,
-        confidence01:grounded.evidence01, verified:grounded.verified01>.5, parents:[outcomeEvidence.id,actionEvidence.id],
+        at:embodiedAction.realityClass==='camera-artifact'?(embodiedAction.artifact?.capturedAt??cycle.state.at):cycle.state.at,
+        modality:embodiedAction.realityClass==='camera-artifact'?'vision':embodiedAction.realityClass==='device-observation'?'sensor':'world',
+        claim:embodiedAction.realityClass==='camera-artifact'
+          ? `android-camera-frame:${embodiedAction.artifact?.cameraId ?? '?'}:${embodiedAction.artifact?.hash ?? 'missing-hash'}:${embodiedAction.artifact?.size ?? 0}:${embodiedAction.artifact?.captureNonce ?? 'missing-nonce'}`
+          : `external-outcome:${embodiedAction.action}:verified=${grounded.verified01.toFixed(2)}:independent=${grounded.independent01.toFixed(2)}:consequence=${grounded.consequence01.toFixed(2)}:shadowDivergence=${shadowResolution.divergence01.toFixed(2)}`,
+        confidence01:grounded.evidence01, verification:postcondition, embodiedAction, parents:[outcomeEvidence.id,actionEvidence.id],
       });
     }
 
@@ -2555,9 +2575,11 @@ export class OrganismRuntime {
       size: Number(result.size ?? 0), hash: typeof result.hash === 'string' ? result.hash : undefined,
     };
     let evidence: CameraEvidence = cameraEvidenceFromResult(successResult, normalizedCameraId, this.core.cameraEvidenceSnapshot().last?.sha256 ?? '', Date.now());
+    let payloadInspectionVerified=false;
     if (successResult.path) {
       try {
         evidence = await inspectCameraFile({ path: successResult.path, cameraId: normalizedCameraId, previousHash: this.core.cameraEvidenceSnapshot().last?.sha256 ?? '', at: Date.now() });
+        payloadInspectionVerified=Boolean(successResult.hash && evidence.sha256.toLowerCase()===successResult.hash.toLowerCase());
       } catch {
         // Metadata-only fallback is retained; missing decoding is not upgraded into fake semantic vision.
       }
@@ -2566,7 +2588,7 @@ export class OrganismRuntime {
     let semantic = null as Awaited<ReturnType<VisionSemanticBackend['analyze']>> | null;
     let trackingMetrics: ReturnType<TemporalObjectTracker['update']>['metrics'] | null = null;
     if (this.config.visionBackend) this.core.setSemanticVisionAvailability(true);
-    if (this.config.visionBackend && evidence.path) {
+    if (this.config.visionBackend && evidence.path && payloadInspectionVerified) {
       const started = Date.now();
       try {
         semantic = await this.config.visionBackend.analyze({
@@ -2601,7 +2623,16 @@ export class OrganismRuntime {
     return {
       ...successResult, ok: true, verified: toolExecution.verified, executionId: toolExecution.executionId,
       providerReceiptId: toolExecution.providerReceiptId ?? (typeof result.providerReceiptId === 'string' ? result.providerReceiptId : undefined),
-      evidence, cameraEvidence: this.core.cameraEvidenceSnapshot(), semanticVision: semantic?.semantic === true,
+      captureVerification: toolExecution.verification,
+      captureVerificationInput: structuredClone(normalized),
+      cameraId: normalizedCameraId,
+      capturedAt: Number(result.capturedAt ?? 0),
+      captureStartedAt: Number(result.captureStartedAt ?? 0),
+      captureNonce: typeof result.captureNonce === 'string' ? result.captureNonce : undefined,
+      sourceId: typeof result.sourceId === 'string' ? result.sourceId : undefined,
+      retained: result.retained === true,
+      decisionId: typeof result.decisionId === 'string' ? result.decisionId : undefined,
+      evidence, cameraEvidence: this.core.cameraEvidenceSnapshot(), semanticVision: semantic?.semantic === true && payloadInspectionVerified,
       semanticBackend: semantic?.backend ?? null, semanticResult: semantic, tracking: trackingMetrics,
     };
   }
