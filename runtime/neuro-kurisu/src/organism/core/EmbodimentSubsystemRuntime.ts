@@ -18,6 +18,7 @@ import { InteroceptiveStateEstimator } from '../system/InteroceptiveStateEstimat
 import { ActivePerceptionExecutor, defaultActivePerceptionExecutor, type ActivePerceptionModality } from '../system/ActivePerceptionExecutor.ts';
 import { ActivePerceptionNeuralSubstrate } from '../cognition/ActivePerceptionNeuralSubstrate.ts';
 import { PerceptualEvidenceCompiler, defaultPerceptualEvidence } from '../body/PerceptualEvidenceCompiler.ts';
+import type { TrustedObservationAdmission } from '../system/SignedObservationAdmissionAuthority.ts';
 import { countOr, isPlainDataRecord, ownDataValue, stringOr, timestampOr, unitOr } from '../body/RestoreSanitizers.ts';
 /** Keep the owner-specific restore type while reading an untrusted persisted value. */
 function restoreOwnerState<T>(owner: { restore(state?: T | null): unknown }, value: unknown): void {
@@ -79,6 +80,15 @@ export class EmbodimentSubsystemRuntime {
     },
     record: (e:CameraEvidence) => { const st=this.cameraEvidence.state; st.captures++; st.lastAt=e.at; st.previousHash=st.last?.sha256 ?? st.previousHash; st.last=e; st.cumulativeNovelty01=Math.max(0,Math.min(1,Number.isFinite(st.cumulativeNovelty01*.9+e.novelty01*.1)?st.cumulativeNovelty01*.9+e.novelty01*.1:0)); }
   };
+
+  /** Host-signed observations enter only through the exact in-process admission capability. */
+  recordAdmittedObservation(admission:TrustedObservationAdmission) {
+    return this.perceptualEvidence.recordTrustedExternalEvidence(admission);
+  }
+  /** Canonical consent revocation drops observed status and clears derived trust gauges. */
+  revokeAdmittedObservation(observationId:string) {
+    return this.perceptualEvidence.revokeTrustedExternalEvidence(observationId);
+  }
 
   restoreFromPersisted(input: { cognition?: any; embodiment?: any; advanced?: any }) {
     const root=isPlainDataRecord(input)?input:{};
