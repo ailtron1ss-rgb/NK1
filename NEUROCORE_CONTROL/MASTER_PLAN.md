@@ -24,14 +24,15 @@
 - [ ] Audit persistence, watchdog marker, checkpoint and shutdown ordering.
 
 ## Phase D — Embodiment as a controllable body, not a picture
-- [ ] Treat the 3D body as a hierarchy of articulated rigid/deformable parts with a real humanoid skeleton.
-- [ ] Bind neck, spine, shoulders, elbows, wrists, pelvis, hips, knees, ankles, feet, hands and fingers.
-- [ ] Use IK for hands/feet and constraints for joint limits; no arbitrary bone teleportation.
-- [ ] Add muscle/soft-tissue control as a separate actuator/deformation layer above the skeleton.
-- [ ] Connect intent, emotion and attention to a motor planner; the render loop only executes approved pose/motion targets.
-- [ ] Keep VRM/GLB as import/export assets, but do not require a downloaded character file for the canonical fallback.
-- [ ] Add anatomy/range-of-motion tests, collision/pose tests, action-to-animation mapping and frame-budget tests.
-- [ ] Profile CPU/GPU/RAM on a mid-range Android device before raising body fidelity.
+- [x] Build a procedural humanoid Bone hierarchy and make it the default 3D body without requiring an external model.
+- [x] Bind axial skeleton, clavicles, shoulders, elbows, wrists, hips, knees, ankles, feet, palms and 30 finger joints.
+- [x] Apply per-joint limits and bilateral two-link arm/leg IK; tests assert wrist/ankle endpoint accuracy.
+- [x] Connect the existing 18-particle / 17-constraint physics stream to absolute bone pivots and solved IK endpoints.
+- [x] Connect body-channel motors, head/gaze, affect, speech mouth, eyelids and hand curl channels.
+- [ ] Replace the segmented part volumes with a continuous skinned/deformable anatomical surface where appropriate.
+- [ ] Add foot planting, balance, contact/collision handling, gait and richer muscle/soft-tissue actuation.
+- [ ] Execute the new rig/IK regressions and all existing embodiment suites on this branch.
+- [ ] Profile CPU/GPU/RAM and frame pacing on a mid-range Android device before raising body fidelity.
 
 ## Phase E — Learning, model and mobile resource policy
 - [ ] Keep local LLM optional and expose real provider capability/timeout/fallback status.
