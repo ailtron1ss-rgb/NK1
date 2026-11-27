@@ -1,0 +1,42 @@
+name: NK1 particle-driven articulated avatar body
+
+on:
+  pull_request:
+    branches: [workpass70-source]
+    paths:
+      - "app/src/components/Avatar3DStage.tsx"
+      - "app/src/components/avatar/avatarParticleBody.ts"
+      - "app/src/components/avatar/avatarParticleBodyRuntime.ts"
+      - "app/scripts/avatar-particle-body.test.mjs"
+      - ".github/workflows/nk1-avatar-particle-body.yml"
+      - "app/package.json"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nk1-avatar-particle-body-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  particle-body:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - name: Install locked app dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Verify particle solver constraints, determinism and bounded stepping
+        run: node --experimental-strip-types --test scripts/avatar-particle-body.test.mjs
+      - name: Typecheck app runtime
+        run: npm run typecheck
+      - name: Verify articulated avatar and renderer contracts
+        run: node --experimental-strip-types --test scripts/avatar-3d-stage.test.mjs scripts/vrm-runtime-adapter.test.mjs scripts/avatar-frame-budget.test.mjs
