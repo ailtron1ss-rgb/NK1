@@ -259,7 +259,7 @@ function consolidateSkinnedBodyParts(
     const uv = geometry.getAttribute("uv");
     if (!position) continue;
 
-    const parentBone = part.parent instanceof THREE.Bone ? part.parent : rootBone;
+    const parentBone: ThreeBone = part.parent && part.parent instanceof THREE.Bone ? part.parent as ThreeBone : rootBone;
     const parentIndex = boneIndex.get(parentBone.name) ?? boneIndex.get(rootBone.name) ?? 0;
     const nextBoneName = typeof part.userData.skinNextBone === "string" ? part.userData.skinNextBone : "";
     const nextBone = nextBoneName ? skeleton.bones.find((bone) => bone.name === nextBoneName) : undefined;
@@ -651,7 +651,7 @@ export function createProceduralHumanoidRig(scene: ThreeScene): ProceduralHumano
         x * particleSin + z * particleCos,
       );
       const pelvisHeight = bones.pelvis.position.y;
-      const particleLocalPoint = (sample: ArticulatedBodyParticleFrame[ArticulatedBodyParticleId]) => {
+      const particleLocalPoint = (sample: NonNullable<ArticulatedParticleFrame[ArticulatedBodyParticleId]>) => {
         const base = toRigLocal(sample.target.x, sample.target.y, sample.target.z);
         const residual = toRigLocal(
           sample.position.x - sample.target.x,
@@ -675,7 +675,7 @@ export function createProceduralHumanoidRig(scene: ThreeScene): ProceduralHumano
         if (rest) bones[boneName].position.copy(rest);
       }
       let particleBindingsApplied = 0;
-      const particleTargetWorld = (sample: ArticulatedBodyParticleFrame[ArticulatedBodyParticleId] | undefined) => {
+      const particleTargetWorld = (sample: NonNullable<ArticulatedParticleFrame[ArticulatedBodyParticleId]> | undefined) => {
         if (!sample) return null;
         return root.localToWorld(particleLocalPoint(sample));
       };
@@ -738,7 +738,11 @@ export function createProceduralHumanoidRig(scene: ThreeScene): ProceduralHumano
       mouth.scale.y = 0.012 + (input.speaking ? 0.045 * clamp(input.arousal + 0.2, 0.1, 1) : smile * 0.006);
       mouth.scale.x = 0.045 + smile * 0.008;
       const chestParticle = input.particles?.chest;
-      const chestParticleOffset = chestParticle ? localParticleOffset(chestParticle) : null;
+      const chestParticleOffset = chestParticle ? toRigLocal(
+        chestParticle.position.x - chestParticle.target.x,
+        chestParticle.position.y - chestParticle.target.y,
+        chestParticle.position.z - chestParticle.target.z,
+      ) : null;
       const chestParticleOffsetZ = chestParticleOffset ? clamp(chestParticleOffset.z, -0.055, 0.055) : 0;
       chest.position.z = restJointPositions.chest.z + chestParticleOffsetZ + channel("breath", 0) * 0.018;
       root.userData.poseState = { awake: input.awake, action: input.action, emotion: input.emotion, particleBindingsApplied, updatedAt: finite(input.timeSeconds) };
