@@ -70,6 +70,7 @@ export interface SignedObservationAdmissionConfig {
 export interface TrustedObservationAdmission {
   observationId:string;
   at:number;
+  expiresAt:number;
   modality:HostObservationModality;
   claim:string;
   confidence01:number;
@@ -263,7 +264,7 @@ export class SignedObservationAdmissionAuthority {
     if(consumed!==true)return reject('nonce-replayed');
 
     const admission:TrustedObservationAdmission=Object.freeze({
-      observationId:payload.observationId,at:payload.capturedAt,modality:payload.modality,
+      observationId:payload.observationId,at:payload.capturedAt,expiresAt:payload.expiresAt,modality:payload.modality,
       claim:payload.claim,confidence01:payload.confidence01,deviceId:payload.deviceId,
       sessionId:payload.sessionId,consentTicketId:payload.consentTicketId,
       consentRevision:payload.consentRevision,captureDigest:payload.captureDigest,
