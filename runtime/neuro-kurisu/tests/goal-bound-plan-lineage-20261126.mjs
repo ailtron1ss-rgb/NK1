@@ -3,6 +3,17 @@ import { PlanEngine } from '../src/organism/world/PlanEngine.ts';
 import { WorldEnvironment } from '../src/organism/world/WorldEnvironment.ts';
 
 const environment = new WorldEnvironment();
+const rewardContract = await import('../src/organism/world/WorldEnvironment.ts');
+assert.equal(typeof rewardContract.signedRewardToDisplay01, 'function',
+  'the planner/runtime boundary must expose one canonical signed-reward to 0..1 conversion');
+for (const [signedReward, expected01] of [
+  [-1, 0], [-0.5, 0.25], [0, 0.5], [0.5, 0.75], [1, 1],
+]) {
+  assert.equal(rewardContract.signedRewardToDisplay01(signedReward), expected01,
+    'signed reward must map linearly to the normalized outcome scale');
+}
+assert.equal(rewardContract.signedRewardToDisplay01(-2), 0);
+assert.equal(rewardContract.signedRewardToDisplay01(2), 1);
 const initialWorld = environment.snapshot();
 const goal = {
   id: 'goal:research-17',
