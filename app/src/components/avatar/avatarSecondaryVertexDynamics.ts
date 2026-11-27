@@ -1,1 +1,356 @@
-export {};
+import type { AvatarNeuroAdaptiveFrame } from "./avatarNeuroAdaptiveDynamics.ts";
+
+export type AvatarSecondaryVertexRole = "hair" | "garment";
+
+export interface AvatarSecondaryVertexUniform {
+  value: number;
+}
+
+export interface AvatarSecondaryVertexUniforms {
+  nk1SecondaryTime: AvatarSecondaryVertexUniform;
+  nk1SecondaryMotion: AvatarSecondaryVertexUniform;
+  nk1SecondaryGait: AvatarSecondaryVertexUniform;
+  nk1SecondaryBreath: AvatarSecondaryVertexUniform;
+  nk1SecondaryYaw: AvatarSecondaryVertexUniform;
+  nk1SecondaryMinY: AvatarSecondaryVertexUniform;
+  nk1SecondaryInvHeight: AvatarSecondaryVertexUniform;
+  nk1SecondaryAmplitude: AvatarSecondaryVertexUniform;
+  nk1SecondaryPhase: AvatarSecondaryVertexUniform;
+  nk1SecondarySide: AvatarSecondaryVertexUniform;
+  nk1SecondaryHair: AvatarSecondaryVertexUniform;
+}
+
+export interface AvatarSecondaryVertexDrive {
+  motion: number;
+  gait: number;
+  breath: number;
+  yaw: number;
+}
+
+export interface AvatarSecondaryVertexBinding {
+  mesh: any;
+  originalMaterial: any;
+  patchedMaterial: any;
+  clonedMaterials: any[];
+  uniforms: AvatarSecondaryVertexUniforms;
+  role: AvatarSecondaryVertexRole;
+}
+
+interface VertexProfile {
+  role: AvatarSecondaryVertexRole;
+  amplitudeWorld: number;
+  side: -1 | 0 | 1;
+}
+
+interface ShaderLike {
+  uniforms: Record<string, unknown>;
+  vertexShader: string;
+}
+
+const QUALITY_SCALE = Object.freeze({ low: 0.35, balanced: 0.7, high: 1 });
+const MAX_WORLD_AMPLITUDE = 0.012;
+const MAX_LOCAL_AMPLITUDE = 0.02;
+const SHADER_MARKER = "NK1_SECONDARY_VERTEX_MOTION_V1";
+
+const clamp = (value: unknown, min: number, max: number, fallback = 0): number =>
+  typeof value === "number" && Number.isFinite(value)
+    ? Math.max(min, Math.min(max, value))
+    : fallback;
+
+const clamp01 = (value: unknown): number => clamp(value, 0, 1);
+const normalize = (value: string): string => value.toLowerCase().replace(/[^a-z0-9]/g, "");
+
+function readChannel(frame: AvatarNeuroAdaptiveFrame, name: string): number {
+  const value = frame.bodyChannels?.[name];
+  return clamp(value, -1, 1);
+}
+
+function stablePhase(value: string): number {
+  let hash = 2166136261;
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return ((hash >>> 0) % 6283) / 1000;
+}
+
+/**
+ * Only detached, separately authored pieces are eligible. The head mass,
+ * crown, fringe silhouette, face, eyes, lapels and sleeves remain untouched.
+ */
+function resolveProfile(rawName: unknown): VertexProfile | null {
+  if (typeof rawName !== "string" || !rawName.trim()) return null;
+  const name = normalize(rawName);
+  const hair = /^hair(?:longlock|frontstrand)[lr]$/.test(name)
+    || /^hairlayer[lr][12]$/.test(name);
+  if (hair) {
+    return {
+      role: "hair",
+      amplitudeWorld: 0.012,
+      side: /[l]$/.test(name) ? -1 : /[r]$/.test(name) ? 1 : 0,
+    };
+  }
+  const garment = name === "clothskirt"
+    || name === "clothtieblade"
+    || name === "clothlabcoatmain";
+  if (garment) {
+    return {
+      role: "garment",
+      amplitudeWorld: name === "clothtieblade" ? 0.0045 : 0.007,
+      side: 0,
+    };
+  }
+  return null;
+}
+
+function makeUniforms(
+  profile: VertexProfile,
+  name: string,
+  minY: number,
+  height: number,
+  rootScale: number,
+): AvatarSecondaryVertexUniforms {
+  const localAmplitude = Math.min(
+    MAX_LOCAL_AMPLITUDE,
+    profile.amplitudeWorld / Math.max(0.001, Math.min(rootScale, 1_000)),
+  );
+  return {
+    nk1SecondaryTime: { value: 0 },
+    nk1SecondaryMotion: { value: 0 },
+    nk1SecondaryGait: { value: 0 },
+    nk1SecondaryBreath: { value: 0 },
+    nk1SecondaryYaw: { value: 0 },
+    nk1SecondaryMinY: { value: minY },
+    nk1SecondaryInvHeight: { value: 1 / height },
+    nk1SecondaryAmplitude: { value: localAmplitude },
+    nk1SecondaryPhase: { value: stablePhase(name) },
+    nk1SecondarySide: { value: profile.side },
+    nk1SecondaryHair: { value: profile.role === "hair" ? 1 : 0 },
+  };
+}
+
+/**
+ * Injects a small displacement after glTF skinning, so original skin weights,
+ * blend shapes, bind poses and the primary humanoid motor stay authoritative.
+ * No shader text is modified unless both expected Three.js anchors exist.
+ */
+export function injectAvatarSecondaryVertexShader(
+  shader: ShaderLike,
+  uniforms: AvatarSecondaryVertexUniforms | Record<string, AvatarSecondaryVertexUniform>,
+): boolean {
+  if (!shader || typeof shader.vertexShader !== "string"
+    || !shader.uniforms || typeof shader.uniforms !== "object") return false;
+  if (shader.vertexShader.includes(SHADER_MARKER)) return true;
+  const commonAnchor = "#include <common>";
+  const skinningAnchor = "#include <skinning_vertex>";
+  if (!shader.vertexShader.includes(commonAnchor) || !shader.vertexShader.includes(skinningAnchor)) return false;
+
+  const declarations = `
+#define ${SHADER_MARKER}
+uniform float nk1SecondaryTime;
+uniform float nk1SecondaryMotion;
+uniform float nk1SecondaryGait;
+uniform float nk1SecondaryBreath;
+uniform float nk1SecondaryYaw;
+uniform float nk1SecondaryMinY;
+uniform float nk1SecondaryInvHeight;
+uniform float nk1SecondaryAmplitude;
+uniform float nk1SecondaryPhase;
+uniform float nk1SecondarySide;
+uniform float nk1SecondaryHair;
+`;
+  const displacement = `
+{
+  float nk1SecondaryHeight01 = clamp((position.y - nk1SecondaryMinY) * nk1SecondaryInvHeight, 0.0, 1.0);
+  float nk1SecondaryLoose = 1.0 - smoothstep(0.06, 0.82, nk1SecondaryHeight01);
+  float nk1SecondaryPhaseNow = nk1SecondaryTime * 1.65
+    + position.y * 2.8 + position.x * 1.1 + nk1SecondaryPhase;
+  float nk1SecondaryWave = sin(nk1SecondaryPhaseNow) * nk1SecondaryMotion;
+  float nk1SecondaryStep = sin(nk1SecondaryTime * 2.6 + nk1SecondaryPhaseNow * 0.73)
+    * nk1SecondaryGait;
+  float nk1SecondaryBreathWave = sin(nk1SecondaryTime * 1.15 + nk1SecondaryPhase * 0.4)
+    * nk1SecondaryBreath;
+  float nk1SecondaryHairScale = nk1SecondaryHair;
+  float nk1SecondaryGarmentScale = 1.0 - nk1SecondaryHair;
+  float nk1SecondaryHorizontal = nk1SecondaryWave * (0.82 * nk1SecondaryHairScale + 0.48 * nk1SecondaryGarmentScale)
+    + nk1SecondaryYaw * (0.12 * nk1SecondaryHairScale + 0.08 * nk1SecondaryGarmentScale)
+    + nk1SecondaryStep * nk1SecondarySide * 0.18 * nk1SecondaryGarmentScale;
+  float nk1SecondaryDepth = cos(nk1SecondaryPhaseNow * 0.76) * nk1SecondaryMotion
+    * (0.24 * nk1SecondaryHairScale + 0.12 * nk1SecondaryGarmentScale)
+    + nk1SecondaryBreathWave * 0.08 * nk1SecondaryGarmentScale;
+  transformed.x += nk1SecondaryHorizontal * nk1SecondaryAmplitude * nk1SecondaryLoose;
+  transformed.z += nk1SecondaryDepth * nk1SecondaryAmplitude * nk1SecondaryLoose;
+}
+`;
+  let vertexShader = shader.vertexShader.replace(commonAnchor, commonAnchor + declarations);
+  vertexShader = vertexShader.replace(skinningAnchor, skinningAnchor + displacement);
+  if (vertexShader === shader.vertexShader) return false;
+
+  shader.vertexShader = vertexShader;
+  for (const [name, uniform] of Object.entries(uniforms)) {
+    if (!uniform || typeof uniform.value !== "number" || !Number.isFinite(uniform.value)) return false;
+    shader.uniforms[name] = uniform;
+  }
+  return true;
+}
+
+function patchMaterial(
+  material: any,
+  uniforms: AvatarSecondaryVertexUniforms,
+): any | null {
+  if (!material || (material.isMeshStandardMaterial !== true && material.isMeshPhysicalMaterial !== true)
+    || typeof material.clone !== "function") return null;
+  let clone: any;
+  try {
+    clone = material.clone();
+  } catch {
+    return null;
+  }
+  if (!clone || clone === material) return null;
+
+  const originalCompile = typeof clone.onBeforeCompile === "function"
+    ? clone.onBeforeCompile
+    : () => undefined;
+  clone.onBeforeCompile = function (shader: ShaderLike, renderer: unknown) {
+    originalCompile.call(this, shader, renderer);
+    const patched = injectAvatarSecondaryVertexShader(shader, uniforms);
+    if (!patched) {
+      this.userData = { ...(this.userData ?? {}), nk1SecondaryVertexShaderUnsupported: true };
+    }
+  };
+  const originalProgramKey = typeof clone.customProgramCacheKey === "function"
+    ? clone.customProgramCacheKey.bind(clone)
+    : () => "";
+  clone.customProgramCacheKey = () => originalProgramKey() + "|" + SHADER_MARKER;
+  clone.userData = {
+    ...(clone.userData ?? {}),
+    nk1SecondaryVertexDynamics: true,
+    nk1SecondaryVertexShader: SHADER_MARKER,
+  };
+  clone.needsUpdate = true;
+  return clone;
+}
+
+/**
+ * Attaches reversible GPU vertex sway to existing modular skinned meshes.
+ * Geometry, skin indices/weights, morph targets and source materials are not
+ * rewritten. Unsupported meshes/materials simply remain unchanged.
+ */
+export function attachAvatarSecondaryVertexDynamics(
+  root: unknown,
+  rootScale = 1,
+): AvatarSecondaryVertexBinding[] {
+  if (!root || typeof root !== "object" || typeof (root as any).traverse !== "function") return [];
+  const bindings: AvatarSecondaryVertexBinding[] = [];
+  (root as any).traverse((node: any) => {
+    if (!node || node.isSkinnedMesh !== true) return;
+    const profile = resolveProfile(node.name);
+    if (!profile) return;
+
+    const geometry = node.geometry;
+    if (!geometry || typeof geometry !== "object") return;
+    const position = geometry.attributes?.position ?? geometry.getAttribute?.("position");
+    if (!position || !Number.isInteger(position.count) || position.count < 3) return;
+    if (!geometry.boundingBox && typeof geometry.computeBoundingBox === "function") {
+      try {
+        geometry.computeBoundingBox();
+      } catch {
+        return;
+      }
+    }
+    const minY = geometry.boundingBox?.min?.y;
+    const maxY = geometry.boundingBox?.max?.y;
+    const height = typeof minY === "number" && typeof maxY === "number" ? maxY - minY : 0;
+    if (!Number.isFinite(minY) || !Number.isFinite(maxY) || !Number.isFinite(height) || height < 0.0001) return;
+
+    const originalMaterial = node.material;
+    const originalMaterials = Array.isArray(originalMaterial) ? originalMaterial : [originalMaterial];
+    if (!originalMaterials.length) return;
+    const uniforms = makeUniforms(profile, String(node.name), minY, height, rootScale);
+    const clonedMaterials: any[] = [];
+    const patchedMaterials = originalMaterials.map((material: any) => {
+      const patched = patchMaterial(material, uniforms);
+      if (patched) clonedMaterials.push(patched);
+      return patched ?? material;
+    });
+    if (clonedMaterials.length === 0) return;
+
+    const patchedMaterial = Array.isArray(originalMaterial) ? patchedMaterials : patchedMaterials[0];
+    node.material = patchedMaterial;
+    bindings.push({ mesh: node, originalMaterial, patchedMaterial, clonedMaterials, uniforms, role: profile.role });
+  });
+  return bindings;
+}
+
+export function resolveAvatarSecondaryVertexDrive(
+  frame: AvatarNeuroAdaptiveFrame,
+): AvatarSecondaryVertexDrive {
+  const quality = frame?.quality === "low" || frame?.quality === "high" ? frame.quality : "balanced";
+  const qualityScale = QUALITY_SCALE[quality];
+  const awakeScale = frame?.awake === true ? 1 : 0.06;
+  const activity = clamp01(
+    0.06
+      + clamp01(frame?.energy) * 0.18
+      + clamp01(frame?.arousal) * 0.14
+      + clamp01(frame?.cognitiveLoad) * 0.05
+      + clamp01(frame?.uncertainty) * 0.07
+      + clamp01(frame?.curiosity) * 0.16
+      + clamp01(frame?.novelty) * 0.15
+      + clamp01(frame?.predictionError) * 0.13,
+  );
+  const gait = clamp01((
+    Math.abs(readChannel(frame, "leftAnkle"))
+      + Math.abs(readChannel(frame, "rightAnkle"))
+      + Math.abs(readChannel(frame, "leftKnee"))
+      + Math.abs(readChannel(frame, "rightKnee"))
+  ) * 0.25);
+  const breath = Math.max(0, readChannel(frame, "breath"));
+  const yaw = clamp(
+    readChannel(frame, "headYaw") * 0.3
+      + readChannel(frame, "torsoYaw") * 0.5
+      + readChannel(frame, "rootYaw") * 0.2,
+    -1,
+    1,
+  );
+  const scale = qualityScale * awakeScale;
+  return {
+    motion: clamp01(activity * scale),
+    gait: clamp01(gait * scale),
+    breath: clamp01(breath * scale),
+    yaw: clamp(yaw * scale, -1, 1),
+  };
+}
+
+export function updateAvatarSecondaryVertexDynamics(
+  bindings: readonly AvatarSecondaryVertexBinding[],
+  frame: AvatarNeuroAdaptiveFrame,
+  timeSeconds: number,
+): void {
+  if (!Array.isArray(bindings) || !frame || typeof frame !== "object") return;
+  const drive = resolveAvatarSecondaryVertexDrive(frame);
+  const time = clamp(timeSeconds, 0, 1_000_000);
+  for (const binding of bindings) {
+    if (!binding?.uniforms) continue;
+    binding.uniforms.nk1SecondaryTime.value = time;
+    binding.uniforms.nk1SecondaryMotion.value = drive.motion;
+    binding.uniforms.nk1SecondaryGait.value = drive.gait;
+    binding.uniforms.nk1SecondaryBreath.value = drive.breath;
+    binding.uniforms.nk1SecondaryYaw.value = drive.yaw;
+  }
+}
+
+/** Restore original materials and dispose the private clones on replacement/reset. */
+export function disposeAvatarSecondaryVertexDynamics(
+  bindings: readonly AvatarSecondaryVertexBinding[],
+): void {
+  if (!Array.isArray(bindings)) return;
+  for (const binding of bindings) {
+    if (!binding) continue;
+    if (binding.mesh?.material === binding.patchedMaterial) {
+      binding.mesh.material = binding.originalMaterial;
+    }
+    for (const material of binding.clonedMaterials ?? []) {
+      if (material && typeof material.dispose === "function") material.dispose();
+    }
+  }
+}
