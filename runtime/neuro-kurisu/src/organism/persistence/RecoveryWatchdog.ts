@@ -107,7 +107,6 @@ export class RecoveryWatchdog {
     this.state.lastRecoveryAt = at;
     this.state.lastRecoveryReason = reason;
     this.state.lastHeartbeatAt = at;
-    this.state.lastCheckpointAt = at;
     this.state.status = 'recovered';
     return this.snapshot();
   }
