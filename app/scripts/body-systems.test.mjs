@@ -425,11 +425,14 @@ test("declared VRM 3D channels match the full-body bone applier", () => {
 
 test("declared Live2D channels match what the viewer can actually drive", () => {
   const declared = new Set(LIVE2D_CHANNELS);
-  // The bundled viewer writes ParamAngleX/Y/Z, eye-ball and mouth params. It applies
-  // head roll, gaze and mouth, but has no breath parameter, so breath must not be declared.
-  assert.deepEqual([...declared].sort(), ["gazeX", "gazeY", "headRoll"].sort());
-  assert.equal(declared.has("breath"), false, "the Live2D viewer exposes no breath parameter");
-  assert.equal(declared.has("torsoYaw"), false, "the Live2D viewer drives no torso channel");
+  // The bundled Cubism model exposes real head, body-angle and breath parameters.
+  // Arms/fingers remain unsupported by this renderer and must stay absent.
+  assert.deepEqual([...declared].sort(), [
+    "gazeX", "gazeY", "headPitch", "headRoll", "headYaw",
+    "torsoPitch", "torsoYaw", "breath",
+  ].sort());
+  assert.equal(declared.has("leftShoulder"), false, "Cubism arm joints are not mapped as normalized shoulder channels");
+  assert.equal(declared.has("leftIndexCurl"), false, "Cubism does not advertise independent finger joints");
 });
 
 test("motion arbiter channels flow into the semantic pose but never override derived channels", () => {
