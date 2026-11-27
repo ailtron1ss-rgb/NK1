@@ -80,6 +80,7 @@ test("audit fails honestly when a model has only its primary skeleton and facial
   attach(root, node("Hips", { isBone: true }));
   attach(root, node("Spine", { isBone: true }));
   attach(root, node("Head", { isBone: true }));
+  attach(root, node("Bone.001", { isBone: true }));
   attach(root, node("jawOpen", { isSkinnedMesh: true, morphTargetDictionary: { jawOpen: 0, happy: 1 }, material: { name: "Silver", emissive: { r: 1, g: 1, b: 1 } } }));
 
   const report = auditAvatarSecondaryScene(root);
@@ -87,6 +88,7 @@ test("audit fails honestly when a model has only its primary skeleton and facial
   assert.equal(report.secondaryPhysicsReady, false);
   assert.deepEqual(report.morphChannels, []);
   assert.equal(report.taggedNeuralMaterialCount, 0);
+  assert.deepEqual(report.unclassifiedBoneNames, ["Bone.001"]);
   assert.ok(report.warnings.includes("no-secondary-bone-chains"));
   assert.ok(report.warnings.includes("no-neuroadaptive-morphs"));
   assert.ok(report.warnings.includes("no-tagged-neural-fabric"));
