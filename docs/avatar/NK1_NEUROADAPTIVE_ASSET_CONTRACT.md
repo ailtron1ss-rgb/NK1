@@ -56,7 +56,7 @@ Example for a loose left hair chain:
 
 Supported roles: `hair`, `garment`, `sleeve`, `neural-fiber`. Supported sides: `left`, `right`, `center` (or `-1`, `1`, `0`). Optional fields are `chainId`, `pinned`, `enabled`, `distalWeight` and `maxAngle`.
 
-- Root/attachment bones should be explicitly marked `pinned: true`; they are kept out of the solver.
+- Root/attachment bones should be explicitly marked `pinned: true`; they are kept out of the solver. They remain marked as secondary-chain candidates so the legacy GLB hair adapter cannot accidentally animate a pinned root.
 - `chainId` groups authored bones for authoring/debugging; per-bone runtime state remains independently keyed.
 - A supplied angle is clamped to the role hard ceiling: hair 0.06 rad, garment 0.09 rad, sleeve 0.055 rad, neural fiber 0.035 rad. Metadata cannot raise those limits.
 - Unknown roles, invalid side values, malformed bounds and invalid chain IDs fail closed. The runtime does not fall back to a guessed name when an explicit role is invalid.
