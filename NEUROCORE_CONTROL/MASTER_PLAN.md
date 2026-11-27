@@ -1,9 +1,13 @@
 # NeuroCore master plan
 
+**Current source sync:** `workpass70-source@3857e805b8224e7630ba1c7ef50e4bc930565b58`  
+**Product sync commit:** `e5fa0fbb41ed7190289e180c8e4eeaa743141169`
+
 ## Phase A — Stable full-source application base
-- [x] Pin the live source baseline and create a separate product branch.
+- [x] Pin the original source baseline and create a separate product branch.
 - [x] Carry over the full tracked NK1 tree rather than producing a launcher-only archive.
 - [x] Preserve source history and record exact tree provenance.
+- [x] Synchronize the product branch with the current source head using a two-parent merge; preserve both histories.
 - [ ] Remove archived donor payloads only after reference/dependency mapping.
 - [ ] Split oversized Core orchestration responsibilities where there is a proven owner boundary.
 
@@ -18,6 +22,7 @@
 - [x] Preserve `OrganismRuntime → OrganismCore → OrganismSystemFabric`.
 - [x] Preserve the single `MemoryOS2` authority through `MemoryFabric`.
 - [x] Add a regression that asserts the injected store references are identical.
+- [x] Add memory restore/round-trip and capacity/lifecycle suites to the NeuroCore integration gate.
 - [ ] Execute restore, idempotent write, retrieval and lifecycle tests on this branch.
 - [ ] Verify that all memory writes pass through the canonical fabric/lifecycle authority.
 - [ ] Verify all actions pass through `ActionGateway` and its approval/idempotency policy.
@@ -27,11 +32,13 @@
 - [x] Build a procedural humanoid Bone hierarchy and make it the default 3D body without requiring an external model.
 - [x] Bind axial skeleton, clavicles, shoulders, elbows, wrists, hips, knees, ankles, feet, palms and 30 finger joints.
 - [x] Apply per-joint limits and bilateral two-link arm/leg IK; tests assert wrist/ankle endpoint accuracy.
-- [x] Connect the existing 18-particle / 17-constraint physics stream to absolute bone pivots and solved IK endpoints.
+- [x] Connect the 22-particle / 21-segment physics stream to absolute bone pivots and solved IK endpoints.
+- [x] Inherit heel/toe contacts, friction, swing take-off handling and 150-degree elbow/knee hinge limits from the current source.
+- [x] Bound the physics/motion controller to 20 Hz and publish each solved anatomical snapshot; add scheduler regression.
 - [x] Connect body-channel motors, head/gaze, affect, speech mouth, eyelids and hand curl channels.
 - [ ] Replace the segmented part volumes with a continuous skinned/deformable anatomical surface where appropriate.
-- [ ] Add foot planting, balance, contact/collision handling, gait and richer muscle/soft-tissue actuation.
-- [ ] Execute the new rig/IK regressions and all existing embodiment suites on this branch.
+- [ ] Add balance, richer collision handling, full gait and muscle/soft-tissue actuation.
+- [ ] Execute the new rig/IK/scheduler regressions and all existing embodiment suites on this branch.
 - [ ] Profile CPU/GPU/RAM and frame pacing on a mid-range Android device before raising body fidelity.
 
 ## Phase E — Learning, model and mobile resource policy
