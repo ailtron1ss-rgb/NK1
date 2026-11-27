@@ -13,7 +13,7 @@ const base = {
 };
 
 test("N.E.K.O.-derived gesture cards select NK1-owned body programs", () => {
-  for (const programId of ["nod", "shake", "wave", "clap", "bow"]) {
+  for (const programId of ["nod", "shake", "wave", "clap", "bow", "point"]) {
     assert.equal(resolvePrimaryProgram({ ...base, gestureProgram: programId }), programId);
     assert.deepEqual(validateMotionProgram(MOTION_PROGRAMS[programId]), []);
     const selected = arbitrateMotion(defaultMotionArbitrationState(), { ...base, gestureProgram: programId }, 260);
@@ -48,4 +48,11 @@ test("point gesture extends the index while curling the other fingers", () => {
 test("wave gesture supplies a relaxed whole-hand shape without forcing a fist", () => {
   const pose = sampleMotionProgram(MOTION_PROGRAMS.wave, 0);
   assert.ok(pose.channels.rightFingers > 0 && pose.channels.rightFingers < 0.25);
+});
+
+
+test("explicit point gesture takes precedence over ordinary speech motion", () => {
+  const selected = arbitrateMotion(defaultMotionArbitrationState(), { ...base, gestureProgram: "point" }, 260);
+  assert.equal(selected.primary, "point");
+  assert.deepEqual(validateMotionProgram(MOTION_PROGRAMS.point), []);
 });
