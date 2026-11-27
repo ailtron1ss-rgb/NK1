@@ -1,4 +1,4 @@
-import { createPublicKey, verify as verifySignature, type KeyObject } from 'node:crypto';
+import { createPublicKey, KeyObject, verify as verifySignature } from 'node:crypto';
 import { isPlainDataRecord, ownDataValue } from '../body/RestoreSanitizers.ts';
 import { sha256Stable, stableJson } from '../core/StableSerialization.ts';
 
@@ -159,7 +159,9 @@ function verifyReceiptSignature(
     const signature=Buffer.from(encodedSignature,'base64');
     if(signature.length===0||signature.toString('base64')!==encodedSignature)return false;
     if(algorithm==='ed25519'&&signature.length!==64)return false;
-    const key=createPublicKey(material);
+    // createPublicKey() rejects an already-public KeyObject in Node. Reuse it
+    // directly; parse PEM/DER material only when the host resolver returns bytes/text.
+    const key=material instanceof KeyObject?material:createPublicKey(material);
     if(key.type!=='public')return false;
     const keyType=key.asymmetricKeyType;
     if(algorithm==='ed25519'&&keyType!=='ed25519')return false;
