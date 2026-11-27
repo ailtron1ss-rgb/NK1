@@ -417,9 +417,9 @@ export function createProceduralHumanoidRig(scene: THREE.Scene): ProceduralHuman
         },
         neck: { x: -clamp(input.gazeY, -1, 1) * 0.08, y: clamp(input.gazeX, -1, 1) * 0.12 },
         head: {
-          x: -clamp(input.gazeY, -1, 1) * 0.16 + channel("headPitch", 0) + sleep * 0.12,
-          y: clamp(input.gazeX, -1, 1) * 0.25 + channel("headYaw", 0),
-          z: clamp(input.headTilt, -0.8, 0.8) + channel("headRoll", 0),
+          x: -clamp(input.gazeY, -1, 1) * 0.16 + channel("headPitch", 0) * 0.36 + sleep * 0.12,
+          y: clamp(input.gazeX, -1, 1) * 0.25 + channel("headYaw", 0) * 0.42,
+          z: clamp(input.headTilt, -0.8, 0.8) + channel("headRoll", 0) * 0.3,
         },
       };
 
@@ -514,7 +514,7 @@ export function createProceduralHumanoidRig(scene: THREE.Scene): ProceduralHuman
       mouth.scale.y = 0.012 + (input.speaking ? 0.045 * clamp(input.arousal + 0.2, 0.1, 1) : smile * 0.006);
       mouth.scale.x = 0.045 + smile * 0.008;
       root.rotation.y = smooth(root.rotation.y, channel("rootYaw", 0) * 0.34, delta, 10);
-      chest.position.z = restJointPositions.chest.z + channel("breath", 0) * 0.018;
+      chest.position.z += channel("breath", 0) * 0.018;
       root.userData.poseState = { awake: input.awake, action: input.action, emotion: input.emotion, particleBindingsApplied, updatedAt: finite(input.timeSeconds) };
       root.updateMatrixWorld(true);
     },
