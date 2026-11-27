@@ -493,8 +493,7 @@ export function createProceduralHumanoidRig(scene: THREE.Scene): ProceduralHuman
         ["chest", "chest"], ["neck", "neck"], ["head", "head"],
         // IK pivot joints are driven by the actual particle landmarks; intermediate
         // elbow/knee pivots and wrist/ankle end effectors are solved, not offset twice.
-        ["leftShoulderPoint", "leftUpperArm"], ["leftHandPoint", "leftHand"],
-        ["rightShoulderPoint", "rightUpperArm"], ["rightHandPoint", "rightHand"],
+        ["leftShoulderPoint", "leftUpperArm"], ["rightShoulderPoint", "rightUpperArm"],
         ["leftHipPoint", "leftHip"], ["rightHipPoint", "rightHip"],
       ];
       root.updateMatrixWorld(true);
@@ -524,6 +523,14 @@ export function createProceduralHumanoidRig(scene: THREE.Scene): ProceduralHuman
         base.y += pelvisHeight;
         return base;
       };
+      const handParticleBindings: readonly [ArticulatedBodyParticleId, string][] = [
+        ["leftHandPoint", "leftHand"], ["rightHandPoint", "rightHand"],
+      ];
+      // Hand bones are reset here, then positioned after wrist IK has updated their parent.
+      for (const [, boneName] of handParticleBindings) {
+        const rest = restJointPositions[boneName];
+        if (rest) bones[boneName].position.copy(rest);
+      }
       let particleBindingsApplied = 0;
       const particleTargetWorld = (sample: ArticulatedBodyParticleFrame[ArticulatedBodyParticleId] | undefined) => {
         if (!sample) return null;
@@ -559,6 +566,19 @@ export function createProceduralHumanoidRig(scene: THREE.Scene): ProceduralHuman
       if (rightWristTarget) rig.solveArmTarget("right", rightWristTarget, delta);
       if (leftAnkleTarget) rig.solveLegTarget("left", leftAnkleTarget, delta);
       if (rightAnkleTarget) rig.solveLegTarget("right", rightAnkleTarget, delta);
+
+      for (const [particleId, boneName] of handParticleBindings) {
+        const sample = input.particles?.[particleId];
+        const bone = bones[boneName];
+        if (!sample || !bone.parent) continue;
+        root.updateMatrixWorld(true);
+        const targetWorld = particleTargetWorld(sample);
+        if (!targetWorld) continue;
+        bone.parent.updateWorldMatrix(true, false);
+        bone.position.copy(bone.parent.worldToLocal(targetWorld));
+        root.updateMatrixWorld(true);
+        particleBindingsApplied++;
+      }
 
       // Face is also driven by the organism's affect, gaze and speech envelope.
       const eyeOpen = clamp(1 - sleep * 0.68 - stress * 0.13 + curiosity * 0.08, 0.18, 1.16);
