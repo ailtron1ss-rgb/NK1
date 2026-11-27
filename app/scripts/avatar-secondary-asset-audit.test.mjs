@@ -116,10 +116,10 @@ test("neural-fabric material tag requires an explicit NK1 layer or semantic name
 test("3D stage publishes an audit for the imported model and exposes it in an accessible details panel", async () => {
   const { readFile } = await import("node:fs/promises");
   const stage = await readFile(new URL("../src/components/Avatar3DStage.tsx", import.meta.url), "utf8");
-  assert.match(stage, /auditAvatarSecondaryScene\\(root\\)/);
-  assert.match(stage, /setSecondaryAudit\\(/);
-  assert.match(stage, /secondaryAudit\\.byRole\\.hair/);
-  assert.match(stage, /secondaryAudit\\.morphChannels/);
+  assert.match(stage, /auditAvatarSecondaryScene\(root\)/);
+  assert.match(stage, /setSecondaryAudit\(/);
+  assert.match(stage, /secondaryAudit\.byRole\.hair/);
+  assert.match(stage, /secondaryAudit\.morphChannels/);
   assert.match(stage, /<details/);
   assert.match(stage, /Аудит физики/);
 });
