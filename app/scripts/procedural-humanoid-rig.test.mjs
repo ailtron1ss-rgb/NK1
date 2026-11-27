@@ -115,6 +115,39 @@ test("mirrored left and right arm chains both accept world-space IK targets", ()
   rig.dispose();
 });
 
+test("missing particle frames and reset restore the original bind pose", () => {
+  const scene = new THREE.Scene();
+  const rig = createProceduralHumanoidRig(scene);
+  const shoulder = rig.bones.leftUpperArm.position.clone();
+  const hip = rig.bones.leftHip.position.clone();
+
+  rig.updatePose({
+    awake: true, action: "respond", emotion: "calm", arousal: 0.4, energy: 0.7,
+    cognitiveLoad: 0.2, gazeX: 0, gazeY: 0, headTilt: 0, speaking: false,
+    leftArmIntent: 0, rightArmIntent: 0,
+    particles: {
+      leftShoulderPoint: { position: { x: -0.29, y: 0.53, z: 0.04 }, target: { x: -0.22, y: 0.48, z: 0 } },
+      leftHipPoint: { position: { x: -0.19, y: -0.04, z: 0.04 }, target: { x: -0.12, y: -0.04, z: 0 } },
+    },
+    deltaSeconds: 1 / 60,
+  });
+  assert.ok(rig.bones.leftUpperArm.position.distanceTo(shoulder) > 0);
+  assert.ok(rig.bones.leftHip.position.distanceTo(hip) > 0);
+
+  rig.updatePose({
+    awake: true, action: "rest", emotion: "calm", arousal: 0.2, energy: 0.7,
+    cognitiveLoad: 0.1, gazeX: 0, gazeY: 0, headTilt: 0, speaking: false,
+    leftArmIntent: 0, rightArmIntent: 0, deltaSeconds: 1 / 60,
+  });
+  assert.ok(rig.bones.leftUpperArm.position.distanceTo(shoulder) < 1e-8);
+  assert.ok(rig.bones.leftHip.position.distanceTo(hip) < 1e-8);
+
+  rig.bones.leftUpperArm.position.x += 0.1;
+  rig.resetPose();
+  assert.ok(rig.bones.leftUpperArm.position.distanceTo(shoulder) < 1e-8);
+  rig.dispose();
+});
+
 test("real particle physics output drives the NeuroCore skeleton end to end", () => {
   const scene = new THREE.Scene();
   const rig = createProceduralHumanoidRig(scene);
