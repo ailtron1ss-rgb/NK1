@@ -54,7 +54,6 @@ test("particle body runtime writes inertial corrections back into actual Three.j
   const runtime = createAvatarParticleBodyRuntime(root, humanoid);
   assert.ok(runtime);
   resetAvatarParticleBodyPose(runtime);
-  const originalChestX = bones.get("chest").position.x;
   bones.get("chest").position.x += 0.065;
   root.updateWorldMatrix(true, true);
   const canonicalHeadWorld = bones.get("head").getWorldPosition(new THREE.Vector3());
