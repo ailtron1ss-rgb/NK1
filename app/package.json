@@ -1,5 +1,5 @@
 {
-  "name": "app-builder-workspace",
+  "name": "neurocore-app",
   "private": true,
   "sideEffects": false,
   "type": "module",
