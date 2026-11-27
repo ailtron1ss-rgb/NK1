@@ -174,6 +174,11 @@ export function derivePlanRevisionHint(
       && event.payload.action === previousAction;
   });
   if (!actionEvent) return null;
+  const goalEvent = events.find(event => {
+    if (event.stage !== 'goal' || event.tick !== outcome.tick || !event.payload) return false;
+    return event.payload.selectedGoalId === currentGoalId;
+  });
+  if (!goalEvent) return null;
   const planEvent = events.find(event => {
     if (event.stage !== 'plan' || event.tick !== outcome.tick || !event.payload) return false;
     return event.payload.planId === planId
