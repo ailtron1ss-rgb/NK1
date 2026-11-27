@@ -324,7 +324,7 @@ def audit_release_archive(archive_path: str | Path, source_root: str | Path, exp
         "archiveOnlyFileCount": len(archive_only),
         "sourceOnlyFileCount": len(source_only),
     }
-    release_ready = integrity_ok and source_match_ok
+    source_mirror_ok = integrity_ok and source_match_ok
     return {
         "schemaVersion": 1, "generatedAt": datetime.now(timezone.utc).isoformat(), "releaseTag": release_tag,
         "archive": {
@@ -344,7 +344,7 @@ def audit_release_archive(archive_path: str | Path, source_root: str | Path, exp
         "archiveMappedPathCollisions": mapped_path_collision_report,
         "archiveVersions": archive_versions, "comparison": comparison, "sourceMatch": source_match,
         "sourceMatchRequired": require_source_match, "sourceMatchOk": source_match_ok,
-        "releaseReady": release_ready, "errors": errors, "ok": integrity_ok,
+        "sourceMirrorOk": source_mirror_ok, "errors": errors, "ok": integrity_ok,
     }
 
 def main(argv: list[str] | None = None) -> int:
@@ -372,7 +372,7 @@ def main(argv: list[str] | None = None) -> int:
     comparison, archive = report["comparison"], report["archive"]
     print(json.dumps({
         "ok": report["ok"], "integrityOk": archive["integrityOk"],
-        "releaseReady": report["releaseReady"], "sourceMatchRequired": report["sourceMatchRequired"],
+        "sourceMirrorOk": report["sourceMirrorOk"], "sourceMatchRequired": report["sourceMatchRequired"],
         "sourceMatchOk": report["sourceMatchOk"], "releaseTag": report["releaseTag"], "archiveSha256": archive["sha256"],
         "archiveBytes": archive["sizeBytes"], "archiveFiles": archive["fileCount"],
         "identicalFiles": comparison["identicalFileCount"], "changedFiles": comparison["changedFileCount"],
@@ -384,7 +384,7 @@ def main(argv: list[str] | None = None) -> int:
         "archiveMappedPathCollisions": len(report["archiveMappedPathCollisions"]),
         "errors": report["errors"], "report": str(output),
     }, indent=2))
-    return 0 if report["ok"] and (not report["sourceMatchRequired"] or report["releaseReady"]) else 2
+    return 0 if report["ok"] and (not report["sourceMatchRequired"] or report["sourceMirrorOk"]) else 2
 
 if __name__ == "__main__":
     raise SystemExit(main())
