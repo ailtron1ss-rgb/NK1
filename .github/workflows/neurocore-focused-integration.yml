@@ -1,0 +1,45 @@
+name: NeuroCore focused integration
+on:
+  pull_request:
+    branches:
+      - workpass70-source
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: neurocore-focused-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  neurocore-integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout NeuroCore branch
+        uses: actions/checkout@v4
+      - name: Set up Node 24
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: |
+            app/package-lock.json
+            runtime/neuro-kurisu/package-lock.json
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: .python-version
+      - name: Verify pinned toolchain
+        run: |
+          node --version
+          npm --version
+          python --version
+      - name: Install the two canonical workspaces
+        run: npm run install:all
+      - name: Run full NeuroCore typecheck and regression suite
+        run: npm run test:neurocore
+      - name: Build the browser application
+        working-directory: app
+        run: node scripts/with-app-env.mjs vite build
