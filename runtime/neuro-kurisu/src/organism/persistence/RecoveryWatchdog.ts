@@ -139,6 +139,8 @@ export class RecoveryWatchdog {
     const at = input.now ?? now();
     const previousCheckpointAt = this.state.lastCheckpointAt;
     this.heartbeat({ ...input, now:at });
+    // A missing persistence owner can report liveness, but cannot commit durability.
+    if (!this.store) return this.snapshot();
     const candidate = this.checkpointCandidate(at);
     try {
       await this.persist(candidate);
