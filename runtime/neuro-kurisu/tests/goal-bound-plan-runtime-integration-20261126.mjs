@@ -73,6 +73,8 @@ try {
   }
   assert.equal(cycleEventInput.plan.payload.contextValid, call.contextValid,
     'the plan event must distinguish valid root context from first-step acceptance');
+  assert.equal(cycleEventInput.goal.payload.selectedGoalId, call.plan.lineage.goal.id,
+    'the prior-cycle goal receipt must carry the same selected goal used by the plan');
   assert.equal(cycleEventInput.action.payload.decisionId, result.cycle.decision.id,
     'the executed-action receipt must carry the same canonical decision ID');
   assert.equal(cycleEventInput.outcome.payload.decisionId, result.cycle.decision.id,
