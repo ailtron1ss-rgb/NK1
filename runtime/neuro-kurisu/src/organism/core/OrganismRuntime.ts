@@ -2931,7 +2931,7 @@ export class OrganismRuntime {
           // Capture the closure once; a full core projection serializes several MB
           // on mobile, so shutdown must not pay for duplicate full-state flushes.
           const runtimeView = this.core.runtimeClosureOperationalSnapshot();
-        runtimeViewRef.current = runtimeView;
+          runtimeViewRef.current = runtimeView;
           this.runtimeClosure.durable({
             at: Date.now(),
             tick: runtimeView.tick,
