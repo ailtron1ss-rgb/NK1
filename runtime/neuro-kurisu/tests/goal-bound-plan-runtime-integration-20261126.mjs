@@ -73,7 +73,7 @@ try {
   }
   assert.equal(cycleEventInput.plan.payload.contextValid, call.contextValid,
     'the plan event must distinguish valid root context from first-step acceptance');
-  const expectedSignedReward = call.accepted ? call.plan.steps[0].predictedReward : 0.5;
+  const expectedSignedReward = call.accepted ? call.plan.steps[0].predictedReward : 0;
   const expectedReward01 = Math.max(0, Math.min(1, (expectedSignedReward + 1) / 2));
   assert.equal(cycleEventInput.prediction.payload.predicted01, expectedReward01,
     'the live runtime prediction event must normalize signed PlanEngine reward to 0..1');
