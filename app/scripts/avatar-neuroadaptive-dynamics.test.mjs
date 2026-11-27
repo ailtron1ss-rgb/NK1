@@ -111,6 +111,7 @@ test("Three.js stage consumes the canonical frame and only applies tagged second
   assert.match(stage, /adaptiveDynamics\.reset\(\)/);
   assert.match(stage, /resolveNeuroAdaptiveMorphWeights\(/);
   assert.match(stage, /collectAvatarNeuralMaterials\(/);
+  assert.match(stage, /metadata:bone\.node\?\.userData\?\.nk1Secondary/);
   assert.match(stage, /resolveAvatarDynamicsBoneRole\(n\)/);
   assert.match(stage, /resolveNeuroAdaptiveNeuralMultiplier\(/);
 });
