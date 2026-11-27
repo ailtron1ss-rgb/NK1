@@ -218,6 +218,10 @@ test("a lifted swing foot clears the ground contact band instead of being snappe
   }
   assert.ok(result);
   assert.equal(result.contacts.leftFoot, false);
+  assert.ok(state.particles.leftToePoint.target.y > -0.75,
+    "the semantic swing target must clear the support band; targetY=" + state.particles.leftToePoint.target.y);
   assert.ok(state.particles.leftToePoint.position.y > -0.75,
-    "the raised toe must stay above the support plane during swing");
+    "the simulated swing toe must follow the elevated target; actualY="
+      + state.particles.leftToePoint.position.y + " targetY="
+      + state.particles.leftToePoint.target.y);
 });
