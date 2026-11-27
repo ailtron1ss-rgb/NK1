@@ -367,6 +367,52 @@ function isModule(value: unknown): value is CognitiveModule {
     (candidate.migrateState == null || typeof candidate.migrateState === 'function');
 }
 
+interface SafeCognitiveModuleRegistration {
+  manifest: CognitiveModuleManifestV1;
+  factory: () => CognitiveModule;
+}
+
+function validateRegistration(
+  registration: CognitiveModuleRegistration,
+): SafeCognitiveModuleRegistration {
+  if (!registration || typeof registration !== 'object' || Array.isArray(registration)) {
+    throw fail('invalid-module-registration');
+  }
+
+  let descriptors: PropertyDescriptorMap;
+  try {
+    const prototype = Object.getPrototypeOf(registration);
+    if (prototype !== Object.prototype && prototype !== null) {
+      throw fail('invalid-module-registration');
+    }
+    if (Object.getOwnPropertySymbols(registration).length > 0) {
+      throw fail('module-registration-symbol-key-rejected');
+    }
+    descriptors = Object.getOwnPropertyDescriptors(registration);
+  } catch (error) {
+    if (error instanceof Error && error.message.startsWith('module-')) throw error;
+    throw fail('module-registration-inspection-failed');
+  }
+
+  if (Object.keys(descriptors).some(key => key !== 'manifest' && key !== 'factory')) {
+    throw fail('module-registration-field-rejected');
+  }
+  for (const key of ['manifest', 'factory']) {
+    const descriptor = descriptors[key];
+    if (!descriptor || !descriptor.enumerable) throw fail('invalid-module-registration', key);
+    if ('get' in descriptor || 'set' in descriptor) {
+      throw fail('module-registration-accessor-rejected', key);
+    }
+  }
+
+  const factory = descriptors.factory.value;
+  if (typeof factory !== 'function') throw fail('invalid-module-factory');
+  return {
+    manifest: descriptors.manifest.value as CognitiveModuleManifestV1,
+    factory: factory as () => CognitiveModule,
+  };
+}
+
 export class CognitiveModuleRuntime {
   private readonly hostApiVersion: number;
   private readonly grants: Map<string, ReadonlySet<string>>;
@@ -423,10 +469,8 @@ export class CognitiveModuleRuntime {
   }
 
   register(registration: CognitiveModuleRegistration): CognitiveModuleListItem {
-    if (!registration || typeof registration.factory !== 'function') {
-      throw fail('invalid-module-factory');
-    }
-    const manifest = validateManifest(registration.manifest, this.hostApiVersion);
+    const safeRegistration = validateRegistration(registration);
+    const manifest = validateManifest(safeRegistration.manifest, this.hostApiVersion);
     if (this.records.has(manifest.id)) throw fail('duplicate-module-id', manifest.id);
     if (this.records.size >= MAX_COGNITIVE_MODULES) {
       throw fail('module-registry-capacity-exceeded', String(MAX_COGNITIVE_MODULES));
@@ -453,7 +497,7 @@ export class CognitiveModuleRuntime {
 
     const record: ModuleRecord = {
       manifest,
-      factory: registration.factory,
+      factory: safeRegistration.factory,
       module: null,
       context,
       status: 'registered',
