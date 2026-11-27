@@ -365,10 +365,10 @@ console.log(JSON.stringify({
   const snapshot = safe.snapshot();
   assert.equal(snapshot.revision, 0);
   assert.equal(snapshot.location, 'unknown');
-  assert.equal(snapshot.uncertainty01, 0.5);
+  assert.equal(snapshot.uncertainty01, 1, 'unit metrics above 1 are clamped to the upper bound');
   assert.equal(snapshot.confidence01, 0);
   assert.equal(snapshot.entities.length, 1);
-  assert.equal(snapshot.entities[0].confidence01, 0, 'out-of-range persisted confidence fails closed to the safe default');
+  assert.equal(snapshot.entities[0].confidence01, 1, 'unit confidence above 1 is clamped to the upper bound');
   assert.equal(snapshot.entities[0].present01, 0);
   assert.equal(snapshot.entities[0].firstSeenAt, 1_000);
   assert.equal(snapshot.entities[0].lastSeenAt, 1_000);
