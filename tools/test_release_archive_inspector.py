@@ -195,8 +195,8 @@ class ReleaseArchiveInspectorTests(unittest.TestCase):
 
     def test_rejects_casefold_collision_after_auto_prefix_mapping(self):
         self._write_archive({
-            "Neuro_Kurisu/README.md": b"NK1 source\\n",
-            "readme.md": b"shadow\\n",
+            "Neuro_Kurisu/README.md": b"NK1 source\n",
+            "readme.md": b"shadow\n",
         })
         result = audit_release_archive(self.archive, self.source)
         self.assertFalse(result["ok"])
@@ -205,7 +205,7 @@ class ReleaseArchiveInspectorTests(unittest.TestCase):
 
     def test_rejects_file_directory_collision_after_auto_prefix_mapping(self):
         with zipfile.ZipFile(self.archive, "w") as zipped:
-            zipped.writestr("Neuro_Kurisu/README.md", "NK1 source\\n")
+            zipped.writestr("Neuro_Kurisu/README.md", "NK1 source\n")
             zipped.writestr("README.md/", "")
         result = audit_release_archive(self.archive, self.source)
         self.assertFalse(result["ok"])
@@ -235,11 +235,11 @@ class ReleaseArchiveInspectorTests(unittest.TestCase):
 
 
     def test_source_parity_is_separate_from_archive_integrity(self):
-        (self.source / "source-only.txt").write_text("new source\\n", encoding="utf-8")
+        (self.source / "source-only.txt").write_text("new source\n", encoding="utf-8")
         self._write_archive({
-            "README.md": b"older source\\n",
-            "runtime/neuro-kurisu/package.json": (json.dumps({"name": "neuro-kurisu", "version": "35.90.0"}) + "\\n").encode(),
-            "legacy-only.txt": b"legacy\\n",
+            "README.md": b"older source\n",
+            "runtime/neuro-kurisu/package.json": (json.dumps({"name": "neuro-kurisu", "version": "35.90.0"}) + "\n").encode(),
+            "legacy-only.txt": b"legacy\n",
         })
         result = audit_release_archive(self.archive, self.source, require_source_match=True)
         self.assertTrue(result["ok"], result["errors"])
@@ -252,7 +252,7 @@ class ReleaseArchiveInspectorTests(unittest.TestCase):
         self.assertEqual(result["comparison"]["sourceOnlyFileCount"], 1)
 
     def test_strict_source_match_cli_fails_readiness_without_relabeling_zip_integrity(self):
-        self._write_archive({"README.md": b"older source\\n"})
+        self._write_archive({"README.md": b"older source\n"})
         output = io.StringIO()
         report_path = self.root / "strict-audit.json"
         with contextlib.redirect_stdout(output):
