@@ -1,9 +1,23 @@
 export type AvatarDynamicsQuality = "low" | "balanced" | "high";
 export type AvatarDynamicsRole = "hair" | "garment" | "sleeve" | "neural-fiber";
 
+export interface AvatarDynamicsBoneMetadata {
+  /** Explicit exported node.extras.nk1Secondary.role; unknown roles are rejected. */
+  role?: AvatarDynamicsRole;
+  /** Stable authoring label for a chain; bones still keep independent runtime state. */
+  chainId?: string;
+  side?: "left" | "right" | "center" | -1 | 0 | 1;
+  pinned?: boolean;
+  enabled?: boolean;
+  distalWeight?: number;
+  maxAngle?: number;
+}
+
 export interface AvatarDynamicsBone {
   key?: string;
   name: string;
+  /** Usually Three.js node.userData.nk1Secondary, copied from glTF node.extras. */
+  metadata?: unknown;
 }
 
 export interface AvatarNeuroAdaptiveFrame {
@@ -26,6 +40,7 @@ export interface AvatarDynamicsBoneRole {
   maxAngle: number;
   distalWeight: number;
   side: -1 | 0 | 1;
+  chainId?: string;
 }
 
 export interface AvatarDynamicsOffset {
@@ -76,14 +91,34 @@ function stablePhase(value: string): number {
   return ((hash >>> 0) % 6283) / 1000;
 }
 
-/** Only authored secondary chains are eligible; face and primary skeleton are excluded. */
-export function resolveAvatarDynamicsBoneRole(boneName: unknown): AvatarDynamicsBoneRole | null {
-  if (typeof boneName !== "string" || !boneName.trim()) return null;
-  const name = normalize(boneName);
-  if (!name || /^(root|armature|skeleton|hips|pelvis|spine|chest|neck|head|jaw|eye|face)/.test(name)) return null;
-  if (/(anchor|pinned|pinroot|base|root|attach)$/.test(name)) return null;
+const ROLE_MAX_ANGLE: Readonly<Record<AvatarDynamicsRole, number>> = Object.freeze({
+  hair: 0.06,
+  garment: 0.09,
+  sleeve: 0.055,
+  "neural-fiber": 0.035,
+});
+const VALID_DYNAMICS_ROLES = new Set<AvatarDynamicsRole>(["hair", "garment", "sleeve", "neural-fiber"]);
 
-  const rawName = boneName.toLowerCase();
+function plainMetadata(value: unknown): Record<string, unknown> | null {
+  try {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+    const prototype = Object.getPrototypeOf(value);
+    if (prototype !== Object.prototype && prototype !== null) return null;
+    return value as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
+
+function roleFromName(name: string): AvatarDynamicsRole | null {
+  if (/(neural|synapse|filament|conduit|neurofiber)/.test(name)) return "neural-fiber";
+  if (/(hair|fringe|bang|strand|lock|tress)/.test(name)) return "hair";
+  if (/(sleeve|cuff|glovefabric|softshoulder)/.test(name)) return "sleeve";
+  if (/(garment|cloth|fabric|coat|skirt|mantle|cape|ribbon|panel|hem|sash|tie|lapel|jacket|dress)/.test(name)) return "garment";
+  return null;
+}
+
+function sideFromName(rawName: string): -1 | 0 | 1 {
   const leftSide = rawName.includes("left")
     || /(?:^|[-_.])l(?:[-_.]|$)/.test(rawName)
     || /(?:hairlock|hairfringe|strand|fringe|bang|tress)(?:tip|mid|root)?l(?:[-_.]|$)/.test(rawName)
@@ -92,24 +127,85 @@ export function resolveAvatarDynamicsBoneRole(boneName: unknown): AvatarDynamics
     || /(?:^|[-_.])r(?:[-_.]|$)/.test(rawName)
     || /(?:hairlock|hairfringe|strand|fringe|bang|tress)(?:tip|mid|root)?r(?:[-_.]|$)/.test(rawName)
     || /(?:coatpanel|coathem|skirtpanel|mantletail|ribbon|sleevefollow|sleevecuff|sleeve|cuff)r(?:[-_.]|$)/.test(rawName);
-  const side: -1 | 0 | 1 = leftSide ? -1 : rightSide ? 1 : 0;
-  if (/(neural|synapse|filament|conduit|neurofiber)/.test(name)) {
-    return { role: "neural-fiber", maxAngle: 0.035, distalWeight: 0.35, side };
-  }
-  if (/(hair|fringe|bang|strand|lock|tress)/.test(name)) {
-    const distal = /(tip|end|distal|loose)/.test(name) ? 1 : /(root|anchor|base)/.test(name) ? 0.2 : 0.58;
-    return { role: "hair", maxAngle: 0.06, distalWeight: distal, side };
-  }
-  if (/(sleeve|cuff|glovefabric|softshoulder)/.test(name)) {
-    return { role: "sleeve", maxAngle: 0.055, distalWeight: /(tip|end|cuff)/.test(name) ? 0.85 : 0.4, side };
-  }
-  if (/(garment|cloth|fabric|coat|skirt|mantle|cape|ribbon|panel|hem|sash|tie|lapel|jacket|dress)/.test(name)) {
-    const distal = /(tip|end|hem|tail|flap|loose)/.test(name) ? 1 : /(root|anchor|base)/.test(name) ? 0.2 : 0.6;
-    return { role: "garment", maxAngle: 0.09, distalWeight: distal, side };
-  }
-  return null;
+  return leftSide ? -1 : rightSide ? 1 : 0;
 }
 
+/**
+ * Resolve either a conventional semantic bone name or explicit NK1 metadata
+ * exported in glTF node.extras.nk1Secondary. Explicit invalid metadata fails
+ * closed; authored values can reduce, never exceed, the per-role motion limits.
+ */
+export function resolveAvatarDynamicsBoneRole(
+  boneName: unknown,
+  rawMetadata?: unknown,
+): AvatarDynamicsBoneRole | null {
+  if (typeof boneName !== "string" || !boneName.trim()) return null;
+  const name = normalize(boneName);
+  if (!name || /^(root|armature|skeleton|hips|pelvis|spine|chest|neck|head|jaw|eye|face)/.test(name)) return null;
+  if (/(anchor|pinned|pinroot|base|root|attach)$/.test(name)) return null;
+
+  let metadata: Record<string, unknown> | null = null;
+  const metadataProvided = rawMetadata !== undefined && rawMetadata !== null;
+  if (metadataProvided) {
+    metadata = plainMetadata(rawMetadata);
+    if (!metadata) return null;
+    if (Object.prototype.hasOwnProperty.call(metadata, "pinned")) {
+      if (typeof metadata.pinned !== "boolean") return null;
+      if (metadata.pinned) return null;
+    }
+    if (Object.prototype.hasOwnProperty.call(metadata, "enabled")) {
+      if (typeof metadata.enabled !== "boolean") return null;
+      if (!metadata.enabled) return null;
+    }
+  }
+
+  const inferredRole = roleFromName(name);
+  let role = inferredRole;
+  if (metadata && Object.prototype.hasOwnProperty.call(metadata, "role")) {
+    if (typeof metadata.role !== "string" || !VALID_DYNAMICS_ROLES.has(metadata.role as AvatarDynamicsRole)) return null;
+    role = metadata.role as AvatarDynamicsRole;
+  }
+  if (!role) return null;
+
+  let side = sideFromName(boneName.toLowerCase());
+  if (metadata && Object.prototype.hasOwnProperty.call(metadata, "side")) {
+    const value = metadata.side;
+    if (value === "left" || value === -1) side = -1;
+    else if (value === "right" || value === 1) side = 1;
+    else if (value === "center" || value === 0) side = 0;
+    else return null;
+  }
+
+  const distalDefault = role === "hair"
+    ? (/(tip|end|distal|loose)/.test(name) ? 1 : 0.58)
+    : role === "sleeve"
+      ? (/(tip|end|cuff)/.test(name) ? 0.85 : 0.4)
+      : role === "garment"
+        ? (/(tip|end|hem|tail|flap|loose)/.test(name) ? 1 : 0.6)
+        : 0.35;
+  let distalWeight = distalDefault;
+  if (metadata && Object.prototype.hasOwnProperty.call(metadata, "distalWeight")) {
+    const value = metadata.distalWeight;
+    if (typeof value !== "number" || !Number.isFinite(value) || value < 0 || value > 1) return null;
+    distalWeight = value;
+  }
+
+  let maxAngle = ROLE_MAX_ANGLE[role];
+  if (metadata && Object.prototype.hasOwnProperty.call(metadata, "maxAngle")) {
+    const value = metadata.maxAngle;
+    if (typeof value !== "number" || !Number.isFinite(value) || value < 0) return null;
+    maxAngle = Math.min(value, ROLE_MAX_ANGLE[role]);
+  }
+
+  let chainId: string | undefined;
+  if (metadata && Object.prototype.hasOwnProperty.call(metadata, "chainId")) {
+    const value = metadata.chainId;
+    if (typeof value !== "string" || !/^[a-z0-9][a-z0-9._:-]{0,127}$/i.test(value)) return null;
+    chainId = value;
+  }
+
+  return { role, maxAngle, distalWeight, side, ...(chainId ? { chainId } : {}) };
+}
 function readChannel(frame: AvatarNeuroAdaptiveFrame, name: string): number {
   return clampSigned(frame.bodyChannels?.[name]);
 }
@@ -230,7 +326,7 @@ export class AvatarNeuroAdaptiveDynamics {
       const key = typeof bone.key === "string" && bone.key.length > 0
         ? bone.key.slice(0, 128)
         : normalize(bone.name) + ":" + index;
-      const role = resolveAvatarDynamicsBoneRole(bone.name);
+      const role = resolveAvatarDynamicsBoneRole(bone.name, bone.metadata);
       if (!role) continue;
       activeKeys.add(key);
       let state = this.states.get(key);
