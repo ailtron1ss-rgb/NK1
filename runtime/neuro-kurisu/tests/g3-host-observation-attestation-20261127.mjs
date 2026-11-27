@@ -3,6 +3,8 @@ import { generateKeyPairSync, sign } from 'node:crypto';
 import { SignedObservationAdmissionAuthority, isTrustedObservationAdmission } from '../src/organism/system/SignedObservationAdmissionAuthority.ts';
 import { stableJson } from '../src/organism/core/StableSerialization.ts';
 import { EmbodimentSubsystemRuntime } from '../src/organism/core/EmbodimentSubsystemRuntime.ts';
+import { OrganismCore } from '../src/organism/core/OrganismCore.ts';
+import { MemoryStateStore } from '../src/organism/persistence/MemoryStateStore.ts';
 
 const { publicKey, privateKey } = generateKeyPairSync('ed25519');
 let now = Date.now();
@@ -168,3 +170,34 @@ assert.equal(owner.revokeAdmittedObservation('observation-door-open-001'), false
 
 
 console.log('G3_SIGNED_HOST_OBSERVATION_ADMISSION=PASS signature=device+session+consent+nonce');
+
+const stateStore = new MemoryStateStore();
+const core = new OrganismCore(stateStore, {
+  enableLanguage: false,
+  observationAdmissionAuthority: authority,
+});
+await core.init();
+const coreReceipt = signedReceipt({
+  nonce: 'nonce-core-runtime-admission-0001',
+  observationId: 'observation-core-runtime-0001',
+});
+const coreAdmission = await core.admitObservationReceipt(coreReceipt);
+assert.equal(coreAdmission.accepted, true, 'OrganismCore must expose the configured trusted host admission path');
+assert.equal(coreAdmission.evidence.kind, 'observed');
+const coreSnapshot = await stateStore.load();
+const persistedAdmission = coreSnapshot?.facets?.embodiment?.perceptualEvidence?.evidence
+  ?.find(row => row.id === coreAdmission.evidence.id);
+assert.equal(persistedAdmission?.kind, 'observed', 'the canonical persisted embodiment facet must include host admission evidence');
+const replayThroughCore = await core.admitObservationReceipt(coreReceipt);
+assert.equal(replayThroughCore.accepted, false);
+assert.equal(replayThroughCore.reason, 'nonce-replayed');
+const revokedThroughCore = await core.revokeAdmittedObservation('observation-core-runtime-0001');
+assert.equal(revokedThroughCore.revoked, true);
+const revokedSnapshot = await stateStore.load();
+const revokedAdmission = revokedSnapshot?.facets?.embodiment?.perceptualEvidence?.evidence
+  ?.find(row => row.id === coreAdmission.evidence.id);
+assert.equal(revokedAdmission?.kind, 'unresolved', 'consent revocation must be checkpointed through the canonical Core path');
+await core.flush();
+core.stop?.();
+
+console.log('G3_SIGNED_HOST_OBSERVATION_CORE_WIRING=PASS');
