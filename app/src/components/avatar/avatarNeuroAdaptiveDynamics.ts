@@ -300,7 +300,7 @@ export function resolveNeuroAdaptiveMorphWeights(
   for (const [name, index] of entries) byName.set(normalize(name), { name, index });
   const activation = resolveNeuralActivation(frame);
   const weights: AvatarNeuroAdaptiveMorphWeight[] = [];
-  const targets: ReadonlyArray<[keyof typeof MORPH_CHANNELS, number]> = [
+  const targets: ReadonlyArray<[keyof typeof AVATAR_NEUROADAPTIVE_MORPH_CHANNELS, number]> = [
     ["cloth", clamp01(Math.abs(readChannel(frame, "torsoYaw")) * 0.45 + Math.abs(readChannel(frame, "rootYaw")) * 0.3 + activation * 0.18)],
     ["hair", clamp01(Math.abs(readChannel(frame, "headYaw")) * 0.42 + Math.abs(readChannel(frame, "headPitch")) * 0.28 + activation * 0.2)],
     ["tissue", clamp01(Math.max(0, readChannel(frame, "breath")) * 0.7 + clamp01(frame.energy) * 0.12)],
