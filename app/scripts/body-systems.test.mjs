@@ -444,12 +444,14 @@ test("motion arbiter channels flow into the semantic pose but never override der
     speechEventId: null,
     audioTimeMs: 0,
     mouth: null,
-    // headRoll is derived and must win; rightShoulder is new and must survive.
-    pose: { headRoll: 0.9, rightShoulder: -0.4, breath: 0.5 },
+    // headRoll is derived and must win; limb and per-digit channels must survive.
+    pose: { headRoll: 0.9, rightShoulder: -0.4, breath: 0.5, leftIndexCurl: -0.8, rightLittleCurl: 0.6 },
   });
   assert.equal(state.pose.headRoll, 0.2);
   assert.equal(state.pose.rightShoulder, -0.4);
   assert.equal(state.pose.breath, 0.5);
+  assert.equal(state.pose.leftIndexCurl, -0.8);
+  assert.equal(state.pose.rightLittleCurl, 0.6);
 });
 
 test("out-of-range arbiter channels are clamped at the semantic boundary", () => {
