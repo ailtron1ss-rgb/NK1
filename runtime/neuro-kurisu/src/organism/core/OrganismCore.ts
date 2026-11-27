@@ -8417,7 +8417,7 @@ export class OrganismCore {
         workspace.content = { ...workspace.content, p9: { pressureTotal, advancedMemoryIds: advancedRetrieved.map(m => m.id), social: socialModel, worldPreview: p9WorldPreview, futurePreview, contradictions: this.persisted.facets.cognition.contradictions.unresolvedCount }, p11: { governance: governanceRecord, futureSelf: futureForecast, regretMean: selfGovernanceAfterDecision.regretMean, governanceScore: selfGovernanceAfterDecision.governanceScore }, p32CausalSelf: p32Prediction ? { action: p32Prediction.action, expectedSuccess01: p32Prediction.expectedSuccess01, expectedAgency01: p32Prediction.expectedAgency01, confidence01: p32Prediction.confidence01 } : null };
         this.persisted.facets.consciousness.workspaceIgnition = updateWorkspaceIgnition(this.persisted.facets.consciousness.workspaceIgnition, workspaceSnapshotNow, this.config.enableWorkspace ? 0.35 : 0);
         this.persisted.facets.consciousness.identityContinuity = this.selfSubsystem.identityContinuity.update({ values: this.persisted.facets.memory.adaptiveValues, identityCoherence: state.needs.identityCoherence, activeGoalTitles: goals.slice(0, 8).map(g => g.title), memoryIds: retrieved.map(m => m.id), authorshipScore: authorshipScoreNow });
-        this.cognitiveRuntime.metacognition.update({ confidence: selectedIntent?.confidence ?? 0.5, outcomeSuccess: success ?? 0.5, predictionError: state.predictionError, worldUncertainty: n.uncertainty, identityDrift: identityContinuity.drift });
+        this.cognitiveRuntime.metacognition.update({ confidence: selectedIntent?.confidence ?? 0.5, outcomeSuccess: success, outcomeSource: success == null ? 'unknown' : 'unverified', predictionError: state.predictionError, worldUncertainty: n.uncertainty, identityDrift: identityContinuity.drift });
         this.persisted.facets.consciousness.metacognition = this.cognitiveRuntime.metacognition.snapshot();
         const p31Frame = this.selfSubsystem.p31Consciousness.integrate({
             tick: state.tick, observationId: decisionForResilience.id, externalInput: Boolean(observation.text),
@@ -9236,8 +9236,16 @@ export class OrganismCore {
         this.persistence.revisionTokens.touch('development-core', state.tick, 'feedback');
         if (outcome.worldEvent || outcome.worldTransition)
             this.persistence.revisionTokens.touch('reality-model', state.tick, 'feedback-world');
-        const success = clamp(outcome.success ?? (outcome.reward == null ? 0.5 : 0.5 + outcome.reward * 0.5));
-        const surprise = clamp(outcome.surprise ?? Math.abs(0.5 - success));
+        const outcomeSuccessObserved =
+            typeof outcome.success === 'number' && Number.isFinite(outcome.success)
+                ? clamp(outcome.success)
+                : typeof outcome.reward === 'number' && Number.isFinite(outcome.reward)
+                    ? clamp(0.5 + outcome.reward * 0.5)
+                    : null;
+        // Keep the last known action success as state, but do not manufacture a new
+        // outcome sample when feedback carries neither success nor reward.
+        const success = outcomeSuccessObserved ?? clamp(Number.isFinite(state.lastActionSuccess) ? state.lastActionSuccess : 0.5);
+        const surprise = clamp(outcome.surprise ?? (outcomeSuccessObserved == null ? 0 : Math.abs(0.5 - success)));
         const learningSource = outcome.learning?.source ?? (outcome.worldTransition ? 'simulation' : (['os', 'device', 'user', 'external-api'].includes(String(outcome.evidenceSource ?? '').toLowerCase()) ? 'external' : 'simulation'));
         const inferredLearningDefaults = learningSource === 'simulation'
             ? { learningScale01: .20, worldModelUpdateScale01: .24, memoryPromotionScale01: .12, identityUpdateScale01: .04, evidence01: .05, verified01: 0, independent01: 0, consequence01: .10, neuralUpdateScale01: .30 }
@@ -9254,11 +9262,11 @@ export class OrganismCore {
             consequence01: clamp(outcome.learning?.consequence01 ?? inferredLearningDefaults.consequence01),
             neuralUpdateScale01: clamp(outcome.learning?.neuralUpdateScale01 ?? inferredLearningDefaults.neuralUpdateScale01),
         };
-        const rawReward01 = clamp((outcome.reward ?? success + 0.5) / 1.5);
+        const rawReward01 = clamp(outcome.reward == null && outcomeSuccessObserved === null ? 0.5 : (outcome.reward ?? success + 0.5) / 1.5);
         const gatedReward01 = clamp(outcome.learning?.reward01 ?? (0.5 + (rawReward01 - 0.5) * learning.learningScale01));
-        const gatedSuccess01 = clamp(outcome.learning?.success01 ?? (0.5 + (success - 0.5) * learning.learningScale01));
-        const gatedSurprise01 = clamp(outcome.learning?.surprise01 ?? (surprise * (.45 + .55 * learning.learningScale01)));
-        state.lastActionSuccess = success;
+        const gatedSuccess01 = clamp(outcome.learning?.success01 ?? (outcomeSuccessObserved === null ? 0.5 : 0.5 + (success - 0.5) * learning.learningScale01));
+        const gatedSurprise01 = clamp(outcome.learning?.surprise01 ?? (outcomeSuccessObserved === null && outcome.surprise == null ? 0 : surprise * (.45 + .55 * learning.learningScale01)));
+        if (outcomeSuccessObserved !== null) state.lastActionSuccess = outcomeSuccessObserved;
         this.willIntegration.observeOutcome({ tick: state.tick, action: state.lastAction, success01: success, verified01: learning.verified01, surprise01: surprise, reason: outcome.notes, at: Date.now() });
         this.persisted.system.willIntegration = this.willIntegration.snapshot();
         this.persisted.system.luminaAdaptation = this.luminaAdaptation.snapshot();
@@ -9267,7 +9275,7 @@ export class OrganismCore {
         state.predictionError = clamp(state.predictionError * 0.6 + surprise * 0.4);
         state.needs.uncertainty = clamp(state.needs.uncertainty * 0.82 + surprise * 0.16);
         state.needs.goalPressure = clamp(state.needs.goalPressure * 0.9 + (outcome.worldEvent?.importance ?? 0) * 0.04);
-        this.memorySubsystem.events.append(makeEvent('world-transition', state.tick, { reward: outcome.reward ?? 0, success, surprise, notes: outcome.notes ?? '' }));
+        this.memorySubsystem.events.append(makeEvent('world-transition', state.tick, { reward: outcome.reward ?? 0, success, outcomeKnown: outcomeSuccessObserved !== null, surprise, notes: outcome.notes ?? '' }));
         this.cognitiveRuntime.sourceMonitor.add('world', 'transition', clamp(0.55 + (1 - surprise) * 0.35), 'observation');
         if (outcome.notes)
             this.cognitiveRuntime.sourceMonitor.add('system', 'feedback-note', 0.7, 'hypothesis');
@@ -9486,7 +9494,22 @@ export class OrganismCore {
         const value = success > 0.6 ? 'truth' : 'responsibility';
         const legacyRevision = (!this.config.enableValueEvolution && this.config.enableValuePlasticity) ? this.memorySubsystem.valuePlasticity.update({ value, success: gatedSuccess01, surprise: gatedSurprise01 }) : null;
         this.worldSubsystem.activeInference.learn({ epistemicSurprise: gatedSurprise01, actionSuccess: gatedSuccess01, learningScale01: learning.learningScale01 });
-        this.cognitiveRuntime.metacognition.update({ confidence: trace?.selected?.confidence ?? 0.5, outcomeSuccess: gatedSuccess01, predictionError: gatedSurprise01, worldUncertainty: state.needs.uncertainty, identityDrift: this.selfSubsystem.identityContinuity.snapshot().drift });
+        const metacognitiveOutcomeSource: import('../cognition/MetaCognitiveMonitor.ts').MetacognitiveOutcomeSource =
+            outcomeSuccessObserved === null
+                ? 'unknown'
+                : learning.source === 'simulation'
+                    ? 'simulated'
+                    : learning.verified01 >= 0.5 && learning.independent01 >= 0.5 && learning.learningScale01 > 0
+                        ? 'verified-observed'
+                        : 'unverified';
+        this.cognitiveRuntime.metacognition.update({
+            confidence: trace?.selected?.confidence ?? 0.5,
+            outcomeSuccess: outcomeSuccessObserved,
+            outcomeSource: metacognitiveOutcomeSource,
+            predictionError: gatedSurprise01,
+            worldUncertainty: state.needs.uncertainty,
+            identityDrift: this.selfSubsystem.identityContinuity.snapshot().drift,
+        });
         this.persisted.facets.consciousness.metacognition = this.cognitiveRuntime.metacognition.snapshot();
         const metaCentral = this.cognitiveRuntime.centralBrain.globalState();
         const metaWorkspace = this.cognitiveRuntime.globalWorkspace.globalState();
