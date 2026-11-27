@@ -427,3 +427,37 @@ console.log('ORGANISM_RUNTIME_MODULE_INTEGRATION=PASS');
     'checkpoint quarantine must inspect descriptors and never execute metadata getters');
   assert.match(checkpoint.diagnostics().checkpointLoadError ?? '', /accessor|descriptor|checkpoint-invalid/);
 }
+
+// A canonical payload's system field is an admission boundary too. Saving an
+// accessor-backed field must fail closed without executing it or reaching the
+// durable writer.
+{
+  let getterCalls = 0;
+  let durableWrites = 0;
+  const delegate = {
+    async load() { return null; },
+    async save() { durableWrites += 1; },
+  };
+  const checkpoint = new CognitiveModuleCheckpointStore(delegate, () => 900);
+  const hostile = persisted();
+  Object.defineProperty(hostile, 'system', {
+    enumerable: true,
+    configurable: true,
+    get() {
+      getterCalls += 1;
+      return { release: 'test', organismCore: 'test', schemaVersion: 1 };
+    },
+  });
+
+  await assert.rejects(
+    checkpoint.save(hostile),
+    /cognitive-module-checkpoint-system-accessor-rejected/,
+  );
+  assert.equal(getterCalls, 0, 'checkpoint save must inspect the system descriptor without invoking it');
+  assert.equal(durableWrites, 0, 'hostile canonical metadata must never reach the durable writer');
+  assert.equal(
+    checkpoint.diagnostics().checkpointSaveError,
+    'cognitive-module-checkpoint-system-accessor-rejected',
+  );
+}
+
