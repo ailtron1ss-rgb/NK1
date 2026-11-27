@@ -386,7 +386,11 @@ export function stepAvatarArticulatedBody(
         const incoming=incomingVelocity[support.id];
         if(projectedSupport.has(support.id)||incoming.y<0){
           // Zero restitution: a positional correction must not become an upward bounce.
-          p.velocity.y=Math.max(0,incoming.y);
+          p.velocity.y=0;
+        } else {
+          // A sustained planted foot cannot be pushed upward by the next PBD
+          // distance correction while its semantic target is still in stance.
+          p.velocity.y=Math.min(0,p.velocity.y);
         }
         const slip=Math.hypot(p.velocity.x,p.velocity.z);
         contacts.maxSlipSpeed=Math.max(contacts.maxSlipSpeed,slip);
