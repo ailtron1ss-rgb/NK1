@@ -82,6 +82,11 @@ assert.deepEqual(replay, { accepted: false, reason: 'nonce-replayed' });
 const reauthorized = await authority.reauthorizePersisted(receipt);
 assert.equal(reauthorized.accepted, true);
 assert.equal(reauthorized.admission.receiptDigest, accepted.admission.receiptDigest);
+revokedTickets.add('consent-camera-current');
+const consentRevokedOnRestart = await authority.reauthorizePersisted(receipt);
+assert.equal(consentRevokedOnRestart.accepted, false);
+assert.equal(consentRevokedOnRestart.reason, 'consent-not-active');
+revokedTickets.delete('consent-camera-current');
 const changedPayloadOnConsumedNonce = signedReceipt({
   nonce: receipt.nonce,
   claim: 'door is closed',
