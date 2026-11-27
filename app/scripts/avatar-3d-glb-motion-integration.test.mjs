@@ -18,4 +18,8 @@ test("generic GLB renderer consumes the expressive face and secondary motion ada
   assert.match(stage, /GPU vertex sway/);
   assert.match(stage, /ограниченный GPU sway активен на/);
   assert.match(stage, /Костные цепочки и специальные morph-каналы отсутствуют/);
+  assert.match(stage, /resolveAvatarCameraFraming/);
+  assert.match(stage, /normalizedBounds= new THREE.Box3\(\)\.setFromObject\(root\)/);
+  assert.match(stage, /avatarVisibleMeshCount/);
+  assert.match(stage, /avatarRenderCalls/);
 });
