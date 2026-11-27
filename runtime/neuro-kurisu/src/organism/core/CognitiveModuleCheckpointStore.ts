@@ -225,8 +225,16 @@ export class CognitiveModuleCheckpointStore implements JsonStateStore<PersistedO
   }
 
   async save(value: PersistedOrganism): Promise<void> {
-    if (!value || typeof value !== 'object' || !asRecord((value as unknown as Record<string, unknown>).system)) {
-      const error = new Error('cognitive-module-checkpoint-organism-state-invalid');
+    const organismRecord = asRecord(value);
+    const systemProperty = organismRecord
+      ? ownDataProperty(organismRecord, 'system')
+      : { present: false, valid: false };
+    const system = systemProperty.valid ? asRecord(systemProperty.value) : null;
+    if (!organismRecord || !systemProperty.present || !systemProperty.valid || !system) {
+      const reason = systemProperty.present && !systemProperty.valid
+        ? 'cognitive-module-checkpoint-system-accessor-rejected'
+        : 'cognitive-module-checkpoint-organism-state-invalid';
+      const error = new Error(reason);
       this.lastCheckpointSaveError = error.message;
       throw error;
     }
@@ -278,7 +286,6 @@ export class CognitiveModuleCheckpointStore implements JsonStateStore<PersistedO
       this.lastCheckpointSaveError = 'cognitive-module-checkpoint-time-invalid';
       throw new Error(this.lastCheckpointSaveError);
     }
-    const system = (value as unknown as { system: Record<string, unknown> }).system;
     const checkpoint: CognitiveModuleCheckpointEnvelopeV1 = {
       schemaVersion: 1,
       capturedAt,
