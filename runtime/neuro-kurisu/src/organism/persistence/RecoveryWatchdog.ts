@@ -28,7 +28,13 @@ export interface RecoveryProbe {
 
 const now = () => Date.now();
 const clampInt = (v:number, min=0) => Number.isFinite(v) ? Math.max(min, Math.floor(v)) : min;
+const safeCheckpointTime = (value:unknown, nowAt:number): value is number =>
+  typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 && value <= nowAt + 60_000;
 
+/**
+ * RecoveryWatchdog distinguishes process liveness from a durable checkpoint.
+ * Only a successful persistence boundary may advance lastCheckpointAt.
+ */
 export class RecoveryWatchdog {
   private state: RecoveryWatchdogState;
   private readonly store?: FileStateStore<RecoveryWatchdogState>;
@@ -42,7 +48,9 @@ export class RecoveryWatchdog {
       previousBootId:'',
       startedAt:nowAt,
       lastHeartbeatAt:nowAt,
-      lastCheckpointAt:nowAt,
+      // Construction is not a persistence event; until the first successful store
+      // write, the watchdog must report that no durable checkpoint is known.
+      lastCheckpointAt:0,
       lastTick:0,
       lastLearningCount:0,
       recoveryCount:0,
@@ -57,6 +65,9 @@ export class RecoveryWatchdog {
     const raw = rawOverride ?? (this.store ? await this.store.load() : null);
     if (raw) {
       const currentBootId=this.state.bootId;
+      const checkpointAt = safeCheckpointTime(raw.lastCheckpointAt, nowAt)
+        ? raw.lastCheckpointAt
+        : 0;
       this.state = {
         ...this.state,
         ...raw,
@@ -67,6 +78,9 @@ export class RecoveryWatchdog {
         recoveryCount:clampInt(raw.recoveryCount)+1,
         lastRecoveryReason:'process-resume',
         lastHeartbeatAt:nowAt,
+        // A missing, malformed, negative or implausibly future timestamp is not
+        // evidence of a durable save. Do not coerce strings into timestamps.
+        lastCheckpointAt:checkpointAt,
       };
       await this.persist();
     }
@@ -76,7 +90,8 @@ export class RecoveryWatchdog {
   heartbeat(input: RecoveryProbe = {}): RecoveryWatchdogState {
     const at = input.now ?? now();
     this.state.lastHeartbeatAt = at;
-    this.state.lastCheckpointAt = at;
+    // Liveness/tick progress must remain visible even if the next disk write fails.
+    // A heartbeat never advances the durable checkpoint marker.
     if (input.tick !== undefined) this.state.lastTick = clampInt(input.tick);
     if (input.learningCount !== undefined) this.state.lastLearningCount = clampInt(input.learningCount);
     this.state.status = 'healthy';
@@ -97,18 +112,46 @@ export class RecoveryWatchdog {
     this.state.lastRecoveryAt = at;
     this.state.lastRecoveryReason = reason;
     this.state.lastHeartbeatAt = at;
-    this.state.lastCheckpointAt = at;
+    // A recovery decision is not proof that the new process has committed a checkpoint.
     this.state.status = 'recovered';
     return this.snapshot();
   }
 
-  async checkpoint(input: RecoveryProbe = {}): Promise<RecoveryWatchdogState> {
-    this.heartbeat(input);
-    await this.persist();
+  /** Detached candidate to place inside the canonical Core checkpoint before save(). */
+  checkpointCandidate(at=now()): RecoveryWatchdogState {
+    if (!Number.isSafeInteger(at) || at < 0) throw new Error('recovery-watchdog-checkpoint-time-invalid');
+    return { ...this.snapshot(), lastCheckpointAt:at };
+  }
+
+  /** Publish the in-memory durable marker only after the canonical store accepts the candidate. */
+  commitCheckpoint(at=now()): RecoveryWatchdogState {
+    if (!Number.isSafeInteger(at) || at < 0) throw new Error('recovery-watchdog-checkpoint-time-invalid');
+    this.state.lastCheckpointAt = at;
     return this.snapshot();
+  }
+
+  /**
+   * Standalone persistence remains supported for explicitly injected stores.
+   * The candidate is persisted first; a failed write leaves liveness fresh but
+   * leaves the previous durable timestamp untouched.
+   */
+  async checkpoint(input: RecoveryProbe = {}): Promise<RecoveryWatchdogState> {
+    const at = input.now ?? now();
+    const previousCheckpointAt = this.state.lastCheckpointAt;
+    this.heartbeat({ ...input, now:at });
+    const candidate = this.checkpointCandidate(at);
+    try {
+      await this.persist(candidate);
+    } catch (error) {
+      this.state.lastCheckpointAt = previousCheckpointAt;
+      throw error;
+    }
+    return this.commitCheckpoint(at);
   }
 
   snapshot(): RecoveryWatchdogState { return structuredClone(this.state); }
 
-  private async persist(): Promise<void> { if (this.store) await this.store.save(this.state); }
+  private async persist(value: RecoveryWatchdogState = this.state): Promise<void> {
+    if (this.store) await this.store.save(value);
+  }
 }

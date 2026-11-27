@@ -2106,6 +2106,8 @@ export class OrganismCore {
         let continuityCandidate: ReturnType<OrganismCore['preparePersistentContinuityCandidate']> | null = null;
         let recoveryCandidate: ReturnType<FailureRecoveryCertification['snapshot']> | null = null;
         let recoveryBefore: ReturnType<FailureRecoveryCertification['snapshot']> | null = null;
+        let watchdogBeforeCommit: ReturnType<OrganismCore['recoveryWatchdogSnapshot']> | null = null;
+        let watchdogCheckpointAt: number | null = null;
         if (Date.now() - this.persistence.capabilityRefreshedAt > 60000) {
             const t = Date.now();
             await this.governanceSubsystem.capabilities.refresh();
@@ -2230,6 +2232,12 @@ export class OrganismCore {
         }
         if (fullProjection) {
             this.persistence.persistenceFullCheckpointCount += 1;
+            // The watchdog timestamp is a claim about the canonical store below,
+            // not about this heartbeat or the fact that a checkpoint was attempted.
+            watchdogBeforeCommit = this.cognitiveRuntime.recoveryWatchdog.snapshot();
+            watchdogCheckpointAt = Date.now();
+            this.persisted.system.recoveryWatchdog =
+                this.cognitiveRuntime.recoveryWatchdog.checkpointCandidate(watchdogCheckpointAt);
             t = Date.now();
             try {
                 await this.store.save(this.persisted);
@@ -2241,7 +2249,11 @@ export class OrganismCore {
                     this.persisted.system.b1701B2200UnifiedLifeContinuity = continuityCandidate.previousB1701;
                 }
                 if (recoveryBefore) this.persisted.system.failureRecoveryCertification = recoveryBefore;
+                if (watchdogBeforeCommit) this.persisted.system.recoveryWatchdog = watchdogBeforeCommit;
                 throw error;
+            }
+            if (watchdogCheckpointAt !== null) {
+                this.cognitiveRuntime.recoveryWatchdog.commitCheckpoint(watchdogCheckpointAt);
             }
             if (continuityCandidate) {
                 this.developmentalNeural.persistentContinuityKernel.restore(continuityCandidate.kernel);
