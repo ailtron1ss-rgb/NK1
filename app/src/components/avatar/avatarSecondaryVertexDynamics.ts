@@ -51,6 +51,11 @@ const QUALITY_SCALE = Object.freeze({ low: 0.35, balanced: 0.7, high: 1 });
 const MAX_WORLD_AMPLITUDE = 0.012;
 const MAX_LOCAL_AMPLITUDE = 0.02;
 const SHADER_MARKER = "NK1_SECONDARY_VERTEX_MOTION_V1";
+const REQUIRED_UNIFORMS = [
+  "nk1SecondaryTime", "nk1SecondaryMotion", "nk1SecondaryGait", "nk1SecondaryBreath",
+  "nk1SecondaryYaw", "nk1SecondaryMinY", "nk1SecondaryInvHeight", "nk1SecondaryAmplitude",
+  "nk1SecondaryPhase", "nk1SecondarySide", "nk1SecondaryHair",
+] as const;
 
 const clamp = (value: unknown, min: number, max: number, fallback = 0): number =>
   typeof value === "number" && Number.isFinite(value)
@@ -112,7 +117,8 @@ function makeUniforms(
 ): AvatarSecondaryVertexUniforms {
   const localAmplitude = Math.min(
     MAX_LOCAL_AMPLITUDE,
-    profile.amplitudeWorld / Math.max(0.001, Math.min(rootScale, 1_000)),
+    clamp(profile.amplitudeWorld, 0, MAX_WORLD_AMPLITUDE)
+      / Math.max(0.001, Math.min(rootScale, 1_000)),
   );
   return {
     nk1SecondaryTime: { value: 0 },
@@ -143,6 +149,11 @@ export function injectAvatarSecondaryVertexShader(
   if (shader.vertexShader.includes(SHADER_MARKER)) return true;
   const commonAnchor = "#include <common>";
   const skinningAnchor = "#include <skinning_vertex>";
+  const uniformRecord = uniforms as Record<string, AvatarSecondaryVertexUniform>;
+  for (const name of REQUIRED_UNIFORMS) {
+    const uniform = uniformRecord[name];
+    if (!uniform || typeof uniform.value !== "number" || !Number.isFinite(uniform.value)) return false;
+  }
   if (!shader.vertexShader.includes(commonAnchor) || !shader.vertexShader.includes(skinningAnchor)) return false;
 
   const declarations = `
