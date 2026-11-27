@@ -55,6 +55,29 @@ const bones = [...jointIndices].map((index) => {
     ...(Number.isInteger(parent) && jointIndices.has(parent) ? { parentId: `gltf-node-${parent}` } : {}),
   };
 });
+const skinJointNames = [...jointIndices].sort((a, b) => a - b).map((index) => ({
+  index,
+  name: typeof gltfNodes[index]?.name === "string" ? gltfNodes[index].name : `node-${index}`,
+  parent: Number.isInteger(parentByIndex.get(index)) && typeof gltfNodes[parentByIndex.get(index)]?.name === "string"
+    ? gltfNodes[parentByIndex.get(index)].name
+    : null,
+}));
+const meshNodeInventory = gltfNodes.flatMap((node, nodeIndex) => {
+  if (!Number.isInteger(node?.mesh)) return [];
+  const mesh = document.meshes?.[node.mesh];
+  return [{
+    nodeIndex,
+    nodeName: typeof node?.name === "string" ? node.name : `node-${nodeIndex}`,
+    meshIndex: node.mesh,
+    meshName: typeof mesh?.name === "string" ? mesh.name : `mesh-${node.mesh}`,
+    skinIndex: Number.isInteger(node?.skin) ? node.skin : null,
+  }];
+}).slice(0, 64);
+const materialNames = (document.materials ?? []).slice(0, 64).map((material, index) =>
+  typeof material?.name === "string" ? material.name : `material-${index}`);
+const meshNames = (document.meshes ?? []).slice(0, 64).map((mesh, index) =>
+  typeof mesh?.name === "string" ? mesh.name : `mesh-${index}`);
+
 const morphTargetNames = new Set();
 let rawMorphTargetCount = 0;
 let morphMeshCount = 0;
@@ -95,6 +118,10 @@ console.log("HOSTED_KURISU_ASSET=PASS", JSON.stringify({
   animations: (document.animations ?? []).length,
   secondaryAssetAudit: {
     skinJoints: bones.length,
+    skinJointNames,
+    meshNodeInventory,
+    meshNames,
+    materialNames,
     skinnedMeshes: secondaryAudit.skinnedMeshCount,
     morphMeshes: secondaryAudit.morphMeshCount,
     recognizedSecondaryBones: secondaryAudit.recognizedBoneCount,
