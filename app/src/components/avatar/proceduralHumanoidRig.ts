@@ -1,6 +1,8 @@
 import * as THREE from "three";
+import type { ArticulatedBodyParticle, ArticulatedBodyParticleId } from "./articulatedBodyParticles";
 
 export type JointAxis = "x" | "y" | "z";
+export type ArticulatedParticleFrame = Partial<Record<ArticulatedBodyParticleId, Pick<ArticulatedBodyParticle, "position" | "target">>>;
 export type JointLimit = Readonly<Record<JointAxis, readonly [number, number]>>;
 export type PlanarIkResult = {
   shoulder: number;
@@ -26,6 +28,7 @@ export type HumanoidPoseInput = {
   bodyChannels?: Record<string, number>;
   deltaSeconds?: number;
   timeSeconds?: number;
+  particles?: ArticulatedParticleFrame;
 };
 
 export type ProceduralHumanoidRig = {
@@ -374,6 +377,7 @@ export function createProceduralHumanoidRig(scene: THREE.Scene): ProceduralHuman
   meshes.push(platform);
 
   const skeleton = new THREE.Skeleton(Object.values(bones));
+  const restJointPositions = Object.fromEntries(Object.entries(bones).map(([name, bone]) => [name, bone.position.clone()])) as Record<string, THREE.Vector3>;
   rootBone.updateMatrixWorld(true);
   skeleton.calculateInverses();
 
@@ -460,6 +464,32 @@ export function createProceduralHumanoidRig(scene: THREE.Scene): ProceduralHuman
         }
       }
 
+      // The particle solver feeds residual displacement into the same articulated rig.
+      // Targets are reset to immutable bind-pose positions each frame; residuals never accumulate.
+      const particleBindings: readonly [ArticulatedBodyParticleId, string][] = [
+        ["chest", "chest"], ["neck", "neck"], ["head", "head"],
+        ["leftShoulderPoint", "leftClavicle"], ["leftElbowPoint", "leftForearm"],
+        ["leftWristPoint", "leftWrist"], ["leftHandPoint", "leftHand"],
+        ["rightShoulderPoint", "rightClavicle"], ["rightElbowPoint", "rightForearm"],
+        ["rightWristPoint", "rightWrist"], ["rightHandPoint", "rightHand"],
+        ["leftHipPoint", "leftHip"], ["leftKneePoint", "leftKnee"], ["leftAnklePoint", "leftAnkle"],
+        ["rightHipPoint", "rightHip"], ["rightKneePoint", "rightKnee"], ["rightAnklePoint", "rightAnkle"],
+      ];
+      let particleBindingsApplied = 0;
+      for (const [particleId, boneName] of particleBindings) {
+        const sample = input.particles?.[particleId];
+        const bone = bones[boneName];
+        const rest = restJointPositions[boneName];
+        if (!sample || !bone || !rest) continue;
+        const residual = new THREE.Vector3(
+          clamp(sample.position.x - sample.target.x, -0.055, 0.055),
+          clamp(sample.position.y - sample.target.y, -0.055, 0.055),
+          clamp(sample.position.z - sample.target.z, -0.055, 0.055),
+        );
+        bone.position.copy(rest).add(residual);
+        particleBindingsApplied++;
+      }
+
       // Face is also driven by the organism's affect, gaze and speech envelope.
       const eyeOpen = clamp(1 - sleep * 0.68 - stress * 0.13 + curiosity * 0.08, 0.18, 1.16);
       eyeWhites.forEach((eye) => { eye.scale.y = 0.082 * eyeOpen; });
@@ -474,7 +504,7 @@ export function createProceduralHumanoidRig(scene: THREE.Scene): ProceduralHuman
       });
       mouth.scale.y = 0.012 + (input.speaking ? 0.045 * clamp(input.arousal + 0.2, 0.1, 1) : smile * 0.006);
       mouth.scale.x = 0.045 + smile * 0.008;
-      root.userData.poseState = { awake: input.awake, action: input.action, emotion: input.emotion, updatedAt: finite(input.timeSeconds) };
+      root.userData.poseState = { awake: input.awake, action: input.action, emotion: input.emotion, particleBindingsApplied, updatedAt: finite(input.timeSeconds) };
       root.updateMatrixWorld(true);
     },
     solveArmTarget(side, target) {
