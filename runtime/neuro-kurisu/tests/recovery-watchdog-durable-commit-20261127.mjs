@@ -124,4 +124,20 @@ test('OrganismCore publishes RecoveryWatchdog checkpoint time only after canonic
   }
 });
 
+
+test('checkpoint without a backing store never claims a durable commit', async () => {
+  const watchdog = new RecoveryWatchdog('nk1-watchdog-no-store', undefined, 1_000);
+
+  const checkpoint = await watchdog.checkpoint({ now: 3_000, tick: 2, learningCount: 1 });
+
+  assert.equal(checkpoint.lastHeartbeatAt, 3_000,
+    'the liveness heartbeat must still advance without a persistence owner');
+  assert.equal(checkpoint.lastTick, 2);
+  assert.equal(checkpoint.lastLearningCount, 1);
+  assert.equal(checkpoint.lastCheckpointAt, 0,
+    'without a backing store, checkpoint() must not report a durable commit');
+  assert.equal(watchdog.snapshot().lastCheckpointAt, 0,
+    'the in-memory durable marker must remain unchanged without a successful save');
+});
+
 console.log('RECOVERY_WATCHDOG_DURABLE_COMMIT=PASS');
