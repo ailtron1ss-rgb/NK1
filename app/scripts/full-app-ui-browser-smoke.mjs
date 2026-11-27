@@ -89,7 +89,7 @@ async function smokeProfile(profile) {
   }, { timeout: 45_000 }).catch(() => null);
 
   await page.goto(baseUrl + "/", { waitUntil: "domcontentloaded", timeout: 60_000 });
-  await page.getByRole("heading", { name: "Kurisu", exact: true }).waitFor({ state: "visible", timeout: 30_000 });
+  await page.getByRole("heading", { name: "NeuroCore", exact: true }).waitFor({ state: "visible", timeout: 30_000 });
   const snapshotResponse = await snapshotResponsePromise;
   check(profile.name + ": live organism snapshot", Boolean(snapshotResponse && snapshotResponse.status() === 200), snapshotResponse ? "HTTP " + snapshotResponse.status() : "ui-snapshot request missing or timed out");
 
@@ -98,7 +98,7 @@ async function smokeProfile(profile) {
   const live2d = page.getByRole("button", { name: /Выбрать Live2D/ });
   const legacy = page.getByRole("button", { name: /Выбрать Legacy/ });
   const original = page.getByRole("button", { name: /Выбрать NK1 Original/ });
-  const threeD = page.getByRole("button", { name: /Выбрать 3D/ });
+  const threeD = page.getByRole("button", { name: /Выбрать NeuroCore 3D/ });
   for (const [name, control] of [["Live2D", live2d], ["Legacy", legacy], ["Original 2D", original], ["3D preview", threeD]]) {
     check(profile.name + ": visible " + name + " selector", await control.isVisible());
   }
@@ -114,13 +114,19 @@ async function smokeProfile(profile) {
     check("desktop: Live2D can be selected after preference restore", (await live2d.getAttribute("aria-pressed")) === "true");
     await waitForLive2DReady(page, profile.name, "first selection");
   } else {
-    check("mobile: Live2D default is deterministic without saved preference", (await live2d.getAttribute("aria-pressed")) === "true");
-    await waitForLive2DReady(page, profile.name, "default selection");
+    // AvatarStage intentionally defaults to its built-in 3D preview when no
+    // renderer preference has been saved. Assert the real default, then verify
+    // that Live2D can still be selected and reaches its loaded model state.
+    check("mobile: 3D preview default is deterministic without saved preference", (await threeD.getAttribute("aria-pressed")) === "true");
+    selectedRenderer = "live2d";
+    await live2d.click();
+    check("mobile: Live2D can be selected from the default 3D preview", (await live2d.getAttribute("aria-pressed")) === "true");
+    await waitForLive2DReady(page, profile.name, "selection from default 3D preview");
   }
   check(profile.name + ": 3D is explicitly preview-only", /предпросмотр/i.test(await threeD.getAttribute("aria-label") || ""));
 
   await page.getByRole("heading", { name: "Cognitive cycle" }).waitFor({ state: "visible" });
-  const messageInput = page.getByPlaceholder("Write to Kurisu…");
+  const messageInput = page.getByPlaceholder("Write to NeuroCore…");
   await messageInput.waitFor({ state: "visible" });
   const chatForm = messageInput.locator("xpath=ancestor::form");
   const send = chatForm.getByRole("button", { name: "Send", exact: true });

@@ -151,6 +151,10 @@ export default defineConfig(({ command, isPreview }) => ({
     port: 8080,
     strictPort: true,
     proxy: {
+      // RuntimeHealthPanel reads the same runtime process as /api/organism.
+      // Without this explicit proxy TanStack Start captures /api/health and
+      // returns a frontend 406 instead of the backend's public health receipt.
+      "/api/health": { target: "http://127.0.0.1:3310", changeOrigin: true },
       "/api/organism": { target: "http://127.0.0.1:3310", changeOrigin: true },
       "/api/research": { target: "http://127.0.0.1:8765", changeOrigin: true },
     },

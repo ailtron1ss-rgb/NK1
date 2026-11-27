@@ -1,7 +1,7 @@
 import type { BackendUiSnapshot, ChatBackendResponse } from "./types";
 import { waitForActionApproval } from "./action-approval-broker.ts";
 
-const API_BASE = String(import.meta.env?.VITE_NEURO_KURISU_API_BASE ?? "").replace(/\/$/, "");
+const API_BASE = String(import.meta.env?.VITE_NEUROCORE_API_BASE ?? import.meta.env?.VITE_NEURO_KURISU_API_BASE ?? "").replace(/\/$/, "");
 
 export function neuroApiUrl(path: string): string {
   return API_BASE + (path.startsWith("/") ? path : "/" + path);

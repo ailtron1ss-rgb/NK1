@@ -6,18 +6,24 @@ import test from "node:test";
 const repoRoot=path.resolve(path.dirname(fileURLToPath(import.meta.url)),"../..");
 const root=path.join(repoRoot,"app");
 const stagePath=path.join(root,"src/components/Avatar3DStage.tsx");
-test("a real Three.js 3D mode exists rather than reusing the legacy Avatar2D alias",async()=>{
+test("the real Three.js stage uses the procedural articulated body, not the legacy 2D alias",async()=>{
  const parent=await readFile(path.join(root,"src/components/AvatarStage.tsx"),"utf8"),stage=await readFile(stagePath,"utf8"),legacy=await readFile(path.join(repoRoot,"legacy/kurisu-v56/src/components/Avatar3D.tsx"),"utf8");
- assert.match(parent,/"3d"/);assert.match(parent,/<Avatar3DStage/);assert.match(stage,/new THREE\.WebGLRenderer/);assert.match(stage,/new THREE\.Scene/);assert.match(stage,/makeBody/);assert.match(legacy,/return <Avatar2D \{\.\.\.props\} \/>/);assert.match(stage,/3D-модель не загружена/);
+ assert.match(parent,/"3d"/);assert.match(parent,/<Avatar3DStage/);
+ assert.match(stage,/new THREE\.WebGLRenderer/);assert.match(stage,/new THREE\.Scene/);
+ assert.match(stage,/createProceduralHumanoidRig\(scene\)/);
+ assert.match(stage,/body\.root\.visible=true/);
+ assert.match(stage,/aria-label="3D-тело NeuroCore"/);
+ assert.match(legacy,/return <Avatar2D \{\.\.\.props\} \/>/);
 });
 test("local VRM/GLB upload is bounded and browser-local",async()=>{
  const stage=await readFile(stagePath,"utf8"),store=await readFile(path.join(root,"src/components/avatar/avatarModelStore.ts"),"utf8");
  assert.match(stage,/accept="\.vrm,\.glb,model\/gltf-binary"/);assert.match(stage,/MAX_AVATAR_MODEL_BYTES/);assert.match(stage,/saveAvatarModel\(blob,name\)/);assert.match(stage,/loadStoredAvatarModel/);assert.match(stage,/clearStoredAvatarModel/);assert.match(store,/avatarModelLimits\.ts/);assert.match(await readFile(path.join(root,"src/components/avatar/avatarModelLimits.ts"),"utf8"),/90 \* 1024 \* 1024/);assert.match(store,/indexedDB\.open/);assert.doesNotMatch(stage,/https?:\/\/[^"'\s]+\.glb/i);
 });
-test("the 3D body consumes organism emotion, action, arousal/valence, gaze, sleep and speech",async()=>{
- const stage=await readFile(stagePath,"utf8"),parent=await readFile(path.join(root,"src/components/AvatarStage.tsx"),"utf8");
+test("the procedural body receives organism signals through its single rig update path",async()=>{
+ const stage=await readFile(stagePath,"utf8"),parent=await readFile(path.join(root,"src/components/AvatarStage.tsx"),"utf8"),rig=await readFile(path.join(root,"src/components/avatar/proceduralHumanoidRig.ts"),"utf8");
  for(const key of ["emotion","arousal","valence","dominance","energy","cognitiveLoad","uncertainty","socialNeed","novelty","goalPressure","curiosity","predictionError","traits","gazeX","gazeY","speaking","mouthPose","thinking","awake","action"])assert.ok(stage.includes(key),"Missing state: "+key);
- for(const key of ["b.head.rotation","b.leftArm.rotation","b.rightArm.rotation","b.mouth.scale","rt.mood.color","rt.mixer"])assert.ok(stage.includes(key),"Missing body response: "+key);
+ assert.match(stage,/updateProceduralHumanoidRig\(b,/);
+ for(const key of ["input.headTilt","input.gazeX","input.gazeY","input.speaking","input.arousal","input.bodyChannels","input.particles","mouth.scale","eyeWhites","brows"])assert.ok(rig.includes(key),"Missing rig response: "+key);
  assert.match(parent,/emotion=\{snap\.emotion\.label\} action=\{snap\.lastOption\}/);assert.match(parent,/arousal=\{snap\.emotion\.arousal\} valence=\{snap\.emotion\.valence\}/);assert.match(parent,/cognitiveLoad=\{snap\.needs\.cognitiveLoad\}/);assert.match(parent,/traits=\{snap\.identity\.traits\}/);assert.match(parent,/predictionError=\{snap\.predictionError\}/);assert.match(parent,/motorPlan=\{projection\.motorPlan\}/);assert.match(parent,/mouthPose=\{projection\.mouthPose\} thinking=\{thinking\} awake=\{snap\.awake\}/);
 });
 test("renderer resources and animation loops are disposed and high-DPI rendering is capped",async()=>{
@@ -57,17 +63,15 @@ test("GLB models retain the generic glTF fallback without pretending they are VR
 
 test("the official VRM runtime is pinned to the Three.js-compatible MIT release",async()=>{const pkg=JSON.parse(await readFile(path.join(root,"package.json"),"utf8")),lock=JSON.parse(await readFile(path.join(root,"package-lock.json"),"utf8"));assert.equal(pkg.dependencies["@pixiv/three-vrm"],"3.5.5");assert.equal(lock.packages[""].dependencies["@pixiv/three-vrm"],"3.5.5");assert.equal(lock.packages["node_modules/@pixiv/three-vrm"].version,"3.5.5");assert.equal(lock.packages["node_modules/@pixiv/three-vrm"].license,"MIT");});
 
-test("procedural 3D fallback uses the extracted shared cel-shading material adapter",async()=>{
- const stage=await readFile(stagePath,"utf8"),toon=await readFile(path.join(root,"src/components/avatar/threeToonMaterials.ts"),"utf8");
- assert.ok(stage.includes("createProceduralToonMaterial"));
- assert.ok(toon.includes("new THREE_TOON.MeshToonMaterial"));
- assert.ok(toon.includes("new THREE_TOON.DataTexture"));
- assert.match(toon,/let sharedAnimeGradient:\s*any\s*=\s*null/);
- assert.match(toon,/function createAnimeGradient\(\): any/);
- assert.match(toon,/if \(sharedAnimeGradient\) return sharedAnimeGradient/);
- assert.ok(toon.includes("THREE_TOON.RedFormat"));
- assert.ok(toon.includes("THREE_TOON.NearestFilter"));
- assert.ok(stage.includes("new THREE.MeshStandardMaterial({color:0x2d8198"));
+test("procedural fallback is a material-batched skinned humanoid, not a flat illustration",async()=>{
+ const rig=await readFile(path.join(root,"src/components/avatar/proceduralHumanoidRig.ts"),"utf8");
+ assert.match(rig,/function consolidateSkinnedBodyParts\(/);
+ assert.match(rig,/new THREE\.SkinnedMesh\(/);
+ assert.match(rig,/setAttribute\("skinIndex"/);
+ assert.match(rig,/setAttribute\("skinWeight"/);
+ assert.match(rig,/const skinnedMeshes = consolidateSkinnedBodyParts\(/);
+ assert.match(rig,/rigStats/);
+ assert.match(rig,/new THREE\.MeshStandardMaterial/);
 });
 test("non-VRM GLB imports use the extracted toon adapter while VRM materials remain native",async()=>{
  const stage=await readFile(stagePath,"utf8"),toon=await readFile(path.join(root,"src/components/avatar/threeToonMaterials.ts"),"utf8");
@@ -83,7 +87,7 @@ test("non-VRM GLB imports use the extracted toon adapter while VRM materials rem
 
 test("avatar stage delegates material conversion and renderer-owned texture preservation",async()=>{
  const stage=await readFile(stagePath,"utf8"),toon=await readFile(path.join(root,"src/components/avatar/threeToonMaterials.ts"),"utf8");
- assert.match(stage,/import \{ applyAnimeToonMaterials, createProceduralToonMaterial, getSharedAnimeGradientTexture \}/);
+ assert.match(stage,/import \{ applyAnimeToonMaterials, getSharedAnimeGradientTexture \} from "\.\/avatar\/threeToonMaterials"/);
  assert.match(stage,/if\(!vrm\)applyAnimeToonMaterials\(root\)/);
  assert.match(stage,/const gradient=getSharedAnimeGradientTexture\(\)/);
  assert.match(toon,/const replaced = new Set<any>\(\)/);
@@ -98,29 +102,30 @@ test("uploaded model bytes are structurally preflighted before GLTFLoader parses
  assert.ok(stage.indexOf("preflightAvatarModel(data,name)")<stage.indexOf("loader.parse(data"));
 });
 
-test("a pinned hosted Kurisu hybrid GLB can be loaded without a manual file download",async()=>{
- const stage=await readFile(stagePath,"utf8"),catalog=await readFile(path.join(root,"src/components/avatar/avatarModelCatalog.ts"),"utf8"),animation=await readFile(path.join(root,"src/components/avatar/avatarAnimationRuntime.ts"),"utf8");
- assert.match(catalog,/NeuroKurisu_3D_v5\.glb/);
- assert.match(catalog,/sha256:4cc4c34a62f72122b34c1d896d42bf10eddcba6f10f66563e4fc5e213a37e743/);
- assert.match(catalog,/sizeBytes:\s*2_035_768/);
- assert.match(stage,/fetch\(KURISU_HYBRID_MODEL\.url/);
- assert.match(stage,/credentials:\s*"omit"/);
- assert.match(stage,/fingerprintAvatarModel\(data\)/);
- assert.match(stage,/KURISU_HYBRID_MODEL\.sha256/);
- assert.match(stage,/loadModel\(blob,KURISU_HYBRID_MODEL\.filename,true\)/);
- assert.match(stage,/Загрузить модель v5 \(онлайн\)/);
- assert.ok(animation.includes("rig[_-]?kurisu"),"semantic rig fallback must remain in the extracted resolver");
+test("remote avatar import is explicit HTTPS with private-host, redirect and size protections",async()=>{
+ const stage=await readFile(stagePath,"utf8"),remote=await readFile(path.join(root,"src/components/avatar/remoteAvatarSource.ts"),"utf8");
+ assert.match(stage,/fetchRemoteAvatarModel\(remoteModelUrl/);
+ assert.match(stage,/const controller=new AbortController\(\)/);
+ assert.match(stage,/remoteLoadAbort\.current\?\.abort\(\)/);
+ assert.match(stage,/type="url"/);
+ assert.match(stage,/Импорт по HTTPS/);
+ assert.match(remote,/url\.protocol !== "https:"/);
+ assert.match(remote,/isPrivateOrLocalHost\(url\.hostname\)/);
+ assert.match(remote,/redirect:\s*"error"/);
+ assert.match(remote,/credentials:\s*"omit"/);
+ assert.match(remote,/total > maxBytes/);
+ assert.match(remote,/controller\.abort\(\)/);
 });
 
-test("3D mode restores the user's local model first and auto-loads the pinned Kurisu model otherwise",async()=>{
+test("3D mode restores a user's local model and otherwise keeps the built-in body active",async()=>{
  const stage=await readFile(stagePath,"utf8");
+ assert.match(stage,/void loadStoredAvatarModel\(\)\.then\(\(saved\)=>/);
  assert.match(stage,/if\(saved\)void loadModel\(saved\.blob,saved\.name,false\)/);
- assert.match(stage,/void loadBundledModel\(\)/);
- assert.match(stage,/KURISU_HYBRID_MODEL\.url/);
- assert.match(stage,/signal:AbortSignal\.timeout\(25_000\)/);
- assert.match(stage,/contentType!==\"model\/gltf-binary\"/);
- assert.match(stage,/declaredLength!==KURISU_HYBRID_MODEL\.sizeBytes/);
- assert.match(stage,/loadToken\.current\+\+/);
+ assert.match(stage,/Локальной VRM\/GLB-модели нет/);
+ assert.match(stage,/внешняя модель подключается только вручную/);
+ assert.doesNotMatch(stage,/loadBundledModel/);
+ assert.match(stage,/const body=createProceduralHumanoidRig\(scene\)/);
+ assert.match(stage,/body\.root\.visible=true/);
 });
 test("generic GLB speech drives all available Kurisu viseme morph targets",async()=>{
  const stage=await readFile(stagePath,"utf8"),adapter=await readFile(path.join(root,"src/components/avatar/glbMouthMorphAdapter.ts"),"utf8");
@@ -144,35 +149,39 @@ test("3D GLB clip playback uses semantic resolution and crossfades without stopp
 });
 
 
-test("the procedural geometry is hidden until a verified external model loads",async()=>{
+test("the procedural humanoid is the default body and verified external models replace it",async()=>{
  const stage=await readFile(stagePath,"utf8");
- assert.match(stage,/const body=makeBody\(scene\);body\.root\.visible=false;/);
- assert.match(stage,/setState\("empty"\)/);
- assert.doesNotMatch(stage,/setState\("procedural"\)/);
- assert.doesNotMatch(stage,/rt\.body\.root\.visible=true/);
- assert.match(stage,/Показываем 3D-тело только после успешной загрузки и preflight/);
- assert.match(stage,/геометрическая заглушка скрыта/);
+ assert.match(stage,/const body=createProceduralHumanoidRig\(scene\);body\.root\.visible=true;/);
+ assert.match(stage,/setState\("procedural"\)/);
+ assert.match(stage,/rt\.body\.root\.visible=false/);
+ assert.match(stage,/rt\.body\.root\.visible=true/);
+ assert.match(stage,/Встроенное скелетно-мышечное тело NeuroCore активно/);
+ assert.match(stage,/Внешняя модель удалена\. Встроенное скелетно-мышечное тело NeuroCore снова активно/);
 });
 
-test("3D model failure presents a real retry/import/Live2D recovery path",async()=>{
+test("failed external-model import preserves the built-in body and keeps recovery controls available",async()=>{
  const stage=await readFile(stagePath,"utf8"),parent=await readFile(path.join(root,"src/components/AvatarStage.tsx"),"utf8");
- assert.match(stage,/Повторить загрузку модели v5 \(онлайн\)/);
- assert.match(stage,/Выбрать VRM \/ GLB/);
+ assert.match(stage,/state==="error"/);
+ assert.match(stage,/Встроенное тело сохранено · загрузка внешней модели отклонена/);
+ assert.match(stage,/Загрузить VRM\/GLB/);
+ assert.match(stage,/accept="\.vrm,\.glb,model\/gltf-binary"/);
+ assert.match(stage,/Импорт по HTTPS/);
  assert.match(stage,/props\.onReturnTo2D/);
  assert.match(parent,/onReturnTo2D=\{\(\) => setMode\("live2d"\)\}/);
 });
 
-test("reset hides the procedural body and disposes VRM resources through VRMUtils",async()=>{
+test("reset restores the procedural body and disposes VRM resources through VRMUtils",async()=>{
  const stage=await readFile(stagePath,"utf8");
  assert.match(stage,/if\(rt\.vrm\)VRMUtils\.deepDispose\(rt\.loaded\);else disposeTree\(rt\.loaded\)/);
- assert.match(stage,/rt\.body\.root\.visible=false/);
- assert.match(stage,/setState\(rt\?"empty":"webgl-unavailable"\)/);
+ assert.match(stage,/rt\.body\.root\.visible=true/);
+ assert.match(stage,/rt\.body\.resetPose\(\)/);
+ assert.match(stage,/setState\(rt\?"procedural":"webgl-unavailable"\)/);
 });
 
 
-test("hidden procedural fixture does not run its per-frame body animation",async()=>{
+test("hidden procedural body skips its rig update while an external model is active",async()=>{
  const stage=await readFile(stagePath,"utf8");
- assert.match(stage,/if\(b\.root\.visible\)\{/);
+ assert.match(stage,/if\(b\.root\.visible\)\{[\s\S]*?updateProceduralHumanoidRig\(b,/);
 });
 
 

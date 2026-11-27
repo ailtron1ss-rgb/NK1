@@ -1,5 +1,5 @@
 {
-  "name": "neuro-kurisu-super",
+  "name": "neurocore-unified",
   "private": true,
   "type": "module",
   "scripts": {
@@ -213,12 +213,15 @@
     "aspect:progress:check": "node tools/nk1-aspect-progress.mjs --check",
     "aspect:progress:json": "node tools/nk1-aspect-progress.mjs --json",
     "aspect:progress:test": "node --test tools/nk1-aspect-progress.test.mjs",
-    "neurok-os:admit": "node tools/neurok-os-patch.mjs admit"
+    "neurok-os:admit": "node tools/neurok-os-patch.mjs admit",
+    "test:neurocore:core": "npm --prefix runtime/neuro-kurisu run test:neurocore-integration",
+    "test:neurocore": "npm run typecheck && npm run test:ui && npm --prefix app run test:embodiment && npm run test:neurocore:core"
   },
-  "version": "35.0.0-super-workpass70",
+  "version": "0.1.0-alpha.1",
   "packageManager": "npm@10.9.2",
   "engines": {
     "node": ">=22.12.0",
     "npm": ">=10.8.0"
-  }
+  },
+  "description": "NeuroCore — unified digital organism, application interface and canonical NK1 cognitive runtime"
 }

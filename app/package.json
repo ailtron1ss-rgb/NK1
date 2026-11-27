@@ -1,5 +1,5 @@
 {
-  "name": "app-builder-workspace",
+  "name": "neurocore-app",
   "private": true,
   "sideEffects": false,
   "type": "module",
@@ -18,7 +18,7 @@
     "preview:stop": "node scripts/preview.mjs stop",
     "typecheck": "tsc --noEmit",
     "check:auth": "node scripts/check-auth-invariant.mjs",
-    "test": "node --test 'scripts/**/*.test.mjs' && node --experimental-strip-types --test src/lib/app-data/app-data.test.ts src/lib/app-data/readiness-schedule.test.ts src/lib/auth/gate-identity.test.ts src/lib/auth/sign-in-gate.test.ts",
+    "test": "node --experimental-strip-types --test 'scripts/**/*.test.mjs' && node --experimental-strip-types --test src/lib/app-data/app-data.test.ts src/lib/app-data/readiness-schedule.test.ts src/lib/auth/gate-identity.test.ts src/lib/auth/sign-in-gate.test.ts",
     "lint": "eslint .",
     "format": "prettier --write .",
     "test:scripts": "node --experimental-strip-types --test 'scripts/**/*.test.mjs'",
@@ -49,7 +49,9 @@
     "test:avatar-remote-source": "node --experimental-strip-types --test scripts/avatar-remote-source.test.mjs",
     "validate:2p5d-assets": "node --experimental-strip-types scripts/validate-depth-rig-assets.mjs",
     "test:2p5d-asset-inventory": "node --experimental-strip-types --test scripts/depth-rig-asset-inventory.test.mjs",
-    "test:avatar-animation-runtime": "node --experimental-strip-types --test scripts/avatar-animation-runtime.test.mjs"
+    "test:avatar-animation-runtime": "node --experimental-strip-types --test scripts/avatar-animation-runtime.test.mjs",
+    "test:procedural-humanoid-rig": "node --experimental-strip-types --test scripts/procedural-humanoid-rig.test.mjs",
+    "test:embodiment": "npm run test:procedural-humanoid-rig && node --experimental-strip-types --test scripts/avatar-body-step-scheduler.test.mjs && npm run test:body-systems && npm run test:vrm-runtime-adapter && npm run test:avatar-animation-runtime"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.4",

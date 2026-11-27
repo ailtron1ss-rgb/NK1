@@ -58,7 +58,7 @@ export function ChatPanel() {
             ) : null}
           </article>
         ))}
-        {busy ? <p className="text-xs text-muted">Canonical runtime is processing…</p> : null}
+        {busy ? <p className="text-xs text-muted">NeuroCore cognitive runtime is processing…</p> : null}
         <div ref={end} />
       </div>
       <form
@@ -73,7 +73,7 @@ export function ChatPanel() {
         <input
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder="Write to Kurisu…"
+          placeholder="Write to NeuroCore…"
           maxLength={4000}
           className="h-11 flex-1 rounded-md border border-border bg-bg px-3 text-sm text-fg placeholder:text-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
         />

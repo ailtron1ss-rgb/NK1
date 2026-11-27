@@ -1,0 +1,873 @@
+import * as THREE_IMPORT from "three";
+const THREE: any = THREE_IMPORT;
+import { AVATAR_ARTICULATED_BODY_PARTICLE_COUNT, AVATAR_ARTICULATED_BODY_SEGMENT_COUNT } from "./articulatedBodyParticles.ts";
+import type { ArticulatedBodyParticle, ArticulatedBodyParticleId } from "./articulatedBodyParticles";
+
+// The runtime package ships JavaScript constructors but this workspace does not
+// include the matching @types/three package. Keep the adapter boundary explicit:
+// engine operations are runtime-checked, while the rig exposes typed semantic
+// fields instead of leaking an untyped THREE namespace through the app.
+type ThreeVector3 = { x: number; y: number; z: number; [key: string]: any };
+type ThreeEuler = { x: number; y: number; z: number; [key: string]: any };
+type ThreeObject3D = {
+  name: string;
+  parent: ThreeObject3D | null;
+  children: ThreeObject3D[];
+  position: ThreeVector3;
+  rotation: ThreeEuler;
+  scale: ThreeVector3;
+  quaternion: any;
+  userData: Record<string, any>;
+  [key: string]: any;
+};
+type ThreeGroup = ThreeObject3D;
+type ThreeScene = ThreeObject3D;
+type ThreeBone = ThreeObject3D;
+type ThreeMesh = ThreeObject3D;
+type ThreeSkinnedMesh = ThreeMesh;
+type ThreeSkeleton = { bones: ThreeBone[]; [key: string]: any };
+type ThreeMaterial = { [key: string]: any };
+type ThreeMeshStandardMaterial = ThreeMaterial;
+type ThreeSphereGeometry = { [key: string]: any };
+
+export type JointAxis = "x" | "y" | "z";
+export type ArticulatedParticleFrame = Partial<Record<ArticulatedBodyParticleId, Pick<ArticulatedBodyParticle, "position" | "target">>>;
+export type JointLimit = Readonly<Record<JointAxis, readonly [number, number]>>;
+export type PlanarIkResult = {
+  shoulder: number;
+  elbowFlex: number;
+  elbow: { x: number; y: number };
+  endEffector: { x: number; y: number };
+  reachable: boolean;
+};
+
+export type HumanoidPoseInput = {
+  awake: boolean;
+  action: string;
+  emotion: string;
+  arousal: number;
+  energy: number;
+  cognitiveLoad: number;
+  gazeX: number;
+  gazeY: number;
+  headTilt: number;
+  speaking: boolean;
+  leftArmIntent: number;
+  rightArmIntent: number;
+  bodyChannels?: Record<string, number>;
+  deltaSeconds?: number;
+  timeSeconds?: number;
+  particles?: ArticulatedParticleFrame;
+};
+
+export type ProceduralHumanoidRig = {
+  root: ThreeGroup;
+  skeleton: ThreeSkeleton;
+  bones: Record<string, ThreeBone>;
+  head: ThreeBone;
+  leftArm: ThreeBone;
+  rightArm: ThreeBone;
+  mouth: ThreeMesh;
+  eyeWhites: ThreeMesh[];
+  irises: ThreeMesh[];
+  brows: ThreeMesh[];
+  ringMat: ThreeMeshStandardMaterial;
+  limits: Record<string, JointLimit>;
+  meshes: ThreeMesh[];
+  partCount: number;
+  materials: ThreeMaterial[];
+  updatePose(input: HumanoidPoseInput): void;
+  solveArmTarget(side: "left" | "right", target: ThreeVector3, deltaSeconds?: number): PlanarIkResult;
+  solveLegTarget(side: "left" | "right", target: ThreeVector3, deltaSeconds?: number): PlanarIkResult;
+  setJoint(name: string, axis: JointAxis, radians: number): number;
+  resetPose(): void;
+  dispose(): void;
+};
+
+const PI = Math.PI;
+const clamp = (value: number, min: number, max: number) =>
+  Math.max(min, Math.min(max, Number.isFinite(value) ? value : 0));
+const finite = (value: unknown, fallback = 0): number => {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : fallback;
+};
+const wrapRadians = (value: number): number => Math.atan2(Math.sin(value), Math.cos(value));
+
+export function clampJointAngle(
+  name: string,
+  axis: JointAxis,
+  radians: number,
+  limits: Record<string, JointLimit> = HUMANOID_JOINT_LIMITS,
+): number {
+  const range = limits[name]?.[axis];
+  return range ? clamp(radians, range[0], range[1]) : clamp(radians, -PI, PI);
+}
+
+/** Two-link planar IK using the law of cosines. Lengths are metres in rig space. */
+export function solveTwoBonePlanarIK(
+  start: { x: number; y: number },
+  target: { x: number; y: number },
+  upperLength: number,
+  lowerLength: number,
+  bendSign: 1 | -1 = 1,
+): PlanarIkResult {
+  const l1 = Math.max(1e-5, Math.abs(upperLength));
+  const l2 = Math.max(1e-5, Math.abs(lowerLength));
+  const dx = target.x - start.x;
+  const dy = target.y - start.y;
+  const rawDistance = Math.hypot(dx, dy);
+  const minReach = Math.abs(l1 - l2) + 1e-7;
+  const maxReach = l1 + l2 - 1e-7;
+  const distance = clamp(rawDistance, minReach, maxReach);
+  const angleToTarget = Math.atan2(dy, dx);
+  const shoulderCos = clamp((l1 * l1 + distance * distance - l2 * l2) / (2 * l1 * distance), -1, 1);
+  const elbowCos = clamp((l1 * l1 + l2 * l2 - distance * distance) / (2 * l1 * l2), -1, 1);
+  const shoulderOffset = Math.acos(shoulderCos);
+  const interiorElbow = Math.acos(elbowCos);
+  const shoulder = angleToTarget - bendSign * shoulderOffset;
+  const elbowFlex = PI - interiorElbow;
+  const elbow = {
+    x: start.x + Math.cos(shoulder) * l1,
+    y: start.y + Math.sin(shoulder) * l1,
+  };
+  const endEffector = {
+    x: elbow.x + Math.cos(shoulder + bendSign * elbowFlex) * l2,
+    y: elbow.y + Math.sin(shoulder + bendSign * elbowFlex) * l2,
+  };
+  return {
+    shoulder,
+    elbowFlex,
+    elbow,
+    endEffector,
+    reachable: rawDistance >= minReach && rawDistance <= maxReach,
+  };
+}
+
+export const HUMANOID_JOINT_LIMITS: Record<string, JointLimit> = {
+  pelvis: { x: [-0.25, 0.25], y: [-0.45, 0.45], z: [-0.3, 0.3] },
+  spineLower: { x: [-0.35, 0.35], y: [-0.3, 0.3], z: [-0.28, 0.28] },
+  spineMid: { x: [-0.3, 0.3], y: [-0.25, 0.25], z: [-0.22, 0.22] },
+  chest: { x: [-0.35, 0.35], y: [-0.35, 0.35], z: [-0.25, 0.25] },
+  neck: { x: [-0.48, 0.48], y: [-0.72, 0.72], z: [-0.42, 0.42] },
+  head: { x: [-0.52, 0.52], y: [-0.82, 0.82], z: [-0.48, 0.48] },
+  leftClavicle: { x: [-0.45, 0.45], y: [-0.35, 0.35], z: [-0.5, 0.5] },
+  rightClavicle: { x: [-0.45, 0.45], y: [-0.35, 0.35], z: [-0.5, 0.5] },
+  leftUpperArm: { x: [-1.2, 1.2], y: [-1.55, 1.55], z: [-2.25, 2.25] },
+  rightUpperArm: { x: [-1.2, 1.2], y: [-1.55, 1.55], z: [-2.25, 2.25] },
+  leftForearm: { x: [-0.45, 0.45], y: [-0.45, 0.45], z: [-0.12, 2.48] },
+  rightForearm: { x: [-0.45, 0.45], y: [-0.45, 0.45], z: [-2.48, 0.12] },
+  leftWrist: { x: [-0.65, 0.65], y: [-0.55, 0.55], z: [-0.75, 0.75] },
+  rightWrist: { x: [-0.65, 0.65], y: [-0.55, 0.55], z: [-0.75, 0.75] },
+  leftHip: { x: [-0.65, 0.65], y: [-0.45, 0.45], z: [-0.75, 0.75] },
+  rightHip: { x: [-0.65, 0.65], y: [-0.45, 0.45], z: [-0.75, 0.75] },
+  leftKnee: { x: [-0.12, 0.12], y: [-0.12, 0.12], z: [-2.35, 0.08] },
+  rightKnee: { x: [-0.12, 0.12], y: [-0.12, 0.12], z: [-0.08, 2.35] },
+  leftAnkle: { x: [-0.55, 0.55], y: [-0.35, 0.35], z: [-0.55, 0.55] },
+  rightAnkle: { x: [-0.55, 0.55], y: [-0.35, 0.35], z: [-0.55, 0.55] },
+};
+
+function makeMaterial(color: number, roughness = 0.78, metalness = 0.02): ThreeMeshStandardMaterial {
+  return new THREE.MeshStandardMaterial({ color, roughness, metalness });
+}
+
+function makeEllipsoid(
+  parent: ThreeObject3D,
+  geometry: ThreeSphereGeometry,
+  material: ThreeMaterial,
+  name: string,
+  position: ThreeVector3,
+  scale: ThreeVector3,
+  rotation = new THREE.Euler(),
+  meshes: ThreeMesh[],
+  skinNextBone?: ThreeBone,
+): ThreeMesh {
+  const mesh = new THREE.Mesh(geometry, material);
+  mesh.name = name;
+  mesh.position.copy(position);
+  mesh.scale.copy(scale);
+  mesh.rotation.copy(rotation);
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  if (skinNextBone) mesh.userData.skinNextBone = skinNextBone.name;
+  parent.add(mesh);
+  meshes.push(mesh);
+  return mesh;
+}
+
+function makeSegment(
+  parent: ThreeBone,
+  geometry: ThreeSphereGeometry,
+  material: ThreeMaterial,
+  name: string,
+  from: ThreeVector3,
+  to: ThreeVector3,
+  radius: ThreeVector3,
+  meshes: ThreeMesh[],
+  skinNextBone?: ThreeBone,
+): ThreeMesh {
+  const direction = to.clone().sub(from);
+  const length = direction.length();
+  const mesh = new THREE.Mesh(geometry, material);
+  mesh.name = name;
+  mesh.position.copy(from).add(to).multiplyScalar(0.5);
+  mesh.scale.set(radius.x, Math.max(radius.y, length * 0.56), radius.z);
+  if (length > 1e-5) {
+    mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction.normalize());
+  }
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  if (skinNextBone) mesh.userData.skinNextBone = skinNextBone.name;
+  parent.add(mesh);
+  meshes.push(mesh);
+  return mesh;
+}
+
+type SkinnedPartAccumulator = {
+  material: ThreeMaterial;
+  positions: number[];
+  normals: number[];
+  uvs: number[];
+  skinIndices: number[];
+  skinWeights: number[];
+  indices: number[];
+  partNames: string[];
+};
+
+function consolidateSkinnedBodyParts(
+  root: ThreeGroup,
+  parts: ThreeMesh[],
+  skeleton: ThreeSkeleton,
+  rootBone: ThreeBone,
+): ThreeSkinnedMesh[] {
+  root.updateMatrixWorld(true);
+  const rootInverse = root.matrixWorld.clone().invert();
+  const boneIndex = new Map(skeleton.bones.map((bone, index) => [bone.name, index]));
+  const batches = new Map<ThreeMaterial, SkinnedPartAccumulator>();
+
+  for (const part of parts) {
+    const material = Array.isArray(part.material) ? part.material[0] : part.material;
+    if (!material) continue;
+    let batch = batches.get(material);
+    if (!batch) {
+      batch = { material, positions: [], normals: [], uvs: [], skinIndices: [], skinWeights: [], indices: [], partNames: [] };
+      batches.set(material, batch);
+    }
+
+    const geometry = part.geometry;
+    const position = geometry.getAttribute("position");
+    const normal = geometry.getAttribute("normal");
+    const uv = geometry.getAttribute("uv");
+    if (!position) continue;
+
+    const parentBone: ThreeBone = part.parent && part.parent instanceof THREE.Bone ? part.parent as ThreeBone : rootBone;
+    const parentIndex = boneIndex.get(parentBone.name) ?? boneIndex.get(rootBone.name) ?? 0;
+    const nextBoneName = typeof part.userData.skinNextBone === "string" ? part.userData.skinNextBone : "";
+    const nextBone = nextBoneName ? skeleton.bones.find((bone) => bone.name === nextBoneName) : undefined;
+    const nextIndex = nextBone ? boneIndex.get(nextBone.name) ?? parentIndex : parentIndex;
+    const hasBlend = Boolean(nextBone && nextIndex !== parentIndex);
+    const toRoot = rootInverse.clone().multiply(part.matrixWorld);
+    const normalMatrix = new THREE.Matrix3().getNormalMatrix(toRoot);
+    const parentPoint = parentBone.getWorldPosition(new THREE.Vector3()).applyMatrix4(rootInverse);
+    const childPoint = nextBone?.getWorldPosition(new THREE.Vector3()).applyMatrix4(rootInverse) ?? parentPoint.clone();
+    const axis = childPoint.clone().sub(parentPoint);
+    const axisLengthSq = Math.max(1e-9, axis.lengthSq());
+    const vertexOffset = batch.positions.length / 3;
+
+    for (let vertex = 0; vertex < position.count; vertex++) {
+      const point = new THREE.Vector3(position.getX(vertex), position.getY(vertex), position.getZ(vertex)).applyMatrix4(toRoot);
+      const n = normal
+        ? new THREE.Vector3(normal.getX(vertex), normal.getY(vertex), normal.getZ(vertex)).applyMatrix3(normalMatrix).normalize()
+        : new THREE.Vector3(0, 1, 0);
+      batch.positions.push(point.x, point.y, point.z);
+      batch.normals.push(n.x, n.y, n.z);
+      batch.uvs.push(uv?.getX(vertex) ?? 0, uv?.getY(vertex) ?? 0);
+
+      let childWeight = 0;
+      if (hasBlend) {
+        const along = clamp(point.clone().sub(parentPoint).dot(axis) / axisLengthSq, 0, 1);
+        const transition = clamp((along - 0.52) / 0.48, 0, 1);
+        childWeight = transition * transition * (3 - 2 * transition);
+      }
+      batch.skinIndices.push(parentIndex, nextIndex, 0, 0);
+      batch.skinWeights.push(1 - childWeight, childWeight, 0, 0);
+    }
+
+    if (geometry.index) {
+      for (let i = 0; i < geometry.index.count; i++) batch.indices.push(vertexOffset + geometry.index.getX(i));
+    } else {
+      for (let i = 0; i < position.count; i++) batch.indices.push(vertexOffset + i);
+    }
+    batch.partNames.push(part.name);
+  }
+
+  const skinnedMeshes: ThreeSkinnedMesh[] = [];
+  for (const [material, batch] of batches) {
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute("position", new THREE.Float32BufferAttribute(batch.positions, 3));
+    geometry.setAttribute("normal", new THREE.Float32BufferAttribute(batch.normals, 3));
+    geometry.setAttribute("uv", new THREE.Float32BufferAttribute(batch.uvs, 2));
+    geometry.setAttribute("skinIndex", new THREE.Uint16BufferAttribute(batch.skinIndices, 4));
+    geometry.setAttribute("skinWeight", new THREE.Float32BufferAttribute(batch.skinWeights, 4));
+    geometry.setIndex(batch.indices);
+    geometry.computeBoundingBox();
+    geometry.computeBoundingSphere();
+
+    const skinned = new THREE.SkinnedMesh(geometry, material);
+    skinned.name = "NeuroCoreSkinnedBody_" + String(material.name || skinnedMeshes.length);
+    skinned.castShadow = true;
+    skinned.receiveShadow = true;
+    skinned.frustumCulled = false;
+    skinned.userData.sourcePartCount = batch.partNames.length;
+    skinned.userData.sourcePartNames = batch.partNames;
+    root.add(skinned);
+    skinned.bind(skeleton, root.matrixWorld);
+    skinnedMeshes.push(skinned);
+  }
+
+  for (const part of parts) part.removeFromParent();
+  const sourceGeometries = new Set(parts.map((part) => part.geometry));
+  for (const geometry of sourceGeometries) geometry.dispose();
+  return skinnedMeshes;
+}
+
+function addBone(
+  parent: ThreeBone,
+  name: string,
+  position: [number, number, number],
+  bones: Record<string, ThreeBone>,
+  limits: Record<string, JointLimit>,
+): ThreeBone {
+  const bone = new THREE.Bone();
+  bone.name = name;
+  bone.position.set(position[0], position[1], position[2]);
+  parent.add(bone);
+  bones[name] = bone;
+  if (!(name in limits)) limits[name] = { x: [-PI, PI], y: [-PI, PI], z: [-PI, PI] };
+  return bone;
+}
+
+function smooth(current: number, target: number, deltaSeconds: number, speed = 12): number {
+  return THREE.MathUtils.damp(current, target, speed, clamp(deltaSeconds, 0, 0.1));
+}
+
+export function createProceduralHumanoidRig(scene: ThreeScene): ProceduralHumanoidRig {
+  const root = new THREE.Group();
+  root.name = "NeuroCore_ArticulatedHumanoid";
+  root.userData.kind = "procedural-humanoid-rig";
+  root.userData.rigVersion = 1;
+  scene.add(root);
+
+  const bones: Record<string, ThreeBone> = {};
+  const limits: Record<string, JointLimit> = { ...HUMANOID_JOINT_LIMITS };
+  const meshes: ThreeMesh[] = [];
+  const materials: ThreeMaterial[] = [];
+  const sphere = new THREE.SphereGeometry(1, 20, 14);
+  const sphereFine = new THREE.SphereGeometry(1, 28, 18);
+  const material = (color: number, rough = 0.78, metal = 0.02) => {
+    const value = makeMaterial(color, rough, metal);
+    materials.push(value);
+    return value;
+  };
+
+  const skin = material(0xf0cbbd);
+  const skinShadow = material(0xd89f98);
+  const muscle = material(0xe9b9aa);
+  const muscleShadow = material(0xc98683);
+  const coat = material(0xe5e9ef, 0.9);
+  const coatShade = material(0xb4c0cf);
+  const shirt = material(0x35465e);
+  const tie = material(0xa72b48, 0.62);
+  const skirt = material(0x303849);
+  const tights = material(0x33313c);
+  const shoes = material(0x171d2a, 0.45);
+  const hair = material(0x7c3439, 0.66);
+  const hairLight = material(0xa64c54, 0.62);
+  const white = material(0xfff7ed, 0.35);
+  const iris = material(0x7261ad, 0.34);
+  const pupil = material(0x25213c, 0.25);
+  const gold = material(0xd8ad61, 0.38, 0.35);
+  const accent = material(0x67cbdc, 0.32, 0.3);
+
+  const rootBone = new THREE.Bone();
+  rootBone.name = "root";
+  bones.root = rootBone;
+  limits.root = { x: [-PI, PI], y: [-PI, PI], z: [-PI, PI] };
+  root.add(rootBone);
+
+  // Axial skeleton: pelvis → spine → chest → neck → skull.
+  const pelvis = addBone(rootBone, "pelvis", [0, 1.0, 0], bones, limits);
+  const spineLower = addBone(pelvis, "spineLower", [0, 0.13, 0], bones, limits);
+  const spineMid = addBone(spineLower, "spineMid", [0, 0.18, 0], bones, limits);
+  const chest = addBone(spineMid, "chest", [0, 0.19, 0], bones, limits);
+  const neck = addBone(chest, "neck", [0, 0.30, 0], bones, limits);
+  const head = addBone(neck, "head", [0, 0.24, 0], bones, limits);
+
+  // Upper limbs are fully jointed: clavicle, shoulder, elbow, wrist, palm and fingers.
+  const armRoots: Record<"left" | "right", { clavicle: ThreeBone; upper: ThreeBone; forearm: ThreeBone; wrist: ThreeBone; hand: ThreeBone }> = {} as any;
+  const fingerNames = ["thumb", "index", "middle", "ring", "little"] as const;
+  for (const side of [-1, 1] as const) {
+    const key = side < 0 ? "left" : "right";
+    const clavicle = addBone(chest, key + "Clavicle", [side * 0.14, 0.23, 0], bones, limits);
+    const upper = addBone(clavicle, key + "UpperArm", [side * 0.08, 0, 0], bones, limits);
+    const forearm = addBone(upper, key + "Forearm", [side * 0.348, 0, 0], bones, limits);
+    const wrist = addBone(forearm, key + "Wrist", [side * 0.244, 0, 0], bones, limits);
+    const hand = addBone(wrist, key + "Hand", [side * 0.02, -0.11, 0], bones, limits);
+    armRoots[key] = { clavicle, upper, forearm, wrist, hand };
+
+    makeSegment(upper, sphere, coat, key + "SleeveUpper", new THREE.Vector3(0, 0, 0), new THREE.Vector3(side * 0.348, 0, 0), new THREE.Vector3(0.11, 0.225, 0.125), meshes, forearm);
+    makeEllipsoid(clavicle, sphereFine, coatShade, key + "Deltoid", new THREE.Vector3(side * 0.015, -0.01, 0.012), new THREE.Vector3(0.14, 0.145, 0.14), new THREE.Euler(0, 0, side * -0.18), meshes, upper);
+    // Joint caps bridge the upper-arm and forearm volumes instead of leaving a hollow elbow pivot.
+    makeEllipsoid(forearm, sphereFine, coatShade, key + "ElbowJoint", new THREE.Vector3(0, 0, 0.012), new THREE.Vector3(0.105, 0.105, 0.11), new THREE.Euler(), meshes, wrist);
+    makeSegment(forearm, sphere, coat, key + "SleeveForearm", new THREE.Vector3(0, 0, 0), new THREE.Vector3(side * 0.244, 0, 0), new THREE.Vector3(0.085, 0.17, 0.092), meshes, wrist);
+    makeEllipsoid(wrist, sphereFine, coatShade, key + "WristCuff", new THREE.Vector3(0, 0, 0), new THREE.Vector3(0.072, 0.078, 0.085), new THREE.Euler(), meshes, hand);
+    makeEllipsoid(hand, sphereFine, skin, key + "Palm", new THREE.Vector3(side * 0.045, 0, 0), new THREE.Vector3(0.092, 0.065, 0.035), new THREE.Euler(0, 0, side * 0.1), meshes);
+
+    for (let finger = 0; finger < fingerNames.length; finger++) {
+      const name = fingerNames[finger];
+      const fan = (finger - 2) * 0.028;
+      const isThumb = name === "thumb";
+      const start = new THREE.Vector3(side * (isThumb ? 0.015 : 0.075), fan, isThumb ? 0.005 : 0);
+      const base = addBone(hand, key + name[0].toUpperCase() + name.slice(1) + "1", [start.x, start.y, start.z], bones, limits);
+      const middle = addBone(base, key + name[0].toUpperCase() + name.slice(1) + "2", [side * (isThumb ? 0.035 : 0.042), 0, 0], bones, limits);
+      const tip = addBone(middle, key + name[0].toUpperCase() + name.slice(1) + "3", [side * (isThumb ? 0.028 : 0.032), 0, 0], bones, limits);
+      makeSegment(base, sphere, skin, key + name + "Proximal", new THREE.Vector3(0, 0, 0), new THREE.Vector3(side * (isThumb ? 0.035 : 0.042), 0, 0), new THREE.Vector3(0.017, 0.035, 0.018), meshes, middle);
+      makeSegment(middle, sphere, skin, key + name + "Middle", new THREE.Vector3(0, 0, 0), new THREE.Vector3(side * (isThumb ? 0.028 : 0.032), 0, 0), new THREE.Vector3(0.014, 0.027, 0.015), meshes, tip);
+      makeEllipsoid(tip, sphere, skin, key + name + "Distal", new THREE.Vector3(side * 0.012, 0, 0), new THREE.Vector3(0.014, 0.019, 0.014), new THREE.Euler(), meshes);
+    }
+  }
+
+  // Lower limbs: hip, knee and ankle joints, feet and toe joints.
+  for (const side of [-1, 1] as const) {
+    const key = side < 0 ? "left" : "right";
+    const hip = addBone(pelvis, key + "Hip", [side * 0.12, -0.04, 0], bones, limits);
+    const thigh = addBone(hip, key + "Thigh", [0, 0, 0], bones, limits);
+    const knee = addBone(thigh, key + "Knee", [side * 0.02, -0.42, 0], bones, limits);
+    const calf = addBone(knee, key + "Calf", [0, -0.4, 0], bones, limits);
+    const ankle = addBone(calf, key + "Ankle", [0, 0, 0], bones, limits);
+    const foot = addBone(ankle, key + "Foot", [0, -0.035, 0.025], bones, limits);
+    const toe = addBone(foot, key + "Toe", [0, -0.025, 0.15], bones, limits);
+
+    makeSegment(thigh, sphere, tights, key + "ThighVolume", new THREE.Vector3(0, 0, 0), new THREE.Vector3(side * 0.02, -0.42, 0), new THREE.Vector3(0.135, 0.245, 0.145), meshes, knee);
+    makeEllipsoid(thigh, sphereFine, muscle, key + "Quadriceps", new THREE.Vector3(0, -0.20, 0.105), new THREE.Vector3(0.104, 0.21, 0.065), new THREE.Euler(), meshes, knee);
+    makeEllipsoid(thigh, sphereFine, muscleShadow, key + "Hamstrings", new THREE.Vector3(0, -0.21, -0.09), new THREE.Vector3(0.105, 0.20, 0.055), new THREE.Euler(), meshes, knee);
+    makeEllipsoid(knee, sphereFine, tights, key + "KneeJointCap", new THREE.Vector3(0, 0, 0.075), new THREE.Vector3(0.105, 0.115, 0.075), new THREE.Euler(), meshes, calf);
+    makeSegment(calf, sphere, tights, key + "CalfVolume", new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, -0.4, 0), new THREE.Vector3(0.09, 0.23, 0.105), meshes, ankle);
+    makeEllipsoid(calf, sphereFine, muscle, key + "Gastrocnemius", new THREE.Vector3(0, -0.14, -0.045), new THREE.Vector3(0.078, 0.15, 0.07), new THREE.Euler(), meshes, ankle);
+    makeEllipsoid(ankle, sphereFine, tights, key + "AnkleJoint", new THREE.Vector3(0, 0, 0), new THREE.Vector3(0.075, 0.075, 0.08), new THREE.Euler(), meshes, foot);
+    makeEllipsoid(foot, sphereFine, shoes, key + "FootVolume", new THREE.Vector3(0, -0.015, 0.105), new THREE.Vector3(0.095, 0.065, 0.17), new THREE.Euler(), meshes, toe);
+    makeEllipsoid(toe, sphere, shoes, key + "ToeCap", new THREE.Vector3(0, 0, 0.045), new THREE.Vector3(0.085, 0.045, 0.075), new THREE.Euler(), meshes);
+  }
+
+  // Torso, real axial segments, shoulder girdle and layered clothing.
+  makeEllipsoid(pelvis, sphereFine, skirt, "PelvisClothing", new THREE.Vector3(0, 0.02, 0), new THREE.Vector3(0.31, 0.22, 0.205), new THREE.Euler(), meshes, spineLower);
+  makeEllipsoid(spineLower, sphereFine, skin, "LowerAbdomen", new THREE.Vector3(0, 0.13, 0), new THREE.Vector3(0.22, 0.24, 0.145), new THREE.Euler(), meshes, spineMid);
+  makeEllipsoid(spineMid, sphereFine, shirt, "MidTorso", new THREE.Vector3(0, 0.115, -0.008), new THREE.Vector3(0.275, 0.245, 0.16), new THREE.Euler(), meshes, chest);
+  makeEllipsoid(chest, sphereFine, coat, "JacketTorso", new THREE.Vector3(0, 0.03, 0), new THREE.Vector3(0.37, 0.36, 0.215), new THREE.Euler(), meshes, neck);
+  makeEllipsoid(chest, sphereFine, shirt, "CollarShirt", new THREE.Vector3(0, 0.145, 0.17), new THREE.Vector3(0.19, 0.22, 0.035), new THREE.Euler(), meshes);
+  makeEllipsoid(chest, sphereFine, tie, "NecktieKnot", new THREE.Vector3(0, 0.19, 0.205), new THREE.Vector3(0.045, 0.055, 0.022), new THREE.Euler(), meshes);
+  makeEllipsoid(chest, sphereFine, tie, "Necktie", new THREE.Vector3(0, 0.015, 0.211), new THREE.Vector3(0.042, 0.16, 0.02), new THREE.Euler(), meshes);
+  for (const side of [-1, 1] as const) {
+    makeEllipsoid(chest, sphere, coatShade, side < 0 ? "LeftCoatLapel" : "RightCoatLapel",
+      new THREE.Vector3(side * 0.105, 0.16, 0.195), new THREE.Vector3(0.085, 0.24, 0.025),
+      new THREE.Euler(0, 0, side * -0.22), meshes);
+    makeEllipsoid(chest, sphere, coatShade, side < 0 ? "LeftCoatPocket" : "RightCoatPocket",
+      new THREE.Vector3(side * 0.25, -0.12, 0.18), new THREE.Vector3(0.075, 0.09, 0.018), new THREE.Euler(), meshes);
+  }
+
+  // Neck and face are separate deformable sections, not one static silhouette.
+  makeEllipsoid(neck, sphere, skin, "NeckVolume", new THREE.Vector3(0, 0.035, 0), new THREE.Vector3(0.095, 0.18, 0.095), new THREE.Euler(), meshes, head);
+  makeEllipsoid(head, sphereFine, hair, "HairBack", new THREE.Vector3(0, 0.03, -0.08), new THREE.Vector3(0.34, 0.43, 0.29), new THREE.Euler(), meshes);
+  makeEllipsoid(head, sphereFine, skin, "Face", new THREE.Vector3(0, 0.02, 0.035), new THREE.Vector3(0.29, 0.38, 0.245), new THREE.Euler(), meshes);
+  makeEllipsoid(head, sphereFine, hair, "HairCap", new THREE.Vector3(0, 0.25, 0.005), new THREE.Vector3(0.34, 0.22, 0.27), new THREE.Euler(), meshes);
+  makeEllipsoid(head, sphere, hairLight, "BangsLeft", new THREE.Vector3(-0.12, 0.19, 0.238), new THREE.Vector3(0.15, 0.14, 0.075), new THREE.Euler(0, 0, -0.16), meshes);
+  makeEllipsoid(head, sphere, hair, "BangsCenter", new THREE.Vector3(0.015, 0.21, 0.248), new THREE.Vector3(0.14, 0.16, 0.065), new THREE.Euler(0, 0, 0.04), meshes);
+  makeEllipsoid(head, sphere, hairLight, "BangsRight", new THREE.Vector3(0.15, 0.18, 0.22), new THREE.Vector3(0.13, 0.16, 0.07), new THREE.Euler(0, 0, 0.2), meshes);
+  makeEllipsoid(head, sphere, hair, "LongHairLeft", new THREE.Vector3(-0.29, -0.17, -0.04), new THREE.Vector3(0.085, 0.36, 0.105), new THREE.Euler(0, 0, -0.07), meshes);
+  makeEllipsoid(head, sphere, hairLight, "LongHairRight", new THREE.Vector3(0.29, -0.17, -0.03), new THREE.Vector3(0.085, 0.36, 0.105), new THREE.Euler(0, 0, 0.07), meshes);
+
+  const eyeWhites: ThreeMesh[] = [];
+  const irises: ThreeMesh[] = [];
+  const brows: ThreeMesh[] = [];
+  const eyelids: ThreeMesh[] = [];
+  for (const side of [-1, 1] as const) {
+    eyeWhites.push(makeEllipsoid(head, sphere, white, side < 0 ? "EyeWhiteLeft" : "EyeWhiteRight",
+      new THREE.Vector3(side * 0.112, 0.02, 0.258), new THREE.Vector3(0.064, 0.082, 0.027), new THREE.Euler(), meshes));
+    irises.push(makeEllipsoid(head, sphere, iris, side < 0 ? "IrisLeft" : "IrisRight",
+      new THREE.Vector3(side * 0.112, 0.015, 0.283), new THREE.Vector3(0.037, 0.06, 0.021), new THREE.Euler(), meshes));
+    makeEllipsoid(head, sphere, pupil, side < 0 ? "PupilLeft" : "PupilRight",
+      new THREE.Vector3(side * 0.112, 0.018, 0.301), new THREE.Vector3(0.018, 0.04, 0.012), new THREE.Euler(), meshes);
+    makeEllipsoid(head, sphere, gold, side < 0 ? "EyeSparkLeft" : "EyeSparkRight",
+      new THREE.Vector3(side * 0.125, 0.045, 0.31), new THREE.Vector3(0.01, 0.014, 0.008), new THREE.Euler(), meshes);
+    brows.push(makeEllipsoid(head, sphere, hair, side < 0 ? "BrowLeft" : "BrowRight",
+      new THREE.Vector3(side * 0.115, 0.13, 0.26), new THREE.Vector3(0.067, 0.012, 0.014), new THREE.Euler(0, 0, side * -0.08), meshes));
+    eyelids.push(makeEllipsoid(head, sphere, skinShadow, side < 0 ? "EyeLidLeft" : "EyeLidRight",
+      new THREE.Vector3(side * 0.112, 0.102, 0.258), new THREE.Vector3(0.068, 0.012, 0.025), new THREE.Euler(), meshes));
+  }
+  const mouth = makeEllipsoid(head, sphere, muscleShadow, "MouthViseme",
+    new THREE.Vector3(0, -0.13, 0.266), new THREE.Vector3(0.045, 0.012, 0.012), new THREE.Euler(), meshes);
+  makeEllipsoid(head, sphere, skinShadow, "Nose", new THREE.Vector3(0, -0.06, 0.272), new THREE.Vector3(0.018, 0.027, 0.018), new THREE.Euler(), meshes);
+  for (const side of [-1, 1] as const) {
+    makeEllipsoid(head, sphere, skinShadow, side < 0 ? "EarLeft" : "EarRight",
+      new THREE.Vector3(side * 0.285, -0.045, 0.005), new THREE.Vector3(0.045, 0.065, 0.04), new THREE.Euler(), meshes);
+  }
+  makeEllipsoid(head, sphere, tie, "HairClip", new THREE.Vector3(0.235, 0.24, 0.205),
+    new THREE.Vector3(0.085, 0.018, 0.025), new THREE.Euler(0, 0, -0.24), meshes);
+  makeEllipsoid(head, sphere, accent, "HairClipAccent", new THREE.Vector3(0.235, 0.24, 0.23),
+    new THREE.Vector3(0.045, 0.006, 0.006), new THREE.Euler(0, 0, -0.24), meshes);
+
+  const ringMat = new THREE.MeshStandardMaterial({ color: 0x287c91, roughness: 0.42, metalness: 0.35, transparent: true, opacity: 0.5 });
+  materials.push(ringMat);
+  const platform = new THREE.Mesh(new THREE.TorusGeometry(0.48, 0.009, 8, 64), ringMat);
+  platform.name = "BodyGroundRing";
+  platform.rotation.x = PI / 2;
+  platform.position.y = 0.09;
+  root.add(platform);
+  meshes.push(platform);
+
+  const skeleton = new THREE.Skeleton(Object.values(bones));
+  const restJointPositions = Object.fromEntries(Object.entries(bones).map(([name, bone]) => [name, bone.position.clone()])) as Record<string, ThreeVector3>;
+  root.updateMatrixWorld(true);
+  skeleton.calculateInverses();
+  const sourceParts = [...meshes];
+  const skinnedMeshes = consolidateSkinnedBodyParts(root, sourceParts, skeleton, rootBone);
+  root.userData.rigStats = {
+    boneCount: skeleton.bones.length,
+    jointCount: Object.keys(limits).length,
+    meshCount: skinnedMeshes.length,
+    partCount: sourceParts.length,
+    particleCount: AVATAR_ARTICULATED_BODY_PARTICLE_COUNT,
+    constraintCount: AVATAR_ARTICULATED_BODY_SEGMENT_COUNT,
+  };
+
+  const rig: ProceduralHumanoidRig = {
+    root,
+    skeleton,
+    bones,
+    head,
+    leftArm: armRoots.left.upper,
+    rightArm: armRoots.right.upper,
+    mouth,
+    eyeWhites,
+    irises,
+    brows,
+    ringMat,
+    limits,
+    meshes: skinnedMeshes,
+    partCount: sourceParts.length,
+    materials,
+    updatePose(input) {
+      const delta = clamp(finite(input.deltaSeconds, 1 / 60), 0, 0.1);
+      const channels = input.bodyChannels ?? {};
+      const channel = (name: string, fallback = 0) => clamp(finite(channels[name], fallback), -1, 1);
+      const curiosity = input.emotion === "curiosity" ? 1 : 0;
+      const smile = input.emotion === "joy" ? 1 : input.emotion === "calm" ? 0.22 : 0;
+      const stress = input.emotion === "anxiety" || input.emotion === "frustration" || input.emotion === "anger" ? 1 : 0;
+      const sleep = input.awake ? 0 : 1;
+
+      const targets: Record<string, Partial<Record<JointAxis, number>>> = {
+        pelvis: { x: channel("pelvisPitch", 0), z: channel("pelvisRoll", 0) },
+        spineLower: { x: channel("spineLowerPitch", -0.015 * stress), z: channel("spineLowerRoll", 0) },
+        spineMid: { x: channel("spineMidPitch", -0.02 * stress), z: channel("spineMidRoll", 0) },
+        chest: {
+          x: channel("torsoPitch", channel("chestPitch", input.action === "explain" ? -0.035 : 0)) * 0.34,
+          y: channel("torsoYaw", 0) * 0.34,
+          z: channel("chestRoll", 0) * 0.28,
+        },
+        neck: { x: -clamp(input.gazeY, -1, 1) * 0.08, y: clamp(input.gazeX, -1, 1) * 0.12 },
+        head: {
+          x: -clamp(input.gazeY, -1, 1) * 0.16 + channel("headPitch", 0) * 0.36 + sleep * 0.12,
+          y: clamp(input.gazeX, -1, 1) * 0.25 + channel("headYaw", 0) * 0.42,
+          z: clamp(input.headTilt, -0.8, 0.8) + channel("headRoll", 0) * 0.3,
+        },
+      };
+
+      for (const key of ["left", "right"] as const) {
+        const side = key === "left" ? -1 : 1;
+        const armIntent = key === "left" ? input.leftArmIntent : input.rightArmIntent;
+        const elbowFallback = input.action === "comfort" ? 0.34 : input.action === "respond" || input.action === "explain" ? 0.18 : 0.06;
+        const hasShoulderMotor = Number.isFinite(Number(channels[key + "Shoulder"]));
+        const hasElbowMotor = Number.isFinite(Number(channels[key + "Elbow"]));
+        const shoulder = clamp(hasShoulderMotor ? channel(key + "Shoulder") * 0.72 : finite(armIntent), -1.5, 1.5);
+        const elbow = hasElbowMotor ? channel(key + "Elbow") * 0.78 : elbowFallback;
+        targets[key + "Clavicle"] = { z: side * (0.06 + shoulder * 0.12) + channel(key + "ClavicleRoll", 0) };
+        targets[key + "UpperArm"] = {
+          z: side * (shoulder - 0.684 + (input.speaking ? 0.06 : 0)),
+          x: channel(key + "ShoulderPitch", 0),
+          y: channel(key + "ShoulderYaw", side * -0.08),
+        };
+        targets[key + "Forearm"] = { z: side * (elbow - 0.552) + channel(key + "ForearmTwist", 0) };
+        targets[key + "Wrist"] = { z: channel(key + "Wrist", 0) * 0.65, x: channel(key + "WristPitch", 0) * 0.55 };
+        const fist = clamp(channel(key + "Fingers", channel(key + "Hand", channel(key + "Grip", input.action === "inspect" ? 0.12 : 0))), 0, 1);
+        for (const finger of fingerNames) {
+          const name = finger[0].toUpperCase() + finger.slice(1);
+          const thumbFlex = finger === "thumb" ? 0.45 : 1;
+          const channelName = key + name + "Curl";
+          const curl = clamp(channel(channelName, fist), 0, 1);
+          for (let joint = 1; joint <= 3; joint++) {
+            const boneName = key + name + joint;
+            targets[boneName] = { z: -side * curl * 0.38 * thumbFlex * (joint === 1 ? 0.75 : 1) };
+          }
+        }
+      }
+
+      for (const key of ["left", "right"] as const) {
+        const side = key === "left" ? -1 : 1;
+        const stride = input.awake && (input.action === "explore" || input.action === "inspect") ? 0.1 : 0;
+        targets[key + "Hip"] = { z: side * channel(key + "Hip", 0) * 0.58, x: channel(key + "HipPitch", stride) };
+        targets[key + "Knee"] = { z: side * channel(key + "Knee", stride > 0 ? 0.16 : 0.025) * 0.72 };
+        targets[key + "Ankle"] = { x: channel(key + "Ankle", -0.025) * 0.18 + channel(key + "AnklePitch", 0) * 0.55, z: channel(key + "AnkleRoll", 0) * 0.55 };
+        targets[key + "Foot"] = { x: channel(key + "FootPitch", 0) };
+        targets[key + "Toe"] = { x: channel(key + "ToeCurl", 0) };
+      }
+
+      for (const [name, axes] of Object.entries(targets)) {
+        const bone = bones[name];
+        if (!bone) continue;
+        for (const axis of ["x", "y", "z"] as const) {
+          const target = axes[axis];
+          if (target === undefined) continue;
+          const bounded = clampJointAngle(name, axis, target, limits);
+          bone.rotation[axis] = smooth(bone.rotation[axis], bounded, delta, 16);
+        }
+      }
+
+      // The particle solver feeds residual displacement into the same articulated rig.
+      // Targets are reset to immutable bind-pose positions each frame; residuals never accumulate.
+      const particleBindings: readonly [ArticulatedBodyParticleId, string][] = [
+        ["chest", "chest"], ["neck", "neck"], ["head", "head"],
+        // IK pivot joints are driven by the actual particle landmarks; intermediate
+        // elbow/knee pivots and wrist/ankle end effectors are solved, not offset twice.
+        ["leftShoulderPoint", "leftUpperArm"], ["rightShoulderPoint", "rightUpperArm"],
+        ["leftHipPoint", "leftHip"], ["rightHipPoint", "rightHip"],
+      ];
+      root.updateMatrixWorld(true);
+      // The particle solver already rotates its point cloud by rootYaw. Convert that
+      // cloud back into local rig space; the root transform then applies yaw exactly once.
+      const particleYaw = channel("rootYaw", 0) * 0.34;
+      const particleCos = Math.cos(particleYaw);
+      const particleSin = Math.sin(particleYaw);
+      const toRigLocal = (x: number, y: number, z: number) => new THREE.Vector3(
+        x * particleCos - z * particleSin,
+        y,
+        x * particleSin + z * particleCos,
+      );
+      const pelvisHeight = bones.pelvis.position.y;
+      const particleLocalPoint = (sample: NonNullable<ArticulatedParticleFrame[ArticulatedBodyParticleId]>) => {
+        const base = toRigLocal(sample.target.x, sample.target.y, sample.target.z);
+        const residual = toRigLocal(
+          sample.position.x - sample.target.x,
+          sample.position.y - sample.target.y,
+          sample.position.z - sample.target.z,
+        );
+        base.add(new THREE.Vector3(
+          clamp(residual.x, -0.055, 0.055),
+          clamp(residual.y, -0.055, 0.055),
+          clamp(residual.z, -0.055, 0.055),
+        ));
+        base.y += pelvisHeight;
+        return base;
+      };
+      const distalParticleBindings: readonly [ArticulatedBodyParticleId, string][] = [
+        // Keep all articulated intermediate pivots on the canonical particle landmarks.
+        // Restore bind-space link offsets before IK, then re-apply the exact world targets
+        // after the parent rotations have been solved for this frame.
+        ["leftElbowPoint", "leftForearm"],
+        ["leftWristPoint", "leftWrist"],
+        ["leftHandPoint", "leftHand"],
+        ["rightElbowPoint", "rightForearm"],
+        ["rightWristPoint", "rightWrist"],
+        ["rightHandPoint", "rightHand"],
+        ["leftKneePoint", "leftKnee"],
+        ["leftAnklePoint", "leftAnkle"],
+        ["rightKneePoint", "rightKnee"],
+        ["rightAnklePoint", "rightAnkle"],
+      ];
+      for (const [, boneName] of distalParticleBindings) {
+        const rest = restJointPositions[boneName];
+        if (rest) bones[boneName].position.copy(rest);
+      }
+      let particleBindingsApplied = 0;
+      const particleTargetWorld = (sample: NonNullable<ArticulatedParticleFrame[ArticulatedBodyParticleId]> | undefined) => {
+        if (!sample) return null;
+        return root.localToWorld(particleLocalPoint(sample));
+      };
+      for (const [particleId, boneName] of particleBindings) {
+        const sample = input.particles?.[particleId];
+        const bone = bones[boneName];
+        const rest = restJointPositions[boneName];
+        if (!bone || !rest) continue;
+        // Bind-pose fallback keeps joints stable when a sample is absent.
+        bone.position.copy(rest);
+        if (!sample || !bone.parent) {
+          root.updateMatrixWorld(true);
+          continue;
+        }
+        root.updateMatrixWorld(true);
+        const targetWorld = root.localToWorld(particleLocalPoint(sample));
+        bone.parent.updateWorldMatrix(true, false);
+        bone.position.copy(bone.parent.worldToLocal(targetWorld));
+        root.updateMatrixWorld(true);
+        particleBindingsApplied++;
+      }
+
+      // Solved wrist and ankle particles become end-effector targets. The IK solver
+      // calculates the intermediate shoulder/elbow and hip/knee joints; joint limits
+      // are applied before smoothing, so physics cannot teleport a limb outside its range.
+      const leftWristTarget = particleTargetWorld(input.particles?.leftWristPoint);
+      const rightWristTarget = particleTargetWorld(input.particles?.rightWristPoint);
+      const leftAnkleTarget = particleTargetWorld(input.particles?.leftAnklePoint);
+      const rightAnkleTarget = particleTargetWorld(input.particles?.rightAnklePoint);
+      if (leftWristTarget) rig.solveArmTarget("left", leftWristTarget, delta);
+      if (rightWristTarget) rig.solveArmTarget("right", rightWristTarget, delta);
+      if (leftAnkleTarget) rig.solveLegTarget("left", leftAnkleTarget, delta);
+      if (rightAnkleTarget) rig.solveLegTarget("right", rightAnkleTarget, delta);
+
+      for (const [particleId, boneName] of distalParticleBindings) {
+        const sample = input.particles?.[particleId];
+        const bone = bones[boneName];
+        if (!sample || !bone?.parent) continue;
+        root.updateMatrixWorld(true);
+        const targetWorld = particleTargetWorld(sample);
+        if (!targetWorld) continue;
+        bone.parent.updateWorldMatrix(true, false);
+        bone.position.copy(bone.parent.worldToLocal(targetWorld));
+        root.updateMatrixWorld(true);
+        particleBindingsApplied++;
+      }
+
+      // Face is also driven by the organism's affect, gaze and speech envelope.
+      const eyeOpen = clamp(1 - sleep * 0.68 - stress * 0.13 + curiosity * 0.08, 0.18, 1.16);
+      eyeWhites.forEach((eye) => { eye.scale.y = 0.082 * eyeOpen; });
+      eyelids.forEach((lid) => { lid.position.y = 0.102 - eyeOpen * 0.025; });
+      irises.forEach((irisMesh) => {
+        irisMesh.position.x = (irisMesh.name.endsWith("Left") ? -1 : 1) * 0.112 + clamp(input.gazeX, -1, 1) * 0.018;
+        irisMesh.position.y = 0.015 - clamp(input.gazeY, -1, 1) * 0.016;
+      });
+      brows.forEach((brow) => {
+        const side = brow.name.endsWith("Left") ? -1 : 1;
+        brow.rotation.z = side * (stress * 0.15 - smile * 0.08 + curiosity * 0.06);
+      });
+      mouth.scale.y = 0.012 + (input.speaking ? 0.045 * clamp(input.arousal + 0.2, 0.1, 1) : smile * 0.006);
+      mouth.scale.x = 0.045 + smile * 0.008;
+      const chestParticle = input.particles?.chest;
+      const chestParticleOffset = chestParticle ? toRigLocal(
+        chestParticle.position.x - chestParticle.target.x,
+        chestParticle.position.y - chestParticle.target.y,
+        chestParticle.position.z - chestParticle.target.z,
+      ) : null;
+      const chestParticleOffsetZ = chestParticleOffset ? clamp(chestParticleOffset.z, -0.055, 0.055) : 0;
+      chest.position.z = restJointPositions.chest.z + chestParticleOffsetZ + channel("breath", 0) * 0.018;
+      root.userData.poseState = { awake: input.awake, action: input.action, emotion: input.emotion, particleBindingsApplied, updatedAt: finite(input.timeSeconds) };
+      root.updateMatrixWorld(true);
+    },
+    solveArmTarget(side, target, deltaSeconds = 1 / 60) {
+      const arm = armRoots[side];
+      root.updateMatrixWorld(true);
+      const parent = arm.upper.parent;
+      if (!parent) throw new Error("Arm upper bone has no parent");
+      const shoulderWorld = arm.upper.getWorldPosition(new THREE.Vector3());
+      parent.updateWorldMatrix(true, false);
+      const localStart = parent.worldToLocal(shoulderWorld.clone());
+      const localTarget = parent.worldToLocal(target.clone());
+      const outward = side === "left" ? -1 : 1;
+      const result = solveTwoBonePlanarIK(
+        { x: outward * localStart.x, y: localStart.y },
+        { x: outward * localTarget.x, y: localTarget.y },
+        0.348,
+        0.244,
+        -1,
+      );
+      const firstAngle = Math.atan2(
+        result.elbow.y - localStart.y,
+        outward * (result.elbow.x - outward * localStart.x),
+      );
+      const secondAngle = Math.atan2(
+        result.endEffector.y - result.elbow.y,
+        outward * (result.endEffector.x - result.elbow.x),
+      );
+      const baseUpper = Math.atan2(arm.forearm.position.y, arm.forearm.position.x);
+      const baseForearm = Math.atan2(arm.wrist.position.y, arm.wrist.position.x);
+      const shoulderName = side + "UpperArm";
+      const elbowName = side + "Forearm";
+      const shoulderValue = clampJointAngle(shoulderName, "z", wrapRadians(firstAngle - baseUpper), limits);
+      const elbowValue = clampJointAngle(elbowName, "z", wrapRadians(secondAngle - firstAngle + baseUpper - baseForearm), limits);
+      arm.upper.rotation.z = shoulderValue;
+      arm.forearm.rotation.z = elbowValue;
+      root.updateMatrixWorld(true);
+      return {
+        ...result,
+        elbow: { x: outward * result.elbow.x, y: result.elbow.y },
+        endEffector: { x: outward * result.endEffector.x, y: result.endEffector.y },
+      };
+    },
+    solveLegTarget(side, target, deltaSeconds = 1 / 60) {
+      root.updateMatrixWorld(true);
+      const hipBone = bones[side + "Hip"];
+      const parent = hipBone.parent;
+      if (!parent) throw new Error("Hip bone has no parent");
+      const hipWorld = hipBone.getWorldPosition(new THREE.Vector3());
+      parent.updateWorldMatrix(true, false);
+      const localTarget = parent.worldToLocal(target.clone());
+      const localStart = parent.worldToLocal(hipWorld.clone());
+      const kneeBone = bones[side + "Knee"];
+      const calfBone = bones[side + "Calf"];
+      const firstLink = kneeBone.position;
+      const secondLink = calfBone.position;
+      const firstLength = Math.hypot(firstLink.x, firstLink.y);
+      const secondLength = Math.hypot(secondLink.x, secondLink.y);
+      const firstRestAngle = Math.atan2(firstLink.y, firstLink.x);
+      const secondRestAngle = Math.atan2(secondLink.y, secondLink.x);
+      const outward = side === "left" ? -1 : 1;
+      const result = solveTwoBonePlanarIK(
+        { x: outward * localStart.x, y: localStart.y },
+        { x: outward * localTarget.x, y: localTarget.y },
+        firstLength,
+        secondLength,
+        1,
+      );
+      const firstAngle = Math.atan2(
+        result.elbow.y - localStart.y,
+        outward * (result.elbow.x - outward * localStart.x),
+      );
+      const secondAngle = Math.atan2(
+        result.endEffector.y - result.elbow.y,
+        outward * (result.endEffector.x - result.elbow.x),
+      );
+      const hipValue = clampJointAngle(side + "Hip", "z", wrapRadians(firstAngle - firstRestAngle), limits);
+      const kneeValue = clampJointAngle(side + "Knee", "z", wrapRadians(secondAngle - firstAngle + firstRestAngle - secondRestAngle), limits);
+      hipBone.rotation.z = hipValue;
+      kneeBone.rotation.z = kneeValue;
+      root.updateMatrixWorld(true);
+      return result;
+    },
+    setJoint(name, axis, radians) {
+      const bone = bones[name];
+      if (!bone) throw new Error("Unknown humanoid joint: " + name);
+      const value = clampJointAngle(name, axis, radians, limits);
+      bone.rotation[axis] = value;
+      root.updateMatrixWorld(true);
+      return value;
+    },
+    resetPose() {
+      for (const [name, bone] of Object.entries(bones)) {
+        bone.rotation.set(0, 0, 0);
+        const rest = restJointPositions[name];
+        if (rest) bone.position.copy(rest);
+      }
+      root.userData.poseState = null;
+      root.updateMatrixWorld(true);
+    },
+    dispose() {
+      root.removeFromParent();
+      const geometries = new Set(meshes.map((mesh) => mesh.geometry));
+      for (const geometry of geometries) geometry.dispose();
+      for (const item of materials) item.dispose();
+    },
+  };
+
+  return rig;
+}
+
+export function updateProceduralHumanoidRig(rig: ProceduralHumanoidRig, input: HumanoidPoseInput): void {
+  rig.updatePose(input);
+}
