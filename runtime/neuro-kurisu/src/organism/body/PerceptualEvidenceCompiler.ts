@@ -25,6 +25,8 @@ export interface PerceptualEvidenceRecord{
   hostReceipt?:SignedHostObservationReceipt;
   /** Local consent revocation is monotonic and survives process restart. */
   revoked?:boolean;
+  /** Expiry tombstone is monotonic and cannot be cleared by clock rollback or replay. */
+  expired?:boolean;
 }
 const EVIDENCE_MODALITIES = new Set<PerceptualEvidenceRecord['modality']>(['text','vision','audio','sensor','world','fusion']);
 const RESTORABLE_EVIDENCE_KINDS = new Set<PerceptualEvidenceKind>(['model-output','derived','conflict','unresolved']);
@@ -87,13 +89,22 @@ function restoreEvidenceRecord(value:unknown):PerceptualEvidenceRecord|null{
     typeof at!=='number'||!Number.isSafeInteger(at)||at<0||
     typeof modality!=='string'||!EVIDENCE_MODALITIES.has(modality as PerceptualEvidenceRecord['modality'])||
     typeof claim!=='string'||!claim.trim())return null;
-  const confidence01=unitStrictOr(ownDataValue(value,'confidence01'),0);
+  const hostReceipt=restoreHostReceipt(ownDataValue(value,'hostReceipt'));
+  const revoked=ownDataValue(value,'revoked')===true;
+  const expiryRaw=ownDataValue(value,'expiresAt');
+  const expired=ownDataValue(value,'expired')===true||
+    Boolean(hostReceipt&&hostReceipt.expiresAt<=Date.now())||
+    (typeof expiryRaw==='number'&&Number.isSafeInteger(expiryRaw)&&expiryRaw>0&&expiryRaw<=Date.now());
+  const untrustedTombstone=revoked||expired;
+  const confidence01=untrustedTombstone?0:unitStrictOr(ownDataValue(value,'confidence01'),0);
   const rawKind=ownDataValue(value,'kind');
-  const kind:PerceptualEvidenceKind=rawKind==='observed'
-    ?'derived'
-    :typeof rawKind==='string'&&RESTORABLE_EVIDENCE_KINDS.has(rawKind as PerceptualEvidenceKind)
-      ?rawKind as PerceptualEvidenceKind
-      :'unresolved';
+  const kind:PerceptualEvidenceKind=untrustedTombstone
+    ?'unresolved'
+    :rawKind==='observed'
+      ?'derived'
+      :typeof rawKind==='string'&&RESTORABLE_EVIDENCE_KINDS.has(rawKind as PerceptualEvidenceKind)
+        ?rawKind as PerceptualEvidenceKind
+        :'unresolved';
   const rawParents=ownDataValue(value,'parents');
   const parents=isPlainDataArray(rawParents,32)
     ?rawParents.filter((parent):parent is string=>typeof parent==='string'&&Boolean(parent.trim())).slice(0,8).map(parent=>parent.trim().slice(0,180))
@@ -103,9 +114,10 @@ function restoreEvidenceRecord(value:unknown):PerceptualEvidenceRecord|null{
     claim:claim.trim().slice(0,240),confidence01,
     uncertainty01:unitStrictOr(ownDataValue(value,'uncertainty01'),1-confidence01),
     kind,parents,
-    ...(typeof ownDataValue(value,'expiresAt')==='number'&&Number.isSafeInteger(ownDataValue(value,'expiresAt'))&&Number(ownDataValue(value,'expiresAt'))>=at?{expiresAt:Number(ownDataValue(value,'expiresAt'))}:{}),
-    ...(restoreHostReceipt(ownDataValue(value,'hostReceipt'))?{hostReceipt:restoreHostReceipt(ownDataValue(value,'hostReceipt'))}:{}),
-    ...(ownDataValue(value,'revoked')===true?{revoked:true}:{}),
+    ...(!untrustedTombstone&&typeof expiryRaw==='number'&&Number.isSafeInteger(expiryRaw)&&expiryRaw>=at?{expiresAt:expiryRaw}:{}),
+    ...(hostReceipt?{hostReceipt}:{}),
+    ...(revoked?{revoked:true}:{}),
+    ...(expired?{expired:true}:{}),
   };
 };
 
@@ -172,7 +184,28 @@ export class PerceptualEvidenceCompiler{
     const digest=`${this.state.scene}|${this.state.evidence.slice(0,24).map(e=>`${e.modality}:${e.claim}:${e.confidence01.toFixed(2)}`).join('|')}|${JSON.stringify(this.state.metrics)}`;
     this.state.lastHash=stableHash(digest);
   }
-  snapshot(){return structuredClone(this.state);}
+  /** Expire host admissions synchronously before any public read or projection. */
+  private expireTrustedExternalEvidence(now=Date.now()):boolean {
+    let changed=false;
+    const evidence=this.state.evidence.map(row=>{
+      if(row.kind!=='observed')return row;
+      const live=Number.isSafeInteger(row.expiresAt)&&Number(row.expiresAt)>now;
+      if(live)return row;
+      changed=true;
+      return {...row,kind:'unresolved' as const,confidence01:0,uncertainty01:1,expiresAt:0,expired:true};
+    });
+    if(!changed)return false;
+    this.state.evidence=evidence;
+    // A stale host assertion can no longer contribute to any aggregate trust gauge.
+    this.state.metrics={...defaultPerceptualEvidence().metrics};
+    this.refreshHash();
+    return true;
+  }
+
+  snapshot(){
+    this.expireTrustedExternalEvidence();
+    return structuredClone(this.state);
+  }
 
   /**
    * Accept one exact in-process token minted by SignedObservationAdmissionAuthority.
@@ -181,18 +214,20 @@ export class PerceptualEvidenceCompiler{
    */
   recordTrustedExternalEvidence(admission:TrustedObservationAdmission):PerceptualEvidenceRecord {
     if(!isTrustedObservationAdmission(admission))throw new TypeError('untrusted-observation-admission');
+    this.expireTrustedExternalEvidence();
     if(!Number.isSafeInteger(admission.expiresAt)||admission.expiresAt<=Date.now())throw new TypeError('expired-observation-admission');
     const id=`pe-host-${sha256Stable(admission.observationId)}`;
     const prior=this.state.evidence.find(row=>row.id===id);
     if(prior){
       if(prior.claim!==admission.claim||prior.at!==admission.at||prior.modality!==admission.modality||
-        prior.confidence01!==admission.confidence01||prior.expiresAt!==admission.expiresAt||
+        (prior.confidence01!==admission.confidence01&&prior.expired!==true&&prior.revoked!==true)||
         prior.hostReceipt?.signature!==admission.signedReceipt.signature||
         prior.hostReceipt?.keyId!==admission.signedReceipt.keyId||
+        prior.hostReceipt?.expiresAt!==admission.signedReceipt.expiresAt||
         !prior.parents.includes(`host-receipt:${admission.receiptDigest}`)) {
         throw new Error('host-observation-id-conflict');
       }
-      if(prior.revoked===true)return structuredClone(prior);
+      if(prior.revoked===true||prior.expired===true)return structuredClone(prior);
       if(prior.kind!=='observed'){
         const upgraded:PerceptualEvidenceRecord={...prior,kind:'observed',expiresAt:admission.expiresAt,hostReceipt:structuredClone(admission.signedReceipt)};
         const index=this.state.evidence.findIndex(row=>row.id===id);
@@ -281,6 +316,7 @@ export class PerceptualEvidenceCompiler{
     return structuredClone(record);
   }
   compile(input:PerceptualEvidenceInput){
+    this.expireTrustedExternalEvidence();
     const at=input.at;
     const semantic=input.semantic; const native=input.native; const temporal=input.temporal; const multi=input.multimodal;
     const records:PerceptualEvidenceRecord[]=[];
@@ -364,5 +400,5 @@ export class PerceptualEvidenceCompiler{
     this.refreshHash();
     return this.snapshot();
   }
-  summary(){return {scene:this.state.scene,activeQuery:this.state.activeQuery,metrics:this.state.metrics,evidence:this.state.evidence.slice(0,24),lastHash:this.state.lastHash};}
+  summary(){this.expireTrustedExternalEvidence();return {scene:this.state.scene,activeQuery:this.state.activeQuery,metrics:this.state.metrics,evidence:this.state.evidence.slice(0,24),lastHash:this.state.lastHash};}
 }
