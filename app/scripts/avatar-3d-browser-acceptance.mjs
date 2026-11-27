@@ -140,6 +140,24 @@ try {
   assert.equal(report.webgl.available, true, "Three.js canvas must expose an active WebGL context");
   assert.ok(report.webgl.drawingBufferWidth > 0 && report.webgl.drawingBufferHeight > 0, "WebGL drawing buffer must be non-empty");
   await page.waitForTimeout(1_500);
+
+  // Request a one-frame GPU readback from the live render loop. Draw-call counts
+  // alone can pass while the default framebuffer remains visually empty.
+  await canvas.evaluate((element) => {
+    element.dataset.avatarPixelAuditRequested = "true";
+  });
+  await page.waitForFunction(() => {
+    const element = document.querySelector('canvas[aria-label="3D-модель Курису, потяните для поворота"]');
+    return typeof element?.dataset.avatarPixelAudit === "string";
+  }, undefined, { timeout: 10_000 });
+  report.modelPixelAudit = await canvas.evaluate((element) => JSON.parse(element.dataset.avatarPixelAudit || "null"));
+  assert.ok(report.modelPixelAudit && report.modelPixelAudit.opaquePixelCount > 250,
+    "the model must contribute opaque pixels to the real WebGL framebuffer");
+  assert.ok(report.modelPixelAudit.bounds
+    && report.modelPixelAudit.bounds.width > report.modelPixelAudit.width * 0.2
+    && report.modelPixelAudit.bounds.height > report.modelPixelAudit.height * 0.2,
+  "the rendered avatar must occupy a meaningful part of the 3D canvas");
+
   assert.deepEqual(report.pageErrors, [], "3D avatar emitted an uncaught browser exception");
   assert.deepEqual(report.shaderErrors, [], "3D avatar emitted a WebGL shader/program compilation error");
   const glbFailures = [...report.failedRequests, ...report.failedResponses].filter((item) => /\.glb(?:$|\?)/i.test(item.url));
