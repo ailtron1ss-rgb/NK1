@@ -115,7 +115,7 @@ const invalidConfidence = await authority.admit(signedReceipt({
   nonce: 'nonce-invalid-confidence-0000001',
 }));
 assert.equal(invalidConfidence.accepted, false);
-assert.equal(invalidConfidence.reason, 'receipt-invalid');
+assert.equal(invalidConfidence.reason, 'invalid-receipt');
 
 // Accessors and Proxies must be rejected without invoking caller traps.
 let getterInvoked = false;
