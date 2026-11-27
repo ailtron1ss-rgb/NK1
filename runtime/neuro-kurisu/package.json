@@ -1,9 +1,9 @@
 {
-  "name": "neuro-kurisu-organism-evolution",
+  "name": "neurocore-runtime",
   "version": "35.90.0",
   "private": true,
   "type": "module",
-  "description": "Autonomous artificial-organism research runtime with unified neural substrate, causal memory, embodied grounding, active information gain, adaptive world-model routing, counterfactual verification, developmental autonomy and persistent life continuity.",
+  "description": "NeuroCore canonical cognitive organism runtime — persistent memory, cognitive cycle, world model, agency, embodied control and recovery.",
   "engines": {
     "node": ">=22.12.0",
     "npm": ">=10.8.0"
