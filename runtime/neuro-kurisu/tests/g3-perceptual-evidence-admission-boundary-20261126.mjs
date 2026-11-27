@@ -25,6 +25,27 @@ const replayed = compiler.recordExternalEvidence({
 assert.deepEqual(compiler.snapshot(), beforeReplay, 'replaying an identical external event must not inflate counters or metrics');
 assert.deepEqual(replayed, callerClaim, 'replay must return the original derived row');
 
+// Numeric coercion and saturation are not acceptable at an untrusted producer boundary.
+assert.throws(
+  () => compiler.recordExternalEvidence({
+    at: 1_800_000_000_001,
+    claim: 'string confidence must not be coerced',
+    confidence01: '0.99',
+    modality: 'sensor',
+  }),
+  /external-perceptual-evidence-confidence-invalid/,
+);
+assert.throws(
+  () => compiler.recordExternalEvidence({
+    at: 1_800_000_000_001,
+    claim: 'out-of-range confidence must not be saturated',
+    confidence01: 1.01,
+    modality: 'sensor',
+  }),
+  /external-perceptual-evidence-confidence-invalid/,
+);
+
+
 const forged = new PerceptualEvidenceCompiler();
 forged.restore({
   version: 1,
