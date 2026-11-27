@@ -22,7 +22,7 @@ const EXPRESSION_CHANNELS = [
 export const LIVE2D_CHANNELS = ["headRoll", "gazeX", "gazeY"] as const;
 export const SVG_CHANNELS = ["torsoYaw", "torsoPitch", "headYaw", "headPitch", "headRoll", "gazeX", "gazeY", "breath"] as const;
 export const SPRITE_CHANNELS = [] as const;
-export const VRM3D_CHANNELS = ["torsoYaw", "torsoPitch", "rootYaw", "leftElbow", "rightElbow", "leftHip", "rightHip", "leftKnee", "rightKnee", "leftAnkle", "rightAnkle", "leftWrist", "rightWrist", "leftHand", "rightHand", "leftFingers", "rightFingers", "gazeX", "gazeY"] as const;
+export const VRM3D_CHANNELS = ["torsoYaw", "torsoPitch", "rootYaw", "leftElbow", "rightElbow", "leftHip", "rightHip", "leftKnee", "rightKnee", "leftAnkle", "rightAnkle", "leftWrist", "rightWrist", "leftHand", "rightHand", "leftFingers", "rightFingers", "leftThumbCurl", "leftIndexCurl", "leftMiddleCurl", "leftRingCurl", "leftLittleCurl", "rightThumbCurl", "rightIndexCurl", "rightMiddleCurl", "rightRingCurl", "rightLittleCurl", "gazeX", "gazeY"] as const;
 
 export const DEFAULT_RENDERER_MANIFESTS: readonly BodyRendererCapabilityManifest[] = [
   {
@@ -99,7 +99,7 @@ export const DEFAULT_RENDERER_MANIFESTS: readonly BodyRendererCapabilityManifest
     supportsClothingLayers: false,
     supportsPhysics: true,
     joints: ["head", "neck", "hips", "leftUpperArm", "rightUpperArm", "spine", "leftLowerArm", "rightLowerArm", "leftUpperLeg", "rightUpperLeg", "leftLowerLeg", "rightLowerLeg", "leftFoot", "rightFoot", "leftHand", "rightHand", "leftThumbMetacarpal", "leftThumbProximal", "leftThumbDistal", "leftIndexProximal", "leftIndexIntermediate", "leftIndexDistal", "leftMiddleProximal", "leftMiddleIntermediate", "leftMiddleDistal", "leftRingProximal", "leftRingIntermediate", "leftRingDistal", "leftLittleProximal", "leftLittleIntermediate", "leftLittleDistal", "rightThumbMetacarpal", "rightThumbProximal", "rightThumbDistal", "rightIndexProximal", "rightIndexIntermediate", "rightIndexDistal", "rightMiddleProximal", "rightMiddleIntermediate", "rightMiddleDistal", "rightRingProximal", "rightRingIntermediate", "rightRingDistal", "rightLittleProximal", "rightLittleIntermediate", "rightLittleDistal"],
-    notes: "The pinned v5 GLB is externally hosted and has not passed visual, Android-device or redistribution-license acceptance; user-imported VRM/GLB is available, but the default renderer is not production-ready. Normalized drive covers head/neck, torso/root yaw and pitch, elbows, hips, knees, ankle-to-foot pitch, wrist/palm rotation, and per-finger curl when the imported VRM exposes the optional standard humanoid finger joints; each optional joint is resolved per model before writing.",
+    notes: "The pinned v5 GLB is externally hosted and has not passed visual, Android-device or redistribution-license acceptance; user-imported VRM/GLB is available, but the default renderer is not production-ready. Normalized drive covers head/neck, torso/root yaw and pitch, elbows, hips, knees, ankle-to-foot pitch, wrist/palm rotation, and per-finger curl and pointing gestures when the imported VRM exposes the optional standard humanoid finger joints; each optional joint is resolved per model before writing.",
   },
 ];
 
