@@ -187,7 +187,8 @@ export class PerceptualEvidenceCompiler{
       if(prior.claim!==admission.claim||prior.at!==admission.at||prior.modality!==admission.modality||
         prior.confidence01!==admission.confidence01||prior.expiresAt!==admission.expiresAt||
         prior.hostReceipt?.signature!==admission.signedReceipt.signature||
-        prior.hostReceipt?.keyId!==admission.signedReceipt.keyId) {
+        prior.hostReceipt?.keyId!==admission.signedReceipt.keyId||
+        !prior.parents.includes(`host-receipt:${admission.receiptDigest}`)) {
         throw new Error('host-observation-id-conflict');
       }
       if(prior.revoked===true)return structuredClone(prior);
