@@ -161,12 +161,9 @@ function verifyReceiptSignature(
     if(algorithm==='ed25519'&&signature.length!==64)return false;
     // createPublicKey() rejects an already-public KeyObject in Node. Reuse it
     // directly; parse PEM/DER material only when the host resolver returns bytes/text.
-    const isPublicKeyObject=typeof material==='object'&&material!==null&&
-      'type' in material&&(material as {type?:unknown}).type==='public'&&
-      'asymmetricKeyType' in material;
-    const key=isPublicKeyObject
-      ?material as ReturnType<typeof createPublicKey>
-      :createPublicKey(material as string|Buffer);
+    const key=typeof material==='string'||Buffer.isBuffer(material)
+      ?createPublicKey(material)
+      :material as ReturnType<typeof createPublicKey>;
     if(key.type!=='public')return false;
     const keyType=key.asymmetricKeyType;
     if(algorithm==='ed25519'&&keyType!=='ed25519')return false;
