@@ -1,4 +1,6 @@
+import { BufferAttribute } from "three";
 import type { AvatarNeuroAdaptiveFrame } from "./avatarNeuroAdaptiveDynamics.ts";
+import { createAvatarSecondaryParticleState, stepAvatarSecondaryParticleState, type AvatarSecondaryParticleState } from "./avatarSecondaryParticleSolver.ts";
 
 export type AvatarSecondaryVertexRole = "hair" | "garment";
 
@@ -34,12 +36,17 @@ export interface AvatarSecondaryVertexBinding {
   clonedMaterials: any[];
   uniforms: AvatarSecondaryVertexUniforms;
   role: AvatarSecondaryVertexRole;
+  originalGeometry?: any;
+  patchedGeometry?: any;
+  originalFrustumCulled?: boolean;
+  particleState?: AvatarSecondaryParticleState;
 }
 
 interface VertexProfile {
   role: AvatarSecondaryVertexRole;
   amplitudeWorld: number;
   side: -1 | 0 | 1;
+  pinRatio: number;
 }
 
 interface ShaderLike {
@@ -95,7 +102,7 @@ function resolveProfile(rawName: unknown): VertexProfile | null {
     const amplitudeWorld = name.startsWith("hairlonglock")
       ? 0.012
       : name.startsWith("hairfrontstrand") ? 0.007 : 0.0055;
-    return { role: "hair", amplitudeWorld, side };
+    return { role: "hair", amplitudeWorld, side, pinRatio: name.startsWith("hairlonglock") ? 0.28 : 0.24 };
   }
   const garment = name === "clothskirt"
     || name === "clothtieblade"
@@ -105,6 +112,7 @@ function resolveProfile(rawName: unknown): VertexProfile | null {
       role: "garment",
       amplitudeWorld: name === "clothtieblade" ? 0.0045 : 0.007,
       side: 0,
+      pinRatio: name === "clothskirt" ? 0.18 : name === "clothtieblade" ? 0.16 : 0.22,
     };
   }
   return null;
@@ -145,6 +153,7 @@ function makeUniforms(
 export function injectAvatarSecondaryVertexShader(
   shader: ShaderLike,
   uniforms: AvatarSecondaryVertexUniforms | Record<string, AvatarSecondaryVertexUniform>,
+  particleDriven = false,
 ): boolean {
   if (!shader || typeof shader.vertexShader !== "string"
     || !shader.uniforms || typeof shader.uniforms !== "object") return false;
@@ -175,6 +184,7 @@ export function injectAvatarSecondaryVertexShader(
 
   const declarations = `
 #define ${SHADER_MARKER}
+${particleDriven ? "attribute vec3 nk1SecondaryOffset;\\n" : ""}
 uniform float nk1SecondaryTime;
 uniform float nk1SecondaryMotion;
 uniform float nk1SecondaryGait;
@@ -211,6 +221,7 @@ uniform float nk1SecondaryHair;
 }
 `;
   let vertexShader = shader.vertexShader.replace(commonAnchor, commonAnchor + declarations);
+  if (particleDriven) vertexShader = vertexShader.replace(skinningAnchor, "transformed += nk1SecondaryOffset;\\n" + skinningAnchor);
   vertexShader = vertexShader.replace(skinningAnchor, skinningAnchor + displacement);
   if (vertexShader === shader.vertexShader) return false;
 
@@ -222,6 +233,7 @@ uniform float nk1SecondaryHair;
 function patchMaterial(
   material: any,
   uniforms: AvatarSecondaryVertexUniforms,
+  particleDriven = false,
 ): any | null {
   const isNk1Toon = material?.isMeshToonMaterial === true || material?.userData?.nk1ToonConverted === true;
   if (!material || (material.isMeshStandardMaterial !== true && material.isMeshPhysicalMaterial !== true && !isNk1Toon)
@@ -239,7 +251,7 @@ function patchMaterial(
     : () => undefined;
   clone.onBeforeCompile = function (shader: ShaderLike, renderer: unknown) {
     originalCompile.call(this, shader, renderer);
-    const patched = injectAvatarSecondaryVertexShader(shader, uniforms);
+    const patched = injectAvatarSecondaryVertexShader(shader, uniforms, particleDriven);
     if (!patched) {
       this.userData = { ...(this.userData ?? {}), nk1SecondaryVertexShaderUnsupported: true };
     }
@@ -247,7 +259,7 @@ function patchMaterial(
   const originalProgramKey = typeof clone.customProgramCacheKey === "function"
     ? clone.customProgramCacheKey.bind(clone)
     : () => "";
-  clone.customProgramCacheKey = () => originalProgramKey() + "|" + SHADER_MARKER;
+  clone.customProgramCacheKey = () => originalProgramKey() + "|" + SHADER_MARKER + (particleDriven ? "|XPBD_PARTICLE" : "|GPU_SWAY");
   clone.userData = {
     ...(clone.userData ?? {}),
     nk1SecondaryVertexDynamics: true,
@@ -255,6 +267,38 @@ function patchMaterial(
   };
   clone.needsUpdate = true;
   return clone;
+}
+
+function resolveParticlePinMask(
+  geometry: any,
+  position: any,
+  minY: number,
+  height: number,
+  profile: VertexProfile,
+): Float32Array | null {
+  const count = position?.count;
+  if (!Number.isInteger(count) || count < 6 || count > 768) return null;
+  const explicit = geometry.attributes?.nk1SecondaryPin ?? geometry.getAttribute?.("nk1SecondaryPin");
+  const mask = new Float32Array(count);
+  const explicitArray = explicit?.array;
+  const useExplicit = explicit?.count === count && explicitArray && explicitArray.length >= count;
+  for (let index = 0; index < count; index += 1) {
+    if (useExplicit) {
+      const value = Number(explicitArray[index]);
+      if (!Number.isFinite(value)) return null;
+      mask[index] = value >= 0.5 ? 1 : 0;
+      continue;
+    }
+    const y = typeof position.getY === "function"
+      ? Number(position.getY(index))
+      : Number(position.array?.[index * 3 + 1]);
+    if (!Number.isFinite(y)) return null;
+    // The canonical v5 has detached semantic meshes but no authored pin groups.
+    // Pin a narrow attachment band by vertical bounds; an exported pin attribute
+    // takes precedence whenever the next authored asset provides one.
+    mask[index] = y >= minY + height * (1 - profile.pinRatio) ? 1 : 0;
+  }
+  return mask;
 }
 
 /**
@@ -293,17 +337,56 @@ export function attachAvatarSecondaryVertexDynamics(
     const originalMaterials = Array.isArray(originalMaterial) ? originalMaterial : [originalMaterial];
     if (!originalMaterials.length) return;
     const uniforms = makeUniforms(profile, String(node.name), minY, height, rootScale);
+    const particlePins = resolveParticlePinMask(geometry, position, minY, height, profile);
+    const particleState = particlePins ? createAvatarSecondaryParticleState({
+      positions: position.array ?? Array.from({ length: position.count * 3 }, (_, index) => {
+        const vertex = Math.floor(index / 3);
+        const axis = index % 3;
+        return typeof position.getX === "function"
+          ? axis === 0 ? position.getX(vertex) : axis === 1 ? position.getY(vertex) : position.getZ(vertex)
+          : 0;
+      }),
+      indices: geometry.index?.array ?? null,
+      pinnedMask: particlePins,
+      role: profile.role,
+    }) : null;
+    let patchedGeometry: any = null;
+    if (particleState && typeof geometry.clone === "function") {
+      try {
+        patchedGeometry = geometry.clone();
+        if (!patchedGeometry || patchedGeometry === geometry || typeof patchedGeometry.setAttribute !== "function") patchedGeometry = null;
+        else patchedGeometry.setAttribute("nk1SecondaryOffset", new BufferAttribute(particleState.offsets, 3));
+      } catch {
+        patchedGeometry?.dispose?.();
+        patchedGeometry = null;
+      }
+    }
+    const activeParticleState = patchedGeometry ? particleState : undefined;
     const clonedMaterials: any[] = [];
     const patchedMaterials = originalMaterials.map((material: any) => {
-      const patched = patchMaterial(material, uniforms);
+      const patched = patchMaterial(material, uniforms, !!activeParticleState);
       if (patched) clonedMaterials.push(patched);
       return patched ?? material;
     });
-    if (clonedMaterials.length === 0) return;
+    if (clonedMaterials.length === 0) {
+      patchedGeometry?.dispose?.();
+      return;
+    }
 
     const patchedMaterial = Array.isArray(originalMaterial) ? patchedMaterials : patchedMaterials[0];
+    const originalFrustumCulled = node.frustumCulled;
+    if (activeParticleState && patchedGeometry) {
+      node.geometry = patchedGeometry;
+      node.frustumCulled = false;
+    }
     node.material = patchedMaterial;
-    bindings.push({ mesh: node, originalMaterial, patchedMaterial, clonedMaterials, uniforms, role: profile.role });
+    bindings.push({
+      mesh: node, originalMaterial, patchedMaterial, clonedMaterials, uniforms, role: profile.role,
+      originalGeometry: activeParticleState ? geometry : undefined,
+      patchedGeometry: activeParticleState ? patchedGeometry : undefined,
+      originalFrustumCulled: activeParticleState ? originalFrustumCulled : undefined,
+      particleState: activeParticleState,
+    });
   });
   return bindings;
 }
@@ -362,6 +445,11 @@ export function updateAvatarSecondaryVertexDynamics(
     binding.uniforms.nk1SecondaryGait.value = drive.gait;
     binding.uniforms.nk1SecondaryBreath.value = drive.breath;
     binding.uniforms.nk1SecondaryYaw.value = drive.yaw;
+    if (binding.particleState && binding.patchedGeometry) {
+      stepAvatarSecondaryParticleState(binding.particleState, frame);
+      const offsetAttribute = binding.patchedGeometry.attributes?.nk1SecondaryOffset;
+      if (offsetAttribute) offsetAttribute.needsUpdate = true;
+    }
   }
 }
 
@@ -375,6 +463,13 @@ export function disposeAvatarSecondaryVertexDynamics(
     if (binding.mesh?.material === binding.patchedMaterial) {
       binding.mesh.material = binding.originalMaterial;
     }
+    if (binding.patchedGeometry && binding.mesh?.geometry === binding.patchedGeometry) {
+      binding.mesh.geometry = binding.originalGeometry;
+    }
+    if (binding.particleState) {
+      binding.mesh.frustumCulled = binding.originalFrustumCulled;
+    }
+    binding.patchedGeometry?.dispose?.();
     for (const material of binding.clonedMaterials ?? []) {
       if (material && typeof material.dispose === "function") material.dispose();
     }
