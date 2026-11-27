@@ -62,6 +62,7 @@ test("samples actual GLB JOINTS_0/WEIGHTS_0 and reports per-mesh joint coverage"
   assert.equal(mesh.meshName, "MESH_CLOTH_labcoat_main");
   assert.equal(mesh.vertexCount, 3);
   assert.equal(mesh.sampledVertices, 3);
+  assert.equal(mesh.boundsSampledVertices, 3);
   assert.deepEqual(mesh.jointCoverage.map((item) => item.jointIndex), [1, 2]);
   assert.equal(mesh.jointCoverage[0].boneName, "leftShoulder");
   assert.equal(mesh.jointCoverage[0].coverage01, 2 / 3);
