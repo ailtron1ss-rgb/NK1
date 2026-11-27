@@ -14,7 +14,7 @@ import { applyVrmExpressionFrame, applyVrmFullBodyChannels, applyVrmNormalizedMo
 import { fingerprintAvatarModel } from "./avatar/avatarModelFingerprint";
 import { preflightAvatarModel } from "./avatar/avatarModelPreflight";
 import { disposeThreeObjectTree } from "./avatar/threeResourceDisposal";
-import { applyAnimeToonMaterials, createProceduralToonMaterial, getSharedAnimeGradientTexture } from "./avatar/threeToonMaterials";
+import { applyAnimeToonMaterials, getSharedAnimeGradientTexture } from "./avatar/threeToonMaterials";
 import { KURISU_HYBRID_MODEL } from "./avatar/avatarModelCatalog";
 import { resolveGlbMouthMorphWeights } from "./avatar/glbMouthMorphAdapter";
 import { resolveGlbFacialMorphWeights } from "./avatar/glbFacialMorphAdapter";
@@ -29,7 +29,6 @@ type Props = { frameTick: number; onFrameReceipt?: (receipt: AvatarPresentationR
 type Bone = { node: any; name: string; x: number; y: number; z: number };
 type Runtime = { scene:any; camera:any; renderer:any; body:any; loaded:any; vrm:any; vrmLookAtTarget:any; vrmLookAtFaceFront:any; vrmLookAtOffset:any; mixer:any; clips:any[]; clipName:string; activeClipAction:any; bones:Bone[]; yaw:number; dragX:number|null; mood:any; last:number };
 const clamp=(n:number,a:number,b:number)=>Math.max(a,Math.min(b,Number.isFinite(n)?n:0));
-const material = createProceduralToonMaterial;
 function disposeTree(root:any){const gradient=getSharedAnimeGradientTexture();disposeThreeObjectTree(root,gradient?[gradient]:[]);}
 function bonesOf(root:any):Bone[]{const out:Bone[]=[];root.traverse((node:any)=>{if(node.isBone)out.push({node,name:String(node.name||"").toLowerCase().replace(/[^a-z0-9]/g,""),x:node.rotation.x,y:node.rotation.y,z:node.rotation.z});});return out;}
 export function Avatar3DStage(props:Props){
