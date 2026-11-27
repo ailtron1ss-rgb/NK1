@@ -49,6 +49,7 @@ export interface AvatarSecondaryAssetAudit {
   totalBoneCount: number;
   recognizedBoneCount: number;
   unclassifiedBoneCount: number;
+  unclassifiedBoneNames: readonly string[];
   byRole: {
     hair: AvatarSecondaryRoleAudit;
     garment: AvatarSecondaryRoleAudit;
@@ -212,6 +213,12 @@ export function auditAvatarSecondaryAssetDescriptor(
   }
 
   const recognizedBoneCount = classified.length;
+  const recognizedIds = new Set(classified.map(({ bone }) => bone.id));
+  const excludedName = /^(root|armature|skeleton|hips|pelvis|spine|chest|neck|head|jaw|eye|face)/i;
+  const pinnedName = /(anchor|pinned|pinroot|base|root|attach)$/i;
+  const unclassifiedBoneNames = [...new Set(bones
+    .filter((bone) => !recognizedIds.has(bone.id) && !excludedName.test(bone.name) && !pinnedName.test(bone.name))
+    .map((bone) => bone.name))].slice(0, 24);
   const warnings: string[] = [];
   if (recognizedBoneCount === 0) warnings.push("no-secondary-bone-chains");
   if (byRole.hair.boneCount === 0) warnings.push("no-hair-secondary-bones");
@@ -229,6 +236,7 @@ export function auditAvatarSecondaryAssetDescriptor(
     totalBoneCount: bones.length,
     recognizedBoneCount,
     unclassifiedBoneCount: Math.max(0, bones.length - recognizedBoneCount),
+    unclassifiedBoneNames: Object.freeze(unclassifiedBoneNames),
     byRole,
     skinnedMeshCount: typeof input.skinnedMeshCount === "number" && Number.isFinite(input.skinnedMeshCount)
       ? Math.max(0, Math.floor(input.skinnedMeshCount)) : 0,
