@@ -73,7 +73,10 @@ const CHANNELS = new Set<BodyChannel>([
   "headYaw", "headPitch", "headRoll", "torsoYaw", "torsoPitch",
   "leftShoulder", "leftElbow", "leftWrist", "rightShoulder", "rightElbow", "rightWrist",
   "leftHip", "leftKnee", "leftAnkle", "rightHip", "rightKnee", "rightAnkle",
-  "leftHand", "rightHand", "leftFingers", "rightFingers", "gazeX", "gazeY", "breath", "rootYaw",
+  "leftHand", "rightHand", "leftFingers", "rightFingers",
+  "leftThumbCurl", "leftIndexCurl", "leftMiddleCurl", "leftRingCurl", "leftLittleCurl",
+  "rightThumbCurl", "rightIndexCurl", "rightMiddleCurl", "rightRingCurl", "rightLittleCurl",
+  "gazeX", "gazeY", "breath", "rootYaw",
 ]);
 
 const rejected = (reason: string): MotorFrameMappingResult => ({
