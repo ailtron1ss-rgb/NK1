@@ -398,6 +398,12 @@ test("declared VRM 3D channels match the full-body bone applier", () => {
   for (const channel of ["leftWrist", "rightWrist", "leftHand", "rightHand", "leftFingers", "rightFingers"]) {
     assert.ok(declared.has(channel), `${channel} is backed by normalized hand/finger joints and must be declared`);
   }
+  for (const channel of [
+    "leftThumbCurl", "leftIndexCurl", "leftMiddleCurl", "leftRingCurl", "leftLittleCurl",
+    "rightThumbCurl", "rightIndexCurl", "rightMiddleCurl", "rightRingCurl", "rightLittleCurl",
+  ]) {
+    assert.ok(declared.has(channel), `${channel} is backed by normalized digit joints and must be declared`);
+  }
   const vrmManifest = DEFAULT_RENDERER_MANIFESTS.find((entry) => entry.rendererId === "nk1-three-vrm3d");
   assert.ok(vrmManifest);
   assert.ok(vrmManifest.joints.includes("hips") && vrmManifest.joints.includes("leftFoot") && vrmManifest.joints.includes("rightFoot"),
