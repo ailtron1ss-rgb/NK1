@@ -1,55 +1,115 @@
-# Neuro-Kurisu 7.1.0 — запуск на POCO M7 Pro 5G с нуля
+# NeuroCore — установка и первый запуск в Termux на POCO M7 Pro 5G
 
-## 1. Подготовка
+**Целевая среда:** Android / Termux, ARM64, телефон среднего класса.  
+**Ветка:** `neurocore-unified/main`.  
+**Toolchain проекта:** Node.js 24.x, npm ≥ 10.8, Python 3.11.x. Точные требования закреплены в `.nvmrc` и `.python-version`.
 
-Установи Termux и Termux:API из одного источника подписи. Положи ZIP в `Internal storage/Download/`.
+> **Статус на 27.11.2026:** это инструкция для отдельного checkout продуктовой ветки. Она не является доказательством успешной установки на устройстве: Android/Termux acceptance ещё не пройден. Не удаляй и не переименовывай существующие папки NK1/NKOne. Установка ниже создаёт отдельный каталог `~/NK1-NEUROCORE`.
 
-## 2. Одна установка
+## 1. Установить базовые пакеты
 
-В Termux вставь целиком:
-
-```bash
-termux-setup-storage
-pkg update -y
-pkg upgrade -y
-pkg install nodejs-lts npm unzip curl coreutils bash -y
-pkg install termux-api -y
-mkdir -p "$HOME/Neuro-Kurisu"
-rm -rf "$HOME/Neuro-Kurisu/app"
-unzip -q "$HOME/storage/downloads/Neuro_Kurisu_Evolution_7.1.0_P21_COGNITIVE_RESILIENCE_POCO.zip" -d "$HOME/Neuro-Kurisu/app"
-cd "$HOME/Neuro-Kurisu/app"
-npm ci --ignore-scripts
-```
-
-## 3. Запуск
+Открой Termux и выполни:
 
 ```bash
-cd "$HOME/Neuro-Kurisu/app"
-export NEURO_PHONE_MODE=true
-export NEURO_INTERVAL_MS=30000
-npm start
+pkg update -y && pkg upgrade -y
+pkg install git curl python nodejs-lts -y
 ```
 
-Открыть: `http://127.0.0.1:3000`
-
-## 4. Проверка
+Проверь версии:
 
 ```bash
-curl -s http://127.0.0.1:3000/api/health; echo
-curl -s http://127.0.0.1:3000/api/metrics; echo
-curl -s http://127.0.0.1:3000/api/organism/time; echo
-curl -s http://127.0.0.1:3000/api/organism/resilience; echo
+node -v
+npm -v
+python3 --version
 ```
 
-## 5. Общение
+Требуется:
+- Node.js **24.x** (не Node 22/26);
+- npm **10.8.0 или новее**;
+- Python **3.11.x**.
 
-Открой интерфейс и используй чат. Закрывать и снова запускать Termux можно в любое время. Не нужно вручную задавать дату или время: P20 Temporal Continuity восстанавливает wall-clock gap по сохранённому состоянию.
+Node pin: `24` в `.nvmrc`. Python pin: `3.11` в `.python-version`. Если установленная версия не совпадает, **не продолжай установку**: сначала переключи Node через свой NVM на 24.x и установи отдельный Python 3.11. Скрипты старта намеренно откажутся запускать другой toolchain. Наличие пакета `nodejs-lts` само по себе не гарантирует нужную major-версию.
 
-## 6. Автономный тест устройства
+## 2. Получить отдельную копию проекта
 
 ```bash
-cd "$HOME/Neuro-Kurisu/app"
-NK_DURATION_HOURS=24 node scripts/device-long-run.mjs
+cd "$HOME"
+git clone --branch neurocore-unified/main --single-branch https://github.com/ailtron1ss-rgb/NK1.git NK1-NEUROCORE
+cd "$HOME/NK1-NEUROCORE"
+git status --short
+git branch --show-current
 ```
 
-Для 72 и 168 часов поменяй число часов. Не считай эти прогоны заменой реального Android lifecycle validation: OEM battery management и Android background restrictions остаются фактором устройства.
+Последняя команда должна показать `neurocore-unified/main`. Это отдельная продуктовая ветка; не клонируй её поверх своего рабочего дерева NK1.
+
+## 3. Установить зависимости
+
+```bash
+npm run install:all
+npm run doctor
+```
+
+`install:all` устанавливает lockfile-зависимости для двух рабочих областей: `app` и `runtime/neuro-kurisu`. Не удаляй lock-файлы и не запускай `npm install` отдельно в случайных подпапках.
+
+Если установка падает на native binary / compiler / unsupported platform, сохрани последние 100 строк ошибки. Не обходи ошибку установкой случайных версий пакетов: Termux пока не входит в подтверждённые CI-платформы.
+
+## 4. Запустить интегрированное приложение в режиме разработки
+
+Сначала используй dev-режим, не production quickstart:
+
+```bash
+cd "$HOME/NK1-NEUROCORE"
+npm run dev
+```
+
+Запуск поднимает три сервиса:
+- интерфейс: `http://127.0.0.1:8080/`;
+- когнитивное runtime: `http://127.0.0.1:3310/health`;
+- research bridge: `http://127.0.0.1:8765/health`.
+
+Открой на том же телефоне:
+
+```text
+http://127.0.0.1:8080/
+```
+
+Для проверки в другой вкладке Termux (пока первая сессия работает):
+
+```bash
+curl -fsS http://127.0.0.1:3310/health
+curl -fsS http://127.0.0.1:8765/health
+```
+
+Остановка всех трёх процессов: `Ctrl+C` в сессии запуска. Dev-сервер использует loopback для runtime/research APIs; не выставляй эти порты в публичную сеть.
+
+## 5. Production quickstart — только после прохождения CI
+
+Когда exact-head CI и локальный smoke на устройстве будут PASS, можно использовать:
+
+```bash
+npm run quickstart
+```
+
+Он проверяет pinned toolchain, при необходимости устанавливает зависимости, собирает production UI, запускает doctor и затем поднимает gateway. Это тяжелее dev-режима и на телефоне может потребовать больше RAM и времени. В текущем состоянии проекта не используй его как замену проверке `npm run dev`.
+
+## 6. Если что-то сломалось
+
+Собери диагностический вывод:
+
+```bash
+node -v
+npm -v
+python3 --version
+git status --short
+git rev-parse HEAD
+npm run doctor
+```
+
+Для отчёта приложи полный текст первой ошибки и последние 100 строк вывода установки/запуска. Не отправляй содержимое `.env`, ключи, токены или личные данные из `.super-state`.
+
+## 7. Текущие ограничения
+
+- CI на GitHub не заменяет запуск на Android: реальный Termux ещё не проверен.
+- Нет подтверждённых замеров RAM, нагрева, расхода батареи и длительной работы на POCO.
+- Локальная LLM не запускается автоматически; провайдер подключается отдельно к loopback llama.cpp после проверки конфигурации.
+- Не считать 3D-тело, voice, модельный inference или автономное поведение принятыми на телефоне, пока они не проверены на устройстве.
