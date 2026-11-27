@@ -125,6 +125,45 @@ const skinWeightAudit = auditGlbSkinWeights(document, binaryChunk, {
   maxSamplesPerPrimitive: 2048,
   maxSkinnedNodes: 128,
 });
+const secondaryVertexSwayMeshNames = [
+  "HAIR_long_lock_L", "HAIR_long_lock_R",
+  "HAIR_front_strand_L", "HAIR_front_strand_R",
+  "HAIR_layer_L1", "HAIR_layer_L2", "HAIR_layer_R1", "HAIR_layer_R2",
+  "CLOTH_skirt", "CLOTH_tie_blade", "CLOTH_labcoat_main",
+];
+const secondaryVertexSwayAssetAudit = secondaryVertexSwayMeshNames.map((name) => {
+  const node = meshNodeInventory.find((entry) => entry.nodeName === name);
+  assert.ok(node, `Expected v5 secondary-sway mesh node ${name}`);
+  assert.ok(Number.isInteger(node.skinIndex), `Secondary-sway mesh ${name} must be skinned`);
+  const mesh = document.meshes?.[node.meshIndex];
+  const primitives = Array.isArray(mesh?.primitives) ? mesh.primitives : [];
+  assert.ok(primitives.length > 0, `Secondary-sway mesh ${name} must have primitives`);
+  assert.ok(primitives.some((primitive) => Number.isInteger(primitive?.attributes?.POSITION)),
+    `Secondary-sway mesh ${name} must have a POSITION accessor`);
+  const materialIndices = primitives.map((primitive) => primitive?.material).filter(Number.isInteger);
+  const usesUnlit = materialIndices.some((index) =>
+    Boolean(document.materials?.[index]?.extensions?.KHR_materials_unlit));
+  assert.equal(usesUnlit, false, `Secondary-sway mesh ${name} must keep a PBR-compatible material`);
+  const skinAudit = skinWeightAudit.meshAudits.find((entry) => entry.nodeName === name);
+  assert.ok(skinAudit, `Secondary-sway mesh ${name} must be included in the skin-weight audit`);
+  assert.ok(skinAudit.localBounds && skinAudit.localBounds.size[1] > 0.0001,
+    `Secondary-sway mesh ${name} must have finite non-zero vertical bounds`);
+  assert.ok(skinAudit.weightedSampleVertices > 0,
+    `Secondary-sway mesh ${name} must contain sampled weighted vertices`);
+  assert.equal(skinAudit.unweightedSampleVertices, 0,
+    `Secondary-sway mesh ${name} must not introduce unweighted samples`);
+  return {
+    name,
+    nodeIndex: node.nodeIndex,
+    meshIndex: node.meshIndex,
+    skinIndex: node.skinIndex,
+    primitiveCount: primitives.length,
+    materialIndices,
+    sampledVertices: skinAudit.sampledVertices,
+    verticalExtent: skinAudit.localBounds.size[1],
+    jointCoverage: skinAudit.jointCoverage.slice(0, 4),
+  };
+});
 const garmentSkinWeightInventory = skinWeightAudit.meshAudits
   .filter((mesh) => /cloth|coat|sleeve|skirt|tie|hair/i.test(mesh.nodeName + " " + mesh.meshName))
   .map((mesh) => ({
@@ -156,6 +195,7 @@ console.log("HOSTED_KURISU_ASSET=PASS", JSON.stringify({
     skinJointNames,
     meshNodeInventory,
     meshNames,
+    secondaryVertexSwayAssetAudit,
     materialNames,
     skinnedMeshes: secondaryAudit.skinnedMeshCount,
     morphMeshes: secondaryAudit.morphMeshCount,
