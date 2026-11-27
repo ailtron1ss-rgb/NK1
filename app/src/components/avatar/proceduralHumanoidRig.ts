@@ -479,23 +479,25 @@ export function createProceduralHumanoidRig(scene: THREE.Scene): ProceduralHuman
     },
     solveArmTarget(side, target) {
       const arm = armRoots[side];
-      const chestWorld = new THREE.Vector3();
-      arm.clavicle.getWorldPosition(chestWorld);
-      const targetWorld = target.clone();
-      const localTarget = root.worldToLocal(targetWorld);
+      root.updateMatrixWorld(true);
+      const chestWorld = arm.clavicle.getWorldPosition(new THREE.Vector3());
+      const localTarget = root.worldToLocal(target.clone());
       const localStart = root.worldToLocal(chestWorld.clone());
-      const upperLength = 0.34;
-      const lowerLength = 0.29;
+      const outward = side === "left" ? -1 : 1;
       const result = solveTwoBonePlanarIK(
-        { x: localStart.x, y: localStart.y },
-        { x: localTarget.x, y: localTarget.y },
-        upperLength,
-        lowerLength,
-        side === "left" ? -1 : 1,
+        { x: outward * localStart.x, y: localStart.y },
+        { x: outward * localTarget.x, y: localTarget.y },
+        0.34,
+        0.29,
+        1,
       );
-      rig.setJoint(side + "UpperArm", "z", result.shoulder);
-      rig.setJoint(side + "Forearm", "z", (side === "left" ? -1 : 1) * result.elbowFlex);
-      return result;
+      rig.setJoint(side + "UpperArm", "z", outward * result.shoulder);
+      rig.setJoint(side + "Forearm", "z", outward * result.elbowFlex);
+      return {
+        ...result,
+        elbow: { x: outward * result.elbow.x, y: result.elbow.y },
+        endEffector: { x: outward * result.endEffector.x, y: result.endEffector.y },
+      };
     },
     setJoint(name, axis, radians) {
       const bone = bones[name];
@@ -514,11 +516,8 @@ export function createProceduralHumanoidRig(scene: THREE.Scene): ProceduralHuman
     },
     dispose() {
       root.removeFromParent();
-      for (const mesh of meshes) {
-        mesh.geometry.dispose();
-      }
-      sphere.dispose();
-      sphereFine.dispose();
+      const geometries = new Set(meshes.map((mesh) => mesh.geometry));
+      for (const geometry of geometries) geometry.dispose();
       for (const item of materials) item.dispose();
     },
   };
