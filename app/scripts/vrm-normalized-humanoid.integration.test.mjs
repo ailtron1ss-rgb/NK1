@@ -206,3 +206,51 @@ for (const metaVersion of ["0", "1"]) {
     }
   });
 }
+
+
+for (const metaVersion of ["0", "1"]) {
+  test(`real three-vrm ${metaVersion}.x applies independent finger curls and aggregate fallback`, () => {
+    const fixture = createSyntheticHumanoid(metaVersion);
+    const humanoid = new VRMHumanoid(fixture.humanoidNodes, { autoUpdateHumanBones: false });
+    const vrm = {
+      meta: { metaVersion },
+      humanoid,
+      expressionManager: { resetValues() {} },
+    };
+
+    configureVrmForNk1NormalizedMotorDrive(vrm);
+    const driven = applyVrmFullBodyChannels(vrm, {
+      leftFingers: 0.25,
+      leftIndexCurl: -0.8,
+      leftMiddleCurl: 0,
+      leftRingCurl: 0.6,
+      rightFingers: -0.5,
+      rightThumbCurl: 0.4,
+      rightLittleCurl: -0.2,
+    });
+    assert.ok(driven.controlledBones.includes("leftIndexProximal"));
+    assert.equal(driven.controlledBones.includes("leftMiddleProximal"), false,
+      "an explicit zero keeps the selected finger open instead of inheriting the hand curl");
+    assert.ok(driven.controlledBones.includes("leftRingProximal"));
+    assert.ok(driven.controlledBones.includes("leftLittleProximal"));
+    assert.ok(driven.controlledBones.includes("rightThumbMetacarpal"));
+    assert.ok(driven.controlledBones.includes("rightLittleProximal"));
+
+    humanoid.update();
+    assert.ok(Math.abs(fixture.nodes.leftIndexProximal.node.rotation.x - (-0.68 * 0.64)) < 1e-6);
+    assert.ok(Math.abs(fixture.nodes.leftMiddleProximal.node.rotation.x) < 1e-9);
+    assert.ok(Math.abs(fixture.nodes.leftRingProximal.node.rotation.x - (0.51 * 0.64)) < 1e-6);
+    assert.ok(Math.abs(fixture.nodes.leftLittleProximal.node.rotation.x - (0.2125 * 0.58)) < 1e-6);
+    assert.ok(Math.abs(fixture.humanoidNodes.rightThumbMetacarpal.node.rotation.x - (0.34 * 0.22)) < 1e-6);
+    assert.ok(Math.abs(fixture.nodes.rightLittleProximal.node.rotation.x - (-0.17 * 0.58)) < 1e-6);
+
+    const neutral = applyVrmFullBodyChannels(vrm, {});
+    assert.equal(neutral.applied, false);
+    humanoid.update();
+    for (const bone of fixture.rawFingerBones) {
+      assert.ok(Math.abs(bone.rotation.x) < 1e-9);
+      assert.ok(Math.abs(bone.rotation.y) < 1e-9);
+      assert.ok(Math.abs(bone.rotation.z) < 1e-9);
+    }
+  });
+}
