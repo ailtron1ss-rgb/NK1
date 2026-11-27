@@ -1,21 +1,24 @@
 import assert from 'node:assert/strict';
 import { generateKeyPairSync, sign } from 'node:crypto';
 import { SignedObservationAdmissionAuthority, isTrustedObservationAdmission, signedObservationReceiptBytes } from '../src/organism/system/SignedObservationAdmissionAuthority.ts';
-import { stableJson } from '../src/organism/core/StableSerialization.ts';
 import { EmbodimentSubsystemRuntime } from '../src/organism/core/EmbodimentSubsystemRuntime.ts';
 import { OrganismCore } from '../src/organism/core/OrganismCore.ts';
 import { MemoryStateStore } from '../src/organism/persistence/MemoryStateStore.ts';
 
 const { publicKey, privateKey } = generateKeyPairSync('ed25519');
 let now = Date.now();
-const consumedNonces = new Set();
+const consumedNonces = new Map();
 const revokedTickets = new Set();
 const nonceStore = {
   async consume(input) {
     const key = [input.issuerId, input.deviceId, input.sessionId, input.nonce].join('|');
     if (consumedNonces.has(key)) return false;
-    consumedNonces.add(key);
+    consumedNonces.set(key, input.receiptDigest);
     return true;
+  },
+  async hasConsumed(input) {
+    const key = [input.issuerId, input.deviceId, input.sessionId, input.nonce].join('|');
+    return consumedNonces.get(key) === input.receiptDigest;
   },
 };
 const consentAuthority = {
@@ -197,13 +200,42 @@ assert.equal(persistedAdmission?.kind, 'observed', 'the canonical persisted embo
 const replayThroughCore = await core.admitObservationReceipt(coreReceipt);
 assert.equal(replayThroughCore.accepted, false);
 assert.equal(replayThroughCore.reason, 'nonce-replayed');
-const revokedThroughCore = await core.revokeAdmittedObservation('observation-core-runtime-0001');
+
+// A process restart first downgrades stored labels, then restores observed status
+// only after rechecking signature, active consent and the durable nonce receipt digest.
+const restartedStore = new MemoryStateStore({ initial: coreSnapshot });
+const restartedCore = new OrganismCore(restartedStore, {
+  enableLanguage: false,
+  observationAdmissionAuthority: authority,
+});
+await restartedCore.init();
+const rehydratedRow = restartedCore.organismSystemFabric.embodiment.perceptualEvidence.snapshot().evidence
+  .find(row => row.id === coreAdmission.evidence.id);
+assert.equal(rehydratedRow?.kind, 'observed', 'restart must reauthorize a persisted signed receipt against the host nonce ledger');
+
+const revokedThroughCore = await restartedCore.revokeAdmittedObservation('observation-core-runtime-0001');
 assert.equal(revokedThroughCore.revoked, true);
-const revokedSnapshot = await stateStore.load();
+const revokedSnapshot = await restartedStore.load();
 const revokedAdmission = revokedSnapshot?.facets?.embodiment?.perceptualEvidence?.evidence
   ?.find(row => row.id === coreAdmission.evidence.id);
 assert.equal(revokedAdmission?.kind, 'unresolved', 'consent revocation must be checkpointed through the canonical Core path');
+
+// Revocation is monotonic across restart: a still-valid old signature must not
+// re-promote the explicitly revoked observation.
+const postRevokeCore = new OrganismCore(new MemoryStateStore({ initial: revokedSnapshot }), {
+  enableLanguage: false,
+  observationAdmissionAuthority: authority,
+});
+await postRevokeCore.init();
+const afterRevokeRestart = postRevokeCore.organismSystemFabric.embodiment.perceptualEvidence.snapshot().evidence
+  .find(row => row.id === coreAdmission.evidence.id);
+assert.equal(afterRevokeRestart?.kind, 'unresolved');
+assert.equal(afterRevokeRestart?.revoked, true);
+await postRevokeCore.flush();
+await restartedCore.flush();
 await core.flush();
+postRevokeCore.stop?.();
+restartedCore.stop?.();
 core.stop?.();
 
 console.log('G3_SIGNED_HOST_OBSERVATION_CORE_WIRING=PASS');
