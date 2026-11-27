@@ -45,7 +45,7 @@ try {
   records = afterModelOutput.facets.advanced.memoryOS.items.filter(row => row.source === GROUNDED_SPATIAL_MEMORY_SOURCE);
   assert.equal(records.length, 0, 'model-only output must not create canonical spatial memory');
   const modelGroundedEntity = core.groundedWorldSnapshot().entities.find(row => row.label === 'chair');
-  assert.equal(modelGroundedEntity?.modalityEvidenceKinds.world, 'derived');
+  assert.equal(modelGroundedEntity?.modalityEvidenceKinds.world, 'model-output');
   assert.deepEqual(modelGroundedEntity?.position, { x: 20, y: 2, z: 0 }, 'model coordinates remain available as a hypothesis without canonical fact promotion');
 
   await core.observe({ worldContext: world(3, 'observed', 3) });
