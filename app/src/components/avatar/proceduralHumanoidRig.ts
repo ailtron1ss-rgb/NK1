@@ -493,26 +493,38 @@ export function createProceduralHumanoidRig(scene: THREE.Scene): ProceduralHuman
         ["leftHipPoint", "leftHip"], ["leftKneePoint", "leftKnee"], ["leftAnklePoint", "leftAnkle"],
         ["rightHipPoint", "rightHip"], ["rightKneePoint", "rightKnee"], ["rightAnklePoint", "rightAnkle"],
       ];
-      let particleBindingsApplied = 0;
+      root.rotation.y = smooth(root.rotation.y, channel("rootYaw", 0) * 0.34, delta, 10);
       root.updateMatrixWorld(true);
+      const rootYawCos = Math.cos(root.rotation.y);
+      const rootYawSin = Math.sin(root.rotation.y);
+      const localParticleOffset = (sample: ArticulatedParticleFrame[ArticulatedBodyParticleId]) => {
+        const dx = sample.position.x - sample.target.x;
+        const dy = sample.position.y - sample.target.y;
+        const dz = sample.position.z - sample.target.z;
+        return new THREE.Vector3(
+          dx * rootYawCos - dz * rootYawSin,
+          dy,
+          dx * rootYawSin + dz * rootYawCos,
+        );
+      };
+      let particleBindingsApplied = 0;
       const particleTargetWorld = (sample: ArticulatedParticleFrame[ArticulatedBodyParticleId] | undefined) => {
         if (!sample) return null;
         const pelvisHeight = bones.pelvis.position.y;
-        return root.localToWorld(new THREE.Vector3(
-          sample.position.x,
-          pelvisHeight + sample.position.y,
-          sample.position.z,
-        ));
+        const x = sample.position.x * rootYawCos - sample.position.z * rootYawSin;
+        const z = sample.position.x * rootYawSin + sample.position.z * rootYawCos;
+        return root.localToWorld(new THREE.Vector3(x, pelvisHeight + sample.position.y, z));
       };
       for (const [particleId, boneName] of particleBindings) {
         const sample = input.particles?.[particleId];
         const bone = bones[boneName];
         const rest = restJointPositions[boneName];
         if (!sample || !bone || !rest) continue;
+        const rawResidual = localParticleOffset(sample);
         const residual = new THREE.Vector3(
-          clamp(sample.position.x - sample.target.x, -0.055, 0.055),
-          clamp(sample.position.y - sample.target.y, -0.055, 0.055),
-          clamp(sample.position.z - sample.target.z, -0.055, 0.055),
+          clamp(rawResidual.x, -0.055, 0.055),
+          clamp(rawResidual.y, -0.055, 0.055),
+          clamp(rawResidual.z, -0.055, 0.055),
         );
         bone.position.copy(rest).add(residual);
         particleBindingsApplied++;
@@ -544,11 +556,9 @@ export function createProceduralHumanoidRig(scene: THREE.Scene): ProceduralHuman
       });
       mouth.scale.y = 0.012 + (input.speaking ? 0.045 * clamp(input.arousal + 0.2, 0.1, 1) : smile * 0.006);
       mouth.scale.x = 0.045 + smile * 0.008;
-      root.rotation.y = smooth(root.rotation.y, channel("rootYaw", 0) * 0.34, delta, 10);
       const chestParticle = input.particles?.chest;
-      const chestParticleOffsetZ = chestParticle
-        ? clamp(chestParticle.position.z - chestParticle.target.z, -0.055, 0.055)
-        : 0;
+      const chestParticleOffset = chestParticle ? localParticleOffset(chestParticle) : null;
+      const chestParticleOffsetZ = chestParticleOffset ? clamp(chestParticleOffset.z, -0.055, 0.055) : 0;
       chest.position.z = restJointPositions.chest.z + chestParticleOffsetZ + channel("breath", 0) * 0.018;
       root.userData.poseState = { awake: input.awake, action: input.action, emotion: input.emotion, particleBindingsApplied, updatedAt: finite(input.timeSeconds) };
       root.updateMatrixWorld(true);
@@ -591,7 +601,7 @@ export function createProceduralHumanoidRig(scene: THREE.Scene): ProceduralHuman
         { x: localTarget.x, y: localTarget.y },
         0.48,
         0.43,
-        side === "left" ? 1 : -1,
+        side === "left" ? -1 : 1,
       );
       const hipValue = clampJointAngle(side + "Hip", "z", result.shoulder + PI / 2, limits);
       const kneeSign = side === "left" ? -1 : 1;
