@@ -239,6 +239,44 @@ export class CognitiveModuleCheckpointStore implements JsonStateStore<PersistedO
       throw error;
     }
 
+    let systemPrototype: object | null;
+    try {
+      systemPrototype = Object.getPrototypeOf(system);
+    } catch {
+      const error = new Error('cognitive-module-checkpoint-system-prototype-invalid');
+      this.lastCheckpointSaveError = error.message;
+      throw error;
+    }
+    if (systemPrototype !== Object.prototype && systemPrototype !== null) {
+      const error = new Error('cognitive-module-checkpoint-system-prototype-invalid');
+      this.lastCheckpointSaveError = error.message;
+      throw error;
+    }
+
+    let extensionDescriptor: PropertyDescriptor | undefined;
+    try {
+      extensionDescriptor = Object.getOwnPropertyDescriptor(system, CHECKPOINT_FIELD);
+    } catch {
+      const error = new Error('cognitive-module-checkpoint-extension-descriptor-invalid');
+      this.lastCheckpointSaveError = error.message;
+      throw error;
+    }
+    if (extensionDescriptor && ('get' in extensionDescriptor || 'set' in extensionDescriptor)) {
+      const error = new Error('cognitive-module-checkpoint-extension-accessor-rejected');
+      this.lastCheckpointSaveError = error.message;
+      throw error;
+    }
+    if (extensionDescriptor && !extensionDescriptor.enumerable) {
+      const error = new Error('cognitive-module-checkpoint-extension-field-invalid');
+      this.lastCheckpointSaveError = error.message;
+      throw error;
+    }
+    if (extensionDescriptor && !extensionDescriptor.writable && !extensionDescriptor.configurable) {
+      const error = new Error('cognitive-module-checkpoint-extension-field-not-writable');
+      this.lastCheckpointSaveError = error.message;
+      throw error;
+    }
+
     if (this.checkpointLoadError) {
       // Keep the untrusted extension payload untouched for forensic recovery.
       // Core state may continue checkpointing; module restore remains fail-closed.
@@ -296,7 +334,22 @@ export class CognitiveModuleCheckpointStore implements JsonStateStore<PersistedO
     // OrganismCore stamps and validates the canonical organism before invoking
     // its store. This extension lives under system, which is excluded from the
     // organism's content hash, and is written atomically with the same payload.
-    system[CHECKPOINT_FIELD] = checkpoint;
+    try {
+      if (extensionDescriptor) {
+        Object.defineProperty(system, CHECKPOINT_FIELD, { ...extensionDescriptor, value: checkpoint });
+      } else {
+        Object.defineProperty(system, CHECKPOINT_FIELD, {
+          value: checkpoint,
+          enumerable: true,
+          writable: true,
+          configurable: true,
+        });
+      }
+    } catch (error) {
+      this.lastCheckpointSaveError =
+        String(error instanceof Error ? error.message : error).slice(0, 180);
+      throw error;
+    }
     try {
       await this.delegate.save(value);
     } catch (error) {
