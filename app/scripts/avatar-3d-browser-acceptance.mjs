@@ -121,7 +121,19 @@ try {
   assert.deepEqual(report.shaderErrors, [], "3D avatar emitted a WebGL shader/program compilation error");
   const glbFailures = [...report.failedRequests, ...report.failedResponses].filter((item) => /\.glb(?:$|\?)/i.test(item.url));
   assert.deepEqual(glbFailures, [], "canonical GLB request must succeed: " + JSON.stringify(glbFailures));
-  if (await audit.getAttribute("open")) await audit.locator("summary").click();
+  if (await audit.evaluate((element) => element.open)) await audit.locator("summary").click();
+  await page.waitForFunction(() => {
+    const panel = document.querySelector('details[aria-label="Диагностика вторичной физики аватара"]');
+    return panel instanceof HTMLDetailsElement && panel.open === false;
+  }, undefined, { timeout: 5_000 });
+  // Hide only overlay DOM inside the screenshot fixture; do not mutate the app or canvas.
+  await stage.evaluate((element) => {
+    const canvasElement = element.querySelector('canvas[aria-label="3D-модель Курису, потяните для поворота"]');
+    if (!canvasElement) throw new Error("3D canvas disappeared before clean capture");
+    for (const child of Array.from(element.children)) {
+      if (child !== canvasElement) child.style.display = "none";
+    }
+  });
   await page.waitForTimeout(500);
   await canvas.screenshot({ path: report.canvasScreenshot });
   await stage.screenshot({ path: report.stageScreenshot });
