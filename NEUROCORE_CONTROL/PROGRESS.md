@@ -2,8 +2,8 @@
 
 **Snapshot:** 2026-11-27  
 **Product branch:** `neurocore-unified/main`  
-**Source branch synchronized through:** `workpass70-source@3857e805b8224e7630ba1c7ef50e4bc930565b58`  
-**Product merge commit:** `e5fa0fbb41ed7190289e180c8e4eeaa743141169`  
+**Source branch synchronized through:** `workpass70-source@8994a103f6b735f6347d77d926ee9c024a4d4f4d`  
+**Latest product/source merge:** `cb1c22e3c6c7f4eba73ad00b213442cee71c65d2` (two parents: product head `59b246e...` + source head `8994a103f6b735f6347d77d926ee9c024a4d4f4d`)  
 **Seed baseline:** `3526f61814e19f1f10766f3b2385488eb04e3d2e`
 
 The percentage below tracks the build plan, not model intelligence, consciousness, or upstream historical completion. Synchronizing upstream commits improves source coverage but does not count as tested product acceptance.
@@ -19,19 +19,21 @@ The percentage below tracks the build plan, not model intelligence, consciousnes
 | Termux packaging and device acceptance | 10% | 0% | 0% |
 | **Weighted assembly progress** | **100%** |  | **59.75%** |
 
-**Overall assembly: 59.75%.** The current feature pass improves source synchronization and adds a 20 Hz body-step gate plus additional regression coverage, but it does not increase acceptance percentages before CI and device evidence exist. This is not a runtime pass rate or release-readiness score.
+**Overall assembly: 59.75%.** This pass adds two donor capabilities and synchronizes the newer source commit, but the percentage remains unchanged until exact-head product CI and device evidence exist. This is not a runtime pass rate or release-readiness score.
 
 ## Current evidence
 
-- **PROVEN:** the product branch is based on the original pinned seed and now has a two-parent merge commit that includes the current source head `3857e805...`; `workpass70-source` is an ancestor, so the product branch is not behind it.
+- **PROVEN:** the product branch is based on the pinned seed and now has a two-parent source merge at `cb1c22e3c6c7f4eba73ad00b213442cee71c65d2`, including current source head `8994a103f6b735f6347d77d926ee9c024a4d4f4d`; source ancestry is preserved, and the product branch is not behind the source line.
 - **IMPLEMENTED:** NeuroCore-facing title, home screen, chat label, API-base alias and runtime health identity.
 - **IMPLEMENTED:** one canonical `MemoryOS2` instance is constructed by `MemorySubsystemRuntime` and injected into `MemoryFabric`; an identity regression is present. It is not yet branch-CI accepted.
+- **IMPLEMENTED, EXACT PRODUCT CI PENDING:** OpenClaw `skills/<name>/SKILL.md` imports enter the existing N.E.K.O. Markdown adapter as unknown external semantic facts, quarantined by default; preview is read-only and commit requires explicit review override. Imported text gains no tool/action authority.
+- **IMPLEMENTED, EXACT PRODUCT CI PENDING:** the existing loopback-only `OpenAICompatibleLocalChatProvider` accepts bounded JSON Schema response formats for llama.cpp, rejects unsafe schema objects before transport, bounds the response payload, and rejects malformed structured JSON. No second LLM runtime or model selector was added.
 - **IMPLEMENTED:** default 3D humanoid rig with 61 bones, 60 movable pivots and material-batched skinned meshes built from the anatomical part volumes; arm/leg IK and particle-to-bone binding are wired.
 - **INHERITED FROM CURRENT SOURCE:** the 22-particle / 21-segment articulated solver now includes heel/toe ground contacts, tangential friction, swing take-off handling and 150-degree elbow/knee hinge constraints. The upstream change records 11/11 checks on its source PR head; that result is not a pass for this NeuroCore branch.
 - **IMPLEMENTED IN THIS PASS:** body control/physics cadence is changed to 20 Hz and every solved snapshot is published; a dedicated scheduler regression is wired into the real `AvatarStage` loop. Earlier exact-head VRM workflow passed app typecheck and production bundle; the latest integrated body suite is pending after ESM import correction.
 - **IMPLEMENTED IN THIS PASS:** the NeuroCore core regression command now includes memory state round-trip and capacity/lifecycle integrity suites. Execution is pending.
 - **UNRESOLVED:** the procedural surface remains composed from anatomical parts; continuous tissue deformation, collision, balance, foot planting and full gait are not accepted.
-- **UNRESOLVED:** browser hydration, end-to-end chat, model handshake, persistence under interrupted shutdown, and Android/Termux installation/performance. Durable marker/rollback behaviour is covered by synthetic process-restart tests only; real phone filesystem behaviour is not measured.
+- **UNRESOLVED:** browser hydration, end-to-end chat, actual configured local-model handshake, persistence under interrupted shutdown, and Android/Termux installation/performance. Donor-adapter checks passed on their earlier source PR head (documented in the donor review), not on the latest product head. Durable marker/rollback behaviour is covered by synthetic process-restart tests only; real phone filesystem behaviour is not measured.
 - **DEVICE-TESTED:** none in this pass.
 
 ## Next checkpoint
