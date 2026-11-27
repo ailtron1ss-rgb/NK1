@@ -150,6 +150,7 @@ function makeEllipsoid(
   scale: THREE.Vector3,
   rotation = new THREE.Euler(),
   meshes: THREE.Mesh[],
+  skinNextBone?: THREE.Bone,
 ): THREE.Mesh {
   const mesh = new THREE.Mesh(geometry, material);
   mesh.name = name;
@@ -158,6 +159,7 @@ function makeEllipsoid(
   mesh.rotation.copy(rotation);
   mesh.castShadow = true;
   mesh.receiveShadow = true;
+  if (skinNextBone) mesh.userData.skinNextBone = skinNextBone.name;
   parent.add(mesh);
   meshes.push(mesh);
   return mesh;
@@ -172,6 +174,7 @@ function makeSegment(
   to: THREE.Vector3,
   radius: THREE.Vector3,
   meshes: THREE.Mesh[],
+  skinNextBone?: THREE.Bone,
 ): THREE.Mesh {
   const direction = to.clone().sub(from);
   const length = direction.length();
@@ -184,9 +187,118 @@ function makeSegment(
   }
   mesh.castShadow = true;
   mesh.receiveShadow = true;
+  if (skinNextBone) mesh.userData.skinNextBone = skinNextBone.name;
   parent.add(mesh);
   meshes.push(mesh);
   return mesh;
+}
+
+type SkinnedPartAccumulator = {
+  material: THREE.Material;
+  positions: number[];
+  normals: number[];
+  uvs: number[];
+  skinIndices: number[];
+  skinWeights: number[];
+  indices: number[];
+  partNames: string[];
+};
+
+function consolidateSkinnedBodyParts(
+  root: THREE.Group,
+  parts: THREE.Mesh[],
+  skeleton: THREE.Skeleton,
+  rootBone: THREE.Bone,
+): THREE.SkinnedMesh[] {
+  root.updateMatrixWorld(true);
+  const rootInverse = root.matrixWorld.clone().invert();
+  const boneIndex = new Map(skeleton.bones.map((bone, index) => [bone.name, index]));
+  const batches = new Map<THREE.Material, SkinnedPartAccumulator>();
+
+  for (const part of parts) {
+    const material = Array.isArray(part.material) ? part.material[0] : part.material;
+    if (!material) continue;
+    let batch = batches.get(material);
+    if (!batch) {
+      batch = { material, positions: [], normals: [], uvs: [], skinIndices: [], skinWeights: [], indices: [], partNames: [] };
+      batches.set(material, batch);
+    }
+
+    const geometry = part.geometry;
+    const position = geometry.getAttribute("position");
+    const normal = geometry.getAttribute("normal");
+    const uv = geometry.getAttribute("uv");
+    if (!position) continue;
+
+    const parentBone = part.parent instanceof THREE.Bone ? part.parent : rootBone;
+    const parentIndex = boneIndex.get(parentBone.name) ?? boneIndex.get(rootBone.name) ?? 0;
+    const nextBoneName = typeof part.userData.skinNextBone === "string" ? part.userData.skinNextBone : "";
+    const nextBone = nextBoneName ? skeleton.bones.find((bone) => bone.name === nextBoneName) : undefined;
+    const nextIndex = nextBone ? boneIndex.get(nextBone.name) ?? parentIndex : parentIndex;
+    const hasBlend = Boolean(nextBone && nextIndex !== parentIndex);
+    const toRoot = rootInverse.clone().multiply(part.matrixWorld);
+    const normalMatrix = new THREE.Matrix3().getNormalMatrix(toRoot);
+    const parentPoint = parentBone.getWorldPosition(new THREE.Vector3()).applyMatrix4(rootInverse);
+    const childPoint = nextBone?.getWorldPosition(new THREE.Vector3()).applyMatrix4(rootInverse) ?? parentPoint.clone();
+    const axis = childPoint.clone().sub(parentPoint);
+    const axisLengthSq = Math.max(1e-9, axis.lengthSq());
+    const vertexOffset = batch.positions.length / 3;
+
+    for (let vertex = 0; vertex < position.count; vertex++) {
+      const point = new THREE.Vector3(position.getX(vertex), position.getY(vertex), position.getZ(vertex)).applyMatrix4(toRoot);
+      const n = normal
+        ? new THREE.Vector3(normal.getX(vertex), normal.getY(vertex), normal.getZ(vertex)).applyMatrix3(normalMatrix).normalize()
+        : new THREE.Vector3(0, 1, 0);
+      batch.positions.push(point.x, point.y, point.z);
+      batch.normals.push(n.x, n.y, n.z);
+      batch.uvs.push(uv?.getX(vertex) ?? 0, uv?.getY(vertex) ?? 0);
+
+      let childWeight = 0;
+      if (hasBlend) {
+        const along = clamp(point.clone().sub(parentPoint).dot(axis) / axisLengthSq, 0, 1);
+        const transition = clamp((along - 0.52) / 0.48, 0, 1);
+        childWeight = transition * transition * (3 - 2 * transition);
+      }
+      batch.skinIndices.push(parentIndex, nextIndex, 0, 0);
+      batch.skinWeights.push(1 - childWeight, childWeight, 0, 0);
+    }
+
+    if (geometry.index) {
+      for (let i = 0; i < geometry.index.count; i++) batch.indices.push(vertexOffset + geometry.index.getX(i));
+    } else {
+      for (let i = 0; i < position.count; i++) batch.indices.push(vertexOffset + i);
+    }
+    batch.partNames.push(part.name);
+  }
+
+  const skinnedMeshes: THREE.SkinnedMesh[] = [];
+  for (const [material, batch] of batches) {
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute("position", new THREE.Float32BufferAttribute(batch.positions, 3));
+    geometry.setAttribute("normal", new THREE.Float32BufferAttribute(batch.normals, 3));
+    geometry.setAttribute("uv", new THREE.Float32BufferAttribute(batch.uvs, 2));
+    geometry.setAttribute("skinIndex", new THREE.Uint16BufferAttribute(batch.skinIndices, 4));
+    geometry.setAttribute("skinWeight", new THREE.Float32BufferAttribute(batch.skinWeights, 4));
+    geometry.setIndex(batch.indices);
+    geometry.computeBoundingBox();
+    geometry.computeBoundingSphere();
+
+    const skinned = new THREE.SkinnedMesh(geometry, material);
+    skinned.name = "NeuroCoreSkinnedBody_" + String(material.name || skinnedMeshes.length);
+    skinned.castShadow = true;
+    skinned.receiveShadow = true;
+    skinned.frustumCulled = false;
+    skinned.userData.sourcePartCount = batch.partNames.length;
+    skinned.userData.sourcePartNames = batch.partNames;
+    root.add(skinned);
+    skinned.bind(skeleton, root.matrixWorld);
+    skinnedMeshes.push(skinned);
+  }
+
+  for (const part of parts) part.removeFromParent();
+  const sourceGeometries = new Set(parts.map((part) => part.geometry));
+  for (const geometry of sourceGeometries) geometry.dispose();
+  return skinnedMeshes;
 }
 
 function addBone(
