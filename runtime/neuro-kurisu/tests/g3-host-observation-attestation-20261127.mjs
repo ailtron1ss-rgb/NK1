@@ -78,6 +78,38 @@ assert.equal(isTrustedObservationAdmission(accepted.admission), true);
 const replay = await authority.admit(receipt);
 assert.deepEqual(replay, { accepted: false, reason: 'nonce-replayed' });
 
+// Restart reauthorization is read-only and bound to the exact previously consumed digest.
+const reauthorized = await authority.reauthorizePersisted(receipt);
+assert.equal(reauthorized.accepted, true);
+assert.equal(reauthorized.admission.receiptDigest, accepted.admission.receiptDigest);
+const changedPayloadOnConsumedNonce = signedReceipt({
+  nonce: receipt.nonce,
+  claim: 'door is closed',
+  observationId: 'observation-door-closed-999',
+});
+const changedPayloadReauthorization = await authority.reauthorizePersisted(changedPayloadOnConsumedNonce);
+assert.equal(changedPayloadReauthorization.accepted, false);
+assert.equal(changedPayloadReauthorization.reason, 'nonce-not-previously-consumed');
+const neverConsumedReauthorization = await authority.reauthorizePersisted(
+  signedReceipt({ nonce: 'nonce-never-consumed-0000000001' }),
+);
+assert.equal(neverConsumedReauthorization.accepted, false);
+assert.equal(neverConsumedReauthorization.reason, 'nonce-not-previously-consumed');
+
+// A private PEM is not accepted as a host verifier key; NK1 receives public keys only.
+const privateKeyAuthority = new SignedObservationAdmissionAuthority({
+  expectedDeviceId: 'android-test-01',
+  resolvePublicKey: async () => privateKey.export({ type: 'pkcs8', format: 'pem' }).toString(),
+  consentAuthority,
+  nonceStore,
+  now: () => now,
+});
+const privateKeyRejected = await privateKeyAuthority.admit(
+  signedReceipt({ nonce: 'nonce-private-key-rejected-0001' }),
+);
+assert.equal(privateKeyRejected.accepted, false);
+assert.equal(privateKeyRejected.reason, 'signature-invalid');
+
 // Payload mutation invalidates the signature, even if a caller supplies verified=true.
 const tampered = signedReceipt({ nonce: 'nonce-tampered-0000000000001' });
 tampered.claim = 'door is closed';
