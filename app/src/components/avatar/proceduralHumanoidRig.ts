@@ -273,7 +273,10 @@ export function createProceduralHumanoidRig(scene: THREE.Scene): ProceduralHuman
 
     makeSegment(upper, sphere, coat, key + "SleeveUpper", new THREE.Vector3(0, 0, 0), new THREE.Vector3(side * 0.34, 0, 0), new THREE.Vector3(0.11, 0.22, 0.125), meshes);
     makeEllipsoid(clavicle, sphereFine, coatShade, key + "Deltoid", new THREE.Vector3(side * 0.015, -0.01, 0.012), new THREE.Vector3(0.14, 0.145, 0.14), new THREE.Euler(0, 0, side * -0.18), meshes);
+    // Joint caps bridge the upper-arm and forearm volumes instead of leaving a hollow elbow pivot.
+    makeEllipsoid(forearm, sphereFine, coatShade, key + "ElbowJoint", new THREE.Vector3(0, 0, 0.012), new THREE.Vector3(0.105, 0.105, 0.11), new THREE.Euler(), meshes);
     makeSegment(forearm, sphere, coat, key + "SleeveForearm", new THREE.Vector3(0, 0, 0), new THREE.Vector3(side * 0.29, 0, 0), new THREE.Vector3(0.085, 0.18, 0.092), meshes);
+    makeEllipsoid(wrist, sphereFine, coatShade, key + "WristCuff", new THREE.Vector3(0, 0, 0), new THREE.Vector3(0.072, 0.078, 0.085), new THREE.Euler(), meshes);
     makeEllipsoid(hand, sphereFine, skin, key + "Palm", new THREE.Vector3(side * 0.045, 0, 0), new THREE.Vector3(0.092, 0.065, 0.035), new THREE.Euler(0, 0, side * 0.1), meshes);
 
     for (let finger = 0; finger < fingerNames.length; finger++) {
@@ -306,8 +309,10 @@ export function createProceduralHumanoidRig(scene: THREE.Scene): ProceduralHuman
     makeSegment(thigh, sphere, tights, key + "ThighVolume", new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, -0.48, 0), new THREE.Vector3(0.135, 0.28, 0.145), meshes);
     makeEllipsoid(thigh, sphereFine, muscle, key + "Quadriceps", new THREE.Vector3(0, -0.23, 0.105), new THREE.Vector3(0.104, 0.24, 0.065), new THREE.Euler(), meshes);
     makeEllipsoid(thigh, sphereFine, muscleShadow, key + "Hamstrings", new THREE.Vector3(0, -0.25, -0.09), new THREE.Vector3(0.105, 0.22, 0.055), new THREE.Euler(), meshes);
+    makeEllipsoid(knee, sphereFine, tights, key + "KneeJointCap", new THREE.Vector3(0, 0, 0.075), new THREE.Vector3(0.105, 0.115, 0.075), new THREE.Euler(), meshes);
     makeSegment(calf, sphere, tights, key + "CalfVolume", new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, -0.43, 0), new THREE.Vector3(0.09, 0.25, 0.105), meshes);
     makeEllipsoid(calf, sphereFine, muscle, key + "Gastrocnemius", new THREE.Vector3(0, -0.16, -0.045), new THREE.Vector3(0.078, 0.17, 0.07), new THREE.Euler(), meshes);
+    makeEllipsoid(ankle, sphereFine, tights, key + "AnkleJoint", new THREE.Vector3(0, 0, 0), new THREE.Vector3(0.075, 0.075, 0.08), new THREE.Euler(), meshes);
     makeEllipsoid(foot, sphereFine, shoes, key + "FootVolume", new THREE.Vector3(0, -0.015, 0.105), new THREE.Vector3(0.095, 0.065, 0.17), new THREE.Euler(), meshes);
     makeEllipsoid(toe, sphere, shoes, key + "ToeCap", new THREE.Vector3(0, 0, 0.045), new THREE.Vector3(0.085, 0.045, 0.075), new THREE.Euler(), meshes);
   }
