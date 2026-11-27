@@ -136,12 +136,13 @@ test("hosted GLB descriptor audit resolves skin-joint ancestry, explicit node ex
 
 test("live Three.js scene audit reads explicit nk1Secondary metadata from node userData", () => {
   const root = node("Scene");
-  attach(root, node("Bone.001", { isBone: true, userData: { nk1Secondary: { role: "hair", chainId: "bang-left", side: "left" } } }));
-  attach(root, node("Bone.002", { isBone: true, userData: { nk1Secondary: { role: "hair", chainId: "bang-left", side: "left", distalWeight: 1 } } }));
+  const pinnedRoot = attach(root, node("Bone.Root", { isBone: true, userData: { nk1Secondary: { role: "hair", chainId: "bang-left", side: "left", pinned: true } } }));
+  const mid = attach(pinnedRoot, node("Bone.001", { isBone: true, userData: { nk1Secondary: { role: "hair", chainId: "bang-left", side: "left" } } }));
+  attach(mid, node("Bone.002", { isBone: true, userData: { nk1Secondary: { role: "hair", chainId: "bang-left", side: "left", distalWeight: 1 } } }));
   const report = auditAvatarSecondaryScene(root);
   assert.equal(report.byRole.hair.boneCount, 2);
   assert.equal(report.byRole.hair.chainRoots, 1);
-  assert.equal(report.byRole.hair.maxChainDepth, 1);
+  assert.equal(report.byRole.hair.maxChainDepth, 2);
   assert.equal(report.secondaryPhysicsReady, true);
 });
 
