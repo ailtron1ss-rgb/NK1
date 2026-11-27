@@ -10,6 +10,7 @@ function node(name, options = {}) {
   const value = {
     name,
     isBone: options.isBone === true,
+    isMesh: options.isMesh === true || options.isSkinnedMesh === true,
     isSkinnedMesh: options.isSkinnedMesh === true,
     children: [],
     parent: null,
@@ -146,6 +147,24 @@ test("live Three.js scene audit reads explicit nk1Secondary metadata from node u
   assert.equal(report.secondaryPhysicsReady, true);
 });
 
+test("scene audit reports separate hair, clothing and sleeve mesh parts without claiming they are simulated", () => {
+  const root = node("Scene");
+  attach(root, node("HAIR_front_strand_L", { isSkinnedMesh: true }));
+  attach(root, node("HAIR_long_lock_R", { isSkinnedMesh: true }));
+  attach(root, node("CLOTH_labcoat_main", { isSkinnedMesh: true }));
+  attach(root, node("CLOTH_skirt", { isSkinnedMesh: true }));
+  attach(root, node("CLOTH_upper_sleeve_L", { isSkinnedMesh: true }));
+  attach(root, node("ACCESSORY_red_hairclip", { isSkinnedMesh: true }));
+  const report = auditAvatarSecondaryScene(root);
+  assert.equal(report.byMeshRole.hair.meshNodeCount, 2);
+  assert.equal(report.byMeshRole.hair.skinnedMeshNodeCount, 2);
+  assert.equal(report.byMeshRole.garment.meshNodeCount, 2);
+  assert.equal(report.byMeshRole.sleeve.meshNodeCount, 1);
+  assert.deepEqual(report.byMeshRole.hair.meshNames, ["HAIR_front_strand_L", "HAIR_long_lock_R"]);
+  assert.equal(report.recognizedBoneCount, 0);
+  assert.equal(report.secondaryPhysicsReady, false);
+});
+
 test("neural-fabric material tag requires an explicit NK1 layer or semantic name", () => {
   assert.equal(isAvatarNeuralFabricMaterialTagged({ name: "NK1_NEURAL_Piping" }), true);
   assert.equal(isAvatarNeuralFabricMaterialTagged({ name: "NK1SynapseGlow" }), true);
@@ -160,6 +179,8 @@ test("3D stage publishes an audit for the imported model and exposes it in an ac
   assert.match(stage, /auditAvatarSecondaryScene\(root\)/);
   assert.match(stage, /setSecondaryAudit\(/);
   assert.match(stage, /secondaryAudit\.byRole\.hair/);
+  assert.match(stage, /secondaryAudit\.byMeshRole\.hair/);
+  assert.match(stage, /secondaryAudit\.byMeshRole\.garment/);
   assert.match(stage, /secondaryAudit\.morphChannels/);
   assert.match(stage, /metadata:bone\.node\?\.userData\?\.nk1Secondary/);
   assert.match(stage, /<details/);
