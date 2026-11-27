@@ -43,6 +43,18 @@ import { OrganismCore } from '../src/organism/core/OrganismCore.ts';
   assert.equal(writes[0].lastCheckpointAt, 4_000);
 }
 
+// Recovery metadata is not a persistence commit either.
+{
+  const watchdog = new RecoveryWatchdog('watchdog-recovery-marker-test', undefined, 1_000);
+  const recovered = watchdog.markRecovered('restore-complete', 2_000);
+  assert.equal(recovered.lastHeartbeatAt, 2_000);
+  assert.equal(
+    recovered.lastCheckpointAt,
+    1_000,
+    'a recovery marker must not advance the durable checkpoint timestamp before a store write',
+  );
+}
+
 // The production OrganismCore path must not expose an uncommitted timestamp
 // when its canonical state store rejects a forced checkpoint.
 {
