@@ -260,7 +260,7 @@ export function createProceduralHumanoidRig(scene: THREE.Scene): ProceduralHuman
   const head = addBone(neck, "head", [0, 0.24, 0], bones, limits);
 
   // Upper limbs are fully jointed: clavicle, shoulder, elbow, wrist, palm and fingers.
-  const armRoots: Record<"left" | "right", { clavicle: THREE.Bone; upper: THREE.Bone; forearm: THREE.Bone; hand: THREE.Bone }> = {} as any;
+  const armRoots: Record<"left" | "right", { clavicle: THREE.Bone; upper: THREE.Bone; forearm: THREE.Bone; wrist: THREE.Bone; hand: THREE.Bone }> = {} as any;
   const fingerNames = ["thumb", "index", "middle", "ring", "little"] as const;
   for (const side of [-1, 1] as const) {
     const key = side < 0 ? "left" : "right";
@@ -269,7 +269,7 @@ export function createProceduralHumanoidRig(scene: THREE.Scene): ProceduralHuman
     const forearm = addBone(upper, key + "Forearm", [side * 0.348, 0, 0], bones, limits);
     const wrist = addBone(forearm, key + "Wrist", [side * 0.244, 0, 0], bones, limits);
     const hand = addBone(wrist, key + "Hand", [side * 0.02, -0.11, 0], bones, limits);
-    armRoots[key] = { clavicle, upper, forearm, hand };
+    armRoots[key] = { clavicle, upper, forearm, wrist, hand };
 
     makeSegment(upper, sphere, coat, key + "SleeveUpper", new THREE.Vector3(0, 0, 0), new THREE.Vector3(side * 0.348, 0, 0), new THREE.Vector3(0.11, 0.225, 0.125), meshes);
     makeEllipsoid(clavicle, sphereFine, coatShade, key + "Deltoid", new THREE.Vector3(side * 0.015, -0.01, 0.012), new THREE.Vector3(0.14, 0.145, 0.14), new THREE.Euler(0, 0, side * -0.18), meshes);
@@ -616,7 +616,7 @@ export function createProceduralHumanoidRig(scene: THREE.Scene): ProceduralHuman
         -1,
       );
       const baseUpper = Math.atan2(arm.forearm.position.y, outward * arm.forearm.position.x);
-      const baseForearm = Math.atan2(arm.hand.position.y, outward * arm.hand.position.x);
+      const baseForearm = Math.atan2(arm.wrist.position.y, outward * arm.wrist.position.x);
       const shoulderName = side + "UpperArm";
       const elbowName = side + "Forearm";
       const shoulderValue = clampJointAngle(shoulderName, "z", outward * (result.shoulder - baseUpper), limits);
