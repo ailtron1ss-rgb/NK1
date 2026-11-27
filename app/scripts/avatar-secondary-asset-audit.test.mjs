@@ -215,6 +215,7 @@ test("3D stage publishes an audit for the imported model and exposes it in an ac
   assert.match(stage, /<details/);
   assert.match(stage, /Аудит вторичных слоёв/);
   assert.match(stage, /secondaryAudit\.secondaryPhysicsReady/);
-  assert.match(stage, /Костные цепочки и специальные morph-каналы отсутствуют/);
-  assert.match(stage, /ограниченный GPU sway активен на/);
+  assert.match(stage, /XPBD-частицы ждут подходящей топологии/);
+  assert.match(stage, /Вторичная динамика не подключена/);
+  assert.match(stage, /XPBD surface particles/);
 });
