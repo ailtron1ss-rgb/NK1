@@ -1515,6 +1515,26 @@ export class OrganismCore {
         }
         this.persisted.state.version = ORGANISM_STATE_SCHEMA;
         this.organismSystems.restoreFromPersisted(this.persisted);
+        // Persisted observed labels are inert until the host re-verifies the exact
+        // signed envelope, active consent binding and previously consumed nonce digest.
+        // Local revocation markers are monotonic and are never reauthorized.
+        const observationAuthority = this.config.observationAdmissionAuthority;
+        if (observationAuthority) {
+            const restoredHostEvidence = this.embodimentSubsystem.perceptualEvidence.snapshot().evidence;
+            for (const row of restoredHostEvidence) {
+                if (row.revoked === true || !row.hostReceipt || row.kind === 'observed')
+                    continue;
+                const checked = await observationAuthority.reauthorizePersisted(row.hostReceipt);
+                if (!checked.accepted)
+                    continue;
+                try {
+                    this.embodimentSubsystem.recordAdmittedObservation(checked.admission);
+                } catch {
+                    // Invalid/conflicting persisted rows remain non-observational.
+                }
+            }
+            this.persisted.facets.embodiment.perceptualEvidence = this.embodimentSubsystem.perceptualEvidence.snapshot();
+        }
         this.cognitiveRuntime.outcomeCognition.restore({ records: this.persisted.system.outcomeVerification?.records, projectionIndex: this.persisted.system.outcomeVerification?.projectionIndex, evidenceRevisions: this.persisted.system.outcomeVerification?.evidenceRevisions, causal: this.persisted.system.causalAccountability });
         this.cognitiveRuntime.cognitiveField.restore(this.persisted.facets.cognition.cognitiveField);
         this.cognitiveRuntime.contradictions.restore(this.persisted.facets.cognition.contradictions);
