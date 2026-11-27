@@ -36,6 +36,6 @@ jobs:
       - name: Verify liveness and durable checkpoint semantics
         run: node --experimental-strip-types --test tests/recovery-watchdog-durable-commit-20261127.mjs
       - name: Existing Core/watchdog restart regression
-        run: npm run test:big-pass-324
+        run: npm run test:big-pass-324 && npm run test:big-pass-324:core
       - name: Runtime typecheck
         run: npm run typecheck
