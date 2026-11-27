@@ -742,7 +742,7 @@ export class OrganismRuntime {
       this.runtimeClosure.restore(systemSnapshot.runtimeClosure ?? undefined);
       this.causalDomainClosureLedger.restore(systemSnapshot.causalDomainClosureLedger ?? undefined);
       this.core.setCausalDomainClosureLedger(this.causalDomainClosureLedger.snapshot());
-      const runtimeView = this.core.runtimeClosureOperationalSnapshot();
+      const runtimeViewRef.current = this.core.runtimeClosureOperationalSnapshot();
       this.runtimeClosure.restoreVerification({
         at: Date.now(),
         tick: runtimeView.tick,
@@ -2891,7 +2891,7 @@ export class OrganismRuntime {
       riskAwareRecovery: 'not-attempted' as 'not-attempted' | 'durable' | 'failed',
     };
     const capture = (error: unknown) => { stopErrors.push(error); };
-    let runtimeView: ReturnType<OrganismCore['runtimeClosureOperationalSnapshot']> | null = null;
+    const runtimeViewRef: { current: ReturnType<OrganismCore['runtimeClosureOperationalSnapshot']> | null } = { current: null };
 
     this.stopping = true;
     try {
@@ -3027,7 +3027,7 @@ export class OrganismRuntime {
     const worldTick = (() => {
       try { return this.environment.snapshot().tick; } catch { return null; }
     })();
-    const overallDurable = runtimeView !== null &&
+    const overallDurable = runtimeViewRef.current !== null &&
       durability.core === 'durable' &&
       durability.world === 'durable' &&
       durability.continuityLedger === 'durable' &&
@@ -3036,7 +3036,7 @@ export class OrganismRuntime {
       stopErrors.length === 0;
     const receipt = {
       overall: overallDurable ? 'durable' : 'partial',
-      tick: runtimeView?.tick ?? null,
+      tick: runtimeViewRef.current?.tick ?? null,
       worldTick,
       durability,
       errors: stopErrors.slice(0, 8).map(error =>
