@@ -1,5 +1,5 @@
 import type { ActionKind } from '../core/types.ts';
-import { countOr, isPlainDataArray, isPlainDataRecord, ownDataValue, stringOr, timestampOr, unitOr } from '../body/RestoreSanitizers.ts';
+import { boundedCountOr, countOr, finiteWithinOr, isPlainDataArray, isPlainDataRecord, ownDataValue, stringOr, timestampOr, unitStrictOr, unitOr } from '../body/RestoreSanitizers.ts';
 import { PerceptualContinuityModel, defaultPerceptualContinuityState, type ContinuityState } from './PerceptualContinuityModel.ts';
 import { PerceptualEpistemicGraph, defaultEpistemicState, type EpistemicState } from './PerceptualEpistemicGraph.ts';
 
@@ -35,19 +35,19 @@ const sanitizeModalityTimes=(value:unknown):Partial<Record<P41Modality,number>>=
 const sanitizeP41Metrics=(value:unknown,defaults:P41PerceptionState['metrics']):P41PerceptionState['metrics']=>{
   const row=safeDataRecord(value);
   return {
-    grounding01:unitOr(ownDataValue(row,'grounding01'),defaults.grounding01),
-    temporalBinding01:unitOr(ownDataValue(row,'temporalBinding01'),defaults.temporalBinding01),
-    objectPermanence01:unitOr(ownDataValue(row,'objectPermanence01'),defaults.objectPermanence01),
-    crossModalAgreement01:unitOr(ownDataValue(row,'crossModalAgreement01'),defaults.crossModalAgreement01),
-    crossModalEvidenceCoverage01:unitOr(ownDataValue(row,'crossModalEvidenceCoverage01'),defaults.crossModalEvidenceCoverage01),
-    outcomeAlignment01:unitOr(ownDataValue(row,'outcomeAlignment01'),defaults.outcomeAlignment01),
-    activePerceptionUtility01:unitOr(ownDataValue(row,'activePerceptionUtility01'),defaults.activePerceptionUtility01),
-    unresolvedRate01:unitOr(ownDataValue(row,'unresolvedRate01'),defaults.unresolvedRate01),
-    updates:Math.min(1_000_000_000,countOr(ownDataValue(row,'updates'),defaults.updates)),
-    sceneContinuity01:unitOr(ownDataValue(row,'sceneContinuity01'),defaults.sceneContinuity01),
-    temporalGrounding01:unitOr(ownDataValue(row,'temporalGrounding01'),defaults.temporalGrounding01),
-    evidenceTraceability01:unitOr(ownDataValue(row,'evidenceTraceability01'),defaults.evidenceTraceability01),
-    epistemicContradictions:Math.min(4096,countOr(ownDataValue(row,'epistemicContradictions'),defaults.epistemicContradictions)),
+    grounding01:unitStrictOr(ownDataValue(row,'grounding01'),defaults.grounding01),
+    temporalBinding01:unitStrictOr(ownDataValue(row,'temporalBinding01'),defaults.temporalBinding01),
+    objectPermanence01:unitStrictOr(ownDataValue(row,'objectPermanence01'),defaults.objectPermanence01),
+    crossModalAgreement01:unitStrictOr(ownDataValue(row,'crossModalAgreement01'),defaults.crossModalAgreement01),
+    crossModalEvidenceCoverage01:unitStrictOr(ownDataValue(row,'crossModalEvidenceCoverage01'),defaults.crossModalEvidenceCoverage01),
+    outcomeAlignment01:unitStrictOr(ownDataValue(row,'outcomeAlignment01'),defaults.outcomeAlignment01),
+    activePerceptionUtility01:unitStrictOr(ownDataValue(row,'activePerceptionUtility01'),defaults.activePerceptionUtility01),
+    unresolvedRate01:unitStrictOr(ownDataValue(row,'unresolvedRate01'),defaults.unresolvedRate01),
+    updates:boundedCountOr(ownDataValue(row,'updates'),defaults.updates,1_000_000_000),
+    sceneContinuity01:unitStrictOr(ownDataValue(row,'sceneContinuity01'),defaults.sceneContinuity01),
+    temporalGrounding01:unitStrictOr(ownDataValue(row,'temporalGrounding01'),defaults.temporalGrounding01),
+    evidenceTraceability01:unitStrictOr(ownDataValue(row,'evidenceTraceability01'),defaults.evidenceTraceability01),
+    epistemicContradictions:boundedCountOr(ownDataValue(row,'epistemicContradictions'),defaults.epistemicContradictions,4096),
   };
 };
 const now = () => Date.now();
@@ -266,8 +266,8 @@ export class P41SemanticPerceptionEngine {
     const sceneRecord=safeDataRecord(rawScene);
     const scene={
       label:stringOr(ownDataValue(sceneRecord,'label'),d.scene.label,120),
-      confidence01:unitOr(ownDataValue(sceneRecord,'confidence01'),d.scene.confidence01),
-      stability01:unitOr(ownDataValue(sceneRecord,'stability01'),d.scene.stability01),
+      confidence01:unitStrictOr(ownDataValue(sceneRecord,'confidence01'),d.scene.confidence01),
+      stability01:unitStrictOr(ownDataValue(sceneRecord,'stability01'),d.scene.stability01),
       at:timestampOr(ownDataValue(sceneRecord,'at'),d.scene.at),
     };
 
@@ -318,11 +318,11 @@ export class P41SemanticPerceptionEngine {
           ...(stringOr(ownDataValue(candidate,'trackId'),'',120).trim()?{trackId:stringOr(ownDataValue(candidate,'trackId'),'',120).trim()}:{}),
           ...(frame&&position?{positionFrameId:frame}:{}),
           trackAliases:safeStrings(ownDataValue(candidate,'trackAliases'),16,120),
-          confidence01:unitOr(ownDataValue(candidate,'confidence01'),0),
-          salience01:unitOr(ownDataValue(candidate,'salience01'),0),
-          present01:unitOr(ownDataValue(candidate,'present01'),0),
+          confidence01:unitStrictOr(ownDataValue(candidate,'confidence01'),0),
+          salience01:unitStrictOr(ownDataValue(candidate,'salience01'),0),
+          present01:unitStrictOr(ownDataValue(candidate,'present01'),0),
           firstSeenAt,lastSeenAt,
-          observations:Math.min(1_000_000_000,Math.max(1,countOr(ownDataValue(candidate,'observations'),1))),
+          observations:Math.max(1,boundedCountOr(ownDataValue(candidate,'observations'),1,1_000_000_000)),
           modalities,
           modalityLastSeenAt,
           modalityEvidenceKinds:sanitizeModalityEvidenceKinds(ownDataValue(candidate,'modalityEvidenceKinds')),
@@ -348,7 +348,7 @@ export class P41SemanticPerceptionEngine {
           id,from,relation,to,
           ...(stringOr(ownDataValue(candidate,'fromEntityId'),'',180).trim()?{fromEntityId:stringOr(ownDataValue(candidate,'fromEntityId'),'',180).trim()}:{}),
           ...(stringOr(ownDataValue(candidate,'toEntityId'),'',180).trim()?{toEntityId:stringOr(ownDataValue(candidate,'toEntityId'),'',180).trim()}:{}),
-          confidence01:unitOr(ownDataValue(candidate,'confidence01'),0),
+          confidence01:unitStrictOr(ownDataValue(candidate,'confidence01'),0),
           modality:modality as P41Modality,
           evidenceKind:admittedEvidenceKind(ownDataValue(candidate,'evidenceKind')),
           at:timestampOr(ownDataValue(candidate,'at'),0),
@@ -373,8 +373,8 @@ export class P41SemanticPerceptionEngine {
           modalityLastSeenAt[key]=Math.min(lastAt,Math.max(startedAt,modalityLastSeenAt[key]??startedAt));
         }
         events.push({
-          id,label,confidence01:unitOr(ownDataValue(candidate,'confidence01'),0),modalities,
-          startedAt,lastAt,persistence01:unitOr(ownDataValue(candidate,'persistence01'),0),
+          id,label,confidence01:unitStrictOr(ownDataValue(candidate,'confidence01'),0),modalities,
+          startedAt,lastAt,persistence01:unitStrictOr(ownDataValue(candidate,'persistence01'),0),
           evidenceKind:admittedEvidenceKind(ownDataValue(candidate,'evidenceKind')),
           modalityLastSeenAt,modalityEvidenceKinds:sanitizeModalityEvidenceKinds(ownDataValue(candidate,'modalityEvidenceKinds')),
         });
@@ -395,8 +395,8 @@ export class P41SemanticPerceptionEngine {
           entityIds:safeStrings(ownDataValue(candidate,'entityIds'),32,180),
           eventIds:safeStrings(ownDataValue(candidate,'eventIds'),16,180),
           relationIds:safeStrings(ownDataValue(candidate,'relationIds'),32,180),
-          uncertainty01:unitOr(ownDataValue(candidate,'uncertainty01'),1),
-          coherence01:unitOr(ownDataValue(candidate,'coherence01'),0),
+          uncertainty01:unitStrictOr(ownDataValue(candidate,'uncertainty01'),1),
+          coherence01:unitStrictOr(ownDataValue(candidate,'coherence01'),0),
           selfLocation:stringOr(ownDataValue(candidate,'selfLocation'),'unknown',120),
         });
       }
@@ -416,9 +416,9 @@ export class P41SemanticPerceptionEngine {
         pending.push({
           id,modality:modality as P41Modality,
           query:stringOr(ownDataValue(candidate,'query'),'',240),
-          expectedInformationGain01:unitOr(ownDataValue(candidate,'expectedInformationGain01'),0),
-          estimatedCost01:unitOr(ownDataValue(candidate,'estimatedCost01'),1),
-          priority01:unitOr(ownDataValue(candidate,'priority01'),0),
+          expectedInformationGain01:unitStrictOr(ownDataValue(candidate,'expectedInformationGain01'),0),
+          estimatedCost01:unitStrictOr(ownDataValue(candidate,'estimatedCost01'),1),
+          priority01:unitStrictOr(ownDataValue(candidate,'priority01'),0),
           createdAt,expiresAt:Math.max(createdAt,timestampOr(ownDataValue(candidate,'expiresAt'),createdAt)),
           status:status as P41PendingPerception['status'],
         });
@@ -430,14 +430,14 @@ export class P41SemanticPerceptionEngine {
       const defaults=d.modalityReliability[modality];
       const row=safeDataRecord(ownDataValue(rawReliability,modality));
       return [modality,{
-        reliability01:unitOr(ownDataValue(row,'reliability01'),defaults.reliability01),
-        observations:Math.min(1_000_000_000,countOr(ownDataValue(row,'observations'),defaults.observations)),
-        conflict01:unitOr(ownDataValue(row,'conflict01'),defaults.conflict01),
-        latency01:unitOr(ownDataValue(row,'latency01'),defaults.latency01),
-        reportedQuality01:unitOr(ownDataValue(row,'reportedQuality01'),defaults.reportedQuality01),
-        serviceSuccess01:unitOr(ownDataValue(row,'serviceSuccess01'),defaults.serviceSuccess01),
-        calibrationSamples:Math.min(1_000_000,countOr(ownDataValue(row,'calibrationSamples'),defaults.calibrationSamples)),
-        calibrationMae01:unitOr(ownDataValue(row,'calibrationMae01'),defaults.calibrationMae01),
+        reliability01:unitStrictOr(ownDataValue(row,'reliability01'),defaults.reliability01),
+        observations:boundedCountOr(ownDataValue(row,'observations'),defaults.observations,1_000_000_000),
+        conflict01:unitStrictOr(ownDataValue(row,'conflict01'),defaults.conflict01),
+        latency01:unitStrictOr(ownDataValue(row,'latency01'),defaults.latency01),
+        reportedQuality01:unitStrictOr(ownDataValue(row,'reportedQuality01'),defaults.reportedQuality01),
+        serviceSuccess01:unitStrictOr(ownDataValue(row,'serviceSuccess01'),defaults.serviceSuccess01),
+        calibrationSamples:boundedCountOr(ownDataValue(row,'calibrationSamples'),defaults.calibrationSamples,1_000_000),
+        calibrationMae01:unitStrictOr(ownDataValue(row,'calibrationMae01'),defaults.calibrationMae01),
         calibrationBias01:Math.max(-1,Math.min(1,Number.isFinite(ownDataValue(row,'calibrationBias01'))?Number(ownDataValue(row,'calibrationBias01')):defaults.calibrationBias01)),
         lastVerifiedAt:timestampOr(ownDataValue(row,'lastVerifiedAt'),defaults.lastVerifiedAt),
       }];
@@ -451,14 +451,14 @@ export class P41SemanticPerceptionEngine {
     this.state={
       ...d,
       version:1,
-      tick:Math.min(1_000_000_000,countOr(ownDataValue(r,'tick'),0)),
+      tick:boundedCountOr(ownDataValue(r,'tick'),0,1_000_000_000),
       scene,
       sceneEvidenceKind:admittedEvidenceKind(ownDataValue(r,'sceneEvidenceKind')),
       entities,relations,events,snapshots,pending,modalityReliability,
       actionBias,
       metrics:sanitizeP41Metrics(ownDataValue(r,'metrics'),d.metrics),
       calibrationEvidenceIds:safeStrings(ownDataValue(r,'calibrationEvidenceIds'),256,180),
-      nextTrackSequence:Math.min(1_000_000_000,countOr(ownDataValue(r,'nextTrackSequence'),0)),
+      nextTrackSequence:boundedCountOr(ownDataValue(r,'nextTrackSequence'),0,1_000_000_000),
       lastCheckpointAt:timestampOr(ownDataValue(r,'lastCheckpointAt'),0),
       // P41 does not yet produce a trusted persisted digest. Never retain a
       // caller-authored lastHash as evidence of an authentic restore.
