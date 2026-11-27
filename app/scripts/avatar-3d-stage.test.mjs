@@ -26,7 +26,7 @@ test("renderer resources and animation loops are disposed and high-DPI rendering
  assert.match(stage,/setPixelRatio\(Math\.min\(window\.devicePixelRatio\|\|1,changedBudget\.maxPixelRatio,2\)\)/);
  assert.match(stage,/document\.addEventListener\("visibilitychange",onVisibilityChange\)/);
  assert.match(stage,/intersectionObserver\?\.observe\(el\)/);
- assert.match(stage,/shouldRunAvatarRenderLoop\(pageVisible,intersectsViewport\)/);
+ assert.match(stage,/shouldRunAvatarRenderLoop\(pageVisible,intersectsViewport,!webglContextLost\)/);
  assert.match(stage,/window\.setTimeout/);
  assert.match(stage,/cancelScheduledFrame\(\)/);assert.match(stage,/cancelAnimationFrame\(raf\)/);assert.match(stage,/Reset to bind pose before the mixer/);assert.match(stage,/applyAvatarAnimationFrame/);assert.match(stage,/rt\.activeClipAction/);assert.doesNotMatch(stage,/\|\|clips\[0\]\|\|null/);assert.ok(animation.includes("rig[_-]?kurisu"),"semantic rig fallback must remain in the extracted resolver");assert.match(stage,/observer\?\.disconnect\(\)/);assert.match(stage,/renderer\.dispose\(\)/);assert.match(stage,/disposeTree\(rt\.loaded\)/);assert.match(stage,/const gradient=getSharedAnimeGradientTexture\(\);disposeThreeObjectTree\(root,gradient\?\[gradient\]:\[\]\)/);
 });
