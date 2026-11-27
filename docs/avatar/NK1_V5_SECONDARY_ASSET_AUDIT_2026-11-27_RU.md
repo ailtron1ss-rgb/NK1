@@ -49,7 +49,7 @@ Source: `app/scripts/verify-hosted-kurisu-model.mjs`, workflow `NK1 Avatar Model
 
 Специально размеченных emissive-материалов NK1 neural fabric: **0**. Это не означает, что в модели нет обычных материалов или facial morphs; это означает, что нужные каналы вторичной физики не экспортированы/не размечены.
 
-Вывод: текущая v5 — пригодная базовая humanoid-модель с анимацией и лицевыми morph targets, но **не полноценный физически-модульный персонаж**. Bone-spring слой честно остаётся no-op для отсутствующих вторичных костей и специальных morph targets. Дополнительно runtime теперь может выполнять ограниченный GPU vertex sway на строго выбранных уже существующих skinned meshes; это не добавляет кости, не меняет веса и не заменяет полноценную симуляцию ткани.
+Вывод: текущая v5 — пригодная базовая humanoid-модель с анимацией и лицевыми morph targets, но **не полностью авторенный физически-модульный персонаж**. Bone-spring слой честно остаётся no-op для отсутствующих вторичных костей и специальных morph targets. Runtime дополнен реальным XPBD surface-particle solve для выбранных отдельных skinned meshes: вершины выступают частицами, рёбра треугольников — ограничениями длины, верхняя зона закрепляется, а offset деформирует геометрию до skinning. Это не создаёт новые кости и не переписывает исходные skin weights. Полноценные self/body collisions и bending constraints всё ещё отсутствуют.
 
 ## Техническое задание на следующий проход по самому asset
 
@@ -99,7 +99,7 @@ Source: `app/scripts/verify-hosted-kurisu-model.mjs`, workflow `NK1 Avatar Model
 - Бинарный файл v5 этим проходом не менялся; каталог и Release не переопределялись.
 - Отсутствующие в модели secondary bones/morph targets не «добавляются» runtime-кодом.
 - Это аудит glTF node/skin/morph/material structure, а не визуальное подтверждение правильности skin weights, коллизий, деформации ткани или анатомической формы.
-- Полноценная vertex-level cloth/soft-body симуляция всё ещё не реализована. Поверх bounded bone-driven secondary dynamics добавлен только небольшой GPU vertex-shader sway: он сдвигает свободные участки selected meshes после skinning, без коллизий, vertex constraints и изменения исходных skin weights.
+- Добавлен XPBD vertex-particle слой: ограниченная Verlet-интеграция, пять итераций XPBD distance constraints на high, адаптивные 2/3/5 итераций по quality tier, до четырёх fixed substeps и ограничение смещения. Решатель работает на отдельных мешах из allowlist, не заменяет основную humanoid-артикуляцию и не меняет исходный skin-weight data. Это уже не только shader sway, но пока не полный cloth/soft-body: self-collision, столкновение с телом, bending constraints и Android soak требуют отдельного этапа.
 
 
 ## Проверка реальных skin weights — hosted preflight 2026-11-27
@@ -120,7 +120,7 @@ Source: `app/scripts/verify-hosted-kurisu-model.mjs`, workflow `NK1 Avatar Model
 | `HAIR_layer_L0–L2/R0–R2` | 637 каждый | head 100% |
 | `HAIR_long_lock_L/R` | 423 каждый | head 100% |
 
-Следовательно, волосы уже разделены на независимые геометрические части, но сейчас все они жёстко следуют за головой. Чтобы получить инерцию прядей, нужно добавить новые кости в skin и перераспределить веса внутри соответствующих hair meshes: корни оставить на `head`, середину и кончики плавно перевзвесить на цепочку secondary joints. Одного включения runtime spring solver недостаточно.
+Следовательно, волосы уже разделены на независимые геометрические части, но экспортированных hair secondary bones нет и текущие веса продолжают вести их за `head`. XPBD может добавить ограниченное смещение вершин на allowlisted прядях без новых joints, но для полноценного движения пряди вместе с головой и корректного следования за головой при повороте нужна авторенная цепочка `HairLockL/R_Root → Mid → Tip` с плавными весами. Это следующий asset-authoring шаг, а не доказательство того, что такие кости уже существуют.
 
 ### Одежда и тело
 
@@ -147,7 +147,7 @@ Source: `app/scripts/verify-hosted-kurisu-model.mjs`, workflow `NK1 Avatar Model
 5. Галстук: отдельная цепочка knot/root → blade tip, с очень небольшой амплитудой.
 6. После правки каждого mesh повторять этот sampler и сравнивать сохранение суммы весов, coverage основных joints и отсутствие unweighted vertices.
 
-Это карта текущих skin weights, а не результат изменения GLB: оригинальный v5 не изменён, Release не обновлялся. GPU sway выполняется поверх существующих данных только в runtime и не переписывает геометрию или атрибуты skin.
+Это карта исходных skin weights, а не изменение GLB: оригинальный v5 не изменён, Release не обновлялся. Для XPBD runtime создаёт приватную копию геометрии и временный `nk1SecondaryOffset` attribute, исходный geometry/material восстанавливаются и освобождаются при замене или сбросе; исходный файл и его веса skin не переписываются.
 
 
 
@@ -162,7 +162,7 @@ Source: `app/scripts/verify-hosted-kurisu-model.mjs`, workflow `NK1 Avatar Model
 
 Верхние пределы смещения в нормализованном мировом масштабе модели: волосы 0.012, юбка/халат 0.007, полотнище галстука 0.0045. Итоговая амплитуда дополнительно зависит от energy/arousal/curiosity/novelty/predictionError, body sway/gait/breath, sleep state и quality tier. Материал клонируется без потери исходных карт и NK1 `gradientMap`; исходная ссылка и все клоны корректно восстанавливаются/освобождаются при смене модели или reset.
 
-Это **не cloth simulation**: нет столкновений, self-collision, распределения масс, XPBD/constraint solve, ветра или deformation graph. Шейдер добавляет только небольшую, ограниченную волну в свободной зоне меша после штатного skinning. Визуальное подтверждение на настоящем WebGL рендере/Android ещё требуется; CI подтверждает тесты и сборку, но не художественную приемку движения.
+XPBD surface simulation уже создаёт particle state на каждой выбранной вершине, закрепляет root band и решает расстояния по рёбрам треугольной сетки. Но пока нет self-collision, body collision proxies, bending constraints, ветрового поля и полноценного деформационного графа; остаётся GPU sway fallback на несовместимых meshes. Визуальное подтверждение на настоящем WebGL рендере/Android всё ещё требуется; CI подтверждает только тесты и сборку, а не художественную приёмку движения.
 
 ## Геометрическая модульность для runtime-диагностики
 
@@ -172,5 +172,5 @@ Source: `app/scripts/verify-hosted-kurisu-model.mjs`, workflow `NK1 Avatar Model
 - Одежда: `CLOTH_labcoat_main`, `CLOTH_skirt`, `CLOTH_tie_blade/knot`, `CLOTH_lapel_left/right`, `CLOTH_collar_L/R`, `CLOTH_pocket_L/R`, `CLOTH_pocket_flap_L/R`, `CLOTH_button_0-3`, `CLOTH_hem_stitch`.
 - Рукава: `CLOTH_upper_sleeve_L/R`, `CLOTH_lower_sleeve_L/R`.
 
-В hosted audit inventory всего 101 mesh-node; 99 из них skinned к общей skin. Автоматическая role-классификация raw GLB находит **15 hair meshes, 19 garment meshes и 4 sleeve meshes** (все 38 привязаны к общей skin). Для текущей runtime-панели введён отдельный подсчёт mesh roles: hair / garment / sleeve. Он специально не повышает состояние `secondaryPhysicsReady`: наличие отдельных meshes не означает наличие вторичных костей или реальной симуляции.
+В hosted audit inventory всего 101 mesh-node; 99 из них skinned к общей skin. Автоматическая role-классификация raw GLB находит **15 hair meshes, 19 garment meshes и 4 sleeve meshes** (все 38 привязаны к общей skin). Runtime отдельно показывает mesh inventory, общее число подключённых вторичных meshes и число meshes с активным XPBD particle state. Наличие вершинной симуляции не повышает показатель `secondaryPhysicsReady` по bone/morph: отсутствие экспортированных secondary bones, morph aliases и neural-fabric tags остаётся отдельным блокером.
 
