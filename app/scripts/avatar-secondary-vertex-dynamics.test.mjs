@@ -102,7 +102,7 @@ test("shader injection adds a bounded displacement only after the skinning trans
   const original = shader.vertexShader;
   assert.equal(vertexDynamics.injectAvatarSecondaryVertexShader(shader, uniforms), true);
   assert.ok(shader.vertexShader.includes("#include <skinning_vertex>"));
-  assert.ok(shader.vertexShader.indexOf("#include <skinning_vertex>") < shader.vertexShader.indexOf("nk1SecondaryMotion"));
+  assert.ok(shader.vertexShader.indexOf("#include <skinning_vertex>") < shader.vertexShader.indexOf("transformed.x +="));
   assert.ok(shader.vertexShader.includes("transformed.x +="));
   assert.ok(shader.vertexShader.includes("transformed.z +="));
   assert.ok(shader.vertexShader.length > original.length);
