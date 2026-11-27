@@ -7,8 +7,8 @@
 | Canonical state/core | `OrganismCore.ts` | Existing canonical owner preserved | Inspect persistence/recovery paths before changes |
 | Subsystem composition | `OrganismSystemFabric.ts` | IMPLEMENTED upstream | Check subsystem contracts/health as one composition |
 | Canonical memory | `MemoryOS2.ts` via `MemoryFabric` | SINGLE OWNER IN CODE; identity, restore/round-trip and capacity/lifecycle regressions are included in the gate. Continuity journal is now crash-safe (detached flush batches, write-ahead rollback marker, fsync, torn-tail repair, complete-line bounded compaction); 6 durability regressions added. Exact latest branch CI still pending | Confirm core-gate pass; test real interrupted process recovery, idempotent canonical writes and Android filesystem fsync semantics |
-| Cognitive cycle | `UnifiedCognitiveCycle.ts` | IMPLEMENTED upstream | Keep strict-cycle and runtime-wiring tests in release gate |
-| Action permissions | `ActionGateway.ts` | Existing authority preserved | Audit all action callers; no direct execution shortcuts |
+| Cognitive cycle | `UnifiedCognitiveCycle.ts`, `GlobalWorkspaceSubstrateV2.ts` | IMPLEMENTED: recurrent competition/recurrence/broadcast, bounded coalition, decision receipts; current-cycle workspace runs before P61/P64. Previous merge-head workspace-prearbitration + cognitive-cycle boundary tests PASS; current exact-head rerun pending | Pass current-head focused suite; measure outcome-credit calibration and coalition quality on holdout traces |
+| Action permissions | `ActionGateway.ts` | Existing authority preserved; OpenClaw imports and signed perception add no action authority. G3 host admission is a separate trust boundary, not an action bypass | Pass current-head governance + host-proof suites; audit all action callers |
 | Local LLM | `OpenAICompatibleLocalChatProvider.ts` + existing P40 ecology | OPTIONAL LOOPBACK provider; now supports bounded JSON Schema-constrained output, guarded schema cloning, abort/timeout and bounded response parsing; no second model selector | Pass current-head structured-output contract; test a configured llama.cpp server and phone RAM/latency |
 | OpenClaw skill ingestion | `NekoExternalMarkdownMemoryAdapter.ts` → canonical `MemoryFabric` / `MemoryOS2` | IMPLEMENTED: `skills/<name>/SKILL.md` is accepted only as unknown external semantic facts, quarantined on preview, explicit review override required for commit; no tool/action authority | Pass current-head OpenClaw import contract; add user-facing review UX before production exposure |
 | 3D embodiment | `proceduralHumanoidRig.ts`, `Avatar3DStage.tsx`, `AvatarStage.tsx`, `articulatedBodyParticles.ts` | 61-bone hierarchy / 60 movable pivots; material-batched skinned volumes; IK; current 22-particle / 21-segment source solver with 150° hinge limit + heel/toe contact/friction; actual body physics loop bounded to 20 Hz; VRM adapter, App typecheck and production bundle passed on the exact previous feature head; latest integrated rig/ESM tests are being rerun | Pass full current-head app and particle-solver suite; then continuous tissue surface, balance, gait, collision and phone profiling |
@@ -61,3 +61,20 @@ Upstream implementation is recorded as inherited baseline, not as work completed
 - PR #1220 remains Draft and is based on an older source head; no blind merge/rebase.
 - The mobile and desktop browser smoke must both pass on the same exact product head. A selector fix is not UI acceptance by itself.
 - The 3D framebuffer acceptance still requires a model whose rendered opaque-pixel bounds occupy a meaningful portion of the selected canvas; model-loaded metadata or draw-call count alone is insufficient.
+
+
+## Cognitive upgrade — source merge `53a5926f...` (45 changed source paths)
+
+| Capability | Canonical owner | Contract now integrated | Acceptance state |
+|---|---|---|---|
+| Global workspace | `GlobalWorkspaceSubstrateV2.ts` + `OrganismCore` | Bounded candidate admission; recurrent 24-wide latent state; competition, recurrence and broadcast; workspace runs before P61/P64; decision-scoped coalition receipts and delayed outcome credit | Prior exact merge-head workflow PASS; latest exact head queued |
+| Metacognitive self-observation | `MetacognitiveNeuralSubstrate.ts` | 27 input features; 24→27 checkpoint migration; prediction targets stay paired with outputs; gradients use current observation; restore state sanitized | Prior exact merge-head projection + typecheck PASS; latest exact head queued |
+| Goal-bound planning | `PlanEngine.ts` + `GroundedWorldState.ts` | Decision ID/tick + goal revision + world fingerprint; integrity fingerprint; step preconditions/expected outcomes; one-cycle revision from verified independent observed outcome only | Latest exact head queued |
+| G3 observed perception | `SignedObservationAdmissionAuthority.ts` + `FileHostObservationNonceStore.ts` + `PerceptualEvidenceCompiler.ts` | Host public-key receipt verification; trusted device/session; active consent; durable nonce replay prevention and monotonic clock; invalid/missing proof fails closed | Latest exact head queued; host private-key provisioning and Termux fsync still untested |
+| Restore sanitization | `RestoreSanitizers.ts`, embodiment restore path | Validate own-data records before touching untrusted/proxy-backed restore payloads | Current exact head covered by full core suite; pending |
+
+### Source update provenance
+- Source head advanced from `8994a103...` to `9de695dd...` by four commits: goal-bound planner lineage, G3 signed perception admission, current-cycle workspace arbitration and metacognitive neural integrity.
+- These commits modified 45 paths. Exactly two paths overlapped with product-specific changes: `OrganismRuntime.ts` and `runtime/neuro-kurisu/package.json`. They were merged explicitly: source runtime cognition plus product shutdown-durability path; source scripts plus product durability/NeuroCore gates and the three planner/workspace test scripts. The other source changes were overlaid without replacing product-only files.
+- Merge commit `53a5926f...` has two parents: product `24416f34...` and source `9de695dd...`. The follow-up health-test correction is `4dfc60c4...`.
+- No direct write was made to root `main` or `workpass70-source`.
