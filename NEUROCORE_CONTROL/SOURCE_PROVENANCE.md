@@ -47,3 +47,16 @@ The seed inventory counts above describe the original seed tree; they are not cl
 ## Commit trail
 
 The product branch starts at the seed baseline and contains the product integration history plus explicit source synchronization merges. Subsequent work uses the `[NK1][этап]` message convention. The source branch and `main` remain unchanged.
+
+
+## Latest cognitive source synchronization — 2026-11-27
+
+- Source advanced from `8994a103f6b735f6347d77d926ee9c024a4d4f4d` to `9de695dd4713ec909d7312b45966d30dfb76d5c2` (four commits).
+- Source tree SHA: `4c74c37aec7dc38eb6cb7cd176364ca2eaf436c7`.
+- Product tree before merge: `c9faa8767e3008beb56c22bcf4f347aafb68e806`.
+- Product/source merge tree: `8462456934b459ed22e06aca7d55eb9b97dec520`.
+- Two-parent merge: `53a5926f753c56b97599b1ee28a0e46d769662b2`.
+- Parents: product `24416f34d74be0193534aa3b608d36e712ea6bfc`; source `9de695dd4713ec909d7312b45966d30dfb76d5c2`.
+- 45 source-changed paths were applied. Only `runtime/neuro-kurisu/package.json` and `runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts` differed from the source base on the product side. Package scripts were unioned; the source runtime file received the product's durable shutdown region while retaining all other source-side cognition updates.
+- Follow-up health-contract regression correction: `4dfc60c4d1079bc694f3bc0043bced6c59bad564`.
+- Current PR #1221 is 174 commits ahead of source and 0 behind; no direct update to source branch or root `main`.
