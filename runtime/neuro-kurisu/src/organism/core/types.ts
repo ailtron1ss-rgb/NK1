@@ -151,6 +151,11 @@ export interface OrganismDecisionTrace {
   semanticEvidence?: import('../system/DecisionSemanticEvidence.ts').DecisionSemanticEvidence;
   /** WILL-inspired read-only affordance and competition evidence; never a second selector. */
   agencyEvidence?: DecisionAgencyEvidence;
+  /** CEF anchors emitted by this exact decision cycle; retained for delayed outcomes. */
+  cognitiveEventAnchors?: Partial<Record<
+    'observation' | 'prediction' | 'appraisal' | 'attention' | 'memory' | 'goal' | 'plan' | 'action',
+    string
+  >>;
   userRequestedAction: ActionKind | null;
   autonomousOverride: boolean;
   /** Canonical self-agency admission for the endogenous goal authored in this cycle. */
