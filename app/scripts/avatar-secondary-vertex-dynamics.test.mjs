@@ -58,6 +58,42 @@ function scene(nodes) {
   return root;
 }
 
+function makeParticleGeometry() {
+  const positions = [];
+  const index = [];
+  for (let y = 0; y < 3; y += 1) {
+    for (let x = 0; x < 3; x += 1) positions.push(x * 0.1, y * 0.1, 0);
+  }
+  for (let y = 0; y < 2; y += 1) {
+    for (let x = 0; x < 2; x += 1) {
+      const a = y * 3 + x, b = a + 1, c = a + 3, d = c + 1;
+      index.push(a, c, b, b, c, d);
+    }
+  }
+  const geometry = {
+    attributes: { position: { array: new Float32Array(positions), count: 9, getY(i) { return this.array[i * 3 + 1]; } } },
+    index: { array: new Uint16Array(index) },
+    boundingBox: { min: { y: 0 }, max: { y: 0.2 } },
+    disposed: false,
+    setAttribute(name, attribute) { this.attributes[name] = attribute; },
+    getAttribute(name) { return this.attributes[name]; },
+    clone() {
+      const clone = {
+        ...this,
+        attributes: { ...this.attributes },
+        index: this.index,
+        disposed: false,
+        setAttribute: this.setAttribute,
+        getAttribute: this.getAttribute,
+        dispose() { this.disposed = true; },
+      };
+      return clone;
+    },
+    dispose() { this.disposed = true; },
+  };
+  return geometry;
+}
+
 function frame(overrides = {}) {
   return {
     deltaSeconds: 1 / 60,
@@ -211,6 +247,30 @@ test("uniform updates clamp frame values and restore releases cloned materials s
   assert.equal(part.material, original);
 });
 
+
+test("authored mesh vertices run through XPBD particles and restore geometry on disposal", () => {
+  const part = mesh("CLOTH_skirt", { geometry: makeParticleGeometry() });
+  const originalGeometry = part.geometry;
+  const originalMaterial = part.material;
+  const originalFrustumCulled = true;
+  part.frustumCulled = originalFrustumCulled;
+  const bindings = vertexDynamics.attachAvatarSecondaryVertexDynamics(scene([part]), 1);
+  assert.equal(bindings.length, 1);
+  assert.ok(bindings[0].particleState, "the real vertex grid must receive an XPBD state");
+  assert.notEqual(part.geometry, originalGeometry);
+  assert.equal(part.frustumCulled, false, "simulated offsets must not be culled by stale bounds");
+  const offset = part.geometry.getAttribute("nk1SecondaryOffset");
+  assert.ok(offset);
+  const rest = new Float32Array(offset.array.length);
+  vertexDynamics.updateAvatarSecondaryVertexDynamics(bindings, frame(), 1 / 60);
+  assert.ok(offset.array.some((value, index) => Math.abs(value - rest[index]) > 1e-8));
+  assert.ok(bindings[0].particleState.completedSteps > 0);
+  vertexDynamics.disposeAvatarSecondaryVertexDynamics(bindings);
+  assert.equal(part.geometry, originalGeometry);
+  assert.equal(part.material, originalMaterial);
+  assert.equal(part.frustumCulled, originalFrustumCulled);
+  assert.equal(bindings[0].patchedGeometry.disposed, true);
+});
 
 test("shader injection rejects malformed supplemental uniforms without partial mutation", () => {
   const shader = {
