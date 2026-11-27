@@ -62,7 +62,7 @@ function signedReceipt(overrides = {}) {
 
 const receipt = signedReceipt();
 const accepted = await authority.admit(receipt);
-assert.equal(accepted.accepted, true, 'a valid host-signed, consented, device-bound observation must be admitted');
+assert.equal(accepted.accepted, true, 'a valid host-signed, consented, device-bound observation must be admitted: '+JSON.stringify(accepted));
 assert.equal(accepted.admission.observationId, 'observation-door-open-001');
 assert.equal(accepted.admission.claim, 'door is open');
 assert.equal(accepted.admission.confidence01, 0.92);
