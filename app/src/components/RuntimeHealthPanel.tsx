@@ -40,12 +40,13 @@ export function RuntimeHealthPanel() {
     let disposed = false;
     let inFlight = false;
     let controller: AbortController | null = null;
+    let timeout: number | null = null;
 
     const refresh = async () => {
       if (disposed || inFlight) return;
       inFlight = true;
       controller = new AbortController();
-      const timeout = window.setTimeout(() => controller?.abort(), 5_000);
+      timeout = window.setTimeout(() => controller?.abort(), 5_000);
       try {
         const response = await fetch(neuroApiUrl("/api/health"), {
           method: "GET",
@@ -69,7 +70,8 @@ export function RuntimeHealthPanel() {
           });
         }
       } finally {
-        window.clearTimeout(timeout);
+        if (timeout !== null) window.clearTimeout(timeout);
+        timeout = null;
         inFlight = false;
       }
     };
@@ -82,7 +84,7 @@ export function RuntimeHealthPanel() {
     return () => {
       disposed = true;
       controller?.abort();
-      window.clearTimeout(timeout);
+      if (timeout !== null) window.clearTimeout(timeout);
       window.clearInterval(interval);
     };
   }, [refreshKey]);
