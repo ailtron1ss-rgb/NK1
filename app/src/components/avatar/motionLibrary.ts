@@ -19,7 +19,7 @@ export type MotionProgramId =
   | "concern" | "respond" | "walk" | "turn" | "sit" | "stand" | "reach" | "point" | "wave" | "hold"
   | "nod" | "shake" | "clap" | "bow";
 
-export type SemanticGestureProgramId = "nod" | "shake" | "wave" | "clap" | "bow";
+export type SemanticGestureProgramId = "nod" | "shake" | "wave" | "clap" | "bow" | "point";
 
 export interface MotionKeyframe {
   /** Normalized time within the program, 0..1 inclusive and strictly increasing. */
