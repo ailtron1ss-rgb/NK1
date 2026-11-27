@@ -93,12 +93,34 @@ try {
   await canvas.waitFor({ state: "visible", timeout: 20_000 });
 
   await page.getByText("NeuroKurisu_3D_v5.glb", { exact: true }).waitFor({ state: "visible", timeout: 75_000 });
+  await page.waitForFunction(() => {
+    const element = document.querySelector('canvas[aria-label="3D-модель Курису, потяните для поворота"]');
+    return element?.dataset.avatarModelMeshCount && Number(element.dataset.avatarVisibleMeshCount) > 0
+      && Number(element.dataset.avatarSkinnedMeshCount) > 0;
+  }, undefined, { timeout: 15_000 });
   const audit = stage.locator('details[aria-label="Диагностика вторичной физики аватара"]');
   await audit.waitFor({ state: "visible", timeout: 10_000 });
   if (!(await audit.getAttribute("open"))) await audit.locator("summary").click();
   await audit.getByText("GPU vertex sway: 11 mesh", { exact: true }).waitFor({ state: "visible", timeout: 10_000 });
   report.diagnostics = await audit.innerText();
 
+  report.modelRuntime = await canvas.evaluate((element) => ({
+    meshCount: Number(element.dataset.avatarModelMeshCount || 0),
+    visibleMeshCount: Number(element.dataset.avatarVisibleMeshCount || 0),
+    skinnedMeshCount: Number(element.dataset.avatarSkinnedMeshCount || 0),
+    cameraDistance: Number(element.dataset.avatarCameraDistance || 0),
+    projectedCenterX: Number(element.dataset.avatarProjectedCenterX || Number.NaN),
+    projectedCenterY: Number(element.dataset.avatarProjectedCenterY || Number.NaN),
+    renderCalls: Number(element.dataset.avatarRenderCalls || 0),
+    renderedTriangles: Number(element.dataset.avatarRenderedTriangles || 0),
+  }));
+  assert.ok(report.modelRuntime.visibleMeshCount > 0, "loaded model must have visible meshes");
+  assert.ok(report.modelRuntime.skinnedMeshCount > 0, "loaded model must have skinned meshes");
+  assert.ok(report.modelRuntime.cameraDistance > 0, "camera must be fitted to normalized model bounds");
+  assert.ok(Math.abs(report.modelRuntime.projectedCenterX) < 0.25 && Math.abs(report.modelRuntime.projectedCenterY) < 0.25,
+    "model center must be projected near the center of the viewport");
+  assert.ok(report.modelRuntime.renderCalls > 0 && report.modelRuntime.renderedTriangles > 0,
+    "WebGL must draw the loaded model, not only an empty background");
   report.webgl = await canvas.evaluate((element) => {
     const gl = element.getContext("webgl2") || element.getContext("webgl");
     if (!gl) return { available: false, version: null, renderer: null, width: element.width, height: element.height };
