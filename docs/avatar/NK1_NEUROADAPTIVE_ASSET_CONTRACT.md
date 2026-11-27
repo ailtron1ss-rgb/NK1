@@ -109,7 +109,7 @@ The runtime may attach a small post-skinning vertex-shader displacement to exist
 | Garment | `CLOTH_skirt`, `CLOTH_labcoat_main` | 0.007 model units |
 | Tie | `CLOTH_tie_blade` | 0.0045 model units |
 
-The deformation is inserted strictly after Three.js `skinning_vertex`; original skinning, facial morphs and primary motor remain the base pose. A lower-edge mask keeps the effect near loose tips/hems. Motion is driven by the canonical frame's body sway, gait, breath, arousal, curiosity, novelty and prediction error, then reduced by sleep and low device quality. Material clones preserve the authored PBR maps and properties and are disposed/restored on model replacement or reset.
+The deformation is inserted strictly after Three.js `skinning_vertex`; original skinning, facial morphs and primary motor remain the base pose. A lower-edge mask keeps the effect near loose tips/hems. Motion is driven by the canonical frame's body sway, gait, breath, arousal, curiosity, novelty and prediction error, then reduced by sleep and low device quality. Material clones preserve the authored maps and shader path, including the shared `gradientMap` used by NK1 cel shading, and are disposed/restored on model replacement or reset.
 
 The allowlist deliberately excludes `HAIR_back_mass`, `HAIR_crown`, all fringe meshes, face/eye meshes, lapels, collars, pockets, buttons and sleeves. The shader does not perform collisions, self-collision, mass-spring vertex simulation, constraint solving, wind-field simulation or cloth self-contact. It is visual secondary sway only. A real cloth/soft-body implementation still requires authored topology, pinned vertex groups, collision proxies and browser/device visual profiling.
 
