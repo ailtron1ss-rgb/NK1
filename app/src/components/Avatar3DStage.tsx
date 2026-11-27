@@ -7,7 +7,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { VRMLoaderPlugin, VRMUtils } from "@pixiv/three-vrm";
 import { clearStoredAvatarModel, loadStoredAvatarModel, MAX_AVATAR_MODEL_BYTES, saveAvatarModel } from "./avatar/avatarModelStore";
 import * as THREE from "three";
-import { createProceduralHumanoidRig, updateProceduralHumanoidRig } from "./avatar/proceduralHumanoidRig";
+import { createProceduralHumanoidRig, updateProceduralHumanoidRig, type ArticulatedParticleFrame } from "./avatar/proceduralHumanoidRig";
 import { auditHumanoidRig } from "./avatar/vrmHumanoidRigAudit";
 import { buildVrmHumanoidAuditNodes, parseVrmHumanoidNodeMap } from "./avatar/vrmHumanoidNodeMap";
 import { applyVrmExpressionFrame, applyVrmFullBodyChannels, applyVrmNormalizedMotorFrame, configureVrmForNk1NormalizedMotorDrive, resolveVrmLookAtTargetOffset, updateVrmForNk1Frame } from "./avatar/vrmRuntimeAdapter";
@@ -25,7 +25,7 @@ import { applyAvatarAnimationFrame } from "./avatar/avatarAnimationRuntime";
 import { createAvatarPresentationReceipt, type AvatarPresentationReceiptV1 } from "./avatar/avatarPresentationReceipt.ts";
 import { createAvatarFrameBudgetController, resolveAvatarFrameBudget, shouldRenderAvatarFrame, shouldRunAvatarRenderLoop } from "./avatar/avatarFrameBudget.ts";
 
-type Props = { frameTick: number; onFrameReceipt?: (receipt: AvatarPresentationReceiptV1) => void; emotion: EmotionLabel; action: ActionKind; motorPlan: AvatarMotorIntentPlan; arousal: number; valence: number; dominance: number; energy: number; cognitiveLoad: number; uncertainty: number; socialNeed: number; novelty: number; goalPressure: number; curiosity: number; predictionError: number; traits: Record<string, number>; gazeX: number; gazeY: number; speaking: boolean; mouthPose: MouthPose; thinking: boolean; awake: boolean; bodyChannels?: Record<string, number>; avatarBrainFrame?: AvatarBrainProjectionV1; onReturnTo2D?: () => void };
+type Props = { frameTick: number; onFrameReceipt?: (receipt: AvatarPresentationReceiptV1) => void; emotion: EmotionLabel; action: ActionKind; motorPlan: AvatarMotorIntentPlan; arousal: number; valence: number; dominance: number; energy: number; cognitiveLoad: number; uncertainty: number; socialNeed: number; novelty: number; goalPressure: number; curiosity: number; predictionError: number; traits: Record<string, number>; gazeX: number; gazeY: number; speaking: boolean; mouthPose: MouthPose; thinking: boolean; awake: boolean; bodyChannels?: Record<string, number>; bodyParticles?: ArticulatedParticleFrame; avatarBrainFrame?: AvatarBrainProjectionV1; onReturnTo2D?: () => void };
 type Bone = { node: any; name: string; x: number; y: number; z: number };
 type Runtime = { scene:any; camera:any; renderer:any; body:any; loaded:any; vrm:any; vrmLookAtTarget:any; vrmLookAtFaceFront:any; vrmLookAtOffset:any; mixer:any; clips:any[]; clipName:string; activeClipAction:any; bones:Bone[]; yaw:number; dragX:number|null; mood:any; last:number };
 const clamp=(n:number,a:number,b:number)=>Math.max(a,Math.min(b,Number.isFinite(n)?n:0));
@@ -123,7 +123,7 @@ export function Avatar3DStage(props:Props){
       awake:p.awake,action:p.action,emotion:p.emotion,arousal:p.arousal,energy,
       cognitiveLoad:load,gazeX:p.gazeX,gazeY:p.gazeY,headTilt:p.motorPlan.headTilt,
       speaking:p.speaking,leftArmIntent:armIntent.leftArmIntent,rightArmIntent:armIntent.rightArmIntent,
-      bodyChannels:p.bodyChannels,deltaSeconds:dt,timeSeconds:t
+      bodyChannels:p.bodyChannels,particles:p.bodyParticles,deltaSeconds:dt,timeSeconds:t
     });
     b.root.position.y=Math.sin(t*(p.awake?1.5+.5*energy:.45))*(.004+.012*energy);
     b.root.rotation.y=rt.yaw+Math.sin(t*.29)*(.006+.01*uncertainty);
