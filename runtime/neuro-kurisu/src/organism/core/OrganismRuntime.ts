@@ -2730,7 +2730,8 @@ export class OrganismRuntime {
     // stores to persist the final in-memory cycle.  On mobile this is especially
     // dangerous because checkpoint cadence is deliberately throttled.
     this.stopping = true;
-    this.clockScheduler.stop();
+    try {
+      this.clockScheduler.stop();
     await this.clockScheduler.drain();
     await this.trustedShadowLearningScheduler?.drain();
     await this.queue.catch(() => undefined);
@@ -2754,38 +2755,87 @@ export class OrganismRuntime {
       });
       this.core.setRuntimeClosure(this.runtimeClosure.snapshot());
       await this.core.flush();
-      await this.persistCognitiveSpineSchedule();
-      await this.persistRiskAwareRecovery();
+      const cognitiveSpineDurability = await this.persistCognitiveSpineSchedule();
+      const riskAwareRecoveryDurability = await this.persistRiskAwareRecovery();
+      const cognitiveHealthDurability = await this.persistCognitiveHealth();
       await this.checkpointWorld(true);
-      await this.journal.write('info', 'runtime.stop.durable', {
-        tick: runtimeView.tick,
-        worldTick: this.environment.snapshot().tick,
-      }).catch(() => {});
-    });
-
-    await this.continuityLedger.flush().catch(() => {});
-    await this.continuityLedger.close();
+      // The continuity ledger is diagnostic rather than canonical organism state,
+      // but its buffered frames are still a persisted sidecar and must be reported.
+      let continuityLedgerDurability: 'durable' | 'failed' = 'durable';
+      try {
+        await this.continuityLedger.flush();
+      } catch (error) {
+        continuityLedgerDurability = 'failed';
+        await this.journal.write('warn', 'runtime.continuity-ledger.persist-failed', {
+          tick: runtimeView.tick,
+          message: String((error as any)?.message ?? error).slice(0, 180),
+        }).catch(() => {});
+      }
+      const durability = {
+        core: 'durable',
+        world: 'durable',
+        cognitiveSpine: cognitiveSpineDurability,
+        riskAwareRecovery: riskAwareRecoveryDurability,
+        cognitiveHealth: cognitiveHealthDurability,
+        continuityLedger: continuityLedgerDurability,
+      } as const;
+      // Optional but configured stores are explicit; absence is not a durability failure.
+      const complete = Object.values(durability).every(status => status !== 'failed');
+      await this.journal.write(
+        complete ? 'info' : 'warn',
+        complete ? 'runtime.stop.durable' : 'runtime.stop.partial',
+        {
+          tick: runtimeView.tick,
+          worldTick: this.environment.snapshot().tick,
+          overall: complete ? 'durable' : 'partial',
+          durability,
+        },
+      ).catch(() => {});
+      });
+    } finally {
+      // The diagnostic ledger owns a live file handle and may still hold buffered
+      // continuity frames. Close it on success and on every failed shutdown path.
+      await this.continuityLedger.close();
+    }
   }
 
-  private async persistCognitiveSpineSchedule(): Promise<void> {
+  private async persistCognitiveSpineSchedule(): Promise<'durable' | 'failed'> {
     try {
       await this.cognitiveSpineStore.save(this.cognitiveSpineScheduler.snapshot());
+      return 'durable';
     } catch (error) {
       await this.journal.write('warn', 'runtime.cognitive-spine.persist-failed', {
         tick: this.cognitiveSpineScheduler.snapshot().lastTick,
         message: String((error as any)?.message ?? error).slice(0, 180),
       }).catch(() => {});
+      return 'failed';
     }
   }
 
-  private async persistRiskAwareRecovery(): Promise<void> {
+  private async persistRiskAwareRecovery(): Promise<'durable' | 'failed'> {
     try {
       await this.riskAwareRecoveryStore.save(this.unifiedCycle.riskAwareRecoverySnapshot());
+      return 'durable';
     } catch (error) {
       await this.journal.write('warn', 'runtime.risk-aware-recovery.persist-failed', {
         tick: this.unifiedCycle.riskAwareRecoverySnapshot().tick,
         message: String((error as any)?.message ?? error).slice(0, 180),
       }).catch(() => {});
+      return 'failed';
+    }
+  }
+
+  private async persistCognitiveHealth(): Promise<'durable' | 'failed' | 'not-configured'> {
+    const system = this.cognitiveImmuneSystem;
+    if (!system) return 'not-configured';
+    try {
+      await this.cognitiveImmuneStore.save(system.snapshot());
+      return 'durable';
+    } catch (error) {
+      await this.journal.write('warn', 'runtime.cognitive-health.persist-failed', {
+        message: String((error as any)?.message ?? error).slice(0, 180),
+      }).catch(() => {});
+      return 'failed';
     }
   }
 
