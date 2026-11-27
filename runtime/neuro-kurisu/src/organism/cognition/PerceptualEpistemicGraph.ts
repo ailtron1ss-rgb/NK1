@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { countOr, isPlainDataArray, isPlainDataRecord, ownDataValue, stringOr, timestampOr, unitStrictOr, unitOr } from '../body/RestoreSanitizers.ts';
 const clamp=(n:number)=>Math.max(0,Math.min(1,Number.isFinite(n)?n:0));
 export type EpistemicSource='observed'|'model-output'|'derived'|'unresolved';
