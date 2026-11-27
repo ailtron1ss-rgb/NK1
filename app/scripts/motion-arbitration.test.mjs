@@ -27,7 +27,7 @@ test("thinking retains priority over an explicit gesture and sleeping suppresses
 });
 
 test("gesture programs return to a neutral body pose when a one-shot finishes", () => {
-  for (const programId of ["nod", "shake", "clap", "bow"]) {
+  for (const programId of ["nod", "shake", "clap", "bow", "point"]) {
     const program = MOTION_PROGRAMS[programId];
     assert.equal(program.loop, false);
     const finalFrame = program.keyframes.at(-1);
@@ -37,12 +37,17 @@ test("gesture programs return to a neutral body pose when a one-shot finishes", 
 
 
 test("point gesture extends the index while curling the other fingers", () => {
-  const pose = sampleMotionProgram(MOTION_PROGRAMS.point, MOTION_PROGRAMS.point.durationMs);
+  const pose = sampleMotionProgram(MOTION_PROGRAMS.point, MOTION_PROGRAMS.point.durationMs * 0.5);
   assert.ok(pose.channels.rightIndexCurl < -0.7);
   assert.ok(pose.channels.rightThumbCurl > 0);
   assert.ok(pose.channels.rightMiddleCurl > 0.5);
   assert.ok(pose.channels.rightRingCurl > 0.5);
   assert.ok(pose.channels.rightLittleCurl > 0.5);
+});
+
+test("point gesture returns every articulated channel to neutral at completion", () => {
+  const pose = sampleMotionProgram(MOTION_PROGRAMS.point, MOTION_PROGRAMS.point.durationMs);
+  for (const value of Object.values(pose.channels)) assert.equal(value, 0);
 });
 
 test("wave gesture supplies a relaxed whole-hand shape without forcing a fist", () => {
