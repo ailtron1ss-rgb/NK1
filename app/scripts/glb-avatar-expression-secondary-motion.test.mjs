@@ -101,3 +101,17 @@ test("GLB secondary motion applies toe flex only from a bounded ankle channel", 
     timeSeconds: 0, awake: true, energy: 1, action: "idle",
   }), null);
 });
+
+
+test("GLB per-digit curl overrides aggregate curl and allows index extension", () => {
+  const frame = {
+    timeSeconds: 0, awake: true, energy: 1, action: "point",
+    bodyChannels: { leftFingers: 0.25, leftIndexCurl: -0.8, leftRingCurl: 0.6 },
+  };
+  const index = resolveGlbSecondaryBoneRotation("leftIndex", frame);
+  const middle = resolveGlbSecondaryBoneRotation("leftMiddle", frame);
+  const ring = resolveGlbSecondaryBoneRotation("leftRing", frame);
+  assert.ok(index.x > 0, "negative index curl extends instead of following the aggregate fist curl");
+  assert.ok(middle.x < 0, "unspecified digits retain aggregate curl");
+  assert.ok(ring.x < 0, "positive per-digit curl closes the ring finger");
+});
