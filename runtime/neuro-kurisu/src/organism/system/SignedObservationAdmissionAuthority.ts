@@ -1,4 +1,4 @@
-import { createPublicKey, KeyObject, verify as verifySignature } from 'node:crypto';
+import { createPublicKey, verify as verifySignature } from 'node:crypto';
 import { isPlainDataRecord, ownDataValue } from '../body/RestoreSanitizers.ts';
 import { sha256Stable, stableJson } from '../core/StableSerialization.ts';
 
@@ -27,7 +27,7 @@ export interface SignedHostObservationReceipt extends SignedHostObservationRecei
   signatureAlgorithm:HostObservationSignatureAlgorithm;
   signature:string;
 }
-export type HostObservationPublicKey=string|Buffer|KeyObject;
+export type HostObservationPublicKey=string|Buffer|ReturnType<typeof createPublicKey>;
 
 export interface HostObservationConsentBinding {
   ticketId:string;
@@ -161,7 +161,12 @@ function verifyReceiptSignature(
     if(algorithm==='ed25519'&&signature.length!==64)return false;
     // createPublicKey() rejects an already-public KeyObject in Node. Reuse it
     // directly; parse PEM/DER material only when the host resolver returns bytes/text.
-    const key=material instanceof KeyObject?material:createPublicKey(material);
+    const isPublicKeyObject=typeof material==='object'&&material!==null&&
+      'type' in material&&(material as {type?:unknown}).type==='public'&&
+      'asymmetricKeyType' in material;
+    const key=isPublicKeyObject
+      ?material as ReturnType<typeof createPublicKey>
+      :createPublicKey(material as string|Buffer);
     if(key.type!=='public')return false;
     const keyType=key.asymmetricKeyType;
     if(algorithm==='ed25519'&&keyType!=='ed25519')return false;
