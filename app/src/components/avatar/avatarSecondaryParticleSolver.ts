@@ -223,14 +223,18 @@ function bodyDrive(frame: AvatarNeuroAdaptiveFrame): [number, number, number] {
   ];
 }
 
-function constrainOffset(state: AvatarSecondaryParticleState, vertex: number): void {
+function constrainOffset(
+  state: AvatarSecondaryParticleState,
+  vertex: number,
+  maxOffset = state.maxOffset,
+): void {
   const offset = vertex * 3;
   const dx = state.positions[offset] - state.rest[offset];
   const dy = state.positions[offset + 1] - state.rest[offset + 1];
   const dz = state.positions[offset + 2] - state.rest[offset + 2];
   const distance = Math.hypot(dx, dy, dz);
-  if (!Number.isFinite(distance) || distance <= state.maxOffset || distance < 1e-9) return;
-  const scale = state.maxOffset / distance;
+  if (!Number.isFinite(distance) || distance <= maxOffset || distance < 1e-9) return;
+  const scale = maxOffset / distance;
   state.positions[offset] = state.rest[offset] + dx * scale;
   state.positions[offset + 1] = state.rest[offset + 1] + dy * scale;
   state.positions[offset + 2] = state.rest[offset + 2] + dz * scale;
@@ -281,6 +285,8 @@ export function stepAvatarSecondaryParticleState(
   const stepSeconds = totalSeconds / substeps;
   const [ax, ay, az] = bodyDrive(frame);
   const damping = Math.pow(1 - state.damping, stepSeconds / FIXED_STEP_SECONDS);
+  const qualityMotionScale = frame.quality === "low" ? 0.35 : frame.quality === "balanced" ? 0.7 : 1;
+  const effectiveMaxOffset = state.maxOffset * qualityMotionScale;
   const solverIterations = frame.quality === "low" ? 2 : frame.quality === "high" ? SOLVER_ITERATIONS : 3;
 
   for (let step = 0; step < substeps; step += 1) {
@@ -317,7 +323,7 @@ export function stepAvatarSecondaryParticleState(
       solveDistanceConstraints(state, state.constraints, state.lambdas, alpha);
       solveDistanceConstraints(state, state.bendingConstraints, state.bendingLambdas, bendingAlpha);
       for (let vertex = 0; vertex < state.vertexCount; vertex += 1) {
-        if (state.inverseMass[vertex] !== 0) constrainOffset(state, vertex);
+        if (state.inverseMass[vertex] !== 0) constrainOffset(state, vertex, effectiveMaxOffset);
       }
     }
   }
