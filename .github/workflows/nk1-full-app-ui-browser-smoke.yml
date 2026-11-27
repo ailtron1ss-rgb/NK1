@@ -65,7 +65,10 @@ jobs:
           npm ci --prefix runtime/neuro-kurisu --no-audit --no-fund
       - name: Install Chromium for the full application UI
         working-directory: app
-        run: npx playwright install --with-deps chromium
+        # The hosted runner already provides the shared browser libraries. Avoid
+        # Playwright's apt --with-deps path: it refreshes every third-party apt
+        # source and can fail on unrelated mirrors (e.g. Microsoft packages 403).
+        run: npx playwright install chromium
       - name: Launch the complete prototype and verify the full UI
         shell: bash
         run: |
