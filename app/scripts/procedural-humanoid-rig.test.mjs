@@ -197,6 +197,55 @@ test("real particle physics output drives the NeuroCore skeleton end to end", ()
   rig.dispose();
 });
 
+test("neutral procedural skeleton matches all 18 canonical particle landmarks", () => {
+  const scene = new THREE.Scene();
+  const rig = createProceduralHumanoidRig(scene);
+  const state = createAvatarArticulatedBodyState();
+
+  rig.updatePose({
+    awake: true, action: "rest", emotion: "calm", arousal: 0.2, energy: 0.7,
+    cognitiveLoad: 0.1, gazeX: 0, gazeY: 0, headTilt: 0, speaking: false,
+    leftArmIntent: 0, rightArmIntent: 0, particles: state.particles,
+    deltaSeconds: 0.1, timeSeconds: 0,
+  });
+
+  const bindings = [
+    ["pelvis", "pelvis"],
+    ["chest", "chest"],
+    ["neck", "neck"],
+    ["head", "head"],
+    ["leftShoulderPoint", "leftUpperArm"],
+    ["leftElbowPoint", "leftForearm"],
+    ["leftWristPoint", "leftWrist"],
+    ["leftHandPoint", "leftHand"],
+    ["rightShoulderPoint", "rightUpperArm"],
+    ["rightElbowPoint", "rightForearm"],
+    ["rightWristPoint", "rightWrist"],
+    ["rightHandPoint", "rightHand"],
+    ["leftHipPoint", "leftHip"],
+    ["leftKneePoint", "leftKnee"],
+    ["leftAnklePoint", "leftAnkle"],
+    ["rightHipPoint", "rightHip"],
+    ["rightKneePoint", "rightKnee"],
+    ["rightAnklePoint", "rightAnkle"],
+  ];
+
+  assert.equal(bindings.length, AVATAR_ARTICULATED_BODY_PARTICLE_COUNT);
+  for (const [particleId, boneName] of bindings) {
+    const particle = state.particles[particleId];
+    const expected = rig.root.localToWorld(new THREE.Vector3(
+      particle.position.x,
+      1 + particle.position.y,
+      particle.position.z,
+    ));
+    const actual = rig.bones[boneName].getWorldPosition(new THREE.Vector3());
+    const error = actual.distanceTo(expected);
+    assert.ok(error < 5e-4, `${particleId} → ${boneName} rest-pose error was ${error.toFixed(6)} m`);
+  }
+
+  rig.dispose();
+});
+
 test("solved particle displacements reach the articulated spine, elbow and knee bones", () => {
   const scene = new THREE.Scene();
   const rig = createProceduralHumanoidRig(scene);
@@ -265,6 +314,31 @@ test("left and right leg IK place the ankle bones on particle-derived world targ
     assert.ok(rig.bones[side + "Knee"].rotation.z >= rig.limits[side + "Knee"].z[0]);
     assert.ok(rig.bones[side + "Knee"].rotation.z <= rig.limits[side + "Knee"].z[1]);
   }
+
+  rig.dispose();
+});
+
+test("finger motors curl both hands toward the palm", () => {
+  const scene = new THREE.Scene();
+  const rig = createProceduralHumanoidRig(scene);
+  const leftTipBefore = rig.bones.leftIndex3.getWorldPosition(new THREE.Vector3());
+  const rightTipBefore = rig.bones.rightIndex3.getWorldPosition(new THREE.Vector3());
+
+  rig.updatePose({
+    awake: true, action: "inspect", emotion: "focus", arousal: 0.4, energy: 0.7,
+    cognitiveLoad: 0.2, gazeX: 0, gazeY: 0, headTilt: 0, speaking: false,
+    leftArmIntent: 0, rightArmIntent: 0,
+    bodyChannels: { leftIndexCurl: 1, rightIndexCurl: 1 },
+    deltaSeconds: 0.1,
+  });
+  rig.root.updateMatrixWorld(true);
+
+  const leftTipAfter = rig.bones.leftIndex3.getWorldPosition(new THREE.Vector3());
+  const rightTipAfter = rig.bones.rightIndex3.getWorldPosition(new THREE.Vector3());
+  assert.ok(rig.bones.leftIndex1.rotation.z > 0);
+  assert.ok(rig.bones.rightIndex1.rotation.z < 0);
+  assert.ok(leftTipAfter.y < leftTipBefore.y);
+  assert.ok(rightTipAfter.y < rightTipBefore.y);
 
   rig.dispose();
 });
