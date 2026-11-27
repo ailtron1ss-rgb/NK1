@@ -92,6 +92,32 @@ test("large frame gaps are clamped, malformed channels are bounded and state sta
   assert.ok(result.maxConstraintError < 0.04);
 });
 
+test("renderer joint channels are recovered from the solved particle geometry, not copied from motor targets", () => {
+  let state = createAvatarArticulatedBodyState();
+  let result = null;
+  for (let tick = 0; tick < 24; tick += 1) {
+    const phase = tick < 8 ? 1 : tick < 16 ? -1 : 0.35;
+    result = stepAvatarArticulatedBody(state, {
+      leftShoulder: phase,
+      rightHip: -phase * 0.7,
+      torsoYaw: phase * 0.65,
+      headYaw: -phase * 0.5,
+    }, 1000 / 30, { awake: true, energy01: 0.85 });
+    state = result.state;
+  }
+  assert.ok(result);
+  const feedback = [
+    Math.abs((result.channels.leftShoulder ?? 0) - result.state.joints.leftShoulder.value),
+    Math.abs((result.channels.rightHip ?? 0) - result.state.joints.rightHip.value),
+    Math.abs((result.channels.torsoYaw ?? 0) - result.state.joints.torsoYaw.value),
+    Math.abs((result.channels.headYaw ?? 0) - result.state.joints.headYaw.value),
+  ];
+  assert.ok(Math.max(...feedback) > 0.001,
+    "at least one renderer channel must carry the inertia/constraint response of the solved particles");
+  assert.ok(feedback.every(Number.isFinite));
+  assert.ok(everyNumberIsFinite(result.state));
+});
+
 test("same motor sequence and fixed clock produce the same physical state", () => {
   const target = (tick) => ({
     leftShoulder: Math.sin(tick * 0.07) * 0.6,
