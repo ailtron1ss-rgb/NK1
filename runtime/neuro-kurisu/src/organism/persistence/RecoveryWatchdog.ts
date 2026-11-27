@@ -114,6 +114,8 @@ export class RecoveryWatchdog {
   async checkpoint(input: RecoveryProbe = {}): Promise<RecoveryWatchdogState> {
     const at = input.now ?? now();
     this.heartbeat({ ...input, now: at });
+    // Without a backing store there is no durable commit to advertise.
+    if (!this.store) return this.snapshot();
     await this.persist(this.checkpointCandidate(at));
     return this.commitCheckpoint(at);
   }
