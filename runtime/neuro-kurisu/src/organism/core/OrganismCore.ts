@@ -9258,7 +9258,10 @@ export class OrganismCore {
                             : null;
         // Keep the last known action success as state, but do not manufacture a new
         // outcome sample when feedback carries neither success nor reward.
-        const success = outcomeSuccessObserved ?? clamp(Number.isFinite(state.lastActionSuccess) ? state.lastActionSuccess : 0.5);
+        const lastKnownSuccess = typeof state.lastActionSuccess === 'number' && Number.isFinite(state.lastActionSuccess)
+            ? state.lastActionSuccess
+            : 0.5;
+        const success = outcomeSuccessObserved ?? clamp(lastKnownSuccess);
         const surprise = clamp(outcome.surprise ?? (outcomeSuccessObserved == null ? 0 : Math.abs(0.5 - success)));
         const learningSource = outcome.learning?.source ?? (outcome.worldTransition ? 'simulation' : (['os', 'device', 'user', 'external-api'].includes(String(outcome.evidenceSource ?? '').toLowerCase()) ? 'external' : 'simulation'));
         const inferredLearningDefaults = learningSource === 'simulation'
