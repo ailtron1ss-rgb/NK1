@@ -14,6 +14,14 @@ test("generic GLB renderer consumes the expressive face and secondary motion ada
   assert.match(stage, /if\(rt\.vrm\)\{applyVrmExpressionFrame/);
   assert.match(stage, /attachAvatarSecondaryVertexDynamics\(root,scale\)/);
   assert.match(stage, /updateAvatarSecondaryVertexDynamics\(rt\.secondaryVertexBindings,adaptiveFrame,t\)/);
+  assert.match(stage, /setSecondaryParticleMeshCount\(rt\.secondaryVertexBindings\.filter\(\(binding\)=>!!binding\.particleState\)\.length\)/);
+  assert.match(stage, /avatarSecondaryParticleMeshCount/);
+  assert.match(stage, /XPBD surface particles/);
+  const particleSolver = await readFile(new URL("../src/components/avatar/avatarSecondaryParticleSolver.ts", import.meta.url), "utf8");
+  assert.match(particleSolver, /createAvatarSecondaryParticleState/);
+  assert.match(particleSolver, /stepAvatarSecondaryParticleState/);
+  assert.match(particleSolver, /SOLVER_ITERATIONS/);
+  assert.match(particleSolver, /MAX_PARTICLES/);
   assert.match(stage, /disposeAvatarSecondaryVertexDynamics\(rt\.secondaryVertexBindings\)/);
   assert.match(stage, /GPU vertex sway/);
   assert.match(stage, /ограниченный GPU sway активен на/);
