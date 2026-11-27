@@ -48,7 +48,7 @@ async function smokeProfile(profile) {
     const expectedRendererUnload = failure === "net::ERR_ABORTED"
       && selectedRenderer !== "live2d"
       && pathname.startsWith("/live2d/");
-    if (!/favicon\\.ico(?:$|\\?)/i.test(url) && !expectedRendererUnload) {
+    if (!/favicon\.ico(?:$|\?)/i.test(url) && !expectedRendererUnload) {
       errors.requests.push({ url, failure });
     }
   });
