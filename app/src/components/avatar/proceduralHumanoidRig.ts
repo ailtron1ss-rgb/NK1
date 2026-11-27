@@ -62,6 +62,7 @@ const finite = (value: unknown, fallback = 0): number => {
   const n = Number(value);
   return Number.isFinite(n) ? n : fallback;
 };
+const wrapRadians = (value: number): number => Math.atan2(Math.sin(value), Math.cos(value));
 
 export function clampJointAngle(
   name: string,
@@ -627,8 +628,8 @@ export function createProceduralHumanoidRig(scene: THREE.Scene): ProceduralHuman
       const baseForearm = Math.atan2(arm.wrist.position.y, arm.wrist.position.x);
       const shoulderName = side + "UpperArm";
       const elbowName = side + "Forearm";
-      const shoulderValue = clampJointAngle(shoulderName, "z", firstAngle - baseUpper, limits);
-      const elbowValue = clampJointAngle(elbowName, "z", secondAngle - firstAngle - baseForearm, limits);
+      const shoulderValue = clampJointAngle(shoulderName, "z", wrapRadians(firstAngle - baseUpper), limits);
+      const elbowValue = clampJointAngle(elbowName, "z", wrapRadians(secondAngle - firstAngle + baseUpper - baseForearm), limits);
       arm.upper.rotation.z = smooth(arm.upper.rotation.z, shoulderValue, deltaSeconds, 18);
       arm.forearm.rotation.z = smooth(arm.forearm.rotation.z, elbowValue, deltaSeconds, 18);
       root.updateMatrixWorld(true);
@@ -671,8 +672,8 @@ export function createProceduralHumanoidRig(scene: THREE.Scene): ProceduralHuman
         result.endEffector.y - result.elbow.y,
         outward * (result.endEffector.x - result.elbow.x),
       );
-      const hipValue = clampJointAngle(side + "Hip", "z", firstAngle - firstRestAngle, limits);
-      const kneeValue = clampJointAngle(side + "Knee", "z", secondAngle - firstAngle - secondRestAngle, limits);
+      const hipValue = clampJointAngle(side + "Hip", "z", wrapRadians(firstAngle - firstRestAngle), limits);
+      const kneeValue = clampJointAngle(side + "Knee", "z", wrapRadians(secondAngle - firstAngle + firstRestAngle - secondRestAngle), limits);
       hipBone.rotation.z = smooth(hipBone.rotation.z, hipValue, deltaSeconds, 18);
       kneeBone.rotation.z = smooth(kneeBone.rotation.z, kneeValue, deltaSeconds, 18);
       root.updateMatrixWorld(true);
