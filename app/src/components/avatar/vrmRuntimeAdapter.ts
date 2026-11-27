@@ -356,7 +356,7 @@ export function applyVrmFullBodyChannels(vrm: VRM, channels: Readonly<Partial<Re
   const write = (node: NormalizedBoneNode | null, axis: "x" | "y" | "z", value: number, name: string) => {
     if (!node || value === 0) return;
     node.rotation[axis] = value;
-    controlledBones.push(name);
+    if (!controlledBones.includes(name)) controlledBones.push(name);
   };
   write(rig.spine, "x", scaleChannel("torsoPitch", channels.torsoPitch ?? 0), "spine");
   write(rig.spine, "y", scaleChannel("torsoYaw", channels.torsoYaw ?? 0), "spine");
