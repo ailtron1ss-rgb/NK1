@@ -32,6 +32,14 @@ export type ProceduralHumanoidRig = {
   root: THREE.Group;
   skeleton: THREE.Skeleton;
   bones: Record<string, THREE.Bone>;
+  head: THREE.Bone;
+  leftArm: THREE.Bone;
+  rightArm: THREE.Bone;
+  mouth: THREE.Mesh;
+  eyeWhites: THREE.Mesh[];
+  irises: THREE.Mesh[];
+  brows: THREE.Mesh[];
+  ringMat: THREE.MeshStandardMaterial;
   limits: Record<string, JointLimit>;
   meshes: THREE.Mesh[];
   materials: THREE.Material[];
@@ -356,8 +364,9 @@ export function createProceduralHumanoidRig(scene: THREE.Scene): ProceduralHuman
   makeEllipsoid(head, sphere, accent, "HairClipAccent", new THREE.Vector3(0.235, 0.24, 0.23),
     new THREE.Vector3(0.045, 0.006, 0.006), new THREE.Euler(0, 0, -0.24), meshes);
 
-  const platformMaterial = material(0x287c91, 0.42, 0.35);
-  const platform = new THREE.Mesh(new THREE.TorusGeometry(0.48, 0.009, 8, 64), platformMaterial);
+  const ringMat = new THREE.MeshStandardMaterial({ color: 0x287c91, roughness: 0.42, metalness: 0.35, transparent: true, opacity: 0.5 });
+  materials.push(ringMat);
+  const platform = new THREE.Mesh(new THREE.TorusGeometry(0.48, 0.009, 8, 64), ringMat);
   platform.name = "BodyGroundRing";
   platform.rotation.x = PI / 2;
   platform.position.y = 0.035;
@@ -372,6 +381,14 @@ export function createProceduralHumanoidRig(scene: THREE.Scene): ProceduralHuman
     root,
     skeleton,
     bones,
+    head,
+    leftArm: armRoots.left.upper,
+    rightArm: armRoots.right.upper,
+    mouth,
+    eyeWhites,
+    irises,
+    brows,
+    ringMat,
     limits,
     meshes,
     materials,
