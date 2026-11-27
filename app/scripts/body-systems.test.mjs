@@ -575,8 +575,11 @@ test("full-body wrist and palm channels drive separate normalized hand axes", ()
   assert.equal(vrm.bones.get("rightHand").rotation.y, -0.175);
   const neutral = applyVrmFullBodyChannels(vrm, {});
   assert.equal(neutral.applied, false);
-  assert.deepEqual(["leftHand", "rightHand"].map((name) => vrm.bones.get(name).rotation),
-    [{ x: 0, y: 0, z: 0 }, { x: 0, y: 0, z: 0 }]);
+  for (const name of ["leftHand", "rightHand"]) {
+    assert.equal(vrm.bones.get(name).rotation.x, 0);
+    assert.equal(vrm.bones.get(name).rotation.y, 0);
+    assert.equal(vrm.bones.get(name).rotation.z, 0);
+  }
 });
 
 test("aggregate finger curl reaches all standard optional VRM finger segments and resets", () => {
