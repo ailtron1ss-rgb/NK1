@@ -275,7 +275,7 @@ class ReleaseArchiveInspectorTests(unittest.TestCase):
         report = json.loads(report_path.read_text(encoding="utf-8"))
         self.assertEqual(report["comparison"]["changedFileCount"], 1)
 
-    def test_strict_source_match_cli_fails_readiness_without_relabeling_zip_integrity(self):
+    def test_strict_source_match_cli_fails_source_mirror_without_relabeling_zip_integrity(self):
         self._write_archive({"README.md": b"older source\n"})
         output = io.StringIO()
         report_path = self.root / "strict-audit.json"
