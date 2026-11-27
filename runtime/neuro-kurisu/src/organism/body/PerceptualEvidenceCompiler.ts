@@ -2,7 +2,7 @@ import type { P41PerceptionState } from '../cognition/P41SemanticPerception.ts';
 import type { P41NativePerceptionState } from '../cognition/P41NativePerception.ts';
 import type { P41TemporalPerceptionState } from '../cognition/P41TemporalPerceptionModel.ts';
 import type { MultimodalState } from './MultimodalPerception.ts';
-import { isPlainDataArray, isPlainDataRecord, ownDataValue, stringOr, timestampOr, unitOr } from './RestoreSanitizers.ts';
+import { isPlainDataArray, isPlainDataRecord, ownDataValue, stringOr, timestampOr, unitStrictOr, unitOr } from './RestoreSanitizers.ts';
 
 const clamp=(n:number)=>Math.max(0,Math.min(1,Number.isFinite(n)?n:0));
 const stableHash=(value:string)=>{let h=2166136261;for(let i=0;i<value.length;i++){h^=value.charCodeAt(i);h=Math.imul(h,16777619);}return (h>>>0).toString(16).padStart(8,'0');};
@@ -90,9 +90,9 @@ export class PerceptualEvidenceCompiler{
       id:stringOr(ownDataValue(rawQuery,'id'),'',128),
       modality:stringOr(ownDataValue(rawQuery,'modality'),'unknown',32),
       query:stringOr(ownDataValue(rawQuery,'query'),'',240),
-      priority01:unitOr(ownDataValue(rawQuery,'priority01'),0),
-      expectedInformationGain01:unitOr(ownDataValue(rawQuery,'expectedInformationGain01'),0),
-      estimatedCost01:unitOr(ownDataValue(rawQuery,'estimatedCost01'),0),
+      priority01:unitStrictOr(ownDataValue(rawQuery,'priority01'),0),
+      expectedInformationGain01:unitStrictOr(ownDataValue(rawQuery,'expectedInformationGain01'),0),
+      estimatedCost01:unitStrictOr(ownDataValue(rawQuery,'estimatedCost01'),0),
     }:null;
     this.state={
       version:1,
