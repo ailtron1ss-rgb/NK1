@@ -188,6 +188,30 @@ test("solved particle displacements reach the articulated spine, elbow and knee 
   rig.dispose();
 });
 
+test("left and right leg IK place the ankle bones on particle-derived world targets", () => {
+  const scene = new THREE.Scene();
+  const rig = createProceduralHumanoidRig(scene);
+  rig.root.updateMatrixWorld(true);
+
+  for (const side of ["left", "right"] as const) {
+    const hip = rig.bones[side + "Hip"].getWorldPosition(new THREE.Vector3());
+    const target = hip.clone().add(new THREE.Vector3(0, -0.8, 0));
+    const solved = rig.solveLegTarget(side, target, 1);
+    rig.root.updateMatrixWorld(true);
+    const ankle = rig.bones[side + "Ankle"].getWorldPosition(new THREE.Vector3());
+    const error = ankle.distanceTo(target);
+
+    assert.equal(solved.reachable, true);
+    assert.ok(error < 1e-4, `${side} leg IK endpoint error was ${error}`);
+    assert.ok(rig.bones[side + "Hip"].rotation.z >= rig.limits[side + "Hip"].z[0]);
+    assert.ok(rig.bones[side + "Hip"].rotation.z <= rig.limits[side + "Hip"].z[1]);
+    assert.ok(rig.bones[side + "Knee"].rotation.z >= rig.limits[side + "Knee"].z[0]);
+    assert.ok(rig.bones[side + "Knee"].rotation.z <= rig.limits[side + "Knee"].z[1]);
+  }
+
+  rig.dispose();
+});
+
 test("two-link IK reaches interior targets and safely clamps unreachable targets", () => {
   const reachable = solveTwoBonePlanarIK({ x: 0, y: 0 }, { x: 0.4, y: 0.2 }, 0.34, 0.29, 1);
   const error = Math.hypot(reachable.endEffector.x - 0.4, reachable.endEffector.y - 0.2);
