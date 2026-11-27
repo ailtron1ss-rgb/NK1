@@ -1,22 +1,34 @@
 # NeuroCore
 
-NeuroCore is the product identity for this standalone application branch. It combines the existing NK1 organism runtime, its web control surface, and the established integrations without creating parallel memory or action authorities.
+NeuroCore is the product identity for this standalone NK1 application branch. It combines the existing organism runtime, web control surface, and integrations without creating parallel memory or action authorities.
 
 ## Current source baseline
 
 - Source repository: `ailtron1ss-rgb/NK1`
-- Baseline branch: `workpass70-source`
-- Pinned commit: `3526f61814e19f1f10766f3b2385488eb04e3d2e`
-- Branch tree: the full tracked upstream source tree, not a small launcher archive
+- Source branch: `workpass70-source`
+- Current source head: `9de695dd4713ec909d7312b45966d30dfb76d5c2`
+- Initial pinned product seed: `3526f61814e19f1f10766f3b2385488eb04e3d2e`
 - Product branch: `neurocore-unified/main`
-
-The source tree contains 10,738 tracked files and 293,126,769 bytes (279.55 MiB). Historical/legacy material remains in the source baseline until its dependencies and provenance are mapped. It is not treated as active runtime merely because it exists.
+- Product/source merge: `53a5926f753c56b97599b1ee28a0e46d769662b2`
+- Current product head: `4dfc60c4d1079bc694f3bc0043bced6c59bad564`
 
 ## Runtime and application
 
-The root package orchestrates the application and runtime. The web UI is under `app/`; the canonical organism runtime is under `runtime/neuro-kurisu/` for now, because renaming that path in one destructive sweep would break a large existing import graph. The visible product and HTTP health identity are NeuroCore. Internal legacy path migration is incremental and tested.
+The root package orchestrates the application and runtime. The web UI is under `app/`; the canonical organism runtime remains under `runtime/neuro-kurisu/` because a destructive path rename would break a large import graph. The visible product and HTTP health identity are NeuroCore. The browser is a projection/control surface; the runtime owns state, cognition, memory, and action execution.
 
-The app already uses the runtime API. The browser store calls `neuroApi`, which reads `/api/organism/ui-snapshot` and sends chat/sleep/wake actions to the backend. The backend owns the organism state and execution; the browser is a projection/control surface, not a second brain. The default 3D view now instantiates the built-in 61-bone articulated humanoid with material-batched skinned meshes built from segmented anatomical volumes and drives its pivots/IK from the current 22-particle / 21-segment articulated body solver; external VRM/GLB remains optional.
+The backend now includes the current source's integrated cognitive upgrade:
+- recurrent Global Workspace competition/recurrence/broadcast before P61/P64 arbitration, with bounded coalitions and decision-scoped delayed outcome credit;
+- metacognitive neural input expanded from 24 to 27 features with backward-compatible checkpoint migration, target/output alignment, current-observation gradients, and restore sanitization;
+- goal/world-bound planner lineage with decision/tick binding, sealed plan integrity, step preconditions/expected outcomes, and one-cycle revision only from independently verified observed outcomes;
+- G3 signed observation admission requiring trusted host proof, device identity, active consent and durable nonce replay protection; missing proof fails closed.
+
+These are implemented source capabilities. Exact product CI, host-key provisioning and Android sensor/nonce-store behaviour remain separate acceptance gates.
+
+## Embodiment
+
+The default 3D view instantiates a built-in 61-bone humanoid rig with 60 movable pivots and material-batched skinned anatomical volumes. It is connected to the 22-particle / 21-segment body solver, arm/leg IK, heel/toe contact, friction and 150-degree elbow/knee hinge limits. The actual body solver is bounded to a 20 Hz cadence; the renderer remains independent.
+
+The body is not yet a continuous deformable human: continuous tissue deformation, full balance, collision handling, foot planting, gait and phone profiling remain open.
 
 ## Canonical memory ownership
 
@@ -24,20 +36,29 @@ There is one durable memory owner:
 
 `OrganismCore → OrganismSystemFabric → MemorySubsystemRuntime → MemoryFabric → MemoryOS2`
 
-`MemorySubsystemRuntime` constructs one `MemoryOS2` and injects that exact instance into `MemoryFabric`. The other memory structures are coordinated compatibility/read models, retrieval projections, temporal stores, or policy mechanisms. Do not create another durable memory store or bypass `MemoryFabric` for writes.
+`MemorySubsystemRuntime` constructs one `MemoryOS2` and injects that exact instance into `MemoryFabric`. Do not create another durable memory store or bypass `MemoryFabric` for writes.
 
-## Working commands (do not run until the build is marked ready)
+The continuity journal has a separate durability role: detached flush batches, rollback marker + fsync, torn-tail recovery, complete-line compaction and explicit durability diagnostics. It is not a second semantic memory owner.
 
-- `npm run install:all` — install both app and runtime workspaces
+## Model and external knowledge boundaries
+
+The existing loopback-only llama.cpp provider now supports bounded JSON Schema-constrained output; there is no second model selector or runtime. A live phone/local-model handshake still needs explicit configuration and measurement.
+
+OpenClaw `skills/<name>/SKILL.md` is treated as untrusted external knowledge. Import preview is read-only; explicit review is required before canonical memory write. Imported instructions never grant action/tool authority.
+
+## Working commands
+
+- `npm run install:all` — install root-managed app/runtime workspaces
 - `npm run typecheck` — typecheck app and runtime
-- `npm run test:neurocore` — integrated NeuroCore test gate and UI tests
+- `npm run test:neurocore` — integrated NeuroCore gate
 - `npm run dev` — development orchestration
-- `npm run start` — production start (requires the production build)
+- `npm run start` — production start (requires production build)
+- `npm run doctor` — environment and project diagnostics
 
-Pinned toolchain remains Node 24 and Python 3.11. Android/Termux acceptance is not yet claimed. These instructions are preserved for later; they are not a request to launch the app now.
+Pinned toolchain: Node 24 and Python 3.11. Android/Termux installation and device acceptance are not yet claimed.
 
 ## Evidence rules
 
-A module count is not proof of working behaviour. Reports distinguish source-present, implemented, wired, locally tested, CI-tested, device-tested, and measured. No learning uplift, consciousness, autonomy, or mobile-readiness claim is made without the relevant evidence.
+A module count is not proof of working behaviour. Reports distinguish source-present, implemented, wired, locally tested, CI-tested, device-tested and measured. No intelligence uplift, consciousness, autonomy or mobile-readiness claim is made without relevant evidence.
 
-See `NEUROCORE_CONTROL/` for architecture, integration ledger, progress, decisions, and next work.
+See `NEUROCORE_CONTROL/` for progress, architecture, integration ledger, source provenance and next work.
