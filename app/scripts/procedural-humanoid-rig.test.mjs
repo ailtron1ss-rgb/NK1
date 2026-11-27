@@ -107,8 +107,8 @@ test("mirrored left and right arm chains both accept world-space IK targets", ()
 
   assert.ok(Number.isFinite(left.shoulder));
   assert.ok(Number.isFinite(right.shoulder));
-  assert.ok(rig.bones.leftUpperArm.rotation.z < 0 || rig.bones.leftForearm.rotation.z < 0);
-  assert.ok(rig.bones.rightUpperArm.rotation.z > 0 || rig.bones.rightForearm.rotation.z > 0);
+  assert.ok(rig.bones.leftUpperArm.rotation.z > 0 || rig.bones.leftForearm.rotation.z > 0);
+  assert.ok(rig.bones.rightUpperArm.rotation.z < 0 || rig.bones.rightForearm.rotation.z < 0);
   assert.ok(rig.bones.leftUpperArm.rotation.z >= rig.limits.leftUpperArm.z[0]);
   assert.ok(rig.bones.rightUpperArm.rotation.z <= rig.limits.rightUpperArm.z[1]);
 
@@ -184,6 +184,29 @@ test("solved particle displacements reach the articulated spine, elbow and knee 
   assert.ok(rig.bones.leftForearm.position.x < 0);
   assert.ok(rig.bones.rightKnee.position.y > -0.48);
   assert.equal(rig.root.userData.poseState.particleBindingsApplied, 3);
+
+  rig.dispose();
+});
+
+test("mirrored arm IK places both wrist bones exactly on their world-space targets", () => {
+  const scene = new THREE.Scene();
+  const rig = createProceduralHumanoidRig(scene);
+  rig.root.updateMatrixWorld(true);
+
+  for (const side of ["left", "right"] as const) {
+    const shoulder = rig.bones[side + "UpperArm"].getWorldPosition(new THREE.Vector3());
+    const direction = side === "left" ? -1 : 1;
+    const target = shoulder.clone().add(new THREE.Vector3(direction * 0.35, -0.45, 0));
+    const solved = rig.solveArmTarget(side, target, 1);
+    rig.root.updateMatrixWorld(true);
+    const wrist = rig.bones[side + "Wrist"].getWorldPosition(new THREE.Vector3());
+    const error = wrist.distanceTo(target);
+
+    assert.equal(solved.reachable, true);
+    assert.ok(error < 1e-4, `${side} arm IK endpoint error was ${error}`);
+    assert.ok(rig.bones[side + "Forearm"].rotation.z >= rig.limits[side + "Forearm"].z[0]);
+    assert.ok(rig.bones[side + "Forearm"].rotation.z <= rig.limits[side + "Forearm"].z[1]);
+  }
 
   rig.dispose();
 });
