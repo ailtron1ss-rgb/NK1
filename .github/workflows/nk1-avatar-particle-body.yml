@@ -8,6 +8,7 @@ on:
       - "app/src/components/avatar/avatarParticleBody.ts"
       - "app/src/components/avatar/avatarParticleBodyRuntime.ts"
       - "app/scripts/avatar-particle-body.test.mjs"
+      - "app/scripts/avatar-particle-body-runtime.test.mjs"
       - ".github/workflows/nk1-avatar-particle-body.yml"
       - "app/package.json"
 
@@ -35,7 +36,7 @@ jobs:
       - name: Install locked app dependencies
         run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Verify particle solver constraints, determinism and bounded stepping
-        run: node --experimental-strip-types --test scripts/avatar-particle-body.test.mjs
+        run: node --experimental-strip-types --test scripts/avatar-particle-body.test.mjs scripts/avatar-particle-body-runtime.test.mjs
       - name: Typecheck app runtime
         run: npm run typecheck
       - name: Verify articulated avatar and renderer contracts
