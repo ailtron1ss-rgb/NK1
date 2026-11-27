@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { generateKeyPairSync, sign } from 'node:crypto';
 import { SignedObservationAdmissionAuthority, isTrustedObservationAdmission, signedObservationReceiptBytes } from '../src/organism/system/SignedObservationAdmissionAuthority.ts';
+import { FileHostObservationNonceStore } from '../src/organism/system/FileHostObservationNonceStore.ts';
 import { EmbodimentSubsystemRuntime } from '../src/organism/core/EmbodimentSubsystemRuntime.ts';
 import { OrganismCore } from '../src/organism/core/OrganismCore.ts';
 import { MemoryStateStore } from '../src/organism/persistence/MemoryStateStore.ts';
@@ -11,22 +12,13 @@ import { OrganismRuntime } from '../src/organism/core/OrganismRuntime.ts';
 
 const { publicKey, privateKey } = generateKeyPairSync('ed25519');
 let now = Date.now();
-const consumedNonces = new Map();
+const nonceRoot = await mkdtemp(join(tmpdir(), 'nk1-g3-nonce-ledger-'));
 let nonceLedgerNow = Date.now();
+const nonceStore = new FileHostObservationNonceStore({
+  directoryPath: join(nonceRoot, 'store'),
+  now: () => nonceLedgerNow,
+});
 const revokedTickets = new Set();
-const nonceStore = {
-  async consume(input) {
-    const key = [input.issuerId, input.deviceId, input.sessionId, input.nonce].join('|');
-    if (consumedNonces.has(key)) return false;
-    consumedNonces.set(key, { receiptDigest: input.receiptDigest, retainUntil: input.retainUntil });
-    return true;
-  },
-  async hasConsumed(input) {
-    const key = [input.issuerId, input.deviceId, input.sessionId, input.nonce].join('|');
-    const prior = consumedNonces.get(key);
-    return prior?.receiptDigest === input.receiptDigest && prior.retainUntil > nonceLedgerNow;
-  },
-};
 const consentAuthority = {
   async isActive(input) {
     return !revokedTickets.has(input.ticketId) &&
@@ -372,5 +364,6 @@ try {
   await runtime.stop();
   await rm(runtimeRoot, { recursive: true, force: true });
 }
+await rm(nonceRoot, { recursive: true, force: true });
 console.log('G3_SIGNED_HOST_OBSERVATION_RUNTIME_API=PASS');
 
