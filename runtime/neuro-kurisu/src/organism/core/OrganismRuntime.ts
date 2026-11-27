@@ -742,7 +742,7 @@ export class OrganismRuntime {
       this.runtimeClosure.restore(systemSnapshot.runtimeClosure ?? undefined);
       this.causalDomainClosureLedger.restore(systemSnapshot.causalDomainClosureLedger ?? undefined);
       this.core.setCausalDomainClosureLedger(this.causalDomainClosureLedger.snapshot());
-      const runtimeViewRef.current = this.core.runtimeClosureOperationalSnapshot();
+      const runtimeView = this.core.runtimeClosureOperationalSnapshot();
       this.runtimeClosure.restoreVerification({
         at: Date.now(),
         tick: runtimeView.tick,
@@ -2930,7 +2930,8 @@ export class OrganismRuntime {
         try {
           // Capture the closure once; a full core projection serializes several MB
           // on mobile, so shutdown must not pay for duplicate full-state flushes.
-          runtimeView = this.core.runtimeClosureOperationalSnapshot();
+          const runtimeView = this.core.runtimeClosureOperationalSnapshot();
+        runtimeViewRef.current = runtimeView;
           this.runtimeClosure.durable({
             at: Date.now(),
             tick: runtimeView.tick,
