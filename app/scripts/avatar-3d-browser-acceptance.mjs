@@ -34,6 +34,8 @@ const report = {
   failedRequests: [],
   failedResponses: [],
   screenshot: path.join(outputDir, "nk1-avatar-3d-webgl.png"),
+  stageScreenshot: path.join(outputDir, "nk1-avatar-3d-stage.png"),
+  canvasScreenshot: path.join(outputDir, "nk1-avatar-3d-canvas.png"),
   visualCompletionVerified: false,
   physicalDeviceAcceptance: false,
 };
@@ -119,6 +121,10 @@ try {
   assert.deepEqual(report.shaderErrors, [], "3D avatar emitted a WebGL shader/program compilation error");
   const glbFailures = [...report.failedRequests, ...report.failedResponses].filter((item) => /\.glb(?:$|\?)/i.test(item.url));
   assert.deepEqual(glbFailures, [], "canonical GLB request must succeed: " + JSON.stringify(glbFailures));
+  if (await audit.getAttribute("open")) await audit.locator("summary").click();
+  await page.waitForTimeout(500);
+  await canvas.screenshot({ path: report.canvasScreenshot });
+  await stage.screenshot({ path: report.stageScreenshot });
   await page.screenshot({ path: report.screenshot, fullPage: true });
   report.ok = true;
   report.boundary = "Real v5 model loaded in Chromium SwiftShader; selected mesh bindings and WebGL context were observed. This does not establish native GPU performance or visual acceptance on the user's physical Android device.";
