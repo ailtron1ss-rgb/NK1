@@ -12,6 +12,7 @@ on:
       - "app/src/components/Avatar3DStage.tsx"
       - "app/src/components/avatar/avatarNeuroAdaptiveDynamics.ts"
       - "app/src/components/avatar/avatarSecondaryAssetAudit.ts"
+      - "app/src/components/avatar/avatarSecondaryVertexDynamics.ts"
       - "app/scripts/verify-hosted-kurisu-model.mjs"
       - "app/src/components/avatar/avatarGlbSkinWeightAudit.ts"
       - "app/scripts/avatar-glb-skin-weight-audit.test.mjs"
