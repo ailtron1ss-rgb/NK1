@@ -5,6 +5,12 @@
  * to bounded behavioural policy knobs, but it never mutates identity anchors or
  * live executable architecture. Candidates must first pass deterministic shadow
  * evaluation, identity preservation, anti-oscillation, and longitudinal evidence.
+ *
+ * Promotion contract: a candidate becomes `promotable` only after `test()`
+ * receives sealed, independent holdout evidence whose fingerprint differs from
+ * the shadow evaluation. Repeating one evaluation input set does not add
+ * evidence, and the periodic cycle never promotes by itself. `promote()` is a
+ * host decision and refuses any candidate whose holdout was not verified.
  */
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
 
@@ -15,6 +21,19 @@ export interface P53IdentityFirewall {
   protectedKeys:string[];
   protectedHash:string;
   violations:number;
+}
+
+/**
+ * Independent holdout measurement for one candidate. Promotion is impossible
+ * without it: a holdout value derived from the same evaluation inputs as the
+ * shadow run is not evidence, and repetition of one input set is not evidence
+ * either. `fingerprint` identifies the sealed holdout manifest and must differ
+ * from the shadow evaluation identity.
+ */
+export interface P53HoldoutEvidence {
+  observed01:number;
+  fingerprint:string;
+  independent:boolean;
 }
 
 export interface P53Candidate {
@@ -33,6 +52,10 @@ export interface P53Candidate {
   improvement01:number;
   risk01:number;
   evidenceCount:number;
+  /** True only after a sealed, independent holdout measurement was recorded. */
+  holdoutVerified:boolean;
+  /** Bounded fingerprints of consumed evidence; a repeated input set adds none. */
+  evidenceFingerprints:string[];
   status:P53Status;
   lastAt:number;
 }
@@ -69,7 +92,10 @@ export class P53DevelopmentalSelfModificationLab {
   restore(raw?:Partial<P53State>|null){
     const d=defaultP53(),r=raw??{};
     this.state={...d,...r,
-      candidates:Array.isArray(r.candidates)?r.candidates.slice(-128):[],
+      candidates:Array.isArray(r.candidates)?r.candidates.slice(-128).map(c=>({...c,
+        holdoutVerified:c?.holdoutVerified===true,
+        evidenceFingerprints:Array.isArray(c?.evidenceFingerprints)?c.evidenceFingerprints.filter((f:unknown)=>typeof f==='string').slice(-8):[]
+      })):[],
       activeKnobProfile:{...d.activeKnobProfile,...(r.activeKnobProfile??{})},
       firewall:{...d.firewall,...(r.firewall??{})}
     };
@@ -99,29 +125,44 @@ export class P53DevelopmentalSelfModificationLab {
     }
     const base=this.state.labStability01*.5+(1-input.predictionError01)*.3+input.identityContinuity01*.2;
     const c:P53Candidate={id,createdAt:input.at,tick:input.tick,knob,delta,reason:input.reason??`pressure:${pressure.toFixed(3)}`,
-      baseline01:clamp(base),shadow01:0,holdout01:0,identityPreservation01:input.identityContinuity01,stability01:0,transfer01:0,improvement01:0,risk01:0,evidenceCount:0,status:'candidate',lastAt:input.at};
+      baseline01:clamp(base),shadow01:0,holdout01:0,identityPreservation01:input.identityContinuity01,stability01:0,transfer01:0,improvement01:0,risk01:0,evidenceCount:0,holdoutVerified:false,evidenceFingerprints:[],status:'candidate',lastAt:input.at};
     this.state.proposals++; this.state.candidates.unshift(c); this.state.candidates=this.state.candidates.slice(0,128); this.state.lastReason=c.reason;
     // active profile is merely a proposal context; live policy remains untouched until promotion.
     void active;
     return structuredClone(c);
   }
 
-  test(id:string,input:{predictionError01:number;selfPredictionError01:number;uncertainty01:number;identityContinuity01:number;grounding01:number;causalAlignment01:number;holdoutFactor01?:number}):P53Candidate|null{
+  test(id:string,input:{predictionError01:number;selfPredictionError01:number;uncertainty01:number;identityContinuity01:number;grounding01:number;causalAlignment01:number;holdout?:P53HoldoutEvidence}):P53Candidate|null{
     const c=this.state.candidates.find(x=>x.id===id); if(!c)return null;
     if(c.status==='promoted'||c.status==='rejected')return structuredClone(c);
+    const priorStatus:P53Status=c.status;
     c.status='testing'; this.state.tests++;
     const change=Math.min(.12,Math.abs(c.delta)*1.4);
     const targetSignal=c.knob==='verification'?1-input.predictionError01:c.knob==='prediction'?1-input.selfPredictionError01:c.knob==='attention'?1-input.uncertainty01:1-input.predictionError01*.6;
+    const shadowFingerprint=hash([c.id,input.predictionError01,input.selfPredictionError01,input.uncertainty01,input.identityContinuity01,input.grounding01,input.causalAlignment01].join('|'));
+    const holdoutFingerprint=typeof input.holdout?.fingerprint==='string'?input.holdout.fingerprint.trim():'';
+    // Fail closed: only a sealed independent holdout, distinct from the shadow evaluation, counts.
+    const holdoutVerified=input.holdout?.independent===true && Number.isFinite(input.holdout?.observed01) && holdoutFingerprint.length>0 && holdoutFingerprint!==shadowFingerprint;
+    // A sealed holdout measurement is durable evidence. A later shadow-only test —
+    // including the periodic cycle, which never carries sealed evidence — must not
+    // erase it, otherwise host-supplied evidence could never survive to promotion.
+    const sealedAlready=c.holdoutVerified===true;
     c.shadow01=clamp(c.baseline01 + targetSignal*.18 + change*.25 - input.uncertainty01*.08);
-    c.holdout01=clamp(c.shadow01*.64+(input.holdoutFactor01??.72)*.24+input.grounding01*.12);
+    c.holdoutVerified=holdoutVerified||sealedAlready;
+    c.holdout01=holdoutVerified?clamp(input.holdout!.observed01):(sealedAlready?c.holdout01:0);
     c.identityPreservation01=clamp(Math.min(c.identityPreservation01,input.identityContinuity01));
     c.stability01=clamp((1-input.selfPredictionError01)*.38+(1-input.uncertainty01)*.24+input.causalAlignment01*.22+input.grounding01*.16);
     c.transfer01=clamp(c.holdout01*.55+c.stability01*.3+input.grounding01*.15);
     c.improvement01=clamp((c.holdout01-c.baseline01)*2.8);
     c.risk01=clamp(input.uncertainty01*.35+(1-c.identityPreservation01)*.45+Math.abs(c.delta)*1.8);
-    c.evidenceCount++;
-    const ready=c.improvement01>=.08 && c.holdout01>=.62 && c.transfer01>=.60 && c.identityPreservation01>=.84 && c.risk01<.28 && c.stability01>=.58;
-    c.status=ready?'promotable':'testing'; c.lastAt=Date.now();
+    // Evidence is tagged by kind so a sealed measurement is never mistaken for a
+    // shadow repeat, and legacy untagged fingerprints never count as sealed.
+    const evidenceFingerprint=`${holdoutVerified?'sealed':'shadow'}:${hash(`${shadowFingerprint}|${holdoutVerified?holdoutFingerprint:'holdout:unverified'}`)}`;
+    const novelEvidence=!c.evidenceFingerprints.includes(evidenceFingerprint);
+    if(novelEvidence){c.evidenceFingerprints=[...c.evidenceFingerprints,evidenceFingerprint].slice(-8);c.evidenceCount++;}
+    const ready=holdoutVerified && c.improvement01>=.08 && c.holdout01>=.62 && c.transfer01>=.60 && c.identityPreservation01>=.84 && c.risk01<.28 && c.stability01>=.58;
+    // A repeated measurement neither adds evidence nor demotes an already promotable candidate.
+    if(!ready)c.status='testing'; else if(novelEvidence||priorStatus==='promotable')c.status='promotable'; c.lastAt=Date.now();
     if(c.improvement01>this.state.bestImprovement01)this.state.bestImprovement01=c.improvement01;
     this.state.developmentalReadiness01=clamp(this.state.developmentalReadiness01*.9+(ready?.9:.3)*.1);
     return structuredClone(c);
@@ -129,7 +170,7 @@ export class P53DevelopmentalSelfModificationLab {
 
   promote(id:string,at=Date.now()):P53Candidate|null{
     const c=this.state.candidates.find(x=>x.id===id); if(!c)return null;
-    if(c.status!=='promotable')return structuredClone(c);
+    if(c.status!=='promotable'||!c.holdoutVerified)return structuredClone(c);
     if(!this.state.firewall.protectedKeys.length){this.state.identityViolations++;c.status='rejected';return structuredClone(c);}
     const next=clamp(this.state.activeKnobProfile[c.knob]+c.delta);
     this.state.activeKnobProfile[c.knob]=next;
@@ -146,15 +187,20 @@ export class P53DevelopmentalSelfModificationLab {
     c.status='rejected'; c.reason=`${c.reason}|rejected:${reason}`; c.lastAt=at; this.state.rejections++; return structuredClone(c);
   }
 
-  periodic(input:{tick:number;at:number;predictionError01:number;selfPredictionError01:number;uncertainty01:number;novelty01:number;attention01:number;identityContinuity01:number;grounding01:number;causalAlignment01:number;learningAllocation01?:number;strategyAbstraction01?:number}){
+  periodic(input:{tick:number;at:number;predictionError01:number;selfPredictionError01:number;uncertainty01:number;novelty01:number;attention01:number;identityContinuity01:number;grounding01:number;causalAlignment01:number;learningAllocation01?:number;strategyAbstraction01?:number;allowAutonomousPromotion?:boolean}){
     let proposal:P53Candidate|null=null;
     const metaPressure=clamp((input.learningAllocation01??.25)*.55+(input.strategyAbstraction01??0)*.45);
     const proposalInput={...input,reason:metaPressure>.58?`meta-curriculum-pressure:${metaPressure.toFixed(3)}`:undefined,novelty01:clamp(input.novelty01*.75+metaPressure*.25),predictionError01:clamp(input.predictionError01*.82+metaPressure*.18)};
     if(input.tick%12===0)proposal=this.propose(proposalInput);
     const pending=this.state.candidates.filter(c=>c.status==='candidate'||c.status==='testing').slice(0,3);
     for(const c of pending){this.test(c.id,input);}
-    for(const c of this.state.candidates.filter(c=>c.status==='promotable').slice(0,2)){
-      if(c.evidenceCount>=2 && input.identityContinuity01>=.86)this.promote(c.id,input.at);
+    // Autonomous promotion is opt-in for the host: the periodic cycle never supplies
+    // sealed holdout evidence, so it must not promote on accumulated repetitions alone.
+    if(input.allowAutonomousPromotion===true){
+      for(const c of this.state.candidates.filter(c=>c.status==='promotable').slice(0,2)){
+        const sealedEvidence=c.evidenceFingerprints.filter(f=>f.startsWith('sealed:')).length;
+        if(c.holdoutVerified && sealedEvidence>=2 && input.identityContinuity01>=.86)this.promote(c.id,input.at);
+      }
     }
     this.state.candidates=this.state.candidates.slice(0,96);
     return {proposal,activeKnobProfile:{...this.state.activeKnobProfile},readiness01:this.state.developmentalReadiness01};
