@@ -276,7 +276,22 @@ console.log('G3_SIGNED_HOST_OBSERVATION_ADMISSION=PASS signature=device+session+
 const stateStore = new MemoryStateStore();
 const core = new OrganismCore(stateStore, {
   enableLanguage: false,
-  observationAdmissionAuthority: authority,
+  // Exercise the production composition path: Core itself owns the factory-created
+  // authority and its durable private nonce ledger; no test-only prebuilt authority.
+  observationAdmissionConfig: {
+    expectedDeviceId: 'android-test-01',
+    resolvePublicKey: async (issuerId, keyId) =>
+      issuerId === 'nk1-android-host' && keyId === 'test-ed25519-k1'
+        ? publicKey.export({ type: 'spki', format: 'pem' }).toString()
+        : null,
+    consentAuthority,
+    nonceDirectoryPath,
+    nonceStoreNow: () => nonceLedgerNow,
+    now: () => now,
+    maxCaptureAgeMs: 120_000,
+    maxFutureSkewMs: 3_000,
+    maxReceiptLifetimeMs: 300_000,
+  },
 });
 await core.init();
 const coreReceipt = signedReceipt({
