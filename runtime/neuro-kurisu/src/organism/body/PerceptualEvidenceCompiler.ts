@@ -225,7 +225,7 @@ export class PerceptualEvidenceCompiler{
   revokeTrustedExternalEvidence(observationId:string):boolean {
     if(typeof observationId!=='string'||!observationId.trim()||observationId.length>180)return false;
     const id=`pe-host-${stableHash(observationId)}`;
-    const index=this.state.evidence.findIndex(row=>row.id===id&&row.kind==='observed');
+    const index=this.state.evidence.findIndex(row=>row.id===id&&row.revoked!==true&&(row.kind==='observed'||Boolean(row.hostReceipt)));
     if(index<0)return false;
     const row=this.state.evidence[index];
     this.state.evidence[index]={...row,kind:'unresolved',confidence01:0,uncertainty01:1,expiresAt:0,revoked:true};
