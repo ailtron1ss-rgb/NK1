@@ -1623,7 +1623,7 @@ export class OrganismCore {
         if (observationAuthority) {
             const restoredHostEvidence = this.embodimentSubsystem.perceptualEvidence.snapshot().evidence;
             for (const row of restoredHostEvidence) {
-                if (row.revoked === true || !row.hostReceipt || row.kind === 'observed')
+                if (row.revoked === true || row.expired === true || !row.hostReceipt || row.kind === 'observed')
                     continue;
                 const checked = await observationAuthority.reauthorizePersisted(row.hostReceipt);
                 if (!checked.accepted)
