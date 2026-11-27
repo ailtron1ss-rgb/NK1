@@ -40,3 +40,29 @@ The same G3 branch now hardens the full persisted perception chain rather than o
 - G3 CI installs pinned TypeScript 5.8.3 and Node type declarations in the runner only, so the runtime typecheck can use semantic \`tsc\`; no project dependency or lockfile is modified by this verifier step.
 
 These changes improve restore/admission integrity; they do not convert the in-process verifier into a cryptographic attestation service. Device identity, consent/revocation, signed receipts, restart-surviving replay protection, Android/Termux soak and independent holdout remain open.
+
+
+## Signed host admission and strict restore pass — 2026-11-27
+
+The branch now contains a host-injected admission authority and a canonical Core/Runtime entry path:
+
+- `SignedObservationAdmissionAuthority` validates an exact schema-versioned receipt, rejects unknown fields and hostile object shapes, enforces issuer/key ID and host-configured device ID, checks capture/issue/expiry windows, verifies Ed25519, RSA-SHA256 or ECDSA-SHA256 signatures, checks the exact consent ticket/revision/device/modality/capture binding, and atomically consumes the issuer/device/session/nonce tuple through an injected store.
+- A successful check creates a frozen, process-local capability in a private WeakSet. Copies and JSON-restored tokens are not accepted by the evidence compiler.
+- `OrganismConfig.observationAdmissionAuthority` allows a trusted host to inject the authority. `OrganismCore.admitObservationReceipt()` verifies the receipt, passes the exact capability to the canonical Embodiment owner, updates the persisted embodiment evidence facet, and checkpoints. `OrganismRuntime.admitObservationReceipt()` exposes the path through the runtime queue.
+- `revokeAdmittedObservation()` is exposed at Embodiment, Core and Runtime layers. It demotes the selected observed row to unresolved, clears the dependent aggregate trust metrics, and checkpoints the downgrade.
+- Host-admitted rows have a bounded expiry and are discarded from the live observation set after expiry. Ordinary external input remains derived; a caller-supplied `verified`, `signature` or `observed` field does not create authority.
+- Strict restore helpers now distinguish runtime saturation from persisted trust validation. Out-of-range confidence/uncertainty/quality values fall back to their conservative defaults; counters outside each owner's explicit budget are rejected to defaults rather than saturated into invented activity. Applied across Grounded World, P41 semantic perception, continuity, epistemic graph and perceptual evidence compiler.
+- G3 tests now use a real generated Ed25519 key pair and cover signed admission, payload tampering, wrong device, revoked consent, stale capture, malformed confidence, duplicate nonce, accessor/Proxy inputs, owner integration, persisted downgrade and revocation. A Core-level integration regression also checks canonical facet checkpointing and replay denial.
+
+### Production integration boundary still open
+
+The code path and injected contracts exist, but **production host attestation is not yet device-verified**:
+
+- The application host must supply its provisioned public-key resolver and real key-rotation/revocation policy; the branch does not contain a production private key.
+- The host must supply a canonical consent authority that checks current ticket state/revision, including revocation and modality scope.
+- The host must supply a durable, cross-process atomic nonce store. The in-memory `Set` in the regression is test-only and does not qualify as production replay protection.
+- The host capture service must compute the capture digest from the actual captured bytes and sign the exact receipt; the signed digest is currently treated as an issuer assertion, not independently recomputed from a local media blob.
+- Persisted observation rows are deliberately downgraded on restore today. A subsequent restart-rehydration path must re-verify the persisted signed envelope against the host key/consent authorities and the durable nonce ledger before restoring observed status; no persisted WeakSet capability is trusted.
+- Android/Termux cold-start, process-kill/restart, storage-loss and real camera/audio capture soak remain outstanding, as do independent RU/EN holdout and device latency measurements.
+
+Accordingly, this work closes several caller-controlled and malformed-restore routes and builds the host admission seam; it does **not** close G3 or prove real-device trust until those concrete host providers and device tests are connected and independently verified.
