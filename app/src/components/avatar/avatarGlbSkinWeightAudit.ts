@@ -381,7 +381,7 @@ export function auditGlbSkinWeights(
       weightedSampleVertices,
       unweightedSampleVertices,
       averageWeightSum01,
-      maxWeightSum01,
+      maxWeightSum01: maxWeightSum,
       jointCoverage,
       warnings: [...meshWarnings],
     });
