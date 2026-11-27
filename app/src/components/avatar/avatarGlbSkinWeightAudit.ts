@@ -396,6 +396,7 @@ export function auditGlbSkinWeights(
   const meshes = Array.isArray(rawDocument.meshes) ? rawDocument.meshes : [];
   const skins = Array.isArray(rawDocument.skins) ? rawDocument.skins : [];
   const data = new DataView(binaryChunk.buffer, binaryChunk.byteOffset, binaryChunk.byteLength);
+  const worldTransformResolver = createWorldMatrixResolver(nodes);
   const requestedSamples = nonNegativeInteger(options.maxSamplesPerPrimitive) ?? DEFAULT_SAMPLE_BUDGET;
   const maxSamples = Math.max(1, Math.min(MAX_SAMPLE_BUDGET, requestedSamples));
   const requestedNodes = nonNegativeInteger(options.maxSkinnedNodes) ?? MAX_SKINNED_NODES;
@@ -426,7 +427,14 @@ export function auditGlbSkinWeights(
     const jointStats = new Map<number, JointStats>();
     let vertexCount = 0;
     let sampledVertices = 0;
+    let boundsSampledVertices = 0;
     let weightedSampleVertices = 0;
+    let hasLocalBounds = false;
+    let hasWorldBounds = false;
+    const localBoundsAccumulator = emptyBounds();
+    const worldBoundsAccumulator = emptyBounds();
+    const worldMatrix = worldTransformResolver.resolve(nodeIndex);
+    if (worldTransformResolver.hasCycle(nodeIndex)) meshWarnings.add("node-transform-cycle");
     let unweightedSampleVertices = 0;
     let totalWeightSum = 0;
     let maxWeightSum = 0;
@@ -478,7 +486,36 @@ export function auditGlbSkinWeights(
 
         const primitiveVertexCount = layouts[0].joints.count;
         vertexCount += primitiveVertexCount;
+        let positionLayout: AccessorLayout | null = null;
+        if (!Number.isInteger(attributes.POSITION)) {
+          meshWarnings.add("missing-position-attribute");
+        } else {
+          const position = accessorLayout(rawDocument, binaryChunk.byteLength, Number(attributes.POSITION), "VEC3", [5126], "position");
+          if (typeof position === "string") meshWarnings.add(position);
+          else if (position.count !== primitiveVertexCount) meshWarnings.add("joint-position-count-mismatch");
+          else positionLayout = position;
+        }
         const indices = sampleIndices(primitiveVertexCount, maxSamples);
+        if (positionLayout) {
+          const boundsIndices = sampleIndices(positionLayout.count, maxSamples);
+          boundsSampledVertices += boundsIndices.length;
+          for (const vertexIndex of boundsIndices) {
+            const position = readVector3(data, positionLayout, vertexIndex);
+            if (!position) {
+              meshWarnings.add("invalid-position-value");
+              continue;
+            }
+            updateBounds(localBoundsAccumulator, position);
+            hasLocalBounds = true;
+            const worldPosition = transformPoint(worldMatrix, position);
+            if (!worldPosition) {
+              meshWarnings.add("invalid-world-position");
+              continue;
+            }
+            updateBounds(worldBoundsAccumulator, worldPosition);
+            hasWorldBounds = true;
+          }
+        }
         for (const vertexIndex of indices) {
           const perVertex = new Map<number, number>();
           let malformedVertex = false;
@@ -543,6 +580,9 @@ export function auditGlbSkinWeights(
       skinIndex,
       vertexCount,
       sampledVertices,
+      boundsSampledVertices,
+      localBounds: finalizeBounds(localBoundsAccumulator, hasLocalBounds),
+      worldBounds: finalizeBounds(worldBoundsAccumulator, hasWorldBounds),
       weightedSampleVertices,
       unweightedSampleVertices,
       averageWeightSum01,
