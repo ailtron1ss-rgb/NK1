@@ -131,7 +131,7 @@ def _read_source_versions(root: Path) -> dict[str, Any]:
             result[name] = {"error": str(error)[:240]}
     return result
 
-def audit_release_archive(archive_path: str | Path, source_root: str | Path, expected_sha256: str | None = None, expected_size: int | None = None, archive_prefix: str = "auto", release_tag: str | None = None) -> dict[str, Any]:
+def audit_release_archive(archive_path: str | Path, source_root: str | Path, expected_sha256: str | None = None, expected_size: int | None = None, archive_prefix: str = "auto", release_tag: str | None = None, require_source_match: bool = False) -> dict[str, Any]:
     archive = Path(archive_path)
     root = Path(source_root).resolve()
     errors: list[str] = []
@@ -316,6 +316,15 @@ def audit_release_archive(archive_path: str | Path, source_root: str | Path, exp
         except (OSError, zipfile.BadZipFile, RuntimeError):
             pass
     integrity_ok = not errors
+    source_match_ok = not changed and not archive_only and not source_only
+    source_match = {
+        "required": require_source_match,
+        "ok": source_match_ok,
+        "changedFileCount": len(changed),
+        "archiveOnlyFileCount": len(archive_only),
+        "sourceOnlyFileCount": len(source_only),
+    }
+    release_ready = integrity_ok and source_match_ok
     return {
         "schemaVersion": 1, "generatedAt": datetime.now(timezone.utc).isoformat(), "releaseTag": release_tag,
         "archive": {
@@ -333,7 +342,9 @@ def audit_release_archive(archive_path: str | Path, source_root: str | Path, exp
         "archiveDirectoryAliases": _casefold_directory_aliases(set(archive_paths)),
         "archiveFilePathCollisions": _casefold_file_path_collisions(set(archive_paths)),
         "archiveMappedPathCollisions": mapped_path_collision_report,
-        "archiveVersions": archive_versions, "comparison": comparison, "errors": errors, "ok": integrity_ok,
+        "archiveVersions": archive_versions, "comparison": comparison, "sourceMatch": source_match,
+        "sourceMatchRequired": require_source_match, "sourceMatchOk": source_match_ok,
+        "releaseReady": release_ready, "errors": errors, "ok": integrity_ok,
     }
 
 def main(argv: list[str] | None = None) -> int:
@@ -344,15 +355,25 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--expected-size", type=int)
     parser.add_argument("--archive-prefix", default="auto")
     parser.add_argument("--release-tag")
+    parser.add_argument(
+        "--require-source-match",
+        action="store_true",
+        help="fail candidate readiness when source-only, archive-only or changed files are present",
+    )
     parser.add_argument("--out", required=True)
     args = parser.parse_args(argv)
-    report = audit_release_archive(args.archive, args.source_root, args.expected_sha256, args.expected_size, args.archive_prefix, args.release_tag)
+    report = audit_release_archive(
+        args.archive, args.source_root, args.expected_sha256, args.expected_size,
+        args.archive_prefix, args.release_tag, require_source_match=args.require_source_match,
+    )
     output = Path(args.out)
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     comparison, archive = report["comparison"], report["archive"]
     print(json.dumps({
-        "ok": report["ok"], "releaseTag": report["releaseTag"], "archiveSha256": archive["sha256"],
+        "ok": report["ok"], "integrityOk": archive["integrityOk"],
+        "releaseReady": report["releaseReady"], "sourceMatchRequired": report["sourceMatchRequired"],
+        "sourceMatchOk": report["sourceMatchOk"], "releaseTag": report["releaseTag"], "archiveSha256": archive["sha256"],
         "archiveBytes": archive["sizeBytes"], "archiveFiles": archive["fileCount"],
         "identicalFiles": comparison["identicalFileCount"], "changedFiles": comparison["changedFileCount"],
         "archiveOnlyFiles": comparison["archiveOnlyFileCount"], "sourceOnlyFiles": comparison["sourceOnlyFileCount"],
@@ -363,7 +384,7 @@ def main(argv: list[str] | None = None) -> int:
         "archiveMappedPathCollisions": len(report["archiveMappedPathCollisions"]),
         "errors": report["errors"], "report": str(output),
     }, indent=2))
-    return 0 if report["ok"] else 2
+    return 0 if report["ok"] and (not report["sourceMatchRequired"] or report["releaseReady"]) else 2
 
 if __name__ == "__main__":
     raise SystemExit(main())
