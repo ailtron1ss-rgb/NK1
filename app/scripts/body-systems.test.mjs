@@ -47,7 +47,7 @@ function createFakeVrm(names) {
     bones,
   };
 }
-const FULL_BODY_NAMES = ["head", "neck", "leftUpperArm", "rightUpperArm", "spine", "leftLowerArm", "rightLowerArm", "leftUpperLeg", "rightUpperLeg", "leftLowerLeg", "rightLowerLeg", "leftFoot", "rightFoot"];
+const FULL_BODY_NAMES = ["head", "neck", "hips", "leftUpperArm", "rightUpperArm", "spine", "leftLowerArm", "rightLowerArm", "leftUpperLeg", "rightUpperLeg", "leftLowerLeg", "rightLowerLeg", "leftFoot", "rightFoot"];
 
 const baseManifest = () => ({
   schemaVersion: 1,
@@ -373,6 +373,9 @@ test("declared VRM 3D channels match the full-body bone applier", () => {
   for (const channel of ["torsoPitch", "leftElbow", "rightElbow", "leftHip", "rightHip", "leftKnee", "rightKnee"]) {
     assert.ok(declared.has(channel), `${channel} drives a real bone and must be declared`);
   }
+  for (const channel of ["torsoYaw", "rootYaw"]) {
+    assert.ok(declared.has(channel), `${channel} drives a real normalized rig bone and must be declared`);
+  }
   for (const channel of ["leftAnkle", "rightAnkle"]) {
     assert.ok(declared.has(channel), `${channel} drives a real foot bone and must be declared`);
   }
@@ -381,7 +384,7 @@ test("declared VRM 3D channels match the full-body bone applier", () => {
   }
   const vrmManifest = DEFAULT_RENDERER_MANIFESTS.find((entry) => entry.rendererId === "nk1-three-vrm3d");
   assert.ok(vrmManifest);
-  assert.ok(vrmManifest.joints.includes("leftFoot") && vrmManifest.joints.includes("rightFoot"),
+  assert.ok(vrmManifest.joints.includes("hips") && vrmManifest.joints.includes("leftFoot") && vrmManifest.joints.includes("rightFoot"),
     "the rig manifest must list both normalized foot joints");
 
   // The head/gaze controller owns headYaw/headPitch/headRoll and shoulders; the
@@ -484,6 +487,19 @@ test("full-body ankle channels drive normalized feet and return them to neutral"
   assert.equal(neutral.applied, false);
   assert.equal(vrm.bones.get("leftFoot").rotation.x, 0);
   assert.equal(vrm.bones.get("rightFoot").rotation.x, 0);
+});
+
+test("full-body torso and root yaw channels drive spine and hips then return to neutral", () => {
+  const vrm = createFakeVrm(FULL_BODY_NAMES);
+  const driven = applyVrmFullBodyChannels(vrm, { torsoYaw: 0.5, rootYaw: -0.5 });
+  assert.deepEqual(driven.controlledBones.sort(), ["hips", "spine"]);
+  assert.equal(vrm.bones.get("spine").rotation.y, 0.25);
+  assert.equal(vrm.bones.get("hips").rotation.y, -0.45);
+
+  const neutral = applyVrmFullBodyChannels(vrm, {});
+  assert.equal(neutral.applied, false);
+  assert.equal(vrm.bones.get("spine").rotation.y, 0);
+  assert.equal(vrm.bones.get("hips").rotation.y, 0);
 });
 
 test("full-body apply ignores channels it cannot map and reports none written", () => {
