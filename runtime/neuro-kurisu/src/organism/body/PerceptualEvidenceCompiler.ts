@@ -125,6 +125,7 @@ export class PerceptualEvidenceCompiler{
    */
   recordTrustedExternalEvidence(admission:TrustedObservationAdmission):PerceptualEvidenceRecord {
     if(!isTrustedObservationAdmission(admission))throw new TypeError('untrusted-observation-admission');
+    if(!Number.isSafeInteger(admission.expiresAt)||admission.expiresAt<=Date.now())throw new TypeError('expired-observation-admission');
     const id=`pe-host-${stableHash(admission.observationId)}`;
     const prior=this.state.evidence.find(row=>row.id===id);
     if(prior){
@@ -166,8 +167,8 @@ export class PerceptualEvidenceCompiler{
   }
 
   /**
-   * External observations stay derived until a host-owned, cryptographically
-   * verified admission receipt is wired into this owner. Caller flags are ignored.
+   * Caller-controlled external records are deliberately derived. Even a field
+   * named verified/signature/observed cannot create host authority.
    */
   recordExternalEvidence(input:{at:number;claim:string;confidence01:number;parents?:string[];modality?:'sensor'|'world'|'fusion'}){
     // External producer payloads are untrusted data. Reject Proxy/accessor shapes
