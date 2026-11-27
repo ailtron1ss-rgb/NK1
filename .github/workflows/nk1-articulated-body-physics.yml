@@ -27,7 +27,8 @@ permissions:
 
 concurrency:
   group: nk1-articulated-body-physics
-  cancel-in-progress: true
+  # Serialize branch updates instead of cancelling the latest proof run mid-suite.
+  cancel-in-progress: false
 
 jobs:
   articulated-body:
