@@ -54,10 +54,10 @@ test("particle body runtime writes inertial corrections back into actual Three.j
   const runtime = createAvatarParticleBodyRuntime(root, humanoid);
   assert.ok(runtime);
   resetAvatarParticleBodyPose(runtime);
-  const originalHeadX = bones.get("head").position.x;
   const originalChestX = bones.get("chest").position.x;
   bones.get("chest").position.x += 0.065;
   root.updateWorldMatrix(true, true);
+  const canonicalHeadWorld = bones.get("head").getWorldPosition(new THREE.Vector3());
   const result = stepAvatarParticleBodyPose(runtime, {
     deltaSeconds: 1 / 60,
     awake: true,
@@ -65,7 +65,8 @@ test("particle body runtime writes inertial corrections back into actual Three.j
   });
   assert.ok(result);
   assert.ok(result.simulationSteps > 0);
-  assert.ok(Math.abs(bones.get("head").position.x - originalHeadX) > 1e-6,
+  const simulatedHeadWorld = bones.get("head").getWorldPosition(new THREE.Vector3());
+  assert.ok(simulatedHeadWorld.distanceTo(canonicalHeadWorld) > 1e-7,
     "the simulated head particle must visibly alter the real head bone transform");
   assert.ok(Math.abs(bones.get("chest").position.x - (originalChestX + 0.065)) <= 0.012001,
     "particle correction must remain inside the configured chest envelope");
