@@ -12,6 +12,8 @@ This is the current product-branch checkpoint as of 27 November 2026. The source
 **Toolchain:** Node.js 24, Python 3.11.  
 **Acceptance status:** PR remains draft. Full branch CI and Android/Termux device acceptance are not yet complete. Do not treat the project as a release-ready phone install until those gates pass.
 
+**Termux:** [POCO / Android setup and first launch](runtime/neuro-kurisu/docs/TERMUX_ZERO_TO_RUN_POCO_RU.md). The guide uses a separate checkout and the repository-pinned Node 24 / Python 3.11 toolchain.
+
 ---
 
 ## Архивный upstream checkpoint — 21 ноября 2026 (исторические сведения)
