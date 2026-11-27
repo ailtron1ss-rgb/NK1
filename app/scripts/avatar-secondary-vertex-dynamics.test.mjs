@@ -304,3 +304,16 @@ test("shader injection rejects malformed supplemental uniforms without partial m
   assert.equal(shader.vertexShader, originalShader, "a rejected uniform must not leave a patched shader behind");
   assert.deepEqual(shader.uniforms, {}, "a rejected uniform must not register a partial uniform set");
 });
+
+test("authored nk1SecondaryPin attributes preserve soft attachment gradients", () => {
+  const part = mesh("CLOTH_skirt", { geometry: makeParticleGeometry() });
+  const weights = new Float32Array([1, 1, 1, 0.25, 0.5, 0, 0, 0, 0]);
+  part.geometry.attributes.nk1SecondaryPin = { array: weights, count: weights.length };
+  const bindings = vertexDynamics.attachAvatarSecondaryVertexDynamics(scene([part]), 1);
+  assert.equal(bindings.length, 1);
+  assert.ok(bindings[0].particleState);
+  assert.equal(bindings[0].particleState.inverseMass[0], 0, "authored hard pins remain immovable");
+  assert.equal(bindings[0].particleState.inverseMass[3], 0.75, "authored 0.25 pin allows 0.75 inverse mass");
+  assert.equal(bindings[0].particleState.inverseMass[4], 0.5, "authored 0.5 pin allows 0.5 inverse mass");
+  vertexDynamics.disposeAvatarSecondaryVertexDynamics(bindings);
+});

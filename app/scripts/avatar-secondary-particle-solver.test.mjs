@@ -258,3 +258,23 @@ test("bending links respond to a local out-of-plane deformation and reset clears
   resetAvatarSecondaryParticleState(state);
   assert.ok(state.bendingLambdas.every((value) => value === 0));
 });
+
+test("XPBD particle pins preserve fractional attachment weights and clamp the normalized range", () => {
+  const mesh = grid();
+  const pins = new Float32Array(mesh.pins);
+  pins[0] = 0.25;
+  pins[1] = 0.75;
+  pins[2] = -0.5;
+  pins[3] = 1.5;
+  const state = createAvatarSecondaryParticleState({
+    positions: mesh.positions,
+    indices: mesh.indices,
+    pinnedMask: pins,
+    role: "garment",
+  });
+  assert.ok(state);
+  assert.equal(state.inverseMass[0], 0.75, "25% pin weight leaves 75% inverse mass");
+  assert.equal(state.inverseMass[1], 0.25, "75% pin weight leaves 25% inverse mass");
+  assert.equal(state.inverseMass[2], 1, "negative pin weights clamp to fully movable");
+  assert.equal(state.inverseMass[3], 0, "pin weights above one clamp to fully fixed");
+});
