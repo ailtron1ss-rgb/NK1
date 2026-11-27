@@ -47,7 +47,20 @@ function createFakeVrm(names) {
     bones,
   };
 }
-const FULL_BODY_NAMES = ["head", "neck", "hips", "leftUpperArm", "rightUpperArm", "spine", "leftLowerArm", "rightLowerArm", "leftUpperLeg", "rightUpperLeg", "leftLowerLeg", "rightLowerLeg", "leftFoot", "rightFoot"];
+const FINGER_SUFFIXES = [
+  "ThumbMetacarpal", "ThumbProximal", "ThumbDistal",
+  "IndexProximal", "IndexIntermediate", "IndexDistal",
+  "MiddleProximal", "MiddleIntermediate", "MiddleDistal",
+  "RingProximal", "RingIntermediate", "RingDistal",
+  "LittleProximal", "LittleIntermediate", "LittleDistal",
+];
+const FULL_BODY_NAMES = [
+  "head", "neck", "hips", "leftUpperArm", "rightUpperArm", "spine",
+  "leftLowerArm", "rightLowerArm", "leftUpperLeg", "rightUpperLeg",
+  "leftLowerLeg", "rightLowerLeg", "leftFoot", "rightFoot", "leftHand", "rightHand",
+  ...FINGER_SUFFIXES.map((suffix) => "left" + suffix),
+  ...FINGER_SUFFIXES.map((suffix) => "right" + suffix),
+];
 
 const baseManifest = () => ({
   schemaVersion: 1,
@@ -380,12 +393,17 @@ test("declared VRM 3D channels match the full-body bone applier", () => {
     assert.ok(declared.has(channel), `${channel} drives a real foot bone and must be declared`);
   }
   for (const channel of ["leftWrist", "rightWrist", "leftHand", "rightHand", "leftFingers", "rightFingers"]) {
-    assert.equal(declared.has(channel), false, `${channel} is still unsupported and must not be advertised`);
+    assert.ok(declared.has(channel), `${channel} is backed by normalized hand/finger joints and must be declared`);
   }
   const vrmManifest = DEFAULT_RENDERER_MANIFESTS.find((entry) => entry.rendererId === "nk1-three-vrm3d");
   assert.ok(vrmManifest);
   assert.ok(vrmManifest.joints.includes("hips") && vrmManifest.joints.includes("leftFoot") && vrmManifest.joints.includes("rightFoot"),
-    "the rig manifest must list both normalized foot joints");
+    "the rig manifest must list normalized pelvis and foot joints");
+  assert.ok(vrmManifest.joints.includes("leftHand") && vrmManifest.joints.includes("rightHand"));
+  for (const suffix of FINGER_SUFFIXES) {
+    assert.ok(vrmManifest.joints.includes("left" + suffix), "left finger joint " + suffix + " must be declared");
+    assert.ok(vrmManifest.joints.includes("right" + suffix), "right finger joint " + suffix + " must be declared");
+  }
 
   // The head/gaze controller owns headYaw/headPitch/headRoll and shoulders; the
   // full-body pass must not claim them.
@@ -545,4 +563,43 @@ test("the default 3D asset is honestly marked remote and not production-ready",(
   const registry=createDefaultBodyRendererRegistry();
   assert.equal(registry.selectable().some((entry)=>entry.rendererId==="nk1-three-vrm3d"),false,
     "an externally hosted, visually unaccepted asset must not enter the production-ready selector");
+});
+
+test("full-body wrist and palm channels drive separate normalized hand axes", () => {
+  const vrm = createFakeVrm(FULL_BODY_NAMES);
+  const driven = applyVrmFullBodyChannels(vrm, { leftWrist: 0.5, leftHand: 0.5, rightWrist: -0.5, rightHand: -0.5 });
+  assert.deepEqual(driven.controlledBones.sort(), ["leftHand", "rightHand"]);
+  assert.equal(vrm.bones.get("leftHand").rotation.x, 0.2);
+  assert.equal(vrm.bones.get("leftHand").rotation.y, 0.175);
+  assert.equal(vrm.bones.get("rightHand").rotation.x, -0.2);
+  assert.equal(vrm.bones.get("rightHand").rotation.y, -0.175);
+  const neutral = applyVrmFullBodyChannels(vrm, {});
+  assert.equal(neutral.applied, false);
+  assert.deepEqual(["leftHand", "rightHand"].map((name) => vrm.bones.get(name).rotation),
+    [{ x: 0, y: 0, z: 0 }, { x: 0, y: 0, z: 0 }]);
+});
+
+test("aggregate finger curl reaches all standard optional VRM finger segments and resets", () => {
+  const vrm = createFakeVrm(FULL_BODY_NAMES);
+  const driven = applyVrmFullBodyChannels(vrm, { leftFingers: 0.5, rightFingers: -0.5 });
+  assert.equal(driven.controlledBones.length, 30);
+  assert.ok(driven.controlledBones.includes("leftThumbMetacarpal"));
+  assert.ok(driven.controlledBones.includes("leftIndexIntermediate"));
+  assert.ok(driven.controlledBones.includes("rightLittleDistal"));
+  assert.equal(vrm.bones.get("leftIndexProximal").rotation.x, 0.425 * 0.64);
+  assert.equal(vrm.bones.get("leftIndexIntermediate").rotation.x, 0.425 * 0.78);
+  assert.equal(vrm.bones.get("rightMiddleDistal").rotation.x, -0.425 * 0.58);
+  const neutral = applyVrmFullBodyChannels(vrm, {});
+  assert.equal(neutral.applied, false);
+  for (const suffix of FINGER_SUFFIXES) {
+    assert.equal(vrm.bones.get("left" + suffix).rotation.x, 0);
+    assert.equal(vrm.bones.get("right" + suffix).rotation.x, 0);
+  }
+});
+
+test("missing optional VRM finger joints are skipped without false control receipts", () => {
+  const vrm = createFakeVrm(FULL_BODY_NAMES.filter((name) => !FINGER_SUFFIXES.some((suffix) => name === "left" + suffix || name === "right" + suffix)));
+  const result = applyVrmFullBodyChannels(vrm, { leftFingers: 0.8, rightFingers: 0.8 });
+  assert.equal(result.applied, false);
+  assert.deepEqual(result.controlledBones, []);
 });
