@@ -1,6 +1,7 @@
 import { createPublicKey, verify as verifySignature } from 'node:crypto';
 import { isPlainDataRecord, ownDataValue } from '../body/RestoreSanitizers.ts';
 import { sha256Stable, stableJson } from '../core/StableSerialization.ts';
+import { FileHostObservationNonceStore } from './FileHostObservationNonceStore.ts';
 
 export type HostObservationModality = 'text'|'vision'|'audio'|'sensor'|'world'|'fusion';
 export type HostObservationSignatureAlgorithm = 'ed25519'|'rsa-sha256'|'ecdsa-sha256';
@@ -69,6 +70,34 @@ export interface SignedObservationAdmissionConfig {
   maxCaptureAgeMs?:number;
   maxFutureSkewMs?:number;
   maxReceiptLifetimeMs?:number;
+}
+
+/** Host configuration for the canonical durable replay-protection implementation. */
+export interface FileBackedSignedObservationAdmissionConfig extends Omit<SignedObservationAdmissionConfig,'nonceStore'> {
+  nonceDirectoryPath:string;
+  nonceStoreNow?:()=>number;
+  nonceStoreMaxClockLogBytes?:number;
+}
+
+/**
+ * Construct the production host verifier with an app-private durable nonce ledger.
+ * There is deliberately no Map/cache fallback: directory/permission/store errors fail closed.
+ */
+export function createFileBackedSignedObservationAdmissionAuthority(
+  config:FileBackedSignedObservationAdmissionConfig,
+):SignedObservationAdmissionAuthority {
+  const {
+    nonceDirectoryPath,
+    nonceStoreNow,
+    nonceStoreMaxClockLogBytes,
+    ...authorityConfig
+  }=config;
+  const nonceStore=new FileHostObservationNonceStore({
+    directoryPath:nonceDirectoryPath,
+    ...(nonceStoreNow?{now:nonceStoreNow}:{}),
+    ...(nonceStoreMaxClockLogBytes!==undefined?{maxClockLogBytes:nonceStoreMaxClockLogBytes}:{}),
+  });
+  return new SignedObservationAdmissionAuthority({...authorityConfig,nonceStore});
 }
 
 export interface TrustedObservationAdmission {

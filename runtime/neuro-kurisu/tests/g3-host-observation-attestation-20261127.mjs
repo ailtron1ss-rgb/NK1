@@ -3,8 +3,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { generateKeyPairSync, sign } from 'node:crypto';
-import { SignedObservationAdmissionAuthority, isTrustedObservationAdmission, signedObservationReceiptBytes } from '../src/organism/system/SignedObservationAdmissionAuthority.ts';
-import { FileHostObservationNonceStore } from '../src/organism/system/FileHostObservationNonceStore.ts';
+import { createFileBackedSignedObservationAdmissionAuthority, SignedObservationAdmissionAuthority, isTrustedObservationAdmission, signedObservationReceiptBytes } from '../src/organism/system/SignedObservationAdmissionAuthority.ts';
 import { EmbodimentSubsystemRuntime } from '../src/organism/core/EmbodimentSubsystemRuntime.ts';
 import { OrganismCore } from '../src/organism/core/OrganismCore.ts';
 import { MemoryStateStore } from '../src/organism/persistence/MemoryStateStore.ts';
@@ -14,10 +13,7 @@ const { publicKey, privateKey } = generateKeyPairSync('ed25519');
 let now = Date.now();
 const nonceRoot = await mkdtemp(join(tmpdir(), 'nk1-g3-nonce-ledger-'));
 let nonceLedgerNow = Date.now();
-const nonceStore = new FileHostObservationNonceStore({
-  directoryPath: join(nonceRoot, 'store'),
-  now: () => nonceLedgerNow,
-});
+const nonceDirectoryPath = join(nonceRoot, 'store');
 const revokedTickets = new Set();
 const consentAuthority = {
   async isActive(input) {
@@ -27,12 +23,13 @@ const consentAuthority = {
       input.modality === 'vision';
   },
 };
-const authority = new SignedObservationAdmissionAuthority({
+const authority = createFileBackedSignedObservationAdmissionAuthority({
   expectedDeviceId: 'android-test-01',
   resolvePublicKey: async (issuerId, keyId) =>
     issuerId === 'nk1-android-host' && keyId === 'test-ed25519-k1' ? publicKey.export({ type: 'spki', format: 'pem' }).toString() : null,
   consentAuthority,
-  nonceStore,
+  nonceDirectoryPath,
+  nonceStoreNow: () => nonceLedgerNow,
   now: () => now,
   maxCaptureAgeMs: 120_000,
   maxFutureSkewMs: 3_000,
@@ -100,11 +97,12 @@ assert.equal(neverConsumedReauthorization.accepted, false);
 assert.equal(neverConsumedReauthorization.reason, 'nonce-not-previously-consumed');
 
 // A private PEM is not accepted as a host verifier key; NK1 receives public keys only.
-const privateKeyAuthority = new SignedObservationAdmissionAuthority({
+const privateKeyAuthority = createFileBackedSignedObservationAdmissionAuthority({
   expectedDeviceId: 'android-test-01',
   resolvePublicKey: async () => privateKey.export({ type: 'pkcs8', format: 'pem' }).toString(),
   consentAuthority,
-  nonceStore,
+  nonceDirectoryPath,
+  nonceStoreNow: () => nonceLedgerNow,
   now: () => now,
 });
 const privateKeyRejected = await privateKeyAuthority.admit(
