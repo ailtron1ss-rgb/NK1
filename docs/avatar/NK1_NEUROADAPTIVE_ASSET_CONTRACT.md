@@ -126,7 +126,9 @@ Do not repurpose primary shoulders, arms, neck, head or facial morphs as substit
 
 ## Verified modular mesh inventory in v5
 
-The actual hosted v5 also contains separately named meshes for hair, clothing and sleeves, even though every hair mesh is currently weighted 100% to the head and no secondary bones are exported. The scene audit now reports these mesh roles independently from the secondary-rig status:
+The actual hosted v5 also contains separately named meshes for hair, clothing and sleeves, even though every hair mesh is currently weighted 100% to the head and no secondary bones are exported. The hosted raw-GLB audit confirmed **15 hair meshes, 19 garment meshes and 4 sleeve meshes**; all 38 are currently skinned to the shared v5 skin. The scene audit reports these mesh roles independently from the secondary-rig status:
+
+All sampled vertices in the candidate hair/garment/sleeve meshes have normalized skin weights summing to approximately 1.0. This is a sound starting point for targeted reweighting, but it does not itself provide secondary motion.
 
 - Hair mesh candidates: back mass, crown, center/left/right fringe, front left/right strands, six side layers, and left/right long locks.
 - Garment candidates: main coat, skirt, tie blade/knot, left/right lapels and seams, collar, pockets/flaps, buttons and hem stitch.
