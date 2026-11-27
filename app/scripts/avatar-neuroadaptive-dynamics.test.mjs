@@ -133,3 +133,9 @@ test("low quality and sleep attenuate pose-driven secondary motion, not only idl
   for (let index = 0; index < 120; index += 1) asleep = sleeping.step(bones, { ...baseFrame, awake: false, action: "rest" });
   assert.ok(magnitude(asleep.get("hair")) < magnitude(high.get("hair")) * 0.35);
 });
+
+
+test("semantic side markers embedded before chain segments remain directional", () => {
+  assert.equal(dynamics.resolveAvatarDynamicsBoneRole("CoatPanelL_Mid")?.side, -1);
+  assert.equal(dynamics.resolveAvatarDynamicsBoneRole("MantleTailR_Tip")?.side, 1);
+});
