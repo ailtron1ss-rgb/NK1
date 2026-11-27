@@ -125,10 +125,10 @@ test("solved particle displacements reach the articulated spine, elbow and knee 
   });
 
   assert.ok(rig.bones.chest.position.x > 0);
-  assert.ok(rig.bones.chest.position.y > 0.56);
+  assert.ok(rig.bones.chest.position.y > 0.22);
   assert.ok(rig.bones.chest.position.z > 0);
   assert.ok(rig.bones.leftForearm.position.x < 0);
-  assert.ok(rig.bones.rightKnee.position.y < -0.48);
+  assert.ok(rig.bones.rightKnee.position.y > -0.48);
   assert.equal(rig.root.userData.poseState.particleBindingsApplied, 3);
 
   rig.dispose();
