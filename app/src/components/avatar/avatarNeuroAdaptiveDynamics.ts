@@ -118,6 +118,22 @@ function roleFromName(name: string): AvatarDynamicsRole | null {
   return null;
 }
 
+/**
+ * True for bones that belong to a secondary chain even when the bone itself is
+ * pinned or disabled. The GLB finger/toe legacy adapter must not animate those
+ * roots as an accidental fallback.
+ */
+export function isAvatarSecondaryDynamicsBoneCandidate(
+  boneName: unknown,
+  rawMetadata?: unknown,
+): boolean {
+  const nameRole = typeof boneName === "string" ? roleFromName(normalize(boneName)) : null;
+  if (nameRole) return true;
+  const metadata = plainMetadata(rawMetadata);
+  return Boolean(metadata && typeof metadata.role === "string"
+    && VALID_DYNAMICS_ROLES.has(metadata.role as AvatarDynamicsRole));
+}
+
 function sideFromName(rawName: string): -1 | 0 | 1 {
   const leftSide = rawName.includes("left")
     || /(?:^|[-_.])l(?:[-_.]|$)/.test(rawName)
