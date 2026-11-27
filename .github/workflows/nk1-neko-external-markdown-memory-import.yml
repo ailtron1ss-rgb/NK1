@@ -1,10 +1,12 @@
-name: NK1 N.E.K.O. external markdown memory import
+name: NK1 donor adapter integration contracts
 
 on:
   pull_request:
     branches: [workpass70-source]
     paths:
       - "runtime/neuro-kurisu/src/organism/integration/neko/NekoExternalMarkdownMemoryAdapter.ts"
+      - "runtime/neuro-kurisu/src/organism/integration/local/OpenAICompatibleLocalChatProvider.ts"
+      - "runtime/neuro-kurisu/tests/local-chat-structured-output-llama-server.mjs"
       - "runtime/neuro-kurisu/tests/neko-external-markdown-memory-import.mjs"
       - "runtime/neuro-kurisu/tests/openclaw-skill-memory-import.mjs"
       - "runtime/neuro-kurisu/docs/DONOR_ARCHIVES_THREE_FOUR_INTEGRATION_REVIEW_2026-11-27_RU.md"
@@ -44,6 +46,15 @@ jobs:
       - name: OpenClaw SKILL.md memory import contract
         working-directory: runtime/neuro-kurisu
         run: node --experimental-strip-types tests/openclaw-skill-memory-import.mjs
+      - name: llama.cpp schema-constrained JSON output contract
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/local-chat-structured-output-llama-server.mjs
+      - name: Existing local chat provider regression
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/local-chat-provider-workpass40.mjs
+      - name: Local model ecology selection regression
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/local-llm-selection-workpass74.mjs
       - name: N.E.K.O. Markdown memory import contract
         working-directory: runtime/neuro-kurisu
         run: node --experimental-strip-types tests/neko-external-markdown-memory-import.mjs
