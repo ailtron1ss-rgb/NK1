@@ -6,8 +6,10 @@ on:
     paths:
       - "app/src/components/Avatar3DStage.tsx"
       - "app/src/components/avatar/avatarNeuroAdaptiveDynamics.ts"
+      - "app/src/components/avatar/avatarSecondaryVertexDynamics.ts"
+      - "app/scripts/avatar-secondary-vertex-dynamics.test.mjs"
       - "app/scripts/avatar-neuroadaptive-dynamics.test.mjs"
-      - "app/scripts/avatar-secondary-asset-audit.test.mjs"
+      - "app/scripts/avatar-secondary-asset-audit.test.mjs app/scripts/avatar-secondary-vertex-dynamics.test.mjs"
       - "app/src/components/avatar/avatarSecondaryAssetAudit.ts"
       - "docs/avatar/NK1_NEUROADAPTIVE_ASSET_CONTRACT.md"
       - ".github/workflows/nk1-avatar-neuroadaptive-dynamics.yml"
