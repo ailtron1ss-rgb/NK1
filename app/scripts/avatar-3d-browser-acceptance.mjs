@@ -130,8 +130,20 @@ try {
   await stage.evaluate((element) => {
     const canvasElement = element.querySelector('canvas[aria-label="3D-модель Курису, потяните для поворота"]');
     if (!canvasElement) throw new Error("3D canvas disappeared before clean capture");
-    for (const child of Array.from(element.children)) {
-      if (child !== canvasElement) child.style.display = "none";
+    const keep = new Set([canvasElement]);
+    let parent = canvasElement.parentElement;
+    while (parent && parent !== element) {
+      keep.add(parent);
+      parent = parent.parentElement;
+    }
+    if (parent !== element) throw new Error("3D canvas is not contained by the avatar stage");
+    for (const child of Array.from(element.querySelectorAll("*"))) {
+      if (!keep.has(child) && !child.contains(canvasElement)) {
+        child.style.setProperty("display", "none", "important");
+      }
+    }
+    if (getComputedStyle(canvasElement).display === "none" || canvasElement.getBoundingClientRect().width <= 0) {
+      throw new Error("3D canvas became hidden during overlay cleanup");
     }
   });
   await page.waitForTimeout(500);
