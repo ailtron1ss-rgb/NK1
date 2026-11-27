@@ -163,3 +163,27 @@ test("unilateral sleeve names use their side and neutral sleeves average both bo
   assert.ok(result.get("neutral").y > result.get("left").y);
   assert.ok(result.get("neutral").y < result.get("right").y);
 });
+
+
+test("explicit NK1 node metadata classifies generic bones while enforcing per-role angle caps", () => {
+  const hair = dynamics.resolveAvatarDynamicsBoneRole("Bone.001", {
+    role: "hair", chainId: "left-fringe", side: "left", distalWeight: 1, maxAngle: 0.9,
+  });
+  assert.equal(hair?.role, "hair");
+  assert.equal(hair?.side, -1);
+  assert.equal(hair?.distalWeight, 1);
+  assert.ok(hair.maxAngle <= 0.06);
+  const garment = dynamics.resolveAvatarDynamicsBoneRole("Node_42", {
+    role: "garment", chainId: "coat-panel-right", side: "right", maxAngle: 0.8, distalWeight: 0.75,
+  });
+  assert.equal(garment?.role, "garment");
+  assert.equal(garment?.side, 1);
+  assert.ok(garment.maxAngle <= 0.09);
+  assert.equal(garment.distalWeight, 0.75);
+});
+
+test("explicit pinned roots and invalid secondary metadata fail closed rather than being guessed", () => {
+  assert.equal(dynamics.resolveAvatarDynamicsBoneRole("Bone.001", { role: "hair", pinned: true }), null);
+  assert.equal(dynamics.resolveAvatarDynamicsBoneRole("HairLockTip", { role: "unknown" }), null);
+  assert.equal(dynamics.resolveAvatarDynamicsBoneRole("Bone.002", { role: "garment", side: "diagonal" }), null);
+});
