@@ -73,10 +73,10 @@ const meshNodeInventory = gltfNodes.flatMap((node, nodeIndex) => {
     meshName: typeof mesh?.name === "string" ? mesh.name : `mesh-${node.mesh}`,
     skinIndex: Number.isInteger(node?.skin) ? node.skin : null,
   }];
-}).slice(0, 64);
-const materialNames = (document.materials ?? []).slice(0, 64).map((material, index) =>
+}).slice(0, 128);
+const materialNames = (document.materials ?? []).slice(0, 128).map((material, index) =>
   typeof material?.name === "string" ? material.name : `material-${index}`);
-const meshNames = (document.meshes ?? []).slice(0, 64).map((mesh, index) =>
+const meshNames = (document.meshes ?? []).slice(0, 128).map((mesh, index) =>
   typeof mesh?.name === "string" ? mesh.name : `mesh-${index}`);
 
 const morphTargetNames = new Set();
