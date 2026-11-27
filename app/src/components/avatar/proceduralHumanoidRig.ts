@@ -1,6 +1,6 @@
 import * as THREE_IMPORT from "three";
 const THREE: any = THREE_IMPORT;
-import { AVATAR_ARTICULATED_BODY_PARTICLE_COUNT, AVATAR_ARTICULATED_BODY_SEGMENT_COUNT } from "./articulatedBodyParticles";
+import { AVATAR_ARTICULATED_BODY_PARTICLE_COUNT, AVATAR_ARTICULATED_BODY_SEGMENT_COUNT } from "./articulatedBodyParticles.ts";
 import type { ArticulatedBodyParticle, ArticulatedBodyParticleId } from "./articulatedBodyParticles";
 
 // The runtime package ships JavaScript constructors but this workspace does not
