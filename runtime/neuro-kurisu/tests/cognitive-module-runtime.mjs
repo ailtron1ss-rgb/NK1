@@ -1074,3 +1074,35 @@ console.log('COGNITIVE_MODULE_CHECKPOINT_ATOMICITY=PASS');
   assert.equal(host.list().length, 0, 'rejected manifests must not enter the registry');
 }
 
+// Registration wrappers are untrusted admission data as well: inspect the
+// factory descriptor directly instead of invoking an accessor during admission.
+{
+  let getterCalls = 0;
+  const hostileRegistration = {
+    manifest: manifest('memory.hostile-registration'),
+  };
+  Object.defineProperty(hostileRegistration, 'factory', {
+    enumerable: true,
+    configurable: true,
+    get() {
+      getterCalls += 1;
+      return () => moduleFixture('memory.hostile-registration', []).module;
+    },
+  });
+
+  const host = new CognitiveModuleRuntime();
+  let registrationError;
+  try {
+    host.register(hostileRegistration);
+  } catch (error) {
+    registrationError = error;
+  }
+
+  assert.equal(getterCalls, 0, 'registration must never execute a factory accessor');
+  assert.match(
+    registrationError?.message ?? '',
+    /^module-registration-accessor-rejected/,
+  );
+  assert.equal(host.list().length, 0, 'an accessor-backed registration must not enter the registry');
+}
+
