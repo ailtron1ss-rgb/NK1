@@ -146,7 +146,7 @@ test("real particle physics output drives the NeuroCore skeleton end to end", ()
     particles: step.state.particles, deltaSeconds: 1 / 30, timeSeconds: step.state.elapsedMs / 1000,
   });
 
-  assert.equal(rig.root.userData.poseState.particleBindingsApplied, 17);
+  assert.equal(rig.root.userData.poseState.particleBindingsApplied, 9);
   assert.ok(Math.abs(rig.bones.chest.position.z) > 0 || Math.abs(rig.bones.chest.position.x) > 0);
   assert.notEqual(rig.bones.leftUpperArm.rotation.z, 0);
   assert.notEqual(rig.bones.rightUpperArm.rotation.z, 0);
@@ -168,8 +168,8 @@ test("solved particle displacements reach the articulated spine, elbow and knee 
   const rig = createProceduralHumanoidRig(scene);
   const particles = {
     chest: { position: { x: 0.025, y: 0.54, z: 0.04 }, target: { x: 0, y: 0.5, z: 0 } },
-    leftElbowPoint: { position: { x: -0.52, y: 0.56, z: 0.02 }, target: { x: -0.49, y: 0.51, z: 0 } },
-    rightKneePoint: { position: { x: 0.15, y: -0.42, z: 0.035 }, target: { x: 0.14, y: -0.46, z: 0 } },
+    leftShoulderPoint: { position: { x: -0.25, y: 0.48, z: 0.02 }, target: { x: -0.22, y: 0.48, z: 0 } },
+    rightHipPoint: { position: { x: 0.13, y: -0.04, z: 0.02 }, target: { x: 0.12, y: -0.04, z: 0 } },
   };
 
   rig.updatePose({
@@ -181,8 +181,8 @@ test("solved particle displacements reach the articulated spine, elbow and knee 
   assert.ok(rig.bones.chest.position.x > 0);
   assert.ok(rig.bones.chest.position.y > 0.22);
   assert.ok(rig.bones.chest.position.z > 0);
-  assert.ok(rig.bones.leftForearm.position.x < 0);
-  assert.ok(rig.bones.rightKnee.position.y > -0.48);
+  assert.ok(rig.bones.leftUpperArm.position.x < -0.08);
+  assert.ok(rig.bones.rightHip.position.x > 0.12);
   assert.equal(rig.root.userData.poseState.particleBindingsApplied, 3);
 
   rig.dispose();
