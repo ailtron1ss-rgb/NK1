@@ -94,14 +94,14 @@ Recommended visual treatment for the character: a restrained neural-vascular wea
 - Low/balanced/high render tiers scale secondary motion to 0.35/0.70/1.0.
 - Sleep fades secondary motion toward rest.
 - State is reset when a model is replaced or cleared.
-- No full per-vertex cloth solve, GPU compute-shader pass, external model inference or new runtime dependency is introduced. The optional vertex sway runs in the existing skinned material vertex shader.
+- The CPU XPBD surface solver is bounded to 768 vertices and 4,096 triangle-edge constraints per mesh, with at most four 1/60-second substeps and 2/3/5 constraint iterations for low/balanced/high quality. It uses typed-array buffers and adds no runtime dependency. There is no GPU compute-shader pass or external model inference in the render loop.
 
-The avatar now has two deliberately limited secondary layers: a fixed-step bone spring solver for authored secondary chains, and a tiny post-skinning GPU displacement for a strict set of existing modular meshes. The latter is not a full vertex-level cloth or soft-body solver. A true cloth solve requires authored garment topology, pinned vertex groups, collision proxies and device profiling; it must be a separately measured addition rather than implied by this contract.
+The avatar now has three bounded secondary layers: a fixed-step bone spring solver for authored secondary chains; a CPU XPBD surface-particle solver on the exact modular hair/garment allowlist; and a small post-skinning GPU sway fallback for meshes that cannot safely create a particle state. XPBD treats real mesh vertices as particles and unique triangle edges as distance constraints. It is a genuine vertex-level constrained deformation, but it is not yet a complete cloth/soft-body system: self-collision, body collision proxies, bending constraints, wind fields and device soak still require separate implementation and acceptance.
 
 
-## Limited GPU vertex sway on existing v5 geometry
+## XPBD surface particles and GPU sway fallback on existing v5 geometry
 
-The runtime may attach a small post-skinning vertex-shader displacement to existing meshes only when all required conditions are met: the node is a real `SkinnedMesh`, its name is in the allowlist, it has a valid position attribute and finite non-zero vertical bounds, and it has a cloneable `MeshStandardMaterial` or `MeshPhysicalMaterial`.
+The runtime attaches dynamics only to exact allowlisted `SkinnedMesh` nodes with valid position attributes, finite bounds and cloneable supported materials. It clones geometry, preserves the original asset, and adds a private `nk1SecondaryOffset` vertex attribute for the XPBD path.
 
 | Role | Exact allowed names | Maximum world-space amplitude |
 |---|---|---:|
@@ -109,15 +109,15 @@ The runtime may attach a small post-skinning vertex-shader displacement to exist
 | Garment | `CLOTH_skirt`, `CLOTH_labcoat_main` | 0.007 model units |
 | Tie | `CLOTH_tie_blade` | 0.0045 model units |
 
-The deformation is inserted strictly after Three.js `skinning_vertex`; original skinning, facial morphs and primary motor remain the base pose. A lower-edge mask keeps the effect near loose tips/hems. Motion is driven by the canonical frame's body sway, gait, breath, arousal, curiosity, novelty and prediction error, then reduced by sleep and low device quality. Material clones preserve the authored maps and shader path, including the shared `gradientMap` used by NK1 cel shading, and are disposed/restored on model replacement or reset.
+For XPBD-enabled meshes, each real vertex is integrated as a particle using Verlet motion and XPBD distance constraints derived from the triangle edges. A narrow upper attachment band is pinned from mesh bounds; an exported `nk1SecondaryPin` attribute overrides this inferred band when present. The offset attribute is injected before Three.js `skinning_vertex`, so existing skin weights and bone motion continue transforming the solved surface. Motion follows canonical body sway, gait, breath and yaw, then scales down in sleep and low device-quality modes. The previous bounded post-skinning GPU wave is retained as a fallback for unsupported topology/materials. Geometry clones and material clones are restored/disposed on model replacement or reset.
 
-The allowlist deliberately excludes `HAIR_back_mass`, `HAIR_crown`, all fringe meshes, face/eye meshes, lapels, collars, pockets, buttons and sleeves. The shader does not perform collisions, self-collision, mass-spring vertex simulation, constraint solving, wind-field simulation or cloth self-contact. It is visual secondary sway only. A real cloth/soft-body implementation still requires authored topology, pinned vertex groups, collision proxies and browser/device visual profiling.
+The allowlist deliberately excludes `HAIR_back_mass`, `HAIR_crown`, all fringe meshes, face/eye meshes, lapels, collars, pockets, buttons and sleeves. XPBD solves particle motion and edge-length constraints, but it does not yet implement self-collision, body collision proxies, bending constraints, wind fields or cloth self-contact. The GPU fallback remains visual sway only. Full cloth/soft-body acceptance still requires collision proxies and browser/device profiling.
 
 ## Acceptance requirements
 
 1. Original character identity remains fixed; no face, eye, hairline or body-proportion edits are made by the dynamics layer.
 2. Primary skeleton and motor intent remain owned by the existing VRM/GLB adapters.
-3. The new layer adds bounded offsets only to supported secondary chains.
+3. The new layer adds bounded offsets only to supported secondary chains and the exact modular vertex-particle allowlist.
 4. Missing morphs/material tags/bones produce no-op behavior, not fallback geometry.
 5. Determinism, sleep settling, reset, duplicate-name handling and mobile quality scaling remain covered by regression tests.
 6. Browser/Android visual acceptance must use the real canonical model and report only what the imported asset actually contains.
@@ -135,7 +135,7 @@ The secondary-role audit detected:
 - supported secondary morph aliases: 0
 - explicitly tagged emissive neural-fabric materials: 0
 
-The imported asset is therefore a valid base humanoid, but **not yet a full modular secondary-physics asset**: it has no secondary bone chains, optional cloth morphs or tagged neural-fabric layer. The bone-spring/morph adapter remains no-op for those absent channels. A separate post-skinning GPU sway adapter is now allowed to animate only selected existing skinned meshes (long side locks/front strands/side layers, skirt, tie blade and lower coat) with small bounded offsets; it does not create joints, change skin weights or claim cloth simulation. The confirmed SHA, exact 14 unclassified limb/shoulder/hand candidates, acceptance requirements, and next asset-authoring work are recorded in [NK1_V5_SECONDARY_ASSET_AUDIT_2026-11-27_RU.md](./NK1_V5_SECONDARY_ASSET_AUDIT_2026-11-27_RU.md).
+The imported asset remains a valid base humanoid, but is not yet a fully authored secondary-rig asset: it exports no secondary bone chains, supported cloth morph aliases or tagged neural-fabric layer. Bone-spring/morph motion therefore remains no-op for those missing channels. The runtime now creates bounded XPBD surface particles on supported detached hair/garment meshes using the existing vertex topology; it does not add bones or rewrite source skin weights. The confirmed SHA, exact 14 unclassified limb/shoulder/hand candidates, acceptance requirements and next authoring work are recorded in [NK1_V5_SECONDARY_ASSET_AUDIT_2026-11-27_RU.md](./NK1_V5_SECONDARY_ASSET_AUDIT_2026-11-27_RU.md).
 
 Do not repurpose primary shoulders, arms, neck, head or facial morphs as substitute hair/cloth joints. The next asset pass must add real secondary chains, skin weights, optional tissue morphs and explicitly tagged neural-fabric materials while preserving the existing character identity.
 
@@ -150,4 +150,4 @@ All sampled vertices in the candidate hair/garment/sleeve meshes have normalized
 - Garment candidates: main coat, skirt, tie blade/knot, left/right lapels and seams, collar, pockets/flaps, buttons and hem stitch.
 - Sleeve candidates: upper and lower left/right sleeve meshes.
 
-The 3D capability panel reports mesh inventory separately from secondary bone chains. The optional GPU sway pass may add subtle motion to only the allowlisted skinned pieces below; all other geometry stays on its original skin. This does not change the shared skin weights or turn a mesh into a physically simulated cloth panel.
+The 3D capability panel reports secondary bones, mesh inventory, total attached secondary meshes and active XPBD particle meshes separately. Allowlisted independent hair/garment meshes receive real constrained vertex-particle dynamics without altering shared source skin weights; unsupported meshes remain on the GPU-sway fallback or their original skin.
