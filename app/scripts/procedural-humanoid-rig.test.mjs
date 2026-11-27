@@ -89,6 +89,26 @@ test("organism motor intent and affect move the skeleton and facial rig", () => 
   rig.dispose();
 });
 
+test("mirrored left and right arm chains both accept world-space IK targets", () => {
+  const scene = new THREE.Scene();
+  const rig = createProceduralHumanoidRig(scene);
+  rig.root.updateMatrixWorld(true);
+
+  const leftTarget = new THREE.Vector3(-0.78, 1.44, 0.02);
+  const rightTarget = new THREE.Vector3(0.78, 1.44, 0.02);
+  const left = rig.solveArmTarget("left", leftTarget);
+  const right = rig.solveArmTarget("right", rightTarget);
+
+  assert.ok(Number.isFinite(left.shoulder));
+  assert.ok(Number.isFinite(right.shoulder));
+  assert.ok(rig.bones.leftUpperArm.rotation.z < 0 || rig.bones.leftForearm.rotation.z < 0);
+  assert.ok(rig.bones.rightUpperArm.rotation.z > 0 || rig.bones.rightForearm.rotation.z > 0);
+  assert.ok(rig.bones.leftUpperArm.rotation.z >= rig.limits.leftUpperArm.z[0]);
+  assert.ok(rig.bones.rightUpperArm.rotation.z <= rig.limits.rightUpperArm.z[1]);
+
+  rig.dispose();
+});
+
 test("two-link IK reaches interior targets and safely clamps unreachable targets", () => {
   const reachable = solveTwoBonePlanarIK({ x: 0, y: 0 }, { x: 0.4, y: 0.2 }, 0.34, 0.29, 1);
   const error = Math.hypot(reachable.endEffector.x - 0.4, reachable.endEffector.y - 0.2);
