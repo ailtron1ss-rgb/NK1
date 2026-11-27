@@ -132,9 +132,30 @@ export function Avatar3DStage(props:Props){
       const sceneNodes:any[]=[];root.traverse((node:any)=>sceneNodes.push({name:node.name,parent:node.parent,isBone:node.isBone===true}));
       humanoidAudit=auditHumanoidRig(sceneNodes);
     }
-    if(vrm){configureVrmForNk1NormalizedMotorDrive(vrm);VRMUtils.rotateVRM0(vrm);VRMUtils.removeUnnecessaryVertices(gltf.scene);VRMUtils.combineSkeletons(gltf.scene);VRMUtils.combineMorphs(vrm);}if(!vrm)applyAnimeToonMaterials(root);const bounds=new THREE.Box3().setFromObject(root),size=new THREE.Vector3(),center=new THREE.Vector3();bounds.getSize(size);bounds.getCenter(center);const max=Math.max(size.x,size.y,size.z);if(!Number.isFinite(max)||max<.0001)throw new Error("У модели нет видимой геометрии.");const scale=3.15/max;root.scale.setScalar(scale);root.position.set(-center.x*scale,-bounds.min.y*scale+.04,-center.z*scale);
+    if(vrm){configureVrmForNk1NormalizedMotorDrive(vrm);VRMUtils.rotateVRM0(vrm);VRMUtils.removeUnnecessaryVertices(gltf.scene);VRMUtils.combineSkeletons(gltf.scene);VRMUtils.combineMorphs(vrm);}if(!vrm)applyAnimeToonMaterials(root);
+    // GLB geometry bounds can describe the undeformed bind pose. Refresh every
+    // skin palette first, then use pose-aware bounds so camera fitting follows
+    // the actual articulated surface rather than a nearly flat bind-space box.
     root.updateMatrixWorld(true);
-    const normalizedBounds=new THREE.Box3().setFromObject(root);
+    let skinnedBoundsRefreshed = 0;
+    root.traverse((node: any) => {
+      if (!node.isSkinnedMesh) return;
+      node.skeleton?.update?.();
+      node.computeBoundingBox?.();
+      node.computeBoundingSphere?.();
+      skinnedBoundsRefreshed++;
+    });
+    root.updateMatrixWorld(true);
+    const bounds=new THREE.Box3().setFromObject(root,true),size=new THREE.Vector3(),center=new THREE.Vector3();bounds.getSize(size);bounds.getCenter(center);const max=Math.max(size.x,size.y,size.z);if(!Number.isFinite(max)||max<.0001)throw new Error("У модели нет видимой геометрии.");const scale=3.15/max;root.scale.setScalar(scale);root.position.set(-center.x*scale,-bounds.min.y*scale+.04,-center.z*scale);
+    root.updateMatrixWorld(true);
+    root.traverse((node: any) => {
+      if (!node.isSkinnedMesh) return;
+      node.skeleton?.update?.();
+      node.computeBoundingBox?.();
+      node.computeBoundingSphere?.();
+    });
+    root.updateMatrixWorld(true);
+    const normalizedBounds=new THREE.Box3().setFromObject(root,true);
     const cameraBounds={
       min:{x:normalizedBounds.min.x,y:normalizedBounds.min.y,z:normalizedBounds.min.z},
       max:{x:normalizedBounds.max.x,y:normalizedBounds.max.y,z:normalizedBounds.max.z},
@@ -167,6 +188,7 @@ export function Avatar3DStage(props:Props){
     })();
     const sourceAxisDiagnostics = {
       boundsSize: { x: sourceSize.x, y: sourceSize.y, z: sourceSize.z },
+      skinnedBoundsRefreshed,
       headToHips: sourceHeadToHips,
       dominantBoundsAxis: sourceSize.x >= sourceSize.y && sourceSize.x >= sourceSize.z
         ? "x" : sourceSize.y >= sourceSize.z ? "y" : "z",
