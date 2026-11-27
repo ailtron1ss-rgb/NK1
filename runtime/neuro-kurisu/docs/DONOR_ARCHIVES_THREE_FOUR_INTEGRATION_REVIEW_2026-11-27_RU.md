@@ -42,7 +42,7 @@ License strings are inventory signals, not legal clearance. No donor source was 
 | Letta | `LettaGovernanceAdaptationFabric` | Архив — только небольшой README-срез; новых исполняемых модулей нет |
 | Lumina | `LuminaAdaptationFabric` plus capability/idempotency/security tests | Сохранять текущий адаптер и владельцев NK1 |
 | Mem0 | `Mem0PlatformAdapter`, OSS/platform adapters, runtime wiring and contract tests | Оставить опциональным provider; canonical NK1 memory remains authoritative |
-| llama.cpp | `OpenAICompatibleLocalChatProvider`, `NeuroPlasticInferenceAdapter`, P40 model ecology and local backend policy | Уже есть локальный inference path; архив дополнительно подтверждает server features, но не требует импортировать C++ runtime or weights |
+| llama.cpp | `OpenAICompatibleLocalChatProvider`, `NeuroPlasticInferenceAdapter`, P40 model ecology and local backend policy | Дополнен локальный provider режимом schema-constrained JSON; C++ runtime and weights не копируются |
 | OpenClaw | N.E.K.O. external Markdown memory adapter and plugin gateway/policy boundary | Обнаружен конкретный пробел: `skills/<name>/SKILL.md` не входил в поддерживаемые Markdown memory paths; добавляется review-gated import |
 | OpenAI Agents SDK | NK1 already has host-owned ActionGateway, guarded intent/action path, specialist deliberation and session/trace ownership | Не добавлять второй Runner/session/tool authority; использовать отдельные совместимые паттерны только при доказанном разрыве |
 | OWL | NK1 specialist roles / governed bounded orchestration already cover the general workforce pattern | Не вводить второй autonomous agent workforce/runtime; exact parity is not claimed |
@@ -70,12 +70,12 @@ This is deliberately a knowledge-ingestion bridge, not an OpenClaw runtime/plugi
 - Donor project inventory: 11/11 unique projects inspected (100% inventory coverage).
 - Nested ZIP integrity: 12/12 CRC checks passed.
 - Existing NK1 adapter overlap: direct donor-specific adapters were confirmed for Hexis, Will, Letta, Lumina, Mem0 and llama.cpp; OpenClaw already had a compatible external-memory path. Other donors map to existing NK1-owned architecture or process patterns rather than requiring an external runtime.
-- New functional gap identified: OpenClaw `SKILL.md` import path — one concrete new feature is being implemented and tested.
+- New functional gaps adapted from the archives: OpenClaw `SKILL.md` review-gated memory import and llama.cpp schema-constrained JSON responses in the existing local inference provider.
 
 A byte-based “90% integration” would be misleading: the collection expands to roughly 971 MB, much of it upstream docs, examples, model/build assets and code with different runtime/license assumptions. The correct denominator is distinct reusable capabilities, not archive bytes. The pass therefore reports 100% inventory coverage and explicit per-donor disposition; it does not claim 90% of source files or 90% of runtime code was copied. Additional candidates remain subject to their own exact behavior, benchmark, dependency, and license gates.
 
 ## 6. Verification status
 
-The first PR revision added only the OpenClaw SKILL.md behavioral contract and CI step. Exact-head GitHub Actions run `46028347292` confirmed the expected RED: dependency installation succeeded, the new OpenClaw contract failed because the adapter did not yet recognize the path, and runtime typecheck passed. The implementation revision must turn that test green and rerun the existing importer, memory lifecycle, restore-hardening and runtime typecheck checks.
+The first PR revision added only the OpenClaw SKILL.md behavioral contract and CI step. Exact-head GitHub Actions run `46028347292` confirmed the expected RED: dependency installation succeeded, the new OpenClaw contract failed because the adapter did not yet recognize the path, and runtime typecheck passed. Implementation is present on the current PR head. OpenClaw RED was confirmed by run `46028347292`; llama.cpp structured-output RED was confirmed by run `46029183168`. The current combined donor-adapter workflow is rerunning both contracts plus existing local-provider, model-selection, importer, memory lifecycle, restore-hardening and runtime typecheck checks.
 
 Source branch and archives remain untouched; changes are isolated in the review PR until CI and review are complete.

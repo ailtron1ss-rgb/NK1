@@ -16,6 +16,8 @@ on:
     branches: [aspect/neko-external-memory-import-20261104, aspect/openclaw-skill-memory-import-20261127]
     paths:
       - "runtime/neuro-kurisu/src/organism/integration/neko/NekoExternalMarkdownMemoryAdapter.ts"
+      - "runtime/neuro-kurisu/src/organism/integration/local/OpenAICompatibleLocalChatProvider.ts"
+      - "runtime/neuro-kurisu/tests/local-chat-structured-output-llama-server.mjs"
       - "runtime/neuro-kurisu/tests/neko-external-markdown-memory-import.mjs"
       - "runtime/neuro-kurisu/tests/openclaw-skill-memory-import.mjs"
       - "runtime/neuro-kurisu/docs/DONOR_ARCHIVES_THREE_FOUR_INTEGRATION_REVIEW_2026-11-27_RU.md"
