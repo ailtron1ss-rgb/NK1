@@ -410,7 +410,11 @@ export function createProceduralHumanoidRig(scene: THREE.Scene): ProceduralHuman
         pelvis: { x: channel("pelvisPitch", 0), z: channel("pelvisRoll", 0) },
         spineLower: { x: channel("spineLowerPitch", -0.015 * stress), z: channel("spineLowerRoll", 0) },
         spineMid: { x: channel("spineMidPitch", -0.02 * stress), z: channel("spineMidRoll", 0) },
-        chest: { x: channel("chestPitch", input.action === "explain" ? -0.035 : 0), z: channel("chestRoll", 0) },
+        chest: {
+          x: channel("torsoPitch", channel("chestPitch", input.action === "explain" ? -0.035 : 0)) * 0.34,
+          y: channel("torsoYaw", 0) * 0.34,
+          z: channel("chestRoll", 0) * 0.28,
+        },
         neck: { x: -clamp(input.gazeY, -1, 1) * 0.08, y: clamp(input.gazeX, -1, 1) * 0.12 },
         head: {
           x: -clamp(input.gazeY, -1, 1) * 0.16 + channel("headPitch", 0) + sleep * 0.12,
@@ -422,8 +426,11 @@ export function createProceduralHumanoidRig(scene: THREE.Scene): ProceduralHuman
       for (const key of ["left", "right"] as const) {
         const side = key === "left" ? -1 : 1;
         const armIntent = key === "left" ? input.leftArmIntent : input.rightArmIntent;
-        const elbow = channel(key + "Elbow", input.action === "comfort" ? 0.34 : input.action === "respond" || input.action === "explain" ? 0.18 : 0.06);
-        const shoulder = clamp(finite(armIntent) + channel(key + "Shoulder", 0), -1.5, 1.5);
+        const elbowFallback = input.action === "comfort" ? 0.34 : input.action === "respond" || input.action === "explain" ? 0.18 : 0.06;
+        const hasShoulderMotor = Number.isFinite(Number(channels[key + "Shoulder"]));
+        const hasElbowMotor = Number.isFinite(Number(channels[key + "Elbow"]));
+        const shoulder = clamp(hasShoulderMotor ? channel(key + "Shoulder") * 0.72 : finite(armIntent), -1.5, 1.5);
+        const elbow = hasElbowMotor ? channel(key + "Elbow") * 0.78 : elbowFallback;
         targets[key + "Clavicle"] = { z: side * (0.06 + shoulder * 0.12) + channel(key + "ClavicleRoll", 0) };
         targets[key + "UpperArm"] = {
           z: side * (shoulder + (input.speaking ? 0.06 : 0)),
@@ -431,14 +438,16 @@ export function createProceduralHumanoidRig(scene: THREE.Scene): ProceduralHuman
           y: channel(key + "ShoulderYaw", side * -0.08),
         };
         targets[key + "Forearm"] = { z: side * elbow + channel(key + "ForearmTwist", 0) };
-        targets[key + "Wrist"] = { z: channel(key + "Wrist", 0), x: channel(key + "WristPitch", 0) };
-        const fist = clamp(channel(key + "Grip", input.action === "inspect" ? 0.12 : 0), 0, 1);
+        targets[key + "Wrist"] = { z: channel(key + "Wrist", 0) * 0.65, x: channel(key + "WristPitch", 0) * 0.55 };
+        const fist = clamp(channel(key + "Fingers", channel(key + "Hand", input.action === "inspect" ? 0.12 : 0)), 0, 1);
         for (const finger of fingerNames) {
           const name = finger[0].toUpperCase() + finger.slice(1);
           const thumbFlex = finger === "thumb" ? 0.45 : 1;
+          const channelName = key + name + "Curl";
+          const curl = clamp(channel(channelName, fist), 0, 1);
           for (let joint = 1; joint <= 3; joint++) {
             const boneName = key + name + joint;
-            targets[boneName] = { z: side * fist * 0.38 * thumbFlex * (joint === 1 ? 0.75 : 1) };
+            targets[boneName] = { z: side * curl * 0.38 * thumbFlex * (joint === 1 ? 0.75 : 1) };
           }
         }
       }
@@ -446,9 +455,9 @@ export function createProceduralHumanoidRig(scene: THREE.Scene): ProceduralHuman
       for (const key of ["left", "right"] as const) {
         const side = key === "left" ? -1 : 1;
         const stride = input.awake && (input.action === "explore" || input.action === "inspect") ? 0.1 : 0;
-        targets[key + "Hip"] = { z: side * channel(key + "Hip", 0), x: channel(key + "HipPitch", stride) };
-        targets[key + "Knee"] = { z: side * channel(key + "Knee", stride > 0 ? 0.16 : 0.025) };
-        targets[key + "Ankle"] = { x: channel(key + "AnklePitch", -0.025), z: channel(key + "AnkleRoll", 0) };
+        targets[key + "Hip"] = { z: side * channel(key + "Hip", 0) * 0.58, x: channel(key + "HipPitch", stride) };
+        targets[key + "Knee"] = { z: side * channel(key + "Knee", stride > 0 ? 0.16 : 0.025) * 0.72 };
+        targets[key + "Ankle"] = { x: channel(key + "Ankle", -0.025) * 0.18 + channel(key + "AnklePitch", 0) * 0.55, z: channel(key + "AnkleRoll", 0) * 0.55 };
         targets[key + "Foot"] = { x: channel(key + "FootPitch", 0) };
         targets[key + "Toe"] = { x: channel(key + "ToeCurl", 0) };
       }
@@ -504,6 +513,8 @@ export function createProceduralHumanoidRig(scene: THREE.Scene): ProceduralHuman
       });
       mouth.scale.y = 0.012 + (input.speaking ? 0.045 * clamp(input.arousal + 0.2, 0.1, 1) : smile * 0.006);
       mouth.scale.x = 0.045 + smile * 0.008;
+      root.rotation.y = smooth(root.rotation.y, channel("rootYaw", 0) * 0.34, delta, 10);
+      chest.position.z = restJointPositions.chest.z + channel("breath", 0) * 0.018;
       root.userData.poseState = { awake: input.awake, action: input.action, emotion: input.emotion, particleBindingsApplied, updatedAt: finite(input.timeSeconds) };
       root.updateMatrixWorld(true);
     },
