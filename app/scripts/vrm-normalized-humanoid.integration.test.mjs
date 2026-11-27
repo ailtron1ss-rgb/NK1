@@ -3,6 +3,7 @@ import test from "node:test";
 import * as THREE from "three";
 import { VRMHumanoid } from "@pixiv/three-vrm";
 import {
+  applyVrmFullBodyChannels,
   applyVrmNormalizedMotorFrame,
   configureVrmForNk1NormalizedMotorDrive,
 } from "../src/components/avatar/vrmRuntimeAdapter.ts";
@@ -37,7 +38,18 @@ function createSyntheticHumanoid() {
   }
 
   root.updateMatrixWorld(true);
-  return { root, nodes, rawHead: head, rawNeck: neck, rawLeftArm: nodes.leftUpperArm.node, rawRightArm: nodes.rightUpperArm.node };
+  return {
+    root,
+    nodes,
+    rawHead: head,
+    rawNeck: neck,
+    rawHips: hips,
+    rawSpine: spine,
+    rawLeftFoot: nodes.leftFoot.node,
+    rawRightFoot: nodes.rightFoot.node,
+    rawLeftArm: nodes.leftUpperArm.node,
+    rawRightArm: nodes.rightUpperArm.node,
+  };
 }
 
 test("real three-vrm VRMHumanoid transfers NK1 normalized motor output into raw skeleton", () => {
@@ -92,4 +104,40 @@ test("real three-vrm VRMHumanoid transfers NK1 normalized motor output into raw 
   assert.ok(Math.abs(fixture.rawHead.rotation.y) < 1e-9);
   assert.ok(Math.abs(fixture.rawHead.rotation.z) < 1e-9);
   assert.ok(Math.abs(fixture.rawLeftArm.rotation.z) < 1e-9);
+});
+
+
+test("real three-vrm transfers normalized torso/root yaw and ankle output to raw bones", () => {
+  const fixture = createSyntheticHumanoid();
+  const humanoid = new VRMHumanoid(fixture.nodes, { autoUpdateHumanBones: false });
+  const vrm = {
+    humanoid,
+    expressionManager: { resetValues() {} },
+  };
+
+  configureVrmForNk1NormalizedMotorDrive(vrm);
+  const driven = applyVrmFullBodyChannels(vrm, {
+    torsoPitch: 0.25,
+    torsoYaw: 0.5,
+    rootYaw: -0.5,
+    leftAnkle: 0.5,
+    rightAnkle: -0.25,
+  });
+  assert.deepEqual(driven.controlledBones.sort(), ["hips", "leftFoot", "rightFoot", "spine"]);
+  humanoid.update();
+
+  assert.ok(Math.abs(fixture.rawHips.rotation.y + 0.45) < 1e-6);
+  assert.ok(Math.abs(fixture.rawSpine.rotation.x - 0.1) < 1e-6);
+  assert.ok(Math.abs(fixture.rawSpine.rotation.y - 0.25) < 1e-6);
+  assert.ok(Math.abs(fixture.rawLeftFoot.rotation.x - 0.25) < 1e-6);
+  assert.ok(Math.abs(fixture.rawRightFoot.rotation.x + 0.125) < 1e-6);
+
+  const neutral = applyVrmFullBodyChannels(vrm, {});
+  assert.equal(neutral.applied, false);
+  humanoid.update();
+  for (const bone of [fixture.rawHips, fixture.rawSpine, fixture.rawLeftFoot, fixture.rawRightFoot]) {
+    assert.ok(Math.abs(bone.rotation.x) < 1e-9);
+    assert.ok(Math.abs(bone.rotation.y) < 1e-9);
+    assert.ok(Math.abs(bone.rotation.z) < 1e-9);
+  }
 });
