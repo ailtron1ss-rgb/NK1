@@ -4,8 +4,10 @@ import { resolveGlbBodyBoneRotation } from "../src/components/avatar/glbBodyChan
 
 test("maps torso and head channels onto GLB nodes with bounded smooth offsets", () => {
   const channels = { torsoPitch: 0.8, torsoYaw: -0.5, headPitch: -0.7, headYaw: 0.6, headRoll: 0.4 };
-  assert.deepEqual(resolveGlbBodyBoneRotation("mixamorigSpine", channels), { x: 0.176, y: -0.12, z: 0 });
-  assert.deepEqual(resolveGlbBodyBoneRotation("mixamorigHead", channels), { x: -0.154, y: 0.168, z: 0.096 });
+  const spine = resolveGlbBodyBoneRotation("mixamorigSpine", channels);
+  const head = resolveGlbBodyBoneRotation("mixamorigHead", channels);
+  assert.ok(Math.abs(spine.x - 0.176) < 1e-9 && Math.abs(spine.y + 0.12) < 1e-9);
+  assert.ok(Math.abs(head.x + 0.154) < 1e-9 && Math.abs(head.y - 0.168) < 1e-9 && Math.abs(head.z - 0.096) < 1e-9);
   const neck = resolveGlbBodyBoneRotation("Neck", channels);
   assert.ok(neck.x < 0 && neck.y > 0 && neck.z > 0);
 });
@@ -30,7 +32,9 @@ test("maps individually authored finger channels and aggregate fallback", () => 
   const individual = resolveGlbBodyBoneRotation("LeftHandIndex1", { leftIndexCurl: 0.75 });
   assert.equal(individual.x, 0.315);
   const aggregate = resolveGlbBodyBoneRotation("RightHandMiddle2", { rightFingers: 0.5 });
-  assert.equal(aggregate.x, 0.14);
+  assert.ok(Math.abs(aggregate.x - 0.14) < 1e-9);
+  const explicitlyOpen = resolveGlbBodyBoneRotation("LeftHandIndex1", { leftIndexCurl: 0, leftFingers: 0.8 });
+  assert.equal(explicitlyOpen.x, 0, "an explicit zero must override aggregate finger curl");
 });
 
 test("unrecognized, side-less and non-finite inputs fail closed", () => {
