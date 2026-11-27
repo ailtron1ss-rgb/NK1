@@ -89,11 +89,13 @@ function resolveProfile(rawName: unknown): VertexProfile | null {
   const hair = /^hair(?:longlock|frontstrand)[lr]$/.test(name)
     || /^hairlayer[lr][12]$/.test(name);
   if (hair) {
-    return {
-      role: "hair",
-      amplitudeWorld: 0.012,
-      side: /[l]$/.test(name) ? -1 : /[r]$/.test(name) ? 1 : 0,
-    };
+    const side: -1 | 0 | 1 = /(?:longlock|frontstrand)l$/.test(name) || /^hairlayerl[12]$/.test(name)
+      ? -1
+      : /(?:longlock|frontstrand)r$/.test(name) || /^hairlayerr[12]$/.test(name) ? 1 : 0;
+    const amplitudeWorld = name.startsWith("hairlonglock")
+      ? 0.012
+      : name.startsWith("hairfrontstrand") ? 0.007 : 0.0055;
+    return { role: "hair", amplitudeWorld, side };
   }
   const garment = name === "clothskirt"
     || name === "clothtieblade"
