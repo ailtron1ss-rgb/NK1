@@ -23,9 +23,9 @@ test("generic GLB renderer consumes the expressive face and secondary motion ada
   assert.match(particleSolver, /SOLVER_ITERATIONS/);
   assert.match(particleSolver, /MAX_PARTICLES/);
   assert.match(stage, /disposeAvatarSecondaryVertexDynamics\(rt\.secondaryVertexBindings\)/);
-  assert.match(stage, /GPU vertex sway/);
-  assert.match(stage, /ограниченный GPU sway активен на/);
-  assert.match(stage, /Костные цепочки и специальные morph-каналы отсутствуют/);
+  assert.match(stage, /XPBD surface particles/);
+  assert.match(stage, /XPBD-частицы ждут подходящей топологии/);
+  assert.match(stage, /Вторичная динамика не подключена/);
   assert.match(stage, /resolveAvatarCameraFraming/);
   assert.match(stage, /normalizedBounds=new THREE.Box3\(\)\.setFromObject\(root\)/);
   assert.match(stage, /avatarVisibleMeshCount/);
