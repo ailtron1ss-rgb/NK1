@@ -2887,6 +2887,8 @@ export class OrganismRuntime {
       core: 'not-attempted' as 'not-attempted' | 'durable' | 'failed',
       world: 'not-attempted' as 'not-attempted' | 'durable' | 'failed',
       continuityLedger: 'not-attempted' as 'not-attempted' | 'durable' | 'failed',
+      cognitiveSpine: 'not-attempted' as 'not-attempted' | 'durable' | 'failed',
+      riskAwareRecovery: 'not-attempted' as 'not-attempted' | 'durable' | 'failed',
     };
     const capture = (error: unknown) => { stopErrors.push(error); };
 
@@ -2956,13 +2958,19 @@ export class OrganismRuntime {
         }
 
         try {
-          await this.persistCognitiveSpineSchedule();
+          const persisted = await this.persistCognitiveSpineSchedule();
+          durability.cognitiveSpine = persisted ? 'durable' : 'failed';
+          if (!persisted) capture(new Error('cognitive-spine-durability-unconfirmed'));
         } catch (error) {
+          durability.cognitiveSpine = 'failed';
           capture(error);
         }
         try {
-          await this.persistRiskAwareRecovery();
+          const persisted = await this.persistRiskAwareRecovery();
+          durability.riskAwareRecovery = persisted ? 'durable' : 'failed';
+          if (!persisted) capture(new Error('risk-aware-recovery-durability-unconfirmed'));
         } catch (error) {
+          durability.riskAwareRecovery = 'failed';
           capture(error);
         }
         try {
@@ -3023,6 +3031,8 @@ export class OrganismRuntime {
       durability.core === 'durable' &&
       durability.world === 'durable' &&
       durability.continuityLedger === 'durable' &&
+      durability.cognitiveSpine === 'durable' &&
+      durability.riskAwareRecovery === 'durable' &&
       stopErrors.length === 0;
     const receipt = {
       overall: overallDurable ? 'durable' : 'partial',
@@ -3044,25 +3054,29 @@ export class OrganismRuntime {
     }
   }
 
-  private async persistCognitiveSpineSchedule(): Promise<void> {
+  private async persistCognitiveSpineSchedule(): Promise<boolean> {
     try {
       await this.cognitiveSpineStore.save(this.cognitiveSpineScheduler.snapshot());
+      return true;
     } catch (error) {
       await this.journal.write('warn', 'runtime.cognitive-spine.persist-failed', {
         tick: this.cognitiveSpineScheduler.snapshot().lastTick,
         message: String((error as any)?.message ?? error).slice(0, 180),
       }).catch(() => {});
+      return false;
     }
   }
 
-  private async persistRiskAwareRecovery(): Promise<void> {
+  private async persistRiskAwareRecovery(): Promise<boolean> {
     try {
       await this.riskAwareRecoveryStore.save(this.unifiedCycle.riskAwareRecoverySnapshot());
+      return true;
     } catch (error) {
       await this.journal.write('warn', 'runtime.risk-aware-recovery.persist-failed', {
         tick: this.unifiedCycle.riskAwareRecoverySnapshot().tick,
         message: String((error as any)?.message ?? error).slice(0, 180),
       }).catch(() => {});
+      return false;
     }
   }
 
