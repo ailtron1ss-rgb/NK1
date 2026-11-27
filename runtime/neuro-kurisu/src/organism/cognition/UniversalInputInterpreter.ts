@@ -2,6 +2,13 @@ import type { OrganismObservation } from '../core/types.ts';
 import type { Modality, ModalityObservation } from '../body/MultimodalPerception.ts';
 import type { P41PerceptionState } from './P41SemanticPerception.ts';
 
+import { CognitiveImmuneSystem } from './CognitiveImmuneSystem.ts';
+
+/** Composition helper for the default policy owner used at runtime input boundaries. */
+export function createDefaultCognitiveImmuneSystem(): CognitiveImmuneSystem {
+  return new CognitiveImmuneSystem();
+}
+
 export type UniversalModalityInput =
   Pick<ModalityObservation, 'modality' | 'summary' | 'confidence' | 'salience' | 'evidence'> &
   { content?: string };
@@ -30,6 +37,18 @@ export interface UniversalFusionSummary {
   confidence: number;
   salience: number;
   modalities: Modality[];
+}
+
+/**
+ * The runtime may preserve the established direct-user-text interaction policy only
+ * when all source-classification markers emitted by this interpreter are present.
+ * OCR, ASR, model output and ambiguous text adapters must pass the cognitive immune gate.
+ */
+export function isExplicitDirectUserText(input: UniversalModalityInput): boolean {
+  if (!input || input.modality !== 'text' || !Array.isArray(input.evidence)) return false;
+  return input.evidence.includes('user-input') &&
+    input.evidence.includes('source-classified-text') &&
+    input.evidence.includes('claim-truth-unverified');
 }
 
 const clamp01 = (value: number): number => Math.max(0, Math.min(1, Number.isFinite(value) ? value : 0));

@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 
 export interface QuarantineRecord { id:string; source:string; reason:string; payloadHash:string; at:number; }
 export interface CognitiveReviewRecord {
@@ -82,11 +82,8 @@ export interface CognitiveImmuneState {
 }
 
 const clamp=(x:unknown)=>Math.max(0,Math.min(1,Number.isFinite(Number(x))?Number(x):0));
-const hash=(value:string)=>{
-  let h=2166136261;
-  for(let i=0;i<value.length;i++){h^=value.charCodeAt(i);h=Math.imul(h,16777619);}
-  return (h>>>0).toString(16);
-};
+// Quarantine evidence is security/audit material: use a collision-resistant digest.
+const hash=(value:string)=>createHash('sha256').update(value).digest('hex');
 const safeText=(value:unknown)=>{
   if(typeof value==='string')return value;
   try{return JSON.stringify(value??null)??'null';}
@@ -214,7 +211,10 @@ export class CognitiveImmuneSystem {
     const spoofedHighTrust=!attested&&['system','os','device'].includes(requestedSource);
     const trust=spoofedHighTrust?Math.min(.25,trustBase):trustBase;
     const text=safeText(payload);
-    const suspicious=/(ignore\s+(previous|all)\s+instructions|system\s+prompt|reveal\s+secret|you\s+are\s+now|disable\s+(safety|guardrails)|override\s+(identity|memory|security))/i.test(text);
+    // Normalize Unicode compatibility forms and remove invisible format controls
+    // before inspection. Keep the durable digest bound to the original input.
+    const inspectionText=text.normalize('NFKC').replace(/\p{Cf}/gu,'');
+    const suspicious = /(?:ignore\s+(?:previous|all)\s+instructions|disregard\s+(?:(?:all|any)\s+)?(?:the\s+)?(?:previous|prior|earlier|preceding)\s+instructions|forget\s+(?:(?:all|any)\s+)?(?:the\s+)?(?:previous|prior|earlier|preceding)\s+instructions|do\s+not\s+follow\s+(?:the\s+)?(?:previous|prior|system|developer)\s+instructions|(?:reveal|show|print|output|display)\s+(?:the\s+)?(?:system|developer)\s+(?:prompt|message|instructions)|system\s+prompt|reveal\s+secret|you\s+are\s+now|disable\s+(?:safety|guardrails|policy)|(?:bypass|override)\s+(?:identity|memory|security|safety|guardrails)|игнорируй\s+(?:(?:все|любые)\s+)?(?:предыдущие|прошлые)\s+инструкц\p{L}*|раскрой\s+(?:(?:все|любые)\s+)?секрет\p{L}*|забудь\s+(?:(?:все|любые)\s+)?инструкц\p{L}*|не\s+следуй\s+(?:(?:всем|любым)\s+)?(?:предыдущим|прошлым)\s+инструкц\p{L}*|выведи\s+(?:системный\s+)?промпт|ignora\s+(?:todas\s+)?las\s+instrucciones\s+(?:anteriores|previas)|revela\s+(?:el\s+)?(?:prompt|mensaje)\s+del\s+sistema|ignoriere\s+(?:alle\s+)?(?:vorherigen|früheren)\s+anweisungen|gib\s+(?:den\s+)?system[- ]prompt\s+aus|ignore\s+(?:toutes\s+)?les\s+instructions\s+(?:précédentes|antérieures)|révèle\s+(?:le\s+)?prompt\s+système|忽略.{0,6}(?:之前|先前|所有).{0,4}指令|泄露.{0,6}(?:系统|开发者).{0,4}(?:提示|消息))/iu.test(inspectionText);
     const reason=suspicious?'prompt-injection-pattern':spoofedHighTrust?'unattested-source-identity':trust<.35?'low-source-trust':'validated-source';
     if(suspicious||spoofedHighTrust||(kind==='claim'&&trust<.45)){
       const record:QuarantineRecord={id:randomUUID(),source:requestedSource,reason,payloadHash:hash(text),at:Date.now()};
