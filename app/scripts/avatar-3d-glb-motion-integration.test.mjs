@@ -16,4 +16,6 @@ test("generic GLB renderer consumes the expressive face and secondary motion ada
   assert.match(stage, /updateAvatarSecondaryVertexDynamics\(rt\.secondaryVertexBindings,adaptiveFrame,t\)/);
   assert.match(stage, /disposeAvatarSecondaryVertexDynamics\(rt\.secondaryVertexBindings\)/);
   assert.match(stage, /GPU vertex sway/);
+  assert.match(stage, /ограниченный GPU sway активен на/);
+  assert.match(stage, /Костные цепочки и специальные morph-каналы отсутствуют/);
 });
