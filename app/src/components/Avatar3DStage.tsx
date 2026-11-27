@@ -21,6 +21,7 @@ import { resolveGlbSecondaryBoneRotation } from "./avatar/glbSecondaryMotionAdap
 import { AvatarNeuroAdaptiveDynamics, isAvatarSecondaryDynamicsBoneCandidate, resolveNeuroAdaptiveMorphWeights, resolveNeuroAdaptiveNeuralMultiplier, type AvatarDynamicsQuality, type AvatarNeuroAdaptiveFrame } from "./avatar/avatarNeuroAdaptiveDynamics";
 import { auditAvatarSecondaryScene, hasAvatarNeuralFabricEmission, isAvatarNeuralFabricMaterialTagged, type AvatarSecondaryAssetAudit } from "./avatar/avatarSecondaryAssetAudit";
 import { attachAvatarSecondaryVertexDynamics, disposeAvatarSecondaryVertexDynamics, updateAvatarSecondaryVertexDynamics, type AvatarSecondaryVertexBinding } from "./avatar/avatarSecondaryVertexDynamics";
+import { resolveAvatarCameraFraming } from "./avatar/avatarCameraFraming";
 import { fetchRemoteAvatarModel } from "./avatar/remoteAvatarSource";
 import { applyAvatarAnimationFrame } from "./avatar/avatarAnimationRuntime";
 import { createAvatarPresentationReceipt, type AvatarPresentationReceiptV1 } from "./avatar/avatarPresentationReceipt.ts";
@@ -119,7 +120,36 @@ export function Avatar3DStage(props:Props){
       const sceneNodes:any[]=[];root.traverse((node:any)=>sceneNodes.push({name:node.name,parent:node.parent,isBone:node.isBone===true}));
       humanoidAudit=auditHumanoidRig(sceneNodes);
     }
-    if(vrm){configureVrmForNk1NormalizedMotorDrive(vrm);VRMUtils.rotateVRM0(vrm);VRMUtils.removeUnnecessaryVertices(gltf.scene);VRMUtils.combineSkeletons(gltf.scene);VRMUtils.combineMorphs(vrm);}if(!vrm)applyAnimeToonMaterials(root);const bounds=new THREE.Box3().setFromObject(root),size=new THREE.Vector3(),center=new THREE.Vector3();bounds.getSize(size);bounds.getCenter(center);const max=Math.max(size.x,size.y,size.z);if(!Number.isFinite(max)||max<.0001)throw new Error("У модели нет видимой геометрии.");const scale=3.15/max;root.scale.setScalar(scale);root.position.set(-center.x*scale,-bounds.min.y*scale+.04,-center.z*scale);root.traverse((n:any)=>{if(vrm)n.frustumCulled=false;if(n.isMesh){for(const m of(Array.isArray(n.material)?n.material:n.material?[n.material]:[])){if("roughness"in m)m.roughness=clamp(Number(m.roughness??.8),.18,1);}}});
+    if(vrm){configureVrmForNk1NormalizedMotorDrive(vrm);VRMUtils.rotateVRM0(vrm);VRMUtils.removeUnnecessaryVertices(gltf.scene);VRMUtils.combineSkeletons(gltf.scene);VRMUtils.combineMorphs(vrm);}if(!vrm)applyAnimeToonMaterials(root);const bounds=new THREE.Box3().setFromObject(root),size=new THREE.Vector3(),center=new THREE.Vector3();bounds.getSize(size);bounds.getCenter(center);const max=Math.max(size.x,size.y,size.z);if(!Number.isFinite(max)||max<.0001)throw new Error("У модели нет видимой геометрии.");const scale=3.15/max;root.scale.setScalar(scale);root.position.set(-center.x*scale,-bounds.min.y*scale+.04,-center.z*scale);
+    root.updateMatrixWorld(true);
+    const normalizedBounds=new THREE.Box3().setFromObject(root);
+    const normalizedMin=normalizedBounds.min,normalizedMax=normalizedBounds.max;
+    const framing=resolveAvatarCameraFraming({
+      min:{x:normalizedMin.x,y:normalizedMin.y,z:normalizedMin.z},
+      max:{x:normalizedMax.x,y:normalizedMax.y,z:normalizedMax.z},
+    },rt.camera.fov,Math.max(rt.camera.aspect,0.01),1.18);
+    if(!framing)throw new Error("Не удалось рассчитать безопасное кадрирование модели.");
+    rt.camera.position.set(framing.center.x,framing.center.y,framing.center.z+framing.distance);
+    rt.camera.lookAt(framing.center.x,framing.center.y,framing.center.z);
+    rt.camera.updateProjectionMatrix();rt.camera.updateMatrixWorld(true);
+    let modelMeshCount=0,visibleModelMeshCount=0,skinnedModelMeshCount=0;
+    root.traverse((n:any)=>{
+      if(!n.isMesh)return;
+      modelMeshCount++;
+      if(n.isSkinnedMesh)skinnedModelMeshCount++;
+      const materials=Array.isArray(n.material)?n.material:n.material?[n.material]:[];
+      if(n.visible!==false&&materials.some((material:any)=>material&&material.visible!==false))visibleModelMeshCount++;
+      if(vrm)n.frustumCulled=false;
+      for(const material of materials){if(material&&"roughness"in material)material.roughness=clamp(Number(material.roughness??.8),.18,1);}
+    });
+    if(modelMeshCount===0||visibleModelMeshCount===0)throw new Error("GLB загружен, но в активной сцене нет видимых mesh-узлов.");
+    const projectedCenter=new THREE.Vector3(framing.center.x,framing.center.y,framing.center.z).project(rt.camera);
+    renderer.domElement.dataset.avatarModelMeshCount=String(modelMeshCount);
+    renderer.domElement.dataset.avatarVisibleMeshCount=String(visibleModelMeshCount);
+    renderer.domElement.dataset.avatarSkinnedMeshCount=String(skinnedModelMeshCount);
+    renderer.domElement.dataset.avatarCameraDistance=String(framing.distance);
+    renderer.domElement.dataset.avatarProjectedCenterX=String(projectedCenter.x);
+    renderer.domElement.dataset.avatarProjectedCenterY=String(projectedCenter.y);
     if(rt.loaded){disposeAvatarSecondaryVertexDynamics(rt.secondaryVertexBindings);rt.secondaryVertexBindings=[];rt.scene.remove(rt.loaded);if(rt.vrm){if(rt.vrm.lookAt?.target===rt.vrmLookAtTarget)rt.vrm.lookAt.target=null;rt.vrmLookAtTarget=null;rt.vrmLookAtFaceFront=null;rt.vrmLookAtOffset=null;VRMUtils.deepDispose(rt.loaded);}else disposeTree(rt.loaded);}rt.mixer?.stopAllAction();rt.activeClipAction=null;rt.loaded=root;rt.vrm=vrm;rt.vrmLookAtTarget=null;rt.vrmLookAtFaceFront=null;rt.vrmLookAtOffset=null;rt.scene.add(root);if(vrm?.lookAt&&typeof vrm.humanoid?.getRawBoneNode==="function"&&typeof vrm.lookAt.getFaceFrontQuaternion==="function"){const rawHead=vrm.humanoid.getRawBoneNode("head");if(rawHead?.add){const target=new THREE.Object3D();target.name="NK1VrmEyeGazeTarget";const faceFront=vrm.lookAt.getFaceFrontQuaternion(new THREE.Quaternion());const offset=resolveVrmLookAtTargetOffset(0,0);target.position.set(offset.x,offset.y,offset.z).applyQuaternion(faceFront);rawHead.add(target);vrm.lookAt.target=target;vrm.lookAt.autoUpdate=true;rt.vrmLookAtTarget=target;rt.vrmLookAtFaceFront=faceFront;rt.vrmLookAtOffset=new THREE.Vector3();}}rt.body.root.visible=false;rt.bones=bonesOf(root);rt.adaptiveDynamics.reset();rt.secondaryVertexBindings=attachAvatarSecondaryVertexDynamics(root,scale);setSecondaryVertexMeshCount(rt.secondaryVertexBindings.length);rt.neuralMaterials=collectAvatarNeuralMaterials(root);setSecondaryAudit(auditAvatarSecondaryScene(root));rt.clips=Array.isArray(gltf.animations)?gltf.animations:[];rt.mixer=!vrm&&rt.clips.length?new THREE.AnimationMixer(root):null;rt.clipName="";setModelName(name);setState("loaded");const caps=humanoidAudit.capabilities;const capabilitySummary=[caps.torso?"торс":"без торса",caps.head?"голова":"без головы",caps.bilateralArms?"две руки":"неполные руки",caps.bilateralHands?"две кисти":"без двух кистей",caps.bilateralLegs?"две ноги":"неполные ноги",caps.bilateralFeet?"две стопы":"неполные стопы",caps.fingerArticulation?"пальцы артикулируются":"артикуляция пальцев не подтверждена"];const leftArmAvailable=!!humanoidAudit.nodes.leftUpperArm&&!!humanoidAudit.nodes.leftLowerArm;const rightArmAvailable=!!humanoidAudit.nodes.rightUpperArm&&!!humanoidAudit.nodes.rightLowerArm;const hasAuditedRig=Object.keys(humanoidAudit.nodes).length>0||rt.bones.length>0;const mappingDescription=humanoidAudit.mappingMethod==="conservative-name-heuristic"?"по именам Bone (эвристика)":`по glTF node index (VRM ${vrmNodeMap.status==="valid"?vrmNodeMap.version:"metadata"})`;const completeness=caps.fullBodyHumanoid?(humanoidAudit.mappingMethod==="conservative-name-heuristic"?"полная иерархия по именам Bone; не подтверждает VRM runtime":`обязательная иерархия VRM ${vrmNodeMap.status==="valid"?vrmNodeMap.version:""} подтверждена по glTF node index и ancestry; IK/retargeting не подтверждены`):(vrmNodeMap.status==="invalid"?"VRM metadata отклонены; эвристический fallback заблокирован":"полный Humanoid Rig не подтверждён");setMessage(hasAuditedRig?`Модель загружена. Rig audit ${mappingDescription}: ${capabilitySummary.join(" · ")}. ${completeness}. Цепи рук: ${leftArmAvailable?"левая":""}${leftArmAvailable&&rightArmAvailable?" и ":""}${rightArmAvailable?"правая":""}${!leftArmAvailable&&!rightArmAvailable?"не распознаны":""}. IK не включается этим аудитом.`:"Геометрия загружена; humanoid-узлы и Bone-скелет не подтверждены, движения тела ограничены.");
     if(persist)void saveAvatarModel(blob,name).then(()=>setStorageMessage("Модель сохранена в IndexedDB; следующие запуски используют локальную копию.")).catch(()=>setStorageMessage("Модель загружена, но браузер не разрешил сохранить её между сессиями."));else setStorageMessage("Восстановлена локальная модель из хранилища браузера.");
    }catch(e){const failedVrm=gltf.userData?.vrm??null;if(failedVrm)VRMUtils.deepDispose(failedVrm.scene);else disposeTree(gltf.scene);setState("error");setMessage(e instanceof Error?e.message:"Не удалось подготовить модель.");}
@@ -189,6 +219,7 @@ export function Avatar3DStage(props:Props){
     updateAvatarNeuralMaterials(rt.neuralMaterials,adaptiveFrame);
     }
     renderer.render(scene,camera);
+    if(rt.loaded){renderer.domElement.dataset.avatarRenderCalls=String(renderer.info.render.calls);renderer.domElement.dataset.avatarRenderedTriangles=String(renderer.info.render.triangles);}
     const renderCostMs=Math.max(0,performance.now()-renderStartedAt);lastRenderedAt=now;
     const changedBudget=frameBudget.recordFrameCost(renderCostMs);
     if(changedBudget){renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,changedBudget.maxPixelRatio,2));renderer.setSize(Math.max(el.clientWidth,1),Math.max(el.clientHeight,1),false);}
