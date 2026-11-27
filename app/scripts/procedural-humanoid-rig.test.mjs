@@ -310,7 +310,7 @@ test("mirrored arm IK places both wrist bones exactly on their world-space targe
   const rig = createProceduralHumanoidRig(scene);
   rig.root.updateMatrixWorld(true);
 
-  for (const side of ["left", "right"] as const) {
+  for (const side of ["left", "right"]) {
     const shoulder = rig.bones[side + "UpperArm"].getWorldPosition(new THREE.Vector3());
     const direction = side === "left" ? -1 : 1;
     const target = shoulder.clone().add(new THREE.Vector3(direction * 0.35, -0.45, 0));
@@ -333,7 +333,7 @@ test("left and right leg IK place the ankle bones on particle-derived world targ
   const rig = createProceduralHumanoidRig(scene);
   rig.root.updateMatrixWorld(true);
 
-  for (const side of ["left", "right"] as const) {
+  for (const side of ["left", "right"]) {
     const hip = rig.bones[side + "Hip"].getWorldPosition(new THREE.Vector3());
     const target = hip.clone().add(new THREE.Vector3(0, -0.8, 0));
     const solved = rig.solveLegTarget(side, target, 1);
