@@ -42,10 +42,21 @@ export interface ArticulatedBodyContacts {
   maxCorrection: number;
   maxSlipSpeed: number;
 }
+export interface ArticulatedBodyJointLimitDiagnostics {
+  maxFlexionDeg: number;
+  flexionDegrees: {
+    leftElbow: number; rightElbow: number; leftKnee: number; rightKnee: number;
+  };
+  correctionDegrees: {
+    leftElbow: number; rightElbow: number; leftKnee: number; rightKnee: number;
+  };
+  maxCorrectionDeg: number;
+}
 export interface ArticulatedBodyStepResult {
   state: ArticulatedBodyParticleState; channels: Partial<Record<BodyChannel, number>>;
   substeps: number; simulatedMs: number; maxConstraintError: number;
   contacts: ArticulatedBodyContacts;
+  jointLimits: ArticulatedBodyJointLimitDiagnostics;
 }
 
 const CHANNELS: readonly BodyChannel[] = [
@@ -170,6 +181,90 @@ function wrapAngle(value:number):number{
   return angle;
 }
 
+const MAX_HINGE_FLEXION_RAD=150*Math.PI/180;
+const MIN_HINGE_INTERNAL_RAD=Math.PI-MAX_HINGE_FLEXION_RAD;
+type HingeJointKey="leftElbow"|"rightElbow"|"leftKnee"|"rightKnee";
+interface HingeJointSpec {
+  key:HingeJointKey;
+  parent:ArticulatedBodyParticleId;
+  joint:ArticulatedBodyParticleId;
+  child:ArticulatedBodyParticleId;
+  distal:readonly ArticulatedBodyParticleId[];
+  fallbackSide:-1|1;
+}
+const HINGE_JOINTS:readonly HingeJointSpec[]=[
+  {key:"leftElbow",parent:"leftShoulderPoint",joint:"leftElbowPoint",child:"leftWristPoint",distal:["leftHandPoint"],fallbackSide:-1},
+  {key:"rightElbow",parent:"rightShoulderPoint",joint:"rightElbowPoint",child:"rightWristPoint",distal:["rightHandPoint"],fallbackSide:1},
+  {key:"leftKnee",parent:"leftHipPoint",joint:"leftKneePoint",child:"leftAnklePoint",distal:["leftHeelPoint","leftToePoint"],fallbackSide:-1},
+  {key:"rightKnee",parent:"rightHipPoint",joint:"rightKneePoint",child:"rightAnklePoint",distal:["rightHeelPoint","rightToePoint"],fallbackSide:1},
+];
+
+function dot(a:BodyVector3,b:BodyVector3):number{return a.x*b.x+a.y*b.y+a.z*b.z;}
+function cross(a:BodyVector3,b:BodyVector3):BodyVector3{
+  return vec(a.y*b.z-a.z*b.y,a.z*b.x-a.x*b.z,a.x*b.y-a.y*b.x);
+}
+function unit(value:BodyVector3):BodyVector3|null{
+  const magnitude=len(value);
+  return Number.isFinite(magnitude)&&magnitude>1e-8?mul(value,1/magnitude):null;
+}
+function rotateAroundAxis(value:BodyVector3,axis:BodyVector3,angle:number):BodyVector3{
+  const cosine=Math.cos(angle),sine=Math.sin(angle);
+  return add(add(mul(value,cosine),mul(cross(axis,value),sine)),
+    mul(axis,dot(axis,value)*(1-cosine)));
+}
+function hingeInternalAngle(
+  state:ArticulatedBodyParticleState,
+  parentId:ArticulatedBodyParticleId,
+  jointId:ArticulatedBodyParticleId,
+  childId:ArticulatedBodyParticleId,
+):number{
+  const parent=state.particles[parentId],joint=state.particles[jointId],child=state.particles[childId];
+  const a=sub(parent.position,joint.position),b=sub(child.position,joint.position);
+  const denominator=len(a)*len(b);
+  if(!Number.isFinite(denominator)||denominator<1e-9)return Math.PI;
+  return Math.acos(clamp(dot(a,b)/denominator,-1,1));
+}
+function hingeFlexionDegrees(
+  state:ArticulatedBodyParticleState,
+  spec:HingeJointSpec,
+):number{
+  const internal=hingeInternalAngle(state,spec.parent,spec.joint,spec.child);
+  return clamp((Math.PI-internal)*180/Math.PI,0,180);
+}
+
+/**
+ * Project a hinge that exceeds 150 degrees by rotating its complete distal
+ * chain around the joint. Rodrigues rotation preserves every distal segment.
+ * If the current bend plane collapses, the target pose supplies its preferred
+ * plane; a left/right signed Z axis is the deterministic final fallback.
+ */
+function projectHingeFlexionLimit(state:ArticulatedBodyParticleState,spec:HingeJointSpec):number{
+  const parent=state.particles[spec.parent],joint=state.particles[spec.joint],child=state.particles[spec.child];
+  const parentVector=sub(parent.position,joint.position),childVector=sub(child.position,joint.position);
+  const parentUnit=unit(parentVector),childUnit=unit(childVector);
+  if(!parentUnit||!childUnit)return 0;
+  const currentInternal=Math.acos(clamp(dot(parentUnit,childUnit),-1,1));
+  const correction=MIN_HINGE_INTERNAL_RAD-currentInternal;
+  if(!Number.isFinite(correction)||correction<=1e-8)return 0;
+
+  let axis=cross(parentUnit,childUnit);
+  if(len(axis)<1e-7){
+    const targetParent=unit(sub(parent.target,joint.target));
+    const targetChild=unit(sub(child.target,joint.target));
+    if(targetParent&&targetChild)axis=cross(targetParent,targetChild);
+  }
+  let normalizedAxis=unit(axis);
+  if(!normalizedAxis)normalizedAxis=vec(0,0,spec.fallbackSide);
+
+  for(const id of [spec.child,...spec.distal]){
+    const particle=state.particles[id];
+    particle.position=add(joint.position,
+      rotateAroundAxis(sub(particle.position,joint.position),normalizedAxis,correction));
+    particle.velocity=rotateAroundAxis(particle.velocity,normalizedAxis,correction);
+  }
+  return correction;
+}
+
 function particleSegmentAngleLag(
   state:ArticulatedBodyParticleState,
   from:ArticulatedBodyParticleId,
@@ -279,8 +374,8 @@ function safeParticle(value:ArticulatedBodyParticle|undefined,id:ArticulatedBody
 }
 
 /**
- * Stateful full-body simulation: 18 anatomical particles, 17 bone-length
- * constraints and damped joint motors. One solver output feeds all renderers.
+ * Stateful full-body simulation: 22 anatomical particles, 21 bone-length
+ * constraints, ground contact, hinge limits and damped joint motors.
  * It follows the existing semantic motion decision; it is not a second planner.
  */
 export function stepAvatarArticulatedBody(
@@ -306,6 +401,9 @@ export function stepAvatarArticulatedBody(
     {id:"rightToePoint" as ArticulatedBodyParticleId,side:"right" as const},
   ] as const;
   const contacts:ArticulatedBodyContacts={leftFoot:false,rightFoot:false,maxCorrection:0,maxSlipSpeed:0};
+  const correctionDegrees:ArticulatedBodyJointLimitDiagnostics["correctionDegrees"]={
+    leftElbow:0,rightElbow:0,leftKnee:0,rightKnee:0,
+  };
   const drive = !awake ? 0 : reduced ? 0.16 : 0.22 + energy * 0.78;
   const joints=zeroJoints();
   for(const key of CHANNELS){
@@ -355,6 +453,12 @@ export function stepAvatarArticulatedBody(
         a.position=add(a.position,mul(correction,wa/total));
         b.position=sub(b.position,mul(correction,wb/total));
       }
+      // Joint limits are solver constraints, not motor-input clamps. Apply them
+      // after every distance pass so the distal chains cannot re-fold between ticks.
+      for(const hinge of HINGE_JOINTS){
+        const correction=projectHingeFlexionLimit(state,hinge);
+        correctionDegrees[hinge.key]=Math.max(correctionDegrees[hinge.key],correction*180/Math.PI);
+      }
       // Unilateral support-plane projection runs after every distance-constraint pass.
       // Only a semantic stance target may contact the plane; a lifted swing foot stays free.
       if(groundEnabled){
@@ -403,7 +507,19 @@ export function stepAvatarArticulatedBody(
   }
   state.maxConstraintError=constraintError(state);
   const channels=channelsFromSolvedParticles(joints,state);
-  return {state,channels,substeps,simulatedMs:duration,maxConstraintError:state.maxConstraintError,contacts};
+  const flexionDegrees={
+    leftElbow:hingeFlexionDegrees(state,HINGE_JOINTS[0]),
+    rightElbow:hingeFlexionDegrees(state,HINGE_JOINTS[1]),
+    leftKnee:hingeFlexionDegrees(state,HINGE_JOINTS[2]),
+    rightKnee:hingeFlexionDegrees(state,HINGE_JOINTS[3]),
+  };
+  const jointLimits:ArticulatedBodyJointLimitDiagnostics={
+    maxFlexionDeg:150,
+    flexionDegrees,
+    correctionDegrees,
+    maxCorrectionDeg:Math.max(...Object.values(correctionDegrees)),
+  };
+  return {state,channels,substeps,simulatedMs:duration,maxConstraintError:state.maxConstraintError,contacts,jointLimits};
 }
 export const AVATAR_ARTICULATED_BODY_PARTICLE_COUNT=IDS.length;
 export const AVATAR_ARTICULATED_BODY_SEGMENT_COUNT=PAIRS.length;
