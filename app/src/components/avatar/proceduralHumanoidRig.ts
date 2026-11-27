@@ -514,14 +514,18 @@ export function createProceduralHumanoidRig(scene: THREE.Scene): ProceduralHuman
         const sample = input.particles?.[particleId];
         const bone = bones[boneName];
         const rest = restJointPositions[boneName];
-        if (!sample || !bone || !rest) continue;
+        if (!bone || !rest) continue;
+        // Every frame starts at the immutable bind pose; missing samples cannot leave
+        // a stale offset from a previous frame.
+        bone.position.copy(rest);
+        if (!sample) continue;
         const rawResidual = localParticleOffset(sample);
         const residual = new THREE.Vector3(
           clamp(rawResidual.x, -0.055, 0.055),
           clamp(rawResidual.y, -0.055, 0.055),
           clamp(rawResidual.z, -0.055, 0.055),
         );
-        bone.position.copy(rest).add(residual);
+        bone.position.add(residual);
         particleBindingsApplied++;
       }
 
@@ -617,6 +621,8 @@ export function createProceduralHumanoidRig(scene: THREE.Scene): ProceduralHuman
     resetPose() {
       for (const [name, bone] of Object.entries(bones)) {
         bone.rotation.set(0, 0, 0);
+        const rest = restJointPositions[name];
+        if (rest) bone.position.copy(rest);
       }
       root.userData.poseState = null;
       root.updateMatrixWorld(true);
