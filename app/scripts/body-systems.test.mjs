@@ -630,3 +630,25 @@ test("missing optional VRM finger joints are skipped without false control recei
   assert.equal(result.applied, false);
   assert.deepEqual(result.controlledBones, []);
 });
+
+
+test("per-digit VRM curl overrides aggregate hand curl and zero remains an explicit open finger", () => {
+  const vrm = createFakeVrm(FULL_BODY_NAMES);
+  const result = applyVrmFullBodyChannels(vrm, {
+    leftFingers: 0.25,
+    leftIndexCurl: -0.8,
+    leftMiddleCurl: 0,
+    leftRingCurl: 0.6,
+  });
+  assert.ok(result.controlledBones.includes("leftIndexProximal"));
+  assert.ok(result.controlledBones.includes("leftMiddleProximal") === false);
+  assert.equal(vrm.bones.get("leftIndexProximal").rotation.x, -0.68 * 0.64);
+  assert.equal(vrm.bones.get("leftMiddleProximal").rotation.x, 0);
+  assert.equal(vrm.bones.get("leftRingProximal").rotation.x, 0.51 * 0.64);
+  assert.equal(vrm.bones.get("leftLittleProximal").rotation.x, 0.2125 * 0.58);
+  const neutral = applyVrmFullBodyChannels(vrm, {});
+  assert.equal(neutral.applied, false);
+  for (const suffix of FINGER_SUFFIXES) {
+    assert.equal(vrm.bones.get("left" + suffix).rotation.x, 0);
+  }
+});
