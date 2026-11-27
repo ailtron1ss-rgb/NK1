@@ -228,8 +228,14 @@ export function Avatar3DStage(props:Props){
         else skinAudit.zeroWeightVertexCount++;
         skinAudit.weightSumMin = Math.min(skinAudit.weightSumMin, weightSum);
         skinAudit.weightSumMax = Math.max(skinAudit.weightSumMax, weightSum);
-        auditVertex.fromBufferAttribute(positions, index);
-        node.applyBoneTransform(index, auditVertex);
+        // Match Three.js's renderer and Box3 precise path: this includes
+        // active morph targets before the current skeleton deformation.
+        if (typeof node.getVertexPosition === "function") {
+          node.getVertexPosition(index, auditVertex);
+        } else {
+          auditVertex.fromBufferAttribute(positions, index);
+          node.applyBoneTransform(index, auditVertex);
+        }
         auditVertex.applyMatrix4(node.matrixWorld);
         skinAudit.transformedVertexBounds.expandByPoint(auditVertex);
       }
@@ -287,9 +293,19 @@ export function Avatar3DStage(props:Props){
       boneCount: skinAudit.boneNames.length,
       boneNames: skinAudit.boneNames,
     };
-    const cameraBounds={
-      min:{x:normalizedBounds.min.x,y:normalizedBounds.min.y,z:normalizedBounds.min.z},
-      max:{x:normalizedBounds.max.x,y:normalizedBounds.max.y,z:normalizedBounds.max.z},
+    const cameraBoundsSource = skinVertexBounds
+      ? "skinned-deformed-vertices"
+      : "normalized-scene-bounds";
+    const cameraBounds=skinVertexBounds
+      ? {min:skinVertexBounds.min,max:skinVertexBounds.max}
+      : {
+          min:{x:normalizedBounds.min.x,y:normalizedBounds.min.y,z:normalizedBounds.min.z},
+          max:{x:normalizedBounds.max.x,y:normalizedBounds.max.y,z:normalizedBounds.max.z},
+        };
+    const cameraBoundsSize = {
+      x: cameraBounds.max.x - cameraBounds.min.x,
+      y: cameraBounds.max.y - cameraBounds.min.y,
+      z: cameraBounds.max.z - cameraBounds.min.z,
     };
     const framing=applyAvatarCameraFit(rt,cameraBounds);
     if(!framing)throw new Error("Не удалось рассчитать безопасное кадрирование модели.");
@@ -320,6 +336,8 @@ export function Avatar3DStage(props:Props){
     const sourceAxisDiagnostics = {
       boundsSize: { x: sourceSize.x, y: sourceSize.y, z: sourceSize.z },
       excludedEnvironmentMeshes: sourceSceneBounds.excludedEnvironmentMeshes,
+      cameraBoundsSource,
+      cameraBoundsSize,
       skinnedBoundsRefreshed,
       skinning: skinningDiagnostics,
       headToHips: sourceHeadToHips,

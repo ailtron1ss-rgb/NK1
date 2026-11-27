@@ -4,7 +4,7 @@
 
 This contract extends the existing identity-locked Kurisu embodiment with bounded, deterministic secondary dynamics. It does not replace the canonical character asset, regenerate the face, change the eye geometry or color, alter hairline or body proportions, or create a competing motor/brain owner.
 
-The runtime reads one canonical NK1 avatar frame and derives secondary motion from its existing affect, action, energy and measured body channels. Cognition does not run a neural model inside the WebGL frame loop: the organism supplies the signals; a small critically damped spring solver turns them into physical lag.
+The runtime reads one canonical NK1 avatar frame and derives secondary motion from its existing affect, action, energy and measured body channels. Camera framing and skin diagnostics now use the same morph-aware, deformed vertex positions (`SkinnedMesh.getVertexPosition`) when skinned surfaces exist; normalized scene bounds remain a fallback for static-only models. This avoids fitting to an undeformed bind-pose box that is materially larger than the visible pose. Cognition does not run a neural model inside the WebGL frame loop: the organism supplies the signals; a small critically damped spring solver turns them into physical lag.
 
 The avatar loader hides `ENV_*` mesh nodes (such as studio floors and plinths) and excludes them from both source and normalized character bounds. These scene helpers must not determine character scale or appear in the avatar render; body, hair and garment meshes remain eligible.
 
