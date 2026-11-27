@@ -144,7 +144,10 @@ export class OrganismSystemFabric {
     this.world.restoreFromPersisted({ persisted:safePersisted, cognition, advanced, consciousness, learning });
     this.memory.restoreFromPersisted({ memory, advanced });
     this.embodiment.restoreFromPersisted({ cognition, embodiment, advanced });
-    this.agency.restore({
+    // The safe reads intentionally return unknown. Narrow once at the public
+    // owner contract boundary; each owner retains responsibility for validating
+    // its own nested persisted schema during restore.
+    const agencyRestoreInput={
       selfProjects:ownDataValue(evolution,'selfProjects'),
       agency:ownDataValue(evolution,'agency'),
       budget:ownDataValue(cognition,'budget'),
@@ -153,15 +156,26 @@ export class OrganismSystemFabric {
       decisionReceipts:ownDataValue(system,'autonomousDecisionReceipts'),
       p67:ownDataValue(advanced,'p67AutonomousGoalGenesis'),
       p68:ownDataValue(advanced,'p68GoalEcology'),
-    });
+    } as Parameters<AgencySubsystemRuntime['restore']>[0];
+    this.agency.restore(agencyRestoreInput);
     this.self.restoreFromPersisted({ consciousness, learning, advanced });
     this.governance.restoreFromPersisted({ advanced });
     this.research.restoreFromPersisted(system);
-    this.willIntegration.restore(ownDataValue(system,'willIntegration'));
-    this.luminaAdaptation.restore(ownDataValue(system,'luminaAdaptation'));
-    this.hexisAdaptation.restore(ownDataValue(system,'hexisAdaptation'));
-    this.lettaGovernanceAdaptation.restore(ownDataValue(system,'lettaGovernanceAdaptation'));
-    this.conscioAdaptation.restore(ownDataValue(system,'conscioAdaptation'));
+    this.willIntegration.restore(
+      readRecord(system,'willIntegration') as Parameters<WillIntegrationBridge['restore']>[0],
+    );
+    this.luminaAdaptation.restore(
+      readRecord(system,'luminaAdaptation') as Parameters<LuminaAdaptationFabric['restore']>[0],
+    );
+    this.hexisAdaptation.restore(
+      readRecord(system,'hexisAdaptation') as Parameters<HexisAdaptationFabric['restore']>[0],
+    );
+    this.lettaGovernanceAdaptation.restore(
+      readRecord(system,'lettaGovernanceAdaptation') as Parameters<LettaGovernanceAdaptationFabric['restore']>[0],
+    );
+    this.conscioAdaptation.restore(
+      readRecord(system,'conscioAdaptation') as Parameters<ConscioAdaptationFabric['restore']>[0],
+    );
   }
 
   contract(name: OrganismSystemName): OrganismSystemContract { return organismSystemContract(name); }
