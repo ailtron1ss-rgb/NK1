@@ -224,6 +224,59 @@ assert.equal(revokedRow?.confidence01, 0);
 assert.equal(owner.revokeAdmittedObservation('observation-door-open-001'), false);
 
 
+
+{
+  const previousClock = now;
+  const previousDateNow = Date.now;
+  now = Date.now();
+  const expiringReceipt = signedReceipt({
+    nonce: 'nonce-expiring-observation-0001',
+    observationId: 'observation-expiring-0001',
+    expiresAt: now + 10_000,
+  });
+  const expiringAdmission = await authority.admit(expiringReceipt);
+  assert.equal(expiringAdmission.accepted, true);
+  const expiringOwner = new EmbodimentSubsystemRuntime();
+  const liveRow = expiringOwner.recordAdmittedObservation(expiringAdmission.admission);
+  assert.equal(liveRow.kind, 'observed');
+
+  const expiredAt = expiringReceipt.expiresAt + 1;
+  now = expiredAt;
+  Date.now = () => expiredAt;
+  try {
+    const expiredSnapshot = expiringOwner.perceptualEvidence.snapshot();
+    const expiredRow = expiredSnapshot.evidence.find(row => row.id === liveRow.id);
+    assert.equal(expiredRow?.kind, 'unresolved', 'expired host evidence must be demoted on read, not remain observed until a later compile');
+    assert.equal(expiredRow?.expired, true, 'expiry must leave a monotonic tombstone');
+    assert.equal(expiredRow?.confidence01, 0);
+    assert.equal(expiredRow?.uncertainty01, 1);
+    assert.equal(expiredSnapshot.metrics.groundedSignalRatio01, 0, 'expired evidence must not leave stale grounding credit');
+
+    const persistedExpired = expiringOwner.snapshot();
+    const restoredExpiredOwner = new EmbodimentSubsystemRuntime();
+    restoredExpiredOwner.restoreFromPersisted({ embodiment: persistedExpired });
+    const restoredExpired = restoredExpiredOwner.perceptualEvidence.snapshot().evidence.find(row => row.id === liveRow.id);
+    assert.equal(restoredExpired?.kind, 'unresolved');
+    assert.equal(restoredExpired?.expired, true, 'expired tombstone must survive persistence');
+
+    const expiredReauthorization = await authority.reauthorizePersisted(expiringReceipt);
+    assert.equal(expiredReauthorization.accepted, false);
+    assert.equal(expiredReauthorization.reason, 'receipt-time-invalid');
+
+    // Even a wall-clock rollback cannot revive the expired row.
+    now = previousClock;
+    Date.now = () => previousClock;
+    const clockRollbackReauthorization = await authority.reauthorizePersisted(expiringReceipt);
+    assert.equal(clockRollbackReauthorization.accepted, true);
+    const afterRollback = restoredExpiredOwner.recordAdmittedObservation(clockRollbackReauthorization.admission);
+    assert.equal(afterRollback.kind, 'unresolved');
+    assert.equal(afterRollback.expired, true);
+  } finally {
+    Date.now = previousDateNow;
+    now = previousClock;
+  }
+}
+
 console.log('G3_SIGNED_HOST_OBSERVATION_ADMISSION=PASS signature=device+session+consent+nonce');
 
 const stateStore = new MemoryStateStore();
