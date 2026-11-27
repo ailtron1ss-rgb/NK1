@@ -1877,6 +1877,13 @@ export class OrganismRuntime {
     await this.core.setEmbodiment(this.embodiment.snapshot(), this.embodiment.eventLog());
 
     // Record causal-cycle completion only after feedback, model updates, and embodiment state updates have actually run.
+    const outcomeDecisionAction = embodiedAction.action;
+    const outcomeDecisionPrediction = cycle.decision.predictedOutcomes.find(
+      candidate => candidate.action === outcomeDecisionAction,
+    )?.utility;
+    const decisionPredicted01 = typeof outcomeDecisionPrediction === 'number' && Number.isFinite(outcomeDecisionPrediction)
+      ? clamp01(outcomeDecisionPrediction)
+      : null;
     const cycleStageIds = this.cognitiveEventFabric.recordOperationalCycle({
       tick:cycle.state.tick,
       observation:{source:externalPluginSource ? `neko-plugin:${externalPluginSource.pluginId}` : 'runtime',external:Boolean(externalText),confidence01:.72,payload:{predictionError:cycle.state.predictionError,selectedAction:internalAction,evidenceId:observationEvidence.id,...(externalPluginSource ? {externalSourceKind:externalPluginSource.kind,externalMessageId:externalPluginSource.messageId} : {})}},
@@ -1936,7 +1943,7 @@ export class OrganismRuntime {
       goal:{source:'canonical-goal-selection',confidence01:clamp01(cycle.decision.selected?.confidence ?? .5),payload:{selectedGoalId:cycle.decision.selected?.goalId ?? null,activeGoalIds:cycle.goals.slice(0,12).map(goal=>goal.id),autonomousOverride:cycle.decision.autonomousOverride}},
       plan:{source:'plan-engine',confidence01:clamp01(planStep?.confidence ?? .5),payload:{planId:plan.id,goalId:plan.lineage.goal.id,planAccepted:planStepValid,stepCount:plan.steps.length,nextAction:worldAction,firstStepConfidence01:planStep?.confidence ?? null,decisionId:plan.lineage.decisionId,decisionTick:plan.lineage.decisionTick,goalFingerprint:plan.lineage.goal.fingerprint,worldFingerprint:plan.lineage.world.fingerprint,contextValid:planContextValidation.valid,validationReason:planContextValidation.valid?firstStepValidation.reason:planContextValidation.reason,revision:plan.lineage.revision,preconditions:planStep?.preconditions??null,expectedOutcome:planStep?.expectedOutcome??null}},
       action:{source:'organism-action-gate',confidence01:cycle.decision.selected?.confidence ?? .5,payload:{evidenceId:actionEvidence.id,action:embodiedAction.action,internalAction,goalId:plan.lineage.goal.id,planId:plan.id,planAccepted:planStepValid,plannedAction:planStep?.environmentAction ?? null}},
-      outcome:{source:grounded.source==='external'?'external-device':'shadow-simulator',external:grounded.source==='external',confidence01:grounded.evidence01,payload:{evidenceId:outcomeEvidence.id,decisionId:cycle.decision.id,goalId:plan.lineage.goal.id,planId:plan.id,planAccepted:planStepValid,plannedAction:worldAction,predictedReward01:plannedReward01,actualReward01:clamp01(grounded.reward01),realitySource:grounded.source,reward01:grounded.reward01,surprise:grounded.surprise01,error01:resolvedPrediction?.error01 ?? null,verified01:grounded.verified01,independent01:grounded.independent01,evidence01:grounded.evidence01}},
+      outcome:{source:grounded.source==='external'?'external-device':'shadow-simulator',external:grounded.source==='external',confidence01:grounded.evidence01,payload:{evidenceId:outcomeEvidence.id,decisionId:cycle.decision.id,goalId:plan.lineage.goal.id,planId:plan.id,planAccepted:planStepValid,decisionAction:outcomeDecisionAction,decisionPredicted01,actualReward01:clamp01(grounded.reward01),realitySource:grounded.source,reward01:grounded.reward01,surprise:grounded.surprise01,error01:resolvedPrediction?.error01 ?? null,verified01:grounded.verified01,independent01:grounded.independent01,evidence01:grounded.evidence01}},
       learning:{source:'core.feedback',confidence01:clamp01((1-(resolvedPrediction?.error01??0.5))*learningGate.learningScale01),payload:{predictionError01:resolvedPrediction?.error01??null,realitySource:grounded.source,learningPriority01:grounded.learningPriority01,learningScale01:learningGate.learningScale01}},
       selfUpdate:{source:'core.lifecycle',confidence01:this.core.consciousnessSnapshot().identityContinuity.continuity,payload:{identityContinuity01:this.core.consciousnessSnapshot().identityContinuity.continuity}},
       subsystemReceipts:cycle.stageEvidence?.subsystemReceipts,
