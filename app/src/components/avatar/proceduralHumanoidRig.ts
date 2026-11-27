@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { AVATAR_ARTICULATED_BODY_PARTICLE_COUNT, AVATAR_ARTICULATED_BODY_SEGMENT_COUNT } from "./articulatedBodyParticles";
 import type { ArticulatedBodyParticle, ArticulatedBodyParticleId } from "./articulatedBodyParticles";
 
 export type JointAxis = "x" | "y" | "z";
@@ -380,6 +381,13 @@ export function createProceduralHumanoidRig(scene: THREE.Scene): ProceduralHuman
   const restJointPositions = Object.fromEntries(Object.entries(bones).map(([name, bone]) => [name, bone.position.clone()])) as Record<string, THREE.Vector3>;
   rootBone.updateMatrixWorld(true);
   skeleton.calculateInverses();
+  root.userData.rigStats = {
+    boneCount: skeleton.bones.length,
+    jointCount: Object.keys(limits).length,
+    meshCount: meshes.length,
+    particleCount: AVATAR_ARTICULATED_BODY_PARTICLE_COUNT,
+    constraintCount: AVATAR_ARTICULATED_BODY_SEGMENT_COUNT,
+  };
 
   const rig: ProceduralHumanoidRig = {
     root,
