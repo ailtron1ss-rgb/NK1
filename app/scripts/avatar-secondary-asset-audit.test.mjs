@@ -213,7 +213,8 @@ test("3D stage publishes an audit for the imported model and exposes it in an ac
   assert.match(stage, /secondaryAudit\.morphChannels/);
   assert.match(stage, /metadata:bone\.node\?\.userData\?\.nk1Secondary/);
   assert.match(stage, /<details/);
-  assert.match(stage, /Аудит физики/);
+  assert.match(stage, /Аудит вторичных слоёв/);
   assert.match(stage, /secondaryAudit\.secondaryPhysicsReady/);
-  assert.match(stage, /нужны размеченные кости или morph-каналы/);
+  assert.match(stage, /Костные цепочки и специальные morph-каналы отсутствуют/);
+  assert.match(stage, /ограниченный GPU sway активен на/);
 });
