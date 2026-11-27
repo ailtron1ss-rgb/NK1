@@ -49,7 +49,7 @@ Source: `app/scripts/verify-hosted-kurisu-model.mjs`, workflow `NK1 Avatar Model
 
 Специально размеченных emissive-материалов NK1 neural fabric: **0**. Это не означает, что в модели нет обычных материалов или facial morphs; это означает, что нужные каналы вторичной физики не экспортированы/не размечены.
 
-Вывод: текущая v5 — пригодная базовая humanoid-модель с анимацией и лицевыми morph targets, но **не готовый физически-модульный персонаж**. Новая пружинная система не должна заявлять, что двигает несуществующие кости или morph targets. Для этой модели ожидается fail-closed/no-op до добавления геометрии и рига.
+Вывод: текущая v5 — пригодная базовая humanoid-модель с анимацией и лицевыми morph targets, но **не полноценный физически-модульный персонаж**. Bone-spring слой честно остаётся no-op для отсутствующих вторичных костей и специальных morph targets. Дополнительно runtime теперь может выполнять ограниченный GPU vertex sway на строго выбранных уже существующих skinned meshes; это не добавляет кости, не меняет веса и не заменяет полноценную симуляцию ткани.
 
 ## Техническое задание на следующий проход по самому asset
 
@@ -90,6 +90,7 @@ Source: `app/scripts/verify-hosted-kurisu-model.mjs`, workflow `NK1 Avatar Model
 - Mobile quality tiers, sleep settling, reset при замене модели.
 - Runtime audit в 3D панели: bone counts, chain roots, morph aliases, neural materials и имена неразмеченных костей.
 - Hosted GLB audit в CI по фактическому бинарному v5: hash/size/preflight + skin joint ancestry + morph/material inventory.
+- Ограниченный post-skinning GPU vertex sway для allowlist отдельных волос/одежды; отдельные исходные материалы клонируются и восстанавливаются при сбросе.
 
 ## Границы проверки
 
@@ -98,7 +99,7 @@ Source: `app/scripts/verify-hosted-kurisu-model.mjs`, workflow `NK1 Avatar Model
 - Бинарный файл v5 этим проходом не менялся; каталог и Release не переопределялись.
 - Отсутствующие в модели secondary bones/morph targets не «добавляются» runtime-кодом.
 - Это аудит glTF node/skin/morph/material structure, а не визуальное подтверждение правильности skin weights, коллизий, деформации ткани или анатомической формы.
-- Полноценная vertex-level cloth/soft-body симуляция ещё не реализована; текущая физика — bounded bone-driven secondary dynamics.
+- Полноценная vertex-level cloth/soft-body симуляция всё ещё не реализована. Поверх bounded bone-driven secondary dynamics добавлен только небольшой GPU vertex-shader sway: он сдвигает свободные участки selected meshes после skinning, без коллизий, vertex constraints и изменения исходных skin weights.
 
 
 ## Проверка реальных skin weights — hosted preflight 2026-11-27
@@ -146,8 +147,22 @@ Source: `app/scripts/verify-hosted-kurisu-model.mjs`, workflow `NK1 Avatar Model
 5. Галстук: отдельная цепочка knot/root → blade tip, с очень небольшой амплитудой.
 6. После правки каждого mesh повторять этот sampler и сравнивать сохранение суммы весов, coverage основных joints и отсутствие unweighted vertices.
 
-Это карта текущих skin weights, а не результат изменения GLB: оригинальный v5 не изменён, Release не обновлялся.
+Это карта текущих skin weights, а не результат изменения GLB: оригинальный v5 не изменён, Release не обновлялся. GPU sway выполняется поверх существующих данных только в runtime и не переписывает геометрию или атрибуты skin.
 
+
+
+## Дополнительный runtime-слой: ограниченный GPU vertex sway
+
+Чтобы не ждать переразметки костей/весов и при этом не притворяться, будто у модели есть отсутствующие secondary joints, в 3D runtime добавлен отдельный пост-skinning vertex-shader слой. Он использует существующие отдельные меши, только при наличии `SkinnedMesh`, валидного `position` attribute, конечных вертикальных bounds и клонируемого `MeshStandardMaterial`/`MeshPhysicalMaterial`.
+
+Разрешённый список:
+- Волосы: `HAIR_long_lock_L/R`, `HAIR_front_strand_L/R`, `HAIR_layer_L1/L2/R1/R2` (масса сзади, crown и вся fringe исключены)
+- Одежда: `CLOTH_skirt`, `CLOTH_labcoat_main`
+- Галстук: `CLOTH_tie_blade`
+
+Верхние пределы смещения в нормализованном мировом масштабе модели: волосы 0.012, юбка/халат 0.007, полотнище галстука 0.0045. Итоговая амплитуда дополнительно зависит от energy/arousal/curiosity/novelty/predictionError, body sway/gait/breath, sleep state и quality tier. Материал клонируется без изменения PBR-настроек; исходная ссылка и все клоны корректно восстанавливаются/освобождаются при смене модели или reset.
+
+Это **не cloth simulation**: нет столкновений, self-collision, распределения масс, XPBD/constraint solve, ветра или deformation graph. Шейдер добавляет только небольшую, ограниченную волну в свободной зоне меша после штатного skinning. Визуальное подтверждение на настоящем WebGL рендере/Android ещё требуется; CI подтверждает тесты и сборку, но не художественную приемку движения.
 
 ## Геометрическая модульность для runtime-диагностики
 
