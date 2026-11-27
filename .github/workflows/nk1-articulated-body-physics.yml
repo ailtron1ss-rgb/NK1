@@ -5,6 +5,12 @@ on:
     branches: [workpass70-source]
     paths:
       - "app/src/components/AvatarStage.tsx"
+      - "app/scripts/vrm-normalized-humanoid.integration.test.mjs"
+      - "app/scripts/avatar-3d-glb-motion-integration.test.mjs"
+      - "app/scripts/glb-body-channel-adapter.test.mjs"
+      - "app/src/components/avatar/glbBodyChannelAdapter.ts"
+      - "app/src/components/avatar/vrmRuntimeAdapter.ts"
+      - "app/src/components/Avatar3DStage.tsx"
       - "app/src/components/avatar/articulatedBodyParticles.ts"
       - "app/scripts/articulated-body-particles.test.mjs"
       - ".github/workflows/nk1-articulated-body-physics.yml"
