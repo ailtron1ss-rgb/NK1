@@ -229,3 +229,75 @@ test("a lifted swing foot clears the ground contact band instead of being snappe
       + state.particles.leftToePoint.position.y + " targetY="
       + state.particles.leftToePoint.target.y);
 });
+
+
+function hingeFlexionRadians(state, parentId, jointId, childId) {
+  const parent = state.particles[parentId].position;
+  const joint = state.particles[jointId].position;
+  const child = state.particles[childId].position;
+  const a = { x: parent.x - joint.x, y: parent.y - joint.y, z: parent.z - joint.z };
+  const b = { x: child.x - joint.x, y: child.y - joint.y, z: child.z - joint.z };
+  const dot = a.x * b.x + a.y * b.y + a.z * b.z;
+  const magnitude = Math.hypot(a.x, a.y, a.z) * Math.hypot(b.x, b.y, b.z);
+  const internal = Math.acos(Math.max(-1, Math.min(1, dot / Math.max(magnitude, 1e-9))));
+  return Math.PI - internal;
+}
+
+function alignParticleAlong(source, joint, destination) {
+  const dx = source.x - joint.x, dy = source.y - joint.y, dz = source.z - joint.z;
+  const sourceLength = Math.hypot(dx, dy, dz);
+  const destinationLength = Math.hypot(destination.x - joint.x, destination.y - joint.y, destination.z - joint.z);
+  return {
+    x: joint.x + dx / sourceLength * destinationLength,
+    y: joint.y + dy / sourceLength * destinationLength,
+    z: joint.z + dz / sourceLength * destinationLength,
+  };
+}
+
+test("elbow hinge cannot fold beyond the anatomical flexion limit", () => {
+  const previous = createAvatarArticulatedBodyState();
+  const shoulder = previous.particles.leftShoulderPoint.position;
+  const elbow = previous.particles.leftElbowPoint.position;
+  const wrist = previous.particles.leftWristPoint;
+  wrist.position = alignParticleAlong(shoulder, elbow, wrist.position);
+  wrist.velocity = { x: 0, y: 0, z: 0 };
+  for (const id of ["leftShoulderPoint", "leftElbowPoint", "leftWristPoint", "leftHandPoint"]) {
+    previous.particles[id].mass = 20;
+  }
+  const result = stepAvatarArticulatedBody(previous, {}, 1000 / 60, { awake: true, energy01: 1 });
+  const flexion = hingeFlexionRadians(result.state, "leftShoulderPoint", "leftElbowPoint", "leftWristPoint");
+  assert.ok(flexion <= 150 * Math.PI / 180 + 0.02,
+    "left elbow flexion must stay at or below 150 degrees; got " + (flexion * 180 / Math.PI).toFixed(2));
+});
+
+test("knee hinge cannot hyperflex while the foot chain follows the lower leg", () => {
+  const previous = createAvatarArticulatedBodyState();
+  const hip = previous.particles.rightHipPoint.position;
+  const knee = previous.particles.rightKneePoint.position;
+  const ankle = previous.particles.rightAnklePoint;
+  const oldAnkle = { ...ankle.position };
+  ankle.position = alignParticleAlong(hip, knee, ankle.position);
+  const shift = {
+    x: ankle.position.x - oldAnkle.x,
+    y: ankle.position.y - oldAnkle.y,
+    z: ankle.position.z - oldAnkle.z,
+  };
+  for (const id of ["rightHipPoint", "rightKneePoint", "rightAnklePoint", "rightHeelPoint", "rightToePoint"]) {
+    previous.particles[id].mass = 20;
+  }
+  for (const id of ["rightHeelPoint", "rightToePoint"]) {
+    const point = previous.particles[id];
+    point.position = { x: point.position.x + shift.x, y: point.position.y + shift.y, z: point.position.z + shift.z };
+  }
+  const result = stepAvatarArticulatedBody(previous, {}, 1000 / 60, { awake: true, energy01: 1, groundEnabled: false });
+  const flexion = hingeFlexionRadians(result.state, "rightHipPoint", "rightKneePoint", "rightAnklePoint");
+  assert.ok(flexion <= 150 * Math.PI / 180 + 0.02,
+    "right knee flexion must stay at or below 150 degrees; got " + (flexion * 180 / Math.PI).toFixed(2));
+  const lowerLegLength = Math.hypot(
+    result.state.particles.rightAnklePoint.position.x - result.state.particles.rightKneePoint.position.x,
+    result.state.particles.rightAnklePoint.position.y - result.state.particles.rightKneePoint.position.y,
+    result.state.particles.rightAnklePoint.position.z - result.state.particles.rightKneePoint.position.z,
+  );
+  assert.ok(Math.abs(lowerLegLength - previous.segments.find(x => x.from === "rightKneePoint" && x.to === "rightAnklePoint").restLength) < 0.02,
+    "knee hinge projection must preserve the lower-leg segment length");
+});
