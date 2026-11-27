@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { KURISU_HYBRID_MODEL } from "../src/components/avatar/avatarModelCatalog.ts";
 import { preflightAvatarModel } from "../src/components/avatar/avatarModelPreflight.ts";
+import { auditAvatarSecondaryAssetDescriptor } from "../src/components/avatar/avatarSecondaryAssetAudit.ts";
 
 const response = await fetch(KURISU_HYBRID_MODEL.url, {
   method: "GET",
@@ -31,6 +32,59 @@ assert.ok((document.skins?.length ?? 0) > 0, "Hosted model must contain a humano
 assert.ok(morphTargets >= 10, "Hosted model must retain face and blink morph targets");
 assert.ok((document.animations ?? []).some((animation) => /rig_kurisu/i.test(animation.name ?? "")), "Hosted model must retain the named Kurisu humanoid clip");
 
+const gltfNodes = Array.isArray(document.nodes) ? document.nodes : [];
+const jointIndices = new Set();
+for (const skin of (document.skins ?? [])) {
+  for (const index of (Array.isArray(skin?.joints) ? skin.joints : [])) {
+    if (Number.isInteger(index) && index >= 0 && index < gltfNodes.length) jointIndices.add(index);
+  }
+}
+const parentByIndex = new Map();
+for (const [index, node] of gltfNodes.entries()) {
+  for (const child of (Array.isArray(node?.children) ? node.children : [])) {
+    if (Number.isInteger(child) && child >= 0 && child < gltfNodes.length && !parentByIndex.has(child)) {
+      parentByIndex.set(child, index);
+    }
+  }
+}
+const bones = [...jointIndices].map((index) => {
+  const parent = parentByIndex.get(index);
+  return {
+    id: `gltf-node-${index}`,
+    name: typeof gltfNodes[index]?.name === "string" ? gltfNodes[index].name : `node-${index}`,
+    ...(Number.isInteger(parent) && jointIndices.has(parent) ? { parentId: `gltf-node-${parent}` } : {}),
+  };
+});
+const morphTargetNames = new Set();
+let rawMorphTargetCount = 0;
+let morphMeshCount = 0;
+const meshHasMorphs = (mesh) => (mesh?.primitives ?? []).some((primitive) =>
+  Array.isArray(primitive?.targets) && primitive.targets.length > 0);
+for (const mesh of (document.meshes ?? [])) {
+  if (meshHasMorphs(mesh)) morphMeshCount += 1;
+  for (const name of (Array.isArray(mesh?.extras?.targetNames) ? mesh.extras.targetNames : [])) {
+    if (typeof name === "string" && name.trim()) morphTargetNames.add(name);
+  }
+  for (const primitive of (mesh?.primitives ?? [])) {
+    rawMorphTargetCount += Array.isArray(primitive?.targets) ? primitive.targets.length : 0;
+    for (const name of (Array.isArray(primitive?.extras?.targetNames) ? primitive.extras.targetNames : [])) {
+      if (typeof name === "string" && name.trim()) morphTargetNames.add(name);
+    }
+  }
+}
+const secondaryAudit = auditAvatarSecondaryAssetDescriptor({
+  bones,
+  morphTargetNames: [...morphTargetNames],
+  materials: (document.materials ?? []).map((material) => ({
+    name: material?.name,
+    extras: material?.extras,
+    emissiveFactor: material?.emissiveFactor,
+    emissiveTexture: material?.emissiveTexture,
+  })),
+  skinnedMeshCount: gltfNodes.filter((node) => Number.isInteger(node?.mesh) && Number.isInteger(node?.skin)).length,
+  morphMeshCount: gltfNodes.filter((node) => Number.isInteger(node?.mesh) && meshHasMorphs(document.meshes?.[node.mesh])).length,
+});
+
 console.log("HOSTED_KURISU_ASSET=PASS", JSON.stringify({
   id: KURISU_HYBRID_MODEL.id,
   bytes: bytes.byteLength,
@@ -39,4 +93,14 @@ console.log("HOSTED_KURISU_ASSET=PASS", JSON.stringify({
   meshes: document.meshes.length,
   morphTargets,
   animations: (document.animations ?? []).length,
+  secondaryAssetAudit: {
+    skinJoints: bones.length,
+    recognizedSecondaryBones: secondaryAudit.recognizedBoneCount,
+    byRole: secondaryAudit.byRole,
+    namedMorphTargets: secondaryAudit.morphTargetCount,
+    rawMorphTargetCount,
+    morphChannels: secondaryAudit.morphChannels,
+    taggedNeuralMaterials: secondaryAudit.taggedNeuralMaterialCount,
+    warnings: secondaryAudit.warnings,
+  },
 }));
