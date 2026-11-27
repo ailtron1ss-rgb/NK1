@@ -7,10 +7,11 @@ on:
       - "app/src/components/Avatar3DStage.tsx"
       - "app/src/components/avatar/avatarNeuroAdaptiveDynamics.ts"
       - "app/src/components/avatar/avatarSecondaryVertexDynamics.ts"
+      - "app/src/components/avatar/avatarSecondaryAssetAudit.ts"
       - "app/scripts/avatar-secondary-vertex-dynamics.test.mjs"
       - "app/scripts/avatar-neuroadaptive-dynamics.test.mjs"
-      - "app/scripts/avatar-secondary-asset-audit.test.mjs app/scripts/avatar-secondary-vertex-dynamics.test.mjs"
-      - "app/src/components/avatar/avatarSecondaryAssetAudit.ts"
+      - "app/scripts/avatar-secondary-asset-audit.test.mjs"
+      - "app/scripts/avatar-neuroadaptive-workflow.test.mjs"
       - "docs/avatar/NK1_NEUROADAPTIVE_ASSET_CONTRACT.md"
       - ".github/workflows/nk1-avatar-neuroadaptive-dynamics.yml"
 
@@ -18,7 +19,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: nk1-avatar-neuroadaptive-dynamics
+  group: nk1-avatar-neuroadaptive-dynamics-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -34,10 +35,8 @@ jobs:
           cache-dependency-path: app/package-lock.json
       - name: Install pinned app dependencies
         run: npm ci --prefix app --ignore-scripts
-      - name: Test neuroadaptive dynamics and 3D-stage wiring
-        run: node --experimental-strip-types --test app/scripts/avatar-neuroadaptive-dynamics.test.mjs app/scripts/glb-avatar-expression-secondary-motion.test.mjs app/scripts/avatar-3d-glb-motion-integration.test.mjs
-      - name: Audit actual secondary asset capabilities
-        run: node --experimental-strip-types --test app/scripts/avatar-secondary-asset-audit.test.mjs
+      - name: Test neuroadaptive dynamics, asset audits and workflow wiring
+        run: node --experimental-strip-types --test app/scripts/avatar-neuroadaptive-dynamics.test.mjs app/scripts/avatar-secondary-vertex-dynamics.test.mjs app/scripts/avatar-secondary-asset-audit.test.mjs app/scripts/avatar-neuroadaptive-workflow.test.mjs app/scripts/glb-avatar-expression-secondary-motion.test.mjs app/scripts/avatar-3d-glb-motion-integration.test.mjs
       - name: App TypeScript check
         run: npm --prefix app run typecheck
       - name: App development-mode production bundle
