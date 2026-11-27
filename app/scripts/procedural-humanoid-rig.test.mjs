@@ -178,8 +178,12 @@ test("real particle physics output drives the NeuroCore skeleton end to end", ()
     rootYaw: 0.24,
   }, 33.3, { awake: true, energy01: 0.86 });
 
-  assert.equal(step.state.particleCount, 18);
-  assert.equal(step.state.segments.length, 17);
+  assert.equal(step.state.particleCount, AVATAR_ARTICULATED_BODY_PARTICLE_COUNT);
+  assert.equal(step.state.segments.length, AVATAR_ARTICULATED_BODY_SEGMENT_COUNT);
+  assert.equal(step.jointLimits.maxFlexionDeg, 150);
+  assert.ok(Number.isFinite(step.jointLimits.maxCorrectionDeg));
+  assert.equal(typeof step.contacts.leftFoot, "boolean");
+  assert.equal(typeof step.contacts.rightFoot, "boolean");
   assert.ok(Number.isFinite(step.maxConstraintError));
   assert.ok(Object.keys(step.channels).length > 20);
 
@@ -208,7 +212,7 @@ test("real particle physics output drives the NeuroCore skeleton end to end", ()
   rig.dispose();
 });
 
-test("neutral procedural skeleton matches all 18 canonical particle landmarks", () => {
+test("neutral procedural skeleton matches 18 joint landmarks and retains four foot-support particles", () => {
   const scene = new THREE.Scene();
   const rig = createProceduralHumanoidRig(scene);
   const state = createAvatarArticulatedBodyState();
@@ -241,7 +245,8 @@ test("neutral procedural skeleton matches all 18 canonical particle landmarks", 
     ["rightAnklePoint", "rightAnkle"],
   ];
 
-  assert.equal(bindings.length, AVATAR_ARTICULATED_BODY_PARTICLE_COUNT);
+  assert.equal(bindings.length, 18, "18 particles are direct skeleton landmarks or IK endpoints");
+  assert.equal(Object.keys(state.particles).length, AVATAR_ARTICULATED_BODY_PARTICLE_COUNT);
   for (const [particleId, boneName] of bindings) {
     const particle = state.particles[particleId];
     const expected = rig.root.localToWorld(new THREE.Vector3(
@@ -252,6 +257,24 @@ test("neutral procedural skeleton matches all 18 canonical particle landmarks", 
     const actual = rig.bones[boneName].getWorldPosition(new THREE.Vector3());
     const error = actual.distanceTo(expected);
     assert.ok(error < 5e-4, `${particleId} → ${boneName} rest-pose error was ${error.toFixed(6)} m`);
+  }
+
+  // Heel/toe particles are ground-contact support points, not extra skeleton pivots.
+  // They must remain in the solver graph and connect to each ankle independently.
+  const supportPairs = [
+    ["leftAnklePoint", "leftHeelPoint"],
+    ["leftHeelPoint", "leftToePoint"],
+    ["rightAnklePoint", "rightHeelPoint"],
+    ["rightHeelPoint", "rightToePoint"],
+  ];
+  for (const [from, to] of supportPairs) {
+    assert.ok(state.segments.some((segment) => segment.from === from && segment.to === to),
+      `missing foot support constraint: ${from} -> ${to}`);
+    for (const id of [from, to]) {
+      const particle = state.particles[id];
+      assert.ok(Number.isFinite(particle.position.x) && Number.isFinite(particle.position.y) && Number.isFinite(particle.position.z),
+        `invalid foot support particle: ${id}`);
+    }
   }
 
   rig.dispose();
