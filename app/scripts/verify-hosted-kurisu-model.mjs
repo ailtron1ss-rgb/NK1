@@ -134,7 +134,7 @@ const garmentSkinWeightInventory = skinWeightAudit.meshAudits
     vertexCount: mesh.vertexCount,
     boundsSampledVertices: mesh.boundsSampledVertices,
     localBounds: mesh.localBounds,
-    worldBounds: mesh.worldBounds,
+    nodeTransformBounds: mesh.nodeTransformBounds,
     weightedSampleVertices: mesh.weightedSampleVertices,
     unweightedSampleVertices: mesh.unweightedSampleVertices,
     averageWeightSum01: mesh.averageWeightSum01,
