@@ -181,6 +181,8 @@ test("3D stage publishes an audit for the imported model and exposes it in an ac
   assert.match(stage, /secondaryAudit\.byRole\.hair/);
   assert.match(stage, /secondaryAudit\.byMeshRole\.hair/);
   assert.match(stage, /secondaryAudit\.byMeshRole\.garment/);
+  assert.match(stage, /secondaryAudit\.byMeshRole\.hair/);
+  assert.match(stage, /secondaryAudit\.byMeshRole\.garment/);
   assert.match(stage, /secondaryAudit\.morphChannels/);
   assert.match(stage, /metadata:bone\.node\?\.userData\?\.nk1Secondary/);
   assert.match(stage, /<details/);
