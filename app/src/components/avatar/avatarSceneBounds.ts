@@ -1,24 +1,33 @@
 import { Box3 } from "three";
-import type { Object3D } from "three";
 
-type AvatarSceneMesh = Object3D & {
+type AvatarSceneMesh = {
+  name: string;
   isMesh?: boolean;
+  visible?: boolean;
+  userData?: Record<string, unknown>;
 };
+
+type AvatarSceneRoot = {
+  updateWorldMatrix(updateParents: boolean, updateChildren: boolean): void;
+  traverse(callback: (node: AvatarSceneMesh) => void): void;
+};
+
+const createEmptyBounds = () => new Box3();
+type AvatarBounds = ReturnType<typeof createEmptyBounds>;
 
 /**
  * Studio/environment meshes are export helpers, not part of the avatar.
  * In particular, a large ENV_floor can otherwise dominate normalization
  * bounds and collapse a human-sized skinned character to a few pixels.
  */
-export function isAvatarEnvironmentMesh(node: Object3D): boolean {
-  const mesh = node as AvatarSceneMesh;
-  if (mesh.isMesh !== true) return false;
-  return mesh.userData?.nk1ExcludeFromAvatarBounds === true
-    || /^ENV_/i.test(mesh.name.trim());
+export function isAvatarEnvironmentMesh(node: AvatarSceneMesh): boolean {
+  if (node.isMesh !== true) return false;
+  return node.userData?.nk1ExcludeFromAvatarBounds === true
+    || /^ENV_/i.test(node.name.trim());
 }
 
 export interface AvatarSceneBoundsResult {
-  bounds: Box3;
+  bounds: AvatarBounds;
   excludedEnvironmentMeshes: string[];
 }
 
@@ -27,20 +36,19 @@ export interface AvatarSceneBoundsResult {
  * bounding box from visible character meshes only. SkinnedMesh vertices are
  * sampled precisely through Box3.expandByObject(..., true).
  */
-export function resolveAvatarSceneBounds(root: Object3D): AvatarSceneBoundsResult {
+export function resolveAvatarSceneBounds(root: AvatarSceneRoot): AvatarSceneBoundsResult {
   root.updateWorldMatrix(true, true);
-  const bounds = new Box3();
+  const bounds = createEmptyBounds();
   const excludedEnvironmentMeshes: string[] = [];
 
   root.traverse((node) => {
-    const mesh = node as AvatarSceneMesh;
     if (isAvatarEnvironmentMesh(node)) {
-      mesh.visible = false;
-      excludedEnvironmentMeshes.push(mesh.name.trim() || "(unnamed environment mesh)");
+      node.visible = false;
+      excludedEnvironmentMeshes.push(node.name.trim() || "(unnamed environment mesh)");
       return;
     }
-    if (mesh.isMesh !== true || mesh.visible === false) return;
-    bounds.expandByObject(mesh, true);
+    if (node.isMesh !== true || node.visible === false) return;
+    bounds.expandByObject(node, true);
   });
 
   return { bounds, excludedEnvironmentMeshes };
