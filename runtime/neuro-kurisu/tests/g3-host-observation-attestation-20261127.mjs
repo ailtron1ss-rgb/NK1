@@ -274,24 +274,25 @@ assert.equal(owner.revokeAdmittedObservation('observation-door-open-001'), false
 console.log('G3_SIGNED_HOST_OBSERVATION_ADMISSION=PASS signature=device+session+consent+nonce');
 
 const stateStore = new MemoryStateStore();
+// Reuse host configuration only, not a verifier or store instance. Each Core
+// constructs a fresh FileHostObservationNonceStore over the same durable ledger.
+const observationAdmissionConfig = {
+  expectedDeviceId: 'android-test-01',
+  resolvePublicKey: async (issuerId, keyId) =>
+    issuerId === 'nk1-android-host' && keyId === 'test-ed25519-k1'
+      ? publicKey.export({ type: 'spki', format: 'pem' }).toString()
+      : null,
+  consentAuthority,
+  nonceDirectoryPath,
+  nonceStoreNow: () => nonceLedgerNow,
+  now: () => now,
+  maxCaptureAgeMs: 120_000,
+  maxFutureSkewMs: 3_000,
+  maxReceiptLifetimeMs: 300_000,
+};
 const core = new OrganismCore(stateStore, {
   enableLanguage: false,
-  // Exercise the production composition path: Core itself owns the factory-created
-  // authority and its durable private nonce ledger; no test-only prebuilt authority.
-  observationAdmissionConfig: {
-    expectedDeviceId: 'android-test-01',
-    resolvePublicKey: async (issuerId, keyId) =>
-      issuerId === 'nk1-android-host' && keyId === 'test-ed25519-k1'
-        ? publicKey.export({ type: 'spki', format: 'pem' }).toString()
-        : null,
-    consentAuthority,
-    nonceDirectoryPath,
-    nonceStoreNow: () => nonceLedgerNow,
-    now: () => now,
-    maxCaptureAgeMs: 120_000,
-    maxFutureSkewMs: 3_000,
-    maxReceiptLifetimeMs: 300_000,
-  },
+  observationAdmissionConfig,
 });
 await core.init();
 const coreReceipt = signedReceipt({
@@ -318,7 +319,7 @@ assert.equal(replayThroughCore.reason, 'nonce-replayed');
 const restartedStore = new MemoryStateStore({ initial: coreSnapshot });
 const restartedCore = new OrganismCore(restartedStore, {
   enableLanguage: false,
-  observationAdmissionAuthority: authority,
+  observationAdmissionConfig,
 });
 await restartedCore.init();
 const rehydratedRow = restartedCore.organismSystemFabric.embodiment.perceptualEvidence.snapshot().evidence
@@ -336,7 +337,7 @@ assert.equal(revokedAdmission?.kind, 'unresolved', 'consent revocation must be c
 // re-promote the explicitly revoked observation.
 const postRevokeCore = new OrganismCore(new MemoryStateStore({ initial: revokedSnapshot }), {
   enableLanguage: false,
-  observationAdmissionAuthority: authority,
+  observationAdmissionConfig,
 });
 await postRevokeCore.init();
 const afterRevokeRestart = postRevokeCore.organismSystemFabric.embodiment.perceptualEvidence.snapshot().evidence
