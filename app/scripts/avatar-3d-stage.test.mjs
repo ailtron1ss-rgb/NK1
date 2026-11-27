@@ -184,3 +184,15 @@ test("3D uses the same shared motor projection but preserves raw organism action
  assert.match(stage,/applyAvatarAnimationFrame\(\{mixer:rt\.mixer,clips:rt\.clips,action:p\.action/);
  assert.match(parent,/motorPlan=\{projection\.motorPlan\}/);
 });
+
+
+test("VRM native eye gaze uses the official target and does not double-drive the head", async () => {
+ const stage = await readFile(stagePath, "utf8");
+ const adapter = await readFile(path.join(root, "src/components/avatar/vrmRuntimeAdapter.ts"), "utf8");
+ assert.match(stage, /getRawBoneNode\("head"\)/);
+ assert.match(stage, /vrm\.lookAt\.target=target/);
+ assert.match(stage, /vrm\.lookAt\.autoUpdate=true/);
+ assert.match(stage, /resolveVrmLookAtTargetOffset\(p\.gazeX,p\.gazeY\)/);
+ assert.match(stage, /gazeViaLookAt:Boolean\(rt\.vrmLookAtTarget\)/);
+ assert.match(adapter, /frame\.gazeViaLookAt === true \? 0/);
+});
