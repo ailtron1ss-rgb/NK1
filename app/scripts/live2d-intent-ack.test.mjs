@@ -62,6 +62,13 @@ for (const item of viewers) {
     assert.match(viewer, /typeof core\.getParameterValueById==='function'/);
     assert.match(viewer, /if\(Number\.isFinite\(value\)\)observed\[id\]=value;\s*else readable=false;/);
     assert.match(viewer, /reason:readable\?null:'core-parameter-readback-unavailable'/);
+    assert.match(viewer, /bodySignal\.bodyChannels/);
+    assert.match(viewer, /ParamBodyAngleX/);
+    assert.match(viewer, /ParamBodyAngleY/);
+    assert.match(viewer, /ParamBreath/);
+    assert.match(viewer, /headYaw/);
+    assert.match(viewer, /headPitch/);
+    assert.match(viewer, /headRoll/);
   });
 }
 
@@ -98,4 +105,21 @@ test("runtime protocol-v1 normalizer preserves the canonical tick without breaki
   assert.equal(normalizeEmbodimentIntentV1(base).frameTick, undefined);
   assert.equal(normalizeEmbodimentIntentV1({ ...base, frameTick: -1 }), null);
   assert.equal(normalizeEmbodimentIntentV1({ ...base, frameTick: 1.25 }), null);
+  const channels = {
+    headYaw: 0.2, headPitch: -0.1, headRoll: 0.04,
+    torsoYaw: 0.08, torsoPitch: -0.06, gazeX: 0.3, gazeY: -0.2, breath: 0.7,
+  };
+  const withBodyChannels = normalizeEmbodimentIntentV1({
+    ...base, body: { ...base.body, channels },
+  });
+  assert.deepEqual(withBodyChannels.bodyChannels, channels);
+  assert.equal(normalizeEmbodimentIntentV1({
+    ...base, body: { ...base.body, channels: { ...channels, leftIndexCurl: 0.4 } },
+  }), null, "Live2D must reject channels it cannot drive");
+  assert.equal(normalizeEmbodimentIntentV1({
+    ...base, body: { ...base.body, channels: { ...channels, torsoPitch: 1.01 } },
+  }), null, "unbounded body channels must fail closed");
+  assert.equal(normalizeEmbodimentIntentV1({
+    ...base, body: { ...base.body, channels: { ...channels, breath: Number.NaN } },
+  }), null, "non-finite body channels must fail closed");
 });
