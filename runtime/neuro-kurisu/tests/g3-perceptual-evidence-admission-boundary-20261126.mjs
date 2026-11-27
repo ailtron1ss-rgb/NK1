@@ -106,6 +106,30 @@ semanticIngress.compile({
 assert.equal(semanticIngress.snapshot().evidence[0]?.kind, 'derived', 'P41 output must not bypass the host-admission boundary');
 assert.equal(semanticIngress.snapshot().metrics.groundedSignalRatio01, 0, 'unattested P41 labels must not count as grounded observations');
 
+const semanticEventIngress = new PerceptualEvidenceCompiler();
+semanticEventIngress.compile({
+  at: 1_800_000_000_003,
+  semantic: {
+    entities: [],
+    relations: [],
+    events: [{
+      id: 'p41-event-1',
+      label: 'unattested door opened',
+      lastAt: 1_800_000_000_003,
+      confidence01: 0.99,
+      modalities: ['vision'],
+      modalityEvidenceKinds: { vision: 'observed' },
+      modalityLastSeenAt: { vision: 1_800_000_000_003 },
+    }],
+    scene: { label: 'unknown', at: 1_800_000_000_003, confidence01: 0 },
+    modalityReliability: {},
+    pending: [],
+    metrics: { crossModalAgreement01: 0.7 },
+  },
+});
+assert.equal(semanticEventIngress.snapshot().evidence[0]?.kind, 'derived', 'P41 event evidence must pass through the same host admission downgrade as entity and relation evidence');
+assert.equal(semanticEventIngress.snapshot().metrics.groundedSignalRatio01, 0, 'unattested P41 event labels must not count as external grounding');
+
 const owner = new EmbodimentSubsystemRuntime();
 owner.perceptualEvidence.recordExternalEvidence({
   at: 1_800_000_000_001,
