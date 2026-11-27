@@ -42,4 +42,5 @@ jobs:
         run: npm run test:neurocore
       - name: Build the browser application
         working-directory: app
-        run: node scripts/with-app-env.mjs vite build
+        # Run through npm so app/node_modules/.bin is on PATH for with-app-env's child Vite process.
+        run: npm run build
