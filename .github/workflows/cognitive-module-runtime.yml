@@ -1,0 +1,66 @@
+name: NK1 Cognitive Module Runtime
+
+on:
+  push:
+    branches:
+      - aspect/module-runtime-lifecycle-20261126
+    paths:
+      - 'runtime/neuro-kurisu/src/organism/index.ts'
+      - 'runtime/neuro-kurisu/src/organism/core/CognitiveModuleRuntime.ts'
+      - 'runtime/neuro-kurisu/src/organism/core/index.ts'
+      - 'runtime/neuro-kurisu/src/organism/core/StableSerialization.ts'
+      - 'runtime/neuro-kurisu/src/organism/core/CognitiveModuleCheckpointStore.ts'
+      - 'runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts'
+      - 'runtime/neuro-kurisu/tests/cognitive-module-checkpoint.mjs'
+      - 'runtime/neuro-kurisu/tests/cognitive-module-runtime.mjs'
+      - 'docs/engineering/NK1_COGNITIVE_MODULE_RUNTIME_RU_2026-11-26.md'
+      - '.github/workflows/cognitive-module-runtime.yml'
+  pull_request:
+    branches:
+      - workpass70-source
+    paths:
+      - 'runtime/neuro-kurisu/src/organism/index.ts'
+      - 'runtime/neuro-kurisu/src/organism/core/CognitiveModuleRuntime.ts'
+      - 'runtime/neuro-kurisu/src/organism/core/index.ts'
+      - 'runtime/neuro-kurisu/src/organism/core/StableSerialization.ts'
+      - 'runtime/neuro-kurisu/src/organism/core/CognitiveModuleCheckpointStore.ts'
+      - 'runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts'
+      - 'runtime/neuro-kurisu/tests/cognitive-module-checkpoint.mjs'
+      - 'runtime/neuro-kurisu/tests/cognitive-module-runtime.mjs'
+      - 'docs/engineering/NK1_COGNITIVE_MODULE_RUNTIME_RU_2026-11-26.md'
+      - '.github/workflows/cognitive-module-runtime.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nk1-cognitive-module-runtime-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  module-runtime-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Checkout exact commit
+        uses: actions/checkout@v7
+      - name: Set up Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - name: Install pinned semantic typecheck tools
+        run: npm install --no-save --no-package-lock --prefix runtime/neuro-kurisu typescript@5.8.3 @types/node@22
+      - name: Run cognitive module lifecycle contract
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-sqlite --experimental-strip-types tests/cognitive-module-runtime.mjs
+      - name: Run canonical cognitive module checkpoint contract
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-sqlite --experimental-strip-types tests/cognitive-module-checkpoint.mjs
+      - name: Typecheck runtime
+        run: npm --prefix runtime/neuro-kurisu run typecheck
+      - name: Audit architecture boundaries
+        run: npm --prefix runtime/neuro-kurisu run audit:architecture
+      - name: Audit canonical ownership
+        run: npm --prefix runtime/neuro-kurisu run audit:core-ownership
