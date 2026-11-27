@@ -58,20 +58,20 @@ function scene(nodes) {
   return root;
 }
 
-function makeParticleGeometry() {
+function makeParticleGeometry(rows = 3) {
   const positions = [];
   const index = [];
-  for (let y = 0; y < 3; y += 1) {
-    for (let x = 0; x < 3; x += 1) positions.push(x * 0.1, y * 0.1, 0);
+  for (let y = 0; y < rows; y += 1) {
+    for (let x = 0; x < 3; x += 1) positions.push(x * 0.1, y * (0.2 / (rows - 1)), 0);
   }
-  for (let y = 0; y < 2; y += 1) {
+  for (let y = 0; y < rows - 1; y += 1) {
     for (let x = 0; x < 2; x += 1) {
       const a = y * 3 + x, b = a + 1, c = a + 3, d = c + 1;
       index.push(a, c, b, b, c, d);
     }
   }
   const geometry = {
-    attributes: { position: { array: new Float32Array(positions), count: 9, getY(i) { return this.array[i * 3 + 1]; } } },
+    attributes: { position: { array: new Float32Array(positions), count: positions.length / 3, getY(i) { return this.array[i * 3 + 1]; } } },
     index: { array: new Uint16Array(index) },
     boundingBox: { min: { y: 0 }, max: { y: 0.2 } },
     disposed: false,
@@ -315,5 +315,18 @@ test("authored nk1SecondaryPin attributes preserve soft attachment gradients", (
   assert.equal(bindings[0].particleState.inverseMass[0], 0, "authored hard pins remain immovable");
   assert.equal(bindings[0].particleState.inverseMass[3], 0.75, "authored 0.25 pin allows 0.75 inverse mass");
   assert.equal(bindings[0].particleState.inverseMass[4], 0.5, "authored 0.5 pin allows 0.5 inverse mass");
+  vertexDynamics.disposeAvatarSecondaryVertexDynamics(bindings);
+});
+
+test("inferred mesh attachment bands blend into the freely moving surface", () => {
+  const part = mesh("CLOTH_skirt", { geometry: makeParticleGeometry(8) });
+  const bindings = vertexDynamics.attachAvatarSecondaryVertexDynamics(scene([part]), 1);
+  assert.equal(bindings.length, 1);
+  const state = bindings[0].particleState;
+  assert.ok(state);
+  assert.equal(state.inverseMass[21], 0, "the distal attachment row must remain hard-pinned");
+  assert.ok(state.inverseMass[18] > 0 && state.inverseMass[18] < 1,
+    "the lower edge of the attachment band must transition through a soft pin");
+  assert.equal(state.inverseMass[15], 1, "the free surface below the attachment band must remain fully movable");
   vertexDynamics.disposeAvatarSecondaryVertexDynamics(bindings);
 });
