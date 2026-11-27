@@ -254,18 +254,18 @@ export function createProceduralHumanoidRig(scene: THREE.Scene): ProceduralHuman
   // Axial skeleton: pelvis → spine → chest → neck → skull.
   const pelvis = addBone(rootBone, "pelvis", [0, 1.0, 0], bones, limits);
   const spineLower = addBone(pelvis, "spineLower", [0, 0.13, 0], bones, limits);
-  const spineMid = addBone(spineLower, "spineMid", [0, 0.21, 0], bones, limits);
-  const chest = addBone(spineMid, "chest", [0, 0.22, 0], bones, limits);
-  const neck = addBone(chest, "neck", [0, 0.23, 0], bones, limits);
-  const head = addBone(neck, "head", [0, 0.16, 0], bones, limits);
+  const spineMid = addBone(spineLower, "spineMid", [0, 0.18, 0], bones, limits);
+  const chest = addBone(spineMid, "chest", [0, 0.19, 0], bones, limits);
+  const neck = addBone(chest, "neck", [0, 0.30, 0], bones, limits);
+  const head = addBone(neck, "head", [0, 0.24, 0], bones, limits);
 
   // Upper limbs are fully jointed: clavicle, shoulder, elbow, wrist, palm and fingers.
   const armRoots: Record<"left" | "right", { clavicle: THREE.Bone; upper: THREE.Bone; forearm: THREE.Bone; hand: THREE.Bone }> = {} as any;
   const fingerNames = ["thumb", "index", "middle", "ring", "little"] as const;
   for (const side of [-1, 1] as const) {
     const key = side < 0 ? "left" : "right";
-    const clavicle = addBone(chest, key + "Clavicle", [side * 0.24, 0.13, 0], bones, limits);
-    const upper = addBone(clavicle, key + "UpperArm", [side * 0.13, -0.015, 0], bones, limits);
+    const clavicle = addBone(chest, key + "Clavicle", [side * 0.14, -0.02, 0], bones, limits);
+    const upper = addBone(clavicle, key + "UpperArm", [side * 0.08, 0, 0], bones, limits);
     const forearm = addBone(upper, key + "Forearm", [side * 0.34, 0, 0], bones, limits);
     const wrist = addBone(forearm, key + "Wrist", [side * 0.29, 0, 0], bones, limits);
     const hand = addBone(wrist, key + "Hand", [side * 0.075, 0, 0], bones, limits);
