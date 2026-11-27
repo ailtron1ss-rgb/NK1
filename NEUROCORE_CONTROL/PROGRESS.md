@@ -1,84 +1,73 @@
 # NeuroCore progress
 
-**Snapshot:** 2026-11-27 — live engineering pass  
+**Snapshot:** 2026-11-27 23:00 America/New_York  
 **Product branch:** `neurocore-unified/main`  
-**Source branch synchronized through:** `workpass70-source@8994a103f6b735f6347d77d926ee9c024a4d4f4d`  
-**Latest product HEAD:** `ef23301c228b0b3c4da0f9ab9f5cd38f29651e52` (PR #1221; Draft; mergeable)  
-**Latest product/source merge:** `cb1c22e3c6c7f4eba73ad00b213442cee71c65d2` (two parents: product head `59b246e...` + source head `8994a103f6b735f6347d77d926ee9c024a4d4f4d`)  
-**Seed baseline:** `3526f61814e19f1f10766f3b2385488eb04e3d2e`
+**Exact product HEAD:** `4dfc60c4d1079bc694f3bc0043bced6c59bad564`  
+**Latest source:** `workpass70-source@9de695dd4713ec909d7312b45966d30dfb76d5c2`  
+**Latest two-parent merge:** `53a5926f753c56b97599b1ee28a0e46d769662b2`  
+**Seed:** `3526f61814e19f1f10766f3b2385488eb04e3d2e`  
+**PR #1221:** Draft, mergeable; 174 commits ahead, 0 behind source.
 
-The percentage below tracks the build plan, not model intelligence, consciousness, or upstream historical completion. Synchronizing upstream commits improves source coverage but does not count as tested product acceptance.
+Percentages measure the engineering build plan, not intelligence, consciousness or autonomy. Source synchronization alone is not test acceptance.
 
-| Workstream | Weight | Current completion | Weighted |
+| Workstream | Weight | Completion | Weighted |
 |---|---:|---:|---:|
 | Full source baseline and isolated product branch | 20% | 100% | 20.0% |
-| Existing app ↔ runtime integration carried into branch | 20% | 75% | 15.0% |
-| Canonical organism/subsystem/memory ownership preserved | 15% | 85% | 12.75% |
+| App ↔ runtime integration and cognitive wiring | 20% | 80% | 16.0% |
+| Canonical organism, memory and action ownership | 15% | 88% | 13.2% |
 | NeuroCore product identity migration | 10% | 60% | 6.0% |
-| New branch-specific test execution and CI acceptance | 15% | 0% | 0% |
-| Requested anatomical 3D body implementation slice | 10% | 60% | 6.0% |
-| Termux packaging and device acceptance | 10% | 0% | 0% |
-| **Weighted assembly progress** | **100%** |  | **59.75%** |
+| Branch-specific test execution and CI acceptance | 15% | 20% | 3.0% |
+| Anatomical 3D body implementation | 10% | 65% | 6.5% |
+| Termux packaging and device acceptance | 10% | 0% | 0.0% |
+| **Total weighted build progress** | **100%** |  | **64.7%** |
 
-**Overall assembly: 59.75%.** This pass adds two donor capabilities and synchronizes the newer source commit, but the percentage remains unchanged until exact-head product CI and device evidence exist. This is not a runtime pass rate or release-readiness score.
+The weighted score increased because the current product branch now contains integrated workspace, metacognitive, planner-lineage and signed-perception paths; the app/runtime and canonical-owner workstreams advanced, and several focused CI suites passed on the immediately preceding merge-head. The current exact head is still re-running its full matrix.
 
-## Current evidence
+## Implemented capabilities
 
-- **PROVEN:** the product branch is based on the pinned seed and now has a two-parent source merge at `cb1c22e3c6c7f4eba73ad00b213442cee71c65d2`, including current source head `8994a103f6b735f6347d77d926ee9c024a4d4f4d`; source ancestry is preserved, and the product branch is not behind the source line.
-- **IMPLEMENTED:** NeuroCore-facing title, home screen, chat label, API-base alias and runtime health identity.
-- **IMPLEMENTED:** one canonical `MemoryOS2` instance is constructed by `MemorySubsystemRuntime` and injected into `MemoryFabric`; an identity regression is present. It is not yet branch-CI accepted.
-- **IMPLEMENTED, EXACT PRODUCT CI PENDING:** OpenClaw `skills/<name>/SKILL.md` imports enter the existing N.E.K.O. Markdown adapter as unknown external semantic facts, quarantined by default; preview is read-only and commit requires explicit review override. Imported text gains no tool/action authority.
-- **IMPLEMENTED, EXACT PRODUCT CI PENDING:** the existing loopback-only `OpenAICompatibleLocalChatProvider` accepts bounded JSON Schema response formats for llama.cpp, rejects unsafe schema objects before transport, bounds the response payload, and rejects malformed structured JSON. No second LLM runtime or model selector was added.
-- **IMPLEMENTED:** default 3D humanoid rig with 61 bones, 60 movable pivots and material-batched skinned meshes built from the anatomical part volumes; arm/leg IK and particle-to-bone binding are wired.
-- **INHERITED FROM CURRENT SOURCE:** the 22-particle / 21-segment articulated solver now includes heel/toe ground contacts, tangential friction, swing take-off handling and 150-degree elbow/knee hinge constraints. The upstream change records 11/11 checks on its source PR head; that result is not a pass for this NeuroCore branch.
-- **IMPLEMENTED IN THIS PASS:** body control/physics cadence is changed to 20 Hz and every solved snapshot is published; a dedicated scheduler regression is wired into the real `AvatarStage` loop. Earlier exact-head VRM workflow passed app typecheck and production bundle; the latest integrated body suite is pending after ESM import correction.
-- **IMPLEMENTED IN THIS PASS:** the NeuroCore core regression command now includes memory state round-trip and capacity/lifecycle integrity suites. Execution is pending.
-- **UNRESOLVED:** the procedural surface remains composed from anatomical parts; continuous tissue deformation, collision, balance, foot planting and full gait are not accepted.
-- **UNRESOLVED:** browser hydration, end-to-end chat, actual configured local-model handshake, persistence under interrupted shutdown, and Android/Termux installation/performance. Donor-adapter checks passed on their earlier source PR head (documented in the donor review), not on the latest product head. Durable marker/rollback behaviour is covered by synthetic process-restart tests only; real phone filesystem behaviour is not measured.
+### Cognition and decision making
+- **IMPLEMENTED:** `GlobalWorkspaceSubstrateV2` performs bounded competition, recurrent latent updates and broadcast; current-cycle workspace arbitration runs before P61/P64. It keeps bounded coalition and decision receipts and supports decision-scoped delayed outcome credit.
+- **IMPLEMENTED:** metacognitive input is 27-dimensional; migration preserves older 24-feature checkpoints by zero-padding; output/target pairs align; gradient updates use the current observation; restored neural state is sanitized.
+- **IMPLEMENTED:** planning is bound to exact decision ID/tick, active goal revision and world fingerprint; plans carry integrity fingerprints, step preconditions and expected outcomes. A prior-plan revision hint is accepted only for the immediately preceding tick and a sufficiently verified, independent, externally observed outcome.
+- **IMPLEMENTED:** G3 observed-perception admission requires trusted public-key verification, expected device/session identity, active host consent and durable nonce replay prevention. Missing or invalid proof fails closed; external callers cannot self-promote data to observed/verified.
+
+### Memory and persistence
+- **IMPLEMENTED:** one canonical `MemoryOS2` is injected into `MemoryFabric`; identity regression remains in the core gate.
+- **IMPLEMENTED:** continuity journal detached-batch flush, write-ahead rollback marker, fsync, torn-tail recovery, complete-record compaction and durability diagnostics; six concurrency/recovery/retention regressions added.
+- **IMPLEMENTED:** runtime shutdown now distinguishes Core, cognitive-spine, risk-recovery, world and continuity-ledger persistence; it emits `runtime.stop.durable` only after all obligations are confirmed, otherwise `runtime.stop.partial` and propagated errors. Five fault-injection tests added.
+
+### Body and model
+- **IMPLEMENTED:** 61-bone / 60-pivot humanoid rig; 22-particle / 21-segment body solver, IK, heel/toe ground contacts, friction, 150-degree elbow/knee hinge limit, material-batched skinned anatomical volumes and body-channel motor wiring.
+- **IMPLEMENTED:** actual body update loop is bounded to 20 Hz; visual rendering is independent.
+- **IMPLEMENTED:** OpenClaw SKILL.md is imported as untrusted external knowledge through the existing N.E.K.O. adapter; preview is read-only, commit requires explicit review and imported text receives no tool/action authority.
+- **IMPLEMENTED:** existing loopback-only llama.cpp provider supports bounded schema-constrained JSON output; no duplicate provider/model selector was created.
+
+## Exact-head evidence
+
+**Previous merge-head `53a5926f...`:**
+- **PASS:** articulated particle body physics, TypeScript validation and development bundle (workflow `46061089920`).
+- **PASS:** current-cycle Global Workspace pre-arbitration and cognitive-cycle boundary (workflow `46061090171`).
+- **PASS:** metacognitive memory projection, full-cycle runtime lineage regression and runtime typecheck (workflow `46061090137`).
+- **FAILED:** broad core regression reached app script tests and found one stale health assertion expecting `reason: public-health`. The actual public health response exposes `service: neurocore`, `legacyService: neuro-kurisu`, schema/version and tick instead. The test was corrected; no production runtime behaviour was changed to satisfy the stale assertion.
+
+**Current exact head `4dfc60c4...`:**
+- New Actions workflows are queued/in progress: core regression, focused NeuroCore integration, body physics, normalized VRM motor, ActionGateway governance, Global Workspace, G3 evidence admission, goal-bound planner, metacognitive projection, unified runtime and browser smoke.
+- **PENDING:** exact-head app script suite after health contract correction; app/runtime typecheck and full core gate depend on that step.
+- No G3 host-device PASS or planner exact-head PASS is claimed yet.
+
+## Unresolved / not accepted
+- **UNRESOLVED:** browser hydration, end-to-end chat, local model handshake with an explicitly configured llama.cpp server, interrupted-process recovery and Android/Termux installation.
+- **UNRESOLVED:** continuous anatomical skin/deformation, full balance, collisions, foot planting, gait and mid-range Android frame/RAM/thermal profiling.
+- **UNRESOLVED:** host key provisioning, active consent authority and real Android G3 nonce-store/fsync behaviour.
 - **DEVICE-TESTED:** none in this pass.
+- **RELEASE:** not ready; PR remains Draft.
 
-## Next checkpoint
+## Next execution order
+1. Clear exact-head app regression failures, then require app typecheck/build and runtime typecheck on the same SHA.
+2. Pass NeuroCore core, Global Workspace, planner-lineage, G3 admission, metacognitive and body gates on the exact current SHA.
+3. Run live runtime smoke: chat, wake/sleep, action approval, memory write/read/forget, restart/restore and structured local-LLM handshake.
+4. Complete Termux clean install/start/stop/restart and phone resource profiling.
+5. Continue embodiment from segmented skinned volumes toward continuous surface, stable foot contact, balance and gait.
+6. Only then prepare a user-facing release archive and consider taking the PR out of Draft.
 
-1. Run the focused NeuroCore integration workflow on the merged product branch and inspect every failed or skipped job.
-2. Run root/app/runtime typecheck, all embodiment suites, memory round-trip, capacity/lifecycle and canonical-owner regressions.
-3. Verify browser hydration, chat, memory readback, sleep/wake and error recovery against a live runtime.
-4. Advance the body from segmented volumes to continuous skin/deformation, then validate contact, balance, gait and mobile frame pacing.
-5. Complete Termux install/start/stop/restart and persistence acceptance before publishing a runnable full application package.
-
-Progress changes only when corresponding code, tests and evidence exist.
-
-## Live checkpoint — 2026-11-27, later engineering pass
-
-**Exact current product SHA:** `ef23301c228b0b3c4da0f9ab9f5cd38f29651e52`  
-**Base:** `workpass70-source@8994a103f6b735f6347d77d926ee9c024a4d4f4d`  
-**PR:** [#1221 NeuroCore product branch](https://github.com/ailtron1ss-rgb/NK1/pull/1221), Draft / mergeable.
-
-### Implemented in this pass
-- Procedural humanoid rig now binds ten additional canonical particle landmarks to forearm/wrist/hand/knee/ankle bones; the focused regression requires 17 total particle-to-bone bindings.
-- Corrected left/right knee IK bend direction and knee-relative angle handling; mirrored limb-limit envelopes remain tested.
-- Fixed browser-smoke selectors for NeuroCore product title, actual `NeuroCore 3D` preview accessible name, and actual `Write to NeuroCore…` chat placeholder.
-- Mobile browser smoke now checks the product's real no-preference default (`3d`) and then explicitly switches to Live2D before requiring a loaded Live2D model. No product renderer default was changed.
-- Fixed runtime shutdown error accounting so concrete ContinuityLedger `flush()`/`close()` failures remain the primary error instead of triggering a duplicate generic error based on text matching. Added an injected close-failure regression and safe fixture teardown.
-- Corrected the NeuroCore integration workflow to run the app build through `npm run build`, ensuring `app/node_modules/.bin` is present on PATH for Vite.
-- Restored the full 3,546-line `OrganismRuntime.ts` after a partial-range Contents API write mistake in the feature branch, then reapplied the shutdown change to the full file. This was isolated to the product branch; canonical source and `main` were never modified.
-
-### Exact-head CI status at this checkpoint
-- **17/95 successful check runs (17.9%)**, 11 in progress, 67 queued, 0 failures at the last poll of this SHA.
-- The app regression suite has previously passed on the preceding exact head, including app-script tests, app typecheck/build, runtime typecheck, memory retrieval/unanswerable tests, Hexis evidence/restart persistence, P23 learning restore, local LLM bounded-output and HTTP tests, governance/approval boundaries, speech gateway/timescale/persistence, and shutdown durability regressions. These prior-head passes are evidence of the implementation but do not replace the current-head full matrix.
-- On the current head, the full browser smoke has not yet completed; the current run is in progress. Treat browser acceptance as **PENDING**, not passed.
-- The weighted assembly figure remains **59.75%** until this branch's complete exact-head acceptance and the formal plan crosswalk are re-evaluated. The 17/95 figure is a live CI execution ratio, not a substitute for the weighted prototype score.
-
-### Separate avatar-surface PR #1220
-- Added source model axis/bounds diagnostics, then corrected camera framing to refresh every `SkinnedMesh` skeleton palette, recompute skinned bounds, and use `Box3.setFromObject(root, true)` for pose-aware vertex bounds before and after normalization.
-- Updated the GLB motion integration contract to require skeleton refresh, bounding-box recomputation and the pose-aware bounds call.
-- The earlier framebuffer artifact showed only a 4-pixel-tall visible stripe from an otherwise loaded 101-mesh/99-skinned-mesh GLB. This was a real visual failure, not a threshold-only test issue.
-- Latest diagnostic/pose-aware patch is now on PR #1220 head `747a5f54ea3591bd3acb0195b5a5b8ddbea82b3e`; its fresh CI is running. No WebGL visual pass is claimed yet.
-
-### Remaining acceptance gates
-1. Current-head #1221 full-app browser smoke and final integration/runtime workflows.
-2. #1220 pose-aware WebGL framebuffer readback with meaningful model occupancy; preserve strict pixel acceptance.
-3. Actual configured local LLM provider handshake (optional live smoke is skipped unless a loopback endpoint is supplied).
-4. Android/Termux install, memory/thermal/battery profiling, physical restart/power-loss and audio/lipsync measurements.
-5. Independent bilingual retrieval holdout and legal/release provenance, ZIP parity and human license approval.
-
-No PR was merged, no branch was force-pushed, and no `main`, canonical `workpass70-source`, or Release asset was modified by this pass.
+Progress changes only when corresponding code and evidence exist.
