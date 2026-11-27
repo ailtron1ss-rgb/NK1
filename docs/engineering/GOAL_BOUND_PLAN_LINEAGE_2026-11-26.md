@@ -27,3 +27,17 @@ Previously a plan identified a goal by `goalId` but did not carry an integrity b
 Focused tests prove same-context acceptance, goal/world/decision mismatch rejection, chained step preconditions, expected successor shape, bounded fallback compatibility, and zero world-state mutation during planning. A real OrganismRuntime autonomous cycle also captures the live PlanEngine call and checks that the exact returned cycle decision ID/tick are passed to either beam search or the budget fallback. Existing planner, budget, fallback and ActionGateway tests remain part of the CI gate. The PR workflow installs pinned TypeScript 5.8.3 plus Node 22 type definitions and runs the existing strict `tsconfig.clean.json` semantic compiler check instead of relying on syntax stripping.
 
 This is causal/engineering integrity, not a claim that goals are always correctly understood or plans are optimal.
+
+
+## Plan payload integrity
+
+Every plan is sealed with a SHA-256 fingerprint over its goal binding, ordered
+steps (including actions, preconditions and expected outcomes), expected value,
+search bounds and root lineage. The plan ID is derived from this fingerprint.
+Admission re-hashes the payload before checking decision/goal/world lineage, so
+a changed action or forecast cannot pass by retaining an otherwise valid
+precondition. Step admission also re-projects the proposed action from its
+recorded predecessor snapshot and compares the projected successor fields.
+This is a corruption/tamper-detection checksum inside the runtime boundary, not
+a digital signature or proof against an attacker who can rewrite both code and
+integrity metadata.

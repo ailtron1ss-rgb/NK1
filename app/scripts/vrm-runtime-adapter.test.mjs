@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   applyVrmExpressionFrame,
   applyVrmNormalizedMotorFrame,
+  resolveVrmLookAtTargetOffset,
   configureVrmForNk1NormalizedMotorDrive,
   resolveVrmNormalizedMotorRig,
   resolveVrmEmotionExpression,
@@ -350,4 +351,34 @@ test("canonical brain head yaw is bounded and shared across normalized neck/head
   });
   assert.ok(Math.abs(vrm.bones.get("head").rotation.y - 0.055 * 0.65) < 1e-12,
     "out-of-range yaw must be clamped before applying the normalized offset");
+});
+
+
+test("VRM eye gaze target offsets are bounded, directional and finite", () => {
+  const center = resolveVrmLookAtTargetOffset(0, 0);
+  assert.deepEqual(center, { x: 0, y: 0, z: 1.5 });
+  const right = resolveVrmLookAtTargetOffset(1, 0);
+  const left = resolveVrmLookAtTargetOffset(-1, 0);
+  const down = resolveVrmLookAtTargetOffset(0, 1);
+  const up = resolveVrmLookAtTargetOffset(0, -1);
+  assert.ok(right.x > 0 && left.x < 0);
+  assert.equal(right.y, 0);
+  assert.ok(down.y < 0 && up.y > 0);
+  assert.equal(right.z, 1.5);
+  assert.ok(Math.abs(right.x) <= 0.6 && Math.abs(down.y) <= 0.45);
+  assert.deepEqual(resolveVrmLookAtTargetOffset(Number.NaN, Number.POSITIVE_INFINITY), center);
+});
+
+test("VRM eye look-at ownership prevents gaze from being duplicated as a head turn", () => {
+  const vrm = createFakeVrm();
+  const result = applyVrmNormalizedMotorFrame(vrm, {
+    action: "respond", emotion: "calm", gazeX: 0.8, gazeY: -0.6,
+    cognitiveLoad: 0.4, energy: 0.8, socialNeed: 0.2, uncertainty: 0.3,
+    speaking: true, headTilt: 0, headYaw: 0.2, gazeViaLookAt: true,
+  });
+  assert.equal(result.applied, true);
+  const expectedHeadX = -0.4 * 0.035 + (1 - 0.8) * 0.04;
+  const expectedHeadY = 0.3 * 0.025 + 0.2 * 0.055;
+  assert.ok(Math.abs(vrm.bones.get("head").rotation.x - expectedHeadX * 0.65) < 1e-12);
+  assert.ok(Math.abs(vrm.bones.get("head").rotation.y - expectedHeadY * 0.65) < 1e-12);
 });

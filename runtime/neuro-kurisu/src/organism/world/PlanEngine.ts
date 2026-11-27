@@ -22,11 +22,13 @@ export interface PlanBuildContext { decisionId?: string; tick?: number; }
 export type PlanValidationReason =
   | 'ok' | 'missing-lineage' | 'invalid-context' | 'decision-mismatch'
   | 'decision-tick-mismatch' | 'goal-version-mismatch' | 'world-version-mismatch'
-  | 'invalid-step-index' | 'step-precondition-mismatch' | 'step-outcome-invalid';
+  | 'invalid-step-index' | 'step-precondition-mismatch' | 'step-outcome-invalid'
+  | 'plan-integrity-mismatch';
 export interface PlanValidation { valid: boolean; reason: PlanValidationReason; }
 export interface Plan {
   id: string; goalId?: string; title: string; steps: PlanStep[]; expectedValue: number;
   createdAt: number; searchDepth: number; beamWidth: number; lineage: PlanLineage;
+  integrityFingerprint: string;
 }
 const actionMap: Record<ActionKind, EnvironmentAction> = {
   respond: 'communicate', explore: 'move', verify: 'inspect', rest: 'rest', reflect: 'observe', wait: 'observe', defer: 'rest',
@@ -80,6 +82,31 @@ function expectedOutcome(before: EnvironmentSnapshot, after: EnvironmentSnapshot
 }
 const validation = (valid: boolean, reason: PlanValidationReason): PlanValidation => ({ valid, reason });
 
+type PlanIntegrityFields = Pick<Plan, 'goalId' | 'title' | 'steps' | 'expectedValue' | 'searchDepth' | 'beamWidth' | 'lineage'>;
+function planIntegrityFingerprint(plan: PlanIntegrityFields): string {
+  return sha256Stable({
+    goalId: plan.goalId ?? null,
+    title: plan.title,
+    steps: plan.steps,
+    expectedValue: plan.expectedValue,
+    searchDepth: plan.searchDepth,
+    beamWidth: plan.beamWidth,
+    lineage: plan.lineage,
+  });
+}
+function sealPlan(plan: Omit<Plan, 'id' | 'integrityFingerprint'>): Plan {
+  const integrityFingerprint = planIntegrityFingerprint(plan);
+  return { ...plan, id: 'plan-' + integrityFingerprint.slice(0, 24), integrityFingerprint };
+}
+function hasValidPlanIntegrity(plan: Plan): boolean {
+  if (!plan || typeof plan !== 'object' || !Array.isArray(plan.steps)) return false;
+  const fingerprint = planIntegrityFingerprint(plan);
+  return typeof plan.integrityFingerprint === 'string'
+    && /^[a-f0-9]{64}$/u.test(plan.integrityFingerprint)
+    && plan.integrityFingerprint === fingerprint
+    && plan.id === 'plan-' + fingerprint.slice(0, 24);
+}
+
 export class PlanEngine {
   private readonly environment: WorldEnvironment;
   private readonly residual?: ResidualRewardProvider;
@@ -99,11 +126,10 @@ export class PlanEngine {
       preconditions: stepPreconditions(before),
       expectedOutcome: expectedOutcome(before, projection.next, projection.valid, boundedReward, confidence),
     };
-    return {
-      id: 'plan-' + sha256Stable({ lineage, environmentAction, safeReason }).slice(0, 24),
+    return sealPlan({
       goalId: goal?.id, title: goal?.title ?? 'Budget-constrained action', steps: [step],
       expectedValue: Number((boundedReward * confidence).toFixed(4)), createdAt, searchDepth: 1, beamWidth: 1, lineage,
-    };
+    });
   }
 
   build(goal: OrganismGoal | null, preferred: ActionKind, depth = 4, beamWidth = 4, context?: PlanBuildContext): Plan {
@@ -153,16 +179,16 @@ export class PlanEngine {
       cursor = projection.next;
       return step;
     });
-    return {
-      id: 'plan-' + sha256Stable({ lineage, actions: best.actions, expectedValue: best.score }).slice(0, 24),
+    return sealPlan({
       goalId: goal?.id, title: goal?.title ?? 'Explore the environment', steps,
       expectedValue: Number((best.score / Math.max(1, best.actions.length)).toFixed(4)),
       createdAt: Date.now(), searchDepth, beamWidth: width, lineage,
-    };
+    });
   }
 
   /** Validate the exact decision, goal revision and root world snapshot. */
   validateContext(plan: Plan, goal: OrganismGoal | null, world: EnvironmentSnapshot, context?: PlanBuildContext): PlanValidation {
+    if (!hasValidPlanIntegrity(plan)) return validation(false, 'plan-integrity-mismatch');
     const lineage = plan?.lineage;
     if (!lineage || lineage.version !== 1) return validation(false, 'missing-lineage');
     if (context?.decisionId !== undefined) {
@@ -184,13 +210,21 @@ export class PlanEngine {
 
   /** Validate one step against the exact predecessor world state. */
   validateStep(plan: Plan, stepIndex: number, world: EnvironmentSnapshot): PlanValidation {
+    if (!hasValidPlanIntegrity(plan)) return validation(false, 'plan-integrity-mismatch');
     if (!Number.isSafeInteger(stepIndex) || stepIndex < 0 || stepIndex >= (plan?.steps?.length ?? 0))
       return validation(false, 'invalid-step-index');
     const step = plan.steps[stepIndex];
     const pre = step?.preconditions;
     if (!pre || pre.worldTick !== world.tick || pre.location !== world.location || pre.worldFingerprint !== worldFingerprint(world))
       return validation(false, 'step-precondition-mismatch');
-    if (step.expectedOutcome?.valid !== true) return validation(false, 'step-outcome-invalid');
+    if (step.expectedOutcome?.valid !== true || !envActions.includes(step.environmentAction))
+      return validation(false, 'step-outcome-invalid');
+    const projection = this.environment.project(step.environmentAction, world);
+    const projectedOutcome = expectedOutcome(
+      world, projection.next, projection.valid, step.expectedOutcome.reward, step.expectedOutcome.confidence,
+    );
+    if (!projection.valid || sha256Stable(projectedOutcome) !== sha256Stable(step.expectedOutcome))
+      return validation(false, 'step-outcome-invalid');
     return validation(true, 'ok');
   }
 }

@@ -1,5 +1,5 @@
 /**
- * Canonical default body-renderer manifests for the four wired UI modes.
+ * Canonical manifests for the four wired renderer adapters.
  *
  * These describe what each renderer actually applies today. They are the single
  * source of truth consumed by `embodimentUiBridge`, so a renderer's declared
@@ -22,12 +22,14 @@ const EXPRESSION_CHANNELS = [
 export const LIVE2D_CHANNELS = ["headRoll", "gazeX", "gazeY"] as const;
 export const SVG_CHANNELS = ["torsoYaw", "torsoPitch", "headYaw", "headPitch", "headRoll", "gazeX", "gazeY", "breath"] as const;
 export const SPRITE_CHANNELS = [] as const;
-export const VRM3D_CHANNELS = ["torsoPitch", "leftElbow", "rightElbow", "leftHip", "rightHip", "leftKnee", "rightKnee", "gazeX", "gazeY"] as const;
+export const VRM3D_CHANNELS = ["torsoYaw", "torsoPitch", "rootYaw", "leftElbow", "rightElbow", "leftHip", "rightHip", "leftKnee", "rightKnee", "leftAnkle", "rightAnkle", "leftWrist", "rightWrist", "leftHand", "rightHand", "leftFingers", "rightFingers", "leftThumbCurl", "leftIndexCurl", "leftMiddleCurl", "leftRingCurl", "leftLittleCurl", "rightThumbCurl", "rightIndexCurl", "rightMiddleCurl", "rightRingCurl", "rightLittleCurl", "gazeX", "gazeY"] as const;
 
 export const DEFAULT_RENDERER_MANIFESTS: readonly BodyRendererCapabilityManifest[] = [
   {
-    schemaVersion: 1,
+    schemaVersion: 2,
     rendererId: "nk1-live2d-cubism",
+    rigClass: "cubism-deform",
+    selectionRole: "primary",
     label: "Live2D Cubism",
     mode: "live2d",
     assetKind: "cubism-model",
@@ -43,8 +45,10 @@ export const DEFAULT_RENDERER_MANIFESTS: readonly BodyRendererCapabilityManifest
     notes: "Bundled Cubism model with physics; limb channels are not driven yet.",
   },
   {
-    schemaVersion: 1,
+    schemaVersion: 2,
     rendererId: "nk1-original-svg-2d",
+    rigClass: "vector-driven",
+    selectionRole: "fallback",
     label: "NK1 Original 2D",
     mode: "live2d",
     assetKind: "svg-vector",
@@ -60,8 +64,10 @@ export const DEFAULT_RENDERER_MANIFESTS: readonly BodyRendererCapabilityManifest
     notes: "Flat SVG concept; yaw/pitch map to translation, roll to rotation, breath to a bounded scale. No skeletal joints.",
   },
   {
-    schemaVersion: 1,
+    schemaVersion: 2,
     rendererId: "nk1-legacy-sprites-2d",
+    rigClass: "static-poses",
+    selectionRole: "fallback",
     label: "Legacy sprites",
     mode: "live2d",
     assetKind: "sprite-sheet",
@@ -77,8 +83,10 @@ export const DEFAULT_RENDERER_MANIFESTS: readonly BodyRendererCapabilityManifest
     notes: "Static reaction frames; no independent channel control.",
   },
   {
-    schemaVersion: 1,
+    schemaVersion: 2,
     rendererId: "nk1-three-vrm3d",
+    rigClass: "humanoid-skeleton",
+    selectionRole: "preview-only",
     label: "Three.js VRM / 3D",
     mode: "vrm3d",
     assetKind: "gltf",
@@ -90,8 +98,8 @@ export const DEFAULT_RENDERER_MANIFESTS: readonly BodyRendererCapabilityManifest
     supportsWorldTargets: true,
     supportsClothingLayers: false,
     supportsPhysics: true,
-    joints: ["head", "neck", "leftUpperArm", "rightUpperArm", "spine", "leftLowerArm", "rightLowerArm", "leftUpperLeg", "rightUpperLeg", "leftLowerLeg", "rightLowerLeg"],
-    notes: "The pinned v5 GLB is externally hosted and has not passed visual, Android-device or redistribution-license acceptance; user-imported VRM/GLB is available, but the default renderer is not production-ready. Normalized drive covers head/neck, shoulders, elbows, spine, hips and knees; wrists, hands and ankles are not wired yet.",
+    joints: ["head", "neck", "hips", "leftUpperArm", "rightUpperArm", "spine", "leftLowerArm", "rightLowerArm", "leftUpperLeg", "rightUpperLeg", "leftLowerLeg", "rightLowerLeg", "leftFoot", "rightFoot", "leftHand", "rightHand", "leftThumbMetacarpal", "leftThumbProximal", "leftThumbDistal", "leftIndexProximal", "leftIndexIntermediate", "leftIndexDistal", "leftMiddleProximal", "leftMiddleIntermediate", "leftMiddleDistal", "leftRingProximal", "leftRingIntermediate", "leftRingDistal", "leftLittleProximal", "leftLittleIntermediate", "leftLittleDistal", "rightThumbMetacarpal", "rightThumbProximal", "rightThumbDistal", "rightIndexProximal", "rightIndexIntermediate", "rightIndexDistal", "rightMiddleProximal", "rightMiddleIntermediate", "rightMiddleDistal", "rightRingProximal", "rightRingIntermediate", "rightRingDistal", "rightLittleProximal", "rightLittleIntermediate", "rightLittleDistal"],
+    notes: "The pinned v5 GLB is externally hosted and has not passed visual, Android-device or redistribution-license acceptance; user-imported VRM/GLB is available, but the default renderer is not production-ready. Normalized drive covers head/neck, torso/root yaw and pitch, elbows, hips, knees, ankle-to-foot pitch, wrist/palm rotation, and per-finger curl and pointing gestures when the imported VRM exposes the optional standard humanoid finger joints; each optional joint is resolved per model before writing.",
   },
 ];
 

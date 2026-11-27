@@ -46,20 +46,23 @@ assert.match(runtimeSource,
   /const planningBudget = projectAllowed && !riskRecoveryApplied\s*\?\s*this\.core\.cognitiveBudgetSpend\('planning',[\s\S]*?:\s*\{ accepted: false \};/,
   'planning budget must require project permission and must be skipped for autonomous recovery overrides');
 assert.match(runtimeSource,
-  /const autonomousRecoveryAllowed = !externalText && cycle\.decision\.userRequestedAction == null;/,
-  'autonomous recovery must never override external turns or explicit user-selected actions');
-assert.match(runtimeSource,
   /const planBuildContext = \{ decisionId: cycle\.decision\.id, tick: cycle\.decision\.tick \};/,
   'the canonical decision identity and tick must be passed into every plan build');
-assert.match(runtimeSource,
-  /const plan = riskRecoveryApplied\s*\?\s*this\.plans\.buildBudgetFallback\(selectedGoal, internalAction, 'risk-aware-recovery-override', planBuildContext\)\s*:\s*planningBudget\.accepted && projectAllowed\s*\?\s*this\.plans\.build\(selectedGoal, internalAction, 4, 4, planBuildContext\)\s*:\s*this\.plans\.buildBudgetFallback\(selectedGoal, internalAction, projectAllowed \? 'planning-budget-exhausted' : 'planner-project-gated', planBuildContext\);/,
-  'normal planning and both fallback paths must carry the same canonical plan context');
 assert.match(runtimeSource,
   /const planContextValidation = this\.plans\.validateContext\(plan, selectedGoal, before, planBuildContext\);/,
   'the runtime must reject a plan whose decision, goal or world revision no longer matches');
 assert.match(runtimeSource,
+  /const firstStepValidation = this\.plans\.validateStep\(plan, 0, before\);/,
+  'the runtime must validate first-step preconditions before rollout');
+assert.match(runtimeSource,
   /const planStep = planStepValid \? plan\.steps\[0\] : undefined;/,
   'only a validated first plan step may feed the rollout');
+assert.match(runtimeSource,
+  /const autonomousRecoveryAllowed = !externalText && cycle\.decision\.userRequestedAction == null;/,
+  'autonomous recovery must never override external turns or explicit user-selected actions');
+assert.match(runtimeSource,
+  /const plan = riskRecoveryApplied\s*\?\s*this\.plans\.buildBudgetFallback\(selectedGoal, internalAction, 'risk-aware-recovery-override'\)\s*:\s*planningBudget\.accepted && projectAllowed\s*\?\s*this\.plans\.build\([\s\S]*?:\s*this\.plans\.buildBudgetFallback\(/,
+  'recovery overrides must use the one-step fallback and normal planning must remain budget-gated');
 assert.match(runtimeSource,
   /const worldRolloutAllowed = executionPlan\?\.run\?\.\['world-rollout'\] !== false && spineDecision\.run\['world-rollout'\];/,
   'optional world rollout must obey its explicit execution-plan gate');

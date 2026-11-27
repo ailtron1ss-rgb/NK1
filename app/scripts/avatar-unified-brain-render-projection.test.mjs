@@ -58,6 +58,7 @@ test("canonical same-tick brain frame is folded into the one shared render proje
 
   const projection = buildAvatarRenderProjection(input(snapshot));
 
+  assert.equal(projection.tick, snapshot.tick, "the projection must retain the canonical organism tick independently of speech/intent sequences");
   assert.deepEqual(projection.brainFrame, snapshot.avatarBrain.frame);
   assert.equal(projection.expression, "focused", "canonical brain expression should win over renderer-local emotion mapping");
   assert.equal(projection.expressionIntensity, 0.86);

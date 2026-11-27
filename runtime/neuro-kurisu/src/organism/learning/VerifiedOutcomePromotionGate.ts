@@ -10,6 +10,14 @@ export interface PromotionGateConfig {
   minAbsoluteGain: number;
   maxFamilyRegression: number;
   requirePositiveConfidenceLowerBound: boolean;
+  /**
+   * Counting unit of the supplied summaries. `task-cell` (default) compares
+   * independent task × seed pairs, so family counts must partition the aggregate.
+   * `seed-cluster` compares independent seed aggregates: every complete seed is
+   * counted once per family, so family totals are expected to exceed the
+   * aggregate and must never fall below it.
+   */
+  pairedUnit?: 'task-cell' | 'seed-cluster';
 }
 
 export interface PromotionGateResult {
@@ -28,6 +36,7 @@ const DEFAULTS: PromotionGateConfig = {
   minAbsoluteGain: 0.02,
   maxFamilyRegression: 0.05,
   requirePositiveConfidenceLowerBound: true,
+  pairedUnit: 'task-cell',
 };
 
 /**
@@ -44,7 +53,8 @@ export function evaluateOutcomePromotion(
   if (!Number.isSafeInteger(cfg.minPairedTasks) || cfg.minPairedTasks < 1 ||
       !Number.isSafeInteger(cfg.minFamilies) || cfg.minFamilies < 1 ||
       !Number.isFinite(cfg.minAbsoluteGain) || cfg.minAbsoluteGain < 0 ||
-      !Number.isFinite(cfg.maxFamilyRegression) || cfg.maxFamilyRegression < 0) {
+      !Number.isFinite(cfg.maxFamilyRegression) || cfg.maxFamilyRegression < 0 ||
+      (cfg.pairedUnit !== 'task-cell' && cfg.pairedUnit !== 'seed-cluster')) {
     throw new Error('invalid promotion gate configuration');
   }
   const reasons: string[] = [];
@@ -73,7 +83,14 @@ export function evaluateOutcomePromotion(
     return { family: item.family, pairedN: item.pairedN, gain: item.absoluteGain, eligible };
   });
   const familyPairTotal = familyResults.reduce((sum, item) => sum + (Number.isSafeInteger(item.pairedN) && item.pairedN > 0 ? item.pairedN : 0), 0);
-  if (familyPairTotal !== aggregate.pairedN) reasons.push('family-pair-count-mismatch');
+  // Seed-clustered families legitimately recount the same complete seeds, so only
+  // a total below the aggregate sample is impossible; task-cell comparisons must
+  // partition the aggregate exactly.
+  if (cfg.pairedUnit === 'seed-cluster'
+    ? familyPairTotal < aggregate.pairedN
+    : familyPairTotal !== aggregate.pairedN) {
+    reasons.push('family-pair-count-mismatch');
+  }
   const worstFamilyGain = familyResults.length
     ? Math.min(...familyResults.map((item) => item.gain))
     : null;

@@ -9,6 +9,20 @@
     "npm": ">=10.8.0"
   },
   "scripts": {
+    "test:state-growth": "node --experimental-strip-types tests/state-growth-budget.mjs",
+    "test:memory-write-primitives": "node --experimental-strip-types tests/memory-write-primitives.mjs",
+    "test:memory-write-policy": "node --experimental-strip-types tests/memory-write-policy.mjs",
+    "test:memory-write-policy-runtime": "node --experimental-strip-types tests/memory-write-policy-runtime.mjs",
+    "test:memory-write-policy-http": "node --experimental-strip-types tests/memory-write-policy-http.mjs",
+    "test:memory-write-policy-ab": "node --experimental-strip-types tests/memory-write-policy-ab.mjs",
+    "test:memory-write-policy-eviction": "node --experimental-strip-types tests/memory-write-policy-eviction.mjs",
+    "test:memory-write-policy-eviction-pressure": "node --experimental-strip-types tests/memory-write-policy-eviction-pressure.mjs",
+    "test:memory-write-policy-reinforcement": "node --experimental-strip-types tests/memory-write-policy-reinforcement.mjs",
+    "test:memory-write-policy-retrieval-hit": "node --experimental-strip-types tests/memory-write-policy-retrieval-hit.mjs",
+    "test:memory-write-policy-retrieval-benchmark-ab": "node --experimental-strip-types tests/memory-write-policy-retrieval-benchmark-ab.mjs",
+    "test:memory-forget-integrity": "node --experimental-strip-types tests/memory-forget-integrity.mjs",
+    "test:assimilation-wave1": "node --experimental-strip-types tests/memory-write-primitives.mjs && node --experimental-strip-types tests/memory-write-policy.mjs && node --experimental-strip-types tests/memory-write-policy-runtime.mjs && node --experimental-strip-types tests/memory-write-policy-http.mjs && node --experimental-strip-types tests/memory-write-policy-ab.mjs && node --experimental-strip-types tests/memory-write-policy-eviction.mjs && node --experimental-strip-types tests/memory-write-policy-reinforcement.mjs && node --experimental-strip-types tests/memory-write-policy-retrieval-benchmark-ab.mjs && node --experimental-strip-types tests/memory-forget-integrity.mjs && node --experimental-strip-types tests/memory-retrieval-bilingual-corpus.mjs && node --experimental-strip-types tests/memory-write-policy-derived-evidence.mjs",
+    "test:http-request-context": "node --experimental-strip-types --test tests/http-request-context.mjs",
     "test:embodiment-voice-cognitive-context": "node --experimental-strip-types tests/embodiment-voice-cognitive-context.mjs",
     "test:neko-asr-transcript-adapter": "node --experimental-strip-types --test tests/neko-asr-transcript-adapter.mjs",
     "test:neko-asr-embodiment-wiring": "node --experimental-strip-types --test tests/neko-asr-embodiment-wiring.mjs",
@@ -1930,6 +1944,8 @@
     "test:action-receipt-selfauthorship-recovery-workpass72": "node --experimental-strip-types tests/action-receipt-selfauthorship-recovery-workpass72.mjs",
     "test:cef-decision-reference-workpass72": "node --experimental-strip-types tests/cef-decision-reference-workpass72.mjs",
     "test:workpass642:cef-ordering": "node --experimental-strip-types tests/workpass642-cognitive-event-ordering.mjs",
+    "test:memory-bilingual-corpus": "node --experimental-strip-types tests/memory-retrieval-bilingual-corpus.mjs",
+    "test:memory-write-policy-derived-evidence": "node --experimental-strip-types tests/memory-write-policy-derived-evidence.mjs",
     "test:goal-bound-plan-lineage": "node --experimental-strip-types tests/goal-bound-plan-lineage-20261126.mjs",
     "test:goal-bound-plan-runtime-integration": "node --experimental-strip-types tests/goal-bound-plan-runtime-integration-20261126.mjs"
   }

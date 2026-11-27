@@ -29,6 +29,7 @@ import { MemoryConsolidationController } from '../memory/MemoryConsolidationCont
 import { CanonicalMemoryLifecycleAuthority } from '../memory/CanonicalMemoryLifecycleAuthority.ts';
 import { MemoryRetentionEconomy, defaultMemoryRetentionEconomy } from '../system/MemoryRetentionEconomy.ts';
 import { MemoryCausalEconomy, defaultMemoryCausalEconomy } from '../system/MemoryCausalEconomy.ts';
+import { MemoryWritePolicy, resolveMemoryWritePolicyMode } from '../system/MemoryWritePolicy.ts';
 import { CausalLifeGraph } from '../system/CausalLifeGraph.ts';
 import { MemoryWorldCausalBridge, defaultMemoryWorldCausalBridge } from '../system/MemoryWorldCausalBridge.ts';
 
@@ -76,6 +77,12 @@ export class MemorySubsystemRuntime {
   readonly memoryRetentionEconomy = new MemoryRetentionEconomy();
   /** Ownership extraction: retained algorithm/state, moved out of OrganismCore. */
   readonly memoryCausalEconomy = new MemoryCausalEconomy();
+  /**
+   * Assimilated write policy (neurocore-v143): uncertainty gain, HiPPO history, fast/slow
+   * revival and bounded deep-work selection. Default `shadow` records decisions without
+   * changing retention behaviour; `NEURO_MEMORY_WRITE_POLICY=active` applies the bounded gain.
+   */
+  readonly memoryWritePolicy = new MemoryWritePolicy({ mode: resolveMemoryWritePolicyMode(process.env.NEURO_MEMORY_WRITE_POLICY) });
   /** Ownership extraction: retained algorithm/state, moved out of OrganismCore. */
   readonly causalLifeGraph = new CausalLifeGraph();
   /** Ownership extraction: retained algorithm/state, moved out of OrganismCore. */

@@ -381,10 +381,41 @@ export class WorldSubsystemRuntime {
     return { version:1, stats:{...this.worldLearningStats}, lastWorldLatentId:this.lastWorldLatentId, p27Latent:this.lastP27Latent };
   }
 
-  worldLearningRestore(snapshot?:any){
-    if(snapshot?.stats) this.worldLearningStats={...this.worldLearningStats,...snapshot.stats};
-    this.lastWorldLatentId=snapshot?.lastWorldLatentId ?? this.worldModel2.snapshot({clone:false}).latentState?.id ?? null;
-    this.lastP27Latent=snapshot?.p27Latent ?? this.p27NeuralWorld.snapshot().latent;
+  worldLearningRestore(snapshot?:unknown){
+    const root=snapshot&&typeof snapshot==='object'&&!Array.isArray(snapshot)
+      ?snapshot as Record<string,unknown>
+      :{};
+    const rawStats=root.stats&&typeof root.stats==='object'&&!Array.isArray(root.stats)
+      ?root.stats as Record<string,unknown>
+      :{};
+    const counter=(value:unknown):number=>
+      typeof value==='number'&&Number.isSafeInteger(value)&&value>=0
+        ?Math.min(value,1_000_000_000)
+        :0;
+    const metric=(value:unknown):number=>
+      typeof value==='number'&&Number.isFinite(value)?clamp(value):0;
+    // Persisted aggregate counters and scores are not proof. Reject invalid,
+    // negative, fractional, non-finite and unbounded values before they can
+    // influence the next appraisal/planning cycle.
+    this.worldLearningStats={
+      observations:counter(rawStats.observations),
+      passiveUpdates:counter(rawStats.passiveUpdates),
+      actionUpdates:counter(rawStats.actionUpdates),
+      lastPassiveError01:metric(rawStats.lastPassiveError01),
+      lastActionError01:metric(rawStats.lastActionError01),
+      modelAgreement01:metric(rawStats.modelAgreement01),
+      lastAt:counter(rawStats.lastAt),
+      brainActionSamples:counter(rawStats.brainActionSamples),
+      brainValidated:rawStats.brainValidated===true,
+    };
+    const worldLatentId=this.worldModel2.snapshot({clone:false}).latentState?.id??null;
+    const candidateId=root.lastWorldLatentId;
+    this.lastWorldLatentId=typeof candidateId==='string'&&candidateId.trim().length>0&&candidateId.length<=180
+      ?candidateId
+      :worldLatentId;
+    // P27 owns its latent. A cached copy in the world-learning sidecar is only
+    // a projection and must never override the canonical neural-world owner.
+    this.lastP27Latent=this.p27NeuralWorld.snapshot().latent;
   }
 
   trackPrediction(input:{predictionId:string;claimKey:string;predicted01:number;confidence01:number;at?:number}){ return this.p83PersistentReality.linkPrediction(input); }
@@ -413,10 +444,16 @@ export class WorldSubsystemRuntime {
     this.auroraKernel.restore(advanced.auroraKernel);
     this.worldLearningRestore(advanced.worldLearning);
     this.lastWorldLatentId=this.lastWorldLatentId ?? this.worldModel2.snapshot({clone:false}).latentState?.id ?? null;
-    this.lastWorldContext=null;
-    this.lastP27Latent=this.p27NeuralWorld.snapshot().latent;
+    // Rehydrate the transition baseline from the canonical latent observation;
+    // clearing it would make the first changed post-restart context look like a baseline.
+    const restoredObservation=this.unifiedLatentWorldState.currentObservation();
+    this.lastWorldContext=restoredObservation && isWorldContext(restoredObservation.context)
+      ? structuredClone(restoredObservation.context)
+      : null;
     this.p24WorldIdentity.restore(advanced.p24);
     this.p27NeuralWorld.restore(cognition.p27);
+    // The cached latent must be read after the canonical P27 owner is restored.
+    this.lastP27Latent=this.p27NeuralWorld.snapshot().latent;
     this.brainSubstrate.restore(cognition.brainSubstrate);
     this.p44PredictiveWorld.restore(learning.p44PredictiveWorld);
     this.p50CausalSelfWorld.restore(advanced.p50CausalSelfWorld);

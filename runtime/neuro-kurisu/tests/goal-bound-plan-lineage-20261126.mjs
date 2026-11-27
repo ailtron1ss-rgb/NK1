@@ -30,6 +30,9 @@ assert.match(plan.lineage.goal.fingerprint, /^[a-f0-9]{64}$/);
 assert.equal(plan.lineage.world.tick, initialWorld.tick);
 assert.match(plan.lineage.world.fingerprint, /^[a-f0-9]{64}$/);
 assert.ok(plan.steps.length > 0);
+assert.match(plan.integrityFingerprint, /^[a-f0-9]{64}$/);
+assert.equal(plan.id, 'plan-' + plan.integrityFingerprint.slice(0, 24),
+  'the plan identifier must be derived from its sealed actionable payload');
 assert.ok(plan.steps.every(step => step.preconditions && step.expectedOutcome),
   'every step must carry explicit preconditions and expected outcome');
 

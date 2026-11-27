@@ -35,7 +35,7 @@ try {
     const world = runtime.environment.snapshot();
     const contextCheck = runtime.plans.validateContext(plan, goal, world, context);
     const stepCheck = runtime.plans.validateStep(plan, 0, world);
-    planCalls.push({ kind: 'beam', goal, context, plan, accepted: contextCheck.valid && stepCheck.valid });
+    planCalls.push({ kind: 'beam', goal, context, plan, contextValid: contextCheck.valid, stepValid: stepCheck.valid, accepted: contextCheck.valid && stepCheck.valid });
     return plan;
   };
   runtime.plans.buildBudgetFallback = (goal, preferred, reason, context) => {
@@ -43,7 +43,7 @@ try {
     const world = runtime.environment.snapshot();
     const contextCheck = runtime.plans.validateContext(plan, goal, world, context);
     const stepCheck = runtime.plans.validateStep(plan, 0, world);
-    planCalls.push({ kind: 'fallback', goal, context, plan, accepted: contextCheck.valid && stepCheck.valid });
+    planCalls.push({ kind: 'fallback', goal, context, plan, contextValid: contextCheck.valid, stepValid: stepCheck.valid, accepted: contextCheck.valid && stepCheck.valid });
     return plan;
   };
 
@@ -69,9 +69,10 @@ try {
     assert.equal(cycleEventInput[stage].payload.goalId, call.plan.lineage.goal.id,
       'the same exact goal identity must survive the plan/action/outcome causal stages');
     assert.equal(cycleEventInput[stage].payload.planAccepted, call.accepted,
-      'plan/action/outcome must agree on the runtime validation result');
-    assert.equal(cycleEventInput[stage].payload.planAccepted, cycleEventInput.plan.payload.contextValid,
-      'the CEF trace must carry one consistent plan-acceptance decision across stages');
+      'plan/action/outcome must agree on the combined context and step validation result');
+  }
+  assert.equal(cycleEventInput.plan.payload.contextValid, call.contextValid,
+    'the plan event must distinguish valid root context from first-step acceptance');
   }
   console.log('GOAL_BOUND_PLAN_RUNTIME_INTEGRATION=PASS', JSON.stringify({
     kind: call.kind,

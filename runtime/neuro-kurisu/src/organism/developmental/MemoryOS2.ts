@@ -1900,8 +1900,11 @@ export class MemoryOS2{
    // into a confident-looking autobiographical answer.
    const conceptMatchesById=new Map<string,number>([...candidatePriority.entries()].map(([id,priority])=>[id,priority.conceptMatches]));
    const minQueryCoverage=qTokens.size>=5?.30:qTokens.size>=3?.34:qTokens.size===2?.50:1;
-   const identifierPattern=/(?:\b[A-Z]{2,}[-_/]?[0-9]{2,}\b|\b[0-9]{3,}\b|\b[A-F0-9]{8,}\b)/giu;
-   const normalizeIdentifier=(value:string)=>value.toLocaleUpperCase().replace(/[^A-Z0-9]/g,'');
+   const identifierPattern=/(?:(?<![\p{L}\p{N}])\p{L}{2,}(?:[-_/]\p{L}{1,})*[-_/]?\p{N}{1,}(?![\p{L}\p{N}])|\b[A-Z]{2,}[-_/]?[0-9]{2,}\b|\b[0-9]{3,}\b|\b[A-F0-9]{8,}\b)/gu;
+   // Cyrillic codes (КХ-РУ-3) must normalize to the same letters, so the strip keeps any
+   // script's letters and digits; the previous ASCII-only strip turned КХ-РУ-3 into "3" and
+   // every such code looked identical to every other one.
+   const normalizeIdentifier=(value:string)=>value.toLocaleUpperCase().replace(/[^\p{L}\p{N}]/gu,'');
    const queryIdentifiers=[...(String(query).matchAll(identifierPattern))].map(match=>normalizeIdentifier(match[0]));
    const groundedRows=topRows.filter(({m})=>{
      // Exact identifiers are direct evidence even when the prose query includes several
@@ -1929,6 +1932,10 @@ export class MemoryOS2{
          return inflectionalMatch||stableRootMatch;
        }));
      const metadataEvidence=this.metadataRecallEnabled&&evidence.metadata>=.66;
+     // A code in the query that the memory does not carry is a conflict, not a near miss:
+     // character fuzziness between КХ-ПЛОМБА-0 and КХ-РУ-0, or between KX-SEAL-0 and KX-EN-0,
+     // otherwise grounds an unrelated record and the answerability gate never abstains.
+     const identifierConflict=queryIdentifiers.length>0&&memoryIdentifiers.length>0&&!identifierEvidence;
      // Bilingual concept grounding: a memory that expresses the query's active
      // concept groups is direct evidence of aboutness even with zero literal token
      // overlap. Bounded to a focused (<=3 group) query and >=50% group coverage so a
@@ -1937,10 +1944,11 @@ export class MemoryOS2{
      const conceptGroupCount=conceptQuery.groups.length;
      const conceptGrounding=conceptGroupCount>=1&&conceptGroupCount<=3&&(conceptMatchesById.get(m.id)??0)>=1&&evidence.conceptCoverage>=.50&&qTokens.size<=8;
      const spatialEvidence=Boolean(spatialQuery&&evidence.spatialDistance!==null);
-     const lexicalEvidence=spatialEvidence||identifierEvidence||exactPhrase||morphologyEvidence||metadataEvidence||evidence.coverage>=minQueryCoverage||evidence.entity>=.40||
+     const weakEvidence=metadataEvidence||evidence.coverage>=minQueryCoverage||evidence.entity>=.40||
        (qTokens.size<5&&evidence.fuzzy>=.45)||
        (qTokens.size<=4&&evidence.conceptCoverage>=.45&&evidence.coverage>=.16)||
        conceptGrounding;
+     const lexicalEvidence=spatialEvidence||identifierEvidence||exactPhrase||morphologyEvidence||(!identifierConflict&&weakEvidence);
      // A causal paraphrase may have no literal-token overlap with the event text.
      // Permit the concept bridge only when the memory carries explicit causal lineage;
      // generic semantic/recency matches still cannot bypass the answerability gate.
@@ -2345,14 +2353,20 @@ export class MemoryOS2{
  forgetById(id:string,reason='memory-knockout'){
   return this.removeCanonicalItemById(id,reason,false);
  }
- enforceByteBudget(options:{maxBytes?:number;tick?:number;protectedIds?:string[];reason?:string}={}){
+ enforceByteBudget(options:{maxBytes?:number;tick?:number;protectedIds?:string[];reason?:string;valueAdjustment?:(m:MemoryItem2)=>number}={}){
    const budget=Math.max(16384,Math.floor(Number(options.maxBytes??this.state.byteBudget??524288)));
    this.state.byteBudget=budget;
    const protectedIds=new Set(options.protectedIds??[]);
    const removed:string[]=[];
    const scoreValue=(m:MemoryItem2)=>clamp(.24*m.salience+.16*m.identityRelevance+.16*m.goalRelevance+.10*m.socialRelevance+.12*m.predictionError+.10*m.confidence+.08*m.emotionalWeight+.04*Math.min(1,m.retrievalCount/12));
    const harm=(m:MemoryItem2)=>clamp(.22*(m.dormant?1:0)+.18*(1-m.confidence)+.15*Math.min(1,m.semanticLinks.length/8));
-   const density=(m:MemoryItem2)=>{const bytes=Math.max(96,estimateMemoryBytes(m));return clamp(Math.max(0,scoreValue(m)-.30*harm(m)+.05*clamp(Number(m.sourceAuthority01??.5)))*Math.sqrt(512/bytes));};
+   // `valueAdjustment` lets an external policy re-weight retention value per item
+   // (e.g. channel reliability from the assimilated write policy). It is clamped so a
+   // caller can nudge eviction order but never invert a clearly valuable memory.
+      // Local bound: the module-level `clamp` normalizes to 0..1, which would silently turn every
+   // protective weight (>1) into 1 and leave only demotion working.
+   const adjust=(m:MemoryItem2)=>{if(!options.valueAdjustment)return 1;const raw=Number(options.valueAdjustment(m));return Math.max(.5,Math.min(1.5,Number.isFinite(raw)?raw:1));};
+   const density=(m:MemoryItem2)=>{const bytes=Math.max(96,estimateMemoryBytes(m));return clamp(Math.max(0,scoreValue(m)-.30*harm(m)+.05*clamp(Number(m.sourceAuthority01??.5)))*Math.sqrt(512/bytes)*adjust(m));};
    while(this.state.estimatedBytes>budget){
      const candidates=this.state.items.filter(m=>!protectedIds.has(m.id)&&m.epistemicStatus!=='quarantined'&&m.kind!=='identity'&&m.kind!=='autobiographical');
      if(!candidates.length)break;

@@ -135,7 +135,10 @@ const CHANNEL_KEYS: ReadonlySet<BodyChannel> = new Set([
   "headYaw", "headPitch", "headRoll", "torsoYaw", "torsoPitch",
   "leftShoulder", "leftElbow", "leftWrist", "rightShoulder", "rightElbow", "rightWrist",
   "leftHip", "leftKnee", "leftAnkle", "rightHip", "rightKnee", "rightAnkle",
-  "leftHand", "rightHand", "leftFingers", "rightFingers", "gazeX", "gazeY", "breath", "rootYaw",
+  "leftHand", "rightHand", "leftFingers", "rightFingers",
+  "leftThumbCurl", "leftIndexCurl", "leftMiddleCurl", "leftRingCurl", "leftLittleCurl",
+  "rightThumbCurl", "rightIndexCurl", "rightMiddleCurl", "rightRingCurl", "rightLittleCurl",
+  "gazeX", "gazeY", "breath", "rootYaw",
 ]);
 
 /** Merge bounded arbiter channels with derived channels; derived values win on conflict. */
