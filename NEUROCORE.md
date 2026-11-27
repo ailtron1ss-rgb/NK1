@@ -16,7 +16,7 @@ The source tree contains 10,738 tracked files and 293,126,769 bytes (279.55 MiB)
 
 The root package orchestrates the application and runtime. The web UI is under `app/`; the canonical organism runtime is under `runtime/neuro-kurisu/` for now, because renaming that path in one destructive sweep would break a large existing import graph. The visible product and HTTP health identity are NeuroCore. Internal legacy path migration is incremental and tested.
 
-The app already uses the runtime API. The browser store calls `neuroApi`, which reads `/api/organism/ui-snapshot` and sends chat/sleep/wake actions to the backend. The backend owns the organism state and execution; the browser is a projection/control surface, not a second brain. The default 3D view now instantiates the built-in 61-bone segmented humanoid and drives its pivots/IK from the existing 18-particle body solver; external VRM/GLB remains optional.
+The app already uses the runtime API. The browser store calls `neuroApi`, which reads `/api/organism/ui-snapshot` and sends chat/sleep/wake actions to the backend. The backend owns the organism state and execution; the browser is a projection/control surface, not a second brain. The default 3D view now instantiates the built-in 61-bone articulated humanoid with material-batched skinned meshes built from segmented anatomical volumes and drives its pivots/IK from the existing 18-particle body solver; external VRM/GLB remains optional.
 
 ## Canonical memory ownership
 
