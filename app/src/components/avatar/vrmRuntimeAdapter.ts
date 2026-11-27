@@ -142,6 +142,8 @@ export interface VrmFullBodyRig extends VrmNormalizedMotorRig {
   rightUpperLeg: NormalizedBoneNode | null;
   leftLowerLeg: NormalizedBoneNode | null;
   rightLowerLeg: NormalizedBoneNode | null;
+  leftFoot: NormalizedBoneNode | null;
+  rightFoot: NormalizedBoneNode | null;
 }
 
 export interface VrmNormalizedMotorResult {
@@ -302,6 +304,8 @@ export function resolveVrmFullBodyRig(vrm: VRM): VrmFullBodyRig {
     rightUpperLeg: resolve("rightUpperLeg"),
     leftLowerLeg: resolve("leftLowerLeg"),
     rightLowerLeg: resolve("rightLowerLeg"),
+    leftFoot: resolve("leftFoot"),
+    rightFoot: resolve("rightFoot"),
   };
 }
 
@@ -330,7 +334,7 @@ export interface VrmFullBodyApplyResult {
  * Upper-arm bones are intentionally NOT written here: the gaze/gesture
  * controller (`applyVrmNormalizedMotorFrame`) owns the shoulders via arm intents,
  * so writing them twice would double-drive the same bone. This function owns
- * elbow, hip, knee and spine. Channels without a mapping are ignored rather than
+ * elbow, hip, knee, ankle/foot pitch and spine. Channels without a mapping are ignored rather than
  * guessed, and it reports only the bones it actually wrote — never a visual claim.
  */
 export function applyVrmFullBodyChannels(vrm: VRM, channels: Readonly<Partial<Record<BodyChannel, number>>>): VrmFullBodyApplyResult {
@@ -340,7 +344,7 @@ export function applyVrmFullBodyChannels(vrm: VRM, channels: Readonly<Partial<Re
   // owns the remaining bones, so it must do the same or the additive writes below
   // accumulate across frames. Reset every owned bone to identity first so a channel
   // that stops being emitted returns to rest instead of freezing at its last value.
-  const owned = [rig.spine, rig.leftLowerArm, rig.rightLowerArm, rig.leftUpperLeg, rig.rightUpperLeg, rig.leftLowerLeg, rig.rightLowerLeg];
+  const owned = [rig.spine, rig.leftLowerArm, rig.rightLowerArm, rig.leftUpperLeg, rig.rightUpperLeg, rig.leftLowerLeg, rig.rightLowerLeg, rig.leftFoot, rig.rightFoot];
   const resetSeen = new Set<NormalizedBoneNode>();
   for (const node of owned) {
     if (!node || resetSeen.has(node)) continue;
@@ -359,6 +363,8 @@ export function applyVrmFullBodyChannels(vrm: VRM, channels: Readonly<Partial<Re
   write(rig.rightUpperLeg, "z", scaleChannel("rightHip", channels.rightHip ?? 0), "rightUpperLeg");
   write(rig.leftLowerLeg, "z", scaleChannel("leftKnee", channels.leftKnee ?? 0), "leftLowerLeg");
   write(rig.rightLowerLeg, "z", scaleChannel("rightKnee", channels.rightKnee ?? 0), "rightLowerLeg");
+  write(rig.leftFoot, "x", scaleChannel("leftAnkle", channels.leftAnkle ?? 0), "leftFoot");
+  write(rig.rightFoot, "x", scaleChannel("rightAnkle", channels.rightAnkle ?? 0), "rightFoot");
   return {
     applied: controlledBones.length > 0,
     reason: controlledBones.length ? "full-body-channels-applied" : "no-supported-full-body-channels",
