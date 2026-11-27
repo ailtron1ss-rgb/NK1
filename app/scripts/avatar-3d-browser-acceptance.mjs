@@ -101,8 +101,10 @@ try {
   const audit = stage.locator('details[aria-label="Диагностика вторичной физики аватара"]');
   await audit.waitFor({ state: "visible", timeout: 10_000 });
   if (!(await audit.getAttribute("open"))) await audit.locator("summary").click();
-  await audit.getByText("GPU vertex sway: 11 mesh", { exact: true }).waitFor({ state: "visible", timeout: 10_000 });
+  await audit.getByText("All secondary meshes: 11", { exact: true }).waitFor({ state: "visible", timeout: 10_000 });
   report.diagnostics = await audit.innerText();
+  assert.match(report.diagnostics, /(?:GPU sway|XPBD-симуляция частиц поверхности)/,
+    "canonical v5 must expose an active secondary deformation path");
 
   report.modelRuntime = await canvas.evaluate((element) => ({
     meshCount: Number(element.dataset.avatarModelMeshCount || 0),
