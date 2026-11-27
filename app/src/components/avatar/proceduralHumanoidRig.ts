@@ -48,7 +48,8 @@ export type ProceduralHumanoidRig = {
   meshes: THREE.Mesh[];
   materials: THREE.Material[];
   updatePose(input: HumanoidPoseInput): void;
-  solveArmTarget(side: "left" | "right", target: THREE.Vector3): PlanarIkResult;
+  solveArmTarget(side: "left" | "right", target: THREE.Vector3, deltaSeconds?: number): PlanarIkResult;
+  solveLegTarget(side: "left" | "right", target: THREE.Vector3, deltaSeconds?: number): PlanarIkResult;
   setJoint(name: string, axis: JointAxis, radians: number): number;
   resetPose(): void;
   dispose(): void;
@@ -493,6 +494,16 @@ export function createProceduralHumanoidRig(scene: THREE.Scene): ProceduralHuman
         ["rightHipPoint", "rightHip"], ["rightKneePoint", "rightKnee"], ["rightAnklePoint", "rightAnkle"],
       ];
       let particleBindingsApplied = 0;
+      root.updateMatrixWorld(true);
+      const particleTargetWorld = (sample: ArticulatedParticleFrame[ArticulatedBodyParticleId] | undefined) => {
+        if (!sample) return null;
+        const pelvisHeight = bones.pelvis.position.y;
+        return root.localToWorld(new THREE.Vector3(
+          sample.position.x,
+          pelvisHeight + sample.position.y,
+          sample.position.z,
+        ));
+      };
       for (const [particleId, boneName] of particleBindings) {
         const sample = input.particles?.[particleId];
         const bone = bones[boneName];
@@ -506,6 +517,18 @@ export function createProceduralHumanoidRig(scene: THREE.Scene): ProceduralHuman
         bone.position.copy(rest).add(residual);
         particleBindingsApplied++;
       }
+
+      // Solved wrist and ankle particles become end-effector targets. The IK solver
+      // calculates the intermediate shoulder/elbow and hip/knee joints; joint limits
+      // are applied before smoothing, so physics cannot teleport a limb outside its range.
+      const leftWristTarget = particleTargetWorld(input.particles?.leftWristPoint);
+      const rightWristTarget = particleTargetWorld(input.particles?.rightWristPoint);
+      const leftAnkleTarget = particleTargetWorld(input.particles?.leftAnklePoint);
+      const rightAnkleTarget = particleTargetWorld(input.particles?.rightAnklePoint);
+      if (leftWristTarget) rig.solveArmTarget("left", leftWristTarget, delta);
+      if (rightWristTarget) rig.solveArmTarget("right", rightWristTarget, delta);
+      if (leftAnkleTarget) rig.solveLegTarget("left", leftAnkleTarget, delta);
+      if (rightAnkleTarget) rig.solveLegTarget("right", rightAnkleTarget, delta);
 
       // Face is also driven by the organism's affect, gaze and speech envelope.
       const eyeOpen = clamp(1 - sleep * 0.68 - stress * 0.13 + curiosity * 0.08, 0.18, 1.16);
@@ -530,12 +553,12 @@ export function createProceduralHumanoidRig(scene: THREE.Scene): ProceduralHuman
       root.userData.poseState = { awake: input.awake, action: input.action, emotion: input.emotion, particleBindingsApplied, updatedAt: finite(input.timeSeconds) };
       root.updateMatrixWorld(true);
     },
-    solveArmTarget(side, target) {
+    solveArmTarget(side, target, deltaSeconds = 1 / 60) {
       const arm = armRoots[side];
       root.updateMatrixWorld(true);
-      const chestWorld = arm.clavicle.getWorldPosition(new THREE.Vector3());
+      const shoulderWorld = arm.upper.getWorldPosition(new THREE.Vector3());
       const localTarget = root.worldToLocal(target.clone());
-      const localStart = root.worldToLocal(chestWorld.clone());
+      const localStart = root.worldToLocal(shoulderWorld.clone());
       const outward = side === "left" ? -1 : 1;
       const result = solveTwoBonePlanarIK(
         { x: outward * localStart.x, y: localStart.y },
@@ -544,13 +567,39 @@ export function createProceduralHumanoidRig(scene: THREE.Scene): ProceduralHuman
         0.29,
         1,
       );
-      rig.setJoint(side + "UpperArm", "z", outward * result.shoulder);
-      rig.setJoint(side + "Forearm", "z", outward * result.elbowFlex);
+      const shoulderName = side + "UpperArm";
+      const elbowName = side + "Forearm";
+      const shoulderValue = clampJointAngle(shoulderName, "z", outward * result.shoulder, limits);
+      const elbowValue = clampJointAngle(elbowName, "z", outward * result.elbowFlex, limits);
+      arm.upper.rotation.z = smooth(arm.upper.rotation.z, shoulderValue, deltaSeconds, 18);
+      arm.forearm.rotation.z = smooth(arm.forearm.rotation.z, elbowValue, deltaSeconds, 18);
+      root.updateMatrixWorld(true);
       return {
         ...result,
         elbow: { x: outward * result.elbow.x, y: result.elbow.y },
         endEffector: { x: outward * result.endEffector.x, y: result.endEffector.y },
       };
+    },
+    solveLegTarget(side, target, deltaSeconds = 1 / 60) {
+      root.updateMatrixWorld(true);
+      const hipBone = bones[side + "Hip"];
+      const hipWorld = hipBone.getWorldPosition(new THREE.Vector3());
+      const localTarget = root.worldToLocal(target.clone());
+      const localStart = root.worldToLocal(hipWorld.clone());
+      const result = solveTwoBonePlanarIK(
+        { x: localStart.x, y: localStart.y },
+        { x: localTarget.x, y: localTarget.y },
+        0.48,
+        0.43,
+        side === "left" ? 1 : -1,
+      );
+      const hipValue = clampJointAngle(side + "Hip", "z", result.shoulder + PI / 2, limits);
+      const kneeSign = side === "left" ? -1 : 1;
+      const kneeValue = clampJointAngle(side + "Knee", "z", kneeSign * result.elbowFlex, limits);
+      hipBone.rotation.z = smooth(hipBone.rotation.z, hipValue, deltaSeconds, 18);
+      bones[side + "Knee"].rotation.z = smooth(bones[side + "Knee"].rotation.z, kneeValue, deltaSeconds, 18);
+      root.updateMatrixWorld(true);
+      return result;
     },
     setJoint(name, axis, radians) {
       const bone = bones[name];
