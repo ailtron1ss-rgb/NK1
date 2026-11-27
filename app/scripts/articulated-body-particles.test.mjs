@@ -25,13 +25,17 @@ function everyNumberIsFinite(value) {
 test("creates an articulated anatomical particle body rather than a flat/static pose", () => {
   const state = createAvatarArticulatedBodyState();
   assert.equal(state.schemaVersion, 1);
-  assert.equal(state.particleCount, 18);
-  assert.equal(AVATAR_ARTICULATED_BODY_PARTICLE_COUNT, 18);
-  assert.equal(state.segments.length, 17);
-  assert.equal(AVATAR_ARTICULATED_BODY_SEGMENT_COUNT, 17);
+  assert.equal(state.particleCount, 22);
+  assert.equal(AVATAR_ARTICULATED_BODY_PARTICLE_COUNT, 22);
+  assert.equal(state.segments.length, 21);
+  assert.equal(AVATAR_ARTICULATED_BODY_SEGMENT_COUNT, 21);
   assert.ok(state.particles.head.position.y > state.particles.chest.position.y);
   assert.ok(state.particles.leftHandPoint.position.x < state.particles.chest.position.x);
   assert.ok(state.particles.rightAnklePoint.position.y < state.particles.rightKneePoint.position.y);
+  assert.ok(state.particles.leftToePoint.position.z > state.particles.leftHeelPoint.position.z);
+  assert.ok(state.particles.rightToePoint.position.z > state.particles.rightHeelPoint.position.z);
+  assert.ok(state.segments.some((segment) => segment.from === "leftHeelPoint" && segment.to === "leftToePoint"));
+  assert.ok(state.segments.some((segment) => segment.from === "rightHeelPoint" && segment.to === "rightToePoint"));
   assert.ok(state.segments.every((segment) => segment.restLength > 0.02));
 });
 
@@ -150,18 +154,70 @@ test("zero elapsed time does not advance the simulation clock or frame counter",
 });
 
 
-test("stance foot cannot penetrate below the articulated body's support plane", () => {
+test("stance heel and toe cannot penetrate below the support plane or rebound", () => {
   const previous = createAvatarArticulatedBodyState();
-  previous.particles.leftAnklePoint.position.y = -1.2;
-  previous.particles.leftAnklePoint.velocity.y = -4;
+  for (const id of ["leftHeelPoint", "leftToePoint"]) {
+    previous.particles[id].position.y = -1.2;
+    previous.particles[id].velocity.y = -4;
+  }
   const result = stepAvatarArticulatedBody(
     previous,
     {},
     1000 / 30,
     { awake: true, energy01: 0.7, groundY: -0.9, footRadius: 0.04 },
   );
-  assert.ok(
-    result.state.particles.leftAnklePoint.position.y >= -0.8601,
-    "left ankle centre must remain at or above floor + foot radius",
+  for (const id of ["leftHeelPoint", "leftToePoint"]) {
+    assert.ok(
+      result.state.particles[id].position.y >= -0.8601,
+      id + " centre must remain at or above floor + foot radius",
+    );
+    assert.ok(result.state.particles[id].velocity.y <= 0.001,
+      id + " must not rebound upward after downward penetration correction");
+  }
+  assert.equal(result.contacts.leftFoot, true);
+  assert.ok(Number.isFinite(result.contacts.maxCorrection));
+});
+
+test("ground friction reduces horizontal slip only while the foot is in contact", () => {
+  const previous = createAvatarArticulatedBodyState();
+  for (const id of ["leftHeelPoint", "leftToePoint"]) {
+    previous.particles[id].position.y = -0.86;
+    previous.particles[id].velocity.x = 1.5;
+  }
+  const grounded = stepAvatarArticulatedBody(
+    previous,
+    {},
+    1000 / 60,
+    { awake: true, energy01: 1, groundY: -0.9, footRadius: 0.04, footFriction: 0.8 },
   );
+  const ungrounded = stepAvatarArticulatedBody(
+    previous,
+    {},
+    1000 / 60,
+    { awake: true, energy01: 1, groundEnabled: false },
+  );
+  assert.equal(grounded.contacts.leftFoot, true);
+  assert.ok(
+    Math.abs(grounded.state.particles.leftToePoint.velocity.x)
+      < Math.abs(ungrounded.state.particles.leftToePoint.velocity.x),
+    "contact friction must reduce toe slip compared with a free foot",
+  );
+});
+
+test("a lifted swing foot clears the ground contact band instead of being snapped down", () => {
+  let state = createAvatarArticulatedBodyState();
+  let result = null;
+  for (let tick = 0; tick < 48; tick += 1) {
+    result = stepAvatarArticulatedBody(
+      state,
+      { leftHip: 1, leftKnee: 1 },
+      1000 / 30,
+      { awake: true, energy01: 0.85, groundY: -0.9, footRadius: 0.04 },
+    );
+    state = result.state;
+  }
+  assert.ok(result);
+  assert.equal(result.contacts.leftFoot, false);
+  assert.ok(state.particles.leftToePoint.position.y > -0.75,
+    "the raised toe must stay above the support plane during swing");
 });
