@@ -43,7 +43,7 @@ jobs:
       - name: Install pinned app dependencies
         run: npm ci --prefix app --ignore-scripts --no-audit --no-fund
       - name: Articulated particle body physics and stability contracts
-        run: node --experimental-strip-types --test app/scripts/articulated-body-particles.test.mjs
+        run: node --experimental-strip-types --test app/scripts/articulated-body-particles.test.mjs app/scripts/glb-body-channel-adapter.test.mjs app/scripts/avatar-3d-glb-motion-integration.test.mjs app/scripts/vrm-normalized-humanoid.integration.test.mjs
       - name: TypeScript validation
         run: npm --prefix app run typecheck
       - name: Development bundle
