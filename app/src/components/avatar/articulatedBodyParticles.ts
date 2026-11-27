@@ -126,6 +126,104 @@ function buildParticles():Record<ArticulatedBodyParticleId,ArticulatedBodyPartic
 function buildSegments(p:Record<ArticulatedBodyParticleId,ArticulatedBodyParticle>):ArticulatedBodySegment[]{
   return PAIRS.map(([from,to])=>({from,to,restLength:dist(p[from].position,p[to].position)}));
 }
+
+// Immutable anatomical rest lengths. Never rebuild the base skeleton in the per-frame solver.
+const DEFAULT_SEGMENT_LENGTHS = (() => {
+  const particles = buildParticles();
+  return buildSegments(particles).map((segment) => segment.restLength);
+})();
+
+function wrapAngle(value:number):number{
+  let angle=value;
+  while(angle>Math.PI)angle-=Math.PI*2;
+  while(angle< -Math.PI)angle+=Math.PI*2;
+  return angle;
+}
+
+function particleSegmentAngleLag(
+  state:ArticulatedBodyParticleState,
+  from:ArticulatedBodyParticleId,
+  to:ArticulatedBodyParticleId,
+):number{
+  const a=state.particles[from],b=state.particles[to];
+  const targetX=b.target.x-a.target.x,targetY=b.target.y-a.target.y;
+  const actualX=b.position.x-a.position.x,actualY=b.position.y-a.position.y;
+  if(Math.hypot(targetX,targetY)<1e-8||Math.hypot(actualX,actualY)<1e-8)return 0;
+  return wrapAngle(Math.atan2(actualY,actualX)-Math.atan2(targetY,targetX));
+}
+
+function particleVectorYawLag(
+  state:ArticulatedBodyParticleState,
+  from:ArticulatedBodyParticleId,
+  to:ArticulatedBodyParticleId,
+):number{
+  const a=state.particles[from],b=state.particles[to];
+  const targetX=b.target.x-a.target.x,targetZ=b.target.z-a.target.z;
+  const actualX=b.position.x-a.position.x,actualZ=b.position.z-a.position.z;
+  if(Math.hypot(targetX,targetZ)<1e-8||Math.hypot(actualX,actualZ)<1e-8)return 0;
+  return wrapAngle(Math.atan2(-actualZ,actualX)-Math.atan2(-targetZ,targetX));
+}
+
+function particleVectorPitchLag(
+  state:ArticulatedBodyParticleState,
+  from:ArticulatedBodyParticleId,
+  to:ArticulatedBodyParticleId,
+):number{
+  const a=state.particles[from],b=state.particles[to];
+  const targetY=b.target.y-a.target.y,targetZ=b.target.z-a.target.z;
+  const actualY=b.position.y-a.position.y,actualZ=b.position.z-a.position.z;
+  if(Math.hypot(targetY,targetZ)<1e-8||Math.hypot(actualY,actualZ)<1e-8)return 0;
+  return wrapAngle(Math.atan2(actualZ,actualY)-Math.atan2(targetZ,targetY));
+}
+
+function channelsFromSolvedParticles(
+  joints:Record<BodyChannel,ArticulatedBodyJoint>,
+  state:ArticulatedBodyParticleState,
+):Partial<Record<BodyChannel,number>>{
+  const channels={} as Partial<Record<BodyChannel,number>>;
+  for(const key of CHANNELS)channels[key]=joints[key].value;
+  const adjust=(key:BodyChannel,lag:number,gain:number,limit=.14)=>{
+    channels[key]=clamp((channels[key]??0)+clamp(lag*gain,-limit,limit),-1,1);
+  };
+
+  // The torso/neck/head values are recovered from the solved particle skeleton,
+  // not copied from the motor targets. Thus inertia/constraint response really
+  // reaches every renderer instead of remaining hidden in a diagnostics-only state.
+  adjust("torsoPitch",particleVectorPitchLag(state,"pelvis","chest"),1/.34);
+  adjust("torsoYaw",particleVectorYawLag(state,"leftShoulderPoint","rightShoulderPoint"),1/.34);
+  adjust("headPitch",particleVectorPitchLag(state,"neck","head"),1/.36);
+  adjust("headYaw",wrapAngle(
+    particleSegmentAngleLag(state,"neck","head")
+      - particleSegmentAngleLag(state,"neck","head"),
+  ),1/.42,0);
+
+  for(const side of [-1,1] as const){
+    const prefix=side<0?"left":"right";
+    const shoulder=(prefix+"Shoulder") as BodyChannel;
+    const elbow=(prefix+"Elbow") as BodyChannel;
+    const wrist=(prefix+"Wrist") as BodyChannel;
+    const hip=(prefix+"Hip") as BodyChannel;
+    const knee=(prefix+"Knee") as BodyChannel;
+    const shoulderPoint=(prefix+"ShoulderPoint") as ArticulatedBodyParticleId;
+    const elbowPoint=(prefix+"ElbowPoint") as ArticulatedBodyParticleId;
+    const wristPoint=(prefix+"WristPoint") as ArticulatedBodyParticleId;
+    const handPoint=(prefix+"HandPoint") as ArticulatedBodyParticleId;
+    const hipPoint=(prefix+"HipPoint") as ArticulatedBodyParticleId;
+    const kneePoint=(prefix+"KneePoint") as ArticulatedBodyParticleId;
+    const anklePoint=(prefix+"AnklePoint") as ArticulatedBodyParticleId;
+    const shoulderLag=particleSegmentAngleLag(state,shoulderPoint,elbowPoint);
+    const elbowLag=particleSegmentAngleLag(state,elbowPoint,wristPoint);
+    const wristLag=particleSegmentAngleLag(state,wristPoint,handPoint);
+    const hipLag=particleSegmentAngleLag(state,hipPoint,kneePoint);
+    const kneeLag=particleSegmentAngleLag(state,kneePoint,anklePoint);
+    adjust(shoulder,shoulderLag/(side*.72),1,.12);
+    adjust(elbow,elbowLag/(side*.78),1,.12);
+    adjust(wrist,(wristLag-elbowLag*.55)/(side*.4),1,.10);
+    adjust(hip,hipLag/(side*.58),1,.12);
+    adjust(knee,(kneeLag-hipLag)/(side*.72),1,.12);
+  }
+  return channels;
+}
 function constraintError(s:ArticulatedBodyParticleState):number{
   let max=0;for(const e of s.segments)max=Math.max(max,Math.abs(dist(s.particles[e.from].position,s.particles[e.to].position)-e.restLength));
   return Number.isFinite(max)?max:8;
@@ -174,8 +272,8 @@ export function stepAvatarArticulatedBody(
   particles.pelvis.position={...targets.pelvis};particles.pelvis.velocity=vec();
   const baseSegments=previous?.segments;
   const segments=Array.isArray(baseSegments)&&baseSegments.length===PAIRS.length
-    ?PAIRS.map(([from,to],i)=>({from,to,restLength:clamp(baseSegments[i]?.restLength??buildSegments(buildParticles())[i].restLength,.01,4,.1)}))
-    :buildSegments(buildParticles());
+    ?PAIRS.map(([from,to],i)=>({from,to,restLength:clamp(baseSegments[i]?.restLength??DEFAULT_SEGMENT_LENGTHS[i],.01,4,.1)}))
+    :PAIRS.map(([from,to],i)=>({from,to,restLength:DEFAULT_SEGMENT_LENGTHS[i]}));
   const state:ArticulatedBodyParticleState={
     schemaVersion:1,tick:Math.max(0,Number.isSafeInteger(previous?.tick)?previous.tick:0)+(substeps?1:0),
     elapsedMs:clamp(previous?.elapsedMs??0,0,Number.MAX_SAFE_INTEGER)+duration,
@@ -211,8 +309,7 @@ export function stepAvatarArticulatedBody(
     }
   }
   state.maxConstraintError=constraintError(state);
-  const channels={} as Partial<Record<BodyChannel,number>>;
-  for(const key of CHANNELS)channels[key]=joints[key].value;
+  const channels=channelsFromSolvedParticles(joints,state);
   return {state,channels,substeps,simulatedMs:duration,maxConstraintError:state.maxConstraintError};
 }
 export const AVATAR_ARTICULATED_BODY_PARTICLE_COUNT=IDS.length;
