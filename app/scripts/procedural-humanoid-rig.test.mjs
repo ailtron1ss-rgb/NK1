@@ -109,6 +109,31 @@ test("mirrored left and right arm chains both accept world-space IK targets", ()
   rig.dispose();
 });
 
+test("solved particle displacements reach the articulated spine, elbow and knee bones", () => {
+  const scene = new THREE.Scene();
+  const rig = createProceduralHumanoidRig(scene);
+  const particles = {
+    chest: { position: { x: 0.025, y: 0.54, z: 0.04 }, target: { x: 0, y: 0.5, z: 0 } },
+    leftElbowPoint: { position: { x: -0.52, y: 0.56, z: 0.02 }, target: { x: -0.49, y: 0.51, z: 0 } },
+    rightKneePoint: { position: { x: 0.15, y: -0.42, z: 0.035 }, target: { x: 0.14, y: -0.46, z: 0 } },
+  };
+
+  rig.updatePose({
+    awake: true, action: "inspect", emotion: "curiosity", arousal: 0.5, energy: 0.7,
+    cognitiveLoad: 0.2, gazeX: 0, gazeY: 0, headTilt: 0, speaking: false,
+    leftArmIntent: 0, rightArmIntent: 0, particles, deltaSeconds: 1 / 60,
+  });
+
+  assert.ok(rig.bones.chest.position.x > 0);
+  assert.ok(rig.bones.chest.position.y > 0.56);
+  assert.ok(rig.bones.chest.position.z > 0);
+  assert.ok(rig.bones.leftForearm.position.x < 0);
+  assert.ok(rig.bones.rightKnee.position.y < -0.48);
+  assert.equal(rig.root.userData.poseState.particleBindingsApplied, 3);
+
+  rig.dispose();
+});
+
 test("two-link IK reaches interior targets and safely clamps unreachable targets", () => {
   const reachable = solveTwoBonePlanarIK({ x: 0, y: 0 }, { x: 0.4, y: 0.2 }, 0.34, 0.29, 1);
   const error = Math.hypot(reachable.endEffector.x - 0.4, reachable.endEffector.y - 0.2);
