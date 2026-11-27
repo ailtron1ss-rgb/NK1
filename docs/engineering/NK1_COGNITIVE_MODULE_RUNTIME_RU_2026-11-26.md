@@ -109,6 +109,8 @@ Host использует тот же `JsonStateStore<PersistedOrganism>`, ко�
 
 При записи адаптер также инспектирует собственный data-descriptor `PersistedOrganism.system`. Accessor на этом поле отклоняется с `cognitive-module-checkpoint-system-accessor-rejected` до вызова durable writer; getter не запускается. При чтении контейнер `system` и extension metadata проверяются тем же descriptor-safe принципом.
 
+Сам extension-slot `system.cognitiveModuleRuntime` также проверяется до snapshot/write: accessor-ы и нестандартный prototype отклоняются, а новый или существующий data-slot обновляется через `Object.defineProperty`, не через присваивание. Это исключает выполнение унаследованного setter-а при создании поля; недоступный к записи non-configurable slot отклоняется до durable writer.
+
 `OrganismRuntime` автоматически:
 1. загружает module envelopes вместе с каноническим состоянием организма;
 2. привязывает host к in-memory `CognitiveModuleStateStore` адаптеру;
@@ -213,6 +215,7 @@ Lifecycle barrier сериализует одиночную активацию, 
 - quiesce/shutdown failure states;
 - JSON-safe snapshot, __proto__ как обычный ключ и запрет getter execution;
 - hostile getter в manifest и registration wrapper отклоняется до допуска записи в registry;
+- own accessor у `system.cognitiveModuleRuntime` и custom prototype setter отклоняются до durable writer без исполнения getter/setter;
 - accessor на canonical `PersistedOrganism.system` отклоняется до durable writer без исполнения getter;
 - health degradation;
 - non-disruptive `snapshotAll()` для активных модулей;
