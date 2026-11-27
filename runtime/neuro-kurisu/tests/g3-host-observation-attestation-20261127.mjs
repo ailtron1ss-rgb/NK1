@@ -29,7 +29,7 @@ const consentAuthority = {
 const authority = new SignedObservationAdmissionAuthority({
   expectedDeviceId: 'android-test-01',
   resolvePublicKey: async (issuerId, keyId) =>
-    issuerId === 'nk1-android-host' && keyId === 'test-ed25519-k1' ? publicKey : null,
+    issuerId === 'nk1-android-host' && keyId === 'test-ed25519-k1' ? publicKey.export({ type: 'spki', format: 'pem' }).toString() : null,
   consentAuthority,
   nonceStore,
   now: () => now,
