@@ -1855,12 +1855,14 @@ export class OrganismRuntime {
       outcome:{source:grounded.source==='external'?'external-device':'shadow-simulator',external:grounded.source==='external',confidence01:grounded.evidence01,payload:{evidenceId:outcomeEvidence.id,reward01:grounded.reward01,surprise:grounded.surprise01,error01:resolvedPrediction?.error01 ?? null,verified01:grounded.verified01}},
       learning:{source:'core.feedback',confidence01:clamp01((1-(resolvedPrediction?.error01??0.5))*learningGate.learningScale01),payload:{predictionError01:resolvedPrediction?.error01??null,realitySource:grounded.source,learningPriority01:grounded.learningPriority01,learningScale01:learningGate.learningScale01}},
       selfUpdate:{source:'core.lifecycle',confidence01:this.core.consciousnessSnapshot().identityContinuity.continuity,payload:{identityContinuity01:this.core.consciousnessSnapshot().identityContinuity.continuity}},
+      subsystemReceipts:cycle.stageEvidence?.subsystemReceipts,
       at:cycle.state.at,
     });
     const fabricSnapshot = this.cognitiveEventFabric.snapshot();
     this.core.setRuntimeCognitiveEventFabric(fabricSnapshot);
     const cycleStageMap = {observation:cycleStageIds.observation,prediction:cycleStageIds.prediction,appraisal:cycleStageIds.appraisal,attention:cycleStageIds.attention,memory:cycleStageIds.memory,goal:cycleStageIds.goal,plan:cycleStageIds.plan,action:cycleStageIds.action,outcome:cycleStageIds.outcome,learning:cycleStageIds.learning,'self-update':cycleStageIds.selfUpdate};
-    const cycleLineage = this.cognitiveEventFabric.verifyOperationalCycle(cycleStageMap, cycle.stageEvidence?.receipts);
+    const cycleEvidenceEvents = [observationEvidence, predictionEvidence, riskEvidence, actionEvidence, outcomeEvidence];
+    const cycleLineage = this.cognitiveEventFabric.verifyOperationalCycle(cycleStageMap, cycle.stageEvidence?.receipts, cycleEvidenceEvents, cycle.stageEvidence?.subsystemReceipts);
     const cycleVerification = this.unifiedCycle.evaluate({tick:cycle.state.tick,stageIds:cycleStageMap,parentIntegrity01:cycleLineage.coreIntegrity01,coreLineageComplete:cycleLineage.coreComplete,fullLineageComplete:cycleLineage.fullComplete && cycleLineage.ownerEvidenceComplete,fullIntegrity01:cycleLineage.fullIntegrity01});
     this.core.setRuntimeUnifiedCognitiveCycle(this.unifiedCycle.snapshot());
     this.core.recordRealityEvidence({tick:cycle.state.tick,realityClass:'derived',claim:'cognitive-cycle-completeness',confidence01:cycleVerification.complete ? .95 : .35,independenceKey:`cycle:${cycle.state.tick}`,parentIds:Object.values(cycleStageIds).filter(Boolean) as string[]});
@@ -2435,6 +2437,83 @@ export class OrganismRuntime {
   embodiedRecoverySnapshot(){ return this.embodiedRecovery.snapshot(); }
   riskAwareRecoverySnapshot(){ return this.unifiedCycle.riskAwareRecoverySnapshot(); }
   cognitiveEventFabricSnapshot(){ return this.cognitiveEventFabric.snapshot(); }
+
+  /**
+   * Unified read-only view across the seven physical owners, seven cognitive
+   * subsystem domains, RuntimeEvidenceBus, CognitiveEventFabric and the strict
+   * current-cycle verifier. No owner commands, scheduling or persistence run here.
+   */
+  cognitiveIntegrationSnapshot() {
+    const architecture = this.core.organismCognitiveArchitecture();
+    const runtimeSnapshot: any = architecture?.runtimeSnapshot ?? {};
+    const snapshotHealth: any = runtimeSnapshot.snapshotHealth ?? {};
+    const physical: any = snapshotHealth.physicalSystems ?? {};
+    const domains: any = snapshotHealth.subsystemDomains ?? {};
+    const subsystems: any[] = Array.isArray(runtimeSnapshot.cognitiveSubsystems) ? runtimeSnapshot.cognitiveSubsystems : [];
+    const failedPorts = subsystems.flatMap(item =>
+      Array.isArray(item.failedPorts)
+        ? item.failedPorts.map((port: unknown) => String(item.name) + ':' + String(port))
+        : [],
+    );
+    const evidence = this.evidenceBus.snapshot();
+    const cef = this.cognitiveEventFabric.snapshot();
+    const cycle = this.unifiedCycle.snapshot();
+    const tick = this.core.operationalStatusSnapshot().tick;
+    const currentCycleStatus = cycle.lastTick !== tick
+      ? 'not-current'
+      : cycle.lastFullComplete ? 'verified' : 'incomplete';
+    const connectivityStatus = snapshotHealth.status === 'healthy' ? 'healthy' : 'degraded';
+    return {
+      version: 1,
+      capturedAt: Date.now(),
+      tick,
+      basis: 'read-only-runtime-snapshot',
+      overallStatus: connectivityStatus !== 'healthy' ? 'degraded' : currentCycleStatus === 'verified' ? 'healthy' : 'unverified',
+      connectivity: {
+        status: connectivityStatus,
+        snapshotBasis: snapshotHealth.basis ?? 'unknown',
+        physicalSystems: {
+          total: Number(physical.total ?? 0),
+          available: Number(physical.available ?? 0),
+          unavailable: Array.isArray(physical.unavailable) ? [...physical.unavailable] : [],
+        },
+        subsystemDomains: {
+          total: Number(domains.total ?? subsystems.length),
+          available: Number(domains.available ?? subsystems.filter(item => item.available === true).length),
+          unavailable: Array.isArray(domains.unavailable) ? [...domains.unavailable] : [],
+          failedPorts: failedPorts.slice(0, 64),
+        },
+      },
+      causalIntegration: {
+        currentCycle: {
+          status: currentCycleStatus,
+          tick: cycle.lastTick,
+          fullComplete: cycle.lastFullComplete,
+          cycles: cycle.cycles,
+          fullCompleteCycles: cycle.fullCompleteCycles,
+          incompleteCycles: cycle.incompleteCycles,
+          meanStageCoverage01: cycle.meanStageCoverage01,
+          meanCausalContinuity01: cycle.meanCausalContinuity01,
+        },
+        runtimeEvidenceBus: {
+          total: evidence.total,
+          buffered: evidence.recent.length,
+          linkedParentEvents: evidence.linkedParentEvents,
+          danglingParentLinks: evidence.danglingParentLinks,
+          lineageIntegrity01: evidence.lineageIntegrity01,
+        },
+        cognitiveEventFabric: {
+          total: cef.total,
+          buffered: cef.buffered,
+          linkedParentEvents: cef.linkedParentEvents,
+          danglingParentLinks: cef.danglingParentLinks,
+          lineageIntegrity01: cef.lineageIntegrity01,
+          coreCycleCoverage01: cef.coreCycleCoverage01 ?? cef.cycleCoverage01,
+          fullCycleCoverage01: cef.fullCycleCoverage01 ?? 0,
+        },
+      },
+    };
+  }
   cognitiveBudgetSnapshot(){ return this.core.cognitiveBudgetOperationalSnapshot(); }
   cognitiveImmuneSnapshot(){ return this.core.cognitiveImmuneSnapshot(); }
   async sampleEmbodiment(): Promise<ReturnType<EmbodimentRuntime['snapshot']>> {

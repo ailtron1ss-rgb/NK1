@@ -61,6 +61,9 @@ export interface CognitiveSubsystemPorts {
 }
 
 /**
+ * Registry ports are read-only snapshots. Side-effecting commands belong on explicit
+ * action APIs and must never be called by diagnostics, health probes or manifests.
+ *
  * Dependency-inverted accessor contract. OrganismCore is one implementation,
  * but tests/Android hosts/research harnesses can provide another adapter.
  */
@@ -86,7 +89,7 @@ export interface CognitiveSubsystemAccessors {
   autonomousProjectExecutorSnapshot:()=>unknown;
   cognitiveBudgetSnapshot:()=>unknown;
   cognitiveQuorumSnapshot:()=>unknown;
-  multiProjectSchedule:()=>unknown;
+  multiProjectScheduleSnapshot:()=>unknown;
   embodimentSnapshot:()=>unknown;
   multimodalSnapshot:()=>unknown;
   perceptionRoutingSnapshot:()=>unknown;
@@ -131,7 +134,7 @@ export function createCognitiveSubsystemPorts(core:CognitiveSubsystemAccessors):
       autonomousProject:()=>core.autonomousProjectExecutorSnapshot(),
       cognitiveBudget:()=>core.cognitiveBudgetSnapshot(),
       quorum:()=>core.cognitiveQuorumSnapshot(),
-      multiProjectSchedule:()=>core.multiProjectSchedule(),
+      multiProjectSchedule:()=>core.multiProjectScheduleSnapshot(),
     },
     embodiment:{
       snapshot:()=>core.embodimentSnapshot(),
