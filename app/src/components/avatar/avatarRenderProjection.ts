@@ -1,6 +1,7 @@
 import type { ActionKind, EmotionLabel, OrganismSnapshot, AvatarBrainProjectionV1, AvatarBrainChannelsV1 } from "@/organism/types";
 import type { AvatarMotorIntentPlan } from "./motorIntent.ts";
 import type { BodyChannel } from "./embodimentSwitch.ts";
+import type { MotionCharacterContext } from "./motionArbitration.ts";
 import { planAvatarMotorIntent } from "./motorIntent.ts";
 import { EXPRESSION_TEXT } from "./embodimentUiBridge.ts";
 import {
@@ -38,6 +39,45 @@ const VISEMES: readonly VisemeName[] = [
 
 const clamp = (value: number, min: number, max: number, fallback = min): number =>
   Number.isFinite(value) ? Math.max(min, Math.min(max, value)) : fallback;
+
+/** Read only the current-tick affect frame; stale affect never influences the body. */
+export function motionCharacterContextForSnapshot(
+  snapshot: OrganismSnapshot,
+  brainFrame: AvatarBrainProjectionV1 | null = avatarBrainFrameForTick(snapshot.avatarBrain, snapshot.tick),
+): MotionCharacterContext {
+  const affect = brainFrame?.affect;
+  const trait = (name: string, fallback: number): number =>
+    clamp(snapshot.identity?.traits?.[name] ?? fallback, 0, 1, fallback);
+  const cognitiveLoad01 = clamp(snapshot.needs.cognitiveLoad, 0, 1, 0.22);
+  const uncertainty01 = clamp(snapshot.needs.uncertainty, 0, 1, 0.4);
+  const predictionError01 = clamp(snapshot.predictionError, 0, 1, 0.3);
+  return {
+    valence01: clamp(affect?.valence01 ?? snapshot.emotion.valence, 0, 1, 0.5),
+    arousal01: clamp(affect?.arousal01 ?? snapshot.emotion.arousal, 0, 1, 0.2),
+    dominance01: clamp(affect?.dominance01 ?? snapshot.emotion.dominance, 0, 1, 0.5),
+    curiosity01: clamp(affect?.curiosity01 ?? snapshot.curiosity, 0, 1, 0.2),
+    warmth01: clamp(affect?.warmth01 ?? trait("warmth", 0.63), 0, 1, 0.63),
+    stress01: clamp(affect?.stress01
+      ?? cognitiveLoad01 * 0.45 + uncertainty01 * 0.25 + predictionError01 * 0.3, 0, 1, 0.3),
+    confidence01: clamp(affect?.confidence01 ?? 1 - uncertainty01, 0, 1, 0.6),
+    memoryRecall01: clamp(affect?.memoryRecall01 ?? 0, 0, 1, 0),
+    cognitiveLoad01,
+    uncertainty01,
+    socialNeed01: clamp(snapshot.needs.socialNeed, 0, 1, 0.35),
+    novelty01: clamp(snapshot.needs.novelty, 0, 1, 0.45),
+    goalPressure01: clamp(snapshot.needs.goalPressure, 0, 1, 0.2),
+    predictionError01,
+    traits: {
+      curiosity: trait("curiosity", 0.7),
+      warmth: trait("warmth", 0.63),
+      guardedness: trait("guardedness", 0.58),
+      composure: trait("composure", 0.87),
+      playfulness: trait("playfulness", 0.45),
+      sarcasm: trait("sarcasm", 0.68),
+    },
+    reducedMotion: brainFrame?.reducedMotion === true,
+  };
+}
 
 function boundedId(value: unknown, maxLength: number): string | null {
   if (typeof value !== "string") return null;
@@ -77,6 +117,7 @@ export interface AvatarRenderProjection {
   /** Raw organism option; 3D clip selection must continue to use this value. */
   action: ActionKind;
   motorPlan: AvatarMotorIntentPlan;
+  character: MotionCharacterContext;
   brainFrame: AvatarBrainProjectionV1 | null;
   brainChannels: AvatarBrainChannelsV1 | null;
   bodyChannels: Partial<Record<BodyChannel, number>>;
@@ -155,6 +196,7 @@ export function buildAvatarRenderProjection(input: AvatarRenderProjectionInput):
     tick: snapshot.tick,
     action,
     motorPlan,
+    character: motionCharacterContextForSnapshot(snapshot, brainFrame),
     brainFrame,
     brainChannels: brainFrame?.channels ?? null,
     bodyChannels: avatarBrainBodyChannels(brainFrame),
