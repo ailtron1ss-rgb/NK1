@@ -141,6 +141,38 @@ export function Avatar3DStage(props:Props){
     };
     const framing=applyAvatarCameraFit(rt,cameraBounds);
     if(!framing)throw new Error("Не удалось рассчитать безопасное кадрирование модели.");
+    // Capture asset-space geometry and humanoid up-axis before normalization.
+    // This distinguishes a Z-up/sideways export from a camera-framing regression.
+    root.updateMatrixWorld(true);
+    const sourceBounds = new THREE.Box3().setFromObject(root);
+    const sourceSize = new THREE.Vector3();
+    sourceBounds.getSize(sourceSize);
+    const sourceHeadToHips = (() => {
+      let headNode: any = null;
+      let hipsNode: any = null;
+      root.traverse((node: any) => {
+        if (!node.isBone || typeof node.name !== "string") return;
+        const name = node.name.toLowerCase().replace(/[^a-z0-9]/g, "");
+        if (!headNode && name.endsWith("head")) headNode = node;
+        if (!hipsNode && (name.endsWith("hips") || name.endsWith("pelvis"))) hipsNode = node;
+      });
+      if (!headNode || !hipsNode) return null;
+      const head = root.worldToLocal(headNode.getWorldPosition(new THREE.Vector3()));
+      const hips = root.worldToLocal(hipsNode.getWorldPosition(new THREE.Vector3()));
+      const direction = head.sub(hips);
+      const magnitude = direction.length();
+      if (!Number.isFinite(magnitude) || magnitude < 1e-6) return null;
+      direction.normalize();
+      return { x: direction.x, y: direction.y, z: direction.z };
+    })();
+    const sourceAxisDiagnostics = {
+      boundsSize: { x: sourceSize.x, y: sourceSize.y, z: sourceSize.z },
+      headToHips: sourceHeadToHips,
+      dominantBoundsAxis: sourceSize.x >= sourceSize.y && sourceSize.x >= sourceSize.z
+        ? "x" : sourceSize.y >= sourceSize.z ? "y" : "z",
+      sourceMaxDimension: Math.max(sourceSize.x, sourceSize.y, sourceSize.z),
+    };
+    rt.renderer.domElement.dataset.avatarModelAxisDiagnostics = JSON.stringify(sourceAxisDiagnostics);
     let modelMeshCount=0,visibleModelMeshCount=0,skinnedModelMeshCount=0;
     root.traverse((n:any)=>{
       if(!n.isMesh)return;
