@@ -462,7 +462,9 @@ export class MemoryFabric {
 
   private replayMutationReceipt(receipt:MemoryLifecycleReceipt):MemoryItem2|Record<string,string>|boolean|void|null {
     if(receipt.resultKind==='boolean')return Boolean(receipt.booleanValue);
-    if(receipt.resultKind==='memory')return receipt.memoryId?this.findCanonical(receipt.memoryId):null;
+    // A replay must return the exact result revision originally produced by the command.
+    // Resolving through the current revision tip changes identity after a later correction.
+    if(receipt.resultKind==='memory')return receipt.memoryId?this.memoryOS.snapshotItem(receipt.memoryId):null;
     if(receipt.resultKind==='context'){const current=receipt.memoryId?this.findCanonical(receipt.memoryId):null;return structuredClone(current?.context??{});}
     if(receipt.resultKind==='null')return null;
     return undefined;
