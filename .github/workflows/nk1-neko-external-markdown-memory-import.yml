@@ -8,7 +8,6 @@ on:
       - "runtime/neuro-kurisu/tests/neko-external-markdown-memory-import.mjs"
       - "runtime/neuro-kurisu/tests/openclaw-skill-memory-import.mjs"
       - "runtime/neuro-kurisu/docs/DONOR_ARCHIVES_THREE_FOUR_INTEGRATION_REVIEW_2026-11-27_RU.md"
-      - "runtime/neuro-kurisu/tests/openclaw-skill-memory-import.mjs"
       - ".github/workflows/nk1-neko-external-markdown-memory-import.yml"
       - "runtime/neuro-kurisu/docs/NEKO_EXTERNAL_MARKDOWN_MEMORY_IMPORT_RU.md"
   push:
@@ -17,6 +16,7 @@ on:
       - "runtime/neuro-kurisu/src/organism/integration/neko/NekoExternalMarkdownMemoryAdapter.ts"
       - "runtime/neuro-kurisu/tests/neko-external-markdown-memory-import.mjs"
       - "runtime/neuro-kurisu/tests/openclaw-skill-memory-import.mjs"
+      - "runtime/neuro-kurisu/docs/DONOR_ARCHIVES_THREE_FOUR_INTEGRATION_REVIEW_2026-11-27_RU.md"
       - ".github/workflows/nk1-neko-external-markdown-memory-import.yml"
       - "runtime/neuro-kurisu/docs/NEKO_EXTERNAL_MARKDOWN_MEMORY_IMPORT_RU.md"
 
@@ -41,9 +41,6 @@ jobs:
       - name: Install locked runtime dependencies
         working-directory: runtime/neuro-kurisu
         run: npm ci
-      - name: OpenClaw SKILL.md memory import contract
-        working-directory: runtime/neuro-kurisu
-        run: node --experimental-strip-types tests/openclaw-skill-memory-import.mjs
       - name: OpenClaw SKILL.md memory import contract
         working-directory: runtime/neuro-kurisu
         run: node --experimental-strip-types tests/openclaw-skill-memory-import.mjs
