@@ -20,6 +20,7 @@ export interface PlanRevisionHint {
   previousDecisionId: string;
   previousTick: number;
   goalId: string;
+  previousAction: ActionKind;
   avoidFirstAction: EnvironmentAction;
   predictedReward01: number;
   actualReward01: number;
@@ -79,6 +80,10 @@ const MIN_REVISION_ERROR01 = 0.25;
 const MIN_VERIFIED_OUTCOME_QUALITY01 = 0.7;
 const safePlanId = (value: unknown): string | null =>
   typeof value === 'string' && /^plan-[a-f0-9]{24}$/u.test(value) ? value : null;
+const safeActionKind = (value: unknown): ActionKind | null =>
+  typeof value === 'string' && Object.prototype.hasOwnProperty.call(actionMap, value)
+    ? value as ActionKind
+    : null;
 const finite01 = (value: unknown): value is number =>
   typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 1;
 
@@ -94,6 +99,7 @@ function normalizePlanRevisionHint(
   const previousDecisionId = safeDecisionId(hint.previousDecisionId);
   const previousTick = hint.previousTick;
   const goalId = safeDecisionId(hint.goalId);
+  const previousAction = safeActionKind(hint.previousAction);
   const action = hint.avoidFirstAction;
   const predicted = hint.predictedReward01;
   const actual = hint.actualReward01;
@@ -102,6 +108,7 @@ function normalizePlanRevisionHint(
   if (hint.source !== 'verified-observed' || !previousPlanId || !previousDecisionId
     || typeof previousTick !== 'number' || !Number.isSafeInteger(previousTick)
     || previousTick !== currentTick - 1 || goalId !== currentGoalId
+    || !previousAction || actionMap[previousAction] !== action
     || !envActions.includes(action as EnvironmentAction)
     || !finite01(predicted) || !finite01(actual) || !finite01(error) || !finite01(readiness)
     || readiness < MIN_REVISION_READINESS01
@@ -113,6 +120,7 @@ function normalizePlanRevisionHint(
     previousDecisionId,
     previousTick,
     goalId,
+    previousAction,
     avoidFirstAction: action as EnvironmentAction,
     predictedReward01: predicted,
     actualReward01: actual,
@@ -141,15 +149,16 @@ export function derivePlanRevisionHint(
   const planId = safePlanId(payload.planId);
   const decisionId = safeDecisionId(payload.decisionId);
   const goalId = safeDecisionId(payload.goalId);
-  const plannedAction = payload.plannedAction;
-  const predictedReward01 = payload.predictedReward01;
+  const previousAction = safeActionKind(payload.decisionAction);
+  const avoidFirstAction = previousAction ? actionMap[previousAction] : null;
+  const predictedReward01 = payload.decisionPredicted01;
   const actualReward01 = payload.actualReward01;
   const verified01 = payload.verified01;
   const independent01 = payload.independent01;
   const evidence01 = payload.evidence01;
   if (payload.planAccepted !== true || payload.realitySource !== 'external'
     || !planId || !decisionId || goalId !== currentGoalId
-    || !envActions.includes(plannedAction as EnvironmentAction)
+    || !previousAction || !avoidFirstAction
     || !finite01(predictedReward01) || !finite01(actualReward01)
     || !finite01(verified01) || !finite01(independent01) || !finite01(evidence01)
     || verified01 < MIN_VERIFIED_OUTCOME_QUALITY01
@@ -161,8 +170,7 @@ export function derivePlanRevisionHint(
     return event.payload.planId === planId
       && event.payload.decisionId === decisionId
       && event.payload.goalId === currentGoalId
-      && event.payload.planAccepted === true
-      && event.payload.nextAction === plannedAction;
+      && event.payload.planAccepted === true;
   });
   if (!planEvent) return null;
   const predictionError01 = Math.abs(predictedReward01 - actualReward01);
@@ -173,7 +181,8 @@ export function derivePlanRevisionHint(
     previousDecisionId: decisionId,
     previousTick: outcome.tick,
     goalId,
-    avoidFirstAction: plannedAction,
+    previousAction,
+    avoidFirstAction,
     predictedReward01,
     actualReward01,
     predictionError01,
