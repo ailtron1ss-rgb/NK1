@@ -51,7 +51,7 @@
     "test:2p5d-asset-inventory": "node --experimental-strip-types --test scripts/depth-rig-asset-inventory.test.mjs",
     "test:avatar-animation-runtime": "node --experimental-strip-types --test scripts/avatar-animation-runtime.test.mjs",
     "test:procedural-humanoid-rig": "node --experimental-strip-types --test scripts/procedural-humanoid-rig.test.mjs",
-    "test:embodiment": "npm run test:procedural-humanoid-rig && npm run test:body-systems && npm run test:vrm-runtime-adapter && npm run test:avatar-animation-runtime"
+    "test:embodiment": "npm run test:procedural-humanoid-rig && node --experimental-strip-types --test scripts/avatar-body-step-scheduler.test.mjs && npm run test:body-systems && npm run test:vrm-runtime-adapter && npm run test:avatar-animation-runtime"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.4",
