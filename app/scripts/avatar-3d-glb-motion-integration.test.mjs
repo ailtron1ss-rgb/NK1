@@ -12,4 +12,8 @@ test("generic GLB renderer consumes the expressive face and secondary motion ada
   assert.match(stage, /browRaise:brain\?\.browRaise\?\?0/);
   assert.match(stage, /browFurrow:brain\?\.browFurrow\?\?0/);
   assert.match(stage, /if\(rt\.vrm\)\{applyVrmExpressionFrame/);
+  assert.match(stage, /attachAvatarSecondaryVertexDynamics\(root,scale\)/);
+  assert.match(stage, /updateAvatarSecondaryVertexDynamics\(rt\.secondaryVertexBindings,adaptiveFrame,t\)/);
+  assert.match(stage, /disposeAvatarSecondaryVertexDynamics\(rt\.secondaryVertexBindings\)/);
+  assert.match(stage, /GPU vertex sway/);
 });
