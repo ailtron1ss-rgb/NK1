@@ -192,6 +192,9 @@ test("VRM native eye gaze uses the official target and does not double-drive the
  assert.match(stage, /getRawBoneNode\("head"\)/);
  assert.match(stage, /vrm\.lookAt\.target=target/);
  assert.match(stage, /vrm\.lookAt\.autoUpdate=true/);
+ assert.match(stage, /getFaceFrontQuaternion\(new THREE\.Quaternion\(\)\)/);
+ assert.match(stage, /applyQuaternion\(rt\.vrmLookAtFaceFront\)/);
+ assert.match(stage, /position\.lerp\(desiredOffset,gazeBlend\)/);
  assert.match(stage, /resolveVrmLookAtTargetOffset\(p\.gazeX,p\.gazeY\)/);
  assert.match(stage, /gazeViaLookAt:Boolean\(rt\.vrmLookAtTarget\)/);
  assert.match(adapter, /frame\.gazeViaLookAt === true \? 0/);
