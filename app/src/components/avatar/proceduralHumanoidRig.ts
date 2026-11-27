@@ -493,27 +493,18 @@ export function createProceduralHumanoidRig(scene: THREE.Scene): ProceduralHuman
         ["leftHipPoint", "leftHip"], ["leftKneePoint", "leftKnee"], ["leftAnklePoint", "leftAnkle"],
         ["rightHipPoint", "rightHip"], ["rightKneePoint", "rightKnee"], ["rightAnklePoint", "rightAnkle"],
       ];
-      root.rotation.y = smooth(root.rotation.y, channel("rootYaw", 0) * 0.34, delta, 10);
       root.updateMatrixWorld(true);
-      const rootYawCos = Math.cos(root.rotation.y);
-      const rootYawSin = Math.sin(root.rotation.y);
-      const localParticleOffset = (sample: ArticulatedParticleFrame[ArticulatedBodyParticleId]) => {
-        const dx = sample.position.x - sample.target.x;
-        const dy = sample.position.y - sample.target.y;
-        const dz = sample.position.z - sample.target.z;
-        return new THREE.Vector3(
-          dx * rootYawCos - dz * rootYawSin,
-          dy,
-          dx * rootYawSin + dz * rootYawCos,
+      const localParticleOffset = (sample: ArticulatedParticleFrame[ArticulatedBodyParticleId]) =>
+        new THREE.Vector3(
+          sample.position.x - sample.target.x,
+          sample.position.y - sample.target.y,
+          sample.position.z - sample.target.z,
         );
-      };
       let particleBindingsApplied = 0;
       const particleTargetWorld = (sample: ArticulatedParticleFrame[ArticulatedBodyParticleId] | undefined) => {
         if (!sample) return null;
         const pelvisHeight = bones.pelvis.position.y;
-        const x = sample.position.x * rootYawCos - sample.position.z * rootYawSin;
-        const z = sample.position.x * rootYawSin + sample.position.z * rootYawCos;
-        return root.localToWorld(new THREE.Vector3(x, pelvisHeight + sample.position.y, z));
+        return root.localToWorld(new THREE.Vector3(sample.position.x, pelvisHeight + sample.position.y, sample.position.z));
       };
       for (const [particleId, boneName] of particleBindings) {
         const sample = input.particles?.[particleId];
@@ -599,8 +590,8 @@ export function createProceduralHumanoidRig(scene: THREE.Scene): ProceduralHuman
       const result = solveTwoBonePlanarIK(
         { x: localStart.x, y: localStart.y },
         { x: localTarget.x, y: localTarget.y },
-        0.48,
-        0.43,
+        0.505,
+        0.505,
         side === "left" ? -1 : 1,
       );
       const hipValue = clampJointAngle(side + "Hip", "z", result.shoulder + PI / 2, limits);
