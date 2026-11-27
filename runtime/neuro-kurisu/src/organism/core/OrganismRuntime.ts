@@ -2891,6 +2891,7 @@ export class OrganismRuntime {
       riskAwareRecovery: 'not-attempted' as 'not-attempted' | 'durable' | 'failed',
     };
     const capture = (error: unknown) => { stopErrors.push(error); };
+    let runtimeView: ReturnType<OrganismCore['runtimeClosureOperationalSnapshot']> | null = null;
 
     this.stopping = true;
     try {
@@ -2926,7 +2927,6 @@ export class OrganismRuntime {
           }
         }
 
-        let runtimeView: ReturnType<OrganismCore['runtimeClosureOperationalSnapshot']> | null = null;
         try {
           // Capture the closure once; a full core projection serializes several MB
           // on mobile, so shutdown must not pay for duplicate full-state flushes.
