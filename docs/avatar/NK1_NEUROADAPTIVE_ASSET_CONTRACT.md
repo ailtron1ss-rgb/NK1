@@ -122,3 +122,14 @@ The secondary-role audit detected:
 The imported asset is therefore a valid base humanoid, but **not yet a modular secondary-physics asset**. Runtime dynamics remain fail-closed/no-op for layers absent from v5. The confirmed SHA, exact 14 unclassified limb/shoulder/hand candidates, acceptance requirements, and next asset-authoring work are recorded in [NK1_V5_SECONDARY_ASSET_AUDIT_2026-11-27_RU.md](./NK1_V5_SECONDARY_ASSET_AUDIT_2026-11-27_RU.md).
 
 Do not repurpose primary shoulders, arms, neck, head or facial morphs as substitute hair/cloth joints. The next asset pass must add real secondary chains, skin weights, optional tissue morphs and explicitly tagged neural-fabric materials while preserving the existing character identity.
+
+
+## Verified modular mesh inventory in v5
+
+The actual hosted v5 also contains separately named meshes for hair, clothing and sleeves, even though every hair mesh is currently weighted 100% to the head and no secondary bones are exported. The scene audit now reports these mesh roles independently from the secondary-rig status:
+
+- Hair mesh candidates: back mass, crown, center/left/right fringe, front left/right strands, six side layers, and left/right long locks.
+- Garment candidates: main coat, skirt, tie blade/knot, left/right lapels and seams, collar, pockets/flaps, buttons and hem stitch.
+- Sleeve candidates: upper and lower left/right sleeve meshes.
+
+The 3D capability panel reports these as existing geometry, not as active simulated parts. The distinction is intentional: separate mesh nodes make targeted authoring possible, but a mesh remains rigidly attached to its current joint until secondary bones and vertex weights are added.
