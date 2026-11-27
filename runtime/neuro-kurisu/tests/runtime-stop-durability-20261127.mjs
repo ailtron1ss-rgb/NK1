@@ -70,6 +70,25 @@ test('does not emit a durable receipt when the continuity journal flush fails', 
   }
 });
 
+test('preserves the original continuity journal close failure without adding a duplicate generic error', async () => {
+  const { runtime, directory, entries } = await makeRuntime({
+    ledgerFlush: async () => {},
+    ledgerDiagnostics: cleanLedger,
+    ledgerClose: async () => { throw new Error('injected-continuity-close-failure'); },
+  });
+  try {
+    await assert.rejects(runtime.stop(), /injected-continuity-close-failure/);
+    const stop = entries.find(entry => entry.event === 'runtime.stop.partial');
+    assert.ok(stop);
+    assert.equal(stop.data.overall, 'partial');
+    assert.equal(stop.data.durability.continuityLedger, 'failed');
+    assert.equal(entries.some(entry => entry.event === 'runtime.stop.durable'), false);
+  } finally {
+    await runtime.continuityLedger.close();
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
 test('a directory durability warning produces a partial shutdown receipt', async () => {
   const { runtime, directory, entries } = await makeRuntime({
     ledgerFlush: async () => {},
