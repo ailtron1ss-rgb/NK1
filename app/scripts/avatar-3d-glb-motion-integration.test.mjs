@@ -42,3 +42,12 @@ test("generic GLB renderer consumes the expressive face and secondary motion ada
   assert.match(stage, /if\(rt\.cameraBounds\)\{const fit=applyAvatarCameraFit/);
   assert.match(stage, /rt\.cameraBounds=null/);
 });
+test("GLB diagnostics and camera framing share the morph-aware skinned vertex surface", async () => {
+  const stage = await readFile(new URL("../src/components/Avatar3DStage.tsx", import.meta.url), "utf8");
+  assert.match(stage, /node\.getVertexPosition\(index,auditVertex\)/,
+    "vertex audit must include the current morph and skin deformation");
+  assert.match(stage, /const cameraBoundsSource\s*=\s*skinVertexBounds\s*\?/,
+    "camera fit must prefer the exact deformed surface bounds");
+  assert.match(stage, /const cameraBounds=skinVertexBounds\s*\?/,
+    "camera fit bounds must use the same vertex audit result");
+});
