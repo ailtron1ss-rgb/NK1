@@ -32,6 +32,36 @@ Use stable, explicit names. Keep the root or attachment fixed; author one or mor
 
 Root, anchor, base and attachment nodes are excluded from simulation. Keep semantic names unique where possible. When duplicated mesh skeletons reuse a name, the runtime uses the bone array index as a separate state key.
 
+## Explicit glTF node metadata (preferred over name heuristics)
+
+Name-based detection remains a compatibility fallback. For newly authored rigs, put an explicit `nk1Secondary` object in each relevant glTF node's `extras`; GLTFLoader exposes this as `node.userData.nk1Secondary`.
+
+Example for a loose left hair chain:
+
+```json
+{
+  "name": "Bone.001",
+  "extras": {
+    "nk1Secondary": {
+      "role": "hair",
+      "chainId": "fringe-left",
+      "side": "left",
+      "distalWeight": 0.58,
+      "maxAngle": 0.045,
+      "pinned": false
+    }
+  }
+}
+```
+
+Supported roles: `hair`, `garment`, `sleeve`, `neural-fiber`. Supported sides: `left`, `right`, `center` (or `-1`, `1`, `0`). Optional fields are `chainId`, `pinned`, `enabled`, `distalWeight` and `maxAngle`.
+
+- Root/attachment bones should be explicitly marked `pinned: true`; they are kept out of the solver.
+- `chainId` groups authored bones for authoring/debugging; per-bone runtime state remains independently keyed.
+- A supplied angle is clamped to the role hard ceiling: hair 0.06 rad, garment 0.09 rad, sleeve 0.055 rad, neural fiber 0.035 rad. Metadata cannot raise those limits.
+- Unknown roles, invalid side values, malformed bounds and invalid chain IDs fail closed. The runtime does not fall back to a guessed name when an explicit role is invalid.
+- Audit, raw hosted-GLB CI and live Three.js runtime all read the same metadata contract.
+
 ## Optional morph channels
 
 The runtime recognizes only these exact semantic aliases and only when the model actually exports them:
