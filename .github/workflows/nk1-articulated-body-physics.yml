@@ -27,7 +27,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: nk1-articulated-body-physics
+  group: nk1-articulated-body-physics-${{ github.event.pull_request.number || github.ref }}
   # Serialize branch updates instead of cancelling the latest proof run mid-suite.
   cancel-in-progress: false
 
