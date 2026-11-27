@@ -36,7 +36,7 @@ export function resolveGlbBodyBoneRotation(
   if (name.includes("neck")) {
     return {
       x: signal(channels, "torsoPitch", 0.1) + signal(channels, "headPitch", 0.08),
-      y: signal(channels, "torsoYaw", 0.1) + signal(channels, "headYaw", 0.08),
+      y: signal(channels, "torsoYaw", 0.05) + signal(channels, "headYaw", 0.12),
       z: signal(channels, "headRoll", 0.08),
     };
   }
