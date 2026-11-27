@@ -63,7 +63,10 @@ export function resolveGlbBodyBoneRotation(
           : name.includes("ring") ? "RingCurl" : "LittleCurl";
     const channel = (side + digit) as BodyChannel;
     const aggregate = (side + "Fingers") as BodyChannel;
-    return { x: signal(channels, channel, 0.42) || signal(channels, aggregate, 0.28), y: 0, z: 0 };
+    const curl = channels[channel] === undefined
+      ? signal(channels, aggregate, 0.28)
+      : signal(channels, channel, 0.42);
+    return { x: curl, y: 0, z: 0 };
   }
   if (name.includes("upperarm") || name.includes("shoulder")) {
     const channel = (side + "Shoulder") as BodyChannel;
