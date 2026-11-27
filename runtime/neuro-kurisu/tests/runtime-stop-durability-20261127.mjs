@@ -35,6 +35,8 @@ const makeRuntime = async (options = {}) => {
   if (options.ledgerDiagnostics) runtime.continuityLedger.diagnostics = options.ledgerDiagnostics;
   if (options.ledgerClose) runtime.continuityLedger.close = options.ledgerClose;
   if (options.worldCheckpoint) runtime.checkpointWorld = options.worldCheckpoint;
+  if (options.cognitiveSpine) runtime.persistCognitiveSpineSchedule = options.cognitiveSpine;
+  if (options.riskAwareRecovery) runtime.persistRiskAwareRecovery = options.riskAwareRecovery;
   return { runtime, directory, entries, phases };
 };
 
@@ -79,6 +81,50 @@ test('a directory durability warning produces a partial shutdown receipt', async
     const stop = entries.find(entry => entry.event === 'runtime.stop.partial');
     assert.ok(stop);
     assert.equal(stop.data.durability.continuityLedger, 'failed');
+  } finally {
+    await runtime.continuityLedger.close();
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test('a cognitive-spine sidecar failure produces a partial durability receipt', async () => {
+  const { runtime, directory, entries } = await makeRuntime({
+    ledgerFlush: async () => {},
+    ledgerDiagnostics: cleanLedger,
+    ledgerClose: async () => {},
+    cognitiveSpine: async () => false,
+  });
+  try {
+    await assert.rejects(runtime.stop(), /cognitive-spine-durability-unconfirmed/);
+    const stop = entries.find(entry => entry.event === 'runtime.stop.partial');
+    assert.ok(stop);
+    assert.equal(stop.data.durability.core, 'durable');
+    assert.equal(stop.data.durability.cognitiveSpine, 'failed');
+    assert.equal(stop.data.durability.riskAwareRecovery, 'durable');
+    assert.equal(stop.data.durability.continuityLedger, 'durable');
+    assert.equal(entries.some(entry => entry.event === 'runtime.stop.durable'), false);
+  } finally {
+    await runtime.continuityLedger.close();
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test('a risk-aware recovery sidecar failure produces a partial durability receipt', async () => {
+  const { runtime, directory, entries } = await makeRuntime({
+    ledgerFlush: async () => {},
+    ledgerDiagnostics: cleanLedger,
+    ledgerClose: async () => {},
+    riskAwareRecovery: async () => false,
+  });
+  try {
+    await assert.rejects(runtime.stop(), /risk-aware-recovery-durability-unconfirmed/);
+    const stop = entries.find(entry => entry.event === 'runtime.stop.partial');
+    assert.ok(stop);
+    assert.equal(stop.data.durability.core, 'durable');
+    assert.equal(stop.data.durability.cognitiveSpine, 'durable');
+    assert.equal(stop.data.durability.riskAwareRecovery, 'failed');
+    assert.equal(stop.data.durability.continuityLedger, 'durable');
+    assert.equal(entries.some(entry => entry.event === 'runtime.stop.durable'), false);
   } finally {
     await runtime.continuityLedger.close();
     await rm(directory, { recursive: true, force: true });
