@@ -41,3 +41,23 @@ Upstream implementation is recorded as inherited baseline, not as work completed
 
 - **IMPLEMENTED, EXACT PRODUCT CI PENDING:** OpenClaw skill instructions are stored as external/unverified knowledge only after explicit per-candidate review; the adapter does not execute them or grant tool permissions.
 - **IMPLEMENTED, EXACT PRODUCT CI PENDING:** local llama.cpp provider supports schema-constrained structured JSON responses using the existing model ecology; malformed output and unsafe schemas fail closed.
+
+## Live integration repairs — 2026-11-27
+
+**Product exact head:** `ef23301c228b0b3c4da0f9ab9f5cd38f29651e52`  
+**Canonical base:** `workpass70-source@8994a103f6b735f6347d77d926ee9c024a4d4f4d`
+
+| Seam | Concrete repair | Exact status |
+|---|---|---|
+| Particle solver → procedural humanoid | Bind elbow, wrist, hand, knee and ankle particle landmarks to their matching skeleton bones; preserve bind offsets before IK and apply absolute particle targets after the parent-chain solve | IMPLEMENTED; focused suite passed on a preceding exact head; rerun queued on current head |
+| Leg IK → joint limits | Correct mirrored bend sign and knee-relative angle calculation so left/right target angles respect their own limit envelope | IMPLEMENTED; app-script regressions passed on preceding exact head; rerun queued |
+| ContinuityLedger → OrganismRuntime.stop | Preserve injected flush/close errors without message-substring heuristics or duplicate generic failures; final durable receipt only when both operations and ledger diagnostics are clean | IMPLEMENTED; shutdown durability regression suite passed on preceding exact head |
+| NeuroCore workflow → app Vite binary | Route build through `npm run build` within the app workspace so the local Vite executable is available on PATH | IMPLEMENTED; `neurocore-integration` and integrated software baseline passed on preceding exact head |
+| Browser UI smoke → product naming | Align page heading, 3D preview accessible name and chat-input placeholder with the actual NeuroCore UI; mobile smoke checks the actual default 3D preview and then verifies Live2D selection | IMPLEMENTED; current exact-head UI smoke running after last selector correction |
+| GLB skins → camera fitting (PR #1220) | Refresh each skin palette, recompute skinned bounds, and use pose-aware vertex bounds before/after normalization; strict framebuffer occupancy gate retained | IMPLEMENTED on PR #1220 Draft head `747a5f54ea3591bd3acb0195b5a5b8ddbea82b3e`; fresh CI queued/running; no visual pass claimed |
+
+### Current boundary
+- PR #1221 remains Draft; no source/main/release changes.
+- PR #1220 remains Draft and is based on an older source head; no blind merge/rebase.
+- The mobile and desktop browser smoke must both pass on the same exact product head. A selector fix is not UI acceptance by itself.
+- The 3D framebuffer acceptance still requires a model whose rendered opaque-pixel bounds occupy a meaningful portion of the selected canvas; model-loaded metadata or draw-call count alone is insufficient.
