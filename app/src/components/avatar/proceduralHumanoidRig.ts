@@ -86,8 +86,8 @@ export function solveTwoBonePlanarIK(
   const dx = target.x - start.x;
   const dy = target.y - start.y;
   const rawDistance = Math.hypot(dx, dy);
-  const minReach = Math.abs(l1 - l2) + 1e-5;
-  const maxReach = l1 + l2 - 1e-5;
+  const minReach = Math.abs(l1 - l2) + 1e-7;
+  const maxReach = l1 + l2 - 1e-7;
   const distance = clamp(rawDistance, minReach, maxReach);
   const angleToTarget = Math.atan2(dy, dx);
   const shoulderCos = clamp((l1 * l1 + distance * distance - l2 * l2) / (2 * l1 * distance), -1, 1);
@@ -294,19 +294,17 @@ export function createProceduralHumanoidRig(scene: THREE.Scene): ProceduralHuman
   }
 
   // Lower limbs: hip, knee and ankle joints, feet and toe joints.
-  const legRoots: Record<"left" | "right", { thigh: THREE.Bone; calf: THREE.Bone; foot: THREE.Bone }> = {} as any;
   for (const side of [-1, 1] as const) {
     const key = side < 0 ? "left" : "right";
     const hip = addBone(pelvis, key + "Hip", [side * 0.12, -0.04, 0], bones, limits);
     const thigh = addBone(hip, key + "Thigh", [0, 0, 0], bones, limits);
-    const knee = addBone(thigh, key + "Knee", [0, -0.42, 0], bones, limits);
+    const knee = addBone(thigh, key + "Knee", [side * 0.02, -0.42, 0], bones, limits);
     const calf = addBone(knee, key + "Calf", [0, -0.4, 0], bones, limits);
     const ankle = addBone(calf, key + "Ankle", [0, 0, 0], bones, limits);
     const foot = addBone(ankle, key + "Foot", [0, -0.035, 0.025], bones, limits);
     const toe = addBone(foot, key + "Toe", [0, -0.025, 0.15], bones, limits);
-    legRoots[key] = { thigh, calf, foot };
 
-    makeSegment(thigh, sphere, tights, key + "ThighVolume", new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, -0.42, 0), new THREE.Vector3(0.135, 0.245, 0.145), meshes);
+    makeSegment(thigh, sphere, tights, key + "ThighVolume", new THREE.Vector3(0, 0, 0), new THREE.Vector3(side * 0.02, -0.42, 0), new THREE.Vector3(0.135, 0.245, 0.145), meshes);
     makeEllipsoid(thigh, sphereFine, muscle, key + "Quadriceps", new THREE.Vector3(0, -0.20, 0.105), new THREE.Vector3(0.104, 0.21, 0.065), new THREE.Euler(), meshes);
     makeEllipsoid(thigh, sphereFine, muscleShadow, key + "Hamstrings", new THREE.Vector3(0, -0.21, -0.09), new THREE.Vector3(0.105, 0.20, 0.055), new THREE.Euler(), meshes);
     makeEllipsoid(knee, sphereFine, tights, key + "KneeJointCap", new THREE.Vector3(0, 0, 0.075), new THREE.Vector3(0.105, 0.115, 0.075), new THREE.Euler(), meshes);
@@ -414,7 +412,6 @@ export function createProceduralHumanoidRig(scene: THREE.Scene): ProceduralHuman
       const delta = clamp(finite(input.deltaSeconds, 1 / 60), 0, 0.1);
       const channels = input.bodyChannels ?? {};
       const channel = (name: string, fallback = 0) => clamp(finite(channels[name], fallback), -1, 1);
-      const intensity = input.awake ? 1 : 0.28;
       const curiosity = input.emotion === "curiosity" ? 1 : 0;
       const smile = input.emotion === "joy" ? 1 : input.emotion === "calm" ? 0.22 : 0;
       const stress = input.emotion === "anxiety" || input.emotion === "frustration" || input.emotion === "anger" ? 1 : 0;
@@ -447,11 +444,11 @@ export function createProceduralHumanoidRig(scene: THREE.Scene): ProceduralHuman
         const elbow = hasElbowMotor ? channel(key + "Elbow") * 0.78 : elbowFallback;
         targets[key + "Clavicle"] = { z: side * (0.06 + shoulder * 0.12) + channel(key + "ClavicleRoll", 0) };
         targets[key + "UpperArm"] = {
-          z: -side * (shoulder + (input.speaking ? 0.06 : 0)),
+          z: side * (shoulder - 0.684 + (input.speaking ? 0.06 : 0)),
           x: channel(key + "ShoulderPitch", 0),
           y: channel(key + "ShoulderYaw", side * -0.08),
         };
-        targets[key + "Forearm"] = { z: -side * elbow + channel(key + "ForearmTwist", 0) };
+        targets[key + "Forearm"] = { z: side * (elbow - 0.552) + channel(key + "ForearmTwist", 0) };
         targets[key + "Wrist"] = { z: channel(key + "Wrist", 0) * 0.65, x: channel(key + "WristPitch", 0) * 0.55 };
         const fist = clamp(channel(key + "Fingers", channel(key + "Hand", input.action === "inspect" ? 0.12 : 0)), 0, 1);
         for (const finger of fingerNames) {
@@ -461,7 +458,7 @@ export function createProceduralHumanoidRig(scene: THREE.Scene): ProceduralHuman
           const curl = clamp(channel(channelName, fist), 0, 1);
           for (let joint = 1; joint <= 3; joint++) {
             const boneName = key + name + joint;
-            targets[boneName] = { z: side * curl * 0.38 * thumbFlex * (joint === 1 ? 0.75 : 1) };
+            targets[boneName] = { z: -side * curl * 0.38 * thumbFlex * (joint === 1 ? 0.75 : 1) };
           }
         }
       }
@@ -604,9 +601,12 @@ export function createProceduralHumanoidRig(scene: THREE.Scene): ProceduralHuman
     solveArmTarget(side, target, deltaSeconds = 1 / 60) {
       const arm = armRoots[side];
       root.updateMatrixWorld(true);
+      const parent = arm.upper.parent;
+      if (!parent) throw new Error("Arm upper bone has no parent");
       const shoulderWorld = arm.upper.getWorldPosition(new THREE.Vector3());
-      const localTarget = root.worldToLocal(target.clone());
-      const localStart = root.worldToLocal(shoulderWorld.clone());
+      parent.updateWorldMatrix(true, false);
+      const localStart = parent.worldToLocal(shoulderWorld.clone());
+      const localTarget = parent.worldToLocal(target.clone());
       const outward = side === "left" ? -1 : 1;
       const result = solveTwoBonePlanarIK(
         { x: outward * localStart.x, y: localStart.y },
@@ -615,10 +615,12 @@ export function createProceduralHumanoidRig(scene: THREE.Scene): ProceduralHuman
         0.244,
         -1,
       );
+      const baseUpper = Math.atan2(arm.forearm.position.y, outward * arm.forearm.position.x);
+      const baseForearm = Math.atan2(arm.hand.position.y, outward * arm.hand.position.x);
       const shoulderName = side + "UpperArm";
       const elbowName = side + "Forearm";
-      const shoulderValue = clampJointAngle(shoulderName, "z", outward * result.shoulder, limits);
-      const elbowValue = clampJointAngle(elbowName, "z", outward * -1 * result.elbowFlex, limits);
+      const shoulderValue = clampJointAngle(shoulderName, "z", outward * (result.shoulder - baseUpper), limits);
+      const elbowValue = clampJointAngle(elbowName, "z", outward * -1 * result.elbowFlex + baseUpper - baseForearm, limits);
       arm.upper.rotation.z = smooth(arm.upper.rotation.z, shoulderValue, deltaSeconds, 18);
       arm.forearm.rotation.z = smooth(arm.forearm.rotation.z, elbowValue, deltaSeconds, 18);
       root.updateMatrixWorld(true);
@@ -631,21 +633,32 @@ export function createProceduralHumanoidRig(scene: THREE.Scene): ProceduralHuman
     solveLegTarget(side, target, deltaSeconds = 1 / 60) {
       root.updateMatrixWorld(true);
       const hipBone = bones[side + "Hip"];
+      const parent = hipBone.parent;
+      if (!parent) throw new Error("Hip bone has no parent");
       const hipWorld = hipBone.getWorldPosition(new THREE.Vector3());
-      const localTarget = root.worldToLocal(target.clone());
-      const localStart = root.worldToLocal(hipWorld.clone());
+      parent.updateWorldMatrix(true, false);
+      const localTarget = parent.worldToLocal(target.clone());
+      const localStart = parent.worldToLocal(hipWorld.clone());
+      const kneeBone = bones[side + "Knee"];
+      const calfBone = bones[side + "Calf"];
+      const firstLink = kneeBone.position;
+      const secondLink = calfBone.position;
+      const firstLength = Math.hypot(firstLink.x, firstLink.y);
+      const secondLength = Math.hypot(secondLink.x, secondLink.y);
+      const firstRestAngle = Math.atan2(firstLink.y, firstLink.x);
+      const secondRestAngle = Math.atan2(secondLink.y, secondLink.x);
       const result = solveTwoBonePlanarIK(
         { x: localStart.x, y: localStart.y },
         { x: localTarget.x, y: localTarget.y },
-        0.42,
-        0.4,
+        firstLength,
+        secondLength,
         side === "left" ? -1 : 1,
       );
-      const hipValue = clampJointAngle(side + "Hip", "z", result.shoulder + PI / 2, limits);
+      const hipValue = clampJointAngle(side + "Hip", "z", result.shoulder - firstRestAngle, limits);
       const kneeSign = side === "left" ? -1 : 1;
-      const kneeValue = clampJointAngle(side + "Knee", "z", kneeSign * result.elbowFlex, limits);
+      const kneeValue = clampJointAngle(side + "Knee", "z", kneeSign * result.elbowFlex + firstRestAngle - secondRestAngle, limits);
       hipBone.rotation.z = smooth(hipBone.rotation.z, hipValue, deltaSeconds, 18);
-      bones[side + "Knee"].rotation.z = smooth(bones[side + "Knee"].rotation.z, kneeValue, deltaSeconds, 18);
+      kneeBone.rotation.z = smooth(kneeBone.rotation.z, kneeValue, deltaSeconds, 18);
       root.updateMatrixWorld(true);
       return result;
     },
