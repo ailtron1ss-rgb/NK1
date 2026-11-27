@@ -182,6 +182,7 @@ function validateIntent(intent: MotionIntent): boolean {
     && typeof intent.emotion === "string" && intent.emotion.length <= 64
     && typeof intent.speaking === "boolean"
     && typeof intent.thinking === "boolean"
+    && typeof intent.energy01 === "number" && Number.isFinite(intent.energy01) && intent.energy01 >= 0 && intent.energy01 <= 1
     && typeof intent.awake === "boolean"
     && (intent.semanticAction === undefined || Object.hasOwn(SEMANTIC_ACTION_PROGRAM, intent.semanticAction))
     && (intent.character === undefined || validateCharacterContext(intent.character))
