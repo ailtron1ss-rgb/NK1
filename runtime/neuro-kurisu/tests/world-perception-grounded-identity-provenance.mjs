@@ -365,10 +365,10 @@ console.log(JSON.stringify({
   const snapshot = safe.snapshot();
   assert.equal(snapshot.revision, 0);
   assert.equal(snapshot.location, 'unknown');
-  assert.equal(snapshot.uncertainty01, 1, 'unit metrics above 1 are clamped to the upper bound');
+  assert.equal(snapshot.uncertainty01, 0.5, 'out-of-range persisted uncertainty must use the neutral default');
   assert.equal(snapshot.confidence01, 0);
   assert.equal(snapshot.entities.length, 1);
-  assert.equal(snapshot.entities[0].confidence01, 1, 'unit confidence above 1 is clamped to the upper bound');
+  assert.equal(snapshot.entities[0].confidence01, 0, 'out-of-range persisted entity confidence must fail closed');
   assert.equal(snapshot.entities[0].present01, 0);
   assert.equal(snapshot.entities[0].firstSeenAt, 1_000);
   assert.equal(snapshot.entities[0].lastSeenAt, 1_000);
@@ -489,13 +489,14 @@ console.log(JSON.stringify({
     },
   });
   const snapshot = bounded.snapshot();
-  assert.ok(snapshot.scene.confidence01 >= 0 && snapshot.scene.confidence01 <= 1);
-  assert.ok(snapshot.scene.stability01 >= 0 && snapshot.scene.stability01 <= 1);
+  assert.equal(snapshot.scene.confidence01, 0.12, 'invalid restored scene confidence must return to the conservative default');
+  assert.equal(snapshot.scene.stability01, 0.15, 'invalid restored scene stability must return to the conservative default');
   assert.equal(snapshot.sceneEvidenceKind, 'derived');
-  assert.equal(snapshot.relations[0]?.confidence01, 1, 'relation confidence above 1 is clamped to the upper bound');
+  assert.equal(snapshot.relations[0]?.confidence01, 0, 'out-of-range persisted relation confidence must fail closed');
   assert.equal(snapshot.relations[0]?.evidenceKind, 'derived');
-  assert.equal(snapshot.metrics.grounding01 <= 1, true);
-  assert.equal(snapshot.metrics.temporalBinding01 >= 0, true);
+  assert.equal(snapshot.modalityReliability.vision.reliability01, 0.38, 'invalid restored modality reliability must not be promoted by clamping');
+  assert.equal(snapshot.metrics.grounding01, 0.18, 'invalid restored grounding metrics must use the conservative default');
+  assert.equal(snapshot.metrics.temporalBinding01, 0.12, 'negative restored temporal metric must use the conservative default');
   assert.equal(snapshot.metrics.updates <= 900_000, true);
   assert.equal(Math.abs(snapshot.actionBias.respond) <= 1, true);
   assert.equal(Math.abs(snapshot.actionBias.explore) <= 1, true);
@@ -589,10 +590,10 @@ console.log(JSON.stringify({
   assert.equal(continuityState.scenes[0].visits, 1);
   assert.equal(continuityState.scenes[0].stability01, 0);
   assert.equal(continuityState.scenes[0].transitions, 0);
-  assert.equal(continuityState.transitions, 1_000_000_000);
+  assert.equal(continuityState.transitions, 0, 'unbounded persisted counters must reset rather than saturate into fabricated activity');
   assert.equal(continuityState.stableTransitions, 0);
-  assert.equal(continuityState.objectPersistence01, 0);
-  assert.equal(continuityState.sceneContinuity01, 0);
+  assert.equal(continuityState.objectPersistence01, 0.05, 'invalid persisted unit values must use conservative defaults');
+  assert.equal(continuityState.sceneContinuity01, 0.1, 'invalid persisted unit values must use conservative defaults');
 }
 
 
