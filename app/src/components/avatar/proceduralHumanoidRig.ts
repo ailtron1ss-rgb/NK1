@@ -2,6 +2,22 @@ import * as THREE from "three";
 import { AVATAR_ARTICULATED_BODY_PARTICLE_COUNT, AVATAR_ARTICULATED_BODY_SEGMENT_COUNT } from "./articulatedBodyParticles";
 import type { ArticulatedBodyParticle, ArticulatedBodyParticleId } from "./articulatedBodyParticles";
 
+// Three.js is installed as a runtime dependency without @types/three in this
+// package. Derive instance shapes from the exported constructors instead of
+// incorrectly using value exports as namespace types.
+type ThreeGroup = InstanceType<typeof THREE.Group>;
+type ThreeSkeleton = InstanceType<typeof THREE.Skeleton>;
+type ThreeBone = InstanceType<typeof THREE.Bone>;
+type ThreeMesh = InstanceType<typeof THREE.Mesh>;
+type ThreeSkinnedMesh = InstanceType<typeof THREE.SkinnedMesh>;
+type ThreeMeshStandardMaterial = InstanceType<typeof THREE.MeshStandardMaterial>;
+type ThreeMaterial = InstanceType<typeof THREE.Material>;
+type ThreeVector3 = InstanceType<typeof THREE.Vector3>;
+type ThreeObject3D = InstanceType<typeof THREE.Object3D>;
+type ThreeSphereGeometry = InstanceType<typeof THREE.SphereGeometry>;
+type ThreeEuler = InstanceType<typeof THREE.Euler>;
+type ThreeScene = InstanceType<typeof THREE.Scene>;
+
 export type JointAxis = "x" | "y" | "z";
 export type ArticulatedParticleFrame = Partial<Record<ArticulatedBodyParticleId, Pick<ArticulatedBodyParticle, "position" | "target">>>;
 export type JointLimit = Readonly<Record<JointAxis, readonly [number, number]>>;
@@ -33,24 +49,24 @@ export type HumanoidPoseInput = {
 };
 
 export type ProceduralHumanoidRig = {
-  root: THREE.Group;
-  skeleton: THREE.Skeleton;
-  bones: Record<string, THREE.Bone>;
-  head: THREE.Bone;
-  leftArm: THREE.Bone;
-  rightArm: THREE.Bone;
-  mouth: THREE.Mesh;
-  eyeWhites: THREE.Mesh[];
-  irises: THREE.Mesh[];
-  brows: THREE.Mesh[];
-  ringMat: THREE.MeshStandardMaterial;
+  root: ThreeGroup;
+  skeleton: ThreeSkeleton;
+  bones: Record<string, ThreeBone>;
+  head: ThreeBone;
+  leftArm: ThreeBone;
+  rightArm: ThreeBone;
+  mouth: ThreeMesh;
+  eyeWhites: ThreeMesh[];
+  irises: ThreeMesh[];
+  brows: ThreeMesh[];
+  ringMat: ThreeMeshStandardMaterial;
   limits: Record<string, JointLimit>;
-  meshes: THREE.Mesh[];
+  meshes: ThreeMesh[];
   partCount: number;
-  materials: THREE.Material[];
+  materials: ThreeMaterial[];
   updatePose(input: HumanoidPoseInput): void;
-  solveArmTarget(side: "left" | "right", target: THREE.Vector3, deltaSeconds?: number): PlanarIkResult;
-  solveLegTarget(side: "left" | "right", target: THREE.Vector3, deltaSeconds?: number): PlanarIkResult;
+  solveArmTarget(side: "left" | "right", target: ThreeVector3, deltaSeconds?: number): PlanarIkResult;
+  solveLegTarget(side: "left" | "right", target: ThreeVector3, deltaSeconds?: number): PlanarIkResult;
   setJoint(name: string, axis: JointAxis, radians: number): number;
   resetPose(): void;
   dispose(): void;
@@ -143,16 +159,16 @@ function makeMaterial(color: number, roughness = 0.78, metalness = 0.02): THREE.
 }
 
 function makeEllipsoid(
-  parent: THREE.Object3D,
-  geometry: THREE.SphereGeometry,
-  material: THREE.Material,
+  parent: ThreeObject3D,
+  geometry: ThreeSphereGeometry,
+  material: ThreeMaterial,
   name: string,
-  position: THREE.Vector3,
-  scale: THREE.Vector3,
+  position: ThreeVector3,
+  scale: ThreeVector3,
   rotation = new THREE.Euler(),
-  meshes: THREE.Mesh[],
-  skinNextBone?: THREE.Bone,
-): THREE.Mesh {
+  meshes: ThreeMesh[],
+  skinNextBone?: ThreeBone,
+): ThreeMesh {
   const mesh = new THREE.Mesh(geometry, material);
   mesh.name = name;
   mesh.position.copy(position);
@@ -167,16 +183,16 @@ function makeEllipsoid(
 }
 
 function makeSegment(
-  parent: THREE.Bone,
-  geometry: THREE.SphereGeometry,
-  material: THREE.Material,
+  parent: ThreeBone,
+  geometry: ThreeSphereGeometry,
+  material: ThreeMaterial,
   name: string,
   from: THREE.Vector3,
   to: THREE.Vector3,
   radius: THREE.Vector3,
-  meshes: THREE.Mesh[],
-  skinNextBone?: THREE.Bone,
-): THREE.Mesh {
+  meshes: ThreeMesh[],
+  skinNextBone?: ThreeBone,
+): ThreeMesh {
   const direction = to.clone().sub(from);
   const length = direction.length();
   const mesh = new THREE.Mesh(geometry, material);
@@ -206,15 +222,15 @@ type SkinnedPartAccumulator = {
 };
 
 function consolidateSkinnedBodyParts(
-  root: THREE.Group,
+  root: ThreeGroup,
   parts: THREE.Mesh[],
-  skeleton: THREE.Skeleton,
+  skeleton: ThreeSkeleton,
   rootBone: THREE.Bone,
-): THREE.SkinnedMesh[] {
+): ThreeSkinnedMesh[] {
   root.updateMatrixWorld(true);
   const rootInverse = root.matrixWorld.clone().invert();
   const boneIndex = new Map(skeleton.bones.map((bone, index) => [bone.name, index]));
-  const batches = new Map<THREE.Material, SkinnedPartAccumulator>();
+  const batches = new Map<ThreeMaterial, SkinnedPartAccumulator>();
 
   for (const part of parts) {
     const material = Array.isArray(part.material) ? part.material[0] : part.material;
@@ -272,7 +288,7 @@ function consolidateSkinnedBodyParts(
     batch.partNames.push(part.name);
   }
 
-  const skinnedMeshes: THREE.SkinnedMesh[] = [];
+  const skinnedMeshes: ThreeSkinnedMesh[] = [];
   for (const [material, batch] of batches) {
     const geometry = new THREE.BufferGeometry();
     geometry.setAttribute("position", new THREE.Float32BufferAttribute(batch.positions, 3));
@@ -303,12 +319,12 @@ function consolidateSkinnedBodyParts(
 }
 
 function addBone(
-  parent: THREE.Bone,
+  parent: ThreeBone,
   name: string,
   position: [number, number, number],
   bones: Record<string, THREE.Bone>,
   limits: Record<string, JointLimit>,
-): THREE.Bone {
+): ThreeBone {
   const bone = new THREE.Bone();
   bone.name = name;
   bone.position.set(position[0], position[1], position[2]);
@@ -322,7 +338,7 @@ function smooth(current: number, target: number, deltaSeconds: number, speed = 1
   return THREE.MathUtils.damp(current, target, speed, clamp(deltaSeconds, 0, 0.1));
 }
 
-export function createProceduralHumanoidRig(scene: THREE.Scene): ProceduralHumanoidRig {
+export function createProceduralHumanoidRig(scene: ThreeScene): ProceduralHumanoidRig {
   const root = new THREE.Group();
   root.name = "NeuroCore_ArticulatedHumanoid";
   root.userData.kind = "procedural-humanoid-rig";
@@ -332,7 +348,7 @@ export function createProceduralHumanoidRig(scene: THREE.Scene): ProceduralHuman
   const bones: Record<string, THREE.Bone> = {};
   const limits: Record<string, JointLimit> = { ...HUMANOID_JOINT_LIMITS };
   const meshes: THREE.Mesh[] = [];
-  const materials: THREE.Material[] = [];
+  const materials: ThreeMaterial[] = [];
   const sphere = new THREE.SphereGeometry(1, 20, 14);
   const sphereFine = new THREE.SphereGeometry(1, 28, 18);
   const material = (color: number, rough = 0.78, metal = 0.02) => {
