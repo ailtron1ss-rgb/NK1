@@ -4,7 +4,7 @@ import { PreviewHostBridge } from "@/components/preview-host-bridge";
 import { ActionApprovalCenter } from "@/components/ActionApprovalCenter";
 import appCss from "../styles.css?url";
 
-const APP_NAME = "Neuro Kurisu";
+const APP_NAME = "NeuroCore";
 
 export const Route = createRootRoute({
   head: () => ({
