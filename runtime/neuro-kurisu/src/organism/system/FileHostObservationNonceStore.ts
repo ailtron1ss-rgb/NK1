@@ -80,9 +80,13 @@ function tupleDigest(key: HostObservationNonceKey): string {
 }
 
 async function ensurePrivateDirectory(path: string): Promise<void> {
-  await mkdir(path, { recursive: true, mode: 0o700 });
+  const created = await mkdir(path, { recursive: true, mode: 0o700 });
   const stat = await lstat(path);
   if (!stat.isDirectory() || stat.isSymbolicLink()) throw fail('nonce-store-directory-invalid');
+  if (process.platform !== 'win32' && (stat.mode & 0o077) !== 0) {
+    throw fail('nonce-store-directory-permissions-invalid');
+  }
+  if (created && process.platform !== 'win32') await syncDirectory(dirname(path));
 }
 
 async function syncDirectory(path: string): Promise<void> {
@@ -123,6 +127,9 @@ async function readRegularFile(path: string, missingIsEmpty = false): Promise<st
     throw cause;
   }
   if (!stat.isFile() || stat.isSymbolicLink()) throw fail('nonce-store-file-invalid');
+  if (process.platform !== 'win32' && (stat.mode & 0o077) !== 0) {
+    throw fail('nonce-store-file-permissions-invalid');
+  }
   return readFile(path, 'utf8');
 }
 

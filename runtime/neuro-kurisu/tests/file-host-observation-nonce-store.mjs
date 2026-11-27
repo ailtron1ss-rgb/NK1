@@ -90,6 +90,34 @@ try {
     const tampered = new FileHostObservationNonceStore({ directoryPath });
     await assert.rejects(tampered.consume(key), /nonce-store-record-invalid/);
   }
+  if (process.platform !== 'win32') {
+    {
+      const directoryPath = join(root, 'insecure-directory');
+      await mkdir(directoryPath, { recursive: true, mode: 0o755 });
+      const insecure = new FileHostObservationNonceStore({ directoryPath });
+      await assert.rejects(insecure.consume(baseKey({
+        nonce: 'nonce-insecure-directory-mode-0001',
+        retainUntil: Date.now() + 60_000,
+      })), /nonce-store-directory-permissions-invalid/,
+      'a pre-existing world/group-accessible nonce directory must be rejected');
+    }
+    {
+      const directoryPath = join(root, 'insecure-clock-file');
+      const day = new Date().toISOString().slice(0, 10);
+      await mkdir(join(directoryPath, 'clock-days'), { recursive: true, mode: 0o700 });
+      await mkdir(join(directoryPath, 'clock-timestamps'), { recursive: true, mode: 0o700 });
+      await mkdir(join(directoryPath, 'nonces'), { recursive: true, mode: 0o700 });
+      await writeFile(join(directoryPath, 'clock-days', day),
+        JSON.stringify({ version: 1, day, createdAt: Date.now() }), { mode: 0o644 });
+      const insecure = new FileHostObservationNonceStore({ directoryPath });
+      await assert.rejects(insecure.consume(baseKey({
+        nonce: 'nonce-insecure-file-mode-0000001',
+        retainUntil: Date.now() + 60_000,
+      })), /nonce-store-file-permissions-invalid/,
+      'a pre-existing world-readable clock marker must be rejected');
+    }
+  }
+
   console.log('FILE_HOST_OBSERVATION_NONCE_STORE=PASS restart+race+digest+clock+corruption+tamper');
 } finally {
   await rm(root, { recursive: true, force: true });
