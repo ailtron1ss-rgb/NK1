@@ -698,7 +698,7 @@ async function route(req, res) {
             return json(res, 429, { ok: false, error: 'rate-limit-exceeded', retryAfterSec: rate.retryAfterSec, requestId: context.requestId });
         }
         if (url.pathname === '/health' || url.pathname === '/api/health') {
-            return json(res, 200, { ok: true, ready: runtimeReady, service: 'neuro-kurisu', version: RELEASE_CONTRACT.application, organismCore: RELEASE_CONTRACT.organismCore, schemaVersion: RELEASE_CONTRACT.stateSchema, tick: runtimeReady ? runtime.core.operationalStatusSnapshot().tick : 0, uptimeSec: Math.round(process.uptime()), bodySource: runtimeReady ? runtime.embodiment.snapshot().telemetry.source : 'initializing', actionLedger: runtimeReady ? runtime.core.actionExecutionLedgerMetrics() : null, language: languageCapabilitySnapshot() });
+            return json(res, 200, { ok: true, ready: runtimeReady, service: 'neurocore', legacyService: 'neuro-kurisu', version: RELEASE_CONTRACT.application, organismCore: RELEASE_CONTRACT.organismCore, schemaVersion: RELEASE_CONTRACT.stateSchema, tick: runtimeReady ? runtime.core.operationalStatusSnapshot().tick : 0, uptimeSec: Math.round(process.uptime()), bodySource: runtimeReady ? runtime.embodiment.snapshot().telemetry.source : 'initializing', actionLedger: runtimeReady ? runtime.core.actionExecutionLedgerMetrics() : null, language: languageCapabilitySnapshot() });
         }
         if (req.method === 'GET' && url.pathname === '/api/organism/evaluation/evidence') {
             if (!runtimeReady)
@@ -2966,7 +2966,7 @@ const server = http.createServer((req, res) => void route(req, res));
 server.requestTimeout = REQUEST_TIMEOUT_MS;
 server.headersTimeout = Math.max(REQUEST_TIMEOUT_MS + 5000, 50000);
 server.keepAliveTimeout = 5000;
-server.listen(PORT, HOST, () => console.log(`[Neuro-Kurisu Evolution] http://${HOST}:${PORT}`));
+server.listen(PORT, HOST, () => console.log(`[NeuroCore] http://${HOST}:${PORT}`));
 let shuttingDown = false;
 async function shutdown() {
     if (shuttingDown)
