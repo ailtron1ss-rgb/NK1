@@ -6,6 +6,12 @@ import {
   createProceduralHumanoidRig,
   solveTwoBonePlanarIK,
 } from "../src/components/avatar/proceduralHumanoidRig.ts";
+import {
+  AVATAR_ARTICULATED_BODY_PARTICLE_COUNT,
+  AVATAR_ARTICULATED_BODY_SEGMENT_COUNT,
+  createAvatarArticulatedBodyState,
+  stepAvatarArticulatedBody,
+} from "../src/components/avatar/articulatedBodyParticles.ts";
 
 test("built-in NeuroCore body is a real articulated THREE.Bone hierarchy", () => {
   const scene = new THREE.Scene();
@@ -105,6 +111,54 @@ test("mirrored left and right arm chains both accept world-space IK targets", ()
   assert.ok(rig.bones.rightUpperArm.rotation.z > 0 || rig.bones.rightForearm.rotation.z > 0);
   assert.ok(rig.bones.leftUpperArm.rotation.z >= rig.limits.leftUpperArm.z[0]);
   assert.ok(rig.bones.rightUpperArm.rotation.z <= rig.limits.rightUpperArm.z[1]);
+
+  rig.dispose();
+});
+
+test("real particle physics output drives the NeuroCore skeleton end to end", () => {
+  const scene = new THREE.Scene();
+  const rig = createProceduralHumanoidRig(scene);
+  const start = createAvatarArticulatedBodyState();
+  assert.equal(start.particleCount, AVATAR_ARTICULATED_BODY_PARTICLE_COUNT);
+  assert.equal(start.segments.length, AVATAR_ARTICULATED_BODY_SEGMENT_COUNT);
+
+  const step = stepAvatarArticulatedBody(start, {
+    torsoPitch: 0.55,
+    torsoYaw: -0.18,
+    leftShoulder: 0.74,
+    leftElbow: 0.42,
+    rightShoulder: -0.35,
+    rightElbow: 0.22,
+    leftIndexCurl: 0.72,
+    rightThumbCurl: 0.38,
+    rootYaw: 0.24,
+  }, 33.3, { awake: true, energy01: 0.86 });
+
+  assert.equal(step.state.particleCount, 18);
+  assert.equal(step.state.segments.length, 17);
+  assert.ok(Number.isFinite(step.maxConstraintError));
+  assert.ok(Object.keys(step.channels).length > 20);
+
+  rig.updatePose({
+    awake: true, action: "respond", emotion: "curiosity", arousal: 0.7, energy: 0.86,
+    cognitiveLoad: 0.25, gazeX: 0.12, gazeY: -0.08, headTilt: 0.04, speaking: false,
+    leftArmIntent: 0, rightArmIntent: 0, bodyChannels: step.channels,
+    particles: step.state.particles, deltaSeconds: 1 / 30, timeSeconds: step.state.elapsedMs / 1000,
+  });
+
+  assert.equal(rig.root.userData.poseState.particleBindingsApplied, 17);
+  assert.ok(Math.abs(rig.bones.chest.position.z) > 0 || Math.abs(rig.bones.chest.position.x) > 0);
+  assert.notEqual(rig.bones.leftUpperArm.rotation.z, 0);
+  assert.notEqual(rig.bones.rightUpperArm.rotation.z, 0);
+  assert.notEqual(rig.bones.leftIndex2.rotation.z, 0);
+  assert.notEqual(rig.root.rotation.y, 0);
+  for (const [name, bone] of Object.entries(rig.bones)) {
+    const limits = rig.limits[name];
+    for (const axis of ["x", "y", "z"]) {
+      assert.ok(bone.rotation[axis] >= limits[axis][0] - 1e-7, `${name}.${axis} below joint limit`);
+      assert.ok(bone.rotation[axis] <= limits[axis][1] + 1e-7, `${name}.${axis} above joint limit`);
+    }
+  }
 
   rig.dispose();
 });
