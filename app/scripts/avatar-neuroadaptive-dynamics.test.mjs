@@ -68,7 +68,7 @@ test("sleep, low quality and reset reduce or clear secondary motion safely", () 
   for (let index = 0; index < 60; index += 1) active = solver.step(bones, baseFrame);
   const activeMagnitude = Math.hypot(active.get("hair").x, active.get("hair").y, active.get("hair").z);
   let asleep;
-  for (let index = 0; index < 90; index += 1) asleep = solver.step(bones, { ...baseFrame, awake: false, action: "rest", bodyChannels: {} });
+  for (let index = 0; index < 90; index += 1) asleep = solver.step(bones, { ...baseFrame, awake: false, action: "rest" });
   const asleepMagnitude = Math.hypot(asleep.get("hair").x, asleep.get("hair").y, asleep.get("hair").z);
   assert.ok(asleepMagnitude < activeMagnitude);
   solver.reset();
@@ -113,4 +113,23 @@ test("Three.js stage consumes the canonical frame and only applies tagged second
   assert.match(stage, /collectAvatarNeuralMaterials\(/);
   assert.match(stage, /resolveAvatarDynamicsBoneRole\(n\)/);
   assert.match(stage, /resolveNeuroAdaptiveNeuralMultiplier\(/);
+});
+
+
+test("low quality and sleep attenuate pose-driven secondary motion, not only idle oscillation", () => {
+  const bones = [{ key: "hair", name: "hairLockTip" }];
+  const highSolver = new dynamics.AvatarNeuroAdaptiveDynamics();
+  const lowSolver = new dynamics.AvatarNeuroAdaptiveDynamics();
+  let high;
+  let low;
+  for (let index = 0; index < 120; index += 1) {
+    high = highSolver.step(bones, baseFrame);
+    low = lowSolver.step(bones, { ...baseFrame, quality: "low" });
+  }
+  const magnitude = (offset) => Math.hypot(offset.x, offset.y, offset.z);
+  assert.ok(magnitude(low.get("hair")) < magnitude(high.get("hair")) * 0.7);
+  const sleeping = new dynamics.AvatarNeuroAdaptiveDynamics();
+  let asleep;
+  for (let index = 0; index < 120; index += 1) asleep = sleeping.step(bones, { ...baseFrame, awake: false, action: "rest" });
+  assert.ok(magnitude(asleep.get("hair")) < magnitude(high.get("hair")) * 0.35);
 });
