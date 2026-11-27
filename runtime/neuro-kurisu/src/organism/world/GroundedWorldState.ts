@@ -2,7 +2,7 @@ import type { WorldContext } from '../core/types.ts';
 import type { P41PerceptionState } from '../cognition/P41SemanticPerception.ts';
 import type { PerceptualEvidenceState } from '../body/PerceptualEvidenceCompiler.ts';
 import type { EmbodiedActionResult } from '../body/EmbodiedActionExecutor.ts';
-import { countOr, isPlainDataArray, isPlainDataRecord, ownDataValue, stringOr, timestampOr, unitOr } from '../body/RestoreSanitizers.ts';
+import { boundedCountOr, countOr, isPlainDataArray, isPlainDataRecord, ownDataValue, stringOr, timestampOr, unitStrictOr, unitOr } from '../body/RestoreSanitizers.ts';
 import { isTrustedEmbodiedOutcomeVerification } from '../system/ExternalPostconditionVerifier.ts';
 import type { OutcomeVerification } from '../system/OutcomeVerificationService.ts';
 
@@ -112,7 +112,7 @@ export class GroundedWorldState {
     // reading any property so restore never executes caller-defined code.
     const r=isPlainDataRecord(raw)?raw:{};
     const lastAt=timestampOr(ownDataValue(r,'lastAt'),0);
-    const revision=countOr(ownDataValue(r,'revision'),0);
+    const revision=boundedCountOr(ownDataValue(r,'revision'),0,1_000_000_000);
 
     const rawEntities=ownDataValue(r,'entities');
     const entities:GroundedEntity[]=isPlainDataArray(rawEntities,512)
@@ -138,8 +138,8 @@ export class GroundedWorldState {
         const valueRaw=ownDataValue(value,'value');
         const entity:GroundedEntity={
           id,label,kind:stringOr(ownDataValue(value,'kind'),'unknown',48),
-          confidence01:unitOr(ownDataValue(value,'confidence01'),0),
-          present01:unitOr(ownDataValue(value,'present01'),0),
+          confidence01:unitStrictOr(ownDataValue(value,'confidence01'),0),
+          present01:unitStrictOr(ownDataValue(value,'present01'),0),
           firstSeenAt,lastSeenAt:entityLastAt,
           modalities:restoreStringList(ownDataValue(value,'modalities'),8,32),
           trackAliases:restoreStringList(ownDataValue(value,'trackAliases'),16,120),
@@ -147,9 +147,9 @@ export class GroundedWorldState {
           modalityEvidenceKinds:sanitizeWorldModalityEvidence(ownDataValue(value,'modalityEvidenceKinds')),
           presenceStatus:(['visible','fading','unknown'] as const).includes(ownDataValue(value,'presenceStatus') as 'visible'|'fading'|'unknown')
             ?ownDataValue(value,'presenceStatus') as 'visible'|'fading'|'unknown':'unknown',
-          persistence01:unitOr(ownDataValue(value,'persistence01'),0),
-          absenceEvidence01:unitOr(ownDataValue(value,'absenceEvidence01'),0),
-          observationCount:Math.max(1,countOr(ownDataValue(value,'observationCount'),1)),
+          persistence01:unitStrictOr(ownDataValue(value,'persistence01'),0),
+          absenceEvidence01:unitStrictOr(ownDataValue(value,'absenceEvidence01'),0),
+          observationCount:Math.max(1,boundedCountOr(ownDataValue(value,'observationCount'),1,1_000_000_000)),
           valueKnown:ownDataValue(value,'valueKnown')===true,
           visibilityKnown:ownDataValue(value,'visibilityKnown')===true,
           collectionKnown:ownDataValue(value,'collectionKnown')===true,
@@ -175,7 +175,7 @@ export class GroundedWorldState {
         const fromEntityId=stringOr(ownDataValue(value,'fromEntityId'),'',180).trim();
         const toEntityId=stringOr(ownDataValue(value,'toEntityId'),'',180).trim();
         return [{
-          id,from,relation,to,confidence01:unitOr(ownDataValue(value,'confidence01'),0),
+          id,from,relation,to,confidence01:unitStrictOr(ownDataValue(value,'confidence01'),0),
           at:Math.min(timestampOr(ownDataValue(value,'at'),lastAt),lastAt),
           ...(fromEntityId?{fromEntityId}:{}),...(toEntityId?{toEntityId}:{}),
         }];
@@ -192,9 +192,9 @@ export class GroundedWorldState {
         const revoked=originalLabel.toLowerCase().startsWith('external-observed:');
         return [{
           id,label:revoked?'external-receipt:'+originalLabel.slice('external-observed:'.length):originalLabel,
-          confidence01:revoked?0:unitOr(ownDataValue(value,'confidence01'),0),
+          confidence01:revoked?0:unitStrictOr(ownDataValue(value,'confidence01'),0),
           lastAt:Math.min(timestampOr(ownDataValue(value,'lastAt'),lastAt),lastAt),
-          persistence01:revoked?0:unitOr(ownDataValue(value,'persistence01'),0),
+          persistence01:revoked?0:unitStrictOr(ownDataValue(value,'persistence01'),0),
           evidenceKind:admittedWorldEvidenceKind(ownDataValue(value,'evidenceKind')),
           modalityEvidenceKinds:sanitizeWorldModalityEvidence(ownDataValue(value,'modalityEvidenceKinds')),
         }];
@@ -219,8 +219,8 @@ export class GroundedWorldState {
       revision,
       lastAt,
       location:stringOr(ownDataValue(r,'location'),d.location,120),
-      uncertainty01:unitOr(ownDataValue(r,'uncertainty01'),d.uncertainty01),
-      confidence01:unitOr(ownDataValue(r,'confidence01'),d.confidence01),
+      uncertainty01:unitStrictOr(ownDataValue(r,'uncertainty01'),d.uncertainty01),
+      confidence01:unitStrictOr(ownDataValue(r,'confidence01'),d.confidence01),
       entities,relations,events,facts,provenanceIds,lastHash:'',
     };
     // Never trust the persisted digest; derive it from the sanitized state.
