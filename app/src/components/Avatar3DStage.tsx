@@ -74,7 +74,6 @@ function collectAvatarNeuralMaterials(root:any):NeuralMaterialBinding[]{
   const materials=Array.isArray(node.material)?node.material:node.material?[node.material]:[];
   for(const material of materials){
    if(!material||seen.has(material))continue;
-   const name=String(material.name??"");
    if(!isAvatarNeuralFabricMaterialTagged(material)||!hasAvatarNeuralFabricEmission(material))continue;
    seen.add(material);
    const baseIntensity=Number.isFinite(material.emissiveIntensity)?material.emissiveIntensity:1;
