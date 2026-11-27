@@ -112,6 +112,7 @@ test("Three.js stage consumes the canonical frame and only applies tagged second
   assert.match(stage, /resolveNeuroAdaptiveMorphWeights\(/);
   assert.match(stage, /collectAvatarNeuralMaterials\(/);
   assert.match(stage, /metadata:bone\.node\?\.userData\?\.nk1Secondary/);
+  assert.match(stage, /isAvatarSecondaryDynamicsBoneCandidate\(n,secondaryMetadata\)/);
   assert.match(stage, /resolveAvatarDynamicsBoneRole\(n\)/);
   assert.match(stage, /resolveNeuroAdaptiveNeuralMultiplier\(/);
 });
@@ -187,4 +188,23 @@ test("explicit pinned roots and invalid secondary metadata fail closed rather th
   assert.equal(dynamics.resolveAvatarDynamicsBoneRole("Bone.001", { role: "hair", pinned: true }), null);
   assert.equal(dynamics.resolveAvatarDynamicsBoneRole("HairLockTip", { role: "unknown" }), null);
   assert.equal(dynamics.resolveAvatarDynamicsBoneRole("Bone.002", { role: "garment", side: "diagonal" }), null);
+});
+
+
+test("pinned semantic roots remain secondary candidates but never enter the solver", () => {
+  assert.equal(dynamics.isAvatarSecondaryDynamicsBoneCandidate("HairLockRoot"), true);
+  assert.equal(dynamics.resolveAvatarDynamicsBoneRole("HairLockRoot"), null);
+  const pinnedMetadata = { role: "hair", chainId: "left-fringe", side: "left", pinned: true };
+  assert.equal(dynamics.isAvatarSecondaryDynamicsBoneCandidate("Bone.001", pinnedMetadata), true);
+  assert.equal(dynamics.resolveAvatarDynamicsBoneRole("Bone.001", pinnedMetadata), null);
+  assert.equal(dynamics.isAvatarSecondaryDynamicsBoneCandidate("leftUpperArm"), false);
+
+  const solver = new dynamics.AvatarNeuroAdaptiveDynamics();
+  const result = solver.step([
+    { key: "root", name: "Bone.001", metadata: pinnedMetadata },
+    { key: "tip", name: "Bone.002", metadata: { role: "hair", chainId: "left-fringe", side: "left" } },
+  ], baseFrame);
+  assert.equal(result.has("root"), false);
+  assert.equal(result.has("tip"), true);
+  assert.equal(solver.snapshot().activeBones, 1);
 });
