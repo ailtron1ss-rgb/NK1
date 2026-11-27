@@ -106,6 +106,11 @@ for (const mesh of (document.meshes ?? [])) {
 }
 const secondaryAudit = auditAvatarSecondaryAssetDescriptor({
   bones,
+  meshParts: meshNodeInventory.map((entry) => ({
+    id: "gltf-node-" + entry.nodeIndex,
+    name: entry.nodeName,
+    skinned: Number.isInteger(entry.skinIndex),
+  })),
   morphTargetNames: [...morphTargetNames],
   materials: (document.materials ?? []).map((material) => ({
     name: material?.name,
@@ -154,6 +159,8 @@ console.log("HOSTED_KURISU_ASSET=PASS", JSON.stringify({
     recognizedSecondaryBones: secondaryAudit.recognizedBoneCount,
     unclassifiedBoneNames: secondaryAudit.unclassifiedBoneNames,
     byRole: secondaryAudit.byRole,
+    byMeshRole: secondaryAudit.byMeshRole,
+    totalMeshNodeCount: secondaryAudit.totalMeshNodeCount,
     namedMorphTargets: secondaryAudit.morphTargetCount,
     rawMorphTargetCount,
     morphChannels: secondaryAudit.morphChannels,
