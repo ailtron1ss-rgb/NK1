@@ -68,7 +68,10 @@ const BODY_CHANNELS: ReadonlySet<BodyChannel> = new Set([
   "headYaw", "headPitch", "headRoll", "torsoYaw", "torsoPitch",
   "leftShoulder", "leftElbow", "leftWrist", "rightShoulder", "rightElbow", "rightWrist",
   "leftHip", "leftKnee", "leftAnkle", "rightHip", "rightKnee", "rightAnkle",
-  "leftHand", "rightHand", "leftFingers", "rightFingers", "gazeX", "gazeY", "breath", "rootYaw",
+  "leftHand", "rightHand", "leftFingers", "rightFingers",
+  "leftThumbCurl", "leftIndexCurl", "leftMiddleCurl", "leftRingCurl", "leftLittleCurl",
+  "rightThumbCurl", "rightIndexCurl", "rightMiddleCurl", "rightRingCurl", "rightLittleCurl",
+  "gazeX", "gazeY", "breath", "rootYaw",
 ]);
 const EXPRESSION_CHANNELS: ReadonlySet<ExpressionChannel> = new Set([
   "neutral", "joy", "sadness", "anger", "anxiety", "curiosity", "protective", "surprise",
