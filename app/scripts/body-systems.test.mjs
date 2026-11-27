@@ -489,15 +489,17 @@ test("full-body ankle channels drive normalized feet and return them to neutral"
   assert.equal(vrm.bones.get("rightFoot").rotation.x, 0);
 });
 
-test("full-body torso and root yaw channels drive spine and hips then return to neutral", () => {
+test("full-body torso pitch/yaw share one spine receipt and root yaw returns to neutral", () => {
   const vrm = createFakeVrm(FULL_BODY_NAMES);
-  const driven = applyVrmFullBodyChannels(vrm, { torsoYaw: 0.5, rootYaw: -0.5 });
+  const driven = applyVrmFullBodyChannels(vrm, { torsoPitch: 0.25, torsoYaw: 0.5, rootYaw: -0.5 });
   assert.deepEqual(driven.controlledBones.sort(), ["hips", "spine"]);
+  assert.equal(vrm.bones.get("spine").rotation.x, 0.1);
   assert.equal(vrm.bones.get("spine").rotation.y, 0.25);
   assert.equal(vrm.bones.get("hips").rotation.y, -0.45);
 
   const neutral = applyVrmFullBodyChannels(vrm, {});
   assert.equal(neutral.applied, false);
+  assert.equal(vrm.bones.get("spine").rotation.x, 0);
   assert.equal(vrm.bones.get("spine").rotation.y, 0);
   assert.equal(vrm.bones.get("hips").rotation.y, 0);
 });
