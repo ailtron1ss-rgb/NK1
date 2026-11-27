@@ -297,21 +297,21 @@ export function createProceduralHumanoidRig(scene: THREE.Scene): ProceduralHuman
   const legRoots: Record<"left" | "right", { thigh: THREE.Bone; calf: THREE.Bone; foot: THREE.Bone }> = {} as any;
   for (const side of [-1, 1] as const) {
     const key = side < 0 ? "left" : "right";
-    const hip = addBone(pelvis, key + "Hip", [side * 0.155, -0.06, 0], bones, limits);
-    const thigh = addBone(hip, key + "Thigh", [0, -0.025, 0], bones, limits);
-    const knee = addBone(thigh, key + "Knee", [0, -0.48, 0], bones, limits);
-    const calf = addBone(knee, key + "Calf", [0, -0.43, 0], bones, limits);
-    const ankle = addBone(calf, key + "Ankle", [0, -0.075, 0], bones, limits);
+    const hip = addBone(pelvis, key + "Hip", [side * 0.12, -0.04, 0], bones, limits);
+    const thigh = addBone(hip, key + "Thigh", [0, 0, 0], bones, limits);
+    const knee = addBone(thigh, key + "Knee", [0, -0.42, 0], bones, limits);
+    const calf = addBone(knee, key + "Calf", [0, -0.4, 0], bones, limits);
+    const ankle = addBone(calf, key + "Ankle", [0, 0, 0], bones, limits);
     const foot = addBone(ankle, key + "Foot", [0, -0.035, 0.025], bones, limits);
     const toe = addBone(foot, key + "Toe", [0, -0.025, 0.15], bones, limits);
     legRoots[key] = { thigh, calf, foot };
 
-    makeSegment(thigh, sphere, tights, key + "ThighVolume", new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, -0.48, 0), new THREE.Vector3(0.135, 0.28, 0.145), meshes);
-    makeEllipsoid(thigh, sphereFine, muscle, key + "Quadriceps", new THREE.Vector3(0, -0.23, 0.105), new THREE.Vector3(0.104, 0.24, 0.065), new THREE.Euler(), meshes);
-    makeEllipsoid(thigh, sphereFine, muscleShadow, key + "Hamstrings", new THREE.Vector3(0, -0.25, -0.09), new THREE.Vector3(0.105, 0.22, 0.055), new THREE.Euler(), meshes);
+    makeSegment(thigh, sphere, tights, key + "ThighVolume", new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, -0.42, 0), new THREE.Vector3(0.135, 0.245, 0.145), meshes);
+    makeEllipsoid(thigh, sphereFine, muscle, key + "Quadriceps", new THREE.Vector3(0, -0.20, 0.105), new THREE.Vector3(0.104, 0.21, 0.065), new THREE.Euler(), meshes);
+    makeEllipsoid(thigh, sphereFine, muscleShadow, key + "Hamstrings", new THREE.Vector3(0, -0.21, -0.09), new THREE.Vector3(0.105, 0.20, 0.055), new THREE.Euler(), meshes);
     makeEllipsoid(knee, sphereFine, tights, key + "KneeJointCap", new THREE.Vector3(0, 0, 0.075), new THREE.Vector3(0.105, 0.115, 0.075), new THREE.Euler(), meshes);
-    makeSegment(calf, sphere, tights, key + "CalfVolume", new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, -0.43, 0), new THREE.Vector3(0.09, 0.25, 0.105), meshes);
-    makeEllipsoid(calf, sphereFine, muscle, key + "Gastrocnemius", new THREE.Vector3(0, -0.16, -0.045), new THREE.Vector3(0.078, 0.17, 0.07), new THREE.Euler(), meshes);
+    makeSegment(calf, sphere, tights, key + "CalfVolume", new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, -0.4, 0), new THREE.Vector3(0.09, 0.23, 0.105), meshes);
+    makeEllipsoid(calf, sphereFine, muscle, key + "Gastrocnemius", new THREE.Vector3(0, -0.14, -0.045), new THREE.Vector3(0.078, 0.15, 0.07), new THREE.Euler(), meshes);
     makeEllipsoid(ankle, sphereFine, tights, key + "AnkleJoint", new THREE.Vector3(0, 0, 0), new THREE.Vector3(0.075, 0.075, 0.08), new THREE.Euler(), meshes);
     makeEllipsoid(foot, sphereFine, shoes, key + "FootVolume", new THREE.Vector3(0, -0.015, 0.105), new THREE.Vector3(0.095, 0.065, 0.17), new THREE.Euler(), meshes);
     makeEllipsoid(toe, sphere, shoes, key + "ToeCap", new THREE.Vector3(0, 0, 0.045), new THREE.Vector3(0.085, 0.045, 0.075), new THREE.Euler(), meshes);
@@ -379,7 +379,7 @@ export function createProceduralHumanoidRig(scene: THREE.Scene): ProceduralHuman
   const platform = new THREE.Mesh(new THREE.TorusGeometry(0.48, 0.009, 8, 64), ringMat);
   platform.name = "BodyGroundRing";
   platform.rotation.x = PI / 2;
-  platform.position.y = 0.035;
+  platform.position.y = 0.09;
   root.add(platform);
   meshes.push(platform);
 
@@ -595,8 +595,8 @@ export function createProceduralHumanoidRig(scene: THREE.Scene): ProceduralHuman
       const result = solveTwoBonePlanarIK(
         { x: localStart.x, y: localStart.y },
         { x: localTarget.x, y: localTarget.y },
-        0.505,
-        0.505,
+        0.42,
+        0.4,
         side === "left" ? -1 : 1,
       );
       const hipValue = clampJointAngle(side + "Hip", "z", result.shoulder + PI / 2, limits);
