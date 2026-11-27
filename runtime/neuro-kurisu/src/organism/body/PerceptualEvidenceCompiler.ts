@@ -112,7 +112,7 @@ function restoreEvidenceRecord(value:unknown):PerceptualEvidenceRecord|null{
   return {
     id:id.trim(),at,modality:modality as PerceptualEvidenceRecord['modality'],
     claim:claim.trim().slice(0,240),confidence01,
-    uncertainty01:unitStrictOr(ownDataValue(value,'uncertainty01'),1-confidence01),
+    uncertainty01:untrustedTombstone?1:unitStrictOr(ownDataValue(value,'uncertainty01'),1-confidence01),
     kind,parents,
     ...(!untrustedTombstone&&typeof expiryRaw==='number'&&Number.isSafeInteger(expiryRaw)&&expiryRaw>=at?{expiresAt:expiryRaw}:{}),
     ...(hostReceipt?{hostReceipt}:{}),
