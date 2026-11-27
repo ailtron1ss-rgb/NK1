@@ -52,7 +52,7 @@ test("a newer request invalidates an older request even before the newer one com
 
 test("all canonical UI snapshot entry points use the same commit gate", async () => {
   const store = await readFile(new URL("../src/organism/store.ts", import.meta.url), "utf8");
-  assert.equal((store.match(/snapshotCommitGate\\.begin\\(\\)/g) || []).length, 4);
-  assert.ok((store.match(/snapshotCommitGate\\.commit\\(/g) || []).length >= 8);
-  assert.match(store, /if \\(!committed\\) return;/);
+  assert.equal((store.match(/snapshotCommitGate\.begin\(\)/g) || []).length, 4);
+  assert.ok((store.match(/snapshotCommitGate\.commit\(/g) || []).length >= 8);
+  assert.match(store, /if \(!committed\) return;/);
 });
