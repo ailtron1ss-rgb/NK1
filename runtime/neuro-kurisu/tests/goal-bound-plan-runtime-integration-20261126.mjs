@@ -73,7 +73,6 @@ try {
   }
   assert.equal(cycleEventInput.plan.payload.contextValid, call.contextValid,
     'the plan event must distinguish valid root context from first-step acceptance');
-  }
   console.log('GOAL_BOUND_PLAN_RUNTIME_INTEGRATION=PASS', JSON.stringify({
     kind: call.kind,
     decisionId: call.context.decisionId,
