@@ -172,6 +172,7 @@ test("real particle physics output drives the NeuroCore skeleton end to end", ()
   assert.ok(Number.isFinite(step.maxConstraintError));
   assert.ok(Object.keys(step.channels).length > 20);
 
+  rig.root.rotation.y = Number(step.channels.rootYaw ?? 0) * 0.34;
   rig.updatePose({
     awake: true, action: "respond", emotion: "curiosity", arousal: 0.7, energy: 0.86,
     cognitiveLoad: 0.25, gazeX: 0.12, gazeY: -0.08, headTilt: 0.04, speaking: false,
