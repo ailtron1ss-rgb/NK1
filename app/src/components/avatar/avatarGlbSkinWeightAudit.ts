@@ -65,6 +65,137 @@ interface JointStats {
   maxWeight: number;
 }
 
+type Vector3 = [number, number, number];
+type Matrix4 = number[];
+
+function emptyBounds(): { min: Vector3; max: Vector3 } {
+  return {
+    min: [Number.POSITIVE_INFINITY, Number.POSITIVE_INFINITY, Number.POSITIVE_INFINITY],
+    max: [Number.NEGATIVE_INFINITY, Number.NEGATIVE_INFINITY, Number.NEGATIVE_INFINITY],
+  };
+}
+
+function updateBounds(bounds: { min: Vector3; max: Vector3 }, point: Vector3): void {
+  for (let axis = 0; axis < 3; axis += 1) {
+    bounds.min[axis] = Math.min(bounds.min[axis], point[axis]);
+    bounds.max[axis] = Math.max(bounds.max[axis], point[axis]);
+  }
+}
+
+function finalizeBounds(bounds: { min: Vector3; max: Vector3 }, hasPoints: boolean): GlbSkinWeightBounds | null {
+  if (!hasPoints || !bounds.min.every(Number.isFinite) || !bounds.max.every(Number.isFinite)) return null;
+  const min = [...bounds.min] as Vector3;
+  const max = [...bounds.max] as Vector3;
+  const size = [max[0] - min[0], max[1] - min[1], max[2] - min[2]] as Vector3;
+  const center = [(min[0] + max[0]) * 0.5, (min[1] + max[1]) * 0.5, (min[2] + max[2]) * 0.5] as Vector3;
+  return { min, max, size, center };
+}
+
+function identityMatrix(): Matrix4 {
+  return [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
+}
+
+function multiplyMatrix4(left: Matrix4, right: Matrix4): Matrix4 {
+  const result = new Array<number>(16).fill(0);
+  for (let column = 0; column < 4; column += 1) {
+    for (let row = 0; row < 4; row += 1) {
+      result[column * 4 + row] =
+        left[row] * right[column * 4]
+        + left[4 + row] * right[column * 4 + 1]
+        + left[8 + row] * right[column * 4 + 2]
+        + left[12 + row] * right[column * 4 + 3];
+    }
+  }
+  return result;
+}
+
+function nodeLocalMatrix(node: unknown): Matrix4 {
+  if (!isRecord(node)) return identityMatrix();
+  if (Array.isArray(node.matrix) && node.matrix.length === 16
+    && node.matrix.every((value) => typeof value === "number" && Number.isFinite(value))) {
+    return [...node.matrix] as number[];
+  }
+  const translation = Array.isArray(node.translation) && node.translation.length === 3
+    && node.translation.every((value) => typeof value === "number" && Number.isFinite(value))
+    ? node.translation as number[] : [0, 0, 0];
+  const rotation = Array.isArray(node.rotation) && node.rotation.length === 4
+    && node.rotation.every((value) => typeof value === "number" && Number.isFinite(value))
+    ? node.rotation as number[] : [0, 0, 0, 1];
+  const scale = Array.isArray(node.scale) && node.scale.length === 3
+    && node.scale.every((value) => typeof value === "number" && Number.isFinite(value))
+    ? node.scale as number[] : [1, 1, 1];
+
+  const x = rotation[0], y = rotation[1], z = rotation[2], w = rotation[3];
+  const x2 = x + x, y2 = y + y, z2 = z + z;
+  const xx = x * x2, xy = x * y2, xz = x * z2;
+  const yy = y * y2, yz = y * z2, zz = z * z2;
+  const wx = w * x2, wy = w * y2, wz = w * z2;
+  const sx = scale[0], sy = scale[1], sz = scale[2];
+  return [
+    (1 - (yy + zz)) * sx, (xy + wz) * sx, (xz - wy) * sx, 0,
+    (xy - wz) * sy, (1 - (xx + zz)) * sy, (yz + wx) * sy, 0,
+    (xz + wy) * sz, (yz - wx) * sz, (1 - (xx + yy)) * sz, 0,
+    translation[0], translation[1], translation[2], 1,
+  ];
+}
+
+function buildParentMap(nodes: readonly unknown[]): Map<number, number> {
+  const parents = new Map<number, number>();
+  nodes.forEach((entry, parentIndex) => {
+    if (!isRecord(entry) || !Array.isArray(entry.children)) return;
+    for (const child of entry.children) {
+      if (Number.isInteger(child) && Number(child) >= 0 && Number(child) < nodes.length
+        && !parents.has(Number(child))) {
+        parents.set(Number(child), parentIndex);
+      }
+    }
+  });
+  return parents;
+}
+
+function createWorldMatrixResolver(nodes: readonly unknown[]): {
+  resolve: (nodeIndex: number) => Matrix4;
+  hasCycle: (nodeIndex: number) => boolean;
+} {
+  const parents = buildParentMap(nodes);
+  const cache = new Map<number, Matrix4>();
+  const cycleNodes = new Set<number>();
+  const resolve = (nodeIndex: number, visiting: Set<number> = new Set()): Matrix4 => {
+    const cached = cache.get(nodeIndex);
+    if (cached) return cached;
+    const node = nodes[nodeIndex];
+    const local = nodeLocalMatrix(node);
+    if (visiting.has(nodeIndex)) {
+      cycleNodes.add(nodeIndex);
+      return local;
+    }
+    const parent = parents.get(nodeIndex);
+    if (parent === undefined) {
+      cache.set(nodeIndex, local);
+      return local;
+    }
+    visiting.add(nodeIndex);
+    const world = multiplyMatrix4(resolve(parent, visiting), local);
+    visiting.delete(nodeIndex);
+    cache.set(nodeIndex, world);
+    return world;
+  };
+  return {
+    resolve: (nodeIndex) => resolve(nodeIndex),
+    hasCycle: (nodeIndex) => cycleNodes.has(nodeIndex),
+  };
+}
+
+function transformPoint(matrix: Matrix4, point: Vector3): Vector3 | null {
+  const x = point[0], y = point[1], z = point[2];
+  const tx = matrix[0] * x + matrix[4] * y + matrix[8] * z + matrix[12];
+  const ty = matrix[1] * x + matrix[5] * y + matrix[9] * z + matrix[13];
+  const tz = matrix[2] * x + matrix[6] * y + matrix[10] * z + matrix[14];
+  const tw = matrix[3] * x + matrix[7] * y + matrix[11] * z + matrix[15];
+  if (![tx, ty, tz, tw].every(Number.isFinite) || Math.abs(tw) < 1e-12) return null;
+  return tw === 1 ? [tx, ty, tz] : [tx / tw, ty / tw, tz / tw];
+}
+
 const COMPONENT_BYTES: Readonly<Record<number, number>> = Object.freeze({
   5121: 1,
   5123: 2,
