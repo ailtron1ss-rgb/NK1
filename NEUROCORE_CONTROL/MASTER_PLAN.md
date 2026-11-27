@@ -1,7 +1,7 @@
 # NeuroCore master plan
 
-**Current source sync:** `workpass70-source@3857e805b8224e7630ba1c7ef50e4bc930565b58`  
-**Product sync commit:** `e5fa0fbb41ed7190289e180c8e4eeaa743141169`
+**Current source sync:** `workpass70-source@8994a103f6b735f6347d77d926ee9c024a4d4f4d`  
+**Latest product/source merge:** `cb1c22e3c6c7f4eba73ad00b213442cee71c65d2`
 
 ## Phase A — Stable full-source application base
 - [x] Pin the original source baseline and create a separate product branch.
@@ -46,8 +46,10 @@
 - [ ] Profile CPU/GPU/RAM and frame pacing on a mid-range Android device before raising body fidelity.
 
 ## Phase E — Learning, model and mobile resource policy
-- [ ] Keep local LLM optional and expose real provider capability/timeout/fallback status.
-- [ ] Run llama.cpp OpenAI-compatible handshake and structured-response checks.
+- [x] Keep local LLM behind the existing optional provider / P40 model ecology; do not create a duplicate model selector.
+- [x] Add bounded JSON Schema-constrained output to the existing loopback-only llama.cpp provider, with schema validation, cancellation and bounded response parsing.
+- [x] Extend the existing N.E.K.O. Markdown memory adapter to recognize OpenClaw `skills/<name>/SKILL.md` as quarantined external knowledge; explicit review is required before canonical MemoryFabric write, and imports never grant action authority.
+- [ ] Pass the new OpenClaw and llama.cpp contracts on the latest NeuroCore product head; run a real local llama.cpp handshake with a configured model.
 - [ ] Keep memory, learning and action governance owned by the existing core.
 - [ ] Ensure scheduled learning/consolidation yields under Android RAM/thermal/battery pressure.
 - [ ] No fake metrics or score increases without measured holdout evidence.
