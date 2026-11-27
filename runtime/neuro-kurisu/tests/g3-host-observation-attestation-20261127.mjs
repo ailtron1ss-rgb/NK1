@@ -243,6 +243,10 @@ const coreSnapshot = await stateStore.load();
 const persistedAdmission = coreSnapshot?.facets?.embodiment?.perceptualEvidence?.evidence
   ?.find(row => row.id === coreAdmission.evidence.id);
 assert.equal(persistedAdmission?.kind, 'observed', 'the canonical persisted embodiment facet must include host admission evidence');
+assert.ok(persistedAdmission?.hostReceipt, 'the persisted row must retain its exact signed envelope for host reauthorization');
+assert.equal(persistedAdmission?.hostReceipt?.signature, coreReceipt.signature);
+const directCoreReauthorization = await authority.reauthorizePersisted(persistedAdmission.hostReceipt);
+assert.equal(directCoreReauthorization.accepted, true, 'the persisted envelope itself must reauthorize: '+JSON.stringify(directCoreReauthorization));
 const replayThroughCore = await core.admitObservationReceipt(coreReceipt);
 assert.equal(replayThroughCore.accepted, false);
 assert.equal(replayThroughCore.reason, 'nonce-replayed');
