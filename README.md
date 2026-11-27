@@ -1,8 +1,8 @@
 # NeuroCore / NK1 — объединённая продуктовая ветка
 
 **Product branch:** `neurocore-unified/main`  
-**Current upstream source:** `workpass70-source@3857e805b8224e7630ba1c7ef50e4bc930565b58`  
-**Source synchronization merge:** `e5fa0fbb41ed7190289e180c8e4eeaa743141169`  
+**Current upstream source:** `workpass70-source@8994a103f6b735f6347d77d926ee9c024a4d4f4d`  
+**Source synchronization merges:** `e5fa0fbb41ed7190289e180c8e4eeaa743141169` → `cb1c22e3c6c7f4eba73ad00b213442cee71c65d2`  
 **Seed baseline:** `3526f61814e19f1f10766f3b2385488eb04e3d2e`  
 **Integration PR:** [#1221 — NeuroCore product line](https://github.com/ailtron1ss-rgb/NK1/pull/1221)  
 **Build-plan progress:** 59.75% (weighted engineering plan; not an intelligence or consciousness score)
