@@ -151,6 +151,8 @@ try {
     delete element.dataset.avatarPixelAudit;
     delete element.dataset.avatarPixelAuditPng;
     element.dataset.avatarPixelAuditRequested = "true";
+    // Wake one render frame explicitly when the visibility scheduler has paused this canvas.
+    element.dispatchEvent(new Event("nk1:avatar-pixel-audit-request"));
   });
   await page.waitForFunction((element) => {
     return element instanceof HTMLCanvasElement
