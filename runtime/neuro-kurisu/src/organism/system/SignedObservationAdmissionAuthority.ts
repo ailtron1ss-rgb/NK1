@@ -46,6 +46,7 @@ export interface HostObservationNonceKey {
   deviceId:string;
   sessionId:string;
   nonce:string;
+  receiptDigest:string;
   retainUntil:number;
 }
 export interface HostObservationNonceStore {
@@ -55,6 +56,8 @@ export interface HostObservationNonceStore {
    * Set or best-effort cache is NOT a conforming production implementation.
    */
   consume(key:HostObservationNonceKey):boolean|Promise<boolean>;
+  /** True only if this exact nonce tuple was durably consumed for this exact signed envelope digest. */
+  hasConsumed(key:HostObservationNonceKey):boolean|Promise<boolean>;
 }
 export interface SignedObservationAdmissionConfig {
   /** Trusted device identity provisioned by the host, never copied from the receipt. */
@@ -82,6 +85,7 @@ export interface TrustedObservationAdmission {
   captureDigest:string;
   receiptDigest:string;
   issuerId:string;
+  signedReceipt:SignedHostObservationReceipt;
 }
 export type ObservationAdmissionRejectReason =
   |'invalid-receipt'
@@ -92,7 +96,8 @@ export type ObservationAdmissionRejectReason =
   |'consent-authority-unavailable'
   |'consent-not-active'
   |'nonce-store-unavailable'
-  |'nonce-replayed';
+  |'nonce-replayed'
+  |'nonce-not-previously-consumed';
 export type ObservationAdmissionResult =
   |{accepted:true;reason:'accepted';admission:TrustedObservationAdmission}
   |{accepted:false;reason:ObservationAdmissionRejectReason};
@@ -203,7 +208,7 @@ export class SignedObservationAdmissionAuthority {
     if(!config||!exactText(config.expectedDeviceId,180,IDENTIFIER))throw new Error('host-observation-expected-device-id-invalid');
     if(typeof config.resolvePublicKey!=='function'||!config.consentAuthority||
       typeof config.consentAuthority.isActive!=='function'||!config.nonceStore||
-      typeof config.nonceStore.consume!=='function')throw new Error('host-observation-authority-dependencies-required');
+      typeof config.nonceStore.consume!=='function'||typeof config.nonceStore.hasConsumed!=='function')throw new Error('host-observation-authority-dependencies-required');
     const maxCaptureAgeMs=config.maxCaptureAgeMs??120_000;
     const maxFutureSkewMs=config.maxFutureSkewMs??3_000;
     const maxReceiptLifetimeMs=config.maxReceiptLifetimeMs??300_000;
@@ -222,20 +227,23 @@ export class SignedObservationAdmissionAuthority {
     this.maxReceiptLifetimeMs=maxReceiptLifetimeMs;
   }
 
-  async admit(receipt:unknown):Promise<ObservationAdmissionResult> {
-    if(!isPlainDataRecord(receipt))return reject('invalid-receipt');
+  private async validateSignedReceipt(receipt:unknown):Promise<
+    |{ok:true;payload:SignedHostObservationReceiptPayload;algorithm:HostObservationSignatureAlgorithm;signature:string;signedReceipt:SignedHostObservationReceipt;receiptDigest:string}
+    |{ok:false;reason:ObservationAdmissionRejectReason}
+  > {
+    if(!isPlainDataRecord(receipt))return {ok:false,reason:'invalid-receipt'};
     // Reject unknown fields so an unsigned extension cannot be mistaken for
     // authenticated data by a downstream adapter.
-    for(const key of Object.keys(receipt))if(!RECEIPT_KEYS.has(key))return reject('invalid-receipt');
+    for(const key of Object.keys(receipt))if(!RECEIPT_KEYS.has(key))return {ok:false,reason:'invalid-receipt'};
     const payload=readPayload(receipt);
     const algorithm=ownDataValue(receipt,'signatureAlgorithm');
     const signature=ownDataValue(receipt,'signature');
     if(!payload||typeof algorithm!=='string'||!ALGORITHMS.has(algorithm)||
-      !exactText(signature,4096))return reject('invalid-receipt');
-    if(payload.deviceId!==this.expectedDeviceId)return reject('device-mismatch');
+      !exactText(signature,4096))return {ok:false,reason:'invalid-receipt'};
+    if(payload.deviceId!==this.expectedDeviceId)return {ok:false,reason:'device-mismatch'};
 
     let now:number;
-    try { now=this.clock(); } catch { return reject('receipt-time-invalid'); }
+    try { now=this.clock(); } catch { return {ok:false,reason:'receipt-time-invalid'}; }
     if(!Number.isSafeInteger(now)||now<0||
       payload.issuedAt>now+this.maxFutureSkewMs||
       payload.issuedAt<now-this.maxCaptureAgeMs||
@@ -244,15 +252,16 @@ export class SignedObservationAdmissionAuthority {
       payload.capturedAt>payload.issuedAt+this.maxFutureSkewMs||
       payload.expiresAt<=now||payload.expiresAt<payload.issuedAt||
       payload.expiresAt-payload.issuedAt>this.maxReceiptLifetimeMs) {
-      return reject('receipt-time-invalid');
+      return {ok:false,reason:'receipt-time-invalid'};
     }
 
     let material:HostObservationPublicKey|null|undefined;
     try { material=await this.resolvePublicKey(payload.issuerId,payload.keyId); }
-    catch { return reject('signing-key-unavailable'); }
-    if(!material)return reject('signing-key-unavailable');
-    if(!verifyReceiptSignature(payload,algorithm as HostObservationSignatureAlgorithm,signature,material)) {
-      return reject('signature-invalid');
+    catch { return {ok:false,reason:'signing-key-unavailable'}; }
+    if(!material)return {ok:false,reason:'signing-key-unavailable'};
+    const typedAlgorithm=algorithm as HostObservationSignatureAlgorithm;
+    if(!verifyReceiptSignature(payload,typedAlgorithm,signature,material)) {
+      return {ok:false,reason:'signature-invalid'};
     }
 
     let consentActive:boolean;
@@ -261,26 +270,67 @@ export class SignedObservationAdmissionAuthority {
         ticketId:payload.consentTicketId,consentRevision:payload.consentRevision,
         deviceId:payload.deviceId,modality:payload.modality,capturedAt:payload.capturedAt,
       });
-    } catch { return reject('consent-authority-unavailable'); }
-    if(consentActive!==true)return reject('consent-not-active');
+    } catch { return {ok:false,reason:'consent-authority-unavailable'}; }
+    if(consentActive!==true)return {ok:false,reason:'consent-not-active'};
 
-    let consumed:boolean;
-    try {
-      consumed=await this.nonceStore.consume({
-        issuerId:payload.issuerId,deviceId:payload.deviceId,sessionId:payload.sessionId,
-        nonce:payload.nonce,retainUntil:payload.expiresAt,
-      });
-    } catch { return reject('nonce-store-unavailable'); }
-    if(consumed!==true)return reject('nonce-replayed');
+    const signedReceipt:SignedHostObservationReceipt=Object.freeze({
+      ...payload,signatureAlgorithm:typedAlgorithm,signature,
+    });
+    const receiptDigest=sha256Stable({
+      domain:'NK1/HOST-OBSERVATION-RECEIPT/V1',
+      algorithm:typedAlgorithm,payload,signature,
+    });
+    return {ok:true,payload,algorithm:typedAlgorithm,signature,signedReceipt,receiptDigest};
+  }
 
+  private mintAdmission(
+    validated:Extract<Awaited<ReturnType<SignedObservationAdmissionAuthority['validateSignedReceipt']>>,{ok:true}>,
+  ):ObservationAdmissionResult {
+    const payload=validated.payload;
     const admission:TrustedObservationAdmission=Object.freeze({
       observationId:payload.observationId,at:payload.capturedAt,expiresAt:payload.expiresAt,modality:payload.modality,
       claim:payload.claim,confidence01:payload.confidence01,deviceId:payload.deviceId,
       sessionId:payload.sessionId,consentTicketId:payload.consentTicketId,
       consentRevision:payload.consentRevision,captureDigest:payload.captureDigest,
-      receiptDigest:sha256Stable({domain:'NK1/HOST-OBSERVATION-RECEIPT/V1',algorithm,payload,signature}),issuerId:payload.issuerId,
+      receiptDigest:validated.receiptDigest,issuerId:payload.issuerId,signedReceipt:validated.signedReceipt,
     });
     trustedAdmissions.add(admission);
     return {accepted:true,reason:'accepted',admission};
+  }
+
+  /** First admission atomically consumes a previously unused host nonce. */
+  async admit(receipt:unknown):Promise<ObservationAdmissionResult> {
+    const validated=await this.validateSignedReceipt(receipt);
+    if(!validated.ok)return reject(validated.reason);
+    const payload=validated.payload;
+    let consumed:boolean;
+    try {
+      consumed=await this.nonceStore.consume({
+        issuerId:payload.issuerId,deviceId:payload.deviceId,sessionId:payload.sessionId,
+        nonce:payload.nonce,receiptDigest:validated.receiptDigest,retainUntil:payload.expiresAt,
+      });
+    } catch { return reject('nonce-store-unavailable'); }
+    if(consumed!==true)return reject('nonce-replayed');
+    return this.mintAdmission(validated);
+  }
+
+  /**
+   * Restart-only recovery path: it does not consume a nonce and cannot admit a new
+   * observation. It succeeds only when the durable host ledger confirms that this
+   * exact signed envelope digest previously consumed this issuer/device/session nonce.
+   */
+  async reauthorizePersisted(receipt:unknown):Promise<ObservationAdmissionResult> {
+    const validated=await this.validateSignedReceipt(receipt);
+    if(!validated.ok)return reject(validated.reason);
+    const payload=validated.payload;
+    let previouslyConsumed:boolean;
+    try {
+      previouslyConsumed=await this.nonceStore.hasConsumed({
+        issuerId:payload.issuerId,deviceId:payload.deviceId,sessionId:payload.sessionId,
+        nonce:payload.nonce,receiptDigest:validated.receiptDigest,retainUntil:payload.expiresAt,
+      });
+    } catch { return reject('nonce-store-unavailable'); }
+    if(previouslyConsumed!==true)return reject('nonce-not-previously-consumed');
+    return this.mintAdmission(validated);
   }
 }
