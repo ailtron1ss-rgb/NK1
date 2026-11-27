@@ -1,0 +1,46 @@
+name: NeuroCore source export
+on:
+  push:
+    branches:
+      - neurocore-unified/source-export-2026-11-27
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout pinned NK1 source
+        uses: actions/checkout@v4
+        with:
+          ref: 3526f61814e19f1f10766f3b2385488eb04e3d2e
+          fetch-depth: 1
+      - name: Create complete tracked-source archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          git archive --format=zip --prefix=NK1/ 3526f61814e19f1f10766f3b2385488eb04e3d2e > "$RUNNER_TEMP/NK1-source.zip"
+          TREE_SHA="$(git rev-parse 3526f61814e19f1f10766f3b2385488eb04e3d2e^{tree})"
+          ZIP_SHA="$(sha256sum "$RUNNER_TEMP/NK1-source.zip" | awk '{print $1}')"
+          ZIP_BYTES="$(stat -c '%s' "$RUNNER_TEMP/NK1-source.zip")"
+          cat > "$RUNNER_TEMP/SOURCE-MANIFEST.txt" <<EOF
+          repository=ailtron1ss-rgb/NK1
+          branch=workpass70-source
+          commit=3526f61814e19f1f10766f3b2385488eb04e3d2e
+          tree=$TREE_SHA
+          zip_bytes=$ZIP_BYTES
+          zip_sha256=$ZIP_SHA
+          created_by=GitHub Actions git archive
+          EOF
+          cat "$RUNNER_TEMP/SOURCE-MANIFEST.txt"
+      - name: Upload exact source archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: neurocore-nk1-source-3526f618
+          path: |
+            $RUNNER_TEMP/NK1-source.zip
+            $RUNNER_TEMP/SOURCE-MANIFEST.txt
+          if-no-files-found: error
+          retention-days: 2
