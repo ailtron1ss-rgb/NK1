@@ -192,10 +192,8 @@ function channelsFromSolvedParticles(
   adjust("torsoPitch",particleVectorPitchLag(state,"pelvis","chest"),1/.34);
   adjust("torsoYaw",particleVectorYawLag(state,"leftShoulderPoint","rightShoulderPoint"),1/.34);
   adjust("headPitch",particleVectorPitchLag(state,"neck","head"),1/.36);
-  adjust("headYaw",wrapAngle(
-    particleSegmentAngleLag(state,"neck","head")
-      - particleSegmentAngleLag(state,"neck","head"),
-  ),1/.42,0);
+  const headYawLag=state.particles.head.position.x-state.particles.head.target.x;
+  adjust("headYaw",headYawLag,1/.24,.10);
 
   for(const side of [-1,1] as const){
     const prefix=side<0?"left":"right";
