@@ -2103,6 +2103,8 @@ export class OrganismCore {
         // canonicalNeuralSubstrate is projected by PersistenceProjectionCoordinator below.
         // Do not snapshot it once here and then immediately snapshot the same state again.
         let capabilityMs = 0, temporalMs = 0, projectionDecisionMs = 0, projectionMs = 0, recoveryMs = 0, integrityMs = 0, replayMs = 0, runtimeSyncMs = 0, stampMs = 0, saveMs = 0;
+        let recoveryWatchdogBefore = this.cognitiveRuntime.recoveryWatchdog.snapshot();
+        let recoveryWatchdogCandidateAt: number | null = null;
         let continuityCandidate: ReturnType<OrganismCore['preparePersistentContinuityCandidate']> | null = null;
         let recoveryCandidate: ReturnType<FailureRecoveryCertification['snapshot']> | null = null;
         let recoveryBefore: ReturnType<FailureRecoveryCertification['snapshot']> | null = null;
@@ -2115,7 +2117,8 @@ export class OrganismCore {
         }
         let t = Date.now();
         this.cognitiveRuntime.recoveryWatchdog.heartbeat({ now: Date.now(), tick: this.persisted.state.tick, learningCount: (this.developmentalNeural.neuralPersonalityAgencyNucleusB296.snapshot() as any).learningUpdates ?? 0 });
-        this.persisted.system.recoveryWatchdog = this.cognitiveRuntime.recoveryWatchdog.snapshot();
+        recoveryWatchdogBefore = this.cognitiveRuntime.recoveryWatchdog.snapshot();
+        this.persisted.system.recoveryWatchdog = recoveryWatchdogBefore;
         this.cognitiveRuntime.temporalContinuity.checkpoint();
         this.persisted.facets.advanced.temporalContinuity = this.cognitiveRuntime.temporalContinuity.snapshot();
         temporalMs = Date.now() - t;
@@ -2208,6 +2211,8 @@ export class OrganismCore {
             throw new Error(`Organism final integrity violation: ${finalIntegrity.violations.map(v => `${v.code}@${v.path}`).join(', ')}`);
         }
         if (fullProjection) {
+            recoveryWatchdogCandidateAt = Date.now();
+            this.persisted.system.recoveryWatchdog = this.cognitiveRuntime.recoveryWatchdog.checkpointCandidate(recoveryWatchdogCandidateAt);
             continuityCandidate = this.preparePersistentContinuityCandidate('durable-checkpoint');
             this.persisted.system.persistentContinuityKernel = continuityCandidate.kernel;
             this.persisted.system.b1701B2200UnifiedLifeContinuity = continuityCandidate.b1701;
@@ -2233,6 +2238,9 @@ export class OrganismCore {
             t = Date.now();
             try {
                 await this.store.save(this.persisted);
+                if (recoveryWatchdogCandidateAt !== null) {
+                    this.cognitiveRuntime.recoveryWatchdog.commitCheckpoint(recoveryWatchdogCandidateAt);
+                }
             }
             catch (error) {
                 // Candidate receipts are not live owner commits until the canonical store accepts them.
@@ -2241,6 +2249,7 @@ export class OrganismCore {
                     this.persisted.system.b1701B2200UnifiedLifeContinuity = continuityCandidate.previousB1701;
                 }
                 if (recoveryBefore) this.persisted.system.failureRecoveryCertification = recoveryBefore;
+                this.persisted.system.recoveryWatchdog = recoveryWatchdogBefore;
                 throw error;
             }
             if (continuityCandidate) {

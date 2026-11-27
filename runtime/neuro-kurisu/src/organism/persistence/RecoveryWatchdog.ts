@@ -76,10 +76,20 @@ export class RecoveryWatchdog {
   heartbeat(input: RecoveryProbe = {}): RecoveryWatchdogState {
     const at = input.now ?? now();
     this.state.lastHeartbeatAt = at;
-    this.state.lastCheckpointAt = at;
     if (input.tick !== undefined) this.state.lastTick = clampInt(input.tick);
     if (input.learningCount !== undefined) this.state.lastLearningCount = clampInt(input.learningCount);
     this.state.status = 'healthy';
+    return this.snapshot();
+  }
+
+  /** Detached checkpoint candidate for the canonical persistence boundary. */
+  checkpointCandidate(at=now()): RecoveryWatchdogState {
+    return { ...this.state, lastCheckpointAt: at };
+  }
+
+  /** Commit the in-memory marker only after the backing store accepts the candidate. */
+  commitCheckpoint(at=now()): RecoveryWatchdogState {
+    this.state.lastCheckpointAt = at;
     return this.snapshot();
   }
 
@@ -103,12 +113,15 @@ export class RecoveryWatchdog {
   }
 
   async checkpoint(input: RecoveryProbe = {}): Promise<RecoveryWatchdogState> {
-    this.heartbeat(input);
-    await this.persist();
-    return this.snapshot();
+    const at = input.now ?? now();
+    this.heartbeat({ ...input, now: at });
+    await this.persist(this.checkpointCandidate(at));
+    return this.commitCheckpoint(at);
   }
 
   snapshot(): RecoveryWatchdogState { return structuredClone(this.state); }
 
-  private async persist(): Promise<void> { if (this.store) await this.store.save(this.state); }
+  private async persist(value: RecoveryWatchdogState = this.state): Promise<void> {
+    if (this.store) await this.store.save(value);
+  }
 }
