@@ -75,3 +75,20 @@ This is a bone-driven secondary-motion layer. It is not a full vertex-level clot
 4. Missing morphs/material tags/bones produce no-op behavior, not fallback geometry.
 5. Determinism, sleep settling, reset, duplicate-name handling and mobile quality scaling remain covered by regression tests.
 6. Browser/Android visual acceptance must use the real canonical model and report only what the imported asset actually contains.
+
+
+## Verified canonical v5 audit — 2026-11-27
+
+The canonical catalog-pinned `NeuroKurisu_3D_v5.glb` was downloaded by the GitHub Actions runner and checked against its byte count and SHA-256. The audited asset has 124 glTF nodes, 101 meshes, 19 skin-joint nodes, 10 raw morph-target records (9 named through available glTF extras), and 4 animation clips.
+
+The secondary-role audit detected:
+- hair secondary bones: 0
+- garment secondary bones: 0
+- sleeve secondary bones: 0
+- neural-fiber bones: 0
+- supported secondary morph aliases: 0
+- explicitly tagged emissive neural-fabric materials: 0
+
+The imported asset is therefore a valid base humanoid, but **not yet a modular secondary-physics asset**. Runtime dynamics remain fail-closed/no-op for layers absent from v5. The confirmed SHA, exact 14 unclassified limb/shoulder/hand candidates, acceptance requirements, and next asset-authoring work are recorded in [NK1_V5_SECONDARY_ASSET_AUDIT_2026-11-27_RU.md](./NK1_V5_SECONDARY_ASSET_AUDIT_2026-11-27_RU.md).
+
+Do not repurpose primary shoulders, arms, neck, head or facial morphs as substitute hair/cloth joints. The next asset pass must add real secondary chains, skin weights, optional tissue morphs and explicitly tagged neural-fabric materials while preserving the existing character identity.
