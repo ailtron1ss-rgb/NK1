@@ -9,7 +9,7 @@ function makeDocument({ includeWeights = true } = {}) {
     { name: "leftUpperArm" },
     { name: "CLOTH_labcoat_main", mesh: 0, skin: 0 },
   ];
-  const bytes = new Uint8Array(60);
+  const bytes = new Uint8Array(96);
   bytes.set([
     1, 0, 0, 0,
     1, 2, 0, 0,
@@ -28,20 +28,24 @@ function makeDocument({ includeWeights = true } = {}) {
       offset += 4;
     }
   }
+  const positions = [-1, 0, -2, 0, 2, 1, 3, 4, 5];
+  positions.forEach((value, index) => data.setFloat32(60 + index * 4, value, true));
   const document = {
     nodes,
     skins: [{ joints: [0, 1, 2] }],
     meshes: [{
       name: "MESH_CLOTH_labcoat_main",
-      primitives: [{ attributes: includeWeights ? { JOINTS_0: 0, WEIGHTS_0: 1 } : { JOINTS_0: 0 } }],
+      primitives: [{ attributes: includeWeights ? { POSITION: 2, JOINTS_0: 0, WEIGHTS_0: 1 } : { POSITION: 2, JOINTS_0: 0 } }],
     }],
     bufferViews: [
       { buffer: 0, byteOffset: 0, byteLength: 12 },
       { buffer: 0, byteOffset: 12, byteLength: 48 },
+      { buffer: 0, byteOffset: 60, byteLength: 36 },
     ],
     accessors: [
       { bufferView: 0, byteOffset: 0, componentType: 5121, count: 3, type: "VEC4" },
       { bufferView: 1, byteOffset: 0, componentType: 5126, count: 3, type: "VEC4" },
+      { bufferView: 2, byteOffset: 0, componentType: 5126, count: 3, type: "VEC3" },
     ],
   };
   return { document, binaryChunk: bytes };
@@ -73,9 +77,10 @@ test("normalized unsigned-byte weights are decoded and sampling respects its har
   const bytes = new Uint8Array(24);
   bytes.set([255, 0, 0, 0, 128, 127, 0, 0, 0, 255, 0, 0], 0);
   // Keep the joint buffer and use a compact normalized byte weight buffer.
-  const compact = new Uint8Array(24);
+  const compact = new Uint8Array(96);
   compact.set(binaryChunk.subarray(0, 12), 0);
   compact.set(bytes.subarray(0, 12), 12);
+  compact.set(binaryChunk.subarray(60, 96), 60);
   document.bufferViews[1] = { buffer: 0, byteOffset: 12, byteLength: 12 };
   document.accessors[1] = { bufferView: 1, byteOffset: 0, componentType: 5121, normalized: true, count: 3, type: "VEC4" };
   const report = auditGlbSkinWeights(document, compact, { maxSamplesPerPrimitive: 2 });
