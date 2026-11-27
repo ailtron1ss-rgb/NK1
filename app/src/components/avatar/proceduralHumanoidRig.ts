@@ -46,6 +46,7 @@ export type ProceduralHumanoidRig = {
   ringMat: THREE.MeshStandardMaterial;
   limits: Record<string, JointLimit>;
   meshes: THREE.Mesh[];
+  partCount: number;
   materials: THREE.Material[];
   updatePose(input: HumanoidPoseInput): void;
   solveArmTarget(side: "left" | "right", target: THREE.Vector3, deltaSeconds?: number): PlanarIkResult;
@@ -496,12 +497,15 @@ export function createProceduralHumanoidRig(scene: THREE.Scene): ProceduralHuman
 
   const skeleton = new THREE.Skeleton(Object.values(bones));
   const restJointPositions = Object.fromEntries(Object.entries(bones).map(([name, bone]) => [name, bone.position.clone()])) as Record<string, THREE.Vector3>;
-  rootBone.updateMatrixWorld(true);
+  root.updateMatrixWorld(true);
   skeleton.calculateInverses();
+  const sourceParts = [...meshes];
+  const skinnedMeshes = consolidateSkinnedBodyParts(root, sourceParts, skeleton, rootBone);
   root.userData.rigStats = {
     boneCount: skeleton.bones.length,
     jointCount: Object.keys(limits).length,
-    meshCount: meshes.length,
+    meshCount: skinnedMeshes.length,
+    partCount: sourceParts.length,
     particleCount: AVATAR_ARTICULATED_BODY_PARTICLE_COUNT,
     constraintCount: AVATAR_ARTICULATED_BODY_SEGMENT_COUNT,
   };
@@ -519,7 +523,8 @@ export function createProceduralHumanoidRig(scene: THREE.Scene): ProceduralHuman
     brows,
     ringMat,
     limits,
-    meshes,
+    meshes: skinnedMeshes,
+    partCount: sourceParts.length,
     materials,
     updatePose(input) {
       const delta = clamp(finite(input.deltaSeconds, 1 / 60), 0, 0.1);
