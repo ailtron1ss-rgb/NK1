@@ -5,7 +5,7 @@ import { stableJson } from '../src/organism/core/StableSerialization.ts';
 import { EmbodimentSubsystemRuntime } from '../src/organism/core/EmbodimentSubsystemRuntime.ts';
 
 const { publicKey, privateKey } = generateKeyPairSync('ed25519');
-let now = 1_800_000_000_000;
+let now = Date.now();
 const consumedNonces = new Set();
 const revokedTickets = new Set();
 const nonceStore = {
@@ -74,11 +74,14 @@ const replay = await authority.admit(receipt);
 assert.deepEqual(replay, { accepted: false, reason: 'nonce-replayed' });
 
 // Payload mutation invalidates the signature, even if a caller supplies verified=true.
-const tampered = { ...signedReceipt({ nonce: 'nonce-tampered-0000000000001' }), verified: true };
+const tampered = signedReceipt({ nonce: 'nonce-tampered-0000000000001' });
 tampered.claim = 'door is closed';
 const tamperedResult = await authority.admit(tampered);
 assert.equal(tamperedResult.accepted, false);
 assert.equal(tamperedResult.reason, 'signature-invalid');
+const callerFlag = await authority.admit({ ...signedReceipt({ nonce: 'nonce-caller-flag-000000001' }), verified: true });
+assert.equal(callerFlag.accepted, false);
+assert.equal(callerFlag.reason, 'invalid-receipt');
 
 // A valid signature cannot be replayed onto a different device identity.
 const wrongDevice = await authority.admit(signedReceipt({
@@ -157,5 +160,11 @@ const recovered = new EmbodimentSubsystemRuntime();
 recovered.restoreFromPersisted({ embodiment: persisted });
 const recoveredRow = recovered.perceptualEvidence.snapshot().evidence.find(row => row.id === observed.id);
 assert.equal(recoveredRow?.kind, 'derived');
+assert.equal(owner.revokeAdmittedObservation('observation-door-open-001'), true);
+const revokedRow = owner.perceptualEvidence.snapshot().evidence.find(row => row.id === observed.id);
+assert.equal(revokedRow?.kind, 'unresolved');
+assert.equal(revokedRow?.confidence01, 0);
+assert.equal(owner.revokeAdmittedObservation('observation-door-open-001'), false);
+
 
 console.log('G3_SIGNED_HOST_OBSERVATION_ADMISSION=PASS signature=device+session+consent+nonce');
