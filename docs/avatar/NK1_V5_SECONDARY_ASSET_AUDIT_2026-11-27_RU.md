@@ -153,14 +153,14 @@ Source: `app/scripts/verify-hosted-kurisu-model.mjs`, workflow `NK1 Avatar Model
 
 ## Дополнительный runtime-слой: ограниченный GPU vertex sway
 
-Чтобы не ждать переразметки костей/весов и при этом не притворяться, будто у модели есть отсутствующие secondary joints, в 3D runtime добавлен отдельный пост-skinning vertex-shader слой. Он использует существующие отдельные меши, только при наличии `SkinnedMesh`, валидного `position` attribute, конечных вертикальных bounds и клонируемого `MeshStandardMaterial`/`MeshPhysicalMaterial`.
+Чтобы не ждать переразметки костей/весов и при этом не притворяться, будто у модели есть отсутствующие secondary joints, в 3D runtime добавлен отдельный пост-skinning vertex-shader слой. Он использует существующие отдельные меши, только при наличии `SkinnedMesh`, валидного `position` attribute, конечных вертикальных bounds и клонируемого `MeshStandardMaterial`/`MeshPhysicalMaterial` либо NK1-конвертированного `MeshToonMaterial` с сохранённым `userData.nk1ToonConverted`.
 
 Разрешённый список:
 - Волосы: `HAIR_long_lock_L/R`, `HAIR_front_strand_L/R`, `HAIR_layer_L1/L2/R1/R2` (масса сзади, crown и вся fringe исключены)
 - Одежда: `CLOTH_skirt`, `CLOTH_labcoat_main`
 - Галстук: `CLOTH_tie_blade`
 
-Верхние пределы смещения в нормализованном мировом масштабе модели: волосы 0.012, юбка/халат 0.007, полотнище галстука 0.0045. Итоговая амплитуда дополнительно зависит от energy/arousal/curiosity/novelty/predictionError, body sway/gait/breath, sleep state и quality tier. Материал клонируется без изменения PBR-настроек; исходная ссылка и все клоны корректно восстанавливаются/освобождаются при смене модели или reset.
+Верхние пределы смещения в нормализованном мировом масштабе модели: волосы 0.012, юбка/халат 0.007, полотнище галстука 0.0045. Итоговая амплитуда дополнительно зависит от energy/arousal/curiosity/novelty/predictionError, body sway/gait/breath, sleep state и quality tier. Материал клонируется без потери исходных карт и NK1 `gradientMap`; исходная ссылка и все клоны корректно восстанавливаются/освобождаются при смене модели или reset.
 
 Это **не cloth simulation**: нет столкновений, self-collision, распределения масс, XPBD/constraint solve, ветра или deformation graph. Шейдер добавляет только небольшую, ограниченную волну в свободной зоне меша после штатного skinning. Визуальное подтверждение на настоящем WebGL рендере/Android ещё требуется; CI подтверждает тесты и сборку, но не художественную приемку движения.
 
