@@ -50,8 +50,9 @@ action cannot be tied to the selected/executed action receipt.
 
 The revision gate requires all of the following:
 
-- Same active goal, plan ID, and decision ID across the prior plan, action, and
-  outcome events; all three events must belong to the immediately preceding tick.
+- A goal-stage receipt must name the same selected goal, and the plan, action,
+  and outcome events must carry the same plan ID, decision ID and goal ID; all
+  four stages must belong to the immediately preceding tick.
 - An accepted plan and a retained action-stage receipt whose action equals the
   action named by the outcome event.
 - The outcome event must be external and explicitly classified as an external
