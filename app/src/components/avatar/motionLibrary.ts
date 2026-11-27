@@ -245,9 +245,13 @@ export const MOTION_PROGRAMS: Readonly<Record<MotionProgramId, MotionProgram>> =
   },
   point: {
     id: "point", durationMs: 1600, loop: false,
+    // Reach, hold briefly, then release all joints so an expired action card
+    // cannot leave the avatar pointing indefinitely.
     keyframes: [
       kf(0, { rightShoulder: 0, rightElbow: 0, rightHand: 0, rightThumbCurl: 0, rightIndexCurl: 0, rightMiddleCurl: 0, rightRingCurl: 0, rightLittleCurl: 0 }),
-      kf(1, { rightShoulder: -0.45, rightElbow: 0.2, rightHand: 0.6, rightThumbCurl: 0.25, rightIndexCurl: -0.9, rightMiddleCurl: 0.75, rightRingCurl: 0.75, rightLittleCurl: 0.75 }),
+      kf(0.22, { rightShoulder: -0.45, rightElbow: 0.2, rightHand: 0.6, rightThumbCurl: 0.25, rightIndexCurl: -0.9, rightMiddleCurl: 0.75, rightRingCurl: 0.75, rightLittleCurl: 0.75 }),
+      kf(0.62, { rightShoulder: -0.45, rightElbow: 0.2, rightHand: 0.6, rightThumbCurl: 0.25, rightIndexCurl: -0.9, rightMiddleCurl: 0.75, rightRingCurl: 0.75, rightLittleCurl: 0.75 }),
+      kf(1, { rightShoulder: 0, rightElbow: 0, rightHand: 0, rightThumbCurl: 0, rightIndexCurl: 0, rightMiddleCurl: 0, rightRingCurl: 0, rightLittleCurl: 0 }),
     ],
   },
   wave: {
