@@ -1,0 +1,38 @@
+name: NK1 ContinuityLedger crash durability
+
+on:
+  pull_request:
+    branches: [workpass70-source]
+    paths:
+      - "runtime/neuro-kurisu/src/organism/system/ContinuityLedger.ts"
+      - "runtime/neuro-kurisu/tests/continuity-ledger-durability-20261124.mjs"
+      - ".github/workflows/nk1-continuity-ledger-durability.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nk1-continuity-ledger-durability-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  continuity-ledger-durability:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: runtime/neuro-kurisu
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: runtime/neuro-kurisu/package-lock.json
+      - name: Install locked runtime dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Verify journal crash recovery, ordering and bounded retention
+        run: node --experimental-strip-types --test tests/continuity-ledger-durability-20261124.mjs
+      - name: Runtime typecheck
+        run: npm run typecheck
