@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { readFile } from "node:fs/promises";
 import { createUiSnapshotCommitGate } from "../src/organism/uiSnapshotCommitGate.ts";
 
 test("a late older snapshot cannot overwrite a newer committed organism revision", async () => {
@@ -47,4 +48,11 @@ test("a newer request invalidates an older request even before the newer one com
 
   assert.equal(gate.isCurrent(oldTicket), false);
   assert.equal(gate.isCurrent(newTicket), true);
+});
+
+test("all canonical UI snapshot entry points use the same commit gate", async () => {
+  const store = await readFile(new URL("../src/organism/store.ts", import.meta.url), "utf8");
+  assert.equal((store.match(/snapshotCommitGate\\.begin\\(\\)/g) || []).length, 4);
+  assert.ok((store.match(/snapshotCommitGate\\.commit\\(/g) || []).length >= 8);
+  assert.match(store, /if \\(!committed\\) return;/);
 });
