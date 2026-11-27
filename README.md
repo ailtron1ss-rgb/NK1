@@ -1,18 +1,20 @@
 # NeuroCore / NK1 — объединённая продуктовая ветка
 
 **Product branch:** `neurocore-unified/main`  
-**Current upstream source:** `workpass70-source@8994a103f6b735f6347d77d926ee9c024a4d4f4d`  
-**Source synchronization merges:** `e5fa0fbb41ed7190289e180c8e4eeaa743141169` → `cb1c22e3c6c7f4eba73ad00b213442cee71c65d2`  
+**Exact product HEAD:** `4dfc60c4d1079bc694f3bc0043bced6c59bad564`  
+**Current upstream source:** `workpass70-source@9de695dd4713ec909d7312b45966d30dfb76d5c2`  
+**Latest two-parent source merge:** `53a5926f753c56b97599b1ee28a0e46d769662b2`  
 **Seed baseline:** `3526f61814e19f1f10766f3b2385488eb04e3d2e`  
-**Integration PR:** [#1221 — NeuroCore product line](https://github.com/ailtron1ss-rgb/NK1/pull/1221)  
-**Build-plan progress:** 59.75% (weighted engineering plan; not an intelligence or consciousness score)
+**Integration PR:** [#1221 — NeuroCore product line](https://github.com/ailtron1ss-rgb/NK1/pull/1221) — Draft, mergeable  
+**Source delta:** 174 commits ahead, 0 behind  
+**Weighted build-plan progress:** 64.7% (engineering implementation/acceptance plan, not an intelligence score)
 
-This is the current product-branch checkpoint as of 27 November 2026. The source branch and the release/metadata `main` branch are not modified by NeuroCore product work. Historical upstream checkpoint notes below are retained for provenance and must not be treated as live branch metadata.
+The product line preserves the full NK1 source tree and its canonical owners. The source branch and release/metadata `main` are not direct write targets. Latest source changes were integrated via a two-parent merge; two overlapping files were merged explicitly to retain NeuroCore shutdown-durability code and product test gates.
 
 **Toolchain:** Node.js 24, Python 3.11.  
-**Acceptance status:** PR remains draft. Full branch CI and Android/Termux device acceptance are not yet complete. Do not treat the project as a release-ready phone install until those gates pass.
+**Acceptance:** selected exact-head CI suites have passed on the preceding merge-head; the current head is re-running the integrated matrix after a health-proxy regression correction. Android/Termux device acceptance remains open. This is not yet a release-ready phone package.
 
-**Termux:** [POCO / Android setup and first launch](runtime/neuro-kurisu/docs/TERMUX_ZERO_TO_RUN_POCO_RU.md). The guide uses a separate checkout and the repository-pinned Node 24 / Python 3.11 toolchain.
+**Termux:** [POCO / Android setup and first launch](runtime/neuro-kurisu/docs/TERMUX_ZERO_TO_RUN_POCO_RU.md). The guide uses a separate checkout and repository-pinned toolchain.
 
 ---
 
