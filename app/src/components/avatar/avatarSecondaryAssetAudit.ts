@@ -8,6 +8,7 @@ const MAX_SCENE_NODES = 50_000;
 const MAX_AUDIT_BONES = 20_000;
 const MAX_AUDIT_MORPHS = 4_096;
 const MAX_AUDIT_MATERIALS = 4_096;
+const MAX_AUDIT_MESHES = 20_000;
 
 export interface AvatarSecondaryBoneDescriptor {
   id: string;
@@ -26,8 +27,21 @@ export interface AvatarSecondaryMaterialDescriptor {
   emissiveFactor?: readonly unknown[];
 }
 
+export interface AvatarSecondaryMeshDescriptor {
+  id: string;
+  name: string;
+  skinned?: boolean;
+}
+
+export interface AvatarSecondaryMeshRoleAudit {
+  meshNodeCount: number;
+  skinnedMeshNodeCount: number;
+  meshNames: readonly string[];
+}
+
 export interface AvatarSecondaryAssetDescriptor {
   bones?: readonly AvatarSecondaryBoneDescriptor[];
+  meshParts?: readonly AvatarSecondaryMeshDescriptor[];
   morphTargetNames?: readonly string[];
   materials?: readonly AvatarSecondaryMaterialDescriptor[];
   skinnedMeshCount?: number;
@@ -57,6 +71,12 @@ export interface AvatarSecondaryAssetAudit {
     sleeve: AvatarSecondaryRoleAudit;
     neuralFiber: AvatarSecondaryRoleAudit;
   };
+  totalMeshNodeCount: number;
+  byMeshRole: {
+    hair: AvatarSecondaryMeshRoleAudit;
+    garment: AvatarSecondaryMeshRoleAudit;
+    sleeve: AvatarSecondaryMeshRoleAudit;
+  };
   skinnedMeshCount: number;
   morphMeshCount: number;
   morphTargetCount: number;
@@ -70,6 +90,7 @@ export interface AvatarSecondaryAssetAudit {
 type SceneNodeLike = {
   name?: unknown;
   isBone?: unknown;
+  isMesh?: unknown;
   isSkinnedMesh?: unknown;
   children?: unknown;
   parent?: unknown;
@@ -95,6 +116,63 @@ function normalize(value: string): string {
 
 function emptyRoleAudit(): AvatarSecondaryRoleAudit {
   return { boneCount: 0, chainRoots: 0, maxChainDepth: 0 };
+}
+
+function emptyMeshRoleAudit(): AvatarSecondaryMeshRoleAudit {
+  return { meshNodeCount: 0, skinnedMeshNodeCount: 0, meshNames: Object.freeze([]) };
+}
+
+function resolveMeshRole(name: string): "hair" | "garment" | "sleeve" | null {
+  const normalized = normalize(name);
+  if (/(hairclip|hairpin)/.test(normalized)) return null;
+  if (/(hair|fringe|strand|tress|bang|lock)/.test(normalized)) return "hair";
+  if (/(sleeve|cuff)/.test(normalized)) return "sleeve";
+  if (/(cloth|coat|garment|skirt|tie|lapel|hem|ribbon|panel|pocket|collar)/.test(normalized)) return "garment";
+  return null;
+}
+
+function normalizeMeshParts(input: unknown): AvatarSecondaryMeshDescriptor[] {
+  if (!Array.isArray(input)) return [];
+  const result: AvatarSecondaryMeshDescriptor[] = [];
+  const ids = new Set<string>();
+  for (const entry of input.slice(0, MAX_AUDIT_MESHES)) {
+    if (!isRecord(entry) || typeof entry.id !== "string" || !entry.id
+      || typeof entry.name !== "string" || !entry.name.trim() || ids.has(entry.id)) continue;
+    ids.add(entry.id);
+    result.push({
+      id: entry.id.slice(0, 128),
+      name: entry.name.slice(0, 256),
+      skinned: entry.skinned === true,
+    });
+  }
+  return result;
+}
+
+function buildMeshRoleAudit(parts: readonly AvatarSecondaryMeshDescriptor[]): {
+  totalMeshNodeCount: number;
+  byMeshRole: AvatarSecondaryAssetAudit["byMeshRole"];
+} {
+  const mutable = {
+    hair: { meshNodeCount: 0, skinnedMeshNodeCount: 0, meshNames: [] as string[] },
+    garment: { meshNodeCount: 0, skinnedMeshNodeCount: 0, meshNames: [] as string[] },
+    sleeve: { meshNodeCount: 0, skinnedMeshNodeCount: 0, meshNames: [] as string[] },
+  };
+  for (const part of parts) {
+    const role = resolveMeshRole(part.name);
+    if (!role) continue;
+    const bucket = mutable[role];
+    bucket.meshNodeCount += 1;
+    if (part.skinned) bucket.skinnedMeshNodeCount += 1;
+    if (bucket.meshNames.length < 32) bucket.meshNames.push(part.name);
+  }
+  return {
+    totalMeshNodeCount: parts.length,
+    byMeshRole: {
+      hair: { ...mutable.hair, meshNames: Object.freeze(mutable.hair.meshNames) },
+      garment: { ...mutable.garment, meshNames: Object.freeze(mutable.garment.meshNames) },
+      sleeve: { ...mutable.sleeve, meshNames: Object.freeze(mutable.sleeve.meshNames) },
+    },
+  };
 }
 
 /** A tag is explicit; ordinary emissive trim is never promoted to NK1 neural fabric. */
@@ -158,6 +236,8 @@ export function auditAvatarSecondaryAssetDescriptor(
   input: AvatarSecondaryAssetDescriptor = {},
 ): AvatarSecondaryAssetAudit {
   const bones = normalizeBones(input.bones);
+  const meshParts = normalizeMeshParts(input.meshParts);
+  const meshRoleAudit = buildMeshRoleAudit(meshParts);
   const morphNames = normalizeNames(input.morphTargetNames);
   const materials = Array.isArray(input.materials)
     ? input.materials.slice(0, MAX_AUDIT_MATERIALS)
@@ -230,6 +310,7 @@ export function auditAvatarSecondaryAssetDescriptor(
   if (taggedNeuralMaterialCount === 0) warnings.push("no-tagged-neural-fabric");
 
   const truncated = Array.isArray(input.bones) && input.bones.length > MAX_AUDIT_BONES
+    || Array.isArray(input.meshParts) && input.meshParts.length > MAX_AUDIT_MESHES
     || Array.isArray(input.morphTargetNames) && input.morphTargetNames.length > MAX_AUDIT_MORPHS
     || Array.isArray(input.materials) && input.materials.length > MAX_AUDIT_MATERIALS;
   if (truncated) warnings.push("asset-audit-limit-reached");
@@ -241,6 +322,7 @@ export function auditAvatarSecondaryAssetDescriptor(
     unclassifiedBoneCount: Math.max(0, bones.length - recognizedBoneCount),
     unclassifiedBoneNames: Object.freeze(unclassifiedBoneNames),
     byRole,
+    ...meshRoleAudit,
     skinnedMeshCount: typeof input.skinnedMeshCount === "number" && Number.isFinite(input.skinnedMeshCount)
       ? Math.max(0, Math.floor(input.skinnedMeshCount)) : 0,
     morphMeshCount: typeof input.morphMeshCount === "number" && Number.isFinite(input.morphMeshCount)
@@ -283,6 +365,7 @@ export function auditAvatarSecondaryScene(root: unknown): AvatarSecondaryAssetAu
 
   const idByNode = new Map<object, string>(nodes.map(({ node, id }) => [node as object, id]));
   const bones: AvatarSecondaryBoneDescriptor[] = [];
+  const meshParts: AvatarSecondaryMeshDescriptor[] = [];
   const morphNames = new Set<string>();
   const materials: unknown[] = [];
   const materialSet = new Set<unknown>();
@@ -303,6 +386,13 @@ export function auditAvatarSecondaryScene(root: unknown): AvatarSecondaryAssetAu
       });
     }
     if (node.isSkinnedMesh === true) skinnedMeshCount += 1;
+    if (node.isMesh === true || node.isSkinnedMesh === true) {
+      meshParts.push({
+        id,
+        name: typeof node.name === "string" && node.name.trim() ? node.name : id,
+        skinned: node.isSkinnedMesh === true,
+      });
+    }
     if (isRecord(node.morphTargetDictionary)) {
       const names = Object.keys(node.morphTargetDictionary).slice(0, MAX_AUDIT_MORPHS);
       if (names.length > 0) morphMeshCount += 1;
@@ -319,6 +409,7 @@ export function auditAvatarSecondaryScene(root: unknown): AvatarSecondaryAssetAu
 
   const report = auditAvatarSecondaryAssetDescriptor({
     bones,
+    meshParts,
     morphTargetNames: [...morphNames],
     materials: materials as AvatarSecondaryMaterialDescriptor[],
     skinnedMeshCount,
