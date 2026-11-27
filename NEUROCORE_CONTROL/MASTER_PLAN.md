@@ -23,7 +23,10 @@
 - [x] Preserve the single `MemoryOS2` authority through `MemoryFabric`.
 - [x] Add a regression that asserts the injected store references are identical.
 - [x] Add memory restore/round-trip and capacity/lifecycle suites to the NeuroCore integration gate.
-- [ ] Execute restore, idempotent write, retrieval and lifecycle tests on this branch.
+- [x] Add memory restore/round-trip and capacity/lifecycle suites to the canonical NeuroCore gate.
+- [x] Selectively port crash-safe ContinuityLedger implementation and concurrency/torn-tail/rollback/retention tests.
+- [x] Make shutdown durability receipt wait for Core, sidecars, world, ledger flush and ledger close; add fault-injection regressions.
+- [ ] Pass these gates on the latest product head; verify idempotent canonical writes and real interrupted restart.
 - [ ] Verify that all memory writes pass through the canonical fabric/lifecycle authority.
 - [ ] Verify all actions pass through `ActionGateway` and its approval/idempotency policy.
 - [ ] Audit persistence, watchdog marker, checkpoint and shutdown ordering.
@@ -38,7 +41,8 @@
 - [x] Connect body-channel motors, head/gaze, affect, speech mouth, eyelids and hand curl channels.
 - [ ] Replace the segmented part volumes with a continuous skinned/deformable anatomical surface where appropriate.
 - [ ] Add balance, richer collision handling, full gait and muscle/soft-tissue actuation.
-- [ ] Execute the new rig/IK/scheduler regressions and all existing embodiment suites on this branch.
+- [x] Add an actual 20 Hz RAF scheduler to the body loop and connect its test to production `AvatarStage`.
+- [ ] Pass the new rig/IK/scheduler regressions and all existing embodiment suites on the latest product head.
 - [ ] Profile CPU/GPU/RAM and frame pacing on a mid-range Android device before raising body fidelity.
 
 ## Phase E — Learning, model and mobile resource policy
