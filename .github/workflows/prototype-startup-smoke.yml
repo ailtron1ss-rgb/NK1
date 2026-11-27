@@ -136,7 +136,8 @@ jobs:
             if curl --fail --silent http://127.0.0.1:3310/health >/dev/null \
               && curl --fail --silent http://127.0.0.1:8765/health >/dev/null \
               && curl --fail --silent http://127.0.0.1:8765/api/research/status >/dev/null \
-              && curl --fail --silent http://127.0.0.1:8080/ >/dev/null; then
+              && curl --fail --silent http://127.0.0.1:8080/ >/dev/null \
+              && grep -Fq "[super] NeuroCore prototype is ready." "$log"; then
               ready=1
               break
             fi
@@ -190,7 +191,8 @@ jobs:
             fi
             if [[ "$runtime_ready" == "1" ]] \
               && curl --fail --silent http://127.0.0.1:8765/health >/dev/null \
-              && curl --fail --silent http://127.0.0.1:8080/ >/dev/null; then
+              && curl --fail --silent http://127.0.0.1:8080/ >/dev/null \
+              && grep -Fq "[super-dev] NeuroCore development prototype is ready." "$log"; then
               ready=1
               break
             fi
