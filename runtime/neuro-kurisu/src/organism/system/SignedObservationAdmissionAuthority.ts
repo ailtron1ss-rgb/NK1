@@ -119,7 +119,7 @@ export function signedObservationReceiptBytes(
   payload:SignedHostObservationReceiptPayload,
   algorithm:HostObservationSignatureAlgorithm,
 ):Buffer {
-  return Buffer.from(`NK1/HOST-OBSERVATION-RECEIPT/V1\\n${algorithm}\\n${stableJson(payload)}`,'utf8');
+  return Buffer.from(['NK1/HOST-OBSERVATION-RECEIPT/V1',algorithm,stableJson(payload)].join('\\n'),'utf8');
 }
 
 const reject=(reason:ObservationAdmissionRejectReason):ObservationAdmissionResult=>({accepted:false,reason});
@@ -173,8 +173,9 @@ function verifyReceiptSignature(
     const signature=Buffer.from(encodedSignature,'base64');
     if(signature.length===0||signature.toString('base64')!==encodedSignature)return false;
     if(algorithm==='ed25519'&&signature.length!==64)return false;
-    // createPublicKey() rejects an already-public KeyObject in Node. Reuse it
-    // directly; parse PEM/DER material only when the host resolver returns bytes/text.
+    // Accept only an SPKI public-key PEM. A host must never pass private-key
+    // material into the cognition runtime, even if Node could derive its public half.
+    if(!material.includes('-----BEGIN PUBLIC KEY-----')||/-----BEGIN [A-Z ]*PRIVATE KEY-----/.test(material))return false;
     const key=createPublicKey(material);
     const keyType=key.asymmetricKeyType;
     if(algorithm==='ed25519'&&keyType!=='ed25519')return false;
