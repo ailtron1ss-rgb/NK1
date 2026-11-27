@@ -58,7 +58,14 @@ export function resolveGlbSecondaryBoneRotation(
   const digits = ["thumb", "index", "middle", "ring", "little"];
   const digit = digits.find((candidate) => name.startsWith(side + candidate));
   if (digit) {
-    const curl = clamp01(channels[side === "left" ? "leftFingers" : "rightFingers"]);
+    const aggregateKey = side === "left" ? "leftFingers" : "rightFingers";
+    const digitKey = `${side}${digit[0].toUpperCase()}${digit.slice(1)}Curl`;
+    const perDigit = channels[digitKey];
+    // An explicit per-digit value, including zero, takes precedence over the
+    // legacy aggregate curl. Negative values extend; positive values flex.
+    const curl = typeof perDigit === "number" && Number.isFinite(perDigit)
+      ? clampSigned(perDigit)
+      : clamp01(channels[aggregateKey]);
     const factor: Record<string, number> = { thumb: 0.72, index: 0.88, middle: 1, ring: 0.96, little: 0.82 };
     const distal = name.endsWith("tip");
     const magnitude = (distal ? 0.58 : 0.14) * factor[digit] * curl;
