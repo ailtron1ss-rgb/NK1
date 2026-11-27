@@ -204,12 +204,12 @@ assert.equal(engine.validateContext(revisedPlan, goal, initialWorld, {
 }).reason, 'revision-context-mismatch',
   'a revision-bearing plan must not validate without its exact revision evidence');
 
-assert.equal(derivePlanRevisionHint([priorOutcomeEvent, {
+assert.equal(derivePlanRevisionHint([priorOutcomeEvent, priorGoalEvent, {
   ...priorActionEvent,
   payload: { ...priorActionEvent.payload, action: 'rest' },
 }, priorPlanEvent], 43, goal.id, 0.8), null,
   'an action receipt for a different executed action must not be used as the prediction-error cause');
-assert.equal(derivePlanRevisionHint([priorOutcomeEvent, priorPlanEvent], 43, goal.id, 0.8), null,
+assert.equal(derivePlanRevisionHint([priorOutcomeEvent, priorGoalEvent, priorPlanEvent], 43, goal.id, 0.8), null,
   'a plan and outcome without an exact executed-action receipt cannot form a revision');
 
 assert.equal(derivePlanRevisionHint([priorOutcomeEvent, {
