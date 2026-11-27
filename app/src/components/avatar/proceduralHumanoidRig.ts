@@ -615,12 +615,20 @@ export function createProceduralHumanoidRig(scene: THREE.Scene): ProceduralHuman
         0.244,
         -1,
       );
-      const baseUpper = Math.atan2(arm.forearm.position.y, outward * arm.forearm.position.x);
-      const baseForearm = Math.atan2(arm.wrist.position.y, outward * arm.wrist.position.x);
+      const firstAngle = Math.atan2(
+        result.elbow.y - localStart.y,
+        outward * (result.elbow.x - outward * localStart.x),
+      );
+      const secondAngle = Math.atan2(
+        result.endEffector.y - result.elbow.y,
+        outward * (result.endEffector.x - result.elbow.x),
+      );
+      const baseUpper = Math.atan2(arm.forearm.position.y, arm.forearm.position.x);
+      const baseForearm = Math.atan2(arm.wrist.position.y, arm.wrist.position.x);
       const shoulderName = side + "UpperArm";
       const elbowName = side + "Forearm";
-      const shoulderValue = clampJointAngle(shoulderName, "z", outward * (result.shoulder - baseUpper), limits);
-      const elbowValue = clampJointAngle(elbowName, "z", outward * -1 * result.elbowFlex + baseUpper - baseForearm, limits);
+      const shoulderValue = clampJointAngle(shoulderName, "z", firstAngle - baseUpper, limits);
+      const elbowValue = clampJointAngle(elbowName, "z", secondAngle - firstAngle - baseForearm, limits);
       arm.upper.rotation.z = smooth(arm.upper.rotation.z, shoulderValue, deltaSeconds, 18);
       arm.forearm.rotation.z = smooth(arm.forearm.rotation.z, elbowValue, deltaSeconds, 18);
       root.updateMatrixWorld(true);
@@ -647,16 +655,24 @@ export function createProceduralHumanoidRig(scene: THREE.Scene): ProceduralHuman
       const secondLength = Math.hypot(secondLink.x, secondLink.y);
       const firstRestAngle = Math.atan2(firstLink.y, firstLink.x);
       const secondRestAngle = Math.atan2(secondLink.y, secondLink.x);
+      const outward = side === "left" ? -1 : 1;
       const result = solveTwoBonePlanarIK(
-        { x: localStart.x, y: localStart.y },
-        { x: localTarget.x, y: localTarget.y },
+        { x: outward * localStart.x, y: localStart.y },
+        { x: outward * localTarget.x, y: localTarget.y },
         firstLength,
         secondLength,
-        side === "left" ? -1 : 1,
+        -1,
       );
-      const hipValue = clampJointAngle(side + "Hip", "z", result.shoulder - firstRestAngle, limits);
-      const kneeSign = side === "left" ? -1 : 1;
-      const kneeValue = clampJointAngle(side + "Knee", "z", kneeSign * result.elbowFlex + firstRestAngle - secondRestAngle, limits);
+      const firstAngle = Math.atan2(
+        result.elbow.y - localStart.y,
+        outward * (result.elbow.x - outward * localStart.x),
+      );
+      const secondAngle = Math.atan2(
+        result.endEffector.y - result.elbow.y,
+        outward * (result.endEffector.x - result.elbow.x),
+      );
+      const hipValue = clampJointAngle(side + "Hip", "z", firstAngle - firstRestAngle, limits);
+      const kneeValue = clampJointAngle(side + "Knee", "z", secondAngle - firstAngle - secondRestAngle, limits);
       hipBone.rotation.z = smooth(hipBone.rotation.z, hipValue, deltaSeconds, 18);
       kneeBone.rotation.z = smooth(kneeBone.rotation.z, kneeValue, deltaSeconds, 18);
       root.updateMatrixWorld(true);
