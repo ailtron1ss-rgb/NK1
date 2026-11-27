@@ -2883,6 +2883,11 @@ export class OrganismRuntime {
     // Stop is a durability boundary, not merely a scheduler shutdown. Attempt
     // every cleanup obligation even if a module, checkpoint, or ledger fails.
     const stopErrors: unknown[] = [];
+    const durability = {
+      core: 'not-attempted' as 'not-attempted' | 'durable' | 'failed',
+      world: 'not-attempted' as 'not-attempted' | 'durable' | 'failed',
+      continuityLedger: 'not-attempted' as 'not-attempted' | 'durable' | 'failed',
+    };
     const capture = (error: unknown) => { stopErrors.push(error); };
 
     this.stopping = true;
@@ -2935,12 +2940,15 @@ export class OrganismRuntime {
           });
           this.core.setRuntimeClosure(this.runtimeClosure.snapshot());
         } catch (error) {
+          durability.core = 'failed';
           capture(error);
         }
 
         try {
           await this.core.flush();
+          durability.core = 'durable';
         } catch (error) {
+          durability.core = 'failed';
           capture(error);
           await this.journal.write('error', 'runtime.stop.core-checkpoint-failed', {
             message: String(error instanceof Error ? error.message : error).slice(0, 180),
@@ -2959,14 +2967,10 @@ export class OrganismRuntime {
         }
         try {
           await this.checkpointWorld(true);
+          durability.world = 'durable';
         } catch (error) {
+          durability.world = 'failed';
           capture(error);
-        }
-        if (runtimeView) {
-          await this.journal.write('info', 'runtime.stop.durable', {
-            tick: runtimeView.tick,
-            worldTick: this.environment.snapshot().tick,
-          }).catch(() => {});
         }
       });
     } catch (error) {
@@ -2975,16 +2979,64 @@ export class OrganismRuntime {
 
     // Flush and close are separate obligations: close is still attempted when
     // flush rejects, and neither error can erase module/core shutdown failures.
+    let ledgerFlushSucceeded = false;
+    let ledgerCloseSucceeded = false;
     try {
       await this.continuityLedger.flush();
+      ledgerFlushSucceeded = true;
     } catch (error) {
+      durability.continuityLedger = 'failed';
       capture(error);
     }
     try {
       await this.continuityLedger.close();
+      ledgerCloseSucceeded = true;
     } catch (error) {
+      durability.continuityLedger = 'failed';
       capture(error);
     }
+    try {
+      const ledger = this.continuityLedger.diagnostics() as {
+        pendingLines?: number;
+        pendingBytes?: number;
+        lastError?: string | null;
+        lastDurabilityWarning?: string | null;
+      };
+      durability.continuityLedger = ledgerFlushSucceeded && ledgerCloseSucceeded &&
+        ledger.pendingLines === 0 && ledger.pendingBytes === 0 &&
+        !ledger.lastError && !ledger.lastDurabilityWarning
+        ? 'durable'
+        : 'failed';
+      if (durability.continuityLedger === 'failed' &&
+          !stopErrors.some(error => String((error as any)?.message ?? error).includes('continuity-ledger'))) {
+        capture(new Error('continuity-ledger-durability-unconfirmed'));
+      }
+    } catch (error) {
+      durability.continuityLedger = 'failed';
+      capture(error);
+    }
+
+    const worldTick = (() => {
+      try { return this.environment.snapshot().tick; } catch { return null; }
+    })();
+    const overallDurable = runtimeView !== null &&
+      durability.core === 'durable' &&
+      durability.world === 'durable' &&
+      durability.continuityLedger === 'durable' &&
+      stopErrors.length === 0;
+    const receipt = {
+      overall: overallDurable ? 'durable' : 'partial',
+      tick: runtimeView?.tick ?? null,
+      worldTick,
+      durability,
+      errors: stopErrors.slice(0, 8).map(error =>
+        String((error as any)?.message ?? error).slice(0, 180)),
+    };
+    await this.journal.write(
+      overallDurable ? 'info' : 'warn',
+      overallDurable ? 'runtime.stop.durable' : 'runtime.stop.partial',
+      receipt,
+    ).catch(() => {});
 
     if (stopErrors.length === 1) throw stopErrors[0];
     if (stopErrors.length > 1) {
