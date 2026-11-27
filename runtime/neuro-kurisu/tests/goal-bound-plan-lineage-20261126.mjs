@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { PlanEngine } from '../src/organism/world/PlanEngine.ts';
+import { PlanEngine, derivePlanRevisionHint } from '../src/organism/world/PlanEngine.ts';
 import { WorldEnvironment } from '../src/organism/world/WorldEnvironment.ts';
 
 const environment = new WorldEnvironment();
@@ -122,6 +122,80 @@ assert.deepEqual(environment.snapshot(), initialWorld,
   'planning and validation are predictive only and must not commit world changes');
 const legacyContextPlan = engine.build(null, 'reflect', 1, 2);
 assert.equal(engine.validateContext(legacyContextPlan, null, initialWorld, {}).valid, true);
+
+
+const priorOutcomeEvent = {
+  id: 'outcome:cycle-42',
+  tick: 42,
+  stage: 'outcome',
+  external: true,
+  payload: {
+    planId: plan.id,
+    decisionId: context.decisionId,
+    goalId: goal.id,
+    planAccepted: true,
+    realitySource: 'external',
+    plannedAction: plan.steps[0].environmentAction,
+    predictedReward01: 0.9,
+    actualReward01: 0.1,
+    verified01: 0.95,
+    independent01: 0.92,
+    evidence01: 0.9,
+  },
+};
+const priorPlanEvent = {
+  id: 'plan:cycle-42',
+  tick: 42,
+  stage: 'plan',
+  external: false,
+  payload: {
+    planId: plan.id,
+    decisionId: context.decisionId,
+    goalId: goal.id,
+    planAccepted: true,
+    nextAction: plan.steps[0].environmentAction,
+  },
+};
+const revisionHint = derivePlanRevisionHint(
+  [priorOutcomeEvent, priorPlanEvent], 43, goal.id, 0.8,
+);
+assert.ok(revisionHint, 'a same-goal, immediately prior, independently verified high-error outcome must produce a revision hint');
+assert.equal(revisionHint.previousPlanId, plan.id);
+assert.equal(revisionHint.previousDecisionId, context.decisionId);
+assert.equal(revisionHint.previousTick, 42);
+assert.equal(revisionHint.avoidFirstAction, plan.steps[0].environmentAction);
+assert.ok(Math.abs(revisionHint.predictionError01 - 0.8) < 1e-12);
+
+const revisionContext = {
+  decisionId: 'decision:cycle-43',
+  tick: 43,
+  revisionHint,
+};
+const revisedPlan = engine.build(goal, 'verify', 3, 3, revisionContext);
+assert.equal(revisedPlan.lineage.revision.previousPlanId, plan.id,
+  'the new plan must seal its causal link to the plan that produced the verified miss');
+assert.notEqual(revisedPlan.steps[0].environmentAction, revisionHint.avoidFirstAction,
+  'high-error verified feedback must keep the same failed first action out of the next plan candidate');
+assert.deepEqual(engine.validateContext(revisedPlan, goal, initialWorld, revisionContext),
+  { valid: true, reason: 'ok' });
+assert.equal(engine.validateContext(revisedPlan, goal, initialWorld, {
+  decisionId: revisionContext.decisionId, tick: revisionContext.tick,
+}).reason, 'revision-context-mismatch',
+  'a revision-bearing plan must not validate without its exact revision evidence');
+
+const simulatedRevisionEvent = {
+  ...priorOutcomeEvent,
+  external: false,
+  payload: { ...priorOutcomeEvent.payload, realitySource: 'simulation' },
+};
+assert.equal(derivePlanRevisionHint([simulatedRevisionEvent, priorPlanEvent], 43, goal.id, 0.8), null,
+  'simulated outcomes cannot drive verified-outcome revision');
+assert.equal(derivePlanRevisionHint([priorOutcomeEvent, priorPlanEvent], 43, goal.id, 0.2), null,
+  'low metacognitive revision readiness must retain the existing plan search');
+assert.equal(derivePlanRevisionHint([priorOutcomeEvent, priorPlanEvent], 44, goal.id, 0.8), null,
+  'stale outcomes must not steer a later, unrelated decision');
+assert.equal(derivePlanRevisionHint([priorOutcomeEvent, priorPlanEvent], 43, 'goal:other', 0.8), null,
+  'revision evidence from another goal must not steer the active goal');
 
 console.log('GOAL_BOUND_PLAN_LINEAGE=PASS', JSON.stringify({
   decisionId: plan.lineage.decisionId,
