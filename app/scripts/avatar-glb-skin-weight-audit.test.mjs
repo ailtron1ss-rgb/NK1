@@ -133,3 +133,28 @@ test("reports unweighted vertices and per-vertex weight-sum diagnostics without 
   assert.equal(mesh.maxWeightSum01, 1);
   assert.equal(mesh.unweightedSampleVertices + mesh.weightedSampleVertices, mesh.sampledVertices);
 });
+
+
+test("world bounds compose parent and mesh-node transforms while preserving local bounds", () => {
+  const { document, binaryChunk } = makeDocument();
+  document.nodes[0].children = [3];
+  document.nodes[0].translation = [10, 0, 0];
+  document.nodes[3].translation = [0, 5, 0];
+  const report = auditGlbSkinWeights(document, binaryChunk);
+  const mesh = report.meshAudits[0];
+  assert.deepEqual(mesh.localBounds.min, [-1, 0, -2]);
+  assert.deepEqual(mesh.localBounds.max, [3, 4, 5]);
+  assert.deepEqual(mesh.worldBounds.min, [9, 5, -2]);
+  assert.deepEqual(mesh.worldBounds.max, [13, 9, 5]);
+});
+
+test("missing POSITION leaves the skin audit useful and reports unavailable geometry bounds", () => {
+  const { document, binaryChunk } = makeDocument();
+  delete document.meshes[0].primitives[0].attributes.POSITION;
+  const report = auditGlbSkinWeights(document, binaryChunk);
+  assert.equal(report.auditedNodeCount, 1);
+  assert.equal(report.meshAudits[0].localBounds, null);
+  assert.equal(report.meshAudits[0].worldBounds, null);
+  assert.ok(report.meshAudits[0].warnings.includes("missing-position-attribute"));
+  assert.ok(report.meshAudits[0].jointCoverage.length > 0);
+});
