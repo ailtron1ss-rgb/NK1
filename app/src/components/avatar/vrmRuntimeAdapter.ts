@@ -364,6 +364,8 @@ const CHANNEL_LIMIT: Record<string, number> = {
   leftAnkle: 0.5, rightAnkle: 0.5, rootYaw: 0.9,
   leftWrist: 0.4, rightWrist: 0.4, leftHand: 0.35, rightHand: 0.35,
   leftFingers: 0.85, rightFingers: 0.85,
+  leftThumbCurl: 0.85, leftIndexCurl: 0.85, leftMiddleCurl: 0.85, leftRingCurl: 0.85, leftLittleCurl: 0.85,
+  rightThumbCurl: 0.85, rightIndexCurl: 0.85, rightMiddleCurl: 0.85, rightRingCurl: 0.85, rightLittleCurl: 0.85,
 };
 
 const scaleChannel = (channel: BodyChannel, value: number): number => {
@@ -431,14 +433,22 @@ export function applyVrmFullBodyChannels(vrm: VRM, channels: Readonly<Partial<Re
   write(rig.leftHand, "y", scaleChannel("leftHand", channels.leftHand ?? 0), "leftHand");
   write(rig.rightHand, "x", scaleChannel("rightWrist", channels.rightWrist ?? 0), "rightHand");
   write(rig.rightHand, "y", scaleChannel("rightHand", channels.rightHand ?? 0), "rightHand");
-  const leftFingerCurl = scaleChannel("leftFingers", channels.leftFingers ?? 0);
-  for (const finger of rig.leftFingerBones) {
-    write(finger.node, "x", leftFingerCurl * finger.flex, finger.name);
-  }
-  const rightFingerCurl = scaleChannel("rightFingers", channels.rightFingers ?? 0);
-  for (const finger of rig.rightFingerBones) {
-    write(finger.node, "x", rightFingerCurl * finger.flex, finger.name);
-  }
+  const applyFingerCurls = (side: "left" | "right", fingers: readonly VrmFingerBone[]) => {
+    const aggregateChannel = `${side}Fingers` as BodyChannel;
+    const aggregateCurl = scaleChannel(aggregateChannel, channels[aggregateChannel] ?? 0);
+    for (const finger of fingers) {
+      const digit = finger.name.slice(side.length).replace(/(?:Metacarpal|Proximal|Intermediate|Distal)$/, "");
+      const digitChannel = `${side}${digit}Curl` as BodyChannel;
+      // A present per-digit value overrides the aggregate even when it is exactly zero.
+      // That lets a point gesture keep the index extended while the other fingers curl.
+      const curl = channels[digitChannel] === undefined
+        ? aggregateCurl
+        : scaleChannel(digitChannel, channels[digitChannel] as number);
+      write(finger.node, "x", curl * finger.flex, finger.name);
+    }
+  };
+  applyFingerCurls("left", rig.leftFingerBones);
+  applyFingerCurls("right", rig.rightFingerBones);
   return {
     applied: controlledBones.length > 0,
     reason: controlledBones.length ? "full-body-channels-applied" : "no-supported-full-body-channels",
