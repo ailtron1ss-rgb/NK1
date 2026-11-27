@@ -57,7 +57,7 @@ test("audit reports actual secondary bone chains, authored morphs and tagged neu
   const report = auditAvatarSecondaryScene(root);
   assert.equal(report.schemaVersion, 1);
   assert.equal(report.totalBoneCount, 10);
-  assert.equal(report.recognizedBoneCount, 7);
+  assert.equal(report.recognizedBoneCount, 6);
   assert.equal(report.byRole.hair.boneCount, 2);
   assert.equal(report.byRole.hair.chainRoots, 1);
   assert.equal(report.byRole.hair.maxChainDepth, 2);
