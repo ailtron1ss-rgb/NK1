@@ -167,11 +167,9 @@ export function resolveVrmLookAtTargetOffset(gazeX: number, gazeY: number): { x:
   const horizontal = clampSigned(gazeX, -1, 1);
   const vertical = clampSigned(gazeY, -1, 1);
   const distance = 1.5;
-  return {
-    x: Math.tan(horizontal * 0.34) * distance,
-    y: -Math.tan(vertical * 0.25) * distance,
-    z: distance,
-  };
+  const x = horizontal === 0 ? 0 : Math.tan(horizontal * 0.34) * distance;
+  const y = vertical === 0 ? 0 : -Math.tan(vertical * 0.25) * distance;
+  return { x, y, z: distance };
 }
 
 /**
