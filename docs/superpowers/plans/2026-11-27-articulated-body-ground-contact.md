@@ -38,10 +38,10 @@
 - Add ankle-to-heel and heel-to-toe constraints for each side.
 - Keep ankle pitch on the heel-to-toe vector, not the knee-to-ankle vector.
 
-- [ ] Write the failing 22-particle/21-segment and foot-articulation tests.
-- [ ] Run the focused test and record the expected red result.
-- [ ] Implement the four foot particles and pose mapping.
-- [ ] Run focused tests and verify segment lengths remain bounded.
+- [x] Write the failing 22-particle/21-segment and foot-articulation tests.
+- [x] Run the focused test and record the expected red result.
+- [x] Implement the four foot particles and pose mapping.
+- [x] Run focused tests and verify segment lengths remain bounded (23/23 body/GLB/VRM suite passed on HEAD 7f69baeb...).
 
 ### Task 2: Unilateral contact and friction
 
@@ -53,10 +53,10 @@
 - Optional step options: groundEnabled, groundY, footRadius, footFriction, groundContactMargin.
 - Result diagnostics: contacts.leftFoot, contacts.rightFoot, contacts.maxCorrection, contacts.maxSlipSpeed.
 
-- [ ] Write failing penetration, no-restitution, friction and swing-clearance tests.
-- [ ] Run the identical focused test command and verify the new cases fail.
-- [ ] Implement bounded unilateral foot projection, zero-restitution contact and tangential friction.
-- [ ] Run the focused suite, then the full body/GLB/VRM integration command.
+- [x] Write failing penetration, no-restitution, friction and swing-clearance tests.
+- [x] Run the identical focused test command and verify the new cases fail (first RED: 21/23; contact retest RED isolated the take-off penetration edge).
+- [x] Implement bounded unilateral foot projection, zero-restitution contact and tangential friction.
+- [x] Run the focused suite, then the full body/GLB/VRM integration command (23/23 PASS).
 
 ### Task 3: Verification and review evidence
 
