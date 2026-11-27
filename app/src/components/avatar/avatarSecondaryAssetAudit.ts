@@ -13,6 +13,7 @@ export interface AvatarSecondaryBoneDescriptor {
   id: string;
   name: string;
   parentId?: string | null;
+  metadata?: unknown;
 }
 
 export interface AvatarSecondaryMaterialDescriptor {
@@ -74,6 +75,7 @@ type SceneNodeLike = {
   parent?: unknown;
   morphTargetDictionary?: unknown;
   material?: unknown;
+  userData?: unknown;
 };
 
 const ROLE_KEYS: Readonly<Record<AvatarDynamicsRole, keyof AvatarSecondaryAssetAudit["byRole"]>> = Object.freeze({
@@ -133,6 +135,7 @@ function normalizeBones(input: unknown): AvatarSecondaryBoneDescriptor[] {
       id: entry.id.slice(0, 128),
       name: entry.name.slice(0, 256),
       ...(typeof entry.parentId === "string" ? { parentId: entry.parentId.slice(0, 128) } : {}),
+      ...(entry.metadata !== undefined ? { metadata: entry.metadata } : {}),
     });
   }
   return result;
@@ -170,7 +173,7 @@ export function auditAvatarSecondaryAssetDescriptor(
   const classified: Array<{ bone: AvatarSecondaryBoneDescriptor; role: AvatarDynamicsRole }> = [];
 
   for (const bone of bones) {
-    const resolved = resolveAvatarDynamicsBoneRole(bone.name);
+    const resolved = resolveAvatarDynamicsBoneRole(bone.name, bone.metadata);
     if (!resolved) continue;
     roleById.set(bone.id, resolved.role);
     classified.push({ bone, role: resolved.role });
@@ -288,12 +291,15 @@ export function auditAvatarSecondaryScene(root: unknown): AvatarSecondaryAssetAu
 
   for (const { node, parent, id } of nodes) {
     if (node.isBone === true && typeof node.name === "string") {
+      const userData = isRecord(node.userData) ? node.userData : null;
+      const secondaryMetadata = userData?.nk1Secondary;
       bones.push({
         id,
         name: node.name,
         ...(parent?.isBone === true && idByNode.has(parent as object)
           ? { parentId: idByNode.get(parent as object) }
           : {}),
+        ...(secondaryMetadata !== undefined ? { metadata: secondaryMetadata } : {}),
       });
     }
     if (node.isSkinnedMesh === true) skinnedMeshCount += 1;
