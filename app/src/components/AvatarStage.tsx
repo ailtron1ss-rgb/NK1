@@ -339,9 +339,9 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
               },
             );
             articulatedBodyRef.current = particleStep.state;
-            // Throttle the 18-particle render projection to 20 Hz; the physics solver itself
-            // continues at the animation cadence and remains the one articulation authority.
-            if (particleStep.state.tick % 3 === 0) setArticulatedBodyParticles(particleStep.state.particles);
+            // Publish every solved anatomical snapshot at the same bounded 20 Hz cadence.
+            // The WebGL renderer continues independently and interpolates between snapshots.
+            setArticulatedBodyParticles(particleStep.state.particles);
             const next = particleStep.channels;
             const previous = motionChannelsRef.current;
             const keys = new Set([...Object.keys(previous), ...Object.keys(next)]);
