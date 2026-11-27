@@ -10,7 +10,7 @@ test("maps torso and head channels onto GLB nodes with bounded smooth offsets", 
   assert.ok(Math.abs(head.x + 0.154) < 1e-9 && Math.abs(head.y - 0.168) < 1e-9 && Math.abs(head.z - 0.096) < 1e-9);
   const neck = resolveGlbBodyBoneRotation("Neck", channels);
   assert.ok(neck.x > 0 && neck.z > 0);
-  assert.ok(Math.abs(neck.y) < 0.01, "combined neck yaw remains bounded near neutral");
+  assert.ok(neck.y > 0.01 && neck.y < 0.06, "head yaw remains dominant over torso counter-rotation");
 });
 
 test("maps left/right arms, wrists, hips, knees and ankles independently", () => {
