@@ -154,7 +154,7 @@ export function stepAvatarArticulatedBody(
   const substeps=duration<=0?0:Math.min(4,Math.max(1,Math.ceil(duration/(1000/60))));
   const dt=substeps?duration/substeps/1000:0;
   const energy=clamp(options?.energy01??.7,0,1,.7),awake=options?.awake===true,reduced=options?.reducedMotion===true;
-  const drive=!awake?0:reduced?.16:.22+energy*.78;
+  const drive = !awake ? 0 : reduced ? 0.16 : 0.22 + energy * 0.78;
   const joints=zeroJoints();
   for(const key of CHANNELS){
     const old=previous?.joints?.[key]??{value:0,velocity:0};
@@ -206,7 +206,7 @@ export function stepAvatarArticulatedBody(
     for(const id of IDS){
       const p=state.particles[id];if(p.pinned)continue;
       p.velocity=mul(sub(p.position,before[id]),1/dt);
-      p.velocity=mul(p.velocity,reduced||!awake?.78:.9);
+      p.velocity=mul(p.velocity,(reduced || !awake) ? 0.78 : 0.9);
       p.position=vec(clamp(p.position.x,-2,2),clamp(p.position.y,-2,3),clamp(p.position.z,-2,2));
     }
   }
