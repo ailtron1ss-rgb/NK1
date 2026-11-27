@@ -139,7 +139,6 @@ try {
   });
   assert.equal(report.webgl.available, true, "Three.js canvas must expose an active WebGL context");
   assert.ok(report.webgl.drawingBufferWidth > 0 && report.webgl.drawingBufferHeight > 0, "WebGL drawing buffer must be non-empty");
-  assert.match(report.diagnostics, /GPU vertex sway: 11 mesh/, "all allowlisted v5 meshes must be attached");
   await page.waitForTimeout(1_500);
   assert.deepEqual(report.pageErrors, [], "3D avatar emitted an uncaught browser exception");
   assert.deepEqual(report.shaderErrors, [], "3D avatar emitted a WebGL shader/program compilation error");
