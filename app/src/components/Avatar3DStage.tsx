@@ -23,6 +23,7 @@ import { AvatarNeuroAdaptiveDynamics, isAvatarSecondaryDynamicsBoneCandidate, re
 import { auditAvatarSecondaryScene, hasAvatarNeuralFabricEmission, isAvatarNeuralFabricMaterialTagged, type AvatarSecondaryAssetAudit } from "./avatar/avatarSecondaryAssetAudit";
 import { attachAvatarSecondaryVertexDynamics, disposeAvatarSecondaryVertexDynamics, updateAvatarSecondaryVertexDynamics, type AvatarSecondaryVertexBinding } from "./avatar/avatarSecondaryVertexDynamics";
 import { resolveAvatarCameraFraming } from "./avatar/avatarCameraFraming";
+import { resolveAvatarSceneBounds } from "./avatar/avatarSceneBounds";
 import { fetchRemoteAvatarModel } from "./avatar/remoteAvatarSource";
 import { applyAvatarAnimationFrame } from "./avatar/avatarAnimationRuntime";
 import { createAvatarPresentationReceipt, type AvatarPresentationReceiptV1 } from "./avatar/avatarPresentationReceipt.ts";
@@ -146,7 +147,7 @@ export function Avatar3DStage(props:Props){
       skinnedBoundsRefreshed++;
     });
     root.updateMatrixWorld(true);
-    const bounds=new THREE.Box3().setFromObject(root,true),size=new THREE.Vector3(),center=new THREE.Vector3();bounds.getSize(size);bounds.getCenter(center);const max=Math.max(size.x,size.y,size.z);if(!Number.isFinite(max)||max<.0001)throw new Error("У модели нет видимой геометрии.");const scale=3.15/max;root.scale.setScalar(scale);root.position.set(-center.x*scale,-bounds.min.y*scale+.04,-center.z*scale);
+    const sourceSceneBounds=resolveAvatarSceneBounds(root);const bounds=sourceSceneBounds.bounds,size=new THREE.Vector3(),center=new THREE.Vector3();if(bounds.isEmpty())throw new Error("В модели нет видимой геометрии персонажа после исключения ENV_* объектов.");bounds.getSize(size);bounds.getCenter(center);const max=Math.max(size.x,size.y,size.z);if(!Number.isFinite(max)||max<.0001)throw new Error("У модели нет видимой геометрии.");const scale=3.15/max;root.scale.setScalar(scale);root.position.set(-center.x*scale,-bounds.min.y*scale+.04,-center.z*scale);
     root.updateMatrixWorld(true);
     root.traverse((node: any) => {
       if (!node.isSkinnedMesh) return;
@@ -155,7 +156,7 @@ export function Avatar3DStage(props:Props){
       node.computeBoundingSphere?.();
     });
     root.updateMatrixWorld(true);
-    const normalizedBounds=new THREE.Box3().setFromObject(root,true);
+    const normalizedSceneBounds=resolveAvatarSceneBounds(root);const normalizedBounds=normalizedSceneBounds.bounds;
     // Independently audit actual vertex deformation. This distinguishes a
     // genuinely flat mesh / empty skin weights from a stale SkinnedMesh bound.
     const skinAudit = {
@@ -295,7 +296,7 @@ export function Avatar3DStage(props:Props){
     // Capture asset-space geometry and humanoid up-axis before normalization.
     // This distinguishes a Z-up/sideways export from a camera-framing regression.
     root.updateMatrixWorld(true);
-    const sourceBounds = new THREE.Box3().setFromObject(root);
+    const sourceBounds = normalizedBounds.clone();
     const sourceSize = new THREE.Vector3();
     sourceBounds.getSize(sourceSize);
     const sourceHeadToHips = (() => {
@@ -318,6 +319,7 @@ export function Avatar3DStage(props:Props){
     })();
     const sourceAxisDiagnostics = {
       boundsSize: { x: sourceSize.x, y: sourceSize.y, z: sourceSize.z },
+      excludedEnvironmentMeshes: sourceSceneBounds.excludedEnvironmentMeshes,
       skinnedBoundsRefreshed,
       skinning: skinningDiagnostics,
       headToHips: sourceHeadToHips,

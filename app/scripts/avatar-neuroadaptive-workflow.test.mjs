@@ -29,3 +29,9 @@ test('offscreen framebuffer readback wakes exactly one explicit render frame', (
   assert.match(avatarStage, /removeEventListener\("nk1:avatar-pixel-audit-request",onPixelAuditRequest\)/);
   assert.match(browserAcceptance, /dispatchEvent\(new Event\("nk1:avatar-pixel-audit-request"\)\)/);
 });
+
+test('avatar normalization hides environment meshes and fits only character geometry', () => {
+  assert.match(avatarStage, /resolveAvatarSceneBounds\(root\)/);
+  assert.match(avatarStage, /excludedEnvironmentMeshes:\s*sourceSceneBounds\.excludedEnvironmentMeshes/);
+  assert.match(avatarStage, /const bounds=sourceSceneBounds\.bounds/);
+});

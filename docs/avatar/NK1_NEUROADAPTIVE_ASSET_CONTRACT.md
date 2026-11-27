@@ -6,6 +6,8 @@ This contract extends the existing identity-locked Kurisu embodiment with bounde
 
 The runtime reads one canonical NK1 avatar frame and derives secondary motion from its existing affect, action, energy and measured body channels. Cognition does not run a neural model inside the WebGL frame loop: the organism supplies the signals; a small critically damped spring solver turns them into physical lag.
 
+The avatar loader hides `ENV_*` mesh nodes (such as studio floors and plinths) and excludes them from both source and normalized character bounds. These scene helpers must not determine character scale or appear in the avatar render; body, hair and garment meshes remain eligible.
+
 ## What the runtime can drive
 
 - Hair clumps and loose locks, with pinned roots and more responsive tips.
