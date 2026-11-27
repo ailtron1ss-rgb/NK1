@@ -22,4 +22,8 @@ test("generic GLB renderer consumes the expressive face and secondary motion ada
   assert.match(stage, /normalizedBounds=new THREE.Box3\(\)\.setFromObject\(root\)/);
   assert.match(stage, /avatarVisibleMeshCount/);
   assert.match(stage, /avatarRenderCalls/);
+  assert.match(stage, /function applyAvatarCameraFit\(rt:Runtime,bounds:any\)/);
+  assert.match(stage, /rt\.renderer\.domElement\.dataset\.avatarVisibleMeshCount/);
+  assert.match(stage, /if\(rt\.cameraBounds\)\{const fit=applyAvatarCameraFit/);
+  assert.match(stage, /rt\.cameraBounds=null/);
 });
