@@ -84,7 +84,7 @@ test('preserves the original continuity journal close failure without adding a d
     assert.equal(stop.data.durability.continuityLedger, 'failed');
     assert.equal(entries.some(entry => entry.event === 'runtime.stop.durable'), false);
   } finally {
-    await runtime.continuityLedger.close();
+    await runtime.continuityLedger.close().catch(() => {});
     await rm(directory, { recursive: true, force: true });
   }
 });
