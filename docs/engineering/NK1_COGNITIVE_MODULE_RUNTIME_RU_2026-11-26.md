@@ -14,6 +14,10 @@ CognitiveModuleRuntime — контролируемый host для жизнен
 
 В текущем pre-launch варианте модульный код передаётся только через host-owned factory: () => CognitiveModule.
 
+До валидации манифеста host проверяет и сам registration wrapper: допускаются только собственные enumerable data-поля `manifest` и `factory`. Getter/setter, symbol-ключ, унаследованное поле, неизвестное поле или нестандартный prototype отклоняются без чтения accessor-ов. Это не позволяет выполнить побочный код уже при вызове `register()`.
+
+Манифест копируется через descriptor-based bounded clone с лимитом **16 KiB** до чтения его полей. Accessor-ы, symbol-ключи, нестандартные object prototypes, некорректная структура и неизвестные поля отклоняются; валидатор работает только с detached plain-data копией. Это admission-проверка формата, а не sandbox для исполняемого кода factory.
+
 Манифест не может:
 - указывать путь, URL, npm-пакет или архив для динамического импорта;
 - заставлять runtime исполнять произвольный код;
@@ -102,6 +106,8 @@ Host выдаёт grants отдельно от манифеста:
 ## 6. Состояние и миграции
 
 Host использует тот же `JsonStateStore<PersistedOrganism>`, который уже принадлежит `OrganismCore`. `CognitiveModuleCheckpointStore` оборачивает его и размещает envelopes в `PersistedOrganism.system.cognitiveModuleRuntime` внутри того же durable payload. Это не отдельный JSON-файл, не вторая база и не второй владелец истины.
+
+При записи адаптер также инспектирует собственный data-descriptor `PersistedOrganism.system`. Accessor на этом поле отклоняется с `cognitive-module-checkpoint-system-accessor-rejected` до вызова durable writer; getter не запускается. При чтении контейнер `system` и extension metadata проверяются тем же descriptor-safe принципом.
 
 `OrganismRuntime` автоматически:
 1. загружает module envelopes вместе с каноническим состоянием организма;
@@ -206,6 +212,8 @@ Lifecycle barrier сериализует одиночную активацию, 
 - rollback/resume при неудачной записи;
 - quiesce/shutdown failure states;
 - JSON-safe snapshot, __proto__ как обычный ключ и запрет getter execution;
+- hostile getter в manifest и registration wrapper отклоняется до допуска записи в registry;
+- accessor на canonical `PersistedOrganism.system` отклоняется до durable writer без исполнения getter;
 - health degradation;
 - non-disruptive `snapshotAll()` для активных модулей;
 - проверка SHA-256 для новых module snapshots и legacy-read совместимость V1 envelopes без digest;
