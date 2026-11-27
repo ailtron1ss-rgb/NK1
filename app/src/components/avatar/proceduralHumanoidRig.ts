@@ -491,12 +491,11 @@ export function createProceduralHumanoidRig(scene: THREE.Scene): ProceduralHuman
       // Targets are reset to immutable bind-pose positions each frame; residuals never accumulate.
       const particleBindings: readonly [ArticulatedBodyParticleId, string][] = [
         ["chest", "chest"], ["neck", "neck"], ["head", "head"],
-        ["leftShoulderPoint", "leftClavicle"], ["leftElbowPoint", "leftForearm"],
-        ["leftWristPoint", "leftWrist"], ["leftHandPoint", "leftHand"],
-        ["rightShoulderPoint", "rightClavicle"], ["rightElbowPoint", "rightForearm"],
-        ["rightWristPoint", "rightWrist"], ["rightHandPoint", "rightHand"],
-        ["leftHipPoint", "leftHip"], ["leftKneePoint", "leftKnee"], ["leftAnklePoint", "leftAnkle"],
-        ["rightHipPoint", "rightHip"], ["rightKneePoint", "rightKnee"], ["rightAnklePoint", "rightAnkle"],
+        // IK pivot joints are driven by the actual particle landmarks; intermediate
+        // elbow/knee pivots and wrist/ankle end effectors are solved, not offset twice.
+        ["leftShoulderPoint", "leftUpperArm"], ["leftHandPoint", "leftHand"],
+        ["rightShoulderPoint", "rightUpperArm"], ["rightHandPoint", "rightHand"],
+        ["leftHipPoint", "leftHip"], ["rightHipPoint", "rightHip"],
       ];
       root.updateMatrixWorld(true);
       const localParticleOffset = (sample: ArticulatedParticleFrame[ArticulatedBodyParticleId]) =>
