@@ -136,7 +136,7 @@ export class PerceptualEpistemicGraph {
         const supersedes=stringOr(ownDataValue(candidate,'supersedes'),'',180).trim();
         claims.push({
           id,at:timestampOr(ownDataValue(candidate,'at'),0),modality,claim,source,
-          confidence01:unitOr(ownDataValue(candidate,'confidence01'),0),targetIds,
+          confidence01:unitStrictOr(ownDataValue(candidate,'confidence01'),0),targetIds,
           ...(supersedes?{supersedes}:{})
         });
       }
