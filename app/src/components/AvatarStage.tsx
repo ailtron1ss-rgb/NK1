@@ -17,9 +17,11 @@ import {
   arbitrateMotion,
   defaultMotionArbitrationState,
   type MotionArbitrationState,
+  type MotionIntent,
 } from "./avatar/motionArbitration";
 import { resolveSemanticGestureIntent } from "./avatar/semanticGestureIntent";
-import type { SwitchPlan } from "./avatar/embodimentSwitch";
+import type { BodyChannel, SwitchPlan } from "./avatar/embodimentSwitch";
+import { createAvatarArticulatedBodyState, stepAvatarArticulatedBody } from "./avatar/articulatedBodyParticles";
 import { buildAvatarRenderProjection } from "./avatar/avatarRenderProjection.ts";
 import { avatarRendererPresentation } from "./avatar/avatarRendererPresentation.ts";
 import { createAvatarPresentationReceipt, describeAvatarFrameStatus, isCurrentAvatarPresentationReceipt, type AvatarPresentationReceiptV1 } from "./avatar/avatarPresentationReceipt.ts";
@@ -39,6 +41,7 @@ import {
   timelineOffsetForCharIndex,
   type VisemeClockAnchor,
   type EmbodimentIntentV1,
+  type Live2DBodyChannel,
   type MouthPose,
   type SpeechPhase,
   type VisemeFrame,
@@ -152,10 +155,11 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
   // Aspect 11 / motor: continuous renderer-neutral motion arbiter. It advances on a
   // rAF loop and only feeds the handoff snapshot; it never drives a renderer directly.
   const motionStateRef = useRef<MotionArbitrationState>(defaultMotionArbitrationState());
-  const motionChannelsRef = useRef<Record<string, number>>({});
-  const motionLastAtRef = useRef<number | null>(null);
-  const thinkingRef = useRef(false);
-  const speakingRef = useRef(false);
+  const articulatedBodyRef = useRef(createAvatarArticulatedBodyState());
+  const motionChannelsRef = useRef<Partial<Record<BodyChannel, number>>>({});
+  const latestMotionIntentRef = useRef<MotionIntent | null>(null);
+  const latestGestureRef = useRef<{ programId: NonNullable<MotionIntent["gestureProgram"]>; expiresAtEpochMs: number } | null>(null);
+  const [motionChannels, setMotionChannels] = useState<Partial<Record<BodyChannel, number>>>({});
   // Latest-value refs so the mode-change effect can stay independent of per-tick churn.
   const latestSnapRef = useRef(snap);
   const mouthPoseRef = useRef(mouthPose);
@@ -274,38 +278,90 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
 
   useEffect(() => { latestSnapRef.current = snap; mouthPoseRef.current = mouthPose; }, [snap, mouthPose]);
 
-  // Keep the arbiter's view of affect/speech current without restarting it each tick.
+  // Publish only the latest canonical intent here. One shared 30-Hz clock below
+  // advances the sole motion arbiter and feeds every renderer from the same pose.
   useEffect(() => {
-    thinkingRef.current = thinking;
-    speakingRef.current = voiceStatus === "speaking";
-    const now = performance.now();
-    const deltaMs = now - (motionLastAtRef.current ?? now);
-    motionLastAtRef.current = now;
-    try {
-      const assistantTurnAgeMs = lastTurn?.role === "kurisu"
-        ? Date.now() - Number(lastTurn.at ?? 0)
-        : Number.POSITIVE_INFINITY;
-      // Gesture cards are accepted only from a fresh assistant turn and its
-      // explicitly closed parenthesized stage directions, never ordinary dialogue.
-      const semanticGesture = Number.isFinite(assistantTurnAgeMs)
-        && assistantTurnAgeMs >= 0 && assistantTurnAgeMs <= 5_000
-        ? resolveSemanticGestureIntent(lastTurn?.role === "kurisu" ? lastTurn.text : "")
-        : null;
-      const result = arbitrateMotion(motionStateRef.current, {
-        action: snap.lastOption,
-        emotion: snap.emotion.label,
-        speaking: speakingRef.current,
-        thinking,
-        awake: snap.awake,
-        energy01: snap.needs.energy,
-        gestureProgram: semanticGesture?.programId,
-      }, deltaMs);
-      motionStateRef.current = result.state;
-      motionChannelsRef.current = result.channels as Record<string, number>;
-    } catch {
-      // A malformed intent must never freeze or crash the panel; keep the last pose.
-    }
-  }, [snap, thinking, voiceStatus]);
+    const assistantTurnAgeMs = lastTurn?.role === "kurisu"
+      ? Date.now() - Number(lastTurn.at ?? 0)
+      : Number.POSITIVE_INFINITY;
+    const semanticGesture = Number.isFinite(assistantTurnAgeMs)
+      && assistantTurnAgeMs >= 0 && assistantTurnAgeMs <= 5_000
+      ? resolveSemanticGestureIntent(lastTurn?.role === "kurisu" ? lastTurn.text : "")
+      : null;
+    latestGestureRef.current = semanticGesture
+      ? { programId: semanticGesture.programId, expiresAtEpochMs: Date.now() + Math.max(0, 5_000 - assistantTurnAgeMs) }
+      : null;
+    latestMotionIntentRef.current = {
+      action: snap.lastOption,
+      emotion: snap.emotion.label,
+      speaking: voiceStatus === "speaking",
+      thinking,
+      awake: snap.awake,
+      energy01: snap.needs.energy,
+      semanticAction: projection.motorPlan.action,
+      character: projection.character,
+    };
+  }, [snap, thinking, voiceStatus, projection.motorPlan.action]);
+
+  useEffect(() => {
+    let raf = 0;
+    let lastStepAt = performance.now();
+    let active = true;
+    const frame = (now: number) => {
+      if (!active) return;
+      const deltaMs = now - lastStepAt;
+      if (deltaMs >= 33) {
+        lastStepAt = now;
+        const intent = latestMotionIntentRef.current;
+        if (intent) {
+          const gesture = latestGestureRef.current;
+          const currentIntent: MotionIntent = {
+            ...intent,
+            gestureProgram: gesture && Date.now() <= gesture.expiresAtEpochMs ? gesture.programId : undefined,
+          };
+          try {
+            const result = arbitrateMotion(motionStateRef.current, currentIntent, deltaMs);
+            motionStateRef.current = result.state;
+            // Brain projection and semantic motion are merged before physical articulation.
+            const bodyTargets = {
+              ...result.channels,
+              ...(latestProjectionRef.current?.bodyChannels ?? {}),
+            } as Partial<Record<BodyChannel, number>>;
+            const particleStep = stepAvatarArticulatedBody(
+              articulatedBodyRef.current,
+              bodyTargets,
+              deltaMs,
+              {
+                awake: currentIntent.awake,
+                energy01: currentIntent.energy01,
+                reducedMotion: currentIntent.character?.reducedMotion === true,
+              },
+            );
+            articulatedBodyRef.current = particleStep.state;
+            const next = particleStep.channels;
+            const previous = motionChannelsRef.current;
+            const keys = new Set([...Object.keys(previous), ...Object.keys(next)]);
+            const changed = [...keys].some((key) => {
+              const channel = key as BodyChannel;
+              return Math.abs((previous[channel] ?? 0) - (next[channel] ?? 0)) > 0.001;
+            });
+            if (changed) {
+              motionChannelsRef.current = next;
+              setMotionChannels(next);
+            }
+          } catch {
+            // Keep the last verified pose if a malformed frame reaches the arbiter.
+          }
+        }
+      }
+      raf = requestAnimationFrame(frame);
+    };
+    raf = requestAnimationFrame(frame);
+    return () => {
+      active = false;
+      cancelAnimationFrame(raf);
+    };
+  }, []);
 
   // Aspect 11: plan a renderer handoff whenever the bodySwitch changes. The projection is
   // monotonic and derived from the canonical snapshot; it never mutates organism state.
@@ -565,6 +621,14 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
       motionIntentTokenRef.current += 1;
     }
     const motionToken = motionIntentTokenRef.current;
+    const mergedBodyChannels = { ...currentProjection.bodyChannels, ...motionChannels };
+    const live2dBodyChannels: Partial<Record<Live2DBodyChannel, number>> = {};
+    for (const channel of ["headYaw", "headPitch", "headRoll", "torsoYaw", "torsoPitch", "gazeX", "gazeY", "breath"] as const) {
+      const value = mergedBodyChannels[channel];
+      if (typeof value === "number" && Number.isFinite(value)) {
+        live2dBodyChannels[channel] = Math.max(-1, Math.min(1, value));
+      }
+    }
     const intent: EmbodimentIntentV1 = {
       type: "kurisu_embodiment_intent",
       protocolVersion: 1,
@@ -590,13 +654,14 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
         motionGroup,
         motionIndex: motionGroup === "Special" ? motionIndex : 0,
         motionToken: Number.isSafeInteger(motionToken) && motionToken > 0 ? motionToken : 0,
+        channels: live2dBodyChannels,
       },
       voiceEmphasis: currentProjection.voiceEmphasis,
     };
     latestIntentStateVersionRef.current = intent.stateVersion;
     setPresentationReceipt((current) => current?.renderer === "live2d" ? null : current);
     win.postMessage(intent, window.location.origin);
-  }, [snap, thinking, live, viewerReadyRevision, mode, voiceStatus, mouthPose, turnKey]);
+  }, [snap, thinking, live, viewerReadyRevision, mode, voiceStatus, mouthPose, turnKey, motionChannels]);
 
   return (
     <div className="relative overflow-hidden rounded-xl bg-elevated">
@@ -630,11 +695,11 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
             energy: snap.needs.energy,
             cognitiveLoad: snap.needs.cognitiveLoad,
           }}
-          bodyChannels={{ ...motionChannelsRef.current, ...projection.bodyChannels }}
+          bodyChannels={{ ...projection.bodyChannels, ...motionChannels }}
           avatarBrainChannels={projection.brainChannels ?? undefined}
           frameTick={snap.tick}
           onFrameReceipt={recordPresentationReceipt}
-        /> : mode === "3d" ? <Avatar3DStage emotion={snap.emotion.label} action={snap.lastOption} motorPlan={projection.motorPlan} arousal={snap.emotion.arousal} valence={snap.emotion.valence} dominance={snap.emotion.dominance} energy={snap.needs.energy} cognitiveLoad={snap.needs.cognitiveLoad} uncertainty={snap.needs.uncertainty} socialNeed={snap.needs.socialNeed} novelty={snap.needs.novelty} goalPressure={snap.needs.goalPressure} curiosity={snap.curiosity} predictionError={snap.predictionError} traits={snap.identity.traits} gazeX={projection.gaze.x} gazeY={projection.gaze.y} speaking={projection.speaking} mouthPose={projection.mouthPose} thinking={thinking} awake={snap.awake} bodyChannels={{ ...motionChannelsRef.current, ...projection.bodyChannels }} avatarBrainFrame={projection.brainFrame ?? undefined} frameTick={snap.tick} onFrameReceipt={recordPresentationReceipt} onReturnTo2D={() => setMode("live2d")} /> : <>
+        /> : mode === "3d" ? <Avatar3DStage emotion={snap.emotion.label} action={snap.lastOption} motorPlan={projection.motorPlan} arousal={snap.emotion.arousal} valence={snap.emotion.valence} dominance={snap.emotion.dominance} energy={snap.needs.energy} cognitiveLoad={snap.needs.cognitiveLoad} uncertainty={snap.needs.uncertainty} socialNeed={snap.needs.socialNeed} novelty={snap.needs.novelty} goalPressure={snap.needs.goalPressure} curiosity={snap.curiosity} predictionError={snap.predictionError} traits={snap.identity.traits} gazeX={projection.gaze.x} gazeY={projection.gaze.y} speaking={projection.speaking} mouthPose={projection.mouthPose} thinking={thinking} awake={snap.awake} bodyChannels={{ ...projection.bodyChannels, ...motionChannels }} avatarBrainFrame={projection.brainFrame ?? undefined} frameTick={snap.tick} onFrameReceipt={recordPresentationReceipt} onReturnTo2D={() => setMode("live2d")} /> : <>
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_30%,color-mix(in_oklab,var(--color-ember)_18%,transparent),transparent_62%)]" />
         <iframe ref={frame} title="Kurisu Live2D" src="/live2d/viewer.html?profile=auto" className={cn("relative z-10 h-[320px] w-full border-0 transition-opacity duration-300 md:h-[420px]", live ? "opacity-100" : "opacity-0")} allow="autoplay" />
         {!live ? <div className="absolute inset-0 z-[11] flex items-center justify-center p-6"><div className="max-w-sm rounded-xl border border-border bg-bg/85 p-4 text-center backdrop-blur"><p className="text-xs font-medium uppercase tracking-wider text-subtle">Модель Live2D недоступна</p><p className="mt-1 text-sm text-fg">Переключитесь на Legacy — там используются реальные legacy sprite-ассеты.</p><button type="button" onClick={() => setMode("legacy")} className="mt-3 rounded-md border border-border px-3 py-1.5 text-xs text-fg hover:bg-elevated">Открыть Legacy</button></div></div> : null}

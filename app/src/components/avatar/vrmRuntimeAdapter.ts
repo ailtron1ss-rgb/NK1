@@ -119,6 +119,9 @@ export interface VrmNormalizedMotorFrame {
   gazeViaLookAt?: boolean;
   /** Shared semantic motor tilt; older callers may omit it. */
   headTilt?: number;
+  /** Particle-body pitch/roll from the canonical same-tick pose. */
+  headPitch?: number;
+  headRoll?: number;
   headYaw?: number;
   leftArmIntent?: number;
   rightArmIntent?: number;
@@ -244,15 +247,17 @@ export function applyVrmNormalizedMotorFrame(
   const social = clamp01(frame.socialNeed);
   const uncertainty = clamp01(frame.uncertainty);
 
-  const headX = -gazeY * 0.12 - load * 0.035 + (1 - energy) * 0.04;
+  const headX = -gazeY * 0.12 - load * 0.035 + (1 - energy) * 0.04
+    + clampSigned(frame.headPitch ?? 0) * 0.12;
   const headY = gazeX * (0.22 - social * 0.05) + uncertainty * 0.025 + clampSigned(frame.headYaw ?? 0) * 0.055;
   const fallbackAffectRoll = frame.emotion === "sadness"
     ? 0.055
     : frame.emotion === "anger" || frame.emotion === "frustration" ? -0.04 : 0;
   // The shared projection is authoritative when supplied; legacy callers retain the prior affect-only roll.
-  const headZ = frame.headTilt === undefined
+  const headZBase = frame.headTilt === undefined
     ? fallbackAffectRoll
     : clampSigned(frame.headTilt, -0.15, 0.15);
+  const headZ = clampSigned(headZBase + clampSigned(frame.headRoll ?? 0) * 0.06, -0.22, 0.22);
 
   if (rig.head && rig.neck && rig.head !== rig.neck) {
     rig.neck.rotation.set(headX * 0.35, headY * 0.35, headZ * 0.35);

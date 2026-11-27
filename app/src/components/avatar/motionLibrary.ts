@@ -15,7 +15,7 @@ import type { BodyChannel } from "./embodimentSwitch.ts";
 
 /** Motion programs available to the body. Extend by adding a program, not a branch. */
 export type MotionProgramId =
-  | "idle" | "listen" | "think" | "explain" | "comfort" | "surprised"
+  | "idle" | "listen" | "inspect" | "think" | "explain" | "comfort" | "surprised"
   | "concern" | "respond" | "walk" | "turn" | "sit" | "stand" | "reach" | "point" | "wave" | "hold"
   | "nod" | "shake" | "clap" | "bow";
 
@@ -198,6 +198,17 @@ export const MOTION_PROGRAMS: Readonly<Record<MotionProgramId, MotionProgram>> =
   listen: {
     id: "listen", durationMs: 3600, loop: true,
     keyframes: [kf(0, { headPitch: -0.06, headYaw: 0, gazeX: 0 }), kf(0.5, { headPitch: -0.1, headYaw: 0.05, gazeX: 0.1 }), kf(1, { headPitch: -0.06, headYaw: 0, gazeX: 0 })],
+  },
+  inspect: {
+    id: "inspect", durationMs: 3200, loop: true,
+    // A restrained attention scan: the head and eyes move together, then return
+    // to the initial target so repeated loops have no visible seam.
+    keyframes: [
+      kf(0, { headYaw: 0.04, headPitch: -0.025, gazeX: 0.16, gazeY: 0.035 }),
+      kf(0.3, { headYaw: -0.085, headPitch: -0.015, gazeX: -0.2, gazeY: -0.015 }),
+      kf(0.66, { headYaw: 0.075, headPitch: -0.045, gazeX: 0.19, gazeY: -0.04 }),
+      kf(1, { headYaw: 0.04, headPitch: -0.025, gazeX: 0.16, gazeY: 0.035 }),
+    ],
   },
   think: {
     id: "think", durationMs: 3000, loop: true,

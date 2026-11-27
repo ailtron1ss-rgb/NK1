@@ -25,6 +25,35 @@ function check(name, ok, detail = "") {
   assert.ok(ok, name + (detail ? ": " + detail : ""));
 }
 
+async function waitForLive2DReady(page, profile, label = "initial") {
+  const handle = await page.waitForFunction(() => {
+    const iframe = [...document.querySelectorAll("iframe")].find((element) => {
+      try { return new URL(element.src, window.location.href).pathname === "/live2d/viewer.html"; }
+      catch { return false; }
+    });
+    const viewerDocument = iframe?.contentDocument;
+    const viewerStatus = viewerDocument?.querySelector("#status")?.textContent?.trim() ?? "";
+    if (!viewerStatus.startsWith("ок ·") && viewerStatus !== "fallback") return false;
+    const canvas = viewerDocument?.querySelector("#canvas");
+    const rect = canvas?.getBoundingClientRect();
+    return {
+      status: viewerStatus,
+      modelPath: viewerStatus.startsWith("ок ·") ? viewerStatus.slice(4).trim() : null,
+      canvasWidth: canvas?.width ?? 0,
+      canvasHeight: canvas?.height ?? 0,
+      cssWidth: Math.round(rect?.width ?? 0),
+      cssHeight: Math.round(rect?.height ?? 0),
+    };
+  }, undefined, { timeout: 45_000 });
+  const state = await handle.jsonValue();
+  check(profile + ": Live2D " + label + " reaches model-ready state",
+    state.status.startsWith("ок ·"), state.status);
+  check(profile + ": Live2D " + label + " has a non-zero WebGL canvas",
+    state.canvasWidth > 0 && state.canvasHeight > 0 && state.cssWidth > 0 && state.cssHeight > 0,
+    JSON.stringify(state));
+  return state;
+}
+
 async function smokeProfile(profile) {
   const context = await browser.newContext({ viewport: profile.viewport, deviceScaleFactor: 1 });
   if (profile.name === "desktop") {
@@ -83,8 +112,10 @@ async function smokeProfile(profile) {
     selectedRenderer = "live2d";
     await live2d.click();
     check("desktop: Live2D can be selected after preference restore", (await live2d.getAttribute("aria-pressed")) === "true");
+    await waitForLive2DReady(page, profile.name, "first selection");
   } else {
     check("mobile: Live2D default is deterministic without saved preference", (await live2d.getAttribute("aria-pressed")) === "true");
+    await waitForLive2DReady(page, profile.name, "default selection");
   }
   check(profile.name + ": 3D is explicitly preview-only", /предпросмотр/i.test(await threeD.getAttribute("aria-label") || ""));
 
@@ -131,6 +162,7 @@ async function smokeProfile(profile) {
     selectedRenderer = "live2d";
     await live2d.click();
     check("desktop: Live2D recovery selector works", (await live2d.getAttribute("aria-pressed")) === "true");
+    await waitForLive2DReady(page, profile.name, "recovery");
   } else {
     await page.screenshot({ path: path.join(outputDir, "full-app-mobile.png"), fullPage: true });
     selectedRenderer = "original";
@@ -142,6 +174,7 @@ async function smokeProfile(profile) {
     selectedRenderer = "live2d";
     await live2d.click();
     check("mobile: Live2D recovery selector works", (await live2d.getAttribute("aria-pressed")) === "true");
+    await waitForLive2DReady(page, profile.name, "recovery");
   }
 
   const layout = await page.evaluate(() => {

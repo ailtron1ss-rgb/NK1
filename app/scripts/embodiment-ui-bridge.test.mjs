@@ -41,7 +41,7 @@ test("projects a valid semantic body state from the canonical snapshot", () => {
   assert.equal(state.pose.headRoll, 0.25);
   assert.equal(state.pose.headYaw, undefined);
   assert.ok(capabilitiesForMode("live2d").channels.includes("headRoll"));
-  assert.ok(!capabilitiesForMode("live2d").channels.includes("headYaw"));
+  assert.ok(capabilitiesForMode("live2d").channels.includes("headYaw"));
 });
 
 test("clamps out-of-range numeric inputs instead of emitting an invalid snapshot", () => {

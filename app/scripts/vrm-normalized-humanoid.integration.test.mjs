@@ -254,3 +254,24 @@ for (const metaVersion of ["0", "1"]) {
     }
   });
 }
+
+
+test("same-tick particle head channels reach the real normalized VRM head and upper-arm bones", () => {
+  const fixture = createSyntheticHumanoid();
+  const humanoid = new VRMHumanoid(fixture.humanoidNodes, { autoUpdateHumanBones: false });
+  const vrm = { humanoid, expressionManager: { resetValues() {} } };
+  configureVrmForNk1NormalizedMotorDrive(vrm);
+  const result = applyVrmNormalizedMotorFrame(vrm, {
+    action: "listen", emotion: "calm", gazeX: 0, gazeY: 0,
+    cognitiveLoad: 0, energy: 1, socialNeed: 0, uncertainty: 0, speaking: false,
+    headPitch: 0.5, headYaw: -0.4, headRoll: 0.6,
+    leftArmIntent: 0.7, rightArmIntent: -0.5,
+  });
+  assert.equal(result.applied, true);
+  humanoid.update();
+  assert.ok(Math.abs(fixture.rawHead.rotation.x) > 0.01);
+  assert.ok(fixture.rawHead.rotation.y < 0);
+  assert.ok(fixture.rawHead.rotation.z > 0);
+  assert.ok(fixture.rawLeftArm.rotation.z > 0);
+  assert.ok(fixture.rawRightArm.rotation.z < 0);
+});

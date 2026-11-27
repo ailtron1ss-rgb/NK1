@@ -44,6 +44,20 @@
       "required": ["headTilt", "gesture", "motionGroup", "motionIndex", "motionToken"],
       "properties": {
         "headTilt": { "type": "number", "minimum": -0.15, "maximum": 0.15 },
+        "channels": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "headYaw": { "type": "number", "minimum": -1, "maximum": 1 },
+            "headPitch": { "type": "number", "minimum": -1, "maximum": 1 },
+            "headRoll": { "type": "number", "minimum": -1, "maximum": 1 },
+            "torsoYaw": { "type": "number", "minimum": -1, "maximum": 1 },
+            "torsoPitch": { "type": "number", "minimum": -1, "maximum": 1 },
+            "gazeX": { "type": "number", "minimum": -1, "maximum": 1 },
+            "gazeY": { "type": "number", "minimum": -1, "maximum": 1 },
+            "breath": { "type": "number", "minimum": -1, "maximum": 1 }
+          }
+        },
         "gesture": { "type": "boolean" },
         "motionGroup": { "type": "string", "pattern": "^[a-zA-Z0-9_-]{1,32}$" },
         "motionIndex": { "type": "integer", "minimum": 0, "maximum": 32 },

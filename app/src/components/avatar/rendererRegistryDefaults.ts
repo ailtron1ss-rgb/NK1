@@ -19,7 +19,7 @@ const EXPRESSION_CHANNELS = [
  * Each list is checked against the renderer's own adapter by `body-systems.test.mjs`:
  * a channel may only be declared if the adapter maps it to a real rig change.
  */
-export const LIVE2D_CHANNELS = ["headRoll", "gazeX", "gazeY"] as const;
+export const LIVE2D_CHANNELS = ["headYaw", "headPitch", "headRoll", "torsoYaw", "torsoPitch", "gazeX", "gazeY", "breath"] as const;
 export const SVG_CHANNELS = ["torsoYaw", "torsoPitch", "headYaw", "headPitch", "headRoll", "gazeX", "gazeY", "breath"] as const;
 export const SPRITE_CHANNELS = [] as const;
 export const VRM3D_CHANNELS = ["torsoYaw", "torsoPitch", "rootYaw", "leftElbow", "rightElbow", "leftHip", "rightHip", "leftKnee", "rightKnee", "leftAnkle", "rightAnkle", "leftWrist", "rightWrist", "leftHand", "rightHand", "leftFingers", "rightFingers", "leftThumbCurl", "leftIndexCurl", "leftMiddleCurl", "leftRingCurl", "leftLittleCurl", "rightThumbCurl", "rightIndexCurl", "rightMiddleCurl", "rightRingCurl", "rightLittleCurl", "gazeX", "gazeY"] as const;

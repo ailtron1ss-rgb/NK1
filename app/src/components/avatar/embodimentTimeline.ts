@@ -32,6 +32,11 @@ export interface VisemeClockAnchor {
   timelineTimeMs: number;
 }
 
+export type Live2DBodyChannel =
+  | "headYaw" | "headPitch" | "headRoll"
+  | "torsoYaw" | "torsoPitch"
+  | "gazeX" | "gazeY" | "breath";
+
 export interface EmbodimentIntentV1 {
   type: "kurisu_embodiment_intent";
   protocolVersion: 1;
@@ -56,6 +61,8 @@ export interface EmbodimentIntentV1 {
     motionGroup: string;
     motionIndex: number;
     motionToken: number;
+    /** Optional normalized pose channels; old protocol-v1 intents remain valid. */
+    channels?: Partial<Record<Live2DBodyChannel, number>>;
   };
   voiceEmphasis: number;
 }
