@@ -1,7 +1,8 @@
 # NeuroCore master plan
 
-**Current source sync:** `workpass70-source@9de695dd4713ec909d7312b45966d30dfb76d5c2`  
-**Latest product/source merge:** `53a5926f753c56b97599b1ee28a0e46d769662b2`  
+**Current source sync:** `workpass70-source@99859cc488efa342ccba1cc74aecb4d2ffdaceb1`  
+**Cognitive source merge:** `53a5926f753c56b97599b1ee28a0e46d769662b2`  
+**Latest product/source merge:** `ae26fb8d1bae5dfc1acc985710ec7251ac433d3a`  
 **Exact product head:** `4dfc60c4d1079bc694f3bc0043bced6c59bad564`
 
 ## Phase A — Stable full-source application base
@@ -27,6 +28,7 @@
 - [x] Add memory restore/round-trip and capacity/lifecycle suites to the canonical NeuroCore gate.
 - [x] Selectively port crash-safe ContinuityLedger implementation and concurrency/torn-tail/rollback/retention tests.
 - [x] Make shutdown durability receipt wait for Core, sidecars, world, ledger flush and ledger close; add fault-injection regressions.
+- [x] Require RecoveryWatchdog durable timestamps to be backed by a real successful store; keep no-store heartbeat liveness separate from checkpoint durability.
 - [ ] Pass these gates on the latest product head; verify idempotent canonical writes and real interrupted restart.
 - [x] Integrate current-cycle Global Workspace before P61/P64 and decision-scoped outcome credit.
 - [x] Integrate 27-dimensional metacognitive neural substrate with backward-compatible 24→27 restore migration and observation-aligned targets.

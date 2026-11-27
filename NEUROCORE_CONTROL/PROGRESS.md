@@ -2,9 +2,10 @@
 
 **Snapshot:** 2026-11-27 23:00 America/New_York  
 **Product branch:** `neurocore-unified/main`  
-**Exact product HEAD:** `4dfc60c4d1079bc694f3bc0043bced6c59bad564`  
-**Latest source:** `workpass70-source@9de695dd4713ec909d7312b45966d30dfb76d5c2`  
-**Latest two-parent merge:** `53a5926f753c56b97599b1ee28a0e46d769662b2`  
+**Exact product HEAD:** `ae26fb8d1bae5dfc1acc985710ec7251ac433d3a`  
+**Latest source:** `workpass70-source@99859cc488efa342ccba1cc74aecb4d2ffdaceb1`  
+**Latest cognitive merge:** `53a5926f753c56b97599b1ee28a0e46d769662b2`
+**Latest watchdog merge:** `ae26fb8d1bae5dfc1acc985710ec7251ac433d3a`  
 **Seed:** `3526f61814e19f1f10766f3b2385488eb04e3d2e`  
 **PR #1221:** Draft, mergeable; 174 commits ahead, 0 behind source.
 
@@ -71,3 +72,12 @@ The weighted score increased because the current product branch now contains int
 6. Only then prepare a user-facing release archive and consider taking the PR out of Draft.
 
 Progress changes only when corresponding code and evidence exist.
+
+
+## RecoveryWatchdog source correction — 2026-11-27
+
+- **IMPLEMENTED:** durable timestamp no longer advances when no backing store exists; heartbeat/tick liveness is still updated independently.
+- **IMPLEMENTED:** restore rejects missing, malformed, negative and implausibly future checkpoint timestamps rather than coercing arbitrary values.
+- **IMPLEMENTED:** canonical Core marker is committed only after the canonical store save succeeds; a failed save leaves the previous durable marker unchanged.
+- **TEST ADDED:** no-store checkpoint, malformed restore and injected canonical-save failure contracts.
+- Source head `99859cc...` was integrated by two-parent merge `ae26fb8...`; exact-head CI remains queued/in progress.

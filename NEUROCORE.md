@@ -6,11 +6,12 @@ NeuroCore is the product identity for this standalone NK1 application branch. It
 
 - Source repository: `ailtron1ss-rgb/NK1`
 - Source branch: `workpass70-source`
-- Current source head: `9de695dd4713ec909d7312b45966d30dfb76d5c2`
+- Current source head: `99859cc488efa342ccba1cc74aecb4d2ffdaceb1`
 - Initial pinned product seed: `3526f61814e19f1f10766f3b2385488eb04e3d2e`
 - Product branch: `neurocore-unified/main`
-- Product/source merge: `53a5926f753c56b97599b1ee28a0e46d769662b2`
-- Current product head: `4dfc60c4d1079bc694f3bc0043bced6c59bad564`
+- Cognitive merge: `53a5926f753c56b97599b1ee28a0e46d769662b2`
+- Current source/watchdog merge: `ae26fb8d1bae5dfc1acc985710ec7251ac433d3a`
+- Current product head: `ae26fb8d1bae5dfc1acc985710ec7251ac433d3a`
 
 ## Runtime and application
 
@@ -39,6 +40,8 @@ There is one durable memory owner:
 `MemorySubsystemRuntime` constructs one `MemoryOS2` and injects that exact instance into `MemoryFabric`. Do not create another durable memory store or bypass `MemoryFabric` for writes.
 
 The continuity journal has a separate durability role: detached flush batches, rollback marker + fsync, torn-tail recovery, complete-line compaction and explicit durability diagnostics. It is not a second semantic memory owner.
+
+The `RecoveryWatchdog` is separate again: liveness heartbeats do not imply a disk checkpoint. Its durable timestamp advances only after a real backing-store/canonical Core save succeeds; when no store is supplied it remains zero. Restore rejects malformed, missing, negative and implausibly future timestamps.
 
 ## Model and external knowledge boundaries
 

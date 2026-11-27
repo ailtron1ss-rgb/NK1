@@ -1,20 +1,21 @@
 # NeuroCore / NK1 — объединённая продуктовая ветка
 
 **Product branch:** `neurocore-unified/main`  
-**Exact product HEAD:** `4dfc60c4d1079bc694f3bc0043bced6c59bad564`  
-**Current upstream source:** `workpass70-source@9de695dd4713ec909d7312b45966d30dfb76d5c2`  
-**Latest two-parent source merge:** `53a5926f753c56b97599b1ee28a0e46d769662b2`  
-**Seed baseline:** `3526f61814e19f1f10766f3b2385488eb04e3d2e`  
+**Current product HEAD:** `ae26fb8d1bae5dfc1acc985710ec7251ac433d3a`  
+**Current upstream source:** `workpass70-source@99859cc488efa342ccba1cc74aecb4d2ffdaceb1`  
+**Latest two-parent source merge:** `ae26fb8d1bae5dfc1acc985710ec7251ac433d3a`  
+**Cognitive merge:** `53a5926f753c56b97599b1ee28a0e46d769662b2`  
+**Seed baseline:** `3526f61814e19f1f10766f3b2385488eb04e3d2`  
 **Integration PR:** [#1221 — NeuroCore product line](https://github.com/ailtron1ss-rgb/NK1/pull/1221) — Draft, mergeable  
-**Source delta:** 174 commits ahead, 0 behind  
+**Source delta:** 181 commits ahead, 0 behind  
 **Weighted build-plan progress:** 64.7% (engineering implementation/acceptance plan, not an intelligence score)
 
-The product line preserves the full NK1 source tree and its canonical owners. The source branch and release/metadata `main` are not direct write targets. Latest source changes were integrated via a two-parent merge; two overlapping files were merged explicitly to retain NeuroCore shutdown-durability code and product test gates.
+The product line preserves the full NK1 source tree and canonical memory/action owners. Source changes are integrated through two-parent commits; root `main` and `workpass70-source` are not direct write targets.
 
 **Toolchain:** Node.js 24, Python 3.11.  
-**Acceptance:** selected exact-head CI suites have passed on the preceding merge-head; the current head is re-running the integrated matrix after a health-proxy regression correction. Android/Termux device acceptance remains open. This is not yet a release-ready phone package.
+**Acceptance:** selected earlier exact-head suites passed; CI for the current HEAD is queued/in progress. Android/Termux device acceptance remains open. This is not yet a release-ready phone package.
 
-**Termux:** [POCO / Android setup and first launch](runtime/neuro-kurisu/docs/TERMUX_ZERO_TO_RUN_POCO_RU.md). The guide uses a separate checkout and repository-pinned toolchain.
+**Termux:** [POCO / Android setup and first launch](runtime/neuro-kurisu/docs/TERMUX_ZERO_TO_RUN_POCO_RU.md).
 
 ---
 

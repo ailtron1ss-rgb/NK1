@@ -60,3 +60,13 @@ The product branch starts at the seed baseline and contains the product integrat
 - 45 source-changed paths were applied. Only `runtime/neuro-kurisu/package.json` and `runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts` differed from the source base on the product side. Package scripts were unioned; the source runtime file received the product's durable shutdown region while retaining all other source-side cognition updates.
 - Follow-up health-contract regression correction: `4dfc60c4d1079bc694f3bc0043bced6c59bad564`.
 - Current PR #1221 is 174 commits ahead of source and 0 behind; no direct update to source branch or root `main`.
+
+
+## Recovery watchdog correction — 2026-11-27
+
+- Source advanced from `9de695dd4713ec909d7312b45966d30dfb76d5c2` to `99859cc488efa342ccba1cc74aecb4d2ffdaceb1` with three commits.
+- Source head tree SHA: `1184bdf1d976685dc943d8ee23c74312928755b6`.
+- Changed paths: `runtime/neuro-kurisu/src/organism/persistence/RecoveryWatchdog.ts` and `runtime/neuro-kurisu/tests/recovery-watchdog-durable-commit-20261127.mjs`.
+- No product-file conflicts; both blobs were overlaid on product tree from `d0b5d0b63b2144651ab4a71df74920780354bce0`.
+- Two-parent sync commit: `ae26fb8d1bae5dfc1acc985710ec7251ac433d3a`, parents product `d0b5d0b63b2144651ab4a71df74920780354bce0` and source `99859cc488efa342ccba1cc74aecb4d2ffdaceb1`.
+- Exact source/product compare after merge: ahead 181, behind 0. No writes to `main` or `workpass70-source`.

@@ -3,6 +3,7 @@
 | Area | Existing owner/path | Current status | Next action |
 |---|---|---|---|
 | UI ↔ runtime API | `app/src/neuro-kurisu/api.ts`, `app/src/organism/store.ts`, backend `/api/organism/ui-snapshot` | IMPLEMENTED upstream; NeuroCore env alias added | Verify all UI actions against a live runtime |
+| Recovery watchdog | `RecoveryWatchdog.ts` + canonical Core checkpoint | IMPLEMENTED: heartbeat is independent of durable marker; no store never advances marker; malformed/missing/negative/future timestamps fail restore; canonical marker commits only after store save. New source tests cover no-store and failed canonical persistence | Pass exact-head core/watchdog suite; physical process-kill and Android fsync tests remain open |
 | Organism host | `OrganismRuntime.ts` | IMPLEMENTED; shutdown now emits `runtime.stop.durable` only after Core, cognitive-spine, risk-recovery, world, and continuity-ledger flush/close all report durable; otherwise emits `runtime.stop.partial` | Pass branch runtime typecheck + 5 shutdown durability regressions; then interrupted-restart/device test |
 | Canonical state/core | `OrganismCore.ts` | Existing canonical owner preserved | Inspect persistence/recovery paths before changes |
 | Subsystem composition | `OrganismSystemFabric.ts` | IMPLEMENTED upstream | Check subsystem contracts/health as one composition |
@@ -78,3 +79,6 @@ Upstream implementation is recorded as inherited baseline, not as work completed
 - These commits modified 45 paths. Exactly two paths overlapped with product-specific changes: `OrganismRuntime.ts` and `runtime/neuro-kurisu/package.json`. They were merged explicitly: source runtime cognition plus product shutdown-durability path; source scripts plus product durability/NeuroCore gates and the three planner/workspace test scripts. The other source changes were overlaid without replacing product-only files.
 - Merge commit `53a5926f...` has two parents: product `24416f34...` and source `9de695dd...`. The follow-up health-test correction is `4dfc60c4...`.
 - No direct write was made to root `main` or `workpass70-source`.
+
+
+- Latest source update `9de695dd... → 99859cc...` was three commits and touched only `RecoveryWatchdog.ts` and its focused durability test. Neither path overlapped product changes; both were overlaid in two-parent merge `ae26fb8d...`. Product branch compares ahead 181 / behind 0 against source.
