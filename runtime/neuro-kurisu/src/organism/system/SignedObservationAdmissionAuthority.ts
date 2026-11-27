@@ -27,7 +27,8 @@ export interface SignedHostObservationReceipt extends SignedHostObservationRecei
   signatureAlgorithm:HostObservationSignatureAlgorithm;
   signature:string;
 }
-export type HostObservationPublicKey=string|Buffer|ReturnType<typeof createPublicKey>;
+/** Host key resolvers return PEM text or DER bytes, never a private KeyObject. */
+export type HostObservationPublicKey=string|Buffer;
 
 export interface HostObservationConsentBinding {
   ticketId:string;
@@ -169,17 +170,13 @@ function verifyReceiptSignature(
     if(algorithm==='ed25519'&&signature.length!==64)return false;
     // createPublicKey() rejects an already-public KeyObject in Node. Reuse it
     // directly; parse PEM/DER material only when the host resolver returns bytes/text.
-    let key:ReturnType<typeof createPublicKey>;
-    if(typeof material==='string') key=createPublicKey(material);
-    else if(Buffer.isBuffer(material)) key=createPublicKey(material as Buffer);
-    else key=material as ReturnType<typeof createPublicKey>;
-    if(key.type!=='public')return false;
+    const key=createPublicKey(material);
     const keyType=key.asymmetricKeyType;
     if(algorithm==='ed25519'&&keyType!=='ed25519')return false;
     if(algorithm==='rsa-sha256'&&keyType!=='rsa')return false;
     if(algorithm==='ecdsa-sha256'&&keyType!=='ec')return false;
     const digestAlgorithm=algorithm==='ed25519'?null:'sha256';
-    return verifySignature(digestAlgorithm,signedObservationReceiptBytes(payload,algorithm),key,signature);
+    return verifySignature(digestAlgorithm,signedObservationReceiptBytes(payload,algorithm),material,signature);
   } catch { return false; }
 }
 
