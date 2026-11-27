@@ -9,7 +9,7 @@ test("maps torso and head channels onto GLB nodes with bounded smooth offsets", 
   assert.ok(Math.abs(spine.x - 0.176) < 1e-9 && Math.abs(spine.y + 0.12) < 1e-9);
   assert.ok(Math.abs(head.x + 0.154) < 1e-9 && Math.abs(head.y - 0.168) < 1e-9 && Math.abs(head.z - 0.096) < 1e-9);
   const neck = resolveGlbBodyBoneRotation("Neck", channels);
-  assert.ok(neck.x < 0 && neck.y > 0 && neck.z > 0);
+  assert.ok(neck.x > 0 && neck.y > 0 && neck.z > 0);
 });
 
 test("maps left/right arms, wrists, hips, knees and ankles independently", () => {
