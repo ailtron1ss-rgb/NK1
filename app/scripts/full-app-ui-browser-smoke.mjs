@@ -114,8 +114,14 @@ async function smokeProfile(profile) {
     check("desktop: Live2D can be selected after preference restore", (await live2d.getAttribute("aria-pressed")) === "true");
     await waitForLive2DReady(page, profile.name, "first selection");
   } else {
-    check("mobile: Live2D default is deterministic without saved preference", (await live2d.getAttribute("aria-pressed")) === "true");
-    await waitForLive2DReady(page, profile.name, "default selection");
+    // AvatarStage intentionally defaults to its built-in 3D preview when no
+    // renderer preference has been saved. Assert the real default, then verify
+    // that Live2D can still be selected and reaches its loaded model state.
+    check("mobile: 3D preview default is deterministic without saved preference", (await threeD.getAttribute("aria-pressed")) === "true");
+    selectedRenderer = "live2d";
+    await live2d.click();
+    check("mobile: Live2D can be selected from the default 3D preview", (await live2d.getAttribute("aria-pressed")) === "true");
+    await waitForLive2DReady(page, profile.name, "selection from default 3D preview");
   }
   check(profile.name + ": 3D is explicitly preview-only", /предпросмотр/i.test(await threeD.getAttribute("aria-label") || ""));
 
