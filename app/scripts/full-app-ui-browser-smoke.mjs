@@ -34,12 +34,23 @@ async function smokeProfile(profile) {
     });
   }
   const page = await context.newPage();
+  // Desktop restores Original2D; mobile begins in Live2D. Only aborts for
+  // Live2D-owned assets after switching away from that renderer are expected.
+  let selectedRenderer = profile.name === "desktop" ? "original" : "live2d";
   const errors = { page: [], console: [], requests: [], responses: [] };
   page.on("pageerror", (error) => errors.page.push(error.message));
   page.on("console", (message) => { if (message.type() === "error") errors.console.push(message.text()); });
   page.on("requestfailed", (request) => {
     const url = request.url();
-    if (!/favicon\.ico(?:$|\?)/i.test(url)) errors.requests.push({ url, failure: request.failure()?.errorText || "failed" });
+    const failure = request.failure()?.errorText || "failed";
+    let pathname = "";
+    try { pathname = new URL(url).pathname; } catch {}
+    const expectedRendererUnload = failure === "net::ERR_ABORTED"
+      && selectedRenderer !== "live2d"
+      && pathname.startsWith("/live2d/");
+    if (!/favicon\\.ico(?:$|\\?)/i.test(url) && !expectedRendererUnload) {
+      errors.requests.push({ url, failure });
+    }
   });
   page.on("response", (response) => {
     if (response.status() >= 400 && !/favicon\.ico(?:$|\?)/i.test(response.url())) errors.responses.push({ url: response.url(), status: response.status() });
@@ -69,6 +80,7 @@ async function smokeProfile(profile) {
       return button?.getAttribute("aria-pressed") === "true";
     }, undefined, { timeout: 8_000 });
     check("desktop: saved Original2D preference restores after hydration", (await original.getAttribute("aria-pressed")) === "true");
+    selectedRenderer = "live2d";
     await live2d.click();
     check("desktop: Live2D can be selected after preference restore", (await live2d.getAttribute("aria-pressed")) === "true");
   } else {
@@ -106,22 +118,28 @@ async function smokeProfile(profile) {
 
   if (profile.name === "desktop") {
     await page.screenshot({ path: path.join(outputDir, "full-app-desktop.png"), fullPage: true });
+    selectedRenderer = "original";
     await original.click();
     check("desktop: Original2D becomes selected", (await original.getAttribute("aria-pressed")) === "true");
     await page.waitForFunction(() => document.querySelector('[role="status"][aria-label="Тип выбранного тела и подтверждение кадра"]')?.textContent?.includes("SVG DOM сформирован"), undefined, { timeout: 8_000 }).catch(() => null);
     const originalStatus = await status.innerText();
     check("desktop: Original2D DOM-commit receipt is exposed", originalStatus.includes("SVG DOM сформирован"), originalStatus);
+    selectedRenderer = "legacy";
     await legacy.click();
     check("desktop: Legacy fallback becomes selected", (await legacy.getAttribute("aria-pressed")) === "true");
     check("desktop: Legacy status is honest", (await status.innerText()).includes("статичный fallback"));
+    selectedRenderer = "live2d";
     await live2d.click();
     check("desktop: Live2D recovery selector works", (await live2d.getAttribute("aria-pressed")) === "true");
   } else {
     await page.screenshot({ path: path.join(outputDir, "full-app-mobile.png"), fullPage: true });
+    selectedRenderer = "original";
     await original.click();
     check("mobile: Original2D selector works", (await original.getAttribute("aria-pressed")) === "true");
+    selectedRenderer = "legacy";
     await legacy.click();
     check("mobile: Legacy selector works", (await legacy.getAttribute("aria-pressed")) === "true");
+    selectedRenderer = "live2d";
     await live2d.click();
     check("mobile: Live2D recovery selector works", (await live2d.getAttribute("aria-pressed")) === "true");
   }
