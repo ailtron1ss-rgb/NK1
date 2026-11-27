@@ -13,6 +13,8 @@ on:
       - "app/src/components/avatar/avatarNeuroAdaptiveDynamics.ts"
       - "app/src/components/avatar/avatarSecondaryAssetAudit.ts"
       - "app/scripts/verify-hosted-kurisu-model.mjs"
+      - "app/src/components/avatar/avatarGlbSkinWeightAudit.ts"
+      - "app/scripts/avatar-glb-skin-weight-audit.test.mjs"
       - "app/scripts/avatar-remote-source.test.mjs"
       - "app/src/components/avatar/avatarAnimationRuntime.ts"
       - "app/scripts/avatar-animation-runtime.test.mjs"
@@ -61,6 +63,8 @@ jobs:
         run: npm ci --prefix app --ignore-scripts --no-audit --no-fund
       - name: Verify canonical hosted Kurisu asset and real secondary rig inventory
         run: node --experimental-strip-types app/scripts/verify-hosted-kurisu-model.mjs
+      - name: Audit actual GLB skin weight coverage
+        run: node --experimental-strip-types --test app/scripts/avatar-glb-skin-weight-audit.test.mjs
       - name: Run avatar animation lifecycle regressions
         run: npm --prefix app run test:avatar-animation-runtime
       - name: Run parser boundary regressions
