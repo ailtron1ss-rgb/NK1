@@ -823,7 +823,7 @@ export function createProceduralHumanoidRig(scene: ThreeScene): ProceduralHumano
         { x: outward * localTarget.x, y: localTarget.y },
         firstLength,
         secondLength,
-        -1,
+        1,
       );
       const firstAngle = Math.atan2(
         result.elbow.y - localStart.y,
@@ -834,7 +834,7 @@ export function createProceduralHumanoidRig(scene: ThreeScene): ProceduralHumano
         outward * (result.endEffector.x - result.elbow.x),
       );
       const hipValue = clampJointAngle(side + "Hip", "z", wrapRadians(firstAngle - firstRestAngle), limits);
-      const kneeValue = clampJointAngle(side + "Knee", "z", wrapRadians(secondAngle - firstAngle - secondRestAngle), limits);
+      const kneeValue = clampJointAngle(side + "Knee", "z", wrapRadians(secondAngle - firstAngle + firstRestAngle - secondRestAngle), limits);
       hipBone.rotation.z = hipValue;
       kneeBone.rotation.z = kneeValue;
       root.updateMatrixWorld(true);
