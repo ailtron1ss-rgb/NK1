@@ -11,7 +11,7 @@ NeuroCore is the product identity for this standalone NK1 application branch. It
 - Product branch: `neurocore-unified/main`
 - Cognitive merge: `53a5926f753c56b97599b1ee28a0e46d769662b2`
 - Current source/watchdog merge: `ae26fb8d1bae5dfc1acc985710ec7251ac433d3a`
-- Current product head: `ae26fb8d1bae5dfc1acc985710ec7251ac433d3a`
+- Current product head: see live PR #1221 head; source merge checkpoint: `ae26fb8d1bae5dfc1acc985710ec7251ac433d3a`
 
 ## Runtime and application
 

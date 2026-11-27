@@ -1,7 +1,7 @@
 # NeuroCore / NK1 — объединённая продуктовая ветка
 
 **Product branch:** `neurocore-unified/main`  
-**Current product HEAD:** `ae26fb8d1bae5dfc1acc985710ec7251ac433d3a`  
+**Live product HEAD:** see the current head of PR [#1221](https://github.com/ailtron1ss-rgb/NK1/pull/1221).  
 **Current upstream source:** `workpass70-source@99859cc488efa342ccba1cc74aecb4d2ffdaceb1`  
 **Latest two-parent source merge:** `ae26fb8d1bae5dfc1acc985710ec7251ac433d3a`  
 **Cognitive merge:** `53a5926f753c56b97599b1ee28a0e46d769662b2`  

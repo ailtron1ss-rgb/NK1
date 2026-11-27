@@ -2,7 +2,7 @@
 
 **Snapshot:** 2026-11-27 23:00 America/New_York  
 **Product branch:** `neurocore-unified/main`  
-**Exact product HEAD:** `ae26fb8d1bae5dfc1acc985710ec7251ac433d3a`  
+**Live product HEAD:** current PR #1221 head (this progress snapshot is not a release pin)  
 **Latest source:** `workpass70-source@99859cc488efa342ccba1cc74aecb4d2ffdaceb1`  
 **Latest cognitive merge:** `53a5926f753c56b97599b1ee28a0e46d769662b2`
 **Latest watchdog merge:** `ae26fb8d1bae5dfc1acc985710ec7251ac433d3a`  
