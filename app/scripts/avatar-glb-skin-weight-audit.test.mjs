@@ -144,8 +144,8 @@ test("world bounds compose parent and mesh-node transforms while preserving loca
   const mesh = report.meshAudits[0];
   assert.deepEqual(mesh.localBounds.min, [-1, 0, -2]);
   assert.deepEqual(mesh.localBounds.max, [3, 4, 5]);
-  assert.deepEqual(mesh.worldBounds.min, [9, 5, -2]);
-  assert.deepEqual(mesh.worldBounds.max, [13, 9, 5]);
+  assert.deepEqual(mesh.nodeTransformBounds.min, [9, 5, -2]);
+  assert.deepEqual(mesh.nodeTransformBounds.max, [13, 9, 5]);
 });
 
 test("missing POSITION leaves the skin audit useful and reports unavailable geometry bounds", () => {
@@ -154,7 +154,7 @@ test("missing POSITION leaves the skin audit useful and reports unavailable geom
   const report = auditGlbSkinWeights(document, binaryChunk);
   assert.equal(report.auditedNodeCount, 1);
   assert.equal(report.meshAudits[0].localBounds, null);
-  assert.equal(report.meshAudits[0].worldBounds, null);
+  assert.equal(report.meshAudits[0].nodeTransformBounds, null);
   assert.ok(report.meshAudits[0].warnings.includes("missing-position-attribute"));
   assert.ok(report.meshAudits[0].jointCoverage.length > 0);
 });
