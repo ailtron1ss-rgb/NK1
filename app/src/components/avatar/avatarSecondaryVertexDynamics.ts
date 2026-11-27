@@ -296,7 +296,12 @@ function resolveParticlePinMask(
     // The canonical v5 has detached semantic meshes but no authored pin groups.
     // Pin a narrow attachment band by vertical bounds; an exported pin attribute
     // takes precedence whenever the next authored asset provides one.
-    mask[index] = y >= minY + height * (1 - profile.pinRatio) ? 1 : 0;
+    const pinBandStart = minY + height * (1 - profile.pinRatio);
+    const pinTransitionHeight = Math.max(1e-6, height * profile.pinRatio * 0.7);
+    const pinBlend = clamp01((y - pinBandStart) / pinTransitionHeight);
+    // Keep the distal row fixed, but soften the lower attachment boundary so
+    // neighbouring vertices do not switch abruptly from free to immovable.
+    mask[index] = pinBlend * pinBlend * (3 - 2 * pinBlend);
   }
   return mask;
 }
