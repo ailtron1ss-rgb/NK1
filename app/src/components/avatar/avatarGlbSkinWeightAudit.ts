@@ -23,6 +23,7 @@ export interface GlbSkinWeightMeshAudit {
   skinIndex: number;
   vertexCount: number;
   sampledVertices: number;
+  boundsSampledVertices: number;
   localBounds: GlbSkinWeightBounds | null;
   nodeTransformBounds: GlbSkinWeightBounds | null;
   weightedSampleVertices: number;
