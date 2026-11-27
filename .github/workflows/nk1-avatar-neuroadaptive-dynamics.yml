@@ -7,6 +7,7 @@ on:
       - "app/src/components/Avatar3DStage.tsx"
       - "app/src/components/avatar/avatarNeuroAdaptiveDynamics.ts"
       - "app/src/components/avatar/avatarSecondaryVertexDynamics.ts"
+      - "app/src/types/three.d.ts"
       - "app/src/components/avatar/avatarSecondaryParticleSolver.ts"
       - "app/scripts/avatar-secondary-particle-solver.test.mjs"
       - "app/src/components/avatar/avatarCameraFraming.ts"
