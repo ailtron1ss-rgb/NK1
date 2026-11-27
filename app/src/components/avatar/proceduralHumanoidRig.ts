@@ -667,11 +667,22 @@ export function createProceduralHumanoidRig(scene: ThreeScene): ProceduralHumano
         base.y += pelvisHeight;
         return base;
       };
-      const handParticleBindings: readonly [ArticulatedBodyParticleId, string][] = [
-        ["leftHandPoint", "leftHand"], ["rightHandPoint", "rightHand"],
+      const distalParticleBindings: readonly [ArticulatedBodyParticleId, string][] = [
+        // Keep all articulated intermediate pivots on the canonical particle landmarks.
+        // Restore bind-space link offsets before IK, then re-apply the exact world targets
+        // after the parent rotations have been solved for this frame.
+        ["leftElbowPoint", "leftForearm"],
+        ["leftWristPoint", "leftWrist"],
+        ["leftHandPoint", "leftHand"],
+        ["rightElbowPoint", "rightForearm"],
+        ["rightWristPoint", "rightWrist"],
+        ["rightHandPoint", "rightHand"],
+        ["leftKneePoint", "leftKnee"],
+        ["leftAnklePoint", "leftAnkle"],
+        ["rightKneePoint", "rightKnee"],
+        ["rightAnklePoint", "rightAnkle"],
       ];
-      // Hand bones are reset here, then positioned after wrist IK has updated their parent.
-      for (const [, boneName] of handParticleBindings) {
+      for (const [, boneName] of distalParticleBindings) {
         const rest = restJointPositions[boneName];
         if (rest) bones[boneName].position.copy(rest);
       }
@@ -711,10 +722,10 @@ export function createProceduralHumanoidRig(scene: ThreeScene): ProceduralHumano
       if (leftAnkleTarget) rig.solveLegTarget("left", leftAnkleTarget, delta);
       if (rightAnkleTarget) rig.solveLegTarget("right", rightAnkleTarget, delta);
 
-      for (const [particleId, boneName] of handParticleBindings) {
+      for (const [particleId, boneName] of distalParticleBindings) {
         const sample = input.particles?.[particleId];
         const bone = bones[boneName];
-        if (!sample || !bone.parent) continue;
+        if (!sample || !bone?.parent) continue;
         root.updateMatrixWorld(true);
         const targetWorld = particleTargetWorld(sample);
         if (!targetWorld) continue;
@@ -823,7 +834,7 @@ export function createProceduralHumanoidRig(scene: ThreeScene): ProceduralHumano
         outward * (result.endEffector.x - result.elbow.x),
       );
       const hipValue = clampJointAngle(side + "Hip", "z", wrapRadians(firstAngle - firstRestAngle), limits);
-      const kneeValue = clampJointAngle(side + "Knee", "z", wrapRadians(secondAngle - firstAngle + firstRestAngle - secondRestAngle), limits);
+      const kneeValue = clampJointAngle(side + "Knee", "z", wrapRadians(secondAngle - firstAngle - secondRestAngle), limits);
       hipBone.rotation.z = hipValue;
       kneeBone.rotation.z = kneeValue;
       root.updateMatrixWorld(true);
