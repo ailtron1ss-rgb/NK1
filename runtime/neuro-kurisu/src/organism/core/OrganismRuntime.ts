@@ -2706,6 +2706,18 @@ export class OrganismRuntime {
     });
   }
 
+  /** Verify and persist a host-signed observation through the canonical Core/Embodiment path. */
+  async admitObservationReceipt(receipt: unknown) {
+    if (!this.initialized) throw new Error('OrganismRuntime.init() must be called before host observation admission');
+    return this.enqueue(() => this.core.admitObservationReceipt(receipt));
+  }
+
+  /** Revoke a prior host observation and durably checkpoint the fail-closed downgrade. */
+  async revokeAdmittedObservation(observationId: string) {
+    if (!this.initialized) throw new Error('OrganismRuntime.init() must be called before observation revocation');
+    return this.enqueue(() => this.core.revokeAdmittedObservation(observationId));
+  }
+
   /** Run one configured P23 candidate/shadow attempt through OrganismCore's durable trust boundary. */
   async runTrustedShadowLearningOnce() {
     if (!this.initialized) throw new Error('OrganismRuntime.init() must be called before trusted shadow learning');
