@@ -112,13 +112,13 @@ test("affect and identity traits shape a bounded deterministic micro-posture wit
 });
 
 test("reduced motion suppresses affect micro-posture while retaining the selected semantic program", () => {
-  const normal = arbitrateMotion(defaultMotionArbitrationState(), {
-    ...base, semanticAction: "listen", character: neutralCharacter,
+  const baseline = arbitrateMotion(defaultMotionArbitrationState(), {
+    ...base, semanticAction: "listen",
   }, 90);
   const reduced = arbitrateMotion(defaultMotionArbitrationState(), {
     ...base, semanticAction: "listen", character: { ...neutralCharacter, reducedMotion: true },
   }, 90);
-  assert.deepEqual(reduced.channels, normal.channels, "reduced-motion removes only the additional personality offsets");
+  assert.deepEqual(reduced.channels, baseline.channels, "reduced-motion suppresses only the additional personality offsets");
   assert.equal(reduced.primary, "listen");
 });
 
