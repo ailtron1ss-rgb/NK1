@@ -195,7 +195,7 @@ test("real particle physics output drives the NeuroCore skeleton end to end", ()
     particles: step.state.particles, deltaSeconds: 1 / 30, timeSeconds: step.state.elapsedMs / 1000,
   });
 
-  assert.equal(rig.root.userData.poseState.particleBindingsApplied, 9);
+  assert.equal(rig.root.userData.poseState.particleBindingsApplied, 17);
   assert.ok(Math.abs(rig.bones.chest.position.z) > 0 || Math.abs(rig.bones.chest.position.x) > 0);
   assert.notEqual(rig.bones.leftUpperArm.rotation.z, 0);
   assert.notEqual(rig.bones.rightUpperArm.rotation.z, 0);
