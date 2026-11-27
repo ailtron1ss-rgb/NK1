@@ -37,11 +37,11 @@ function Home() {
     <main className="min-h-dvh bg-bg px-3 py-4 md:px-6 md:py-6">
       <header className="mx-auto mb-4 flex max-w-7xl items-end justify-between gap-4">
         <div>
-          <p className="text-xs uppercase tracking-widest text-subtle">Neuro organism</p>
-          <h1 className="font-display text-3xl tracking-tight text-fg md:text-4xl">Kurisu</h1>
+          <p className="text-xs uppercase tracking-widest text-subtle">NeuroCore · digital organism</p>
+          <h1 className="font-display text-3xl tracking-tight text-fg md:text-4xl">NeuroCore</h1>
         </div>
         <p className="text-right text-xs text-muted">
-          canonical runtime · Neuro-Kurisu 35.75.0 · schema 225
+          NK1 cognitive runtime · persistent identity
           <br />
           <span className="tabular-nums">
             {snap.awake ? "awake" : "asleep"} · tick {snap.tick}
@@ -80,7 +80,7 @@ function Home() {
       </div>
 
       <footer className="mx-auto mt-6 max-w-7xl text-xs text-subtle">
-        canonicalRuntime=Neuro-Kurisu 35.75.0 · researchOnly={"NeuroCore, NOMEGA, DeepCode"} · Live2D+legacy visual bridge
+        NeuroCore · NK1 canonical runtime · Live2D / VRM / GLB embodiment bridge
       </footer>
     </main>
   );
