@@ -228,6 +228,62 @@ export function Avatar3DStage(props:Props){
     updateAvatarNeuralMaterials(rt.neuralMaterials,adaptiveFrame);
     }
     renderer.render(scene,camera);
+    // One-shot acceptance-only GPU readback. Normal animation frames never read pixels.
+    if(rt.loaded&&renderer.domElement.dataset.avatarPixelAuditRequested==="true"){
+     const canvas=renderer.domElement;
+     let gl:any=null;
+     try{
+      gl=renderer.getContext();
+      const width=gl.drawingBufferWidth,height=gl.drawingBufferHeight;
+      if(width<=0||height<=0)throw new Error("empty-webgl-drawing-buffer");
+      const pixels=new Uint8Array(width*height*4);
+      gl.finish();
+      gl.readPixels(0,0,width,height,gl.RGBA,gl.UNSIGNED_BYTE,pixels);
+      let opaquePixelCount=0,minX=width,maxX=-1,minY=height,maxY=-1;
+      const uniqueColors=new Set<number>();
+      for(let y=0;y<height;y+=1){
+       const row=y*width*4;
+       for(let x=0;x<width;x+=1){
+        const offset=row+x*4,alpha=pixels[offset+3];
+        if(alpha<=16)continue;
+        opaquePixelCount+=1;
+        if(x<minX)minX=x;if(x>maxX)maxX=x;
+        if(y<minY)minY=y;if(y>maxY)maxY=y;
+        if((x&3)===0&&(y&3)===0){
+         const key=((pixels[offset]<<24)|(pixels[offset+1]<<16)|(pixels[offset+2]<<8)|alpha)>>>0;
+         uniqueColors.add(key);
+        }
+       }
+      }
+      const audit={
+       width,height,opaquePixelCount,uniqueColorCount:uniqueColors.size,
+       bounds:opaquePixelCount?{x:minX,y:height-1-maxY,width:maxX-minX+1,height:maxY-minY+1}:null,
+       defaultFramebuffer:gl.getParameter(gl.FRAMEBUFFER_BINDING)===null,
+       glError:gl.getError(),
+      };
+      const imageCanvas=document.createElement("canvas");
+      imageCanvas.width=width;imageCanvas.height=height;
+      const imageContext=imageCanvas.getContext("2d");
+      if(imageContext){
+       const imageData=imageContext.createImageData(width,height);
+       for(let y=0;y<height;y+=1){
+        const sourceStart=y*width*4,destinationStart=(height-1-y)*width*4;
+        imageData.data.set(pixels.subarray(sourceStart,sourceStart+width*4),destinationStart);
+       }
+       imageContext.putImageData(imageData,0,0);
+       canvas.dataset.avatarPixelAuditPng=imageCanvas.toDataURL("image/png");
+      }
+      canvas.dataset.avatarPixelAudit=JSON.stringify(audit);
+     }catch(error){
+      canvas.dataset.avatarPixelAudit=JSON.stringify({
+       width:gl?.drawingBufferWidth??0,height:gl?.drawingBufferHeight??0,
+       opaquePixelCount:0,uniqueColorCount:0,bounds:null,
+       error:error instanceof Error?error.message:String(error),
+      });
+     }finally{
+      canvas.dataset.avatarPixelAuditRequested="false";
+     }
+    }
     if(rt.loaded){renderer.domElement.dataset.avatarRenderCalls=String(renderer.info.render.calls);renderer.domElement.dataset.avatarRenderedTriangles=String(renderer.info.render.triangles);}
     const renderCostMs=Math.max(0,performance.now()-renderStartedAt);lastRenderedAt=now;
     const changedBudget=frameBudget.recordFrameCost(renderCostMs);

@@ -151,6 +151,12 @@ try {
     return typeof element?.dataset.avatarPixelAudit === "string";
   }, undefined, { timeout: 10_000 });
   report.modelPixelAudit = await canvas.evaluate((element) => JSON.parse(element.dataset.avatarPixelAudit || "null"));
+  const pixelPng = await canvas.evaluate((element) => element.dataset.avatarPixelAuditPng || "");
+  if (/^data:image\\/png;base64,/.test(pixelPng)) {
+    await writeFile(path.join(outputDir, "avatar-3d-framebuffer-readback.png"),
+      Buffer.from(pixelPng.slice("data:image/png;base64,".length), "base64"));
+    report.modelPixelReadbackImage = "avatar-3d-framebuffer-readback.png";
+  }
   assert.ok(report.modelPixelAudit && report.modelPixelAudit.opaquePixelCount > 250,
     "the model must contribute opaque pixels to the real WebGL framebuffer");
   assert.ok(report.modelPixelAudit.bounds
