@@ -1,22 +1,34 @@
-import * as THREE from "three";
+import * as THREE_IMPORT from "three";
+const THREE: any = THREE_IMPORT;
 import { AVATAR_ARTICULATED_BODY_PARTICLE_COUNT, AVATAR_ARTICULATED_BODY_SEGMENT_COUNT } from "./articulatedBodyParticles";
 import type { ArticulatedBodyParticle, ArticulatedBodyParticleId } from "./articulatedBodyParticles";
 
-// Three.js is installed as a runtime dependency without @types/three in this
-// package. Derive instance shapes from the exported constructors instead of
-// incorrectly using value exports as namespace types.
-type ThreeGroup = InstanceType<typeof THREE.Group>;
-type ThreeSkeleton = InstanceType<typeof THREE.Skeleton>;
-type ThreeBone = InstanceType<typeof THREE.Bone>;
-type ThreeMesh = InstanceType<typeof THREE.Mesh>;
-type ThreeSkinnedMesh = InstanceType<typeof THREE.SkinnedMesh>;
-type ThreeMeshStandardMaterial = InstanceType<typeof THREE.MeshStandardMaterial>;
-type ThreeMaterial = InstanceType<typeof THREE.Material>;
-type ThreeVector3 = InstanceType<typeof THREE.Vector3>;
-type ThreeObject3D = InstanceType<typeof THREE.Object3D>;
-type ThreeSphereGeometry = InstanceType<typeof THREE.SphereGeometry>;
-type ThreeEuler = InstanceType<typeof THREE.Euler>;
-type ThreeScene = InstanceType<typeof THREE.Scene>;
+// The runtime package ships JavaScript constructors but this workspace does not
+// include the matching @types/three package. Keep the adapter boundary explicit:
+// engine operations are runtime-checked, while the rig exposes typed semantic
+// fields instead of leaking an untyped THREE namespace through the app.
+type ThreeVector3 = { x: number; y: number; z: number; [key: string]: any };
+type ThreeEuler = { x: number; y: number; z: number; [key: string]: any };
+type ThreeObject3D = {
+  name: string;
+  parent: ThreeObject3D | null;
+  children: ThreeObject3D[];
+  position: ThreeVector3;
+  rotation: ThreeEuler;
+  scale: ThreeVector3;
+  quaternion: any;
+  userData: Record<string, any>;
+  [key: string]: any;
+};
+type ThreeGroup = ThreeObject3D;
+type ThreeScene = ThreeObject3D;
+type ThreeBone = ThreeObject3D;
+type ThreeMesh = ThreeObject3D;
+type ThreeSkinnedMesh = ThreeMesh;
+type ThreeSkeleton = { bones: ThreeBone[]; [key: string]: any };
+type ThreeMaterial = { [key: string]: any };
+type ThreeMeshStandardMaterial = ThreeMaterial;
+type ThreeSphereGeometry = { [key: string]: any };
 
 export type JointAxis = "x" | "y" | "z";
 export type ArticulatedParticleFrame = Partial<Record<ArticulatedBodyParticleId, Pick<ArticulatedBodyParticle, "position" | "target">>>;
@@ -154,7 +166,7 @@ export const HUMANOID_JOINT_LIMITS: Record<string, JointLimit> = {
   rightAnkle: { x: [-0.55, 0.55], y: [-0.35, 0.35], z: [-0.55, 0.55] },
 };
 
-function makeMaterial(color: number, roughness = 0.78, metalness = 0.02): THREE.MeshStandardMaterial {
+function makeMaterial(color: number, roughness = 0.78, metalness = 0.02): ThreeMeshStandardMaterial {
   return new THREE.MeshStandardMaterial({ color, roughness, metalness });
 }
 
@@ -187,9 +199,9 @@ function makeSegment(
   geometry: ThreeSphereGeometry,
   material: ThreeMaterial,
   name: string,
-  from: THREE.Vector3,
-  to: THREE.Vector3,
-  radius: THREE.Vector3,
+  from: ThreeVector3,
+  to: ThreeVector3,
+  radius: ThreeVector3,
   meshes: ThreeMesh[],
   skinNextBone?: ThreeBone,
 ): ThreeMesh {
@@ -211,7 +223,7 @@ function makeSegment(
 }
 
 type SkinnedPartAccumulator = {
-  material: THREE.Material;
+  material: ThreeMaterial;
   positions: number[];
   normals: number[];
   uvs: number[];
@@ -223,9 +235,9 @@ type SkinnedPartAccumulator = {
 
 function consolidateSkinnedBodyParts(
   root: ThreeGroup,
-  parts: THREE.Mesh[],
+  parts: ThreeMesh[],
   skeleton: ThreeSkeleton,
-  rootBone: THREE.Bone,
+  rootBone: ThreeBone,
 ): ThreeSkinnedMesh[] {
   root.updateMatrixWorld(true);
   const rootInverse = root.matrixWorld.clone().invert();
@@ -322,7 +334,7 @@ function addBone(
   parent: ThreeBone,
   name: string,
   position: [number, number, number],
-  bones: Record<string, THREE.Bone>,
+  bones: Record<string, ThreeBone>,
   limits: Record<string, JointLimit>,
 ): ThreeBone {
   const bone = new THREE.Bone();
@@ -345,9 +357,9 @@ export function createProceduralHumanoidRig(scene: ThreeScene): ProceduralHumano
   root.userData.rigVersion = 1;
   scene.add(root);
 
-  const bones: Record<string, THREE.Bone> = {};
+  const bones: Record<string, ThreeBone> = {};
   const limits: Record<string, JointLimit> = { ...HUMANOID_JOINT_LIMITS };
-  const meshes: THREE.Mesh[] = [];
+  const meshes: ThreeMesh[] = [];
   const materials: ThreeMaterial[] = [];
   const sphere = new THREE.SphereGeometry(1, 20, 14);
   const sphereFine = new THREE.SphereGeometry(1, 28, 18);
@@ -390,7 +402,7 @@ export function createProceduralHumanoidRig(scene: ThreeScene): ProceduralHumano
   const head = addBone(neck, "head", [0, 0.24, 0], bones, limits);
 
   // Upper limbs are fully jointed: clavicle, shoulder, elbow, wrist, palm and fingers.
-  const armRoots: Record<"left" | "right", { clavicle: THREE.Bone; upper: THREE.Bone; forearm: THREE.Bone; wrist: THREE.Bone; hand: THREE.Bone }> = {} as any;
+  const armRoots: Record<"left" | "right", { clavicle: ThreeBone; upper: ThreeBone; forearm: ThreeBone; wrist: ThreeBone; hand: ThreeBone }> = {} as any;
   const fingerNames = ["thumb", "index", "middle", "ring", "little"] as const;
   for (const side of [-1, 1] as const) {
     const key = side < 0 ? "left" : "right";
@@ -472,10 +484,10 @@ export function createProceduralHumanoidRig(scene: ThreeScene): ProceduralHumano
   makeEllipsoid(head, sphere, hair, "LongHairLeft", new THREE.Vector3(-0.29, -0.17, -0.04), new THREE.Vector3(0.085, 0.36, 0.105), new THREE.Euler(0, 0, -0.07), meshes);
   makeEllipsoid(head, sphere, hairLight, "LongHairRight", new THREE.Vector3(0.29, -0.17, -0.03), new THREE.Vector3(0.085, 0.36, 0.105), new THREE.Euler(0, 0, 0.07), meshes);
 
-  const eyeWhites: THREE.Mesh[] = [];
-  const irises: THREE.Mesh[] = [];
-  const brows: THREE.Mesh[] = [];
-  const eyelids: THREE.Mesh[] = [];
+  const eyeWhites: ThreeMesh[] = [];
+  const irises: ThreeMesh[] = [];
+  const brows: ThreeMesh[] = [];
+  const eyelids: ThreeMesh[] = [];
   for (const side of [-1, 1] as const) {
     eyeWhites.push(makeEllipsoid(head, sphere, white, side < 0 ? "EyeWhiteLeft" : "EyeWhiteRight",
       new THREE.Vector3(side * 0.112, 0.02, 0.258), new THREE.Vector3(0.064, 0.082, 0.027), new THREE.Euler(), meshes));
@@ -512,7 +524,7 @@ export function createProceduralHumanoidRig(scene: ThreeScene): ProceduralHumano
   meshes.push(platform);
 
   const skeleton = new THREE.Skeleton(Object.values(bones));
-  const restJointPositions = Object.fromEntries(Object.entries(bones).map(([name, bone]) => [name, bone.position.clone()])) as Record<string, THREE.Vector3>;
+  const restJointPositions = Object.fromEntries(Object.entries(bones).map(([name, bone]) => [name, bone.position.clone()])) as Record<string, ThreeVector3>;
   root.updateMatrixWorld(true);
   skeleton.calculateInverses();
   const sourceParts = [...meshes];
