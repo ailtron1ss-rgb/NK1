@@ -22,20 +22,20 @@ export class PerceptualContinuityModel {
       const first=Math.min(timestampOr(ownDataValue(candidate,'firstAt'),last),last);
       scenes.push({
         id,label,firstAt:first,lastAt:last,
-        visits:Math.max(1,Math.min(1_000_000_000,countOr(ownDataValue(candidate,'visits'),1))),
-        stability01:unitOr(ownDataValue(candidate,'stability01'),0),
-        transitions:Math.min(1_000_000_000,countOr(ownDataValue(candidate,'transitions'),0)),
+        visits:Math.max(1,boundedCountOr(ownDataValue(candidate,'visits'),1,1_000_000_000)),
+        stability01:unitStrictOr(ownDataValue(candidate,'stability01'),0),
+        transitions:boundedCountOr(ownDataValue(candidate,'transitions'),0,1_000_000_000),
       });
     }
   }
   this.state={
     version:1,
     scenes,
-    transitions:Math.min(1_000_000_000,countOr(ownDataValue(r,'transitions'),0)),
-    stableTransitions:Math.min(1_000_000_000,countOr(ownDataValue(r,'stableTransitions'),0)),
-    objectPersistence01:unitOr(ownDataValue(r,'objectPersistence01'),d.objectPersistence01),
-    sceneContinuity01:unitOr(ownDataValue(r,'sceneContinuity01'),d.sceneContinuity01),
-    temporalGrounding01:unitOr(ownDataValue(r,'temporalGrounding01'),d.temporalGrounding01),
+    transitions:boundedCountOr(ownDataValue(r,'transitions'),0,1_000_000_000),
+    stableTransitions:boundedCountOr(ownDataValue(r,'stableTransitions'),0,1_000_000_000),
+    objectPersistence01:unitStrictOr(ownDataValue(r,'objectPersistence01'),d.objectPersistence01),
+    sceneContinuity01:unitStrictOr(ownDataValue(r,'sceneContinuity01'),d.sceneContinuity01),
+    temporalGrounding01:unitStrictOr(ownDataValue(r,'temporalGrounding01'),d.temporalGrounding01),
     lastScene:stringOr(ownDataValue(r,'lastScene'),d.lastScene,120),
     lastAt,
   };
