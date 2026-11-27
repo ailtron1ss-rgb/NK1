@@ -88,6 +88,7 @@ try {
   await runtime.init();
   const beforeUnknown = runtime.core.snapshot().facets.consciousness.metacognition;
   const priorSuccess = runtime.core.snapshot().state.lastActionSuccess;
+  const priorPredictionError = runtime.core.snapshot().state.predictionError;
   await runtime.core.feedback({});
   const afterUnknown = runtime.core.snapshot().facets.consciousness.metacognition;
   assert.equal(afterUnknown.outcomeSamples, beforeUnknown.outcomeSamples,
@@ -96,6 +97,8 @@ try {
   assert.equal(afterUnknown.predictionCalibration, beforeUnknown.predictionCalibration);
   assert.equal(runtime.core.snapshot().state.lastActionSuccess, priorSuccess,
     'unknown feedback must preserve the last known action-success value');
+  assert.equal(runtime.core.snapshot().state.predictionError, priorPredictionError,
+    'empty feedback must not decay or rewrite prediction error without a new signal');
 
   await runtime.core.feedback({
     success: 0.9,
