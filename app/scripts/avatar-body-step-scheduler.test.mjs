@@ -17,7 +17,8 @@ test("body motion advances exactly at the 20 Hz interval", () => {
 });
 
 test("the scheduler depends on elapsed time rather than a particle tick modulus", () => {
-  const publishTimes = [33, 66, 99, 132, 165, 198, 231, 264, 297, 330];
+  // requestAnimationFrame is ~60 Hz; physics state is emitted at 20 Hz.
+  const publishTimes = [16, 33, 50, 66, 83, 100, 116, 133, 150, 166, 183, 200];
   let lastStepAt = 0;
   const steppedAt = [];
   for (const now of publishTimes) {
@@ -26,7 +27,7 @@ test("the scheduler depends on elapsed time rather than a particle tick modulus"
       lastStepAt = now;
     }
   }
-  assert.deepEqual(steppedAt, [66, 132, 198, 264, 330]);
+  assert.deepEqual(steppedAt, [50, 100, 150, 200]);
   assert.ok(steppedAt.length > 0);
 });
 
