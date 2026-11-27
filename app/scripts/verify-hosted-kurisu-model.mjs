@@ -127,6 +127,10 @@ const garmentSkinWeightInventory = skinWeightAudit.meshAudits
     mesh: mesh.meshName,
     sampledVertices: mesh.sampledVertices,
     vertexCount: mesh.vertexCount,
+    weightedSampleVertices: mesh.weightedSampleVertices,
+    unweightedSampleVertices: mesh.unweightedSampleVertices,
+    averageWeightSum01: mesh.averageWeightSum01,
+    maxWeightSum01: mesh.maxWeightSum01,
     jointCoverage: mesh.jointCoverage.slice(0, 8),
     warnings: mesh.warnings,
   }));
