@@ -115,6 +115,8 @@ export interface VrmNormalizedMotorFrame {
   socialNeed: number;
   uncertainty: number;
   speaking: boolean;
+  /** True when a native VRM look-at target owns eye gaze; prevents a duplicate head turn. */
+  gazeViaLookAt?: boolean;
   /** Shared semantic motor tilt; older callers may omit it. */
   headTilt?: number;
   headYaw?: number;
@@ -156,6 +158,21 @@ export interface VrmNormalizedMotorResult {
 
 const clampSigned = (value: number, min = -1, max = 1): number =>
   Number.isFinite(value) ? Math.max(min, Math.min(max, value)) : 0;
+
+/**
+ * Resolve a bounded target in raw-head local space for the official VRMLookAt
+ * target API. Positive X looks right; positive NK1 gazeY looks down.
+ */
+export function resolveVrmLookAtTargetOffset(gazeX: number, gazeY: number): { x: number; y: number; z: number } {
+  const horizontal = clampSigned(gazeX, -1, 1);
+  const vertical = clampSigned(gazeY, -1, 1);
+  const distance = 1.5;
+  return {
+    x: Math.tan(horizontal * 0.34) * distance,
+    y: -Math.tan(vertical * 0.25) * distance,
+    z: distance,
+  };
+}
 
 /**
  * Use the canonical VRM normalized proxy rig as the one humanoid command
@@ -215,8 +232,8 @@ export function applyVrmNormalizedMotorFrame(
     rightUpperArm: Boolean(rig.rightUpperArm),
   };
   const controlledBones: string[] = [];
-  const gazeX = clampSigned(frame.gazeX);
-  const gazeY = clampSigned(frame.gazeY);
+  const gazeX = frame.gazeViaLookAt === true ? 0 : clampSigned(frame.gazeX);
+  const gazeY = frame.gazeViaLookAt === true ? 0 : clampSigned(frame.gazeY);
   const load = clamp01(frame.cognitiveLoad);
   const energy = clamp01(frame.energy);
   const social = clamp01(frame.socialNeed);
