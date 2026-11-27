@@ -215,7 +215,7 @@
     "aspect:progress:test": "node --test tools/nk1-aspect-progress.test.mjs",
     "neurok-os:admit": "node tools/neurok-os-patch.mjs admit",
     "test:neurocore:core": "npm --prefix runtime/neuro-kurisu run test:neurocore-integration",
-    "test:neurocore": "npm run typecheck && npm run test:neurocore:core && npm run test:ui"
+    "test:neurocore": "npm run typecheck && npm run test:ui && npm --prefix app run test:embodiment && npm run test:neurocore:core"
   },
   "version": "35.0.0-super-workpass70",
   "packageManager": "npm@10.9.2",
