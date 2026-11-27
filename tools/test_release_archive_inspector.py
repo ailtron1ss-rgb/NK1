@@ -233,5 +233,43 @@ class ReleaseArchiveInspectorTests(unittest.TestCase):
         self.assertEqual(summary["archiveDirectoryAliases"], 0)
         self.assertEqual(summary["archiveMappedPathCollisions"], 0)
 
+
+    def test_source_parity_is_separate_from_archive_integrity(self):
+        (self.source / "source-only.txt").write_text("new source\\n", encoding="utf-8")
+        self._write_archive({
+            "README.md": b"older source\\n",
+            "runtime/neuro-kurisu/package.json": (json.dumps({"name": "neuro-kurisu", "version": "35.90.0"}) + "\\n").encode(),
+            "legacy-only.txt": b"legacy\\n",
+        })
+        result = audit_release_archive(self.archive, self.source, require_source_match=True)
+        self.assertTrue(result["ok"], result["errors"])
+        self.assertTrue(result["archive"]["integrityOk"])
+        self.assertTrue(result["sourceMatchRequired"])
+        self.assertFalse(result["sourceMatchOk"])
+        self.assertFalse(result["releaseReady"])
+        self.assertEqual(result["comparison"]["changedFileCount"], 1)
+        self.assertEqual(result["comparison"]["archiveOnlyFileCount"], 1)
+        self.assertEqual(result["comparison"]["sourceOnlyFileCount"], 1)
+
+    def test_strict_source_match_cli_fails_readiness_without_relabeling_zip_integrity(self):
+        self._write_archive({"README.md": b"older source\\n"})
+        output = io.StringIO()
+        report_path = self.root / "strict-audit.json"
+        with contextlib.redirect_stdout(output):
+            status = main([
+                "--archive", str(self.archive),
+                "--source-root", str(self.source),
+                "--out", str(report_path),
+                "--require-source-match",
+            ])
+        self.assertEqual(status, 2)
+        summary = json.loads(output.getvalue())
+        self.assertTrue(summary["ok"])
+        self.assertTrue(summary["integrityOk"])
+        self.assertFalse(summary["releaseReady"])
+        self.assertTrue(summary["sourceMatchRequired"])
+        report = json.loads(report_path.read_text(encoding="utf-8"))
+        self.assertEqual(report["sourceMatch"]["changedFileCount"], 1)
+
 if __name__ == "__main__":
     unittest.main()
