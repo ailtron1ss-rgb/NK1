@@ -259,8 +259,23 @@ test("elbow hinge cannot fold beyond the anatomical flexion limit", () => {
   const shoulder = previous.particles.leftShoulderPoint.position;
   const elbow = previous.particles.leftElbowPoint.position;
   const wrist = previous.particles.leftWristPoint;
+  const oldWrist = { ...wrist.position };
   wrist.position = alignParticleAlong(shoulder, elbow, wrist.position);
+  const wristShift = {
+    x: wrist.position.x - oldWrist.x,
+    y: wrist.position.y - oldWrist.y,
+    z: wrist.position.z - oldWrist.z,
+  };
+  const hand = previous.particles.leftHandPoint;
+  hand.position = {
+    x: hand.position.x + wristShift.x,
+    y: hand.position.y + wristShift.y,
+    z: hand.position.z + wristShift.z,
+  };
   wrist.velocity = { x: 0, y: 0, z: 0 };
+  hand.velocity = { x: 0, y: 0, z: 0 };
+  assert.ok(hingeFlexionRadians(previous, "leftShoulderPoint", "leftElbowPoint", "leftWristPoint") > 179 * Math.PI / 180,
+    "elbow fixture must begin beyond the allowed hinge range");
   for (const id of ["leftShoulderPoint", "leftElbowPoint", "leftWristPoint", "leftHandPoint"]) {
     previous.particles[id].mass = 20;
   }
@@ -277,6 +292,8 @@ test("knee hinge cannot hyperflex while the foot chain follows the lower leg", (
   const ankle = previous.particles.rightAnklePoint;
   const oldAnkle = { ...ankle.position };
   ankle.position = alignParticleAlong(hip, knee, ankle.position);
+  assert.ok(hingeFlexionRadians(previous, "rightHipPoint", "rightKneePoint", "rightAnklePoint") > 179 * Math.PI / 180,
+    "knee fixture must begin beyond the allowed hinge range");
   const shift = {
     x: ankle.position.x - oldAnkle.x,
     y: ankle.position.y - oldAnkle.y,
