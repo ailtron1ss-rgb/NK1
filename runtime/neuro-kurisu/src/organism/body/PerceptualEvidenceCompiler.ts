@@ -4,6 +4,7 @@ import type { P41TemporalPerceptionState } from '../cognition/P41TemporalPercept
 import type { MultimodalState } from './MultimodalPerception.ts';
 import { isPlainDataArray, isPlainDataRecord, ownDataValue, stringOr, timestampOr, unitStrictOr, unitOr } from './RestoreSanitizers.ts';
 import { isTrustedObservationAdmission, type SignedHostObservationReceipt, type TrustedObservationAdmission } from '../system/SignedObservationAdmissionAuthority.ts';
+import { sha256Stable } from '../core/StableSerialization.ts';
 
 const clamp=(n:number)=>Math.max(0,Math.min(1,Number.isFinite(n)?n:0));
 const stableHash=(value:string)=>{let h=2166136261;for(let i=0;i<value.length;i++){h^=value.charCodeAt(i);h=Math.imul(h,16777619);}return (h>>>0).toString(16).padStart(8,'0');};
@@ -181,7 +182,7 @@ export class PerceptualEvidenceCompiler{
   recordTrustedExternalEvidence(admission:TrustedObservationAdmission):PerceptualEvidenceRecord {
     if(!isTrustedObservationAdmission(admission))throw new TypeError('untrusted-observation-admission');
     if(!Number.isSafeInteger(admission.expiresAt)||admission.expiresAt<=Date.now())throw new TypeError('expired-observation-admission');
-    const id=`pe-host-${stableHash(admission.observationId)}`;
+    const id=`pe-host-${sha256Stable(admission.observationId)}`;
     const prior=this.state.evidence.find(row=>row.id===id);
     if(prior){
       if(prior.claim!==admission.claim||prior.at!==admission.at||prior.modality!==admission.modality||
@@ -224,7 +225,7 @@ export class PerceptualEvidenceCompiler{
   /** Revocation is monotonic: it removes observed status and resets derived trust gauges. */
   revokeTrustedExternalEvidence(observationId:string):boolean {
     if(typeof observationId!=='string'||!observationId.trim()||observationId.length>180)return false;
-    const id=`pe-host-${stableHash(observationId)}`;
+    const id=`pe-host-${sha256Stable(observationId)}`;
     const index=this.state.evidence.findIndex(row=>row.id===id&&row.revoked!==true&&(row.kind==='observed'||Boolean(row.hostReceipt)));
     if(index<0)return false;
     const row=this.state.evidence[index];
