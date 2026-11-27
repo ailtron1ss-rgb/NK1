@@ -55,6 +55,18 @@ import { OrganismCore } from '../src/organism/core/OrganismCore.ts';
   );
 }
 
+// A watchdog without a persistence owner cannot claim that a checkpoint was durably committed.
+{
+  const watchdog = new RecoveryWatchdog('watchdog-without-store-test', undefined, 1_000);
+  const snapshot = await watchdog.checkpoint({ now: 3_000, tick: 2, learningCount: 1 });
+  assert.equal(snapshot.lastHeartbeatAt, 3_000);
+  assert.equal(
+    snapshot.lastCheckpointAt,
+    1_000,
+    'checkpoint without a durable store must not claim a persistence commit',
+  );
+}
+
 // The production OrganismCore path must not expose an uncommitted timestamp
 // when its canonical state store rejects a forced checkpoint.
 {
