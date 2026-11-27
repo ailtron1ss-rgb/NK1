@@ -9,13 +9,16 @@ function makeGeometry(minY = -1, maxY = 1) {
   };
 }
 
-function makeMaterial(name = "coat-material") {
+function makeMaterial(name = "coat-material", kind = "standard") {
   return {
     name,
-    isMeshStandardMaterial: true,
+    isMeshStandardMaterial: kind === "standard",
+    isMeshPhysicalMaterial: kind === "physical",
+    isMeshToonMaterial: kind === "toon",
     color: { value: 0xffffff },
     roughness: 0.82,
     metalness: 0.12,
+    gradientMap: kind === "toon" ? { isTexture: true, name: "NK1 shared cel gradient" } : null,
     onBeforeCompile() {},
     customProgramCacheKey() { return "original-program"; },
     userData: { keep: true },
@@ -154,6 +157,26 @@ test("attachment is limited to separate skinned hair locks and garment panels, n
   assert.ok(bindings.every((binding) => binding.uniforms.nk1SecondaryAmplitude.value < 0.02));
   assert.ok(bindings[0].uniforms.nk1SecondaryAmplitude.value > bindings[1].uniforms.nk1SecondaryAmplitude.value);
   assert.equal(bindings[2].uniforms.nk1SecondarySide.value, -1);
+});
+
+test("toon-converted GLB materials keep their cel gradient and accept the same vertex sway hook", () => {
+  const original = makeMaterial("NK1_Toon_Hair", "toon");
+  original.userData.nk1ToonConverted = true;
+  const part = mesh("HAIR_long_lock_L", { material: original });
+  const bindings = vertexDynamics.attachAvatarSecondaryVertexDynamics(scene([part]), 3.15);
+  assert.equal(bindings.length, 1, "MeshToonMaterial converted by NK1 must remain eligible");
+  assert.equal(part.material.isMeshToonMaterial, true);
+  assert.equal(part.material.gradientMap, original.gradientMap, "the shared cel-shading ramp must survive cloning");
+  assert.equal(part.material.userData.nk1ToonConverted, true);
+  assert.equal(part.material.userData.nk1SecondaryVertexDynamics, true);
+  const shader = {
+    uniforms: {},
+    vertexShader: "#include <common>\\nvoid main() { vec3 transformed = position; #include <skinning_vertex> gl_Position = projectionMatrix * modelViewMatrix * vec4(transformed, 1.0); }",
+  };
+  part.material.onBeforeCompile(shader, {});
+  assert.ok(shader.vertexShader.includes("NK1_SECONDARY_VERTEX_MOTION_V1"));
+  vertexDynamics.disposeAvatarSecondaryVertexDynamics(bindings);
+  assert.equal(part.material, original);
 });
 
 test("frame drive is deterministic, bounded, and respects sleep and device quality", () => {
