@@ -30,7 +30,18 @@ test("built-in NeuroCore body is a real articulated THREE.Bone hierarchy", () =>
   assert.equal(rig.bones.rightForearm.parent, rig.bones.rightUpperArm);
   assert.ok(rig.bones.leftIndex1 instanceof THREE.Bone);
   assert.ok(rig.bones.rightThumb3 instanceof THREE.Bone);
-  assert.ok(rig.meshes.length > 70, `expected skin, clothing, muscle and facial meshes, got ${rig.meshes.length}`);
+  assert.ok(rig.partCount >= 90, `expected at least 90 anatomical parts, got ${rig.partCount}`);
+  assert.ok(rig.meshes.length >= 15 && rig.meshes.length <= 30,
+    `expected 15–30 GPU skin batches for the anatomical part set, got ${rig.meshes.length}`);
+  assert.ok(rig.meshes.every((mesh) => mesh instanceof THREE.SkinnedMesh),
+    "all rendered body batches must use the real THREE.SkinnedMesh pipeline");
+  assert.ok(rig.meshes.every((mesh) => mesh.geometry.getAttribute("skinIndex") && mesh.geometry.getAttribute("skinWeight")),
+    "every merged body batch must carry GPU bone indices and weights");
+  assert.ok(rig.meshes.some((mesh) => {
+    const weights = mesh.geometry.getAttribute("skinWeight");
+    for (let i = 0; i < weights.count; i++) if (weights.getY(i) > 0.01) return true;
+    return false;
+  }), "adjacent-bone blending weights must be present");
   assert.ok(scene.children.includes(rig.root));
 
   rig.dispose();
