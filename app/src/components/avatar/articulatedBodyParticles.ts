@@ -360,7 +360,8 @@ export function stepAvatarArticulatedBody(
       if(groundEnabled){
         for(const support of supportPoints){
           const p=state.particles[support.id];
-          if(p.target.y>contactSurfaceY+contactMargin)continue;
+          // The floor constrains actual geometry even while a swing target is lifting.
+          // This prevents a delayed foot from remaining underground after take-off begins.
           if(p.position.y<contactSurfaceY){
             const correction=contactSurfaceY-p.position.y;
             p.position.y=contactSurfaceY;
@@ -380,16 +381,14 @@ export function stepAvatarArticulatedBody(
     if(groundEnabled){
       for(const support of supportPoints){
         const p=state.particles[support.id];
-        const eligible=p.target.y<=contactSurfaceY+contactMargin;
-        const touching=eligible&&p.position.y<=contactSurfaceY+1e-4;
+        const touching=p.position.y<=contactSurfaceY+1e-4;
         if(!touching)continue;
         const incoming=incomingVelocity[support.id];
         if(projectedSupport.has(support.id)||incoming.y<0){
           // Zero restitution: a positional correction must not become an upward bounce.
           p.velocity.y=0;
-        } else {
-          // A sustained planted foot cannot be pushed upward by the next PBD
-          // distance correction while its semantic target is still in stance.
+        } else if(p.target.y<=contactSurfaceY+contactMargin){
+          // While the target remains planted, suppress positive velocity from PBD corrections.
           p.velocity.y=Math.min(0,p.velocity.y);
         }
         const slip=Math.hypot(p.velocity.x,p.velocity.z);
