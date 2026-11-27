@@ -97,7 +97,7 @@ export function RuntimeHealthPanel() {
     <section
       aria-label="NeuroCore runtime status"
       aria-live="polite"
-      className="min-w-[210px] rounded-xl border border-border bg-surface/80 px-3 py-2 text-xs"
+      className="w-full min-w-0 rounded-xl border border-border bg-surface/80 px-3 py-2 text-xs sm:w-auto sm:min-w-[210px]"
     >
       <div className="flex items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-2">
