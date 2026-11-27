@@ -15,6 +15,7 @@ export interface AvatarSecondaryParticleState {
   inverseMass: Float32Array;
   offsets: Float32Array;
   constraints: AvatarSecondaryParticleConstraint[];
+  lambdas: Float32Array;
   compliance: number;
   damping: number;
   maxOffset: number;
@@ -52,6 +53,7 @@ function buildEdges(
 ): AvatarSecondaryParticleConstraint[] | null {
   const edgeSet = new Set<string>();
   const constraints: AvatarSecondaryParticleConstraint[] = [];
+  if (indices && indices.length % 3 !== 0) return null;
   const triangleCount = indices ? Math.floor(indices.length / 3) : Math.floor(vertexCount / 3);
   if (triangleCount < 2) return null;
 
@@ -138,6 +140,7 @@ export function createAvatarSecondaryParticleState(
     inverseMass,
     offsets: new Float32Array(rest.length),
     constraints,
+    lambdas: new Float32Array(constraints.length),
     compliance: limits.compliance,
     damping: limits.damping,
     maxOffset: limits.maxOffset,
@@ -194,6 +197,7 @@ export function stepAvatarSecondaryParticleState(
   const stepSeconds = totalSeconds / substeps;
   const [ax, ay, az] = bodyDrive(frame);
   const damping = Math.pow(1 - state.damping, stepSeconds / FIXED_STEP_SECONDS);
+  const solverIterations = frame.quality === "low" ? 2 : frame.quality === "high" ? SOLVER_ITERATIONS : 3;
 
   for (let step = 0; step < substeps; step += 1) {
     for (let vertex = 0; vertex < state.vertexCount; vertex += 1) {
@@ -221,9 +225,10 @@ export function stepAvatarSecondaryParticleState(
       state.positions[offset + 2] = z + vz + az * stepSeconds * stepSeconds;
     }
 
-    const lambdas = new Float32Array(state.constraints.length);
+    const lambdas = state.lambdas;
+    lambdas.fill(0);
     const alpha = state.compliance / Math.max(1e-8, stepSeconds * stepSeconds);
-    for (let iteration = 0; iteration < SOLVER_ITERATIONS; iteration += 1) {
+    for (let iteration = 0; iteration < solverIterations; iteration += 1) {
       for (let index = 0; index < state.constraints.length; index += 1) {
         const constraint = state.constraints[index];
         const a = constraint.a * 3;
@@ -270,5 +275,6 @@ export function resetAvatarSecondaryParticleState(state: AvatarSecondaryParticle
   state.positions.set(state.rest);
   state.previous.set(state.rest);
   state.offsets.fill(0);
+  state.lambdas.fill(0);
   state.completedSteps = 0;
 }
