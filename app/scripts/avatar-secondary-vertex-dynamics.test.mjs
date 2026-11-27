@@ -187,3 +187,37 @@ test("uniform updates clamp frame values and restore releases cloned materials s
   vertexDynamics.disposeAvatarSecondaryVertexDynamics(bindings);
   assert.equal(part.material, original);
 });
+
+
+test("shader injection rejects malformed supplemental uniforms without partial mutation", () => {
+  const shader = {
+    uniforms: {},
+    vertexShader: [
+      "#include <common>",
+      "void main() {",
+      "  vec3 transformed = position;",
+      "  #include <skinning_vertex>",
+      "  gl_Position = projectionMatrix * modelViewMatrix * vec4(transformed, 1.0);",
+      "}",
+    ].join("\n"),
+  };
+  const originalShader = shader.vertexShader;
+  const uniforms = {
+    nk1SecondaryTime: { value: 0 },
+    nk1SecondaryMotion: { value: 0 },
+    nk1SecondaryGait: { value: 0 },
+    nk1SecondaryBreath: { value: 0 },
+    nk1SecondaryYaw: { value: 0 },
+    nk1SecondaryMinY: { value: -1 },
+    nk1SecondaryInvHeight: { value: 0.5 },
+    nk1SecondaryAmplitude: { value: 0.004 },
+    nk1SecondaryPhase: { value: 0.7 },
+    nk1SecondarySide: { value: -1 },
+    nk1SecondaryHair: { value: 1 },
+    nk1ExtraMalformed: { value: Number.NaN },
+  };
+
+  assert.equal(vertexDynamics.injectAvatarSecondaryVertexShader(shader, uniforms), false);
+  assert.equal(shader.vertexShader, originalShader, "a rejected uniform must not leave a patched shader behind");
+  assert.deepEqual(shader.uniforms, {}, "a rejected uniform must not register a partial uniform set");
+});
