@@ -27,8 +27,8 @@ export interface SignedHostObservationReceipt extends SignedHostObservationRecei
   signatureAlgorithm:HostObservationSignatureAlgorithm;
   signature:string;
 }
-/** Host key resolvers return PEM text or DER bytes, never a private KeyObject. */
-export type HostObservationPublicKey=string|Buffer;
+/** Host key resolvers return public PEM text; private KeyObjects and opaque handles never cross into NK1. */
+export type HostObservationPublicKey=string;
 
 export interface HostObservationConsentBinding {
   ticketId:string;
