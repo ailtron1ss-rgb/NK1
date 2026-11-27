@@ -28,10 +28,10 @@ The percentage below tracks the build plan, not model intelligence, consciousnes
 - **IMPLEMENTED:** one canonical `MemoryOS2` instance is constructed by `MemorySubsystemRuntime` and injected into `MemoryFabric`; an identity regression is present. It is not yet branch-CI accepted.
 - **IMPLEMENTED:** default 3D humanoid rig with 61 bones, 60 movable pivots and material-batched skinned meshes built from the anatomical part volumes; arm/leg IK and particle-to-bone binding are wired.
 - **INHERITED FROM CURRENT SOURCE:** the 22-particle / 21-segment articulated solver now includes heel/toe ground contacts, tangential friction, swing take-off handling and 150-degree elbow/knee hinge constraints. The upstream change records 11/11 checks on its source PR head; that result is not a pass for this NeuroCore branch.
-- **IMPLEMENTED IN THIS PASS:** body control/physics cadence is changed to 20 Hz and every solved snapshot is published; a dedicated scheduler regression is added. CI execution is pending.
+- **IMPLEMENTED IN THIS PASS:** body control/physics cadence is changed to 20 Hz and every solved snapshot is published; a dedicated scheduler regression is wired into the real `AvatarStage` loop. Earlier exact-head VRM workflow passed app typecheck and production bundle; the latest integrated body suite is pending after ESM import correction.
 - **IMPLEMENTED IN THIS PASS:** the NeuroCore core regression command now includes memory state round-trip and capacity/lifecycle integrity suites. Execution is pending.
 - **UNRESOLVED:** the procedural surface remains composed from anatomical parts; continuous tissue deformation, collision, balance, foot planting and full gait are not accepted.
-- **UNRESOLVED:** browser hydration, end-to-end chat, model handshake, persistence under interrupted shutdown, and Android/Termux installation/performance.
+- **UNRESOLVED:** browser hydration, end-to-end chat, model handshake, persistence under interrupted shutdown, and Android/Termux installation/performance. Durable marker/rollback behaviour is covered by synthetic process-restart tests only; real phone filesystem behaviour is not measured.
 - **DEVICE-TESTED:** none in this pass.
 
 ## Next checkpoint
