@@ -35,25 +35,27 @@ try {
   await core.observe({ worldContext: world(1, 'observed', 1) });
   const afterObserved = core.snapshot();
   let records = afterObserved.facets.advanced.memoryOS.items.filter(row => row.source === GROUNDED_SPATIAL_MEMORY_SOURCE);
-  assert.equal(records.length, 1, 'a live Core observation must write the observed coordinate to canonical MemoryOS2');
-  assert.equal(records[0].context.spatialX, '1');
-  assert.equal(records[0].context.spatialFrameId, 'lab-map');
-  assert.equal(records[0].context.groundedEvidenceKind, 'observed');
+  assert.equal(records.length, 0, 'caller-supplied evidenceKind=observed is not a host admission receipt and must not enter canonical MemoryOS2');
+  const firstGroundedEntity = core.groundedWorldSnapshot().entities.find(row => row.label === 'chair');
+  assert.deepEqual(firstGroundedEntity?.position, { x: 1, y: 2, z: 0 }, 'unverified spatial input may remain a world hypothesis');
+  assert.equal(firstGroundedEntity?.modalityEvidenceKinds.world, 'derived', 'caller labels cannot promote world evidence to observed');
 
   await core.observe({ worldContext: world(20, 'model-output', 2) });
   const afterModelOutput = core.snapshot();
   records = afterModelOutput.facets.advanced.memoryOS.items.filter(row => row.source === GROUNDED_SPATIAL_MEMORY_SOURCE);
-  assert.equal(records.length, 1, 'model-only output must not create another spatial memory');
-  assert.equal(records[0].context.spatialX, '1', 'model-only coordinates must not overwrite an accepted observed position');
-  assert.equal(records[0].context.groundedEvidenceKind, 'observed');
+  assert.equal(records.length, 0, 'model-only output must not create canonical spatial memory');
+  const modelGroundedEntity = core.groundedWorldSnapshot().entities.find(row => row.label === 'chair');
+  assert.equal(modelGroundedEntity?.modalityEvidenceKinds.world, 'derived');
+  assert.deepEqual(modelGroundedEntity?.position, { x: 20, y: 2, z: 0 }, 'model coordinates remain available as a hypothesis without canonical fact promotion');
 
   await core.observe({ worldContext: world(3, 'observed', 3) });
   const afterNewObserved = core.snapshot();
   records = afterNewObserved.facets.advanced.memoryOS.items.filter(row => row.source === GROUNDED_SPATIAL_MEMORY_SOURCE);
-  assert.equal(records.length, 1, 'a moving entity must update one canonical memory instead of duplicating it');
-  assert.equal(records[0].context.spatialX, '3', 'a newer observed position must update the canonical spatial point');
-  assert.equal(records[0].context.groundedEvidenceKind, 'observed');
-  console.log('GROUNDED_SPATIAL_CORE_TICK=PASS');
+  assert.equal(records.length, 0, 'a second caller-labelled observation still cannot bypass host admission');
+  const finalGroundedEntity = core.groundedWorldSnapshot().entities.find(row => row.label === 'chair');
+  assert.deepEqual(finalGroundedEntity?.position, { x: 3, y: 2, z: 0 });
+  assert.equal(finalGroundedEntity?.modalityEvidenceKinds.world, 'derived');
+  console.log('GROUNDED_SPATIAL_CORE_UNTRUSTED_INPUT=PASS');
 } finally {
   await core.close?.();
 }
