@@ -39,6 +39,7 @@ import {
   timelineOffsetForCharIndex,
   type VisemeClockAnchor,
   type EmbodimentIntentV1,
+  type Live2DBodyChannel,
   type MouthPose,
   type SpeechPhase,
   type VisemeFrame,
@@ -567,6 +568,14 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
       motionIntentTokenRef.current += 1;
     }
     const motionToken = motionIntentTokenRef.current;
+    const mergedBodyChannels = { ...motionChannelsRef.current, ...currentProjection.bodyChannels };
+    const live2dBodyChannels: Partial<Record<Live2DBodyChannel, number>> = {};
+    for (const channel of ["headYaw", "headPitch", "headRoll", "torsoYaw", "torsoPitch", "gazeX", "gazeY", "breath"] as const) {
+      const value = mergedBodyChannels[channel];
+      if (typeof value === "number" && Number.isFinite(value)) {
+        live2dBodyChannels[channel] = Math.max(-1, Math.min(1, value));
+      }
+    }
     const intent: EmbodimentIntentV1 = {
       type: "kurisu_embodiment_intent",
       protocolVersion: 1,
@@ -592,6 +601,7 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
         motionGroup,
         motionIndex: motionGroup === "Special" ? motionIndex : 0,
         motionToken: Number.isSafeInteger(motionToken) && motionToken > 0 ? motionToken : 0,
+        channels: live2dBodyChannels,
       },
       voiceEmphasis: currentProjection.voiceEmphasis,
     };
