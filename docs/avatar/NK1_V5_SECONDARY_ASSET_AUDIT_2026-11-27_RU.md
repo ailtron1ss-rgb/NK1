@@ -157,5 +157,5 @@ Source: `app/scripts/verify-hosted-kurisu-model.mjs`, workflow `NK1 Avatar Model
 - Одежда: `CLOTH_labcoat_main`, `CLOTH_skirt`, `CLOTH_tie_blade/knot`, `CLOTH_lapel_left/right`, `CLOTH_collar_L/R`, `CLOTH_pocket_L/R`, `CLOTH_pocket_flap_L/R`, `CLOTH_button_0-3`, `CLOTH_hem_stitch`.
 - Рукава: `CLOTH_upper_sleeve_L/R`, `CLOTH_lower_sleeve_L/R`.
 
-В hosted audit inventory всего 101 mesh-node; 99 из них skinned к общей skin. Для текущей runtime-панели введён отдельный подсчёт mesh roles: hair / garment / sleeve. Он специально не повышает состояние `secondaryPhysicsReady`: наличие отдельных meshes не означает наличие вторичных костей или реальной симуляции.
+В hosted audit inventory всего 101 mesh-node; 99 из них skinned к общей skin. Автоматическая role-классификация raw GLB находит **15 hair meshes, 19 garment meshes и 4 sleeve meshes** (все 38 привязаны к общей skin). Для текущей runtime-панели введён отдельный подсчёт mesh roles: hair / garment / sleeve. Он специально не повышает состояние `secondaryPhysicsReady`: наличие отдельных meshes не означает наличие вторичных костей или реальной симуляции.
 
