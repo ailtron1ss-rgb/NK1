@@ -197,6 +197,8 @@ export interface RuntimeConfig extends OrganismConfig {
     routing: SynapticAdapterRoutingInput,
   ) => Promise<SynapticAdapterLanguageResponse>;
   stateStore?: JsonStateStore<PersistedOrganism>;
+  /** Optional host-registered modules; when supplied, their state is checkpointed inside PersistedOrganism.system. */
+  cognitiveModuleRuntime?: RuntimeCognitiveModuleHost;
   /** Host-owned monitor instance; structural injection avoids a core-to-cognition dependency edge. */
   cognitiveHealthSystem?: RuntimeCognitiveHealthMonitor;
   /** Optional canonical-ledger adapter; missing evidence remains unknown, never a healthy sample. */
@@ -330,6 +332,29 @@ interface RuntimeAspectFabricPort {
   health(): unknown;
 }
 
+export interface RuntimeCognitiveModuleCheckpointDiagnostics {
+  moduleCount: number;
+  capturedAt: number;
+  snapshotFailures: Array<{ id: string; reason: string }>;
+  checkpointLoadError: string | null;
+  checkpointSaveError: string | null;
+}
+
+interface RuntimeCognitiveModuleCheckpointPort extends JsonStateStore<PersistedOrganism> {
+  diagnostics(): RuntimeCognitiveModuleCheckpointDiagnostics;
+}
+
+/** Structural host port keeps the large composition root independent of the adapter implementation. */
+export interface RuntimeCognitiveModuleHost {
+  connectCanonicalCheckpointStore(
+    delegate: JsonStateStore<PersistedOrganism>,
+  ): RuntimeCognitiveModuleCheckpointPort;
+  activateAll(): Promise<unknown[]>;
+  health(): Promise<{ ok: boolean; modules: unknown[] }>;
+  stopAll(): Promise<unknown[]>;
+  list(): unknown[];
+}
+
 export class OrganismRuntime {
   /**
    * Host-owned production composition: prepare the three separately configured
@@ -375,6 +400,9 @@ export class OrganismRuntime {
   readonly embodiedActions = new EmbodiedActionExecutor(this.embodiment);
   readonly embodiedRecovery = new EmbodiedRecoveryController();
   private readonly config: Required<Pick<RuntimeConfig, 'intervalMs'|'enableLanguage'>> & RuntimeConfig;
+  private readonly cognitiveModuleRuntime: RuntimeCognitiveModuleHost | null;
+  private readonly cognitiveModuleCheckpointStore: ReturnType<RuntimeCognitiveModuleHost['connectCanonicalCheckpointStore']> | null;
+  private cognitiveModuleActivationError: string | null = null;
   private readonly temporalObjectTracker = new TemporalObjectTracker();
   private readonly mem0Adapter: Mem0PlatformAdapter;
   private readonly mem0CognitiveRecallEnabled: boolean;
@@ -492,9 +520,14 @@ export class OrganismRuntime {
     this.phonePolicy.checkpointMaxDirtyCycles = Math.max(1, Number(this.phonePolicy.checkpointMaxDirtyCycles));
     this.phonePolicy.worldCheckpointMaxDirtyCycles = Math.max(1, Number(this.phonePolicy.worldCheckpointMaxDirtyCycles));
     this.stopping = false;
-    const stateStore = config.stateStore ?? new FileStateStore<PersistedOrganism>(config.stateFile);
+    const canonicalStateStore = config.stateStore ?? new FileStateStore<PersistedOrganism>(config.stateFile);
+    this.cognitiveModuleRuntime = config.cognitiveModuleRuntime ?? null;
+    this.cognitiveModuleCheckpointStore = this.cognitiveModuleRuntime
+      ? this.cognitiveModuleRuntime.connectCanonicalCheckpointStore(canonicalStateStore)
+      : null;
+    const stateStore = this.cognitiveModuleCheckpointStore ?? canonicalStateStore;
     this.core = new OrganismCore(stateStore, { ...config, cycleResultMode:'operational' });
-    this.undoFirstWorkspaceRoot = stateStore instanceof FileStateStore ? stateStore.siblingPath('workspace') : null;
+    this.undoFirstWorkspaceRoot = canonicalStateStore instanceof FileStateStore ? canonicalStateStore.siblingPath('workspace') : null;
     const learningJournals = createDefaultLearningJournals(config.stateFile);
     this.core.configureP23LearningJournals(learningJournals);
     this.trustedShadowLearningScheduler = config.trustedShadowLearning?.enabled === true
@@ -747,6 +780,38 @@ export class OrganismRuntime {
         for (const tool of tools) this.core.registerActionTool(tool);
       }
       await this.core.setEmbodiment(this.embodiment.snapshot(), this.embodiment.eventLog(), { sensorFailures: snap.facets.embodiment?.sensorFailures ?? 0 });
+      // Modules activate only after canonical organism state and runtime adapters are restored,
+      // but before any scheduler or autonomous cognitive clock can run.
+      if (this.cognitiveModuleRuntime) {
+        let activated: unknown[] = [];
+        try {
+          activated = await this.cognitiveModuleRuntime.activateAll();
+        } catch (error) {
+          // Module extensions are optional to the canonical organism. The host
+          // already rolls back modules activated in this batch; keep Core online
+          // and expose the degraded module status rather than failing organism init.
+          this.cognitiveModuleActivationError =
+            String(error instanceof Error ? error.message : error).slice(0, 180);
+          await this.journal.write('error', 'runtime.cognitive-modules.activation-failed', {
+            message: this.cognitiveModuleActivationError,
+          }).catch(() => {});
+        }
+        let health: { ok: boolean; modules: unknown[] } = { ok: false, modules: [] };
+        try {
+          health = await this.cognitiveModuleRuntime.health();
+        } catch (error) {
+          this.cognitiveModuleActivationError ??=
+            String(error instanceof Error ? error.message : error).slice(0, 180);
+          await this.journal.write('error', 'runtime.cognitive-modules.health-failed', {
+            message: this.cognitiveModuleActivationError,
+          }).catch(() => {});
+        }
+        await this.journal.write('info', 'runtime.cognitive-modules.activation-complete', {
+          count: activated.length,
+          healthy: health.ok,
+          activationError: this.cognitiveModuleActivationError,
+        }).catch(() => {});
+      }
       this.initialized = true;
       this.startEmbodimentClock();
       this.clockScheduler.start('reflection');
@@ -1855,12 +1920,14 @@ export class OrganismRuntime {
       outcome:{source:grounded.source==='external'?'external-device':'shadow-simulator',external:grounded.source==='external',confidence01:grounded.evidence01,payload:{evidenceId:outcomeEvidence.id,reward01:grounded.reward01,surprise:grounded.surprise01,error01:resolvedPrediction?.error01 ?? null,verified01:grounded.verified01}},
       learning:{source:'core.feedback',confidence01:clamp01((1-(resolvedPrediction?.error01??0.5))*learningGate.learningScale01),payload:{predictionError01:resolvedPrediction?.error01??null,realitySource:grounded.source,learningPriority01:grounded.learningPriority01,learningScale01:learningGate.learningScale01}},
       selfUpdate:{source:'core.lifecycle',confidence01:this.core.consciousnessSnapshot().identityContinuity.continuity,payload:{identityContinuity01:this.core.consciousnessSnapshot().identityContinuity.continuity}},
+      subsystemReceipts:cycle.stageEvidence?.subsystemReceipts,
       at:cycle.state.at,
     });
     const fabricSnapshot = this.cognitiveEventFabric.snapshot();
     this.core.setRuntimeCognitiveEventFabric(fabricSnapshot);
     const cycleStageMap = {observation:cycleStageIds.observation,prediction:cycleStageIds.prediction,appraisal:cycleStageIds.appraisal,attention:cycleStageIds.attention,memory:cycleStageIds.memory,goal:cycleStageIds.goal,plan:cycleStageIds.plan,action:cycleStageIds.action,outcome:cycleStageIds.outcome,learning:cycleStageIds.learning,'self-update':cycleStageIds.selfUpdate};
-    const cycleLineage = this.cognitiveEventFabric.verifyOperationalCycle(cycleStageMap, cycle.stageEvidence?.receipts);
+    const cycleEvidenceEvents = [observationEvidence, predictionEvidence, riskEvidence, actionEvidence, outcomeEvidence];
+    const cycleLineage = this.cognitiveEventFabric.verifyOperationalCycle(cycleStageMap, cycle.stageEvidence?.receipts, cycleEvidenceEvents, cycle.stageEvidence?.subsystemReceipts);
     const cycleVerification = this.unifiedCycle.evaluate({tick:cycle.state.tick,stageIds:cycleStageMap,parentIntegrity01:cycleLineage.coreIntegrity01,coreLineageComplete:cycleLineage.coreComplete,fullLineageComplete:cycleLineage.fullComplete && cycleLineage.ownerEvidenceComplete,fullIntegrity01:cycleLineage.fullIntegrity01});
     this.core.setRuntimeUnifiedCognitiveCycle(this.unifiedCycle.snapshot());
     this.core.recordRealityEvidence({tick:cycle.state.tick,realityClass:'derived',claim:'cognitive-cycle-completeness',confidence01:cycleVerification.complete ? .95 : .35,independenceKey:`cycle:${cycle.state.tick}`,parentIds:Object.values(cycleStageIds).filter(Boolean) as string[]});
@@ -2435,6 +2502,83 @@ export class OrganismRuntime {
   embodiedRecoverySnapshot(){ return this.embodiedRecovery.snapshot(); }
   riskAwareRecoverySnapshot(){ return this.unifiedCycle.riskAwareRecoverySnapshot(); }
   cognitiveEventFabricSnapshot(){ return this.cognitiveEventFabric.snapshot(); }
+
+  /**
+   * Unified read-only view across the seven physical owners, seven cognitive
+   * subsystem domains, RuntimeEvidenceBus, CognitiveEventFabric and the strict
+   * current-cycle verifier. No owner commands, scheduling or persistence run here.
+   */
+  cognitiveIntegrationSnapshot() {
+    const architecture = this.core.organismCognitiveArchitecture();
+    const runtimeSnapshot: any = architecture?.runtimeSnapshot ?? {};
+    const snapshotHealth: any = runtimeSnapshot.snapshotHealth ?? {};
+    const physical: any = snapshotHealth.physicalSystems ?? {};
+    const domains: any = snapshotHealth.subsystemDomains ?? {};
+    const subsystems: any[] = Array.isArray(runtimeSnapshot.cognitiveSubsystems) ? runtimeSnapshot.cognitiveSubsystems : [];
+    const failedPorts = subsystems.flatMap(item =>
+      Array.isArray(item.failedPorts)
+        ? item.failedPorts.map((port: unknown) => String(item.name) + ':' + String(port))
+        : [],
+    );
+    const evidence = this.evidenceBus.snapshot();
+    const cef = this.cognitiveEventFabric.snapshot();
+    const cycle = this.unifiedCycle.snapshot();
+    const tick = this.core.operationalStatusSnapshot().tick;
+    const currentCycleStatus = cycle.lastTick !== tick
+      ? 'not-current'
+      : cycle.lastFullComplete ? 'verified' : 'incomplete';
+    const connectivityStatus = snapshotHealth.status === 'healthy' ? 'healthy' : 'degraded';
+    return {
+      version: 1,
+      capturedAt: Date.now(),
+      tick,
+      basis: 'read-only-runtime-snapshot',
+      overallStatus: connectivityStatus !== 'healthy' ? 'degraded' : currentCycleStatus === 'verified' ? 'healthy' : 'unverified',
+      connectivity: {
+        status: connectivityStatus,
+        snapshotBasis: snapshotHealth.basis ?? 'unknown',
+        physicalSystems: {
+          total: Number(physical.total ?? 0),
+          available: Number(physical.available ?? 0),
+          unavailable: Array.isArray(physical.unavailable) ? [...physical.unavailable] : [],
+        },
+        subsystemDomains: {
+          total: Number(domains.total ?? subsystems.length),
+          available: Number(domains.available ?? subsystems.filter(item => item.available === true).length),
+          unavailable: Array.isArray(domains.unavailable) ? [...domains.unavailable] : [],
+          failedPorts: failedPorts.slice(0, 64),
+        },
+      },
+      causalIntegration: {
+        currentCycle: {
+          status: currentCycleStatus,
+          tick: cycle.lastTick,
+          fullComplete: cycle.lastFullComplete,
+          cycles: cycle.cycles,
+          fullCompleteCycles: cycle.fullCompleteCycles,
+          incompleteCycles: cycle.incompleteCycles,
+          meanStageCoverage01: cycle.meanStageCoverage01,
+          meanCausalContinuity01: cycle.meanCausalContinuity01,
+        },
+        runtimeEvidenceBus: {
+          total: evidence.total,
+          buffered: evidence.recent.length,
+          linkedParentEvents: evidence.linkedParentEvents,
+          danglingParentLinks: evidence.danglingParentLinks,
+          lineageIntegrity01: evidence.lineageIntegrity01,
+        },
+        cognitiveEventFabric: {
+          total: cef.total,
+          buffered: cef.buffered,
+          linkedParentEvents: cef.linkedParentEvents,
+          danglingParentLinks: cef.danglingParentLinks,
+          lineageIntegrity01: cef.lineageIntegrity01,
+          coreCycleCoverage01: cef.coreCycleCoverage01 ?? cef.cycleCoverage01,
+          fullCycleCoverage01: cef.fullCycleCoverage01 ?? 0,
+        },
+      },
+    };
+  }
   cognitiveBudgetSnapshot(){ return this.core.cognitiveBudgetOperationalSnapshot(); }
   cognitiveImmuneSnapshot(){ return this.core.cognitiveImmuneSnapshot(); }
   async sampleEmbodiment(): Promise<ReturnType<EmbodimentRuntime['snapshot']>> {
@@ -2723,48 +2867,129 @@ export class OrganismRuntime {
   aspectFabricSnapshot(): unknown { return this.aspectFabric?.snapshot() ?? null; }
   aspectFabricHealth(): unknown { return this.aspectFabric?.health() ?? null; }
   get organismSystemFabric() { return this.core.organismSystemFabric; }
+  cognitiveModuleDiagnostics() {
+    return {
+      enabled: this.cognitiveModuleRuntime !== null,
+      modules: this.cognitiveModuleRuntime?.list() ?? [],
+      activationError: this.cognitiveModuleActivationError,
+      checkpoint: this.cognitiveModuleCheckpointStore?.diagnostics() ?? null,
+    };
+  }
+  async cognitiveModuleHealth() {
+    return this.cognitiveModuleRuntime?.health() ?? { ok: true, modules: [] };
+  }
   embodimentDiagnostics(){ return this.embodiment.sensorDiagnosticsSnapshot(); }
   async stop(): Promise<void> {
-    // Stop is a durability boundary, not merely a scheduler shutdown.  The previous
-    // implementation closed runtime clocks/ledgers without forcing the core/world
-    // stores to persist the final in-memory cycle.  On mobile this is especially
-    // dangerous because checkpoint cadence is deliberately throttled.
+    // Stop is a durability boundary, not merely a scheduler shutdown. Attempt
+    // every cleanup obligation even if a module, checkpoint, or ledger fails.
+    const stopErrors: unknown[] = [];
+    const capture = (error: unknown) => { stopErrors.push(error); };
+
     this.stopping = true;
-    this.clockScheduler.stop();
-    await this.clockScheduler.drain();
-    await this.trustedShadowLearningScheduler?.drain();
-    await this.queue.catch(() => undefined);
+    try {
+      this.clockScheduler.stop();
+    } catch (error) {
+      capture(error);
+    }
+    try {
+      await this.clockScheduler.drain();
+    } catch (error) {
+      capture(error);
+    }
+    try {
+      await this.trustedShadowLearningScheduler?.drain();
+    } catch (error) {
+      capture(error);
+    }
+    await this.queue.catch(capture);
 
-    // All queued cognitive work has drained, so the final flush is now serialized
-    // with the same queue used by step()/tool calls.  This closes the crash/restart
-    // window without making every cycle pay a synchronous disk write.
-    await this.enqueue(async () => {
-      // Capture the closure before the single durable flush. A previous implementation
-      // flushed twice here, which is disproportionately expensive because a full core
-      // projection serializes several MB of state on a phone.
-      const runtimeView = this.core.runtimeClosureOperationalSnapshot();
-      this.runtimeClosure.durable({
-        at: Date.now(),
-        tick: runtimeView.tick,
-        stateTick: runtimeView.tick,
-        replaySignature: runtimeView.replaySignature,
-        continuousTick: runtimeView.continuous?.tick,
-        continuityProcessed: runtimeView.continuous?.processed,
-        memoryCount: runtimeView.memoryCount,
+    // All queued cognitive work has drained, so the final flush is serialized
+    // with the same queue used by step()/tool calls. Each persistence stage is
+    // isolated so a failed core checkpoint does not skip the world/sidecar work.
+    try {
+      await this.enqueue(async () => {
+        if (this.cognitiveModuleRuntime) {
+          try {
+            await this.cognitiveModuleRuntime.stopAll();
+          } catch (error) {
+            capture(error);
+            await this.journal.write('error', 'runtime.cognitive-modules.stop-failed', {
+              message: String(error instanceof Error ? error.message : error).slice(0, 180),
+            }).catch(() => {});
+          }
+        }
+
+        let runtimeView: ReturnType<OrganismCore['runtimeClosureOperationalSnapshot']> | null = null;
+        try {
+          // Capture the closure once; a full core projection serializes several MB
+          // on mobile, so shutdown must not pay for duplicate full-state flushes.
+          runtimeView = this.core.runtimeClosureOperationalSnapshot();
+          this.runtimeClosure.durable({
+            at: Date.now(),
+            tick: runtimeView.tick,
+            stateTick: runtimeView.tick,
+            replaySignature: runtimeView.replaySignature,
+            continuousTick: runtimeView.continuous?.tick,
+            continuityProcessed: runtimeView.continuous?.processed,
+            memoryCount: runtimeView.memoryCount,
+          });
+          this.core.setRuntimeClosure(this.runtimeClosure.snapshot());
+        } catch (error) {
+          capture(error);
+        }
+
+        try {
+          await this.core.flush();
+        } catch (error) {
+          capture(error);
+          await this.journal.write('error', 'runtime.stop.core-checkpoint-failed', {
+            message: String(error instanceof Error ? error.message : error).slice(0, 180),
+          }).catch(() => {});
+        }
+
+        try {
+          await this.persistCognitiveSpineSchedule();
+        } catch (error) {
+          capture(error);
+        }
+        try {
+          await this.persistRiskAwareRecovery();
+        } catch (error) {
+          capture(error);
+        }
+        try {
+          await this.checkpointWorld(true);
+        } catch (error) {
+          capture(error);
+        }
+        if (runtimeView) {
+          await this.journal.write('info', 'runtime.stop.durable', {
+            tick: runtimeView.tick,
+            worldTick: this.environment.snapshot().tick,
+          }).catch(() => {});
+        }
       });
-      this.core.setRuntimeClosure(this.runtimeClosure.snapshot());
-      await this.core.flush();
-      await this.persistCognitiveSpineSchedule();
-      await this.persistRiskAwareRecovery();
-      await this.checkpointWorld(true);
-      await this.journal.write('info', 'runtime.stop.durable', {
-        tick: runtimeView.tick,
-        worldTick: this.environment.snapshot().tick,
-      }).catch(() => {});
-    });
+    } catch (error) {
+      capture(error);
+    }
 
-    await this.continuityLedger.flush().catch(() => {});
-    await this.continuityLedger.close();
+    // Flush and close are separate obligations: close is still attempted when
+    // flush rejects, and neither error can erase module/core shutdown failures.
+    try {
+      await this.continuityLedger.flush();
+    } catch (error) {
+      capture(error);
+    }
+    try {
+      await this.continuityLedger.close();
+    } catch (error) {
+      capture(error);
+    }
+
+    if (stopErrors.length === 1) throw stopErrors[0];
+    if (stopErrors.length > 1) {
+      throw new AggregateError(stopErrors, 'runtime-stop-incomplete');
+    }
   }
 
   private async persistCognitiveSpineSchedule(): Promise<void> {

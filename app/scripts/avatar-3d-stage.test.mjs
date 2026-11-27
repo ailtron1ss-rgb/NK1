@@ -21,7 +21,14 @@ test("the 3D body consumes organism emotion, action, arousal/valence, gaze, slee
  assert.match(parent,/emotion=\{snap\.emotion\.label\} action=\{snap\.lastOption\}/);assert.match(parent,/arousal=\{snap\.emotion\.arousal\} valence=\{snap\.emotion\.valence\}/);assert.match(parent,/cognitiveLoad=\{snap\.needs\.cognitiveLoad\}/);assert.match(parent,/traits=\{snap\.identity\.traits\}/);assert.match(parent,/predictionError=\{snap\.predictionError\}/);assert.match(parent,/motorPlan=\{projection\.motorPlan\}/);assert.match(parent,/mouthPose=\{projection\.mouthPose\} thinking=\{thinking\} awake=\{snap\.awake\}/);
 });
 test("renderer resources and animation loops are disposed and high-DPI rendering is capped",async()=>{
- const stage=await readFile(stagePath,"utf8"),animation=await readFile(path.join(root,"src/components/avatar/avatarAnimationRuntime.ts"),"utf8");assert.match(stage,/setPixelRatio\(Math\.min\(window\.devicePixelRatio\|\|1,2\)\)/);assert.match(stage,/cancelAnimationFrame\(raf\)/);assert.match(stage,/Reset to bind pose before the mixer/);assert.match(stage,/applyAvatarAnimationFrame/);assert.match(stage,/rt\.activeClipAction/);assert.doesNotMatch(stage,/\|\|clips\[0\]\|\|null/);assert.ok(animation.includes("rig[_-]?kurisu"),"semantic rig fallback must remain in the extracted resolver");assert.match(stage,/observer\?\.disconnect\(\)/);assert.match(stage,/renderer\.dispose\(\)/);assert.match(stage,/disposeTree\(rt\.loaded\)/);assert.match(stage,/const gradient=getSharedAnimeGradientTexture\(\);disposeThreeObjectTree\(root,gradient\?\[gradient\]:\[\]\)/);
+ const stage=await readFile(stagePath,"utf8"),animation=await readFile(path.join(root,"src/components/avatar/avatarAnimationRuntime.ts"),"utf8");assert.match(stage,/setPixelRatio\(Math\.min\(window\.devicePixelRatio\|\|1,frameBudget\.snapshot\(\)\.maxPixelRatio,2\)\)/);
+ assert.match(stage,/changedBudget=frameBudget\.recordFrameCost\(renderCostMs\)/);
+ assert.match(stage,/setPixelRatio\(Math\.min\(window\.devicePixelRatio\|\|1,changedBudget\.maxPixelRatio,2\)\)/);
+ assert.match(stage,/document\.addEventListener\("visibilitychange",onVisibilityChange\)/);
+ assert.match(stage,/intersectionObserver\?\.observe\(el\)/);
+ assert.match(stage,/shouldRunAvatarRenderLoop\(pageVisible,intersectsViewport,!webglContextLost\)/);
+ assert.match(stage,/window\.setTimeout/);
+ assert.match(stage,/cancelScheduledFrame\(\)/);assert.match(stage,/cancelAnimationFrame\(raf\)/);assert.match(stage,/Reset to bind pose before the mixer/);assert.match(stage,/applyAvatarAnimationFrame/);assert.match(stage,/rt\.activeClipAction/);assert.doesNotMatch(stage,/\|\|clips\[0\]\|\|null/);assert.ok(animation.includes("rig[_-]?kurisu"),"semantic rig fallback must remain in the extracted resolver");assert.match(stage,/observer\?\.disconnect\(\)/);assert.match(stage,/renderer\.dispose\(\)/);assert.match(stage,/disposeTree\(rt\.loaded\)/);assert.match(stage,/const gradient=getSharedAnimeGradientTexture\(\);disposeThreeObjectTree\(root,gradient\?\[gradient\]:\[\]\)/);
 });
 test("Three.js lock metadata is pinned consistently",async()=>{
  const pkg=JSON.parse(await readFile(path.join(root,"package.json"),"utf8")),lock=JSON.parse(await readFile(path.join(root,"package-lock.json"),"utf8"));
@@ -176,4 +183,19 @@ test("3D uses the same shared motor projection but preserves raw organism action
  assert.match(stage,/headTilt:p\.motorPlan\.headTilt/);
  assert.match(stage,/applyAvatarAnimationFrame\(\{mixer:rt\.mixer,clips:rt\.clips,action:p\.action/);
  assert.match(parent,/motorPlan=\{projection\.motorPlan\}/);
+});
+
+
+test("VRM native eye gaze uses the official target and does not double-drive the head", async () => {
+ const stage = await readFile(stagePath, "utf8");
+ const adapter = await readFile(path.join(root, "src/components/avatar/vrmRuntimeAdapter.ts"), "utf8");
+ assert.match(stage, /getRawBoneNode\("head"\)/);
+ assert.match(stage, /vrm\.lookAt\.target=target/);
+ assert.match(stage, /vrm\.lookAt\.autoUpdate=true/);
+ assert.match(stage, /getFaceFrontQuaternion\(new THREE\.Quaternion\(\)\)/);
+ assert.match(stage, /applyQuaternion\(rt\.vrmLookAtFaceFront\)/);
+ assert.match(stage, /position\.lerp\(desiredOffset,gazeBlend\)/);
+ assert.match(stage, /resolveVrmLookAtTargetOffset\(p\.gazeX,p\.gazeY\)/);
+ assert.match(stage, /gazeViaLookAt:Boolean\(rt\.vrmLookAtTarget\)/);
+ assert.match(adapter, /frame\.gazeViaLookAt === true \? 0/);
 });

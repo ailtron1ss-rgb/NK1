@@ -1,0 +1,120 @@
+name: NK1 cognitive port read-only regression
+on:
+  pull_request:
+    branches: [workpass70-source]
+    paths:
+      - 'runtime/neuro-kurisu/src/organism/core/CognitiveSubsystemRegistry.ts'
+      - 'runtime/neuro-kurisu/src/organism/core/CognitiveSubsystemPorts.ts'
+      - 'runtime/neuro-kurisu/src/organism/core/CognitiveSubsystemFacade.ts'
+      - 'runtime/neuro-kurisu/src/organism/core/OrganismCore.ts'
+      - 'runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts'
+      - 'runtime/neuro-kurisu/src/organism/core/OrganismAspectFabric.ts'
+      - 'runtime/neuro-kurisu/tests/aspect-fabric-integration.mjs'
+      - 'runtime/neuro-kurisu/src/organism/core/MemorySubsystemRuntime.ts'
+      - 'runtime/neuro-kurisu/src/organism/memory/MemoryFabric.ts'
+      - 'runtime/neuro-kurisu/src/organism/developmental/MemorySubstrateCoordinator.ts'
+      - 'runtime/neuro-kurisu/src/organism/developmental/MemoryOS2.ts'
+      - 'runtime/neuro-kurisu/src/organism/memory/CanonicalMemoryLifecycleAuthority.ts'
+      - 'runtime/neuro-kurisu/tests/big-pass-52-memory-fabric.mjs'
+      - 'runtime/neuro-kurisu/tests/memory-substrate-coordinator.mjs'
+      - 'runtime/neuro-kurisu/tests/memory-subsystem-state-roundtrip-workpass570.mjs'
+      - 'runtime/neuro-kurisu/tests/p2855-r5-memory-lifecycle-authority.mjs'
+      - 'runtime/neuro-kurisu/tests/memoryos2-capacity-lifecycle-integrity.mjs'
+      - 'runtime/neuro-kurisu/tests/memory-encode-overflow-projection-reconcile.mjs'
+      - 'runtime/neuro-kurisu/tests/memory-restore-duplicate-identity.mjs'
+      - 'runtime/neuro-kurisu/tests/memory-restore-shape-hardening.mjs'
+      - 'runtime/neuro-kurisu/tests/memory-maintenance-projection-reconcile.mjs'
+      - 'runtime/neuro-kurisu/tests/memory-dedupe.mjs'
+      - 'runtime/neuro-kurisu/tests/p2690-memory-signal-fusion.mjs'
+      - 'runtime/neuro-kurisu/tests/p2690-retrieval-audit-links.mjs'
+      - 'runtime/neuro-kurisu/tests/p2855-r5-memory-lifecycle-ablation.mjs'
+      - 'runtime/neuro-kurisu/tests/memoryos2-metadata-retrieval.mjs'
+      - 'runtime/neuro-kurisu/tests/memory-semantic-vector-integrity.mjs'
+      - 'runtime/neuro-kurisu/tests/workpass71-unified-cycle-completeness.mjs'
+      - 'runtime/neuro-kurisu/tests/workpass321-expanded-cognitive-phase-spine.mjs'
+      - 'runtime/neuro-kurisu/tests/workpass325-core-eleven-phase-causal-loop.mjs'
+      - 'runtime/neuro-kurisu/tests/big-pass-161-cognitive-event-fabric.mjs'
+      - 'runtime/neuro-kurisu/tests/cognitive-stage-evidence-workpass83.mjs'
+      - 'runtime/neuro-kurisu/tests/cognitive-event-evidence-bridge-20261126.mjs'
+      - 'runtime/neuro-kurisu/tests/cognitive-subsystem-invocation-receipts-20261126.mjs'
+      - 'runtime/neuro-kurisu/tests/workpass641-cognitive-event-fabric-restore-integrity.mjs'
+      - 'runtime/neuro-kurisu/tests/cognitive-cycle-boundary-runtime-wiring.mjs'
+      - 'runtime/neuro-kurisu/tests/cognitive-cycle-boundary.mjs'
+      - 'runtime/neuro-kurisu/tests/cognitive-stage-attention-pair-workpass83.mjs'
+      - 'runtime/neuro-kurisu/tests/cognitive-subsystem-port-probes-20261124.mjs'
+      - '.github/workflows/nk1-cognitive-port-readonly-regression.yml'
+permissions:
+  contents: read
+concurrency:
+  group: nk1-cognitive-port-readonly-regression-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  readonly-port-regression:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: runtime/neuro-kurisu
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: runtime/neuro-kurisu/package-lock.json
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Read-only subsystem port regression
+        run: node --experimental-strip-types tests/cognitive-subsystem-port-probes-20261124.mjs
+      - name: Legacy subsystem accessor contract
+        run: node --experimental-strip-types tests/big-pass-48-subsystem-ports.mjs
+      - name: Seven-system graph and subsystem health aggregation
+        run: npm run test:aspect-fabric
+      - name: System contract cache and projection reuse
+        run: npm run test:big-pass-59
+      - name: Runtime typecheck
+        run: npm run typecheck
+      - name: Canonical MemoryFabric write and retrieval contract
+        run: npm run test:big-pass-52-memory-fabric
+      - name: Memory compatibility projection parity
+        run: npm run test:memory-substrate
+      - name: Single memory owner restore and lifecycle roundtrip
+        run: npm run test:memory-subsystem-state-roundtrip
+      - name: Memory lifecycle authority and hostile restore boundary
+        run: npm run test:r5:memory-lifecycle
+      - name: Memory duplicate and hostile restore integrity
+        run: npm run test:memory-restore-integrity
+      - name: MemoryOS2 capacity and lifecycle invariants
+        run: npm run test:memoryos2-capacity-lifecycle-integrity
+      - name: Memory encode overflow and projection reconciliation
+        run: npm run test:memory-encode-overflow-projection-reconcile
+      - name: Memory maintenance projection reconciliation
+        run: npm run test:memory-maintenance-projection-reconcile
+      - name: Memory duplicate and lifecycle authority regression
+        run: npm run test:r5:memory-authority-regression
+      - name: Memory lifecycle ablation guard
+        run: npm run test:r5:memory-lifecycle-ablation
+      - name: MemoryOS2 metadata retrieval integrity
+        run: npm run test:memoryos2-metadata-retrieval
+      - name: Memory semantic vector integrity
+        run: npm run test:memory-semantic-vector-integrity
+      - name: Full eleven-stage cycle completeness and v1 restore boundary
+        run: node --experimental-strip-types tests/workpass71-unified-cycle-completeness.mjs
+      - name: Eleven-stage CEF lineage and persistence roundtrip
+        run: node --experimental-strip-types tests/workpass321-expanded-cognitive-phase-spine.mjs
+      - name: Core eleven-phase causal call ordering
+        run: node --experimental-strip-types tests/workpass325-core-eleven-phase-causal-loop.mjs
+      - name: Real runtime CEF persistence and restart
+        run: node --experimental-strip-types tests/big-pass-161-cognitive-event-fabric.mjs
+      - name: Seven subsystem invocation receipt contract
+        run: node --experimental-strip-types tests/cognitive-subsystem-invocation-receipts-20261126.mjs
+      - name: RuntimeEvidenceBus to CEF cross-fabric causal bridge
+        run: node --experimental-strip-types tests/cognitive-event-evidence-bridge-20261126.mjs
+      - name: Real owner receipts projected into the current cognitive cycle
+        run: node --experimental-strip-types tests/cognitive-stage-evidence-workpass83.mjs
+      - name: CEF hostile restore and receipt replay integrity
+        run: node --experimental-strip-types tests/workpass641-cognitive-event-fabric-restore-integrity.mjs
+      - name: Runtime cognitive boundary wiring
+        run: node tests/cognitive-cycle-boundary-runtime-wiring.mjs
+      - name: Cognitive boundary malformed-input regression
+        run: node --experimental-strip-types tests/cognitive-cycle-boundary.mjs
+      - name: Same-cycle attention resource pairing
+        run: node --experimental-strip-types tests/cognitive-stage-attention-pair-workpass83.mjs

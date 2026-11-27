@@ -336,6 +336,7 @@ export interface PersistedShapeCurrent {
     continuousCognitiveFabric?: import('../system/ContinuousCognitiveFabric.ts').ContinuousCognitiveSnapshot;
     runtimeClosure?: import('../system/RuntimeClosureLedger.ts').RuntimeClosureSnapshot;
     memoryRetentionEconomy?: import('../system/MemoryRetentionEconomy.ts').MemoryRetentionEconomyState;
+    memoryWritePolicy?: import('../system/MemoryWritePolicy.ts').MemoryWritePolicySnapshot;
     behavioralInfluenceLedger?: import('../system/BehavioralInfluenceLedger.ts').BehavioralInfluenceLedgerState;
     emotionAppraisal?: import('../system/EmotionAppraisalEngine.ts').EmotionAppraisalState;
     worldModelEnsemble?: import('../system/WorldModelEnsembleController.ts').WorldEnsembleState;
@@ -1399,6 +1400,7 @@ export function migratePersistedOrganism(input: unknown): PersistedShapeCurrent 
       continuousCognitiveFabric: raw.system?.continuousCognitiveFabric ?? undefined,
       runtimeClosure: raw.system?.runtimeClosure ?? undefined,
       memoryRetentionEconomy: raw.system?.memoryRetentionEconomy ?? undefined,
+      memoryWritePolicy: raw.system?.memoryWritePolicy ?? undefined,
       behavioralInfluenceLedger: raw.system?.behavioralInfluenceLedger ?? undefined,
       emotionAppraisal: raw.system?.emotionAppraisal ?? undefined,
       worldModelEnsemble: raw.system?.worldModelEnsemble ?? undefined,

@@ -462,7 +462,9 @@ export class MemoryFabric {
 
   private replayMutationReceipt(receipt:MemoryLifecycleReceipt):MemoryItem2|Record<string,string>|boolean|void|null {
     if(receipt.resultKind==='boolean')return Boolean(receipt.booleanValue);
-    if(receipt.resultKind==='memory')return receipt.memoryId?this.findCanonical(receipt.memoryId):null;
+    // A replay must return the exact result revision originally produced by the command.
+    // Resolving through the current revision tip changes identity after a later correction.
+    if(receipt.resultKind==='memory')return receipt.memoryId?this.memoryOS.snapshotItem(receipt.memoryId):null;
     if(receipt.resultKind==='context'){const current=receipt.memoryId?this.findCanonical(receipt.memoryId):null;return structuredClone(current?.context??{});}
     if(receipt.resultKind==='null')return null;
     return undefined;
@@ -604,7 +606,7 @@ export class MemoryFabric {
     return frame;
   }
 
-  maintain(options:{pressure01?:number;maxItems?:number;tick?:number;force?:boolean;hotBudget?:number;warmBudget?:number;coldBudget?:number;identityTension01?:number;byteBudget?:number;protectedIds?:string[]}={}) {
+  maintain(options:{pressure01?:number;maxItems?:number;tick?:number;force?:boolean;hotBudget?:number;warmBudget?:number;coldBudget?:number;identityTension01?:number;byteBudget?:number;protectedIds?:string[];valueAdjustment?:(m:{id:string})=>number}={}) {
     const tick=Number.isFinite(options.tick)?Number(options.tick):-1;
     if(!options.force && tick>=0 && tick===this.lastMaintenanceTick)return {skipped:true,changed:0};
     const beforeSemanticIds=new Set(this.activeSemanticProjectionItems().map(item=>item.id));
@@ -612,7 +614,7 @@ export class MemoryFabric {
     const before=this.memoryOS.size();
     this.memoryOS.maintain({pressure01:options.pressure01,maxItems:options.maxItems});
     const byteBudget=Math.max(262144,Math.min(1048576,Math.floor(options.byteBudget??Math.max(262144,Math.min(1048576,Math.floor((options.maxItems??768)*720))))));
-    const byteBudgetResult=this.memoryOS.enforceByteBudget({maxBytes:byteBudget,tick,protectedIds:options.protectedIds,reason:'memory-fabric-byte-budget'});
+    const byteBudgetResult=this.memoryOS.enforceByteBudget({maxBytes:byteBudget,tick,protectedIds:options.protectedIds,reason:'memory-fabric-byte-budget',...(options.valueAdjustment?{valueAdjustment:options.valueAdjustment}:{})});
     const afterCanonicalIds=new Set(this.memoryOS.canonicalIdsSnapshot());
     const reconciledIds=new Set(this.reconcileMemoryRemovalReceipts());
     const evictedIds=[...beforeCanonicalIds].filter(id=>!afterCanonicalIds.has(id));

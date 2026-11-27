@@ -1,0 +1,54 @@
+name: NK1 Runtime Wiring Census
+
+on:
+  push:
+    branches: [workpass70-source]
+    paths:
+      - '.github/workflows/nk1-runtime-wiring-census.yml'
+      - 'runtime/neuro-kurisu/scripts/audit-runtime-wiring.mjs'
+      - 'runtime/neuro-kurisu/scripts/runtime-wiring-baseline.json'
+      - 'runtime/neuro-kurisu/tests/runtime-wiring-census.mjs'
+      - 'runtime/neuro-kurisu/src/**'
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    branches: [workpass70-source]
+    paths:
+      - '.github/workflows/nk1-runtime-wiring-census.yml'
+      - 'runtime/neuro-kurisu/scripts/audit-runtime-wiring.mjs'
+      - 'runtime/neuro-kurisu/scripts/runtime-wiring-baseline.json'
+      - 'runtime/neuro-kurisu/tests/runtime-wiring-census.mjs'
+      - 'runtime/neuro-kurisu/src/**'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nk1-runtime-wiring-census-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  wiring-census:
+    name: Canonical module reachability
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout pull request merge commit
+        uses: actions/checkout@v7
+      - name: Set up Node.js 24
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - name: Verify Node.js runtime
+        run: node --version
+      - name: Report module reachability
+        working-directory: runtime/neuro-kurisu
+        run: node scripts/audit-runtime-wiring.mjs
+      # The baseline is a ceiling: a new unconnected module fails this step, while a
+      # resolved orphan is reported and must then be removed from the baseline.
+      - name: Reject new unconnected modules
+        working-directory: runtime/neuro-kurisu
+        run: node scripts/audit-runtime-wiring.mjs --strict --baseline scripts/runtime-wiring-baseline.json
+      - name: Verify census contract
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/runtime-wiring-census.mjs

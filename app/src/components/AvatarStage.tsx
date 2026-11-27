@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { EmotionLabel, OrganismSnapshot } from "@/organism/types";
 import { neuroApiUrl } from "@/neuro-kurisu/api";
 import {
@@ -21,6 +21,8 @@ import {
 import { resolveSemanticGestureIntent } from "./avatar/semanticGestureIntent";
 import type { SwitchPlan } from "./avatar/embodimentSwitch";
 import { buildAvatarRenderProjection } from "./avatar/avatarRenderProjection.ts";
+import { avatarRendererPresentation } from "./avatar/avatarRendererPresentation.ts";
+import { createAvatarPresentationReceipt, describeAvatarFrameStatus, isCurrentAvatarPresentationReceipt, type AvatarPresentationReceiptV1 } from "./avatar/avatarPresentationReceipt.ts";
 import { cn } from "@/lib/utils";
 import { LegacySpriteDeck } from "@/legacy/avatar/LegacySpriteDeck";
 import { KurisuOriginalStage } from "./KurisuOriginalStage";
@@ -116,6 +118,7 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
   const intentStateVersionRef = useRef(0);
   const latestIntentStateVersionRef = useRef(0);
   const [intentAck, setIntentAck] = useState<{ stateVersion: number; status: "parameters-observed" | "accepted-unverified"; observedCount: number; expressionStatus: Live2DActionStatus; motionStatus: Live2DActionStatus } | null>(null);
+  const [presentationReceipt, setPresentationReceipt] = useState<AvatarPresentationReceiptV1 | null>(null);
   const motionIntentKeyRef = useRef("");
   const motionIntentTokenRef = useRef(0);
   const activeSpeechSessionRef = useRef<BrowserSpeechSession | null>(null);
@@ -123,18 +126,24 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
   const speechPhaseRef = useRef<SpeechPhase>("idle");
   const [live, setLive] = useState(false);
   const [viewerReadyRevision, setViewerReadyRevision] = useState(0);
-  // Native speech is opt-in. Opening the app never starts speaking historical chat.
-  const [voiceEnabled, setVoiceEnabled] = useState(() => readAvatarPreference("kurisu-avatar-voice-enabled") === "true");
-  const [voiceName, setVoiceName] = useState(() => readAvatarPreference("kurisu-avatar-voice-name") ?? "");
+  // First render must be identical on the server and in the browser. Browser-only
+  // preferences are restored after hydration, never inside a useState initializer.
+  const [preferencesLoaded, setPreferencesLoaded] = useState(false);
+  const [voiceEnabled, setVoiceEnabled] = useState(false);
+  const [voiceName, setVoiceName] = useState("");
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
-  const [voiceStatus, setVoiceStatus] = useState<"off" | "ready" | "unsupported" | "speaking" | "unknown">(() => typeof window !== "undefined" && "speechSynthesis" in window ? "off" : "unsupported");
+  const [voiceStatus, setVoiceStatus] = useState<"off" | "ready" | "unsupported" | "speaking" | "unknown">("off");
   const [mouthPose, setMouthPose] = useState<MouthPose>(CLOSED_MOUTH);
   const [nativeSpeechProviderEvent, setNativeSpeechProviderEvent] = useState<NativeSpeechProviderEvent | null>(null);
   const [nativeSpeechConnection, setNativeSpeechConnection] = useState<NativeSpeechProviderConnection>("connecting");
-  const [mode, setMode] = useState<ViewMode>(() => {
-    const saved = readAvatarPreference("kurisu-avatar-mode");
-    return saved === "legacy" || saved === "original" || saved === "3d" ? saved : "live2d";
-  });
+  const [mode, setMode] = useState<ViewMode>("live2d");
+  const live2dPresentation = avatarRendererPresentation("live2d");
+  const legacyPresentation = avatarRendererPresentation("legacy");
+  const originalPresentation = avatarRendererPresentation("original");
+  const threeDPresentation = avatarRendererPresentation("3d");
+  const activeModePresentation = avatarRendererPresentation(mode);
+  const currentPresentationReceipt = isCurrentAvatarPresentationReceipt(presentationReceipt, mode, snap.tick) ? presentationReceipt : null;
+  const presentationStatus = describeAvatarFrameStatus(mode, snap.tick, currentPresentationReceipt);
   // Aspect 11: the last planned renderer handoff, kept for truthful UI reporting.
   const [bodySwitch, setBodySwitch] = useState<{ from: ViewMode; to: ViewMode; plan: SwitchPlan } | null>(null);
   const [switchOpacity, setSwitchOpacity] = useState(1);
@@ -151,6 +160,10 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
   const latestSnapRef = useRef(snap);
   const mouthPoseRef = useRef(mouthPose);
   const latestProjectionRef = useRef<ReturnType<typeof buildAvatarRenderProjection> | null>(null);
+  const recordPresentationReceipt = useCallback((receipt: AvatarPresentationReceiptV1) => {
+    if (receipt.tick !== latestSnapRef.current.tick) return;
+    setPresentationReceipt(receipt);
+  }, []);
   const lastTurn = snap.chat[snap.chat.length - 1];
   const turnKey = lastTurn?.role === "kurisu" ? `${String(lastTurn.id ?? lastTurn.at)}:${String(lastTurn.at)}:${lastTurn.text}` : "";
   const activeProjectionSession = activeSpeechSessionRef.current;
@@ -174,6 +187,13 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
     voiceEmphasis: activeBrowserUtterance ? Number(projectionSession?.voiceEmphasis ?? 0) : 0,
   });
   latestProjectionRef.current = projection;
+  latestSnapRef.current = snap;
+
+  useEffect(() => {
+    // A receipt belongs to one renderer instance and one organism tick only.
+    // Switching mode or advancing/restoring the canonical tick requires a new receipt.
+    setPresentationReceipt(null);
+  }, [mode, snap.tick]);
 
   const stopSpeech = () => {
     const active = activeSpeechSessionRef.current;
@@ -218,6 +238,12 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
         const observed = isRecord(ev.data.observedParameters) ? ev.data.observedParameters : {};
         const observedCount = Object.values(observed).filter((value) => typeof value === "number" && Number.isFinite(value)).length;
         setIntentAck({ stateVersion: version, status: ev.data.status, observedCount, expressionStatus: ev.data.expressionStatus, motionStatus: ev.data.motionStatus });
+        const receiptStage = ev.data.status === "parameters-observed" ? "parameters-observed" : "accepted-unverified";
+        const frameTick = ev.data.frameTick;
+        if (typeof frameTick === "number" && Number.isSafeInteger(frameTick) && frameTick >= 0) {
+          const frameReceipt = createAvatarPresentationReceipt("live2d", frameTick, receiptStage);
+          if (frameReceipt && frameReceipt.tick === latestProjectionRef.current?.tick) setPresentationReceipt(frameReceipt);
+        }
       }
       if (ev.data.type === "live2d_error") {
         if (typeof ev.data.error !== "string" || ev.data.error.length > 512) return;
@@ -230,11 +256,21 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
   }, []);
 
   useEffect(() => {
+    const savedMode = readAvatarPreference("kurisu-avatar-mode");
+    if (savedMode === "legacy" || savedMode === "original" || savedMode === "3d") setMode(savedMode);
+    setVoiceEnabled(readAvatarPreference("kurisu-avatar-voice-enabled") === "true");
+    setVoiceName(readAvatarPreference("kurisu-avatar-voice-name") ?? "");
+    setVoiceStatus("speechSynthesis" in window ? "off" : "unsupported");
+    setPreferencesLoaded(true);
+  }, []);
+
+  useEffect(() => {
+    if (!preferencesLoaded) return;
     // Each preference is best-effort: a blocked storage write must not prevent avatar/voice controls.
     writeAvatarPreference("kurisu-avatar-mode", mode);
     writeAvatarPreference("kurisu-avatar-voice-enabled", String(voiceEnabled));
     writeAvatarPreference("kurisu-avatar-voice-name", voiceName);
-  }, [mode, voiceEnabled, voiceName]);
+  }, [mode, voiceEnabled, voiceName, preferencesLoaded]);
 
   useEffect(() => { latestSnapRef.current = snap; mouthPoseRef.current = mouthPose; }, [snap, mouthPose]);
 
@@ -271,7 +307,7 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
     }
   }, [snap, thinking, voiceStatus]);
 
-  // Aspect 11: plan a renderer handoff whenever the body changes. The projection is
+  // Aspect 11: plan a renderer handoff whenever the bodySwitch changes. The projection is
   // monotonic and derived from the canonical snapshot; it never mutates organism state.
   // Only channels the destination declares are applied, and the crossfade is bounded.
   //
@@ -533,6 +569,7 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
       type: "kurisu_embodiment_intent",
       protocolVersion: 1,
       stateVersion: ++intentStateVersionRef.current,
+      frameTick: currentProjection.tick,
       sentAtEpochMs: Date.now(),
       speechEventId: currentProjection.speech.speechEventId,
       audioClockId: currentProjection.speech.audioClockId,
@@ -557,18 +594,25 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
       voiceEmphasis: currentProjection.voiceEmphasis,
     };
     latestIntentStateVersionRef.current = intent.stateVersion;
+    setPresentationReceipt((current) => current?.renderer === "live2d" ? null : current);
     win.postMessage(intent, window.location.origin);
   }, [snap, thinking, live, viewerReadyRevision, mode, voiceStatus, mouthPose, turnKey]);
 
   return (
     <div className="relative overflow-hidden rounded-xl bg-elevated">
-      <div className="absolute left-3 top-3 z-30 flex max-w-[calc(100%-1.5rem)] flex-wrap gap-1 rounded-md border border-border bg-black/60 p-1 backdrop-blur">
-        <button type="button" onClick={() => setMode("live2d")} className={cn("rounded px-2 py-1 text-[10px] font-mono", mode === "live2d" ? "bg-accent text-accent-fg" : "text-white/70")}>Live2D</button>
-        <button type="button" onClick={() => setMode("legacy")} className={cn("rounded px-2 py-1 text-[10px] font-mono", mode === "legacy" ? "bg-accent text-accent-fg" : "text-white/70")}>Legacy</button>
-        <button type="button" onClick={() => setMode("original")} className={cn("rounded px-2 py-1 text-[10px] font-mono", mode === "original" ? "bg-accent text-accent-fg" : "text-white/70")}>NK1 Original</button>
-        <button type="button" onClick={() => setMode("3d")} className={cn("rounded px-2 py-1 text-[10px] font-mono", mode === "3d" ? "bg-accent text-accent-fg" : "text-white/70")}>3D · preview</button>
-        <button type="button" aria-pressed={voiceEnabled} onClick={() => { if (voiceEnabled) stopSpeech(); setVoiceEnabled((value) => !value); }} disabled={voiceStatus === "unsupported"} className={cn("rounded px-2 py-1 text-[10px] font-mono", voiceEnabled ? "bg-accent text-accent-fg" : "text-white/70")}>{voiceEnabled ? "Голос: вкл." : "Голос: выкл."}</button>
-        {voiceEnabled && voices.length > 0 ? <select aria-label="Голос Курису" value={voiceName} onChange={(event) => { stopSpeech(); setVoiceName(event.target.value); }} className="max-w-32 rounded bg-black/70 px-1 py-1 text-[10px] text-white"><option value="">Авто</option>{voices.map((voice) => <option key={`${voice.name}:${voice.lang}`} value={voice.name}>{voice.name} · {voice.lang}</option>)}</select> : null}
+      <div role="toolbar" aria-label="Управление аватаром" className="relative z-30 flex w-full flex-wrap items-center gap-2 border-b border-border bg-black/70 p-2 backdrop-blur">
+        <div role="group" aria-label="Режим отображения персонажа" className="flex flex-wrap items-center gap-1">
+          <button type="button" aria-label={live2dPresentation.ariaLabel} title={live2dPresentation.title} aria-pressed={mode === "live2d"} onClick={() => setMode("live2d")} className={cn("min-h-11 rounded px-3 py-2 text-xs font-mono focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent", mode === "live2d" ? "bg-accent text-accent-fg" : "text-white/80")}>Live2D</button>
+          <button type="button" aria-label={legacyPresentation.ariaLabel} title={legacyPresentation.title} aria-pressed={mode === "legacy"} onClick={() => setMode("legacy")} className={cn("min-h-11 rounded px-3 py-2 text-xs font-mono focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent", mode === "legacy" ? "bg-accent text-accent-fg" : "text-white/80")}>Legacy</button>
+          <button type="button" aria-label={originalPresentation.ariaLabel} title={originalPresentation.title} aria-pressed={mode === "original"} onClick={() => setMode("original")} className={cn("min-h-11 rounded px-3 py-2 text-xs font-mono focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent", mode === "original" ? "bg-accent text-accent-fg" : "text-white/80")}>NK1 Original</button>
+          <button type="button" aria-label={threeDPresentation.ariaLabel} title={threeDPresentation.title} aria-pressed={mode === "3d"} onClick={() => setMode("3d")} className={cn("min-h-11 rounded px-3 py-2 text-xs font-mono focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent", mode === "3d" ? "bg-accent text-accent-fg" : "text-white/80")}>3D · предпросмотр</button>
+        </div>
+        <div role="status" aria-live="polite" aria-label="Тип выбранного тела и подтверждение кадра" className="basis-full space-y-0.5 px-2 text-[10px] leading-4 text-white/70 md:basis-full md:ml-1">
+          <span className="block">{activeModePresentation.description}</span>
+          <span className="block text-white/55 tabular-nums">{presentationStatus}</span>
+        </div>
+        <button type="button" aria-label="Включить или выключить голос Курису" aria-pressed={voiceEnabled} onClick={() => { if (voiceEnabled) stopSpeech(); setVoiceEnabled((value) => !value); }} disabled={voiceStatus === "unsupported"} className={cn("min-h-11 rounded px-3 py-2 text-xs font-mono focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent", voiceEnabled ? "bg-accent text-accent-fg" : "text-white/80")}>{voiceEnabled ? "Голос: вкл." : "Голос: выкл."}</button>
+        {voiceEnabled && voices.length > 0 ? <select aria-label="Голос Курису" value={voiceName} onChange={(event) => { stopSpeech(); setVoiceName(event.target.value); }} className="min-h-11 max-w-40 rounded bg-black/70 px-3 py-2 text-xs text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"><option value="">Авто</option>{voices.map((voice) => <option key={`${voice.name}:${voice.lang}`} value={voice.name}>{voice.name} · {voice.lang}</option>)}</select> : null}
       </div>
       <div className="transition-opacity duration-200 ease-out" style={{ opacity: switchOpacity }}>
       {mode === "legacy" ? <LegacySpriteDeck emotion={snap.emotion.label} action={snap.lastOption} thinking={thinking} speaking={projection.speaking || thinking || projection.hasFreshTurn} /> : mode === "original" ? <KurisuOriginalStage
@@ -588,21 +632,23 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
           }}
           bodyChannels={{ ...motionChannelsRef.current, ...projection.bodyChannels }}
           avatarBrainChannels={projection.brainChannels ?? undefined}
-        /> : mode === "3d" ? <Avatar3DStage emotion={snap.emotion.label} action={snap.lastOption} motorPlan={projection.motorPlan} arousal={snap.emotion.arousal} valence={snap.emotion.valence} dominance={snap.emotion.dominance} energy={snap.needs.energy} cognitiveLoad={snap.needs.cognitiveLoad} uncertainty={snap.needs.uncertainty} socialNeed={snap.needs.socialNeed} novelty={snap.needs.novelty} goalPressure={snap.needs.goalPressure} curiosity={snap.curiosity} predictionError={snap.predictionError} traits={snap.identity.traits} gazeX={projection.gaze.x} gazeY={projection.gaze.y} speaking={projection.speaking} mouthPose={projection.mouthPose} thinking={thinking} awake={snap.awake} bodyChannels={{ ...motionChannelsRef.current, ...projection.bodyChannels }} avatarBrainFrame={projection.brainFrame ?? undefined} onReturnTo2D={() => setMode("live2d")} /> : <>
+          frameTick={snap.tick}
+          onFrameReceipt={recordPresentationReceipt}
+        /> : mode === "3d" ? <Avatar3DStage emotion={snap.emotion.label} action={snap.lastOption} motorPlan={projection.motorPlan} arousal={snap.emotion.arousal} valence={snap.emotion.valence} dominance={snap.emotion.dominance} energy={snap.needs.energy} cognitiveLoad={snap.needs.cognitiveLoad} uncertainty={snap.needs.uncertainty} socialNeed={snap.needs.socialNeed} novelty={snap.needs.novelty} goalPressure={snap.needs.goalPressure} curiosity={snap.curiosity} predictionError={snap.predictionError} traits={snap.identity.traits} gazeX={projection.gaze.x} gazeY={projection.gaze.y} speaking={projection.speaking} mouthPose={projection.mouthPose} thinking={thinking} awake={snap.awake} bodyChannels={{ ...motionChannelsRef.current, ...projection.bodyChannels }} avatarBrainFrame={projection.brainFrame ?? undefined} frameTick={snap.tick} onFrameReceipt={recordPresentationReceipt} onReturnTo2D={() => setMode("live2d")} /> : <>
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_30%,color-mix(in_oklab,var(--color-ember)_18%,transparent),transparent_62%)]" />
         <iframe ref={frame} title="Kurisu Live2D" src="/live2d/viewer.html?profile=auto" className={cn("relative z-10 h-[320px] w-full border-0 transition-opacity duration-300 md:h-[420px]", live ? "opacity-100" : "opacity-0")} allow="autoplay" />
-        {!live ? <div className="absolute inset-0 z-[11] flex items-center justify-center p-6"><div className="max-w-sm rounded-xl border border-border bg-bg/85 p-4 text-center backdrop-blur"><p className="text-xs font-medium uppercase tracking-wider text-subtle">Live2D unavailable</p><p className="mt-1 text-sm text-fg">Переключитесь на Legacy — там используются реальные legacy sprite-ассеты.</p><button type="button" onClick={() => setMode("legacy")} className="mt-3 rounded-md border border-border px-3 py-1.5 text-xs text-fg hover:bg-elevated">Open Legacy</button></div></div> : null}
+        {!live ? <div className="absolute inset-0 z-[11] flex items-center justify-center p-6"><div className="max-w-sm rounded-xl border border-border bg-bg/85 p-4 text-center backdrop-blur"><p className="text-xs font-medium uppercase tracking-wider text-subtle">Модель Live2D недоступна</p><p className="mt-1 text-sm text-fg">Переключитесь на Legacy — там используются реальные legacy sprite-ассеты.</p><button type="button" onClick={() => setMode("legacy")} className="mt-3 rounded-md border border-border px-3 py-1.5 text-xs text-fg hover:bg-elevated">Открыть Legacy</button></div></div> : null}
         <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 flex items-end justify-between p-4">
-          <div><p className="font-display text-lg tracking-tight text-fg">Kurisu</p><p className="text-xs text-muted tabular-nums">{snap.awake ? "awake" : "sleep"} · {snap.emotion.label} · t{snap.tick}</p><p className="text-[10px] text-muted">{voiceStatus === "unsupported" ? "голос недоступен в этом браузере" : voiceStatus === "unknown" ? "исход воспроизведения неизвестен" : voiceStatus === "speaking" ? "говорит · виземы привязаны к временной шкале речи" : voiceEnabled ? "голос включён · речь запускается для новых реплик" : "голос выключен"}</p><p className="text-[10px] text-muted">Termux provider: {nativeSpeechConnection === "connected" ? "подключён" : nativeSpeechConnection === "reconnecting" ? "переподключение" : nativeSpeechConnection === "closed" ? "отключён" : "подключение"}</p>{nativeSpeechProviderEvent ? <p className="max-w-[min(75vw,420px)] text-[10px] text-muted">{describeNativeSpeechProviderStatus(nativeSpeechProviderEvent)}</p> : null}{intentAck ? <p className="text-[9px] text-muted tabular-nums">intent #{intentAck.stateVersion} · {intentAck.status === "parameters-observed" ? `параметры: ${intentAck.observedCount}/6` : "принятие без readback"} · expr:{intentAck.expressionStatus} · motion:{intentAck.motionStatus} · partial</p> : null}</div>
-          <span className="rounded-full border border-border bg-bg/70 px-2.5 py-1 text-xs uppercase tracking-wider text-muted">{live ? "live2d" : "live2d unavailable"}</span>
+          <div><p className="font-display text-lg tracking-tight text-fg">Kurisu</p><p className="text-xs text-muted tabular-nums">{snap.awake ? "Бодрствует" : "Спит"} · {snap.emotion.label} · t{snap.tick}</p><p className="text-[10px] text-muted">{voiceStatus === "unsupported" ? "голос недоступен в этом браузере" : voiceStatus === "unknown" ? "исход воспроизведения неизвестен" : voiceStatus === "speaking" ? "говорит · виземы привязаны к временной шкале речи" : voiceEnabled ? "голос включён · речь запускается для новых реплик" : "голос выключен"}</p><p className="text-[10px] text-muted">Провайдер речи Termux: {nativeSpeechConnection === "connected" ? "подключён" : nativeSpeechConnection === "reconnecting" ? "переподключение" : nativeSpeechConnection === "closed" ? "отключён" : "подключение"}</p>{nativeSpeechProviderEvent ? <p className="max-w-[min(75vw,420px)] text-[10px] text-muted">{describeNativeSpeechProviderStatus(nativeSpeechProviderEvent)}</p> : null}{intentAck ? <p className="text-[9px] text-muted tabular-nums">intent #{intentAck.stateVersion} · {intentAck.status === "parameters-observed" ? `параметры: ${intentAck.observedCount}/6` : "принятие без readback"} · expr:{intentAck.expressionStatus} · motion:{intentAck.motionStatus} · partial</p> : null}</div>
+          <span className="rounded-full border border-border bg-bg/70 px-2.5 py-1 text-xs uppercase tracking-wider text-muted">{live ? "Live2D" : "Live2D недоступна"}</span>
         </div>
       </>}
       </div>
       {bodySwitch ? (
         <p className="pointer-events-none absolute bottom-1 left-3 z-30 text-[9px] text-muted tabular-nums">
-          body {bodySwitch.from}→{bodySwitch.to} · rev {bodySwitch.plan.stateRevision}
-          {bodySwitch.plan.requiresNeutralRebind ? " · rebind" : ""}
-          {bodySwitch.plan.unsupportedChannels.length > 0 ? ` · unsupported: ${bodySwitch.plan.unsupportedChannels.join(",")}` : ""}
+          body {bodySwitch.from}→{bodySwitch.to} · ревизия {bodySwitch.plan.stateRevision}
+          {bodySwitch.plan.requiresNeutralRebind ? " · перепривязка" : ""}
+          {bodySwitch.plan.unsupportedChannels.length > 0 ? ` · неподдерживаемые: ${bodySwitch.plan.unsupportedChannels.join(",")}` : ""}
         </p>
       ) : null}
     </div>

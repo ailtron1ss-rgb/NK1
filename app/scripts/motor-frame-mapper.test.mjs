@@ -34,6 +34,27 @@ test("maps measured motor angles through explicit calibration, not target intent
   assert.equal(result.rendererPoseVerified, false);
 });
 
+test("maps independently calibrated digit joints into per-digit curl channels", () => {
+  const digitProfile = {
+    schemaVersion: 1,
+    calibrationId: "vrm-finger-rig-sha256:digits",
+    mappings: [
+      { jointId: "left_index", channel: "leftIndexCurl", scale: 2, offset: 0, min: -1, max: 1 },
+      { jointId: "right_thumb", channel: "rightThumbCurl", scale: 1, offset: 0, min: -1, max: 1 },
+    ],
+  };
+  const result = mapMotorFrameToSemanticPose(frame({
+    joints: {
+      left_index: { id: "left_index", angleRad: -0.4, targetAngleRad: -0.9, velocityRadPerSec: 0.1, accelerationRadPerSec2: 0.1, available: true },
+      right_thumb: { id: "right_thumb", angleRad: 0.25, targetAngleRad: 0.5, velocityRadPerSec: 0, accelerationRadPerSec2: 0, available: true },
+    },
+  }), digitProfile);
+  assert.equal(result.accepted, true);
+  assert.deepEqual(result.pose, { leftIndexCurl: -0.8, rightThumbCurl: 0.25 });
+  assert.deepEqual(result.mappedJointIds, ["left_index", "right_thumb"]);
+  assert.equal(result.rendererPoseVerified, false);
+});
+
 test("rejects stale, duplicate, rewound and over-age frames", () => {
   assert.equal(mapMotorFrameToSemanticPose(frame(), profile, { previous: { tick: 7, atMs: 120 } }).reason, "stale-or-rewound-motor-frame");
   assert.equal(mapMotorFrameToSemanticPose(frame({ tick: 8, atMs: 119 }), profile, { previous: { tick: 7, atMs: 120 } }).reason, "stale-or-rewound-motor-frame");

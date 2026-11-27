@@ -1,0 +1,38 @@
+name: NK1 revision materialization after durable commit
+on:
+  pull_request:
+    branches: [workpass70-source]
+    paths:
+      - 'runtime/neuro-kurisu/src/organism/core/PersistenceProjectionCoordinator.ts'
+      - 'runtime/neuro-kurisu/src/organism/core/OrganismCore.ts'
+      - 'runtime/neuro-kurisu/src/organism/persistence/RevisionGraph.ts'
+      - 'runtime/neuro-kurisu/src/organism/persistence/RevisionTokenRegistry.ts'
+      - 'runtime/neuro-kurisu/tests/revision-materialization-after-commit-20261126.mjs'
+      - '.github/workflows/nk1-revision-materialization-after-commit.yml'
+permissions:
+  contents: read
+concurrency:
+  group: nk1-revision-materialization-after-commit-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  revision-materialization:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: runtime/neuro-kurisu
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: runtime/neuro-kurisu/package-lock.json
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Do not certify projection materialization before the durable Core commit (red-first)
+        run: node --experimental-strip-types tests/revision-materialization-after-commit-20261126.mjs
+      - name: Existing revision graph and token persistence regression
+        run: npm run test:revision-graph
+      - name: Existing projection coordinator regression
+        run: npm run test:big-pass-57-projection
+      - name: Runtime typecheck
+        run: npm run typecheck

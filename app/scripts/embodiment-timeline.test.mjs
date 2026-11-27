@@ -134,6 +134,15 @@ test("a late SpeechSynthesis elapsedTime cannot rewind the published audio clock
   assert.equal(sampleMonotonicAudioClock(anchored.highWaterMs, anchored.anchorElapsedMs, anchored.anchorPerformanceAtMs, 1450), 750);
 });
 
+test("the intent envelope accepts an optional canonical tick distinct from the intent sequence", () => {
+  assert.equal(isEmbodimentIntentV1(intent({ frameTick: 42 })), true);
+  assert.equal(isEmbodimentIntentV1(intent({ frameTick: 0 })), true);
+  assert.equal(isEmbodimentIntentV1(intent({ frameTick: -1 })), false);
+  assert.equal(isEmbodimentIntentV1(intent({ frameTick: 1.5 })), false);
+  assert.equal(isEmbodimentIntentV1(intent({ frameTick: Number.NaN })), false);
+  assert.equal(isEmbodimentIntentV1(intent()), true, "protocol v1 remains backward compatible when frameTick is omitted");
+});
+
 test("the intent envelope requires a speech identity and audio clock while speaking", () => {
   assert.equal(isEmbodimentIntentV1(intent()), true);
   assert.equal(isEmbodimentIntentV1(intent({ stateVersion: 0 })), false);

@@ -72,6 +72,8 @@ export interface AvatarRenderProjectionInput {
 }
 
 export interface AvatarRenderProjection {
+  /** Canonical state revision; never reuse the Live2D intent transport sequence as this tick. */
+  tick: number;
   /** Raw organism option; 3D clip selection must continue to use this value. */
   action: ActionKind;
   motorPlan: AvatarMotorIntentPlan;
@@ -150,6 +152,7 @@ export function buildAvatarRenderProjection(input: AvatarRenderProjectionInput):
     : plannedMotorPlan;
 
   return {
+    tick: snapshot.tick,
     action,
     motorPlan,
     brainFrame,
