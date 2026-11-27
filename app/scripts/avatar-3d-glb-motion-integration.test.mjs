@@ -29,7 +29,9 @@ test("generic GLB renderer consumes the expressive face and secondary motion ada
   assert.match(stage, /XPBD-частицы ждут подходящей топологии/);
   assert.match(stage, /Вторичная динамика не подключена/);
   assert.match(stage, /resolveAvatarCameraFraming/);
-  assert.match(stage, /normalizedBounds=new THREE.Box3\(\)\.setFromObject\(root\)/);
+  assert.match(stage, /node\.skeleton\?\.update\?\.\(\)/, "skinned skeleton palettes refresh before camera bounds");
+  assert.match(stage, /node\.computeBoundingBox\?\.\(\)/, "skinned mesh bounds are recomputed after pose updates");
+  assert.match(stage, /normalizedBounds=new THREE\.Box3\(\)\.setFromObject\(root,true\)/, "camera framing uses pose-aware skinned vertex bounds");
   assert.match(stage, /avatarVisibleMeshCount/);
   assert.match(stage, /avatarRenderCalls/);
   assert.match(stage, /function applyAvatarCameraFit\(rt:Runtime,bounds:any\)/);
