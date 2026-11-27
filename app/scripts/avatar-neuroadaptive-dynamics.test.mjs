@@ -138,4 +138,24 @@ test("low quality and sleep attenuate pose-driven secondary motion, not only idl
 test("semantic side markers embedded before chain segments remain directional", () => {
   assert.equal(dynamics.resolveAvatarDynamicsBoneRole("CoatPanelL_Mid")?.side, -1);
   assert.equal(dynamics.resolveAvatarDynamicsBoneRole("MantleTailR_Tip")?.side, 1);
+  assert.equal(dynamics.resolveAvatarDynamicsBoneRole("SleeveFollowL")?.side, -1);
+  assert.equal(dynamics.resolveAvatarDynamicsBoneRole("SleeveCuffR")?.side, 1);
+  assert.equal(dynamics.resolveAvatarDynamicsBoneRole("RibbonL_Tip")?.side, -1);
+});
+
+
+test("unilateral sleeve names use their side and neutral sleeves average both body channels", () => {
+  const bones = [
+    { key: "left", name: "SleeveFollowL" },
+    { key: "right", name: "SleeveFollowR" },
+    { key: "neutral", name: "SleeveFollow" },
+  ];
+  const frame = { ...baseFrame, bodyChannels: { leftShoulder: -0.2, rightShoulder: 0.4, leftWrist: 0.2, rightWrist: 0.6 } };
+  const solver = new dynamics.AvatarNeuroAdaptiveDynamics();
+  const result = solver.step(bones, frame);
+  assert.ok(result.get("left").z < result.get("right").z);
+  assert.ok(result.get("neutral").z > result.get("left").z);
+  assert.ok(result.get("neutral").z < result.get("right").z);
+  assert.ok(result.get("neutral").y > result.get("left").y);
+  assert.ok(result.get("neutral").y < result.get("right").y);
 });
