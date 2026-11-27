@@ -152,7 +152,7 @@ try {
   }, undefined, { timeout: 10_000 });
   report.modelPixelAudit = await canvas.evaluate((element) => JSON.parse(element.dataset.avatarPixelAudit || "null"));
   const pixelPng = await canvas.evaluate((element) => element.dataset.avatarPixelAuditPng || "");
-  if (/^data:image\\/png;base64,/.test(pixelPng)) {
+  if (pixelPng.startsWith("data:image/png;base64,")) {
     await writeFile(path.join(outputDir, "avatar-3d-framebuffer-readback.png"),
       Buffer.from(pixelPng.slice("data:image/png;base64,".length), "base64"));
     report.modelPixelReadbackImage = "avatar-3d-framebuffer-readback.png";
