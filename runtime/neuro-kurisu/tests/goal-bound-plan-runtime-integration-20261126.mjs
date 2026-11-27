@@ -73,6 +73,24 @@ try {
   }
   assert.equal(cycleEventInput.plan.payload.contextValid, call.contextValid,
     'the plan event must distinguish valid root context from first-step acceptance');
+  assert.equal(cycleEventInput.action.payload.decisionId, result.cycle.decision.id,
+    'the executed-action receipt must carry the same canonical decision ID');
+  assert.equal(cycleEventInput.outcome.payload.decisionId, result.cycle.decision.id,
+    'the outcome receipt must carry the same canonical decision ID');
+  assert.equal(cycleEventInput.outcome.payload.decisionAction, cycleEventInput.action.payload.action,
+    'the outcome prediction must be attributed to the action that the embodiment path actually executed');
+  const executedActionPrediction = result.cycle.decision.predictedOutcomes.find(
+    candidate => candidate.action === cycleEventInput.action.payload.action,
+  )?.utility;
+  const expectedExecutedActionPrediction = typeof executedActionPrediction === 'number' && Number.isFinite(executedActionPrediction)
+    ? Math.max(0, Math.min(1, executedActionPrediction))
+    : null;
+  assert.equal(cycleEventInput.outcome.payload.decisionPredicted01, expectedExecutedActionPrediction,
+    'the recorded decision prediction must come from the same executed ActionKind, never the planner hypothetical');
+  assert.ok(Number.isFinite(cycleEventInput.outcome.payload.actualReward01)
+      && cycleEventInput.outcome.payload.actualReward01 >= 0
+      && cycleEventInput.outcome.payload.actualReward01 <= 1,
+    'the observed outcome used for revision must remain normalized to 0..1');
   const expectedSignedReward = call.accepted ? call.plan.steps[0].predictedReward : 0;
   const expectedReward01 = Math.max(0, Math.min(1, (expectedSignedReward + 1) / 2));
   assert.equal(cycleEventInput.prediction.payload.predicted01, expectedReward01,
