@@ -8,6 +8,13 @@ export interface GlbSkinWeightJointCoverage {
   maxWeight01: number;
 }
 
+export interface GlbSkinWeightBounds {
+  min: [number, number, number];
+  max: [number, number, number];
+  center: [number, number, number];
+  size: [number, number, number];
+}
+
 export interface GlbSkinWeightMeshAudit {
   nodeIndex: number;
   nodeName: string;
@@ -16,6 +23,8 @@ export interface GlbSkinWeightMeshAudit {
   skinIndex: number;
   vertexCount: number;
   sampledVertices: number;
+  localBounds: GlbSkinWeightBounds | null;
+  worldBounds: GlbSkinWeightBounds | null;
   weightedSampleVertices: number;
   unweightedSampleVertices: number;
   averageWeightSum01: number;
@@ -46,6 +55,7 @@ interface AccessorLayout {
   baseOffset: number;
   stride: number;
   componentBytes: number;
+  componentCount: number;
   viewEnd: number;
 }
 
@@ -87,14 +97,15 @@ function accessorLayout(
   document: Record<string, unknown>,
   binaryLength: number,
   accessorIndex: number,
+  expectedType: "VEC3" | "VEC4",
   allowedComponents: readonly number[],
-  role: "joints" | "weights",
+  role: "joints" | "weights" | "position",
 ): AccessorLayout | string {
   const accessors = Array.isArray(document.accessors) ? document.accessors : [];
   const views = Array.isArray(document.bufferViews) ? document.bufferViews : [];
   const accessorValue = accessors[accessorIndex];
   if (!isRecord(accessorValue)) return "invalid-accessor";
-  if (accessorValue.type !== "VEC4") return "invalid-accessor-type";
+  if (accessorValue.type !== expectedType) return "invalid-accessor-type";
   if (accessorValue.sparse !== undefined) return "unsupported-sparse-accessor";
 
   const count = nonNegativeInteger(accessorValue.count);
@@ -103,6 +114,7 @@ function accessorLayout(
   if (count === null || count < 1 || componentType === null || viewIndex === null) return "invalid-accessor-layout";
   if (!allowedComponents.includes(componentType)) return "invalid-accessor-component-type";
   if (role === "joints" && accessorValue.normalized === true) return "normalized-joint-indices-unsupported";
+  if (role === "position" && accessorValue.normalized === true) return "normalized-position-unsupported";
 
   const componentBytes = COMPONENT_BYTES[componentType];
   if (!componentBytes) return "invalid-accessor-component-type";
@@ -115,7 +127,8 @@ function accessorLayout(
   const accessorOffset = nonNegativeInteger(accessorValue.byteOffset) ?? 0;
   if (viewLength === null) return "invalid-buffer-view-length";
 
-  const elementBytes = componentBytes * 4;
+  const componentCount = expectedType === "VEC3" ? 3 : 4;
+  const elementBytes = componentBytes * componentCount;
   const strideValue = bufferView.byteStride;
   const stride = strideValue === undefined ? elementBytes : nonNegativeInteger(strideValue);
   if (stride === null || stride < elementBytes || stride % componentBytes !== 0) return "invalid-buffer-stride";
@@ -132,8 +145,24 @@ function accessorLayout(
     baseOffset,
     stride,
     componentBytes,
+    componentCount,
     viewEnd,
   };
+}
+
+function readVector(
+  data: DataView,
+  layout: AccessorLayout,
+  vertexIndex: number,
+): number[] | null {
+  const offset = layout.baseOffset + vertexIndex * layout.stride;
+  const values: number[] = [];
+  for (let component = 0; component < layout.componentCount; component += 1) {
+    const value = componentReader(data, offset + component * layout.componentBytes, layout.componentType);
+    if (!Number.isFinite(value)) return null;
+    values.push(value);
+  }
+  return values;
 }
 
 function readVector4(
@@ -141,14 +170,19 @@ function readVector4(
   layout: AccessorLayout,
   vertexIndex: number,
 ): [number, number, number, number] | null {
-  const offset = layout.baseOffset + vertexIndex * layout.stride;
-  const values: number[] = [];
-  for (let component = 0; component < 4; component += 1) {
-    const value = componentReader(data, offset + component * layout.componentBytes, layout.componentType);
-    if (!Number.isFinite(value)) return null;
-    values.push(value);
-  }
-  return values as [number, number, number, number];
+  if (layout.componentCount !== 4) return null;
+  const values = readVector(data, layout, vertexIndex);
+  return values ? values as [number, number, number, number] : null;
+}
+
+function readVector3(
+  data: DataView,
+  layout: AccessorLayout,
+  vertexIndex: number,
+): [number, number, number] | null {
+  if (layout.componentCount !== 3) return null;
+  const values = readVector(data, layout, vertexIndex);
+  return values ? values as [number, number, number] : null;
 }
 
 function decodeWeight(value: number, layout: AccessorLayout): number | null {
@@ -289,8 +323,8 @@ export function auditGlbSkinWeights(
         const layouts: Array<{ joints: AccessorLayout; weights: AccessorLayout }> = [];
         let failed = false;
         for (const [jointName, weightName] of jointSets) {
-          const joints = accessorLayout(rawDocument, binaryChunk.byteLength, Number(attributes[jointName]), [5121, 5123], "joints");
-          const weights = accessorLayout(rawDocument, binaryChunk.byteLength, Number(attributes[weightName]), [5121, 5123, 5125, 5126], "weights");
+          const joints = accessorLayout(rawDocument, binaryChunk.byteLength, Number(attributes[jointName]), "VEC4", [5121, 5123], "joints");
+          const weights = accessorLayout(rawDocument, binaryChunk.byteLength, Number(attributes[weightName]), "VEC4", [5121, 5123, 5125, 5126], "weights");
           if (typeof joints === "string" || typeof weights === "string") {
             if (typeof joints === "string") meshWarnings.add(joints);
             if (typeof weights === "string") meshWarnings.add(weights);
