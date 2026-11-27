@@ -84,8 +84,9 @@ export function resolveAvatarDynamicsBoneRole(boneName: unknown): AvatarDynamics
   if (/(anchor|pinned|pinroot|base|root|attach)$/.test(name)) return null;
 
   const rawName = boneName.toLowerCase();
-  const side: -1 | 0 | 1 = rawName.includes("left") || /(?:[_\-.]l$|(?:tip|lock|strand|fringe)l$)/.test(rawName) ? -1
-    : rawName.includes("right") || /(?:[_\-.]r$|(?:tip|lock|strand|fringe)r$)/.test(rawName) ? 1 : 0;
+  const leftSide = rawName.includes("left") || /(?:[_\-.]l$|(?:tip|lock|strand|fringe)l$|(?:hairlock|hairfringe|strand|fringe|coatpanel|skirtpanel|mantletail|ribbon|sleeve|cuff)l(?:[_\-.]|$))/.test(rawName);
+  const rightSide = rawName.includes("right") || /(?:[_\-.]r$|(?:tip|lock|strand|fringe)r$|(?:hairlock|hairfringe|strand|fringe|coatpanel|skirtpanel|mantletail|ribbon|sleeve|cuff)r(?:[_\-.]|$))/.test(rawName);
+  const side: -1 | 0 | 1 = leftSide ? -1 : rightSide ? 1 : 0;
   if (/(neural|synapse|filament|conduit|neurofiber)/.test(name)) {
     return { role: "neural-fiber", maxAngle: 0.035, distalWeight: 0.35, side };
   }
