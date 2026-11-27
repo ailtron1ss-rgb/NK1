@@ -3,10 +3,12 @@ import type { OrganismSnapshot } from "./types";
 import { emptySnapshot } from "./types";
 import { neuroApi } from "@/neuro-kurisu/api";
 import { toOrganismSnapshot } from "@/neuro-kurisu/normalize";
+import { createUiSnapshotCommitGate } from "./uiSnapshotCommitGate.ts";
 
 type Tab = "mind" | "memory" | "lab" | "skills" | "evidence";
 const CHAT_KEY = "neuro-kurisu-chat-v2";
 let lastInitiativePollAt = 0;
+const snapshotCommitGate = createUiSnapshotCommitGate();
 
 function loadChat(): OrganismSnapshot["chat"] {
   if (typeof window === "undefined") return [];
@@ -45,21 +47,36 @@ export const useKurisu = create<KurisuStore>((set, get) => ({
 
   hydrate: async () => {
     if (get().hydrated) return;
+    // Hydration and the idle poll can overlap during slow startup. Only the
+    // newest request is allowed to commit a canonical snapshot or its error.
+    const requestId = snapshotCommitGate.begin();
     set({ hydrated: true, error: null });
     try {
       const remote = await neuroApi.uiSnapshot();
-      set({ snap: toOrganismSnapshot(remote, loadChat()), error: null });
+      snapshotCommitGate.commit(requestId, () => {
+        set({ snap: toOrganismSnapshot(remote, loadChat()), error: null });
+      });
     } catch (error) {
-      set({ snap: { ...emptySnapshot(), chat: loadChat() }, error: error instanceof Error ? error.message : String(error) });
+      snapshotCommitGate.commit(requestId, () => {
+        set({
+          snap: { ...emptySnapshot(), chat: loadChat() },
+          error: error instanceof Error ? error.message : String(error),
+        });
+      });
     }
   },
 
   refresh: async () => {
+    const requestId = snapshotCommitGate.begin();
     try {
       const remote = await neuroApi.uiSnapshot();
-      set({ snap: toOrganismSnapshot(remote, get().snap.chat), error: null });
+      snapshotCommitGate.commit(requestId, () => {
+        set({ snap: toOrganismSnapshot(remote, get().snap.chat), error: null });
+      });
     } catch (error) {
-      set({ error: error instanceof Error ? error.message : String(error) });
+      snapshotCommitGate.commit(requestId, () => {
+        set({ error: error instanceof Error ? error.message : String(error) });
+      });
     }
   },
 
@@ -87,9 +104,15 @@ export const useKurisu = create<KurisuStore>((set, get) => ({
 
   tickIdle: async () => {
     if (get().busy || !get().hydrated) return;
+    const requestId = snapshotCommitGate.begin();
     try {
       const remote = await neuroApi.uiSnapshot();
-      set({ snap: toOrganismSnapshot(remote, get().snap.chat), error: null });
+      const committed = snapshotCommitGate.commit(requestId, () => {
+        set({ snap: toOrganismSnapshot(remote, get().snap.chat), error: null });
+      });
+      // A superseded poll must not append/acknowledge initiatives using an
+      // older snapshot revision after a newer refresh has already committed.
+      if (!committed) return;
       const now = Date.now();
       if (now - lastInitiativePollAt < 5_000) return;
       lastInitiativePollAt = now;
@@ -117,7 +140,9 @@ export const useKurisu = create<KurisuStore>((set, get) => ({
       // If ACK fails, the stable turn id makes the next poll idempotent.
       await neuroApi.ackProactiveMessage(initiative.id).catch(() => null);
     } catch (error) {
-      set({ error: error instanceof Error ? error.message : String(error) });
+      snapshotCommitGate.commit(requestId, () => {
+        set({ error: error instanceof Error ? error.message : String(error) });
+      });
     }
   },
 
@@ -133,13 +158,25 @@ export const useKurisu = create<KurisuStore>((set, get) => ({
       // snapshot before binding an emotion to the chat turn, so AvatarStage and
       // browser TTS don't inherit the pre-response emotion by accident.
       let refreshedSnapshot: OrganismSnapshot = get().snap;
+      let snapshotReadStatus: "committed" | "superseded" | "failed" = "superseded";
       let refreshError: string | null = null;
+      const snapshotRequestId = snapshotCommitGate.begin();
       try {
         const remote = await neuroApi.uiSnapshot();
-        refreshedSnapshot = toOrganismSnapshot(remote, get().snap.chat);
+        const committed = snapshotCommitGate.commit(snapshotRequestId, () => {
+          refreshedSnapshot = toOrganismSnapshot(remote, get().snap.chat);
+          set({ snap: refreshedSnapshot, error: null });
+        });
+        snapshotReadStatus = committed ? "committed" : "superseded";
+        if (!committed) refreshedSnapshot = get().snap;
       } catch (error) {
         // Preserve the reply and durable chat if the snapshot endpoint is temporarily unavailable.
-        refreshError = error instanceof Error ? error.message : String(error);
+        const committed = snapshotCommitGate.commit(snapshotRequestId, () => {
+          refreshError = error instanceof Error ? error.message : String(error);
+          set({ error: refreshError });
+        });
+        snapshotReadStatus = committed ? "failed" : "superseded";
+        if (!committed) refreshedSnapshot = get().snap;
       }
       const responseAt = Date.now();
       const kurisuTurn = {
@@ -154,7 +191,11 @@ export const useKurisu = create<KurisuStore>((set, get) => ({
       };
       const chat = [...get().snap.chat, kurisuTurn].slice(-120);
       saveChat(chat);
-      set({ snap: { ...refreshedSnapshot, chat }, busy: false, error: refreshError });
+      set({
+        snap: { ...refreshedSnapshot, chat },
+        busy: false,
+        ...(snapshotReadStatus === "committed" ? { error: null } : snapshotReadStatus === "failed" ? { error: refreshError } : {}),
+      });
     } catch (error) {
       const chat = get().snap.chat;
       saveChat(chat);
