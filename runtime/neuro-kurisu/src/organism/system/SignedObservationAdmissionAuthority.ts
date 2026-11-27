@@ -108,6 +108,14 @@ const PAYLOAD_KEYS:ReadonlySet<string>=new Set([
 ]);
 const RECEIPT_KEYS:ReadonlySet<string>=new Set([...PAYLOAD_KEYS,'signatureAlgorithm','signature']);
 
+/** Protocol- and algorithm-domain separation for signatures over host observations. */
+export function signedObservationReceiptBytes(
+  payload:SignedHostObservationReceiptPayload,
+  algorithm:HostObservationSignatureAlgorithm,
+):Buffer {
+  return Buffer.from(`NK1/HOST-OBSERVATION-RECEIPT/V1\\n${algorithm}\\n${stableJson(payload)}`,'utf8');
+}
+
 const reject=(reason:ObservationAdmissionRejectReason):ObservationAdmissionResult=>({accepted:false,reason});
 const exactText=(value:unknown,max:number,pattern?:RegExp):value is string=>
   typeof value==='string'&&value.length>0&&value.length<=max&&value.trim()===value&&!CONTROL.test(value)&&(!pattern||pattern.test(value));
@@ -171,7 +179,7 @@ function verifyReceiptSignature(
     if(algorithm==='rsa-sha256'&&keyType!=='rsa')return false;
     if(algorithm==='ecdsa-sha256'&&keyType!=='ec')return false;
     const digestAlgorithm=algorithm==='ed25519'?null:'sha256';
-    return verifySignature(digestAlgorithm,Buffer.from(stableJson(payload),'utf8'),key,signature);
+    return verifySignature(digestAlgorithm,signedObservationReceiptBytes(payload,algorithm),key,signature);
   } catch { return false; }
 }
 
@@ -273,7 +281,7 @@ export class SignedObservationAdmissionAuthority {
       claim:payload.claim,confidence01:payload.confidence01,deviceId:payload.deviceId,
       sessionId:payload.sessionId,consentTicketId:payload.consentTicketId,
       consentRevision:payload.consentRevision,captureDigest:payload.captureDigest,
-      receiptDigest:sha256Stable(payload),issuerId:payload.issuerId,
+      receiptDigest:sha256Stable({domain:'NK1/HOST-OBSERVATION-RECEIPT/V1',algorithm,payload,signature}),issuerId:payload.issuerId,
     });
     trustedAdmissions.add(admission);
     return {accepted:true,reason:'accepted',admission};
