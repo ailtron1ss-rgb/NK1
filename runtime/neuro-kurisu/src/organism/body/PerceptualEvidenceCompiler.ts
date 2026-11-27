@@ -248,10 +248,16 @@ export class PerceptualEvidenceCompiler{
     const claim=stringOr(ownDataValue(input,'claim'),'',240).trim();
     if(at<0||!Number.isSafeInteger(at))throw new RangeError('external-perceptual-evidence-timestamp-invalid');
     if(!claim)throw new TypeError('external-perceptual-evidence-claim-required');
-    const confidence=clamp(Number(ownDataValue(input,'confidence01')??0));
+    const rawConfidence=ownDataValue(input,'confidence01');
+    if(typeof rawConfidence!=='number'||!Number.isFinite(rawConfidence)||rawConfidence<0||rawConfidence>1){
+      throw new RangeError('external-perceptual-evidence-confidence-invalid');
+    }
+    const confidence=rawConfidence;
     const rawModality=ownDataValue(input,'modality');
-    const modality=typeof rawModality==='string'&&EVIDENCE_MODALITIES.has(rawModality as PerceptualEvidenceRecord['modality'])
-      ?rawModality as PerceptualEvidenceRecord['modality']:'sensor';
+    if(rawModality!==undefined&&(typeof rawModality!=='string'||!['sensor','world','fusion'].includes(rawModality))){
+      throw new TypeError('external-perceptual-evidence-modality-invalid');
+    }
+    const modality=(rawModality??'sensor') as PerceptualEvidenceRecord['modality'];
     const rawParents=ownDataValue(input,'parents');
     const parents=isPlainDataArray(rawParents,32)
       ?rawParents.filter((parent):parent is string=>typeof parent==='string'&&Boolean(parent.trim())).slice(0,8).map(parent=>parent.trim().slice(0,180))
