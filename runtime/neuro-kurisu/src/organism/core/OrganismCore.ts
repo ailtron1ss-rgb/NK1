@@ -1515,26 +1515,6 @@ export class OrganismCore {
         }
         this.persisted.state.version = ORGANISM_STATE_SCHEMA;
         this.organismSystems.restoreFromPersisted(this.persisted);
-        // Persisted observed labels are inert until the host re-verifies the exact
-        // signed envelope, active consent binding and previously consumed nonce digest.
-        // Local revocation markers are monotonic and are never reauthorized.
-        const observationAuthority = this.config.observationAdmissionAuthority;
-        if (observationAuthority) {
-            const restoredHostEvidence = this.embodimentSubsystem.perceptualEvidence.snapshot().evidence;
-            for (const row of restoredHostEvidence) {
-                if (row.revoked === true || !row.hostReceipt || row.kind === 'observed')
-                    continue;
-                const checked = await observationAuthority.reauthorizePersisted(row.hostReceipt);
-                if (!checked.accepted)
-                    continue;
-                try {
-                    this.embodimentSubsystem.recordAdmittedObservation(checked.admission);
-                } catch {
-                    // Invalid/conflicting persisted rows remain non-observational.
-                }
-            }
-            this.persisted.facets.embodiment.perceptualEvidence = this.embodimentSubsystem.perceptualEvidence.snapshot();
-        }
         this.cognitiveRuntime.outcomeCognition.restore({ records: this.persisted.system.outcomeVerification?.records, projectionIndex: this.persisted.system.outcomeVerification?.projectionIndex, evidenceRevisions: this.persisted.system.outcomeVerification?.evidenceRevisions, causal: this.persisted.system.causalAccountability });
         this.cognitiveRuntime.cognitiveField.restore(this.persisted.facets.cognition.cognitiveField);
         this.cognitiveRuntime.contradictions.restore(this.persisted.facets.cognition.contradictions);
@@ -1634,6 +1614,28 @@ export class OrganismCore {
         this.organismSystems.self.p39Life.restore((this.persisted.facets.learning as any).p39);
         this.organismSystems.self.p40ModelEcology.restore((this.persisted.facets.learning as any).p40ModelEcology);
         this.organismSystems.embodiment.perceptualEvidence.restore((this.persisted.facets.embodiment as any).perceptualEvidence);
+        // Reauthorize only after all legacy owner restores; no later restore may
+        // downgrade a capability that has just been revalidated by the host.
+        // Persisted observed labels are inert until the host re-verifies the exact
+        // signed envelope, active consent binding and previously consumed nonce digest.
+        // Local revocation markers are monotonic and are never reauthorized.
+        const observationAuthority = this.config.observationAdmissionAuthority;
+        if (observationAuthority) {
+            const restoredHostEvidence = this.embodimentSubsystem.perceptualEvidence.snapshot().evidence;
+            for (const row of restoredHostEvidence) {
+                if (row.revoked === true || !row.hostReceipt || row.kind === 'observed')
+                    continue;
+                const checked = await observationAuthority.reauthorizePersisted(row.hostReceipt);
+                if (!checked.accepted)
+                    continue;
+                try {
+                    this.embodimentSubsystem.recordAdmittedObservation(checked.admission);
+                } catch {
+                    // Invalid/conflicting persisted rows remain non-observational.
+                }
+            }
+            this.persisted.facets.embodiment.perceptualEvidence = this.embodimentSubsystem.perceptualEvidence.snapshot();
+        }
         this.developmentalNeural.cognitiveSpineScheduler.restore(this.persisted.system.cognitiveSpineSchedule);
         this.developmentalNeural.resourceAllocator.restore(this.persisted.system.resourceAllocation);
         this.developmentalNeural.unifiedCognitiveSubstrate.restore(this.persisted.system.unifiedCognitiveSubstrate);
