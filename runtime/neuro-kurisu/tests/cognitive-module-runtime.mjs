@@ -1031,3 +1031,46 @@ console.log('COGNITIVE_MODULE_CHECKPOINT_ATOMICITY=PASS');
   assert.equal(factoryCalls, 0, 'invalid persisted metadata must be rejected before factory invocation');
   assert.equal(statusOf(host, 'memory.hostile-envelope'), 'failed');
 }
+
+// A module manifest is an admission document, not executable input. Reject
+// accessor-backed fields without invoking them or admitting the module.
+{
+  const hostile = manifest('memory.hostile-manifest');
+  let getterCalls = 0;
+  let factoryCalls = 0;
+  Object.defineProperty(hostile, 'id', {
+    enumerable: true,
+    configurable: true,
+    get() {
+      getterCalls += 1;
+      return 'memory.hostile-manifest';
+    },
+  });
+
+  const host = new CognitiveModuleRuntime();
+  let registrationError;
+  try {
+    host.register({
+      manifest: hostile,
+      factory: () => {
+        factoryCalls += 1;
+        return moduleFixture('memory.hostile-manifest', []).module;
+      },
+    });
+  } catch (error) {
+    registrationError = error;
+  }
+
+  assert.equal(
+    getterCalls,
+    0,
+    'manifest admission must inspect own descriptors without executing getters',
+  );
+  assert.match(
+    registrationError?.message ?? '',
+    /^module-manifest-accessor-rejected/,
+  );
+  assert.equal(factoryCalls, 0, 'rejected manifests must never invoke module factories');
+  assert.equal(host.list().length, 0, 'rejected manifests must not enter the registry');
+}
+
