@@ -1,7 +1,7 @@
 # NK1 — Goal-bound plan lineage
 
-Date: 2026-11-26
-Canonical base: `workpass70-source@7e601680c765d6dc94e51e4c8f5e729b48a6f56e`
+Date: 2026-11-27
+Canonical base: `workpass70-source@4d041f1e57ab85f746027a37ab14e09b6d34c52b`
 Aspect branch: `aspect/cognitive-goal-plan-lineage-20261126`
 
 ## Existing foundation retained
@@ -41,3 +41,36 @@ recorded predecessor snapshot and compares the projected successor fields.
 This is a corruption/tamper-detection checksum inside the runtime boundary, not
 a digital signature or proof against an attacker who can rewrite both code and
 integrity metadata.
+## Verified-outcome plan revision (2026-11-27)
+
+The planner now consumes a narrowly scoped revision hint from the immediately
+preceding canonical CognitiveEventFabric cycle. It does not infer a correction
+from free-form text, simulator output, an unaccepted plan, or a result whose
+action cannot be tied to the selected/executed action receipt.
+
+The revision gate requires all of the following:
+
+- Same active goal, plan ID, and decision ID across the prior plan, action, and
+  outcome events; all three events must belong to the immediately preceding tick.
+- An accepted plan and a retained action-stage receipt whose action equals the
+  action named by the outcome event.
+- The outcome event must be external and explicitly classified as an external
+  reality observation.
+- Verification, independence, and evidence quality must each be at least 0.70.
+- The predicted utility for the action actually executed and its observed
+  outcome must differ by at least 0.25.
+- Metacognitive revision readiness must be at least 0.35.
+
+The prediction is read from the canonical decision's predictedOutcomes entry
+for embodiedAction.action; the observed value is the grounded outcome from
+that same cycle. The planner maps that ActionKind to its world-action equivalent
+and excludes that one equivalent from the first beam-search expansion only.
+The hint, source action, previous plan/decision, tick, predicted/observed values,
+error and readiness are sealed into plan lineage. Admission requires the exact
+same revision evidence that was used when building the plan.
+
+This is deliberately a one-cycle planning adjustment, not a change to the
+decision selector, not an actuation authorization, not a bypass of risk or
+ActionGateway governance, and not a claim of complete adaptive decision
+revision. If any provenance, identity, readiness, or action link is missing,
+the planner runs its ordinary search unchanged.
