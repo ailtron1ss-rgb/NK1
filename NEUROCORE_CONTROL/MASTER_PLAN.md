@@ -1,7 +1,8 @@
 # NeuroCore master plan
 
-**Current source sync:** `workpass70-source@8994a103f6b735f6347d77d926ee9c024a4d4f4d`  
-**Latest product/source merge:** `cb1c22e3c6c7f4eba73ad00b213442cee71c65d2`
+**Current source sync:** `workpass70-source@9de695dd4713ec909d7312b45966d30dfb76d5c2`  
+**Latest product/source merge:** `53a5926f753c56b97599b1ee28a0e46d769662b2`  
+**Exact product head:** `4dfc60c4d1079bc694f3bc0043bced6c59bad564`
 
 ## Phase A — Stable full-source application base
 - [x] Pin the original source baseline and create a separate product branch.
@@ -27,6 +28,11 @@
 - [x] Selectively port crash-safe ContinuityLedger implementation and concurrency/torn-tail/rollback/retention tests.
 - [x] Make shutdown durability receipt wait for Core, sidecars, world, ledger flush and ledger close; add fault-injection regressions.
 - [ ] Pass these gates on the latest product head; verify idempotent canonical writes and real interrupted restart.
+- [x] Integrate current-cycle Global Workspace before P61/P64 and decision-scoped outcome credit.
+- [x] Integrate 27-dimensional metacognitive neural substrate with backward-compatible 24→27 restore migration and observation-aligned targets.
+- [x] Integrate goal/world-bound planner lineage and fail-closed step preconditions/expected outcomes.
+- [x] Integrate G3 signed host observation admission with consent and durable nonce replay prevention.
+- [ ] Pass exact-head cognitive workspace, G3, planner and metacognitive regression suite.
 - [ ] Verify that all memory writes pass through the canonical fabric/lifecycle authority.
 - [ ] Verify all actions pass through `ActionGateway` and its approval/idempotency policy.
 - [ ] Audit persistence, watchdog marker, checkpoint and shutdown ordering.
@@ -42,6 +48,7 @@
 - [ ] Replace the segmented part volumes with a continuous skinned/deformable anatomical surface where appropriate.
 - [ ] Add balance, richer collision handling, full gait and muscle/soft-tissue actuation.
 - [x] Add an actual 20 Hz RAF scheduler to the body loop and connect its test to production `AvatarStage`.
+- [x] Integrate current-source 22-particle solver heel/toe contacts, friction and 150-degree hinge constraints.
 - [ ] Pass the new rig/IK/scheduler regressions and all existing embodiment suites on the latest product head.
 - [ ] Profile CPU/GPU/RAM and frame pacing on a mid-range Android device before raising body fidelity.
 
