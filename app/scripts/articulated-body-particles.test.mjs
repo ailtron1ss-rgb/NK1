@@ -148,3 +148,20 @@ test("zero elapsed time does not advance the simulation clock or frame counter",
   assert.equal(result.substeps, 0);
   assert.equal(result.channels.leftShoulder, 0);
 });
+
+
+test("stance foot cannot penetrate below the articulated body's support plane", () => {
+  const previous = createAvatarArticulatedBodyState();
+  previous.particles.leftAnklePoint.position.y = -1.2;
+  previous.particles.leftAnklePoint.velocity.y = -4;
+  const result = stepAvatarArticulatedBody(
+    previous,
+    {},
+    1000 / 30,
+    { awake: true, energy01: 0.7, groundY: -0.9, footRadius: 0.04 },
+  );
+  assert.ok(
+    result.state.particles.leftAnklePoint.position.y >= -0.8601,
+    "left ankle centre must remain at or above floor + foot radius",
+  );
+});
