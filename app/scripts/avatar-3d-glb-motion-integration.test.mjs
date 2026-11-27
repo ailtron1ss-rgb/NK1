@@ -6,6 +6,8 @@ test("generic GLB renderer consumes the expressive face and secondary motion ada
   const stage = await readFile(new URL("../src/components/Avatar3DStage.tsx", import.meta.url), "utf8");
   assert.match(stage, /import \{ resolveGlbFacialMorphWeights \} from "\.\/avatar\/glbFacialMorphAdapter"/);
   assert.match(stage, /import \{ resolveGlbSecondaryBoneRotation \} from "\.\/avatar\/glbSecondaryMotionAdapter"/);
+  assert.match(stage, /import \{ resolveGlbBodyBoneRotation \} from "\.\/avatar\/glbBodyChannelAdapter"/);
+  assert.match(stage, /resolveGlbBodyBoneRotation\(n,p\.bodyChannels\?\?\{\}\)/);
   assert.match(stage, /resolveGlbSecondaryBoneRotation\(n,\{timeSeconds:t,awake:p\.awake,energy,action:p\.action,bodyChannels:p\.bodyChannels\?\?\{\}\}\)/);
   assert.match(stage, /node\.morphTargetDictionary,p\.mouthPose,p\.speaking/);
   assert.match(stage, /resolveGlbFacialMorphWeights\(node\.morphTargetDictionary/);
