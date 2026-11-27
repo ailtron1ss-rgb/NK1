@@ -11,6 +11,8 @@ function node(name, options = {}) {
     name,
     isBone: options.isBone === true,
     isMesh: options.isMesh === true || options.isSkinnedMesh === true,
+    isLine: options.isLine === true,
+    isPoints: options.isPoints === true,
     isSkinnedMesh: options.isSkinnedMesh === true,
     children: [],
     parent: null,
@@ -156,6 +158,18 @@ test("live Three.js scene audit reads explicit nk1Secondary metadata from node u
   assert.equal(report.byRole.hair.chainRoots, 1);
   assert.equal(report.byRole.hair.maxChainDepth, 2);
   assert.equal(report.secondaryPhysicsReady, true);
+});
+
+test("scene audit counts imported curve primitives as hair and garment geometry", () => {
+  const root = node("Scene");
+  attach(root, node("CURVE_HAIR_front_strand_L", { isLine: true }));
+  attach(root, node("CURVE_HAIR_fringe_center", { isLine: true }));
+  attach(root, node("CURVE_CLOTH_lapel_seam_L", { isLine: true }));
+  const report = auditAvatarSecondaryScene(root);
+  assert.equal(report.byMeshRole.hair.meshNodeCount, 2);
+  assert.equal(report.byMeshRole.garment.meshNodeCount, 1);
+  assert.equal(report.byMeshRole.hair.skinnedMeshNodeCount, 0);
+  assert.equal(report.totalMeshNodeCount, 3);
 });
 
 test("scene audit reports separate hair, clothing and sleeve mesh parts without claiming they are simulated", () => {
