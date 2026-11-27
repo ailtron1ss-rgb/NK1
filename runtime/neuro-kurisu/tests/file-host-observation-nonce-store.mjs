@@ -60,6 +60,8 @@ try {
     const markerDay = new Date().toISOString().slice(0, 10);
     await mkdir(directoryPath, { recursive: true, mode: 0o700 });
     await mkdir(join(directoryPath, 'clock-days'), { recursive: true, mode: 0o700 });
+    await mkdir(join(directoryPath, 'clock-timestamps'), { recursive: true, mode: 0o700 });
+    await mkdir(join(directoryPath, 'nonces'), { recursive: true, mode: 0o700 });
     await writeFile(join(directoryPath, 'clock-days', markerDay), '{"version":1,"day":"forged","createdAt":0}', { mode: 0o600 });
     const corrupt = new FileHostObservationNonceStore({ directoryPath });
     await assert.rejects(corrupt.consume(baseKey()), /nonce-store-clock-marker-invalid/);
