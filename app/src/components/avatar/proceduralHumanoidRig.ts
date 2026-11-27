@@ -266,16 +266,16 @@ export function createProceduralHumanoidRig(scene: THREE.Scene): ProceduralHuman
     const key = side < 0 ? "left" : "right";
     const clavicle = addBone(chest, key + "Clavicle", [side * 0.14, -0.02, 0], bones, limits);
     const upper = addBone(clavicle, key + "UpperArm", [side * 0.08, 0, 0], bones, limits);
-    const forearm = addBone(upper, key + "Forearm", [side * 0.34, 0, 0], bones, limits);
-    const wrist = addBone(forearm, key + "Wrist", [side * 0.29, 0, 0], bones, limits);
-    const hand = addBone(wrist, key + "Hand", [side * 0.075, 0, 0], bones, limits);
+    const forearm = addBone(upper, key + "Forearm", [side * 0.348, 0, 0], bones, limits);
+    const wrist = addBone(forearm, key + "Wrist", [side * 0.244, 0, 0], bones, limits);
+    const hand = addBone(wrist, key + "Hand", [side * 0.02, -0.11, 0], bones, limits);
     armRoots[key] = { clavicle, upper, forearm, hand };
 
-    makeSegment(upper, sphere, coat, key + "SleeveUpper", new THREE.Vector3(0, 0, 0), new THREE.Vector3(side * 0.34, 0, 0), new THREE.Vector3(0.11, 0.22, 0.125), meshes);
+    makeSegment(upper, sphere, coat, key + "SleeveUpper", new THREE.Vector3(0, 0, 0), new THREE.Vector3(side * 0.348, 0, 0), new THREE.Vector3(0.11, 0.225, 0.125), meshes);
     makeEllipsoid(clavicle, sphereFine, coatShade, key + "Deltoid", new THREE.Vector3(side * 0.015, -0.01, 0.012), new THREE.Vector3(0.14, 0.145, 0.14), new THREE.Euler(0, 0, side * -0.18), meshes);
     // Joint caps bridge the upper-arm and forearm volumes instead of leaving a hollow elbow pivot.
     makeEllipsoid(forearm, sphereFine, coatShade, key + "ElbowJoint", new THREE.Vector3(0, 0, 0.012), new THREE.Vector3(0.105, 0.105, 0.11), new THREE.Euler(), meshes);
-    makeSegment(forearm, sphere, coat, key + "SleeveForearm", new THREE.Vector3(0, 0, 0), new THREE.Vector3(side * 0.29, 0, 0), new THREE.Vector3(0.085, 0.18, 0.092), meshes);
+    makeSegment(forearm, sphere, coat, key + "SleeveForearm", new THREE.Vector3(0, 0, 0), new THREE.Vector3(side * 0.244, 0, 0), new THREE.Vector3(0.085, 0.17, 0.092), meshes);
     makeEllipsoid(wrist, sphereFine, coatShade, key + "WristCuff", new THREE.Vector3(0, 0, 0), new THREE.Vector3(0.072, 0.078, 0.085), new THREE.Euler(), meshes);
     makeEllipsoid(hand, sphereFine, skin, key + "Palm", new THREE.Vector3(side * 0.045, 0, 0), new THREE.Vector3(0.092, 0.065, 0.035), new THREE.Euler(0, 0, side * 0.1), meshes);
 
@@ -572,8 +572,8 @@ export function createProceduralHumanoidRig(scene: THREE.Scene): ProceduralHuman
       const result = solveTwoBonePlanarIK(
         { x: outward * localStart.x, y: localStart.y },
         { x: outward * localTarget.x, y: localTarget.y },
-        0.34,
-        0.29,
+        0.348,
+        0.244,
         -1,
       );
       const shoulderName = side + "UpperArm";
