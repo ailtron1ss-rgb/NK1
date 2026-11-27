@@ -360,7 +360,7 @@ export class PerceptualEvidenceCompiler{
             claim:`event:${event.id}:${event.label}`,
             confidence01:clamp(event.confidence01),
             uncertainty01:1-clamp(event.confidence01),
-            kind:evidenceKind,
+            kind:nonAuthoritativeKind(evidenceKind),
             parents:[event.id],
           });
         }
