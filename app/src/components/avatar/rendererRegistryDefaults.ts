@@ -22,7 +22,7 @@ const EXPRESSION_CHANNELS = [
 export const LIVE2D_CHANNELS = ["headRoll", "gazeX", "gazeY"] as const;
 export const SVG_CHANNELS = ["torsoYaw", "torsoPitch", "headYaw", "headPitch", "headRoll", "gazeX", "gazeY", "breath"] as const;
 export const SPRITE_CHANNELS = [] as const;
-export const VRM3D_CHANNELS = ["torsoPitch", "leftElbow", "rightElbow", "leftHip", "rightHip", "leftKnee", "rightKnee", "leftAnkle", "rightAnkle", "gazeX", "gazeY"] as const;
+export const VRM3D_CHANNELS = ["torsoYaw", "torsoPitch", "rootYaw", "leftElbow", "rightElbow", "leftHip", "rightHip", "leftKnee", "rightKnee", "leftAnkle", "rightAnkle", "gazeX", "gazeY"] as const;
 
 export const DEFAULT_RENDERER_MANIFESTS: readonly BodyRendererCapabilityManifest[] = [
   {
@@ -98,8 +98,8 @@ export const DEFAULT_RENDERER_MANIFESTS: readonly BodyRendererCapabilityManifest
     supportsWorldTargets: true,
     supportsClothingLayers: false,
     supportsPhysics: true,
-    joints: ["head", "neck", "leftUpperArm", "rightUpperArm", "spine", "leftLowerArm", "rightLowerArm", "leftUpperLeg", "rightUpperLeg", "leftLowerLeg", "rightLowerLeg", "leftFoot", "rightFoot"],
-    notes: "The pinned v5 GLB is externally hosted and has not passed visual, Android-device or redistribution-license acceptance; user-imported VRM/GLB is available, but the default renderer is not production-ready. Normalized drive covers head/neck, shoulders, elbows, spine, hips, knees and ankle-to-foot pitch; wrists, hands and finger channels remain unsupported.",
+    joints: ["head", "neck", "hips", "leftUpperArm", "rightUpperArm", "spine", "leftLowerArm", "rightLowerArm", "leftUpperLeg", "rightUpperLeg", "leftLowerLeg", "rightLowerLeg", "leftFoot", "rightFoot"],
+    notes: "The pinned v5 GLB is externally hosted and has not passed visual, Android-device or redistribution-license acceptance; user-imported VRM/GLB is available, but the default renderer is not production-ready. Normalized drive covers head/neck, torso/root yaw and pitch, elbows, hips, knees and ankle-to-foot pitch; wrists, hands and finger channels remain unsupported.",
   },
 ];
 
