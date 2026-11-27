@@ -135,6 +135,7 @@ export interface VrmNormalizedMotorRig {
 
 /** Optional full-body rig resolved from the same normalized humanoid surface. */
 export interface VrmFullBodyRig extends VrmNormalizedMotorRig {
+  hips: NormalizedBoneNode | null;
   spine: NormalizedBoneNode | null;
   leftLowerArm: NormalizedBoneNode | null;
   rightLowerArm: NormalizedBoneNode | null;
@@ -297,6 +298,7 @@ export function resolveVrmFullBodyRig(vrm: VRM): VrmFullBodyRig {
   };
   return {
     ...base,
+    hips: resolve("hips"),
     spine: resolve("spine"),
     leftLowerArm: resolve("leftLowerArm"),
     rightLowerArm: resolve("rightLowerArm"),
@@ -344,19 +346,21 @@ export function applyVrmFullBodyChannels(vrm: VRM, channels: Readonly<Partial<Re
   // owns the remaining bones, so it must do the same or the additive writes below
   // accumulate across frames. Reset every owned bone to identity first so a channel
   // that stops being emitted returns to rest instead of freezing at its last value.
-  const owned = [rig.spine, rig.leftLowerArm, rig.rightLowerArm, rig.leftUpperLeg, rig.rightUpperLeg, rig.leftLowerLeg, rig.rightLowerLeg, rig.leftFoot, rig.rightFoot];
+  const owned = [rig.hips, rig.spine, rig.leftLowerArm, rig.rightLowerArm, rig.leftUpperLeg, rig.rightUpperLeg, rig.leftLowerLeg, rig.rightLowerLeg, rig.leftFoot, rig.rightFoot];
   const resetSeen = new Set<NormalizedBoneNode>();
   for (const node of owned) {
     if (!node || resetSeen.has(node)) continue;
     resetSeen.add(node);
     node.rotation.set(0, 0, 0);
   }
-  const write = (node: NormalizedBoneNode | null, axis: "x" | "z", value: number, name: string) => {
+  const write = (node: NormalizedBoneNode | null, axis: "x" | "y" | "z", value: number, name: string) => {
     if (!node || value === 0) return;
     node.rotation[axis] = value;
     controlledBones.push(name);
   };
   write(rig.spine, "x", scaleChannel("torsoPitch", channels.torsoPitch ?? 0), "spine");
+  write(rig.spine, "y", scaleChannel("torsoYaw", channels.torsoYaw ?? 0), "spine");
+  write(rig.hips, "y", scaleChannel("rootYaw", channels.rootYaw ?? 0), "hips");
   write(rig.leftLowerArm, "z", scaleChannel("leftElbow", channels.leftElbow ?? 0), "leftLowerArm");
   write(rig.rightLowerArm, "z", scaleChannel("rightElbow", channels.rightElbow ?? 0), "rightLowerArm");
   write(rig.leftUpperLeg, "z", scaleChannel("leftHip", channels.leftHip ?? 0), "leftUpperLeg");
