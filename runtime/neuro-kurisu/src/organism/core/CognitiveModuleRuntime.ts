@@ -130,6 +130,16 @@ const STATE_TEXT_ENCODER = new TextEncoder();
 const DEFAULT_MAX_MODULE_STATE_BYTES = 1024 * 1024;
 const MAX_MODULE_STATE_BYTES = 16 * 1024 * 1024;
 const MAX_MODULE_ENVELOPE_METADATA_BYTES = 2048;
+const MAX_MODULE_MANIFEST_BYTES = 16 * 1024;
+const MODULE_MANIFEST_KEYS = new Set([
+  'schemaVersion',
+  'id',
+  'version',
+  'runtimeApiVersion',
+  'stateSchemaVersion',
+  'dependencies',
+  'capabilities',
+]);
 const MODULE_ENVELOPE_KEYS = new Set([
   'schemaVersion',
   'moduleId',
@@ -230,42 +240,63 @@ function validateManifest(
   manifest: CognitiveModuleManifestV1,
   hostApiVersion: number,
 ): CognitiveModuleManifestV1 {
-  if (!manifest || typeof manifest !== 'object') throw fail('invalid-module-manifest');
-  if (manifest.schemaVersion !== 1) throw fail('unsupported-module-manifest-schema');
-  if (typeof manifest.id !== 'string' || !MODULE_ID_PATTERN.test(manifest.id)) {
+  let safeValue: unknown;
+  try {
+    // Registration manifests are admission data, not trusted live objects.
+    // Descriptor cloning rejects getters, symbols, exotic prototypes and
+    // oversized payloads before any field is read or copied.
+    safeValue = cloneBoundedState(manifest, MAX_MODULE_MANIFEST_BYTES);
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error);
+    if (reason.startsWith('module-state-accessor-rejected:')) {
+      throw fail('module-manifest-accessor-rejected', reason.slice('module-state-accessor-rejected:'.length));
+    }
+    throw fail('invalid-module-manifest', reason.slice(0, 180));
+  }
+  if (!safeValue || typeof safeValue !== 'object' || Array.isArray(safeValue)) {
+    throw fail('invalid-module-manifest');
+  }
+  const fields = safeValue as Record<string, unknown>;
+  if (Object.keys(fields).some(key => !MODULE_MANIFEST_KEYS.has(key))) {
+    throw fail('module-manifest-field-rejected');
+  }
+  const safeManifest = fields as unknown as CognitiveModuleManifestV1;
+
+  if (safeManifest.schemaVersion !== 1) throw fail('unsupported-module-manifest-schema');
+  if (typeof safeManifest.id !== 'string' || !MODULE_ID_PATTERN.test(safeManifest.id)) {
     throw fail('invalid-module-id');
   }
-  if (typeof manifest.version !== 'string' || !SEMVER_PATTERN.test(manifest.version)) {
+  if (typeof safeManifest.version !== 'string' || !SEMVER_PATTERN.test(safeManifest.version)) {
     throw fail('invalid-module-version');
   }
-  if (!Number.isSafeInteger(manifest.runtimeApiVersion) || manifest.runtimeApiVersion < 1) {
+  if (!Number.isSafeInteger(safeManifest.runtimeApiVersion) || safeManifest.runtimeApiVersion < 1) {
     throw fail('invalid-module-runtime-api-version');
   }
-  if (manifest.runtimeApiVersion !== hostApiVersion) {
-    throw fail('module-runtime-api-incompatible', manifest.id);
+  if (safeManifest.runtimeApiVersion !== hostApiVersion) {
+    throw fail('module-runtime-api-incompatible', safeManifest.id);
   }
-  if (!Number.isSafeInteger(manifest.stateSchemaVersion) || manifest.stateSchemaVersion < 1) {
-    throw fail('invalid-module-state-schema-version', manifest.id);
+  if (!Number.isSafeInteger(safeManifest.stateSchemaVersion) || safeManifest.stateSchemaVersion < 1) {
+    throw fail('invalid-module-state-schema-version', safeManifest.id);
   }
   for (const [label, values] of [
-    ['dependencies', manifest.dependencies],
-    ['capabilities', manifest.capabilities],
+    ['dependencies', safeManifest.dependencies],
+    ['capabilities', safeManifest.capabilities],
   ] as const) {
     if (!Array.isArray(values) || values.some(value => typeof value !== 'string')) {
-      throw fail('invalid-module-manifest-list', `${manifest.id}:${label}`);
+      throw fail('invalid-module-manifest-list', `${safeManifest.id}:${label}`);
     }
     if (new Set(values).size !== values.length) {
-      throw fail('duplicate-module-manifest-entry', `${manifest.id}:${label}`);
+      throw fail('duplicate-module-manifest-entry', `${safeManifest.id}:${label}`);
     }
     const pattern = label === 'dependencies' ? MODULE_ID_PATTERN : CAPABILITY_PATTERN;
     if (values.some(value => !pattern.test(value))) {
-      throw fail('invalid-module-manifest-entry', `${manifest.id}:${label}`);
+      throw fail('invalid-module-manifest-entry', `${safeManifest.id}:${label}`);
     }
   }
-  if (manifest.dependencies.includes(manifest.id)) {
-    throw fail('module-self-dependency', manifest.id);
+  if (safeManifest.dependencies.includes(safeManifest.id)) {
+    throw fail('module-self-dependency', safeManifest.id);
   }
-  return cloneManifest(manifest);
+  return cloneManifest(safeManifest);
 }
 
 function validateEnvelope(
