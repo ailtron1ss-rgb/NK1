@@ -50,3 +50,24 @@
 ## Правило статуса
 
 Реализовано в исходниках ≠ прошло CI ≠ визуально принято ≠ проверено на устройстве ≠ разрешено к публикации. Все эти состояния фиксировать отдельно. Не сливать старые PR #1164 и #1171 целиком; использовать только проверенные независимые фрагменты.
+
+
+## Продолжение 27 ноября — нативный VRM gaze
+
+В существующий VRM runtime добавлен отдельный канал управления глазами через официальный `VRMLookAt.target` из `@pixiv/three-vrm`:
+
+- Для загруженного VRM берётся реальная raw-head кость через `humanoid.getRawBoneNode("head")`; к ней прикрепляется невизуальный `Object3D` target. Включается штатный `lookAt.autoUpdate`.
+- `gazeX/gazeY` переводятся в ограниченную локальную цель с дистанцией 1.5 и максимальным угловым диапазоном примерно ±19.5° по горизонтали / ±14.3° по вертикали. Значение сглаживается экспоненциально, а не скачет по кадрам.
+- При успешно установленной native target-цели флаг `gazeViaLookAt` отключает повторное применение этих же координат к yaw/pitch головы. Остальные повороты головы из affect/headYaw остаются. Для VRM без `lookAt` или raw head используется прежний head-gaze fallback; generic GLB и Live2D не затронуты.
+- При замене модели и unmount ссылка `lookAt.target` очищается, чтобы VRM не удерживал объект от старой сцены.
+
+Проверки добавлены в существующие suites:
+- `vrm-runtime-adapter.test.mjs`: направление, конечность и пределы target offsets; отсутствие двойного head turn.
+- `avatar-3d-stage.test.mjs`: наличие native target binding, autoUpdate, smoothing и переключения ownership.
+- Workflow уже включает `vrmRuntimeAdapter.ts`, `Avatar3DStage.tsx` и оба затронутых тестовых набора в path filter / embodiment-switch suite.
+
+Реализация: adapter commit `2c68125397ca81cc1b5cbd68e174497de7fdf62b`, runtime wiring commit `39871e49b8b8d034ca121908c6de95865adc9001`, integration test commit `6afb1f31cdac23b2bf118197013cab23022d8369`, follow-up syntax correction `92cce9c903ee779613a51b6853dbd25a333e3d7a`.
+
+**Verification boundary:** функция и wiring добавлены в исходники, но GitHub Actions exact-head run/status для текущего SHA пока не возвращены подключённым GitHub workflow endpoint. Не помечать этот проход как CI-green до появления результатов на новом HEAD. Реальное движение глаз на конкретных VRM-файлах, визуальная проверка и Android/device soak остаются обязательными. Native eye target — поддерживаемая возможность VRM runtime, но не доказательство того, что любой загруженный VRM содержит полноценные eye bones/look-at applier.
+
+Источник API: [@pixiv/three-vrm — VRMLookAt](https://pixiv.github.io/three-vrm/docs/classes/three-vrm-core.VRMLookAt.html) и [VRMHumanoid.getRawBoneNode](https://pixiv.github.io/three-vrm/docs/classes/three-vrm-core.VRMHumanoid.html).
