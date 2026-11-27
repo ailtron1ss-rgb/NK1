@@ -9799,7 +9799,7 @@ export class OrganismCore {
             // later observe() may already have replaced the live coalition by feedback time.
             this.cognitiveRuntime.globalWorkspace.learnOutcomeForDecision({
                 decisionId: trace.id,
-                outcomeId: outcome.outcomeId ?? `feedback:${trace.id}`,
+                outcomeId: feedbackOutcomeId,
                 reward01: gatedLearningReward01,
                 learningRate: .02,
                 learningScale01: learning.learningScale01,

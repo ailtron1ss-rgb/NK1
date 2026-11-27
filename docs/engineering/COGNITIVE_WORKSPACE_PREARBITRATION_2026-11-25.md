@@ -1,7 +1,7 @@
 # NK1 — Global workspace pre-arbitration integration
 
-Date: 2026-11-26
-Canonical base: `workpass70-source@7e601680c765d6dc94e51e4c8f5e729b48a6f56e`
+Date: 2026-11-27
+Canonical base: `workpass70-source@763631c5bc0add96cc2e0b1640e946ef4e8924ce`
 Aspect PR: #1186 — existing cognitive-workspace aspect branch, transplanted onto the current source line.
 
 ## Defect
@@ -30,7 +30,7 @@ This mechanism is an engineering implementation of a bounded global-workspace hy
 
 - Test-first checkpoint: `9139591c97798bde77fef23c53ee6d21aaa57439` (test/workflow/package wiring only; exact-head CI was started).
 - Production change is in the subsequent commit on this aspect PR. Exact-head checks must complete before merge.
-- No changes to the canonical source branch, `main`, releases, or the immutable `gearonone.zip` baseline are included.
+- No changes to `main` or Release tags/assets are included.
 
 
 ## Multi-domain attention and bounded admission
@@ -83,7 +83,7 @@ The focused workspace test now covers:
 
 The branch remains Draft / open / unmerged. The latest exact-head dedicated Actions run must complete before claiming these new contracts pass. Earlier successful runs on earlier heads are not inherited as proof for the current head.
 
-No measured phone latency, Android/Termux power-loss durability, independent review, or end-to-end production acceptance is claimed. The workspace and credit receipts are bounded engineering mechanisms; they are not a consciousness detector and do not establish subjective experience. main, Release tags/assets and immutable gearonone.zip remain untouched.
+No measured phone latency, Android/Termux power-loss durability, independent review, or end-to-end production acceptance is claimed. The workspace and credit receipts are bounded engineering mechanisms; they are not a consciousness detector and do not establish subjective experience. `main` and Release tags/assets remain untouched.
 
 ## Cross-tick CEF lineage and outcome finalization
 

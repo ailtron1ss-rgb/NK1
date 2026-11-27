@@ -150,6 +150,34 @@ await assert.rejects(() => core.feedback({
 }), /feedback-outcome-id-conflict/,
   'reusing an outcome ID with different feedback content must fail closed');
 
+const beforeImplicitWorkspaceOutcomes = core.cognitiveRuntime.globalWorkspace.snapshot().learning.outcomesApplied;
+await core.feedback({
+  decisionId: firstDecisionId,
+  success: .71,
+  reward: .42,
+  evidenceSource: 'device',
+});
+const afterFirstImplicitWorkspaceOutcome = core.cognitiveRuntime.globalWorkspace.snapshot().learning.outcomesApplied;
+assert.equal(afterFirstImplicitWorkspaceOutcome, beforeImplicitWorkspaceOutcomes + 1,
+  'a payload-derived feedback ID must credit the original decision workspace receipt');
+await core.feedback({
+  decisionId: firstDecisionId,
+  success: .83,
+  reward: .63,
+  evidenceSource: 'device',
+});
+const afterSecondImplicitWorkspaceOutcome = core.cognitiveRuntime.globalWorkspace.snapshot().learning.outcomesApplied;
+assert.equal(afterSecondImplicitWorkspaceOutcome, afterFirstImplicitWorkspaceOutcome + 1,
+  'two distinct payload-derived outcomes for one decision must not collapse onto one fallback ID');
+const implicitOutcomeIds = core.cognitiveRuntime.cognitiveEventFabric.recent(128)
+  .filter(event => event.stage === 'outcome' && event.payload?.decisionId === firstDecisionId &&
+    typeof event.payload?.outcomeId === 'string' && event.payload.outcomeId.startsWith(`feedback:${firstDecisionId}:`))
+  .map(event => event.payload.outcomeId);
+assert.equal(implicitOutcomeIds.length, 2,
+  'different implicit feedback payloads must receive distinct canonical CEF outcome IDs');
+assert.notEqual(implicitOutcomeIds[0], implicitOutcomeIds[1],
+  'payload-derived outcome IDs must be stable but content-specific');
+
 console.log('NK1_COGNITIVE_WORKSPACE_PREARBITRATION=PASS', JSON.stringify({
   order,
   ignition01: competed.ignition01,
