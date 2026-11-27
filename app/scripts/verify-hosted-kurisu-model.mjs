@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import { KURISU_HYBRID_MODEL } from "../src/components/avatar/avatarModelCatalog.ts";
 import { preflightAvatarModel } from "../src/components/avatar/avatarModelPreflight.ts";
 import { auditAvatarSecondaryAssetDescriptor } from "../src/components/avatar/avatarSecondaryAssetAudit.ts";
+import { auditGlbSkinWeights } from "../src/components/avatar/avatarGlbSkinWeightAudit.ts";
 
 const response = await fetch(KURISU_HYBRID_MODEL.url, {
   method: "GET",
@@ -25,6 +26,13 @@ const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
 const jsonLength = view.getUint32(12, true);
 const document = JSON.parse(new TextDecoder("utf-8", { fatal: true })
   .decode(bytes.subarray(20, 20 + jsonLength)).trim());
+const binHeaderOffset = 20 + jsonLength;
+assert.ok(binHeaderOffset + 8 <= bytes.byteLength, "Hosted GLB must contain a BIN chunk header");
+const binaryChunkLength = view.getUint32(binHeaderOffset, true);
+const binaryChunkType = view.getUint32(binHeaderOffset + 4, true);
+assert.equal(binaryChunkType, 0x004E4942, "Hosted GLB BIN chunk must follow its JSON chunk");
+assert.ok(binHeaderOffset + 8 + binaryChunkLength <= bytes.byteLength, "Hosted GLB BIN chunk must fit in the file");
+const binaryChunk = bytes.subarray(binHeaderOffset + 8, binHeaderOffset + 8 + binaryChunkLength);
 const morphTargets = (document.meshes ?? []).reduce((sum, mesh) =>
   sum + (mesh.primitives ?? []).reduce((n, primitive) => n + (primitive.targets?.length ?? 0), 0), 0);
 assert.ok((document.nodes?.length ?? 0) > 0, "Hosted model must contain scene nodes");
@@ -108,6 +116,20 @@ const secondaryAudit = auditAvatarSecondaryAssetDescriptor({
   skinnedMeshCount: gltfNodes.filter((node) => Number.isInteger(node?.mesh) && Number.isInteger(node?.skin)).length,
   morphMeshCount: gltfNodes.filter((node) => Number.isInteger(node?.mesh) && meshHasMorphs(document.meshes?.[node.mesh])).length,
 });
+const skinWeightAudit = auditGlbSkinWeights(document, binaryChunk, {
+  maxSamplesPerPrimitive: 2048,
+  maxSkinnedNodes: 128,
+});
+const garmentSkinWeightInventory = skinWeightAudit.meshAudits
+  .filter((mesh) => /cloth|coat|sleeve|skirt|tie|hair/i.test(mesh.nodeName + " " + mesh.meshName))
+  .map((mesh) => ({
+    node: mesh.nodeName,
+    mesh: mesh.meshName,
+    sampledVertices: mesh.sampledVertices,
+    vertexCount: mesh.vertexCount,
+    jointCoverage: mesh.jointCoverage.slice(0, 8),
+    warnings: mesh.warnings,
+  }));
 
 console.log("HOSTED_KURISU_ASSET=PASS", JSON.stringify({
   id: KURISU_HYBRID_MODEL.id,
@@ -132,6 +154,14 @@ console.log("HOSTED_KURISU_ASSET=PASS", JSON.stringify({
     rawMorphTargetCount,
     morphChannels: secondaryAudit.morphChannels,
     taggedNeuralMaterials: secondaryAudit.taggedNeuralMaterialCount,
+    skinWeightAudit: {
+      skinnedNodeCount: skinWeightAudit.skinnedNodeCount,
+      auditedNodeCount: skinWeightAudit.auditedNodeCount,
+      totalSampledVertices: skinWeightAudit.totalSampledVertices,
+      warnings: skinWeightAudit.warnings,
+      truncated: skinWeightAudit.truncated,
+      garmentAndHairMeshes: garmentSkinWeightInventory,
+    },
     warnings: secondaryAudit.warnings,
   },
 }));
