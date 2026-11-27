@@ -1,6 +1,6 @@
 # Decisions
 
-- **ADR-001 — Product branch:** all new work goes to `neurocore-unified/main`. It was seeded from `3526f618...` and synchronized with source head `3857e805...` by two-parent merge `e5fa0fbb...`; no direct writes to upstream source branch or main.
+- **ADR-001 — Product branch:** all new work goes to `neurocore-unified/main`. It was seeded from `3526f618...`, synchronized through `3857e805...` by `e5fa0fbb...`, then through current source head `8994a103...` by `cb1c22e...`; no direct writes to upstream source branch or main.
 - **ADR-002 — Canonical owners:** one OrganismCore and one MemoryOS2 authority. MemoryFabric coordinates writes and projections; no duplicate persistent memory.
 - **ADR-003 — Runtime is the source of truth:** browser UI sends commands and renders snapshots. It does not run a shadow cognitive core.
 - **ADR-004 — Compatibility migration:** keep `runtime/neuro-kurisu` and `app/src/neuro-kurisu` paths while moving the product identity to NeuroCore. Path renaming is deferred until all imports, scripts and tests can be migrated atomically.
