@@ -13,6 +13,7 @@
  * because a panel avatar must not silently walk off screen.
  */
 import type { BodyChannel } from "./embodimentSwitch.ts";
+import type { AvatarMotorAction } from "./motorIntent.ts";
 import {
   MOTION_PROGRAMS,
   blendMotionLayers,
@@ -22,6 +23,32 @@ import {
   type SemanticGestureProgramId,
 } from "./motionLibrary.ts";
 
+export interface MotionCharacterContext {
+  valence01: number;
+  arousal01: number;
+  dominance01: number;
+  curiosity01: number;
+  warmth01: number;
+  stress01: number;
+  confidence01: number;
+  memoryRecall01: number;
+  cognitiveLoad01: number;
+  uncertainty01: number;
+  socialNeed01: number;
+  novelty01: number;
+  goalPressure01: number;
+  predictionError01: number;
+  traits: Readonly<{
+    curiosity: number;
+    warmth: number;
+    guardedness: number;
+    composure: number;
+    playfulness: number;
+    sarcasm: number;
+  }>;
+  reducedMotion: boolean;
+}
+
 export interface MotionIntent {
   action: string;
   emotion: string;
@@ -29,6 +56,10 @@ export interface MotionIntent {
   thinking: boolean;
   awake: boolean;
   energy01: number;
+  /** Output of the single cognitive/personality motor planner; overrides stale raw action labels. */
+  semanticAction?: AvatarMotorAction;
+  /** Same-tick organism affect, homeostatic needs and stable identity traits. */
+  character?: MotionCharacterContext;
   /** Opt-in locomotion; disabled by default so a panel avatar never walks away. */
   allowLocomotion?: boolean;
   /** Explicit, short-lived action-card gesture from a closed assistant stage direction. */
@@ -80,6 +111,44 @@ const EMOTION_PRIMARY: Readonly<Record<string, MotionProgramId>> = {
   calm: "idle",
 };
 
+const SEMANTIC_ACTION_PROGRAM: Readonly<Record<AvatarMotorAction, MotionProgramId>> = {
+  rest: "idle",
+  listen: "listen",
+  inspect: "inspect",
+  reflect: "think",
+  explain: "explain",
+  comfort: "comfort",
+  respond: "respond",
+};
+
+const CHARACTER_SIGNAL_KEYS = [
+  "valence01", "arousal01", "dominance01", "curiosity01", "warmth01", "stress01",
+  "confidence01", "memoryRecall01", "cognitiveLoad01", "uncertainty01", "socialNeed01",
+  "novelty01", "goalPressure01", "predictionError01",
+] as const;
+const CHARACTER_TRAIT_KEYS = ["curiosity", "warmth", "guardedness", "composure", "playfulness", "sarcasm"] as const;
+
+function validateCharacterContext(value: unknown): value is MotionCharacterContext {
+  if (!isPlainRecord(value)) return false;
+  const expectedKeys = [...CHARACTER_SIGNAL_KEYS, "traits", "reducedMotion"];
+  const ownKeys = Object.keys(value);
+  if (ownKeys.length !== expectedKeys.length || !expectedKeys.every((key) => Object.hasOwn(value, key))) return false;
+  for (const key of CHARACTER_SIGNAL_KEYS) {
+    const signal = ownData(value, key);
+    if (typeof signal !== "number" || !Number.isFinite(signal) || signal < 0 || signal > 1) return false;
+  }
+  if (typeof ownData(value, "reducedMotion") !== "boolean") return false;
+  const traits = ownData(value, "traits");
+  if (!isPlainRecord(traits)) return false;
+  const traitKeys = Object.keys(traits);
+  if (traitKeys.length !== CHARACTER_TRAIT_KEYS.length
+    || !CHARACTER_TRAIT_KEYS.every((key) => Object.hasOwn(traits, key))) return false;
+  return CHARACTER_TRAIT_KEYS.every((key) => {
+    const trait = ownData(traits, key);
+    return typeof trait === "number" && Number.isFinite(trait) && trait >= 0 && trait <= 1;
+  });
+}
+
 /**
  * Deterministic intent-to-primary mapping. Speech and explicit thinking take
  * precedence over the emotion default, and an explicit action overrides both.
@@ -89,6 +158,7 @@ export function resolvePrimaryProgram(intent: MotionIntent): MotionProgramId {
   if (!awake) return "idle";
   if (intent.thinking) return "think";
   if (intent.gestureProgram && EXPLICIT_GESTURE_PROGRAMS.has(intent.gestureProgram)) return intent.gestureProgram;
+  if (intent.semanticAction) return SEMANTIC_ACTION_PROGRAM[intent.semanticAction];
   if (intent.speaking && intent.action === "respond") return "respond";
   switch (intent.action) {
     case "explore":
@@ -113,11 +183,58 @@ function validateIntent(intent: MotionIntent): boolean {
     && typeof intent.speaking === "boolean"
     && typeof intent.thinking === "boolean"
     && typeof intent.awake === "boolean"
+    && (intent.semanticAction === undefined || Object.hasOwn(SEMANTIC_ACTION_PROGRAM, intent.semanticAction))
+    && (intent.character === undefined || validateCharacterContext(intent.character))
     && (intent.allowLocomotion === undefined || typeof intent.allowLocomotion === "boolean")
     && (intent.gestureProgram === undefined || EXPLICIT_GESTURE_PROGRAMS.has(intent.gestureProgram));
 }
 
 const MOTION_PROGRAM_IDS: ReadonlySet<string> = new Set(Object.keys(MOTION_PROGRAMS));
+
+/**
+ * Tiny renderer-neutral posture offsets from affect/homeostasis/identity.
+ * They are additive to the selected gesture, not a competing motion program.
+ * The scale is deliberately restrained so the authored motion remains legible.
+ */
+function deriveCharacterBodyOffsets(intent: MotionIntent): Partial<Record<BodyChannel, number>> {
+  const character = intent.character;
+  if (!character || character.reducedMotion || !intent.awake || intent.energy01 <= 0.12
+    || intent.semanticAction === "rest") return {};
+
+  const trait = character.traits;
+  const curiosity = clamp01(character.curiosity01 * 0.65 + trait.curiosity * 0.35);
+  const warmth = clamp01(character.warmth01 * 0.65 + trait.warmth * 0.35);
+  const stress = clamp01(character.stress01 * 0.55 + character.cognitiveLoad01 * 0.2
+    + character.uncertainty01 * 0.15 + character.predictionError01 * 0.1);
+  const confidence = character.confidence01;
+  const approach = clamp01(curiosity * 0.32 + warmth * 0.22 + confidence * 0.18
+    + character.novelty01 * 0.16 + character.socialNeed01 * 0.12);
+  const restraint = clamp01(stress * 0.45 + trait.guardedness * 0.3
+    + (1 - character.dominance01) * 0.1 + (1 - trait.composure) * 0.15);
+  const openness = Math.max(-1, Math.min(1, approach - restraint));
+  const regulation = 0.65 + trait.composure * 0.35;
+  const energy = 0.55 + clamp01(intent.energy01) * 0.45;
+
+  return {
+    headYaw: Math.max(-0.04, Math.min(0.04, (curiosity - 0.5) * 0.045
+      + (character.dominance01 - 0.5) * 0.018)) * regulation * energy,
+    headPitch: Math.max(-0.06, Math.min(0.06, (curiosity - 0.5) * 0.05
+      + openness * 0.032 + (character.arousal01 - 0.5) * 0.012)) * regulation * energy,
+    headRoll: Math.max(-0.05, Math.min(0.05, (warmth - 0.5) * 0.04
+      + (trait.playfulness - 0.5) * 0.022 - (trait.guardedness - 0.5) * 0.018
+      + (character.valence01 - 0.5) * 0.012)) * regulation * energy,
+    torsoYaw: Math.max(-0.04, Math.min(0.04, (character.dominance01 - 0.5) * 0.035
+      + (trait.sarcasm - 0.5) * 0.01)) * regulation * energy,
+    torsoPitch: Math.max(-0.06, Math.min(0.06, openness * 0.045
+      + (character.goalPressure01 - 0.5) * 0.012
+      - (character.memoryRecall01 - 0.5) * 0.008)) * regulation * energy,
+    leftShoulder: Math.max(-0.045, Math.min(0.045, (stress - 0.4) * 0.035
+      + (trait.guardedness - 0.5) * 0.018 - (warmth - 0.5) * 0.025)) * regulation * energy,
+    rightShoulder: Math.max(-0.045, Math.min(0.045, (stress - 0.4) * 0.035
+      + (trait.guardedness - 0.5) * 0.018 - (warmth - 0.5) * 0.025
+      + (trait.playfulness - 0.5) * 0.008)) * regulation * energy,
+  };
+}
 
 function isPlainRecord(value: unknown): value is Record<string, unknown> {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false;
@@ -271,6 +388,12 @@ export function arbitrateMotion(
     // Scale the overlay by the layer's real blend weight (not the raw breath
     // constant) so it fades in and out with the rest of the blend.
     channels.breath = Math.max(-1, Math.min(1, (channels.breath ?? 0) + breath * idleLayer.weight * energyScale));
+  }
+
+  // Character-conditioned posture is a small additive layer around the selected
+  // motor program. It never creates a second action or overrides explicit gestures.
+  for (const [channel, offset] of Object.entries(deriveCharacterBodyOffsets(intent)) as [BodyChannel, number][]) {
+    channels[channel] = Math.max(-1, Math.min(1, (channels[channel] ?? 0) + offset));
   }
 
   return {
