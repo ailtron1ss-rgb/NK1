@@ -514,7 +514,11 @@ export function createProceduralHumanoidRig(scene: THREE.Scene): ProceduralHuman
       mouth.scale.y = 0.012 + (input.speaking ? 0.045 * clamp(input.arousal + 0.2, 0.1, 1) : smile * 0.006);
       mouth.scale.x = 0.045 + smile * 0.008;
       root.rotation.y = smooth(root.rotation.y, channel("rootYaw", 0) * 0.34, delta, 10);
-      chest.position.z += channel("breath", 0) * 0.018;
+      const chestParticle = input.particles?.chest;
+      const chestParticleOffsetZ = chestParticle
+        ? clamp(chestParticle.position.z - chestParticle.target.z, -0.055, 0.055)
+        : 0;
+      chest.position.z = restJointPositions.chest.z + chestParticleOffsetZ + channel("breath", 0) * 0.018;
       root.userData.poseState = { awake: input.awake, action: input.action, emotion: input.emotion, particleBindingsApplied, updatedAt: finite(input.timeSeconds) };
       root.updateMatrixWorld(true);
     },
