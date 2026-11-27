@@ -120,7 +120,7 @@ async function smokeProfile(profile) {
   check(profile.name + ": 3D is explicitly preview-only", /предпросмотр/i.test(await threeD.getAttribute("aria-label") || ""));
 
   await page.getByRole("heading", { name: "Cognitive cycle" }).waitFor({ state: "visible" });
-  const messageInput = page.getByPlaceholder("Write to Kurisu…");
+  const messageInput = page.getByPlaceholder("Write to NeuroCore…");
   await messageInput.waitFor({ state: "visible" });
   const chatForm = messageInput.locator("xpath=ancestor::form");
   const send = chatForm.getByRole("button", { name: "Send", exact: true });
