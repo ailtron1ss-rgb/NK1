@@ -84,8 +84,13 @@ export function resolveAvatarDynamicsBoneRole(boneName: unknown): AvatarDynamics
   if (/(anchor|pinned|pinroot|base|root|attach)$/.test(name)) return null;
 
   const rawName = boneName.toLowerCase();
-  const leftSide = rawName.includes("left") || /(?:[_\-.]l$|(?:tip|lock|strand|fringe)l$|(?:hairlock|hairfringe|strand|fringe|coatpanel|skirtpanel|mantletail|ribbon|sleeve|cuff)l(?:[_\-.]|$))/.test(rawName);
-  const rightSide = rawName.includes("right") || /(?:[_\-.]r$|(?:tip|lock|strand|fringe)r$|(?:hairlock|hairfringe|strand|fringe|coatpanel|skirtpanel|mantletail|ribbon|sleeve|cuff)r(?:[_\-.]|$))/.test(rawName);
+  const sideSemantic = /(hair|fringe|strand|lock|coat|skirt|cape|mantle|ribbon|panel|sleeve|cuff|neural|synapse|filament|conduit|neurofiber)/.test(name);
+  const leftSide = rawName.includes("left")
+    || /(?:^|[_\\-.])l(?:[_\\-.]|$)/.test(rawName)
+    || (sideSemantic && /l(?:[_\\-.]|$)/.test(rawName));
+  const rightSide = rawName.includes("right")
+    || /(?:^|[_\\-.])r(?:[_\\-.]|$)/.test(rawName)
+    || (sideSemantic && /r(?:[_\\-.]|$)/.test(rawName));
   const side: -1 | 0 | 1 = leftSide ? -1 : rightSide ? 1 : 0;
   if (/(neural|synapse|filament|conduit|neurofiber)/.test(name)) {
     return { role: "neural-fiber", maxAngle: 0.035, distalWeight: 0.35, side };
@@ -151,8 +156,14 @@ function resolveTarget(
         z: (-headYaw * 0.07 * poseScale + wave * 0.018 * motion + side * gait * 0.009 * poseScale) * distal,
       };
     case "sleeve": {
-      const shoulder = readChannel(frame, side < 0 ? "leftShoulder" : "rightShoulder");
-      const wrist = readChannel(frame, side < 0 ? "leftWrist" : "rightWrist");
+      const shoulder = side < 0
+        ? readChannel(frame, "leftShoulder")
+        : side > 0 ? readChannel(frame, "rightShoulder")
+          : (readChannel(frame, "leftShoulder") + readChannel(frame, "rightShoulder")) * 0.5;
+      const wrist = side < 0
+        ? readChannel(frame, "leftWrist")
+        : side > 0 ? readChannel(frame, "rightWrist")
+          : (readChannel(frame, "leftWrist") + readChannel(frame, "rightWrist")) * 0.5;
       return {
         x: (-torsoPitch * 0.035 * poseScale + breath * 0.012 * poseScale + wave * 0.009 * motion) * distal,
         y: (-torsoYaw * 0.045 * poseScale + wrist * 0.025 * poseScale) * distal,
