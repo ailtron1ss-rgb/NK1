@@ -358,7 +358,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--require-source-match",
         action="store_true",
-        help="fail candidate readiness when source-only, archive-only or changed files are present",
+        help="fail full-source-mirror checks when changed, source-only or archive-only files are present",
     )
     parser.add_argument("--out", required=True)
     args = parser.parse_args(argv)
