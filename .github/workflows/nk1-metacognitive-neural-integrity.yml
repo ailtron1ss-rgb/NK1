@@ -1,0 +1,42 @@
+name: NK1 Metacognitive Neural Integrity
+
+on:
+  push:
+    branches: ["workpass70-source"]
+    paths:
+      - ".github/workflows/nk1-metacognitive-neural-integrity.yml"
+      - "runtime/neuro-kurisu/src/organism/cognition/MetacognitiveNeuralSubstrate.ts"
+      - "runtime/neuro-kurisu/tests/metacognitive-*.mjs"
+  pull_request:
+    paths:
+      - ".github/workflows/nk1-metacognitive-neural-integrity.yml"
+      - "runtime/neuro-kurisu/src/organism/cognition/MetacognitiveNeuralSubstrate.ts"
+      - "runtime/neuro-kurisu/tests/metacognitive-*.mjs"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  metacognitive-neural-integrity:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          package-manager-cache: false
+      - name: Verify input dimension and legacy state migration
+        run: node --experimental-strip-types runtime/neuro-kurisu/tests/metacognitive-input-dimension.mjs
+      - name: Verify malformed checkpoint restore sanitization
+        if: always()
+        run: node --experimental-strip-types runtime/neuro-kurisu/tests/metacognitive-restore-sanitization.mjs
+      - name: Verify paired observation and outcome alignment
+        if: always()
+        run: node --experimental-strip-types runtime/neuro-kurisu/tests/metacognitive-observation-alignment.mjs
+      - name: Verify current-sample gradient attribution
+        if: always()
+        run: node --experimental-strip-types runtime/neuro-kurisu/tests/metacognitive-gradient-alignment.mjs
+      - name: Verify existing runtime integration
+        if: always()
+        run: node --experimental-strip-types runtime/neuro-kurisu/tests/big-pass-188-metacognitive-neural.mjs

@@ -1,0 +1,39 @@
+name: NK1 cognitive workspace pre-arbitration
+on:
+  pull_request:
+    branches: [workpass70-source]
+    paths:
+      - 'runtime/neuro-kurisu/src/organism/core/OrganismCore.ts'
+      - 'runtime/neuro-kurisu/src/organism/cognition/GlobalWorkspaceSubstrateV2.ts'
+      - 'runtime/neuro-kurisu/tests/cognitive-workspace-prearbitration.mjs'
+      - 'runtime/neuro-kurisu/package.json'
+      - '.github/workflows/nk1-cognitive-workspace-prearbitration.yml'
+permissions:
+  contents: read
+concurrency:
+  group: nk1-cognitive-workspace-prearbitration-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  workspace-prearbitration:
+    name: Current-cycle workspace must precede P61/P64
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: runtime/neuro-kurisu
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v7
+      - name: Set up Node
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: runtime/neuro-kurisu/package-lock.json
+      - name: Install locked dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Verify current-cycle workspace arbitration
+        run: npm run test:cognitive-workspace-prearbitration
+      - name: Existing cognitive cycle boundary
+        run: npm run test:cognitive-cycle-boundary
+      - name: Runtime type syntax validation
+        run: npm run typecheck

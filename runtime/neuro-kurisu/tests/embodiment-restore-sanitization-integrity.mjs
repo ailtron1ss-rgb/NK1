@@ -4,6 +4,7 @@ import { MultimodalSituationModel, defaultMultimodalSituation } from '../src/org
 import { PerceptualEvidenceCompiler, defaultPerceptualEvidence } from '../src/organism/body/PerceptualEvidenceCompiler.ts';
 import { DeviceEvidenceLedger, defaultDeviceEvidence } from '../src/organism/body/DeviceEvidenceLedger.ts';
 import { EmbodimentSubsystemRuntime } from '../src/organism/core/EmbodimentSubsystemRuntime.ts';
+import { OrganismSystemFabric } from '../src/organism/core/OrganismSystemFabric.ts';
 import { P35SemanticWorldBodyEngine, defaultP35SemanticWorldBody } from '../src/organism/body/P35SemanticWorldBody.ts';
 import { P37EmbodiedSensoriumEngine, defaultP37EmbodiedSensorium } from '../src/organism/body/P37EmbodiedSensorium.ts';
 import { EmbodiedRecoveryController } from '../src/organism/body/EmbodiedRecoveryController.ts';
@@ -99,19 +100,22 @@ const pe = evidence.snapshot();
 assert.equal(pe.updates, 0);
 assert.equal(pe.scene, defaultPerceptualEvidence().scene);
 assert.equal(pe.metrics.grounding01, defaultPerceptualEvidence().metrics.grounding01, 'string metric falls back');
-assert.equal(pe.metrics.conflict01, 1, 'metric above 1 clamps to 1');
-assert.equal(pe.metrics.unresolved01, 0, 'negative metric clamps to 0');
-assert.equal(pe.evidence.length, 1, 'only plain-record evidence rows survive; primitives are dropped');
+assert.equal(pe.metrics.conflict01, defaultPerceptualEvidence().metrics.conflict01, 'unverified aggregate metrics reset to defaults');
+assert.equal(pe.metrics.unresolved01, defaultPerceptualEvidence().metrics.unresolved01, 'unverified aggregate metrics reset to defaults');
+assert.equal(pe.evidence.length, 0, 'plain records without the required evidence schema are dropped');
 assert.equal(pe.activeQuery.modality, 'unknown');
-assert.equal(pe.activeQuery.priority01, 1);
+assert.equal(pe.activeQuery.priority01, 0, 'invalid persisted query priority must return to its conservative default, not saturate into maximum priority');
 
 // A valid snapshot round-trips exactly.
 const evidenceSource = new PerceptualEvidenceCompiler();
-evidenceSource.recordExternalEvidence({ at: 10, claim: 'sensor:door-open', confidence01: 0.8, verified: true });
+evidenceSource.recordExternalEvidence({ at: 10, claim: 'sensor:door-open', confidence01: 0.8 });
 const evidenceSnapshot = evidenceSource.snapshot();
 const evidenceRestored = new PerceptualEvidenceCompiler();
 evidenceRestored.restore(evidenceSnapshot);
-assert.deepEqual(evidenceRestored.snapshot(), evidenceSnapshot, 'valid evidence snapshot must round-trip');
+assert.deepEqual(evidenceRestored.snapshot().evidence, evidenceSnapshot.evidence, 'valid accepted evidence rows must round-trip');
+assert.equal(evidenceRestored.snapshot().updates, 1, 'restore derives the update count from accepted rows');
+assert.deepEqual(evidenceRestored.snapshot().metrics, defaultPerceptualEvidence().metrics, 'restore resets aggregate metrics without host admission receipts');
+assert.notEqual(evidenceRestored.snapshot().lastHash, '', 'restore recomputes the evidence digest after resetting aggregates');
 
 // --- DeviceEvidenceLedger -----------------------------------------------------
 const ledger = new DeviceEvidenceLedger();
@@ -326,3 +330,68 @@ assert.deepEqual(customPrototypeRestore.snapshot().recent, [], 'arrays with cust
 assert.equal(customFilterCalls, 0, 'custom array methods are never invoked during restore');
 
 console.log('EMBODIMENT_RESTORE_SANITIZATION_INTEGRITY=PASS');
+
+
+// The canonical Embodiment owner must restore from the exact shape emitted by
+// its own snapshot(), while remaining compatible with older long facet names.
+{
+  const source = new EmbodimentSubsystemRuntime();
+  source.p41SemanticPerception.ingest({
+    at: 4_000,
+    world: {
+      scene: 'round-trip-lab',
+      objects: [{
+        label: 'door',
+        trackId: 'round-trip-door-1',
+        confidence01: 0.87,
+        evidenceKind: 'model-output',
+      }],
+    },
+  });
+  const snapshot = source.snapshot();
+  assert.ok(snapshot.p41Semantic.entities.length > 0);
+  const restored = new EmbodimentSubsystemRuntime();
+  restored.restoreFromPersisted({
+    cognition: { perception: snapshot.perception },
+    embodiment: snapshot,
+    advanced: {},
+  });
+  const restoredP41 = restored.p41SemanticPerception.snapshot();
+  assert.equal(restoredP41.tick, snapshot.p41Semantic.tick);
+  assert.equal(restoredP41.scene.label, 'round-trip-lab');
+  assert.equal(restoredP41.entities[0]?.trackId, 'world:canonical:round-trip-door-1');
+
+  const legacy = new EmbodimentSubsystemRuntime();
+  legacy.restoreFromPersisted({
+    cognition: { perception: snapshot.perception },
+    embodiment: { p41SemanticPerception: snapshot.p41Semantic },
+    advanced: {},
+  });
+  assert.equal(legacy.p41SemanticPerception.snapshot().entities[0]?.trackId, 'world:canonical:round-trip-door-1');
+
+  let getterInvoked = false;
+  const hostileRoot = {};
+  Object.defineProperty(hostileRoot, 'embodiment', {
+    enumerable: true,
+    get() { getterInvoked = true; throw new Error('embodiment restore getter'); },
+  });
+  assert.doesNotThrow(() => legacy.restoreFromPersisted(hostileRoot));
+  assert.equal(getterInvoked, false, 'owner-level persisted input must be checked before property reads');
+}
+
+console.log('EMBODIMENT_SNAPSHOT_RESTORE_KEY_PARITY=PASS');
+
+
+// The composition-root restore is the first entry point for persisted owner
+// state. A hostile Proxy must be rejected before any property or reflection trap.
+{
+  const fabric = new OrganismSystemFabric();
+  let proxyTrapInvoked = false;
+  const proxy = new Proxy({}, {
+    get() { proxyTrapInvoked = true; throw new Error('fabric-persisted-get'); },
+    ownKeys() { proxyTrapInvoked = true; throw new Error('fabric-persisted-ownKeys'); },
+    getPrototypeOf() { proxyTrapInvoked = true; throw new Error('fabric-persisted-prototype'); },
+  });
+  assert.doesNotThrow(() => fabric.restoreFromPersisted(proxy));
+  assert.equal(proxyTrapInvoked, false, 'composition-root restore must reject a top-level Proxy before reflection');
+}

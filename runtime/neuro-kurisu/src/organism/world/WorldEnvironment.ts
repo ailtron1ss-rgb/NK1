@@ -41,6 +41,11 @@ export interface EnvironmentTransition {
 
 const clamp = (x: number) => Math.max(0, Math.min(1, Number.isFinite(x) ? x : 0));
 
+/** Normalize a signed environment reward (-1..1) to the display/evaluation scale (0..1). */
+export function signedRewardToDisplay01(reward: number): number {
+  return clamp((reward + 1) / 2);
+}
+
 type PlainRecord = Record<string, unknown>;
 const ENVIRONMENT_ACTIONS = new Set<EnvironmentAction>(['observe', 'inspect', 'move', 'collect', 'rest', 'communicate']);
 const CONTROL_CHARACTERS = /[\u0000-\u001f\u007f-\u009f]/u;
@@ -363,7 +368,7 @@ export class WorldEnvironment {
       after,
       reward: Math.max(-1, Math.min(1, Number.isFinite(reward) ? reward : 0)),
       rawReward: reward,
-      displayReward01: clamp((reward + 1) / 2),
+      displayReward01: signedRewardToDisplay01(reward),
       surprise,
       valid,
       at: Date.now(),
