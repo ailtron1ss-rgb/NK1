@@ -396,10 +396,16 @@ import { B304SemanticHoldoutLedger, defaultB304SemanticHoldoutState, type B304Se
 import { B305CriticalPathVerificationLedger, defaultB305CriticalPathState } from '../system/B305CriticalPathVerificationLedger.ts';
 import { clamp, goalVectorFallback } from './ExecutionPrimitives.ts';
 import type { ExternalProjectResearchResult } from '../system/ExternalProjectResearchTool.ts';
+import {
+  createFileBackedSignedObservationAdmissionAuthority,
+  type FileBackedSignedObservationAdmissionConfig,
+} from '../system/SignedObservationAdmissionAuthority.ts';
 const now = () => Date.now();
 export interface OrganismConfig {
     /** Optional host-owned signed observation authority. Absent means G3 admission stays fail-closed. */
     observationAdmissionAuthority?: import('../system/SignedObservationAdmissionAuthority.ts').SignedObservationAdmissionAuthority;
+    /** Explicit host configuration for the app-private durable nonce ledger. No default path or in-memory fallback exists. */
+    observationAdmissionConfig?: FileBackedSignedObservationAdmissionConfig;
     /** Host-owned verifier key lookup; private keys must remain outside NK1. */
     inventionVerifierKeyResolver?: import('../research/TheInventionLoop.ts').InventionVerifierKeyResolver;
     /** Optional host evaluator policy for preregistering each newly generated hypothesis. */
@@ -1371,6 +1377,17 @@ export class OrganismCore {
             enableB2522AdaptiveWorldModelMixtureRouter: config.enableB2522AdaptiveWorldModelMixtureRouter ?? true,
             enableB2523MultiHorizonCounterfactualVerifier: config.enableB2523MultiHorizonCounterfactualVerifier ?? true,
             ...config,
+            // Keep one canonical authority owner. A caller may inject a prebuilt
+            // authority or ask Core to create the durable file-backed one, never both.
+            observationAdmissionAuthority: (() => {
+                if (config.observationAdmissionAuthority && config.observationAdmissionConfig) {
+                    throw new Error('observation-admission-authority-configuration-conflict');
+                }
+                return config.observationAdmissionAuthority ??
+                    (config.observationAdmissionConfig
+                        ? createFileBackedSignedObservationAdmissionAuthority(config.observationAdmissionConfig)
+                        : undefined);
+            })(),
         } as Required<OrganismConfig>;
         if (config.inventionVerifierKeyResolver)
             this.organismSystems.configureInventionVerifierKeyResolver(config.inventionVerifierKeyResolver);
