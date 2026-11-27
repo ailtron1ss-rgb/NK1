@@ -35,9 +35,10 @@ import { emptySnapshot } from "../src/organism/types.ts";
 function fakeBone() {
   return { rotation: { x: 0, y: 0, z: 0, set(x, y, z) { this.x = x; this.y = y; this.z = z; } } };
 }
-function createFakeVrm(names) {
+function createFakeVrm(names, metaVersion = "1") {
   const bones = new Map(names.map((name) => [name, fakeBone()]));
   return {
+    meta: { metaVersion },
     humanoid: {
       autoUpdateHumanBones: false,
       getNormalizedBoneNode(name) { return bones.get(name) ?? null; },
@@ -54,12 +55,21 @@ const FINGER_SUFFIXES = [
   "RingProximal", "RingIntermediate", "RingDistal",
   "LittleProximal", "LittleIntermediate", "LittleDistal",
 ];
+const VRM0_FINGER_SUFFIXES = [
+  "ThumbProximal", "ThumbIntermediate", "ThumbDistal",
+  ...FINGER_SUFFIXES.filter((suffix) => !suffix.startsWith("Thumb")),
+];
 const FULL_BODY_NAMES = [
   "head", "neck", "hips", "leftUpperArm", "rightUpperArm", "spine",
   "leftLowerArm", "rightLowerArm", "leftUpperLeg", "rightUpperLeg",
   "leftLowerLeg", "rightLowerLeg", "leftFoot", "rightFoot", "leftHand", "rightHand",
   ...FINGER_SUFFIXES.map((suffix) => "left" + suffix),
   ...FINGER_SUFFIXES.map((suffix) => "right" + suffix),
+];
+const VRM0_BODY_NAMES = [
+  ...FULL_BODY_NAMES.filter((name) => !/^(left|right)Thumb(?:Metacarpal|Proximal|Distal)$/.test(name)),
+  ...VRM0_FINGER_SUFFIXES.map((suffix) => "left" + suffix),
+  ...VRM0_FINGER_SUFFIXES.map((suffix) => "right" + suffix),
 ];
 
 const baseManifest = () => ({
@@ -400,7 +410,7 @@ test("declared VRM 3D channels match the full-body bone applier", () => {
   assert.ok(vrmManifest.joints.includes("hips") && vrmManifest.joints.includes("leftFoot") && vrmManifest.joints.includes("rightFoot"),
     "the rig manifest must list normalized pelvis and foot joints");
   assert.ok(vrmManifest.joints.includes("leftHand") && vrmManifest.joints.includes("rightHand"));
-  for (const suffix of FINGER_SUFFIXES) {
+  for (const suffix of [...new Set([...FINGER_SUFFIXES, "ThumbIntermediate"])]) {
     assert.ok(vrmManifest.joints.includes("left" + suffix), "left finger joint " + suffix + " must be declared");
     assert.ok(vrmManifest.joints.includes("right" + suffix), "right finger joint " + suffix + " must be declared");
   }
@@ -595,6 +605,26 @@ test("aggregate finger curl reaches all standard optional VRM finger segments an
   const neutral = applyVrmFullBodyChannels(vrm, {});
   assert.equal(neutral.applied, false);
   for (const suffix of FINGER_SUFFIXES) {
+    assert.equal(vrm.bones.get("left" + suffix).rotation.x, 0);
+    assert.equal(vrm.bones.get("right" + suffix).rotation.x, 0);
+  }
+});
+
+test("VRM 0.x resolves legacy thumb intermediate joints instead of VRM 1.0 metacarpals", () => {
+  const vrm = createFakeVrm(VRM0_BODY_NAMES, "0");
+  const driven = applyVrmFullBodyChannels(vrm, { leftFingers: 0.5, rightFingers: -0.5 });
+  assert.equal(driven.controlledBones.length, 30);
+  assert.ok(driven.controlledBones.includes("leftThumbProximal"));
+  assert.ok(driven.controlledBones.includes("leftThumbIntermediate"));
+  assert.ok(driven.controlledBones.includes("rightThumbIntermediate"));
+  assert.equal(driven.controlledBones.includes("leftThumbMetacarpal"), false);
+  assert.equal(vrm.bones.get("leftThumbIntermediate").rotation.x, 0.425 * 0.58);
+  assert.equal(vrm.bones.get("rightThumbIntermediate").rotation.x, -0.425 * 0.58);
+  assert.equal(vrm.bones.has("leftThumbMetacarpal"), false);
+
+  const neutral = applyVrmFullBodyChannels(vrm, {});
+  assert.equal(neutral.applied, false);
+  for (const suffix of VRM0_FINGER_SUFFIXES) {
     assert.equal(vrm.bones.get("left" + suffix).rotation.x, 0);
     assert.equal(vrm.bones.get("right" + suffix).rotation.x, 0);
   }
