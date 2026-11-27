@@ -76,6 +76,10 @@ A byte-based “90% integration” would be misleading: the collection expands t
 
 ## 6. Verification status
 
-The first PR revision added only the OpenClaw SKILL.md behavioral contract and CI step. Exact-head GitHub Actions run `46028347292` confirmed the expected RED: dependency installation succeeded, the new OpenClaw contract failed because the adapter did not yet recognize the path, and runtime typecheck passed. Implementation is present on the current PR head. OpenClaw RED was confirmed by run `46028347292`; llama.cpp structured-output RED was confirmed by run `46029183168`. The current combined donor-adapter workflow is rerunning both contracts plus existing local-provider, model-selection, importer, memory lifecycle, restore-hardening and runtime typecheck checks.
+The first PR revision added only the OpenClaw SKILL.md behavioral contract and CI step. Exact-head run `46028347292` confirmed RED: dependency installation and runtime typecheck succeeded, while the new contract failed on the unsupported skill path. The OpenClaw contract subsequently passed on an implementation revision; the llama.cpp test-only run `46029183168` confirmed RED for structured output before the provider change.
+
+Final focused donor-adapter workflow `46029512155` on exact head `b042498cfcb9ad67258a06eb6e04d9ef80a9b411` completed **SUCCESS**. All steps passed: OpenClaw skill import, llama.cpp schema-constrained JSON, existing local chat provider, P40 model selection, existing N.E.K.O. Markdown importer, memory lifecycle/restore, restore-shape hardening, and runtime typecheck.
+
+All 19 PR check runs on that exact head completed successfully (19/19; zero failed, cancelled, or pending), including unified organism runtime, full application UI Chromium browser smoke, local-language resilience, action governance, dependency boundaries, memory integrity, clean install/build/start, and prototype runtime contracts.
 
 Source branch and archives remain untouched; changes are isolated in the review PR until CI and review are complete.
