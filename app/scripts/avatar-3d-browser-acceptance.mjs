@@ -106,6 +106,10 @@ try {
   assert.match(report.diagnostics, /(?:GPU sway|XPBD-симуляция частиц поверхности)/,
     "canonical v5 must expose an active secondary deformation path");
 
+  report.modelAxisDiagnostics = await canvas.evaluate((element) => {
+    const raw = element.dataset.avatarModelAxisDiagnostics;
+    return raw ? JSON.parse(raw) : null;
+  });
   report.modelRuntime = await canvas.evaluate((element) => ({
     meshCount: Number(element.dataset.avatarModelMeshCount || 0),
     visibleMeshCount: Number(element.dataset.avatarVisibleMeshCount || 0),
