@@ -60,9 +60,14 @@ The code path and injected contracts exist, but **production host attestation is
 
 - The application host must supply its provisioned public-key resolver and real key-rotation/revocation policy; the branch does not contain a production private key.
 - The host must supply a canonical consent authority that checks current ticket state/revision, including revocation and modality scope.
-- The host must supply a durable, cross-process atomic nonce store. The in-memory `Set` in the regression is test-only and does not qualify as production replay protection.
+- The host must supply a durable, cross-process atomic nonce store implementing both `consume({issuerId,deviceId,sessionId,nonce,receiptDigest,retainUntil})` and exact-digest `hasConsumed(...)`. The in-memory `Map` in the regression is test-only and does not qualify as production replay protection.
 - The host capture service must compute the capture digest from the actual captured bytes and sign the exact receipt; the signed digest is currently treated as an issuer assertion, not independently recomputed from a local media blob.
-- Persisted observation rows are deliberately downgraded on restore today. A subsequent restart-rehydration path must re-verify the persisted signed envelope against the host key/consent authorities and the durable nonce ledger before restoring observed status; no persisted WeakSet capability is trusted.
+- On process restore, persisted observation rows are first downgraded. If a host authority is configured, Core then rechecks the stored signed envelope against the active public-key resolver, current consent authority and exact previously consumed nonce digest. A new process-local WeakSet capability is minted only after all checks succeed; a normal `admit()` call still rejects replay. Expired, changed-digest, no-longer-consented and never-consumed receipts remain downgraded.
+- Local revocation is represented by a persisted monotonic `revoked` marker. Core skips reauthorization for that row even if its old signature remains cryptographically valid; the marker is not cleared by receipt replay.
 - Android/Termux cold-start, process-kill/restart, storage-loss and real camera/audio capture soak remain outstanding, as do independent RU/EN holdout and device latency measurements.
+
+### Restart reauthorization invariants
+
+The host nonce ledger is the source of truth for the relation between a signed envelope and a previously consumed nonce. Reauthorization is read-only: it never creates or refreshes a nonce entry. The ledger query must match the full tuple `issuerId + deviceId + sessionId + nonce + receiptDigest`; matching only the nonce string would permit a different signed payload to inherit prior admission. Consent is rechecked at restart, so a revoked or superseded ticket invalidates the prior observation. The persisted revocation marker is an additional local monotonic guard and is deliberately stronger than signature validity.
 
 Accordingly, this work closes several caller-controlled and malformed-restore routes and builds the host admission seam; it does **not** close G3 or prove real-device trust until those concrete host providers and device tests are connected and independently verified.
