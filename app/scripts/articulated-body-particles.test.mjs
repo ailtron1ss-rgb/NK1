@@ -215,13 +215,17 @@ test("a lifted swing foot clears the ground contact band instead of being snappe
       { awake: true, energy01: 0.85, groundY: -0.9, footRadius: 0.04 },
     );
     state = result.state;
+    assert.ok(state.particles.leftToePoint.position.y >= -0.8601,
+      "the swing toe must never penetrate the support surface at tick " + tick
+        + "; actualY=" + state.particles.leftToePoint.position.y);
   }
   assert.ok(result);
-  assert.equal(result.contacts.leftFoot, false);
+  assert.equal(result.contacts.leftFoot, false,
+    "the stance contact must release after the toe actually clears the floor");
   assert.ok(state.particles.leftToePoint.target.y > -0.75,
     "the semantic swing target must clear the support band; targetY=" + state.particles.leftToePoint.target.y);
-  assert.ok(state.particles.leftToePoint.position.y > -0.75,
-    "the simulated swing toe must follow the elevated target; actualY="
+  assert.ok(state.particles.leftToePoint.position.y > -0.85,
+    "the simulated swing toe must clear the contact band with a 1cm gap; actualY="
       + state.particles.leftToePoint.position.y + " targetY="
       + state.particles.leftToePoint.target.y);
 });
