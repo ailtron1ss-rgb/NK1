@@ -143,6 +143,13 @@ const priorOutcomeEvent = {
     evidence01: 0.9,
   },
 };
+const priorGoalEvent = {
+  id: 'goal:cycle-42',
+  tick: 42,
+  stage: 'goal',
+  external: false,
+  payload: { selectedGoalId: goal.id },
+};
 const priorActionEvent = {
   id: 'action:cycle-42',
   tick: 42,
@@ -170,7 +177,7 @@ const priorPlanEvent = {
   },
 };
 const revisionHint = derivePlanRevisionHint(
-  [priorOutcomeEvent, priorActionEvent, priorPlanEvent], 43, goal.id, 0.8,
+  [priorOutcomeEvent, priorGoalEvent, priorActionEvent, priorPlanEvent], 43, goal.id, 0.8,
 );
 assert.ok(revisionHint, 'a same-goal, immediately prior, independently verified high-error outcome must produce a revision hint');
 assert.equal(revisionHint.previousPlanId, plan.id);
@@ -204,6 +211,12 @@ assert.equal(derivePlanRevisionHint([priorOutcomeEvent, {
   'an action receipt for a different executed action must not be used as the prediction-error cause');
 assert.equal(derivePlanRevisionHint([priorOutcomeEvent, priorPlanEvent], 43, goal.id, 0.8), null,
   'a plan and outcome without an exact executed-action receipt cannot form a revision');
+
+assert.equal(derivePlanRevisionHint([priorOutcomeEvent, {
+  ...priorGoalEvent,
+  payload: { selectedGoalId: 'goal:different' },
+}, priorActionEvent, priorPlanEvent], 43, goal.id, 0.8), null,
+  'the prior goal-selection receipt must confirm the same active goal before revision');
 
 const simulatedRevisionEvent = {
   ...priorOutcomeEvent,
