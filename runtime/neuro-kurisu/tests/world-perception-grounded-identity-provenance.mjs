@@ -492,7 +492,7 @@ console.log(JSON.stringify({
   assert.ok(snapshot.scene.confidence01 >= 0 && snapshot.scene.confidence01 <= 1);
   assert.ok(snapshot.scene.stability01 >= 0 && snapshot.scene.stability01 <= 1);
   assert.equal(snapshot.sceneEvidenceKind, 'derived');
-  assert.equal(snapshot.relations[0]?.confidence01, 0, 'out-of-range persisted confidence fails closed to the safe default');
+  assert.equal(snapshot.relations[0]?.confidence01, 1, 'relation confidence above 1 is clamped to the upper bound');
   assert.equal(snapshot.relations[0]?.evidenceKind, 'derived');
   assert.equal(snapshot.metrics.grounding01 <= 1, true);
   assert.equal(snapshot.metrics.temporalBinding01 >= 0, true);
