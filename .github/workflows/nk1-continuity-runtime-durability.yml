@@ -1,0 +1,62 @@
+name: NK1 continuity runtime durability
+
+on:
+  pull_request:
+    branches: [workpass70-source]
+    paths:
+      - ".github/workflows/nk1-continuity-runtime-durability.yml"
+      - "runtime/neuro-kurisu/src/organism/system/ContinuityLedger.ts"
+      - "runtime/neuro-kurisu/src/organism/cognition/evolution/ConstitutionEvolutionEngine.ts"
+      - "runtime/neuro-kurisu/src/organism/system/ActionGateway.ts"
+      - "runtime/neuro-kurisu/src/server/server.mjs"
+      - "runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts"
+      - "runtime/neuro-kurisu/tests/continuity-ledger-durability-20261124.mjs"
+      - "runtime/neuro-kurisu/tests/recovery-watchdog-durable-commit-20261127.mjs"
+      - "runtime/neuro-kurisu/tests/big-pass-324-core-watchdog.mjs"
+      - "runtime/neuro-kurisu/tests/constitution-evolution-engine.mjs"
+      - "runtime/neuro-kurisu/tests/constitution-evolution-server.mjs"
+      - "runtime/neuro-kurisu/package.json"
+permissions:
+  contents: read
+concurrency:
+  group: nk1-continuity-runtime-durability-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  continuity-durability:
+    name: Continuity journal and canonical checkpoint acceptance
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: runtime/neuro-kurisu
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v7
+      - name: Set up Node
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: runtime/neuro-kurisu/package-lock.json
+      - name: Install locked dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Continuity journal, watchdog and canonical Core durability gate
+        run: npm run audit:continuity-durability
+      - name: Existing RecoveryWatchdog regression
+        run: npm run test:big-pass-324
+      - name: Durable organism process restart
+        run: npm run test:big-pass-318
+      - name: FileStateStore crash recovery
+        run: npm run test:big-pass-319
+      - name: Process kill and resume
+        run: npm run test:big-pass-323:kill-resume
+      - name: Longitudinal behavioral continuity and persistent stress
+        run: npm run test:b1701-b2200:continuity
+      - name: Persistent continuity kernel
+        run: npm run test:pcontinuity
+      - name: Persistent continuity organism integration
+        run: npm run test:pcontinuity:integration
+      - name: ActionGateway failure-provenance regression
+        run: node --experimental-strip-types tests/constitution-evolution-engine.mjs
+      - name: Constitution Evolution server ratification and rollback regression
+        run: node --experimental-strip-types tests/constitution-evolution-server.mjs
