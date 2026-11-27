@@ -15,7 +15,7 @@ test("camera fit centers the actual post-normalization bounds", () => {
 });
 
 test("camera fit respects portrait viewports without cropping the horizontal span", () => {
-  const portrait = resolveAvatarCameraFraming(bounds, 31, 0.55);
+  const portrait = resolveAvatarCameraFraming(bounds, 31, 0.4);
   const landscape = resolveAvatarCameraFraming(bounds, 31, 1.8);
   assert.ok(portrait && landscape);
   assert.ok(portrait.distance > landscape.distance);
