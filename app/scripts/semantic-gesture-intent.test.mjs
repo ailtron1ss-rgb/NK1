@@ -19,6 +19,14 @@ test("maps English stage directions without mining ordinary dialogue", () => {
   assert.equal(resolveSemanticGestureIntent("Она машет рукой."), null);
 });
 
+test("maps explicit index-pointing stage directions to the per-digit point program", () => {
+  assert.equal(resolveSemanticGestureIntent("(указывает пальцем на карту)")?.programId, "point");
+  assert.equal(resolveSemanticGestureIntent("(показывает на экран)")?.programId, "point");
+  assert.equal(resolveSemanticGestureIntent("(she points at the map with her index finger)")?.programId, "point");
+  assert.equal(resolveSemanticGestureIntent("(points with her index finger)")?.programId, "point");
+  assert.equal(resolveSemanticGestureIntent("She points at the map."), null);
+  assert.equal(resolveSemanticGestureIntent("(не указывает пальцем)"), null);
+});
 test("negative, negated and unfinished directions fail closed", () => {
   assert.equal(resolveSemanticGestureIntent("(не кивает)"), null);
   assert.equal(resolveSemanticGestureIntent("(does not wave hello)"), null);
