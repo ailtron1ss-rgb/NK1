@@ -291,10 +291,19 @@ interface VrmFingerBone {
   flex: number;
 }
 
-const VRM_FINGER_SEGMENTS = [
+const VRM_1_THUMB_SEGMENTS = [
   { suffix: "ThumbMetacarpal", flex: 0.22 },
   { suffix: "ThumbProximal", flex: 0.48 },
   { suffix: "ThumbDistal", flex: 0.58 },
+] as const;
+
+const VRM_0_THUMB_SEGMENTS = [
+  { suffix: "ThumbProximal", flex: 0.48 },
+  { suffix: "ThumbIntermediate", flex: 0.58 },
+  { suffix: "ThumbDistal", flex: 0.58 },
+] as const;
+
+const VRM_NON_THUMB_FINGER_SEGMENTS = [
   { suffix: "IndexProximal", flex: 0.64 },
   { suffix: "IndexIntermediate", flex: 0.78 },
   { suffix: "IndexDistal", flex: 0.54 },
@@ -311,11 +320,15 @@ const VRM_FINGER_SEGMENTS = [
 
 const resolveVrmFingerBones = (
   side: "left" | "right",
+  metaVersion: VRMMeta["metaVersion"],
   resolve: (name: string) => NormalizedBoneNode | null,
-): readonly VrmFingerBone[] => VRM_FINGER_SEGMENTS.map(({ suffix, flex }) => {
-  const name = side + suffix;
-  return { name, node: resolve(name), flex };
-});
+): readonly VrmFingerBone[] => {
+  const thumbSegments = metaVersion === "0" ? VRM_0_THUMB_SEGMENTS : VRM_1_THUMB_SEGMENTS;
+  return [...thumbSegments, ...VRM_NON_THUMB_FINGER_SEGMENTS].map(({ suffix, flex }) => {
+    const name = side + suffix;
+    return { name, node: resolve(name), flex };
+  });
+};
 
 /**
  * Resolve the optional full-body normalized rig. Uses the same normalized proxy
@@ -346,8 +359,8 @@ export function resolveVrmFullBodyRig(vrm: VRM): VrmFullBodyRig {
     rightFoot: resolve("rightFoot"),
     leftHand: resolve("leftHand"),
     rightHand: resolve("rightHand"),
-    leftFingerBones: resolveVrmFingerBones("left", resolve),
-    rightFingerBones: resolveVrmFingerBones("right", resolve),
+    leftFingerBones: resolveVrmFingerBones("left", vrm.meta?.metaVersion ?? "1", resolve),
+    rightFingerBones: resolveVrmFingerBones("right", vrm.meta?.metaVersion ?? "1", resolve),
   };
 }
 
