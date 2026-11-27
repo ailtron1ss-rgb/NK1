@@ -53,6 +53,7 @@ const bones = [...jointIndices].map((index) => {
     id: `gltf-node-${index}`,
     name: typeof gltfNodes[index]?.name === "string" ? gltfNodes[index].name : `node-${index}`,
     ...(Number.isInteger(parent) && jointIndices.has(parent) ? { parentId: `gltf-node-${parent}` } : {}),
+    ...(gltfNodes[index]?.extras?.nk1Secondary !== undefined ? { metadata: gltfNodes[index].extras.nk1Secondary } : {}),
   };
 });
 const skinJointNames = [...jointIndices].sort((a, b) => a - b).map((index) => ({
