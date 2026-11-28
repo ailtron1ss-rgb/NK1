@@ -22,6 +22,8 @@ export interface LearningProcessCommand {
   maxOutputBytes?: number;
   env?: Record<string, string>;
   inheritEnv?: string[];
+  /** Exact credential-shaped variable names the host has approved for this child only. */
+  allowSensitiveEnv?: string[];
   signal?: AbortSignal;
 }
 export interface LearningExecutionReceipt {
@@ -72,7 +74,14 @@ function safeInteger(value: unknown, minimum: number, maximum: number): value is
   return Number.isSafeInteger(value) && Number(value) >= minimum && Number(value) <= maximum;
 }
 
-const SENSITIVE_ENV_KEY = /(?:^|_)(?:API_KEY|ACCESS_KEY|SECRET_KEY|SERVICE_ACCOUNT_KEY|SERVICE_ACCOUNT_JSON|SERVICE_ROLE_KEY|SIGNING_KEY|ENCRYPTION_KEY|PRIVATE_KEY|ACCESS_TOKEN|REFRESH_TOKEN|ID_TOKEN|TOKEN|SECRET|PASSWORD|PASSWD|CREDENTIALS?|AUTHORIZATION|COOKIE|SESSION_KEY|DATABASE_URL|DB_URL|REDIS_URL|POSTGRES_URL|MYSQL_URL|MONGO(?:DB)?_URI|MONGO(?:DB)?_URL|CONNECTION_STRING|WEBHOOK_SECRET)(?:_|$)/i;
+// Protect both secret values and environment selectors/sockets that let a child
+// borrow credentials or privileged host services without receiving the secret bytes.
+const SENSITIVE_ENV_KEY = /(?:^|_)(?:API_KEY|ACCESS_KEY|SECRET_KEY|SERVICE_ACCOUNT_KEY|SERVICE_ACCOUNT_JSON|SERVICE_ROLE_KEY|SIGNING_KEY|ENCRYPTION_KEY|PRIVATE_KEY|ACCESS_TOKEN|REFRESH_TOKEN|ID_TOKEN|TOKEN|SECRET|PASSWORD|PASSWD|CREDENTIALS?|AUTHORIZATION|COOKIE|SESSION_KEY|DATABASE_URL|DB_URL|REDIS_URL|POSTGRES_URL|MYSQL_URL|MONGO(?:DB)?_URI|MONGO(?:DB)?_URL|CONNECTION_STRING|WEBHOOK_SECRET|SSH_AUTH_SOCK|GPG_AGENT_INFO|KUBECONFIG|GOOGLE_APPLICATION_CREDENTIALS|AWS_PROFILE|AWS_DEFAULT_PROFILE|AWS_SHARED_CREDENTIALS_FILE|AWS_CONFIG_FILE|AWS_WEB_IDENTITY_TOKEN_FILE|AZURE_CONFIG_DIR|CLOUDSDK_CONFIG|DOCKER_HOST|DOCKER_CONTEXT|DOCKER_CONFIG|NODE_OPTIONS|NODE_PATH|LD_PRELOAD|LD_LIBRARY_PATH|DYLD_INSERT_LIBRARIES|DYLD_LIBRARY_PATH|HOME|USERPROFILE|HOMEDRIVE|HOMEPATH|XDG_CONFIG_HOME|XDG_DATA_HOME|XDG_CACHE_HOME|GNUPGHOME|PYTHONPATH|PYTHONHOME|RUBYOPT|RUBYLIB|PERL5OPT|PERL5LIB|BASH_ENV)(?:_|$)/i;
+
+/** Shared name classifier used by both process admission and trusted scheduler config. */
+export function isSensitiveLearningEnvironmentKey(key: string): boolean {
+  return typeof key === 'string' && SENSITIVE_ENV_KEY.test(key);
+}
 
 /**
  * Keep credentials out of durable child-process receipts. Only values attached
@@ -139,6 +148,8 @@ export async function runLearningProcess(
     args: Array.isArray(command.args) ? [...command.args] : command.args,
     env: command.env ? { ...command.env } : undefined,
     inheritEnv: command.inheritEnv ? [...command.inheritEnv] : undefined,
+    allowSensitiveEnv: Array.isArray(command.allowSensitiveEnv)
+      ? [...command.allowSensitiveEnv] : command.allowSensitiveEnv,
   };
   // Pin the registrar capability itself before the first filesystem await. A caller
   // retaining the registration object must not be able to swap its method or runtime
@@ -178,6 +189,25 @@ export async function runLearningProcess(
   if (!safeInteger(timeoutMs, 1, MAX_TIMEOUT_MS)) throw new Error('timeoutMs out of bounds');
   if (!safeInteger(maxOutputBytes, 1, MAX_OUTPUT_BYTES)) throw new Error('maxOutputBytes out of bounds');
 
+  const environmentKeyPattern = /^[A-Z_][A-Z0-9_]*$/i;
+  const suppliedEnvironmentKeys = new Set([
+    ...(command.inheritEnv ?? []),
+    ...Object.keys(command.env ?? {}),
+  ]);
+  const rawSensitiveGrants = command.allowSensitiveEnv ?? [];
+  if (!Array.isArray(rawSensitiveGrants)) throw new Error('invalid sensitive environment allowlist');
+  const allowedSensitiveEnv = new Set<string>();
+  for (const key of rawSensitiveGrants) {
+    if (typeof key !== 'string' || !environmentKeyPattern.test(key) || !isSensitiveLearningEnvironmentKey(key) ||
+        allowedSensitiveEnv.has(key)) {
+      throw new Error('invalid sensitive environment allowlist');
+    }
+    if (!suppliedEnvironmentKeys.has(key)) {
+      throw new Error('sensitive-environment-grant-not-bound-to-command');
+    }
+    allowedSensitiveEnv.add(key);
+  }
+
   if (command.signal?.aborted) throw new Error('learning process cancelled before spawn');
   const executionId = randomUUID();
   const startedAt = Date.now();
@@ -187,12 +217,18 @@ export async function runLearningProcess(
   const surviveDirectory = path.resolve(command.surviveDir);
   const env: NodeJS.ProcessEnv = {};
   for (const key of command.inheritEnv ?? []) {
-    if (!/^[A-Z_][A-Z0-9_]*$/i.test(key)) throw new Error('invalid inherited environment key');
+    if (!environmentKeyPattern.test(key)) throw new Error('invalid inherited environment key');
+    if (SENSITIVE_ENV_KEY.test(key) && !allowedSensitiveEnv.has(key)) {
+      throw new Error('sensitive-environment-key-not-authorized');
+    }
     const value = process.env[key];
     if (value !== undefined) env[key] = value;
   }
   for (const [key, value] of Object.entries(command.env ?? {})) {
-    if (!/^[A-Z_][A-Z0-9_]*$/i.test(key) || typeof value !== 'string') throw new Error('invalid environment entry');
+    if (!environmentKeyPattern.test(key) || typeof value !== 'string') throw new Error('invalid environment entry');
+    if (SENSITIVE_ENV_KEY.test(key) && !allowedSensitiveEnv.has(key)) {
+      throw new Error('sensitive-environment-key-not-authorized');
+    }
     env[key] = value;
   }
   Object.assign(env, {
@@ -230,6 +266,7 @@ export async function runLearningProcess(
     cwd: workingDirectory,
     inheritedEnv: inheritedEnvKeys.map(key => [key, env[key] ?? null]),
     explicitEnv: explicitEnvKeys.map(key => [key, env[key] ?? null]),
+    allowSensitiveEnv: [...allowedSensitiveEnv].sort(),
   }));
 
   let stdout = Buffer.alloc(0);
@@ -342,6 +379,7 @@ export async function runLearningProcess(
       'A process receipt records execution, not task correctness or independent verification.',
       'The caller must keep a separate survive directory per experimental arm and control reset timing.',
       'The child process is not OS/container sandboxed by this module; use an external sandbox for untrusted learners.',
+      'Credential-shaped environment variables are denied by default; exact variable names require a host-owned allowSensitiveEnv grant.',
       'Sensitive environment values are redacted from persisted stdout/stderr; byte counters describe raw output.',
       'A child can access paths permitted by the host OS; the survive directory is not tamper-proof.',
     ],

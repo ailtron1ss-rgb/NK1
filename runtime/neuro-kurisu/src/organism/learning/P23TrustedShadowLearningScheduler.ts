@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { lstat, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { SkillShadowObservation } from './VersionedSkillCandidateStore.ts';
+import { isSensitiveLearningEnvironmentKey } from './LearningProcessSupervisor.ts';
 import type { LearningProcessCommand, LearningProcessResult, LearningProcessRun } from './LearningProcessSupervisor.ts';
 
 export interface TrustedShadowLearningScheduleConfig {
@@ -108,6 +109,21 @@ export function parseTrustedShadowLearningScheduleConfig(
       cmd.inheritEnv.some(key => typeof key !== 'string' || !/^[A-Z_][A-Z0-9_]*$/i.test(key)))) {
     throw new Error('trusted shadow command inheritEnv must contain valid environment variable names');
   }
+  if (cmd.allowSensitiveEnv !== undefined) {
+    if (!Array.isArray(cmd.allowSensitiveEnv) ||
+        cmd.allowSensitiveEnv.some(key => typeof key !== 'string' || !/^[A-Z_][A-Z0-9_]*$/i.test(key) ||
+          !isSensitiveLearningEnvironmentKey(key)) ||
+        new Set(cmd.allowSensitiveEnv).size !== cmd.allowSensitiveEnv.length) {
+      throw new Error('trusted shadow allowSensitiveEnv must contain unique sensitive environment variable names');
+    }
+    const suppliedKeys = new Set([
+      ...Object.keys(cmd.env ?? {}),
+      ...(cmd.inheritEnv ?? []),
+    ]);
+    if (cmd.allowSensitiveEnv.some(key => !suppliedKeys.has(key))) {
+      throw new Error('trusted shadow sensitive environment grants must bind to supplied command keys');
+    }
+  }
   for (const key of ['timeoutMs', 'maxOutputBytes'] as const) {
     const bound = key === 'timeoutMs' ? 3_600_000 : 16_777_216;
     if (cmd[key] !== undefined && !safeInteger(cmd[key], 1, bound)) {
@@ -142,6 +158,7 @@ export function parseTrustedShadowLearningScheduleConfig(
       ...(cmd.maxOutputBytes !== undefined ? { maxOutputBytes: cmd.maxOutputBytes as number } : {}),
       ...(cmd.env !== undefined ? { env: { ...(cmd.env as Record<string, string>) } } : {}),
       ...(cmd.inheritEnv !== undefined ? { inheritEnv: [...cmd.inheritEnv] as string[] } : {}),
+      ...(cmd.allowSensitiveEnv !== undefined ? { allowSensitiveEnv: [...cmd.allowSensitiveEnv] as string[] } : {}),
     },
   };
 }
