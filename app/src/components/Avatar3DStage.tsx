@@ -16,6 +16,7 @@ import { disposeThreeObjectTree } from "./avatar/threeResourceDisposal";
 import { applyAnimeToonMaterials, createProceduralToonMaterial, getSharedAnimeGradientTexture } from "./avatar/threeToonMaterials";
 import { KURISU_HYBRID_MODEL } from "./avatar/avatarModelCatalog";
 import { resolveGlbMouthMorphWeights } from "./avatar/glbMouthMorphAdapter";
+import { resetNk1ControlledGlbFacialMorphs } from "./avatar/glbMorphNeutralization";
 import { resolveGlbFacialMorphWeights } from "./avatar/glbFacialMorphAdapter";
 import { resolveGlbSecondaryBoneRotation } from "./avatar/glbSecondaryMotionAdapter";
 import { resolveGlbBodyBoneRotation } from "./avatar/glbBodyChannelAdapter";
@@ -134,6 +135,9 @@ export function Avatar3DStage(props:Props){
       humanoidAudit=auditHumanoidRig(sceneNodes);
     }
     if(vrm){configureVrmForNk1NormalizedMotorDrive(vrm);VRMUtils.rotateVRM0(vrm);VRMUtils.removeUnnecessaryVertices(gltf.scene);VRMUtils.combineSkeletons(gltf.scene);VRMUtils.combineMorphs(vrm);}if(!vrm)applyAnimeToonMaterials(root);
+    const glbMorphInitialization = vrm
+      ? { meshCount: 0, managedTargetCount: 0, resetTargetCount: 0, resetTargetNames: [] as string[] }
+      : resetNk1ControlledGlbFacialMorphs(root);
     // GLB geometry bounds can describe the undeformed bind pose. Refresh every
     // skin palette first, then use pose-aware bounds so camera fitting follows
     // the actual articulated surface rather than a nearly flat bind-space box.
@@ -537,6 +541,7 @@ export function Avatar3DStage(props:Props){
     rt.renderer.domElement.dataset.avatarModelMeshCount=String(modelMeshCount);
     rt.renderer.domElement.dataset.avatarVisibleMeshCount=String(visibleModelMeshCount);
     rt.renderer.domElement.dataset.avatarSkinnedMeshCount=String(skinnedModelMeshCount);
+    rt.renderer.domElement.dataset.avatarMorphInitialization=JSON.stringify(glbMorphInitialization);
     rt.renderer.domElement.dataset.avatarCameraDistance=String(framing.distance);
     rt.renderer.domElement.dataset.avatarProjectedCenterX=String(projectedCenter.x);
     rt.renderer.domElement.dataset.avatarProjectedCenterY=String(projectedCenter.y);
