@@ -106,8 +106,8 @@ try {
     return panel instanceof HTMLDetailsElement && panel.textContent?.includes("All secondary meshes:");
   }, undefined, { timeout: 10_000 });
   report.diagnostics = await audit.innerText();
-  const allSecondaryMatch = report.diagnostics.match(/All secondary meshes:\\s*(\\d+)/);
-  const xpbdMatch = report.diagnostics.match(/XPBD surface particles:\\s*(\\d+)\\s+mesh/);
+  const allSecondaryMatch = report.diagnostics.match(/All secondary meshes:[ ]*([0-9]+)/);
+  const xpbdMatch = report.diagnostics.match(/XPBD surface particles:[ ]*([0-9]+)[ ]+mesh/);
   report.secondaryRuntimeCounts = {
     allSecondary: allSecondaryMatch ? Number(allSecondaryMatch[1]) : null,
     xpbdParticles: xpbdMatch ? Number(xpbdMatch[1]) : null,
