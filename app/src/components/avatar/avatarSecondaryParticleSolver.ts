@@ -55,10 +55,20 @@ export interface AvatarBodySurfaceCollider {
   queryVersion: number;
 }
 
+export interface AvatarBodySurfaceColliderDiagnostics {
+  reason: string;
+  vertexCount: number;
+  triangleCount: number;
+  validTriangles: number;
+  gridEntries: number;
+  cellSize: number;
+}
+
 export interface AvatarBodySurfaceColliderInput {
   positions: ArrayLike<number>;
   indices?: ArrayLike<number> | null;
   cellSize?: number;
+  diagnostics?: Partial<AvatarBodySurfaceColliderDiagnostics>;
 }
 
 export interface AvatarBodySurfaceProjection {
@@ -130,13 +140,24 @@ function closestPointOnBodyTriangle(
 export function createAvatarBodySurfaceCollider(
   input: AvatarBodySurfaceColliderInput,
 ): AvatarBodySurfaceCollider | null {
-  if (!input?.positions || input.positions.length % 3 !== 0) return null;
+  const diagnostics = input?.diagnostics;
+  const reject = (reason: string): null => {
+    if (diagnostics) Object.assign(diagnostics, {
+      reason, vertexCount: diagnostics.vertexCount ?? 0, triangleCount: diagnostics.triangleCount ?? 0,
+      validTriangles: diagnostics.validTriangles ?? 0, gridEntries: diagnostics.gridEntries ?? 0,
+      cellSize: diagnostics.cellSize ?? 0,
+    });
+    return null;
+  };
+  if (!input?.positions || input.positions.length % 3 !== 0) return reject("invalid-position-buffer");
   const vertexCount = input.positions.length / 3;
-  if (vertexCount < 4 || vertexCount > MAX_BODY_SURFACE_VERTICES) return null;
-  if (input.indices && input.indices.length % 3 !== 0) return null;
+  if (diagnostics) diagnostics.vertexCount = vertexCount;
+  if (vertexCount < 4 || vertexCount > MAX_BODY_SURFACE_VERTICES) return reject("vertex-count-out-of-range");
+  if (input.indices && input.indices.length % 3 !== 0) return reject("index-count-not-triangles");
   const rawIndices = input.indices ?? Array.from({ length: vertexCount }, (_, index) => index);
   const triangleCount = rawIndices.length / 3;
-  if (!Number.isInteger(triangleCount) || triangleCount < 4 || triangleCount > MAX_BODY_SURFACE_TRIANGLES) return null;
+  if (diagnostics) diagnostics.triangleCount = triangleCount;
+  if (!Number.isInteger(triangleCount) || triangleCount < 4 || triangleCount > MAX_BODY_SURFACE_TRIANGLES) return reject("triangle-count-out-of-range");
 
   const positions = new Float32Array(vertexCount * 3);
   const min = { x: Number.POSITIVE_INFINITY, y: Number.POSITIVE_INFINITY, z: Number.POSITIVE_INFINITY };
@@ -145,7 +166,7 @@ export function createAvatarBodySurfaceCollider(
   for (let vertex = 0; vertex < vertexCount; vertex += 1) {
     const offset = vertex * 3;
     const x = Number(input.positions[offset]), y = Number(input.positions[offset + 1]), z = Number(input.positions[offset + 2]);
-    if (![x, y, z].every(Number.isFinite) || Math.max(Math.abs(x), Math.abs(y), Math.abs(z)) > 1_000_000) return null;
+    if (![x, y, z].every(Number.isFinite) || Math.max(Math.abs(x), Math.abs(y), Math.abs(z)) > 1_000_000) return reject("non-finite-or-unbounded-vertex");
     positions[offset] = x; positions[offset + 1] = y; positions[offset + 2] = z;
     min.x = Math.min(min.x, x); min.y = Math.min(min.y, y); min.z = Math.min(min.z, z);
     max.x = Math.max(max.x, x); max.y = Math.max(max.y, y); max.z = Math.max(max.z, z);
@@ -155,13 +176,14 @@ export function createAvatarBodySurfaceCollider(
   const indices = new Uint32Array(rawIndices.length);
   for (let offset = 0; offset < rawIndices.length; offset += 1) {
     const index = Number(rawIndices[offset]);
-    if (!Number.isInteger(index) || index < 0 || index >= vertexCount) return null;
+    if (!Number.isInteger(index) || index < 0 || index >= vertexCount) return reject("triangle-index-out-of-range");
     indices[offset] = index;
   }
 
   const cellSize = typeof input.cellSize === "number" && Number.isFinite(input.cellSize)
     ? Math.max(0.04, Math.min(0.3, input.cellSize))
     : 0.12;
+  if (diagnostics) diagnostics.cellSize = cellSize;
   const cells = new Map<string, number[]>();
   let gridEntries = 0;
   let validTriangles = 0;
@@ -183,7 +205,7 @@ export function createAvatarBodySurfaceCollider(
     const z0 = Math.floor((Math.min(az, bz, cz) - min.z) / cellSize);
     const z1 = Math.floor((Math.max(az, bz, cz) - min.z) / cellSize);
     const coverage = (x1 - x0 + 1) * (y1 - y0 + 1) * (z1 - z0 + 1);
-    if (!Number.isFinite(coverage) || coverage <= 0 || coverage > MAX_BODY_SURFACE_TRIANGLE_CELLS) return null;
+    if (!Number.isFinite(coverage) || coverage <= 0 || coverage > MAX_BODY_SURFACE_TRIANGLE_CELLS) return reject("triangle-cell-coverage-limit");
 
     for (let x = x0; x <= x1; x += 1) {
       for (let y = y0; y <= y1; y += 1) {
@@ -193,13 +215,18 @@ export function createAvatarBodySurfaceCollider(
           if (bucket.length === 0) cells.set(key, bucket);
           bucket.push(triangle);
           gridEntries += 1;
-          if (gridEntries > MAX_BODY_SURFACE_GRID_ENTRIES) return null;
+          if (gridEntries > MAX_BODY_SURFACE_GRID_ENTRIES) return reject("grid-entry-limit");
         }
       }
     }
     validTriangles += 1;
   }
-  if (validTriangles < 4 || cells.size === 0) return null;
+  if (diagnostics) {
+    diagnostics.validTriangles = validTriangles;
+    diagnostics.gridEntries = gridEntries;
+  }
+  if (validTriangles < 4 || cells.size === 0) return reject("insufficient-nondegenerate-triangles");
+  if (diagnostics) diagnostics.reason = "ready";
   return { positions, indices, center, min, max, cellSize, cells, visitStamps: new Uint32Array(triangleCount), queryVersion: 0 };
 }
 
