@@ -3406,18 +3406,55 @@ export class OrganismRuntime {
 
   /** Pending self-initiated chat turn for the UI; no tool/device side effects occur here. */
   async autonomousDialogueReady() {
-    return this.enqueue(async () => this.core.pendingAutonomousSocialInitiativeMessage());
+    return this.enqueue(async () => {
+      const claim = this.core.claimAutonomousSocialInitiativeDelivery();
+      if (claim.stateChanged) await this.core.flush();
+      return claim.initiative;
+    });
+  }
+
+  /** Read proactive-delivery policy on the serialized runtime command queue. */
+  async autonomousDialogueDeliveryPolicy() {
+    return this.enqueue(async () => this.core.autonomousInitiativeDeliveryPolicy());
+  }
+
+  /** Update proactive-delivery consent on the serialized runtime command queue. */
+  async setAutonomousDialogueConsent(consentGranted: boolean) {
+    return this.enqueue(async () => {
+      const policy = this.core.setAutonomousInitiativeConsent(consentGranted);
+      await this.core.flush();
+      return policy;
+    });
+  }
+
+  /** Configure UTC quiet hours for proactive delivery on the serialized Runtime queue. */
+  async setAutonomousDialogueQuietHours(input: { enabled: boolean; startHourUtc: number; endHourUtc: number }) {
+    return this.enqueue(async () => {
+      const policy = this.core.setAutonomousInitiativeQuietHours(input);
+      await this.core.flush();
+      return policy;
+    });
   }
 
   /** Mark a proactive chat turn delivered exactly once after the UI has stored it. */
-  async acknowledgeAutonomousDialogue(id: string): Promise<boolean> {
+  async acknowledgeAutonomousDialogue(id: string, expectedAttemptCount?: number): Promise<boolean> {
     return this.enqueue(async () => {
-      const acknowledged = this.core.acknowledgeAutonomousSocialInitiative(id, Date.now());
-      if (acknowledged) {
-        await this.persistOpenLoopMutation(() => this.openLoopRadar.acknowledgeInitiative(id));
-        await this.core.flush();
+      const receipt = this.core.acknowledgeAutonomousSocialInitiativeWithState(id, Date.now(), expectedAttemptCount);
+      if (receipt.stateChanged) await this.core.flush();
+      if (receipt.acknowledged) {
+        // The user's durable chat receipt belongs to the canonical Core snapshot.
+        // Persist it before updating the optional Open Loop projection so a
+        // reminder-store failure cannot leave the delivery ACK only in memory.
+        try {
+          await this.persistOpenLoopMutation(() => this.openLoopRadar.acknowledgeInitiative(id));
+        } catch (error) {
+          console.warn(
+            '[proactive-delivery] Core chat receipt is durable, but the optional Open Loop projection may be stale and require reconciliation:',
+            error instanceof Error ? error.message : String(error),
+          );
+        }
       }
-      return acknowledged;
+      return receipt.acknowledged;
     });
   }
 

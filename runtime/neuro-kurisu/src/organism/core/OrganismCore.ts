@@ -3134,19 +3134,37 @@ export class OrganismCore {
         // stageMessage may reject an unsafe message while still changing it to deferred;
         // persist the resulting state even when no message is staged for delivery.
         this.persisted.system.autonomousSocialInitiative = this.organismSystems.agency.autonomousSocialInitiative.snapshot();
+        this.markPersistenceDirty();
         return staged;
     }
-    pendingAutonomousSocialInitiativeMessage() {
-        return this.organismSystems.agency.autonomousSocialInitiative.latestReady();
+    claimAutonomousSocialInitiativeDelivery() {
+        const result = this.organismSystems.agency.autonomousSocialInitiative.claimReadyWithState();
+        if (result.stateChanged) {
+            this.persisted.system.autonomousSocialInitiative = this.organismSystems.agency.autonomousSocialInitiative.snapshot();
+            this.markPersistenceDirty();
+        }
+        return result;
     }
-    acknowledgeAutonomousSocialInitiative(id: string, at = Date.now()) {
-        const acknowledged = this.organismSystems.agency.autonomousSocialInitiative.acknowledge(id, at);
-        if (acknowledged) this.persisted.system.autonomousSocialInitiative = this.organismSystems.agency.autonomousSocialInitiative.snapshot();
-        return acknowledged;
+    pendingAutonomousSocialInitiativeMessage() {
+        return this.claimAutonomousSocialInitiativeDelivery().initiative;
+    }
+    acknowledgeAutonomousSocialInitiativeWithState(id: string, at = Date.now(), expectedAttemptCount?: number) {
+        const result = this.organismSystems.agency.autonomousSocialInitiative.acknowledgeWithState(id, at, expectedAttemptCount);
+        if (result.stateChanged) {
+            this.persisted.system.autonomousSocialInitiative = this.organismSystems.agency.autonomousSocialInitiative.snapshot();
+            this.markPersistenceDirty();
+        }
+        return result;
+    }
+    acknowledgeAutonomousSocialInitiative(id: string, at = Date.now(), expectedAttemptCount?: number) {
+        return this.acknowledgeAutonomousSocialInitiativeWithState(id, at, expectedAttemptCount).acknowledged;
     }
     deferAutonomousSocialInitiative(id: string, at = Date.now()) {
         const deferred = this.organismSystems.agency.autonomousSocialInitiative.defer(id, at);
-        if (deferred) this.persisted.system.autonomousSocialInitiative = this.organismSystems.agency.autonomousSocialInitiative.snapshot();
+        if (deferred) {
+            this.persisted.system.autonomousSocialInitiative = this.organismSystems.agency.autonomousSocialInitiative.snapshot();
+            this.markPersistenceDirty();
+        }
         return deferred;
     }
     /** Offline A/B benchmark against an isolated MemoryOS2 clone; never trains or mutates live memory. */

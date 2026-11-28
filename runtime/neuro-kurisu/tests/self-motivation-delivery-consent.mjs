@@ -14,13 +14,30 @@ const runtimeInput = at => ({
 });
 
 const engine = new AutonomousSocialInitiativeEngine();
+engine.setConsent(true);
 engine.setQuietHours({ enabled: true, startHourUtc: 22, endHourUtc: 8 });
 const quiet = engine.cycle(runtimeInput(atHourUtc(23)));
 assert.equal(quiet.shouldInitiate, false, 'quiet hours suppress unsolicited user-visible delivery');
 assert.equal(engine.deliveryPolicy().suppressedByQuietHours, 1);
 assert.equal(engine.deliveryPolicy().suppressedByConsent, 0);
-assert.equal(engine.cycle(runtimeInput(atHourUtc(12, 1))).shouldInitiate, true,
+assert.equal(engine.cycle({ ...runtimeInput(atHourUtc(12, 1)), topics: [{ topic: 'A different unresolved question about project architecture and evidence', source: 'reflection', salience01: .9, freshness01: .9, interestFit01: .7, affectFit01: .6 }] }).shouldInitiate, true,
   'internal initiative can resume outside the quiet window');
+
+
+assert.equal(engine.mayDeliverUserVisible(atHourUtc(21)), true,
+  'the hour before the quiet-hours start remains deliverable');
+assert.equal(engine.mayDeliverUserVisible(atHourUtc(22)), false,
+  'the quiet-hours start hour is inclusive');
+assert.equal(engine.mayDeliverUserVisible(atHourUtc(7)), false,
+  'the quiet-hours window remains active through the hour before its end');
+assert.equal(engine.mayDeliverUserVisible(atHourUtc(8)), true,
+  'the quiet-hours end hour is exclusive');
+
+const allDayQuiet = new AutonomousSocialInitiativeEngine();
+allDayQuiet.setConsent(true);
+allDayQuiet.setQuietHours({ enabled: true, startHourUtc: 8, endHourUtc: 8 });
+assert.equal(allDayQuiet.mayDeliverUserVisible(atHourUtc(12)), false,
+  'equal start and end hours represent a full-day delivery pause');
 
 const noConsent = new AutonomousSocialInitiativeEngine();
 noConsent.setConsent(false);
@@ -42,7 +59,7 @@ legacy.restore({
   reciprocity01: .5, initiative01: .3, initiatives: [], startedAt: 1_800_000_000_000,
   lastExternalInputAt: 0, lastInitiativeAt: 0,
 });
-assert.equal(legacy.deliveryPolicy().consentGranted, true,
-  'legacy snapshots preserve existing delivery behavior until consent is explicitly revoked');
+assert.equal(legacy.deliveryPolicy().consentGranted, false,
+  'legacy snapshots without an explicit timestamped consent decision restore fail-closed');
 assert.equal(legacy.deliveryPolicy().quietHoursEnabled, false);
 console.log('SELF_MOTIVATION_DELIVERY_CONSENT=PASS');

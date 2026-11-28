@@ -3,21 +3,19 @@ import type { OrganismSnapshot } from "./types";
 import { emptySnapshot } from "./types";
 import { neuroApi } from "@/neuro-kurisu/api";
 import { toOrganismSnapshot } from "@/neuro-kurisu/normalize";
+import { CHAT_CACHE_KEY, persistChatCache, persistChatBeforeAcknowledge, restoreChatCache } from "./chatCache";
 
 type Tab = "mind" | "memory" | "lab" | "skills" | "evidence";
-const CHAT_KEY = "neuro-kurisu-chat-v2";
 let lastInitiativePollAt = 0;
 
 function loadChat(): OrganismSnapshot["chat"] {
   if (typeof window === "undefined") return [];
-  try {
-    const raw = JSON.parse(localStorage.getItem(CHAT_KEY) || "[]");
-    return Array.isArray(raw) ? raw.slice(-120) : [];
-  } catch { return []; }
+  try { return restoreChatCache(localStorage.getItem(CHAT_CACHE_KEY)); }
+  catch { return []; }
 }
-function saveChat(chat: OrganismSnapshot["chat"]) {
-  if (typeof window === "undefined") return;
-  try { localStorage.setItem(CHAT_KEY, JSON.stringify(chat.slice(-120))); } catch { /* quota-safe UI cache */ }
+function saveChat(chat: OrganismSnapshot["chat"]): boolean {
+  if (typeof window === "undefined") return false;
+  try { return persistChatCache(window.localStorage, chat); } catch { return false; }
 }
 
 interface KurisuStore {
@@ -95,7 +93,7 @@ export const useKurisu = create<KurisuStore>((set, get) => ({
       lastInitiativePollAt = now;
       const pending = await neuroApi.proactiveMessage();
       const initiative = pending.initiative;
-      if (!initiative?.id || !initiative.message?.trim()) return;
+      if (!initiative?.id || !initiative.message?.trim() || !initiative.deliveryToken) return;
       const existing = get().snap.chat;
       const turnId = `ui-initiative-${initiative.id}`;
       const chat = existing.some(turn => turn.id === turnId)
@@ -110,12 +108,18 @@ export const useKurisu = create<KurisuStore>((set, get) => ({
             backend: `autonomous-initiative:${initiative.kind}`,
           }].slice(-120);
       if (chat !== existing) {
-        saveChat(chat);
         set({ snap: { ...get().snap, chat } });
       }
-      // ACK only after the message is safely in the browser's durable chat cache.
-      // If ACK fails, the stable turn id makes the next poll idempotent.
-      await neuroApi.ackProactiveMessage(initiative.id).catch(() => null);
+      // Persist even when the stable turn ID already exists in memory: a previous
+      // quota/security failure may have prevented the earlier browser write.
+      // The helper withholds ACK on storage failure; the server lease then makes
+      // the same initiative eligible for retry without creating another chat turn.
+      const storage = typeof window === "undefined" ? null : window.localStorage;
+      await persistChatBeforeAcknowledge(
+        storage,
+        chat,
+        () => neuroApi.ackProactiveMessage(initiative.id, initiative.deliveryToken),
+      );
     } catch (error) {
       set({ error: error instanceof Error ? error.message : String(error) });
     }

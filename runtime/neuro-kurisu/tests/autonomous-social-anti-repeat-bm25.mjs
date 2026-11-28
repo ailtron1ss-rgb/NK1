@@ -24,10 +24,13 @@ function deliver(engine, at, topic, message) {
   }]));
   assert.ok(planned.initiative, `expected an initiative for ${topic}`);
   assert.equal(engine.stageMessage(planned.initiative.id, message, at + 1), true);
-  assert.equal(engine.acknowledge(planned.initiative.id, at + 2), true);
+  assert.equal(engine.acknowledge(planned.initiative.id, at + 2), false, 'ACK requires an acquired delivery lease');
+  assert.equal(engine.claimReady(at + 2)?.id, planned.initiative.id);
+  assert.equal(engine.acknowledge(planned.initiative.id, at + 3), true);
 }
 
 const engine = new AutonomousSocialInitiativeEngine();
+engine.setConsent(true); // This suite tests delivery behavior, so opt in explicitly.
 const unrelated = [
   ['Acoustic embodiment calibration under changing latency budgets', 'We examined acoustic embodiment calibration under several latency budgets.'],
   ['Tactile sensor grounding across uncertain physical surfaces', 'We explored tactile sensor grounding when physical surfaces were uncertain.'],
@@ -69,6 +72,7 @@ assert.equal(selected.initiative?.topic, freshCandidate,
   'a strongly repeated theme in delivered messages should lose to a fresh candidate without being globally banned');
 
 const noDeliveryHistory = new AutonomousSocialInitiativeEngine();
+noDeliveryHistory.setConsent(true); // No acknowledged-delivery history, but public selection is explicitly opted in.
 const noHistorySelection = noDeliveryHistory.cycle(runtimeInput(start, [
   { topic: repeatedCandidate, source: 'reflection', salience01: .92, freshness01: .86, interestFit01: .72, affectFit01: .65 },
   { topic: freshCandidate, source: 'reflection', salience01: .92, freshness01: .86, interestFit01: .72, affectFit01: .65 },

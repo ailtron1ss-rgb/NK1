@@ -13,6 +13,7 @@ const inputs = (at, overrides = {}) => ({
 });
 
 const engine = new AutonomousSocialInitiativeEngine();
+engine.setConsent(true); // This suite exercises user-visible delivery; opt in explicitly.
 // Explicit input resets the quiet-time window and must not itself create an unsolicited turn.
 assert.equal(engine.cycle(inputs(1000, { externalInput: true })).initiative, null);
 assert.equal(engine.cycle(inputs(1999)).initiative, null, 'must respect quiet period');
@@ -27,8 +28,10 @@ assert.equal(engine.cycle(inputs(2002)).initiative, null, 'a pending item must p
 assert.equal(engine.stageMessage(selected.initiative.id, 'Есть любопытная связь между намерением, причиной и доказанным результатом.', 2002), true);
 assert.equal(engine.stageMessage(selected.initiative.id, 'duplicate'), false, 'a message can only be staged once');
 assert.equal(engine.latestReady(2002)?.message, 'Есть любопытная связь между намерением, причиной и доказанным результатом.');
-assert.equal(engine.acknowledge(selected.initiative.id, 2100), true);
-assert.equal(engine.acknowledge(selected.initiative.id, 2101), false, 'ack must be idempotent');
+assert.equal(engine.acknowledge(selected.initiative.id, 2100), false, 'ACK without an acquired delivery lease must be rejected');
+assert.equal(engine.claimReady(2100)?.id, selected.initiative.id);
+assert.equal(engine.acknowledge(selected.initiative.id, 2101), true);
+assert.equal(engine.acknowledge(selected.initiative.id, 2102), false, 'ack must be idempotent');
 assert.equal(engine.summary().executed, 1);
 assert.equal(engine.snapshot().reciprocity01, .54, 'UI delivery is not evidence of reciprocal response or positive reception');
 
@@ -38,7 +41,7 @@ assert.equal(restored.latestReady(), null, 'acknowledged messages are not redeli
 assert.equal(restored.summary().executed, 1);
 
 const migration = new AutonomousSocialInitiativeEngine();
-migration.restore({ version: 1, cycles: 5, planned: 1, executed: 0, deferred: 0, reciprocity01: .5, initiative01: .4, initiatives: [{ id: 'legacy-1', contact: 'ambient-network', kind: 'follow-up', status: 'planned', createdAt: 100, reason: 'legacy' }] });
+migration.restore({ version: 1, consentGranted: true, consentDecisionAt: 100, cycles: 5, planned: 1, executed: 0, deferred: 0, reciprocity01: .5, initiative01: .4, initiatives: [{ id: 'legacy-1', contact: 'ambient-network', kind: 'follow-up', status: 'planned', createdAt: 100, reason: 'legacy' }] });
 assert.equal(migration.latestPlanned(101)?.contact, null, 'legacy fake contact must be normalized');
 assert.equal(migration.latestPlanned(101)?.topicSource, 'curiosity');
 assert.equal(migration.defer('legacy-1', 200), true);
@@ -46,6 +49,7 @@ assert.equal(migration.defer('legacy-1', 201), false, 'deferral must not count t
 assert.equal(migration.summary().deferred, 1);
 
 const repeated = new AutonomousSocialInitiativeEngine();
+repeated.setConsent(true);
 const repeatedInput = inputs(1, { startupGraceMs: 0, quietPeriodMs: 0, cooldownMs: 0, emotionLabel: 'curiosity', emotionConfidence01: .9, topics: [{ topic: 'How causal evidence changes a scientific model over time', source: 'curiosity' }] });
 assert.equal(repeated.cycle(repeatedInput).initiative?.toneHint, 'curious');
 repeated.stageMessage(repeated.latestPlanned(1).id, 'Похоже, это стоит обсудить.', 2);
@@ -65,6 +69,7 @@ assert.equal(sanitizeAutonomousDialogueMessage('A useful insight about memory an
 assert.equal(sanitizeAutonomousDialogueMessage('Use this API key sk-abcdefghijklmnopqrstuvwxyz123456'), null, 'generated proactive messages must not stage obvious credentials');
 
 const rejectedOutput = new AutonomousSocialInitiativeEngine();
+rejectedOutput.setConsent(true);
 const rejectedInitiative = rejectedOutput.cycle(inputs(8000, { startupGraceMs: 0, quietPeriodMs: 0, cooldownMs: 0, topics: [{ topic: 'A distinct analysis of memory reliability and evidence', source: 'reflection' }] })).initiative;
 assert.ok(rejectedInitiative);
 assert.equal(rejectedOutput.stageMessage(rejectedInitiative.id, 'Use this API key sk-abcdefghijklmnopqrstuvwxyz123456', 8001), false);
@@ -78,6 +83,7 @@ assert.equal(restoredPrivate.latestReady(), null, 'unsafe persisted message must
 assert.doesNotMatch(JSON.stringify(restoredPrivate.snapshot()), /hunter2|curator@example\.com/, 'private persisted text must be removed from the restored initiative state');
 assert.equal(restoredPrivate.summary().deferred, 1, 'privacy-invalid restored work must be visibly deferred');
 const expressive = new AutonomousSocialInitiativeEngine();
+expressive.setConsent(true); // Expression-tone behavior is tested on the explicitly deliverable path.
 const direct = expressive.cycle(inputs(5000, { startupGraceMs: 0, quietPeriodMs: 0, cooldownMs: 0, emotionLabel: 'frustration', emotionConfidence01: .8, emotionArousal01: .82, topics: [{ topic: 'A distinct new question about how competing hypotheses should be tested', source: 'reflection' }] }));
 assert.equal(direct.initiative?.toneHint, 'direct', 'a high-confidence appraisal should shape expression');
 assert.equal(direct.initiative?.affect?.label, 'frustration');

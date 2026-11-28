@@ -1,0 +1,139 @@
+import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
+import { ProactiveDeliveryLeaseRegistry } from "../src/server/proactive-delivery-lease-registry.mjs";
+
+{
+  const leases = new ProactiveDeliveryLeaseRegistry();
+  assert.equal(leases.issue("soc:1", 1, 10_000, "token-0000000000001", 1), "token-0000000000001");
+  assert.equal(leases.matches("soc:1", "token-0000000000001", 9_999), true);
+  assert.equal(leases.attemptCountFor("soc:1", "token-0000000000001", 9_999), 1);
+  assert.equal(leases.attemptCountFor("soc:1", "token-0000000000001", 10_000), null);
+  assert.equal(leases.matches("soc:other", "token-0000000000001", 9_999), false);
+  assert.equal(leases.matches("soc:1", "wrong-token-0000000000", 9_999), false);
+  assert.equal(leases.matches("soc:1", "token-0000000000001", 10_000), false,
+    "a token is invalid exactly at lease expiry");
+}
+
+{
+  const leases = new ProactiveDeliveryLeaseRegistry();
+  leases.issue("soc:2", 1, 20_000, "first-token-00000001", 1);
+  leases.issue("soc:2", 2, 30_000, "second-token-0000002", 2);
+  assert.equal(leases.matches("soc:2", "first-token-00000001", 3), false,
+    "a newer retry attempt must fence the previous attempt token");
+  assert.equal(leases.matches("soc:2", "second-token-0000002", 3), true);
+  assert.equal(leases.consume("soc:2", "second-token-0000002", 4), true);
+  assert.equal(leases.consume("soc:2", "second-token-0000002", 5), false,
+    "delivery receipt tokens are one-use");
+}
+
+{
+  const leases = new ProactiveDeliveryLeaseRegistry({ maxEntries: 2 });
+  leases.issue("soc:a", 1, 50_000, "token-a-0000000001", 1);
+  leases.issue("soc:b", 1, 50_000, "token-b-0000000001", 1);
+  assert.equal(leases.issue("soc:c", 1, 50_000, "token-c-0000000001", 1), null,
+    "the active-token capacity must apply backpressure instead of evicting a live ACK token");
+  assert.equal(leases.size(2), 2, "the ephemeral token registry must remain bounded");
+  assert.equal(leases.matches("soc:a", "token-a-0000000001", 2), true,
+    "capacity pressure must preserve the older active receipt");
+  assert.equal(leases.matches("soc:b", "token-b-0000000001", 2), true,
+    "capacity pressure must preserve every already-issued active receipt");
+  leases.clear();
+  assert.equal(leases.size(3), 0);
+}
+
+{
+  const leases = new ProactiveDeliveryLeaseRegistry();
+  assert.equal(leases.issue(" ", 1, 5_000, "token-0000000000", 1), null);
+  assert.equal(leases.issue("soc:x", 0, 5_000, "token-0000000000", 1), null);
+  assert.equal(leases.issue("soc:x", 9, 5_000, "token-0000000000", 1), null);
+  assert.equal(leases.issue("soc:x", 1, 1, "token-0000000000", 1), null);
+  assert.equal(leases.issue("soc:x", 1, 5_000, "short", 1), null);
+}
+
+
+{
+  const server = await readFile(new URL("../src/server/server.mjs", import.meta.url), "utf8");
+  const coordinator = await readFile(new URL("../src/server/proactive-delivery-coordinator.mjs", import.meta.url), "utf8");
+  assert.ok(server.includes("new ProactiveDeliveryCoordinator({ runtime })"),
+    "the HTTP server must use the lifecycle coordinator");
+  assert.ok(server.includes("proactiveDelivery.claim()"),
+    "the delivery route must delegate claiming to the coordinator");
+  assert.ok(server.includes("/api/organism/proactive-message/claim"),
+    "a canonical POST claim endpoint must exist for the state-changing operation");
+  assert.ok(server.includes("req.method === 'GET' && url.pathname === '/api/organism/proactive-message'"),
+    "the legacy GET claim path remains available as a compatibility alias");
+  assert.ok(coordinator.includes("this.leases.complete("),
+    "successful ACKs must move into the idempotent receipt ledger");
+  assert.ok(coordinator.includes("completedAttemptCountFor("),
+    "duplicate ACKs must replay the stored receipt without a second Core call");
+  assert.ok(server.includes("proactiveDelivery.acknowledge("),
+    "the ACK route must delegate receipt validation to the coordinator");
+  assert.ok(coordinator.includes("acknowledgementsInFlight"),
+    "concurrent ACKs must be fenced before reaching the runtime queue");
+  assert.ok(coordinator.includes("this.leases.clear()"),
+    "revoking consent must invalidate in-flight delivery tokens");
+}
+
+
+{
+  const leases = new ProactiveDeliveryLeaseRegistry();
+  assert.equal(leases.issue("soc:same-attempt", 1, 10_000, "first-token-0000000001", 1),
+    "first-token-0000000001");
+  assert.equal(leases.issue("soc:same-attempt", 1, 10_000, "second-token-00000002", 2), null,
+    "an active attempt cannot be assigned a replacement receipt token");
+  assert.equal(leases.issue("soc:same-attempt", 2, 20_000, "retry-token-0000000001", 2),
+    "retry-token-0000000001",
+    "only a monotonically newer engine attempt may replace the current token");
+  assert.equal(leases.matches("soc:same-attempt", "first-token-0000000001", 3), false);
+  assert.equal(leases.matches("soc:same-attempt", "retry-token-0000000001", 3), true);
+}
+
+
+{
+  const leases = new ProactiveDeliveryLeaseRegistry();
+  assert.equal(leases.issue("soc:bad-clock", 1, 10_000, "token-bad-clock-0001", Number.NaN), null);
+  assert.equal(leases.issue("soc:bad-deadline", 1, Number.POSITIVE_INFINITY, "token-bad-clock-0002", 1), null);
+  assert.equal(leases.matches("soc:bad-clock", "token-bad-clock-0001", Number.NaN), false);
+}
+
+
+{
+  const leases = new ProactiveDeliveryLeaseRegistry();
+  leases.issue("soc:receipt", 1, 1_000, "committed-token-00001", 1);
+  assert.equal(leases.complete("soc:receipt", "committed-token-00001", 1_001), true,
+    "a successful Core ACK may finish just after the lease deadline");
+  assert.equal(leases.attemptCountFor("soc:receipt", "committed-token-00001", 1_002), null);
+  assert.equal(leases.completedAttemptCountFor("soc:receipt", "committed-token-00001", 1_002), 1,
+    "the committed receipt remains replayable for the bounded idempotency window");
+  assert.equal(leases.completedAttemptCountFor("soc:receipt", "committed-token-00001", 601_001), null,
+    "completed receipt records expire after their retention window");
+}
+
+{
+  const leases = new ProactiveDeliveryLeaseRegistry();
+  leases.issue("soc:retry-receipt", 1, 1_000, "old-completed-token-01", 1);
+  leases.complete("soc:retry-receipt", "old-completed-token-01", 2);
+  leases.issue("soc:retry-receipt", 2, 2_000, "new-attempt-token-001", 3);
+  assert.equal(leases.completedAttemptCountFor("soc:retry-receipt", "old-completed-token-01", 4), null,
+    "a newer engine attempt invalidates the older completed receipt");
+  assert.equal(leases.attemptCountFor("soc:retry-receipt", "new-attempt-token-001", 4), 2);
+  leases.clear();
+  assert.equal(leases.completedAttemptCountFor("soc:retry-receipt", "old-completed-token-01", 5), null);
+}
+
+
+{
+  const leases = new ProactiveDeliveryLeaseRegistry({ maxEntries: 2 });
+  for (const id of ["receipt:a", "receipt:b", "receipt:c"]) {
+    leases.issue(id, 1, 50_000, `completed-${id}-token`, 1);
+    leases.complete(id, `completed-${id}-token`, 2);
+  }
+  assert.equal(leases.completedAttemptCountFor("receipt:a", "completed-receipt:a-token", 3), null,
+    "the completed receipt ledger must evict its oldest entry at capacity");
+  assert.equal(leases.completedAttemptCountFor("receipt:b", "completed-receipt:b-token", 3), 1);
+  assert.equal(leases.completedAttemptCountFor("receipt:c", "completed-receipt:c-token", 3), 1);
+  leases.clear();
+  assert.equal(leases.completedAttemptCountFor("receipt:c", "completed-receipt:c-token", 4), null);
+}
+
+console.log("PROACTIVE_DELIVERY_LEASE_REGISTRY=PASS");

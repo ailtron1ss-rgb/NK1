@@ -21,6 +21,25 @@ type ApprovalChallenge = {
 
 type ApiFailure = Error & { status?: number; data?: unknown };
 
+type ProactiveDeliveryPolicy = {
+  consentGranted: boolean;
+  quietHoursEnabled: boolean;
+  quietStartHourUtc: number;
+  quietEndHourUtc: number;
+  mayDeliverUserVisible: boolean;
+  outbox: {
+    pending: number;
+    deadLettered: number;
+    leased: number;
+    backoff: number;
+    claimable: number;
+    exhausted: number;
+    attempts: number;
+    attemptsRemaining: number;
+    lastAttemptAt: number | null;
+  };
+};
+
 async function sendRequest(path: string, init?: RequestInit): Promise<{ response: Response; data: unknown }> {
   const response = await fetch(neuroApiUrl(path), {
     ...init,
@@ -185,8 +204,11 @@ export const neuroApi = {
     method: "POST",
     body: JSON.stringify({ message, deliberate, speak, ...(approvalId ? { approvalId } : {}) }),
   }),
-  proactiveMessage: () => request<{ ok: boolean; initiative: null | { id: string; kind: string; topic: string; message: string; createdAt: number; tick?: number; priority01: number; status: string } }>("/api/organism/proactive-message"),
-  ackProactiveMessage: (id: string) => request<{ ok: boolean; acknowledged: boolean }>("/api/organism/proactive-message/ack", { method: "POST", body: JSON.stringify({ id }) }),
+  proactiveMessage: () => request<{ ok: boolean; initiative: null | { id: string; kind: string; topic: string; message: string; createdAt: number; tick?: number; priority01: number; status: string; deliveryAttemptCount: number; deliveryLeaseUntil: number; deliveryToken: string } }>("/api/organism/proactive-message/claim", { method: "POST", body: "{}" }),
+  ackProactiveMessage: (id: string, deliveryToken: string) => request<{ ok: boolean; acknowledged: boolean; id?: string; idempotentReplay?: boolean }>("/api/organism/proactive-message/ack", { method: "POST", body: JSON.stringify({ id, deliveryToken }) }),
+  proactiveDeliveryPolicy: () => request<{ ok: boolean; policy: ProactiveDeliveryPolicy }>("/api/organism/proactive-consent"),
+  setProactiveConsent: (consentGranted: boolean) => request<{ ok: boolean; policy: ProactiveDeliveryPolicy }>("/api/organism/proactive-consent", { method: "POST", body: JSON.stringify({ consentGranted }) }),
+  setProactiveQuietHours: (input: { enabled: boolean; startHourUtc: number; endHourUtc: number }) => request<{ ok: boolean; policy: ProactiveDeliveryPolicy }>("/api/organism/proactive-quiet-hours", { method: "POST", body: JSON.stringify(input) }),
   sleep: (reason = "ui") => request<{ ok: boolean }>("/api/organism/sleep", { method: "POST", body: JSON.stringify({ reason }) }),
   wake: (reason = "ui") => request<{ ok: boolean }>("/api/organism/wake", { method: "POST", body: JSON.stringify({ reason }) }),
   researchStatus: () => request<Record<string, unknown>>("/api/research/status"),

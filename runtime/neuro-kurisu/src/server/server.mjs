@@ -1,5 +1,6 @@
 import http from 'node:http';
 import { randomUUID } from 'node:crypto';
+import { ProactiveDeliveryCoordinator } from './proactive-delivery-coordinator.mjs';
 import { URL } from 'node:url';
 import { mkdir, readFile, writeFile, rename, unlink, lstat } from 'node:fs/promises';
 import { existsSync as fsExistsSync, statSync as fsStatSync, readdirSync as fsReaddirSync, readFileSync as fsReadFileSync } from 'node:fs';
@@ -35,6 +36,7 @@ import { createRequestContext, formatAccessLog, parseOriginAllowlist, parseToggl
 import { parseTrustedConstitutionReviewKeys, createAuthenticatedConstitutionReviewVerifier, constitutionReviewAuthoritySnapshot } from '../organism/cognition/evolution/ConstitutionReviewAuthority.ts';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '../..');
+
 function loadNeuroPlasticTrustMap(raw, envName, approval = false) {
     try {
         return approval
@@ -419,6 +421,7 @@ const runtime = new OrganismRuntime({
     ...(COMPOUND_REPAIR_REVISION ? { compoundRepairRevision: COMPOUND_REPAIR_REVISION } : {}),
 });
 let runtimeReady = false;
+const proactiveDelivery = new ProactiveDeliveryCoordinator({ runtime });
 const willSdk = new WillSdkFacade({ step: (message, options) => runtime.step(message, options), snapshot: () => runtime.core.snapshot(), flush: () => runtime.core.flush(), exportWillPma: () => runtime.core.exportWillPma(), validateWillPma: (pma) => runtime.core.validateWillPma(pma) }, { enqueue: (input) => runtime.core.willEnqueueEnvelope(input), ack: (input) => runtime.core.willAckEnvelope(input), searchText: (text, k) => runtime.core.willSearchVector(text, k), benchmarkVectorIndex: (queries, k, ef) => runtime.core.willBenchmarkVectorIndex(queries, k, ef), diagnostics: () => runtime.core.willIntegrationDiagnostics() }, 'kurisu');
 const willMcp = new WillMcpJsonRpcServer(willSdk);
 const willChannels = new WillChannelAdapter({ enqueue: (input) => runtime.core.willEnqueueEnvelope(input), ack: (input) => runtime.core.willAckEnvelope(input), searchText: (text, k) => runtime.core.willSearchVector(text, k), benchmarkVectorIndex: (queries, k, ef) => runtime.core.willBenchmarkVectorIndex(queries, k, ef), diagnostics: () => runtime.core.willIntegrationDiagnostics() });
@@ -1923,16 +1926,47 @@ async function route(req, res) {
                 return json(res, 503, { ok: false, error: String(error?.message || error) });
             }
         }
-        if (req.method === 'GET' && url.pathname === '/api/organism/proactive-message') {
-            const initiative = await runtime.autonomousDialogueReady();
-            return json(res, 200, { ok: true, initiative });
+        if (req.method === 'GET' && url.pathname === '/api/organism/proactive-consent') {
+            if (!runtimeReady) return json(res, 503, { ok: false, error: 'organism-runtime-not-ready' });
+            const policy = await proactiveDelivery.policy();
+            return json(res, 200, { ok: true, policy });
+        }
+        if (req.method === 'POST' && url.pathname === '/api/organism/proactive-consent') {
+            if (!runtimeReady) return json(res, 503, { ok: false, error: 'organism-runtime-not-ready' });
+            const input = await body(req);
+            if (!input || typeof input !== 'object' || Array.isArray(input)
+                || typeof input.consentGranted !== 'boolean') {
+                return json(res, 400, { ok: false, error: 'consent-granted-must-be-boolean' });
+            }
+            const policy = await proactiveDelivery.setConsent(input.consentGranted);
+            return json(res, 200, { ok: true, policy });
+        }
+        if (req.method === 'POST' && url.pathname === '/api/organism/proactive-quiet-hours') {
+            if (!runtimeReady) return json(res, 503, { ok: false, error: 'organism-runtime-not-ready' });
+            const input = await body(req);
+            if (!input || typeof input !== 'object' || Array.isArray(input)
+                || typeof input.enabled !== 'boolean'
+                || !Number.isSafeInteger(input.startHourUtc) || input.startHourUtc < 0 || input.startHourUtc > 23
+                || !Number.isSafeInteger(input.endHourUtc) || input.endHourUtc < 0 || input.endHourUtc > 23) {
+                return json(res, 400, { ok: false, error: 'invalid-proactive-quiet-hours' });
+            }
+            const policy = await proactiveDelivery.setQuietHours(input);
+            return json(res, 200, { ok: true, policy });
+        }
+        // POST is the canonical state-changing claim endpoint. GET remains as
+        // a compatibility alias for older clients but is not used by the app.
+        if ((req.method === 'POST' && url.pathname === '/api/organism/proactive-message/claim')
+            || (req.method === 'GET' && url.pathname === '/api/organism/proactive-message')) {
+            if (!runtimeReady) return json(res, 503, { ok: false, error: 'organism-runtime-not-ready' });
+            const result = await proactiveDelivery.claim();
+            return json(res, result.status, result.body);
         }
         if (req.method === 'POST' && url.pathname === '/api/organism/proactive-message/ack') {
+            if (!runtimeReady) return json(res, 503, { ok: false, error: 'organism-runtime-not-ready' });
             const input = await body(req);
-            const id = String(input.id || '').trim().slice(0, 160);
-            if (!id) return json(res, 400, { ok: false, error: 'missing-initiative-id' });
-            const acknowledged = await runtime.acknowledgeAutonomousDialogue(id);
-            return json(res, 200, { ok: true, acknowledged });
+            if (typeof input?.id !== 'string') return json(res, 400, { ok: false, error: 'initiative-id-must-be-string' });
+            const result = await proactiveDelivery.acknowledge(input.id, input.deliveryToken);
+            return json(res, result.status, result.body);
         }
         if (req.method === 'POST' && url.pathname === '/api/organism/chat') {
             const input = await body(req);
