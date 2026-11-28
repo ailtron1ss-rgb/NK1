@@ -292,14 +292,14 @@ export class NekoPluginManifestPolicyRegistry {
     return true;
   }
 
-  private toolMatches(declared: NekoPluginManifestTool, actual: NekoPluginRegisteredTool): boolean {
+  private toolMatches(declared: NekoPluginManifestTool, actual: NekoPluginRegisteredTool, compareApproval = true): boolean {
     const permissionClass = actual.permissionClass ?? 'none';
     const requiresApproval = actual.requiresApproval === true;
     return actual.id === declared.id &&
       actual.capability === declared.capability &&
       actual.destructive === declared.destructive &&
       permissionClass === declared.permissionClass &&
-      requiresApproval === declared.requiresHostApproval;
+      (!compareApproval || requiresApproval === declared.requiresHostApproval);
   }
 
   private normalizeManifest(
@@ -346,7 +346,19 @@ export class NekoPluginManifestPolicyRegistry {
     for (const declared of tools) {
       const actual = actualTools.find(tool => tool.id === declared.id);
       if (!actual) return { manifest: null, reason: 'registered-tool-not-found' };
-      if (!this.toolMatches(declared, actual)) return { manifest: null, reason: 'registered-tool-contract-mismatch' };
+      if (!this.toolMatches(declared, actual, false)) {
+        return { manifest: null, reason: 'registered-tool-contract-mismatch' };
+      }
+      // A destructive declaration cannot opt out of host approval, even if a
+      // legacy/misconfigured live descriptor also reports permissionClass=none.
+      if (declared.destructive && declared.permissionClass === 'none') {
+        return { manifest: null, reason: 'invalid-approval-declaration' };
+      }
+      if (this.toolMatches(declared, actual)) continue;
+      if (declared.destructive && declared.requiresHostApproval) {
+        return { manifest: null, reason: 'invalid-approval-declaration' };
+      }
+      return { manifest: null, reason: 'registered-tool-contract-mismatch' };
     }
     return {
       manifest: {
