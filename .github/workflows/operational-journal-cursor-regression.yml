@@ -31,6 +31,7 @@ jobs:
         uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
+          package-manager-cache: false
 
       - name: Run cursor durability regressions
         run: node --experimental-strip-types --test runtime/neuro-kurisu/tests/operational-journal-cursor-workpass84.mjs
