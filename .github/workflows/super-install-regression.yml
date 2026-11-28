@@ -35,6 +35,7 @@ jobs:
         uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
+          package-manager-cache: false
 
       - name: Run installer and runtime-pin regressions
         run: node --test tools/super-install.test.mjs tools/runtime-pin.test.mjs
