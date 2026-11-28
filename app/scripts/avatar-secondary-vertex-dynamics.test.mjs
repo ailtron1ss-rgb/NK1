@@ -195,6 +195,18 @@ test("attachment is limited to separate skinned hair locks and garment panels, n
   assert.equal(bindings[2].uniforms.nk1SecondarySide.value, -1);
 });
 
+test("the asset-verified HAIR_layer_R0 mesh is eligible for bounded secondary hair dynamics", () => {
+  const part = mesh("HAIR_layer_R0");
+  const bindings = vertexDynamics.attachAvatarSecondaryVertexDynamics(scene([part]), 1);
+  assert.equal(bindings.length, 1,
+    "the canonical v5 browser audit exposes HAIR_layer_R0 as a detached hair-layer mesh");
+  assert.equal(bindings[0].role, "hair");
+  assert.equal(bindings[0].uniforms.nk1SecondarySide.value, 1);
+  assert.ok(bindings[0].particleState,
+    "the validated low-vertex-count surface must use XPBD rather than shader-only sway");
+  vertexDynamics.disposeAvatarSecondaryVertexDynamics(bindings);
+});
+
 test("toon-converted GLB materials keep their cel gradient and accept the same vertex sway hook", () => {
   const original = makeMaterial("NK1_Toon_Hair", "toon");
   original.userData.nk1ToonConverted = true;
