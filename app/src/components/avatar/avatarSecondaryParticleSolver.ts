@@ -25,6 +25,8 @@ export interface AvatarSecondaryParticleState {
   damping: number;
   maxOffset: number;
   completedSteps: number;
+  bodyCollisionCount: number;
+  maxBodyCollisionCorrection: number;
 }
 
 export interface AvatarSecondaryParticleInput {
@@ -33,6 +35,240 @@ export interface AvatarSecondaryParticleInput {
   /** Per-vertex pin weight in [0, 1]: 0 is free, 1 is fixed, intermediate values are soft pins. */
   pinnedMask: ArrayLike<number>;
   role: "hair" | "garment";
+}
+
+export interface AvatarBodySurfacePoint {
+  x: number;
+  y: number;
+  z: number;
+}
+
+export interface AvatarBodySurfaceCollider {
+  positions: Float32Array;
+  indices: Uint32Array;
+  center: AvatarBodySurfacePoint;
+  min: AvatarBodySurfacePoint;
+  max: AvatarBodySurfacePoint;
+  cellSize: number;
+  cells: ReadonlyMap<string, readonly number[]>;
+}
+
+export interface AvatarBodySurfaceColliderInput {
+  positions: ArrayLike<number>;
+  indices?: ArrayLike<number> | null;
+  cellSize?: number;
+}
+
+export interface AvatarBodySurfaceProjection {
+  position: AvatarBodySurfacePoint;
+  normal: AvatarBodySurfacePoint;
+  correction: number;
+}
+
+const MAX_BODY_SURFACE_VERTICES = 2_048;
+const MAX_BODY_SURFACE_TRIANGLES = 4_096;
+const MAX_BODY_SURFACE_GRID_ENTRIES = 32_768;
+const MAX_BODY_SURFACE_TRIANGLE_CELLS = 256;
+const MAX_BODY_SURFACE_CORRECTION = 0.05;
+
+const bodyCellKey = (x: number, y: number, z: number): string => `${x},${y},${z}`;
+const bodyDot = (a: AvatarBodySurfacePoint, b: AvatarBodySurfacePoint): number =>
+  a.x * b.x + a.y * b.y + a.z * b.z;
+const bodySub = (a: AvatarBodySurfacePoint, b: AvatarBodySurfacePoint): AvatarBodySurfacePoint =>
+  ({ x: a.x - b.x, y: a.y - b.y, z: a.z - b.z });
+const bodyCross = (a: AvatarBodySurfacePoint, b: AvatarBodySurfacePoint): AvatarBodySurfacePoint =>
+  ({ x: a.y * b.z - a.z * b.y, y: a.z * b.x - a.x * b.z, z: a.x * b.y - a.y * b.x });
+const bodyLength = (value: AvatarBodySurfacePoint): number =>
+  Math.hypot(value.x, value.y, value.z);
+const bodyScale = (value: AvatarBodySurfacePoint, scale: number): AvatarBodySurfacePoint =>
+  ({ x: value.x * scale, y: value.y * scale, z: value.z * scale });
+const bodyAdd = (a: AvatarBodySurfacePoint, b: AvatarBodySurfacePoint): AvatarBodySurfacePoint =>
+  ({ x: a.x + b.x, y: a.y + b.y, z: a.z + b.z });
+
+function closestPointOnBodyTriangle(
+  point: AvatarBodySurfacePoint,
+  a: AvatarBodySurfacePoint,
+  b: AvatarBodySurfacePoint,
+  c: AvatarBodySurfacePoint,
+): AvatarBodySurfacePoint {
+  const ab = bodySub(b, a);
+  const ac = bodySub(c, a);
+  const ap = bodySub(point, a);
+  const d1 = bodyDot(ab, ap), d2 = bodyDot(ac, ap);
+  if (d1 <= 0 && d2 <= 0) return a;
+
+  const bp = bodySub(point, b);
+  const d3 = bodyDot(ab, bp), d4 = bodyDot(ac, bp);
+  if (d3 >= 0 && d4 <= d3) return b;
+
+  const vc = d1 * d4 - d3 * d2;
+  if (vc <= 0 && d1 >= 0 && d3 <= 0) return bodyAdd(a, bodyScale(ab, d1 / (d1 - d3)));
+
+  const cp = bodySub(point, c);
+  const d5 = bodyDot(ab, cp), d6 = bodyDot(ac, cp);
+  if (d6 >= 0 && d5 <= d6) return c;
+
+  const vb = d5 * d2 - d1 * d6;
+  if (vb <= 0 && d2 >= 0 && d6 <= 0) return bodyAdd(a, bodyScale(ac, d2 / (d2 - d6)));
+
+  const va = d3 * d6 - d5 * d4;
+  if (va <= 0 && d4 - d3 >= 0 && d5 - d6 >= 0) {
+    return bodyAdd(b, bodyScale(bodySub(c, b), (d4 - d3) / ((d4 - d3) + (d5 - d6))));
+  }
+
+  const denominator = 1 / (va + vb + vc);
+  const v = vb * denominator, w = vc * denominator;
+  return bodyAdd(a, bodyAdd(bodyScale(ab, v), bodyScale(ac, w)));
+}
+
+/**
+ * Build a bounded triangle grid for a deformed torso surface. Coordinates are
+ * supplied in the same local space used by the secondary particle mesh.
+ */
+export function createAvatarBodySurfaceCollider(
+  input: AvatarBodySurfaceColliderInput,
+): AvatarBodySurfaceCollider | null {
+  if (!input?.positions || input.positions.length % 3 !== 0) return null;
+  const vertexCount = input.positions.length / 3;
+  if (vertexCount < 4 || vertexCount > MAX_BODY_SURFACE_VERTICES) return null;
+  if (input.indices && input.indices.length % 3 !== 0) return null;
+  const rawIndices = input.indices ?? Array.from({ length: vertexCount }, (_, index) => index);
+  const triangleCount = rawIndices.length / 3;
+  if (!Number.isInteger(triangleCount) || triangleCount < 4 || triangleCount > MAX_BODY_SURFACE_TRIANGLES) return null;
+
+  const positions = new Float32Array(vertexCount * 3);
+  const min = { x: Number.POSITIVE_INFINITY, y: Number.POSITIVE_INFINITY, z: Number.POSITIVE_INFINITY };
+  const max = { x: Number.NEGATIVE_INFINITY, y: Number.NEGATIVE_INFINITY, z: Number.NEGATIVE_INFINITY };
+  const center = { x: 0, y: 0, z: 0 };
+  for (let vertex = 0; vertex < vertexCount; vertex += 1) {
+    const offset = vertex * 3;
+    const x = Number(input.positions[offset]), y = Number(input.positions[offset + 1]), z = Number(input.positions[offset + 2]);
+    if (![x, y, z].every(Number.isFinite) || Math.max(Math.abs(x), Math.abs(y), Math.abs(z)) > 1_000_000) return null;
+    positions[offset] = x; positions[offset + 1] = y; positions[offset + 2] = z;
+    min.x = Math.min(min.x, x); min.y = Math.min(min.y, y); min.z = Math.min(min.z, z);
+    max.x = Math.max(max.x, x); max.y = Math.max(max.y, y); max.z = Math.max(max.z, z);
+    center.x += x / vertexCount; center.y += y / vertexCount; center.z += z / vertexCount;
+  }
+
+  const indices = new Uint32Array(rawIndices.length);
+  for (let offset = 0; offset < rawIndices.length; offset += 1) {
+    const index = Number(rawIndices[offset]);
+    if (!Number.isInteger(index) || index < 0 || index >= vertexCount) return null;
+    indices[offset] = index;
+  }
+
+  const cellSize = typeof input.cellSize === "number" && Number.isFinite(input.cellSize)
+    ? Math.max(0.04, Math.min(0.3, input.cellSize))
+    : 0.12;
+  const cells = new Map<string, number[]>();
+  let gridEntries = 0;
+  let validTriangles = 0;
+  for (let triangle = 0; triangle < triangleCount; triangle += 1) {
+    const offset = triangle * 3;
+    const ia = indices[offset], ib = indices[offset + 1], ic = indices[offset + 2];
+    const a = ia * 3, b = ib * 3, c = ic * 3;
+    const ax = positions[a], ay = positions[a + 1], az = positions[a + 2];
+    const bx = positions[b], by = positions[b + 1], bz = positions[b + 2];
+    const cx = positions[c], cy = positions[c + 1], cz = positions[c + 2];
+    const ab = { x: bx - ax, y: by - ay, z: bz - az };
+    const ac = { x: cx - ax, y: cy - ay, z: cz - az };
+    if (bodyLength(bodyCross(ab, ac)) < 1e-8) continue;
+
+    const x0 = Math.floor((Math.min(ax, bx, cx) - min.x) / cellSize);
+    const x1 = Math.floor((Math.max(ax, bx, cx) - min.x) / cellSize);
+    const y0 = Math.floor((Math.min(ay, by, cy) - min.y) / cellSize);
+    const y1 = Math.floor((Math.max(ay, by, cy) - min.y) / cellSize);
+    const z0 = Math.floor((Math.min(az, bz, cz) - min.z) / cellSize);
+    const z1 = Math.floor((Math.max(az, bz, cz) - min.z) / cellSize);
+    const coverage = (x1 - x0 + 1) * (y1 - y0 + 1) * (z1 - z0 + 1);
+    if (!Number.isFinite(coverage) || coverage <= 0 || coverage > MAX_BODY_SURFACE_TRIANGLE_CELLS) return null;
+
+    for (let x = x0; x <= x1; x += 1) {
+      for (let y = y0; y <= y1; y += 1) {
+        for (let z = z0; z <= z1; z += 1) {
+          const key = bodyCellKey(x, y, z);
+          const bucket = cells.get(key) ?? [];
+          if (bucket.length === 0) cells.set(key, bucket);
+          bucket.push(triangle);
+          gridEntries += 1;
+          if (gridEntries > MAX_BODY_SURFACE_GRID_ENTRIES) return null;
+        }
+      }
+    }
+    validTriangles += 1;
+  }
+  if (validTriangles < 4 || cells.size === 0) return null;
+  return { positions, indices, center, min, max, cellSize, cells };
+}
+
+/** Project a particle to the outward side of its closest torso triangle. */
+export function projectPointOutsideBodySurface(
+  point: AvatarBodySurfacePoint,
+  collider: AvatarBodySurfaceCollider,
+  minimumDistance: number,
+): AvatarBodySurfaceProjection | null {
+  if (!collider || !point || ![point.x, point.y, point.z, minimumDistance].every(Number.isFinite)
+    || minimumDistance <= 0) return null;
+  const { min, max, cellSize, positions, indices, cells, center } = collider;
+  const broadMargin = Math.max(minimumDistance, cellSize * 0.2);
+  if (point.x < min.x - broadMargin || point.x > max.x + broadMargin
+    || point.y < min.y - broadMargin || point.y > max.y + broadMargin
+    || point.z < min.z - broadMargin || point.z > max.z + broadMargin) return null;
+
+  const cx = Math.floor((point.x - min.x) / cellSize);
+  const cy = Math.floor((point.y - min.y) / cellSize);
+  const cz = Math.floor((point.z - min.z) / cellSize);
+  const candidates = new Set<number>();
+  for (let x = cx - 2; x <= cx + 2; x += 1) {
+    for (let y = cy - 2; y <= cy + 2; y += 1) {
+      for (let z = cz - 2; z <= cz + 2; z += 1) {
+        for (const triangle of cells.get(bodyCellKey(x, y, z)) ?? []) candidates.add(triangle);
+      }
+    }
+  }
+  if (candidates.size === 0) {
+    const insideBounds = point.x >= min.x && point.x <= max.x
+      && point.y >= min.y && point.y <= max.y
+      && point.z >= min.z && point.z <= max.z;
+    if (!insideBounds) return null;
+    for (let triangle = 0; triangle < indices.length / 3; triangle += 1) candidates.add(triangle);
+  }
+
+  let closestDistanceSquared = Number.POSITIVE_INFINITY;
+  let closestPoint: AvatarBodySurfacePoint | null = null;
+  let closestNormal: AvatarBodySurfacePoint | null = null;
+  for (const triangle of candidates) {
+    const offset = triangle * 3;
+    const ai = indices[offset] * 3, bi = indices[offset + 1] * 3, ci = indices[offset + 2] * 3;
+    const a = { x: positions[ai], y: positions[ai + 1], z: positions[ai + 2] };
+    const b = { x: positions[bi], y: positions[bi + 1], z: positions[bi + 2] };
+    const c = { x: positions[ci], y: positions[ci + 1], z: positions[ci + 2] };
+    const ab = bodySub(b, a), ac = bodySub(c, a);
+    let normal = bodyCross(ab, ac);
+    const normalLength = bodyLength(normal);
+    if (!Number.isFinite(normalLength) || normalLength < 1e-8) continue;
+    normal = bodyScale(normal, 1 / normalLength);
+    const nearest = closestPointOnBodyTriangle(point, a, b, c);
+    const radial = bodySub(nearest, center);
+    if (bodyDot(normal, radial) < 0) normal = bodyScale(normal, -1);
+    const separation = bodySub(point, nearest);
+    const distanceSquared = bodyDot(separation, separation);
+    if (!Number.isFinite(distanceSquared) || distanceSquared >= closestDistanceSquared) continue;
+    closestDistanceSquared = distanceSquared;
+    closestPoint = nearest;
+    closestNormal = normal;
+  }
+
+  if (!closestPoint || !closestNormal) return null;
+  const signedDistance = bodyDot(bodySub(point, closestPoint), closestNormal);
+  if (!Number.isFinite(signedDistance) || signedDistance >= minimumDistance) return null;
+  const correction = Math.min(minimumDistance - signedDistance, MAX_BODY_SURFACE_CORRECTION);
+  if (!Number.isFinite(correction) || correction <= 0) return null;
+  return {
+    position: bodyAdd(point, bodyScale(closestNormal, correction)),
+    normal: closestNormal,
+    correction,
+  };
 }
 
 const FIXED_STEP_SECONDS = 1 / 60;
@@ -197,6 +433,8 @@ export function createAvatarSecondaryParticleState(
     damping: limits.damping,
     maxOffset: limits.maxOffset,
     completedSteps: 0,
+    bodyCollisionCount: 0,
+    maxBodyCollisionCorrection: 0,
   };
 }
 
