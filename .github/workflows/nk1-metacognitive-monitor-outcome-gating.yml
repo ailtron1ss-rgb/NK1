@@ -1,0 +1,41 @@
+name: NK1 metacognitive outcome provenance and unknown-feedback gate
+
+on:
+  pull_request:
+    branches: [workpass70-source]
+    paths:
+      - "runtime/neuro-kurisu/src/organism/cognition/MetaCognitiveMonitor.ts"
+      - "runtime/neuro-kurisu/src/organism/core/OrganismCore.ts"
+      - "runtime/neuro-kurisu/tests/metacognitive-monitor-outcome-gating.mjs"
+      - "runtime/neuro-kurisu/package.json"
+      - ".github/workflows/nk1-metacognitive-monitor-outcome-gating.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nk1-metacognitive-monitor-outcome-gating-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  metacognitive-outcome-gating:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: runtime/neuro-kurisu
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: runtime/neuro-kurisu/package-lock.json
+      - name: Install locked runtime dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Verify metacognitive provenance and empty-feedback boundaries
+        run: node --experimental-strip-types tests/metacognitive-monitor-outcome-gating.mjs
+      - name: Existing metacognitive episode regressions
+        run: node --experimental-strip-types tests/metacognitive-episode-contract-workpass613.mjs && node --experimental-strip-types tests/metacognitive-episode-runtime-workpass613.mjs
+      - name: Runtime typecheck
+        run: npm run typecheck
