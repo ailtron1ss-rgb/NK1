@@ -31,7 +31,7 @@ test("generic GLB renderer consumes the expressive face and secondary motion ada
   assert.match(stage, /resolveAvatarCameraFraming/);
   assert.match(stage, /node\.skeleton\?\.update\?\.\(\)/, "skinned skeleton palettes refresh before camera bounds");
   assert.match(stage, /node\.computeBoundingBox\?\.\(\)/, "skinned mesh bounds are recomputed after pose updates");
-  assert.match(stage, /import \\{ forEachAvatarRenderedVertexIndex, resolveAvatarSceneBounds \\} from "\\.\\/avatar\\/avatarSceneBounds"/, "avatar loader uses the indexed rendered-surface bounds adapter");
+  assert.ok(stage.includes('import { forEachAvatarRenderedVertexIndex, resolveAvatarSceneBounds } from "./avatar/avatarSceneBounds"'), "avatar loader uses the indexed rendered-surface bounds adapter");
   assert.match(stage, /const sourceSceneBounds=resolveAvatarSceneBounds\(root\)/, "source normalization excludes studio/environment geometry");
   assert.match(stage, /const normalizedSceneBounds=resolveAvatarSceneBounds\(root\)/, "camera framing uses pose-aware character-only bounds");
   assert.match(stage, /excludedEnvironmentMeshes:\s*sourceSceneBounds\.excludedEnvironmentMeshes/, "runtime diagnostics disclose excluded environment meshes");
