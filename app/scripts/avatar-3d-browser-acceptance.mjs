@@ -24,7 +24,7 @@ const report = {
   schemaVersion: 1,
   baseUrl,
   asset: "NeuroKurisu_3D_v5.glb",
-  expectedSecondaryParticleMeshes: 12,
+  expectedSecondaryParticleMeshes: 13,
   viewport: { width: 390, height: 844 },
   webgl: null,
   diagnostics: "",
@@ -114,11 +114,11 @@ try {
     canvasXpbdParticles: await canvas.evaluate((element) => Number(element.dataset.avatarSecondaryParticleMeshCount || 0)),
     expected: report.expectedSecondaryParticleMeshes,
   };
-  assert.equal(report.secondaryRuntimeCounts.allSecondary, 12,
+  assert.equal(report.secondaryRuntimeCounts.allSecondary, 13,
     "canonical v5 must expose 12 attached secondary meshes; actual diagnostics: " + report.diagnostics);
-  assert.equal(report.secondaryRuntimeCounts.xpbdParticles, 12,
+  assert.equal(report.secondaryRuntimeCounts.xpbdParticles, 13,
     "canonical v5 must activate XPBD on all 12 selected surfaces; actual diagnostics: " + report.diagnostics);
-  assert.equal(report.secondaryRuntimeCounts.canvasXpbdParticles, 12,
+  assert.equal(report.secondaryRuntimeCounts.canvasXpbdParticles, 13,
     "canvas runtime diagnostic must agree with the visible XPBD particle count");
   assert.match(report.diagnostics, /(?:GPU sway|XPBD-симуляция частиц поверхности)/,
     "canonical v5 must expose an active secondary deformation path");
