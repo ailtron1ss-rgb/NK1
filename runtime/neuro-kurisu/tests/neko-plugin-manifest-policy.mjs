@@ -283,6 +283,7 @@ const makeRegistry = (options = {}) => new NekoPluginManifestPolicyRegistry(make
     destructive: true,
     permissionClass: 'none',
     requiresHostApproval: false,
+    actions: ['tool_call'],
   };
   assert.deepEqual(makeRegistry().register(misleading),
     { registered: false, reason: 'registered-tool-contract-mismatch' },
