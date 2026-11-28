@@ -75,8 +75,12 @@ test("body surface collider projects an embedded surface particle back outside t
     1, 2, 3,
     2, 0, 3,
   ]);
-  const collider = createCollider({ positions, indices, cellSize: 0.2 });
+  const buildDiagnostics = {};
+  const collider = createCollider({ positions, indices, cellSize: 0.2, diagnostics: buildDiagnostics });
   assert.ok(collider);
+  assert.equal(buildDiagnostics.reason, "ready");
+  assert.equal(buildDiagnostics.vertexCount, 4);
+  assert.equal(buildDiagnostics.validTriangles, 4);
   const embedded = { x: 0.25, y: 0.25, z: 0.25 };
   const contact = project(embedded, collider, 0.05);
   assert.ok(contact, "an embedded particle must be projected out of the closed torso surface");
@@ -103,6 +107,9 @@ test("body surface collider ignores distant particles and rejects malformed tria
   });
   assert.ok(collider);
   assert.equal(project({ x: 4, y: 4, z: 4 }, collider, 0.05), null);
+  const rejectedDiagnostics = {};
+  assert.equal(createCollider({ positions: new Float32Array([0, 0, 0]), diagnostics: rejectedDiagnostics }), null);
+  assert.equal(rejectedDiagnostics.reason, "vertex-count-out-of-range");
   assert.equal(createCollider({ positions, indices: new Uint16Array([0, 1, 99]) }), null);
   assert.equal(createCollider({ positions: new Float32Array([0, 0, Number.NaN]), indices: new Uint16Array([0, 0, 0]) }), null);
 });
