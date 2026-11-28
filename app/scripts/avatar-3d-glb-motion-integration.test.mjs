@@ -15,7 +15,9 @@ test("generic GLB renderer consumes the expressive face and secondary motion ada
   assert.match(stage, /browFurrow:brain\?\.browFurrow\?\?0/);
   assert.match(stage, /if\(rt\.vrm\)\{applyVrmExpressionFrame/);
   assert.match(stage, /attachAvatarSecondaryVertexDynamics\(root,scale\)/);
-  assert.match(stage, /updateAvatarSecondaryVertexDynamics\(rt\.secondaryVertexBindings,adaptiveFrame,t\)/);
+  assert.match(stage, /updateAvatarSecondaryVertexDynamics\(rt\.secondaryVertexBindings,adaptiveFrame,t,rt\.secondaryBodySurface\)/);
+  assert.ok(stage.indexOf("rt.mixer?.update(dt)") < stage.indexOf("updateAvatarSecondaryVertexDynamics(rt.secondaryVertexBindings,adaptiveFrame,t,rt.secondaryBodySurface)"), "torso contacts sample the current animation pose, after the mixer");
+  assert.match(stage, /resolveAvatarSecondaryBodySurface\(root\)/);
   assert.match(stage, /setSecondaryParticleMeshCount\(rt\.secondaryVertexBindings\.filter\(\(binding\)=>!!binding\.particleState\)\.length\)/);
   assert.match(stage, /avatarSecondaryParticleMeshCount/);
   assert.match(stage, /XPBD surface particles/);
