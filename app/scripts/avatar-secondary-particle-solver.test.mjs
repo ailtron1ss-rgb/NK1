@@ -80,7 +80,7 @@ test("body surface collider projects an embedded surface particle back outside t
   const embedded = { x: 0.25, y: 0.25, z: 0.25 };
   const contact = project(embedded, collider, 0.05);
   assert.ok(contact, "an embedded particle must be projected out of the closed torso surface");
-  assert.ok(contact.correction > 0.05);
+  assert.equal(contact.correction, 0.05, "deep penetration must be recovered through a bounded per-step correction");
   const correctedDistance = Math.hypot(
     contact.position.x - embedded.x,
     contact.position.y - embedded.y,
@@ -99,6 +99,7 @@ test("body surface collider ignores distant particles and rejects malformed tria
   const collider = createCollider({
     positions,
     indices: new Uint16Array([0, 2, 1, 0, 1, 3, 1, 2, 3, 2, 0, 3]),
+    cellSize: 0.2,
   });
   assert.ok(collider);
   assert.equal(project({ x: 4, y: 4, z: 4 }, collider, 0.05), null);
