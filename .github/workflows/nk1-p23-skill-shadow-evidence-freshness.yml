@@ -1,0 +1,45 @@
+name: NK1 skill shadow evidence freshness
+
+on:
+  pull_request:
+    branches: [workpass70-source]
+    paths:
+      - 'runtime/neuro-kurisu/src/organism/learning/VerifiedSkillShadowEvidence.ts'
+      - 'runtime/neuro-kurisu/src/organism/learning/VersionedSkillCandidateStore.ts'
+      - 'runtime/neuro-kurisu/scripts/create-skill-promotion-approval-request.mjs'
+      - 'runtime/neuro-kurisu/tests/p23-skill-shadow-evidence-freshness.mjs'
+      - 'runtime/neuro-kurisu/package.json'
+      - '.github/workflows/nk1-p23-skill-shadow-evidence-freshness.yml'
+permissions:
+  contents: read
+concurrency:
+  group: nk1-p23-skill-shadow-evidence-freshness-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  skill-shadow-freshness:
+    name: Signed skill shadow evidence freshness and lifecycle
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: runtime/neuro-kurisu
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v7
+      - name: Set up Node
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: runtime/neuro-kurisu/package-lock.json
+      - name: Install locked dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Freshness window and verification-purpose regression
+        run: npm run test:p23:skill-shadow-freshness
+      - name: Existing signed shadow evidence regression
+        run: npm run test:p23:verified-skill-shadow-evidence
+      - name: Existing versioned skill candidate lifecycle
+        run: npm run test:p23:versioned-skill-candidate-store
+      - name: Promotion approval request uses promotion freshness
+        run: npm run test:p23:create-skill-promotion-approval-request
+      - name: Runtime type syntax validation
+        run: npm run typecheck
