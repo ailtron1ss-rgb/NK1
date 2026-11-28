@@ -63,3 +63,32 @@ test("send finalization merges chat into the latest snapshot instead of a stale 
   assert.match(store, /const currentSnapshot = get\(\)\.snap;/);
   assert.match(store, /snap: \{ \.\.\.currentSnapshot, chat \}/);
 });
+
+
+test("an initiative response is discarded if a newer snapshot request starts while it is in flight", async () => {
+  const gate = createUiSnapshotCommitGate();
+  const state = { chat: [], acknowledgements: [] };
+  const pollTicket = gate.begin();
+  let resolvePending;
+  const pendingResponse = new Promise(resolve => { resolvePending = resolve; });
+  const poll = pendingResponse.then(pending => {
+    if (!gate.isCurrent(pollTicket)) return false;
+    state.chat.push(pending.initiative.id);
+    state.acknowledgements.push(pending.initiative.id);
+    return true;
+  });
+
+  gate.begin();
+  resolvePending({ initiative: { id: "stale-initiative" } });
+
+  assert.equal(await poll, false);
+  assert.deepEqual(state, { chat: [], acknowledgements: [] });
+});
+
+test("tickIdle rechecks snapshot freshness after the proactive endpoint resolves", async () => {
+  const store = await readFile(new URL("../src/organism/store.ts", import.meta.url), "utf8");
+  assert.match(
+    store,
+    /const pending = await neuroApi\\.proactiveMessage\\(\\);\\s*\\/\\/ A newer snapshot request may start while the initiative endpoint is in flight\\.\\s*\\/\\/ Do not append or ACK an initiative from a superseded poll\\.\\s*if \\(!snapshotCommitGate\\.isCurrent\\(requestId\\)\\) return;\\s*const initiative = pending\\.initiative;/,
+  );
+});
