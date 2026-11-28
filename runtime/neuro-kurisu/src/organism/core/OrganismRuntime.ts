@@ -2921,7 +2921,15 @@ export class OrganismRuntime {
     // Stop is a durability boundary, not merely a scheduler shutdown. Attempt
     // every cleanup obligation even if a module, checkpoint, or ledger fails.
     const stopErrors: unknown[] = [];
+    const durability = {
+      core: 'not-attempted' as 'not-attempted' | 'durable' | 'failed',
+      world: 'not-attempted' as 'not-attempted' | 'durable' | 'failed',
+      continuityLedger: 'not-attempted' as 'not-attempted' | 'durable' | 'failed',
+      cognitiveSpine: 'not-attempted' as 'not-attempted' | 'durable' | 'failed',
+      riskAwareRecovery: 'not-attempted' as 'not-attempted' | 'durable' | 'failed',
+    };
     const capture = (error: unknown) => { stopErrors.push(error); };
+    const runtimeViewRef: { current: ReturnType<OrganismCore['runtimeClosureOperationalSnapshot']> | null } = { current: null };
 
     this.stopping = true;
     try {
@@ -2957,11 +2965,11 @@ export class OrganismRuntime {
           }
         }
 
-        let runtimeView: ReturnType<OrganismCore['runtimeClosureOperationalSnapshot']> | null = null;
         try {
           // Capture the closure once; a full core projection serializes several MB
           // on mobile, so shutdown must not pay for duplicate full-state flushes.
-          runtimeView = this.core.runtimeClosureOperationalSnapshot();
+          const runtimeView = this.core.runtimeClosureOperationalSnapshot();
+          runtimeViewRef.current = runtimeView;
           this.runtimeClosure.durable({
             at: Date.now(),
             tick: runtimeView.tick,
@@ -2973,12 +2981,15 @@ export class OrganismRuntime {
           });
           this.core.setRuntimeClosure(this.runtimeClosure.snapshot());
         } catch (error) {
+          durability.core = 'failed';
           capture(error);
         }
 
         try {
           await this.core.flush();
+          durability.core = 'durable';
         } catch (error) {
+          durability.core = 'failed';
           capture(error);
           await this.journal.write('error', 'runtime.stop.core-checkpoint-failed', {
             message: String(error instanceof Error ? error.message : error).slice(0, 180),
@@ -2986,25 +2997,27 @@ export class OrganismRuntime {
         }
 
         try {
-          await this.persistCognitiveSpineSchedule();
+          const persisted = await this.persistCognitiveSpineSchedule();
+          durability.cognitiveSpine = persisted ? 'durable' : 'failed';
+          if (!persisted) capture(new Error('cognitive-spine-durability-unconfirmed'));
         } catch (error) {
+          durability.cognitiveSpine = 'failed';
           capture(error);
         }
         try {
-          await this.persistRiskAwareRecovery();
+          const persisted = await this.persistRiskAwareRecovery();
+          durability.riskAwareRecovery = persisted ? 'durable' : 'failed';
+          if (!persisted) capture(new Error('risk-aware-recovery-durability-unconfirmed'));
         } catch (error) {
+          durability.riskAwareRecovery = 'failed';
           capture(error);
         }
         try {
           await this.checkpointWorld(true);
+          durability.world = 'durable';
         } catch (error) {
+          durability.world = 'failed';
           capture(error);
-        }
-        if (runtimeView) {
-          await this.journal.write('info', 'runtime.stop.durable', {
-            tick: runtimeView.tick,
-            worldTick: this.environment.snapshot().tick,
-          }).catch(() => {});
         }
       });
     } catch (error) {
@@ -3013,16 +3026,68 @@ export class OrganismRuntime {
 
     // Flush and close are separate obligations: close is still attempted when
     // flush rejects, and neither error can erase module/core shutdown failures.
+    let ledgerFlushSucceeded = false;
+    let ledgerCloseSucceeded = false;
+    let ledgerOperationFailureCaptured = false;
     try {
       await this.continuityLedger.flush();
+      ledgerFlushSucceeded = true;
     } catch (error) {
+      durability.continuityLedger = 'failed';
+      ledgerOperationFailureCaptured = true;
       capture(error);
     }
     try {
       await this.continuityLedger.close();
+      ledgerCloseSucceeded = true;
     } catch (error) {
+      durability.continuityLedger = 'failed';
+      ledgerOperationFailureCaptured = true;
       capture(error);
     }
+    try {
+      const ledger = this.continuityLedger.diagnostics() as {
+        pendingLines?: number;
+        pendingBytes?: number;
+        lastError?: string | null;
+        lastDurabilityWarning?: string | null;
+      };
+      durability.continuityLedger = ledgerFlushSucceeded && ledgerCloseSucceeded &&
+        ledger.pendingLines === 0 && ledger.pendingBytes === 0 &&
+        !ledger.lastError && !ledger.lastDurabilityWarning
+        ? 'durable'
+        : 'failed';
+      if (durability.continuityLedger === 'failed' && !ledgerOperationFailureCaptured) {
+        capture(new Error('continuity-ledger-durability-unconfirmed'));
+      }
+    } catch (error) {
+      durability.continuityLedger = 'failed';
+      capture(error);
+    }
+
+    const worldTick = (() => {
+      try { return this.environment.snapshot().tick; } catch { return null; }
+    })();
+    const overallDurable = runtimeViewRef.current !== null &&
+      durability.core === 'durable' &&
+      durability.world === 'durable' &&
+      durability.continuityLedger === 'durable' &&
+      durability.cognitiveSpine === 'durable' &&
+      durability.riskAwareRecovery === 'durable' &&
+      stopErrors.length === 0;
+    const receipt = {
+      overall: overallDurable ? 'durable' : 'partial',
+      tick: runtimeViewRef.current?.tick ?? null,
+      worldTick,
+      durability,
+      errors: stopErrors.slice(0, 8).map(error =>
+        String((error as any)?.message ?? error).slice(0, 180)),
+    };
+    await this.journal.write(
+      overallDurable ? 'info' : 'warn',
+      overallDurable ? 'runtime.stop.durable' : 'runtime.stop.partial',
+      receipt,
+    ).catch(() => {});
 
     if (stopErrors.length === 1) throw stopErrors[0];
     if (stopErrors.length > 1) {
@@ -3030,25 +3095,29 @@ export class OrganismRuntime {
     }
   }
 
-  private async persistCognitiveSpineSchedule(): Promise<void> {
+  private async persistCognitiveSpineSchedule(): Promise<boolean> {
     try {
       await this.cognitiveSpineStore.save(this.cognitiveSpineScheduler.snapshot());
+      return true;
     } catch (error) {
       await this.journal.write('warn', 'runtime.cognitive-spine.persist-failed', {
         tick: this.cognitiveSpineScheduler.snapshot().lastTick,
         message: String((error as any)?.message ?? error).slice(0, 180),
       }).catch(() => {});
+      return false;
     }
   }
 
-  private async persistRiskAwareRecovery(): Promise<void> {
+  private async persistRiskAwareRecovery(): Promise<boolean> {
     try {
       await this.riskAwareRecoveryStore.save(this.unifiedCycle.riskAwareRecoverySnapshot());
+      return true;
     } catch (error) {
       await this.journal.write('warn', 'runtime.risk-aware-recovery.persist-failed', {
         tick: this.unifiedCycle.riskAwareRecoverySnapshot().tick,
         message: String((error as any)?.message ?? error).slice(0, 180),
       }).catch(() => {});
+      return false;
     }
   }
 
