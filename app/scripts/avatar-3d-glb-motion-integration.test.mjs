@@ -31,9 +31,13 @@ test("generic GLB renderer consumes the expressive face and secondary motion ada
   assert.match(stage, /resolveAvatarCameraFraming/);
   assert.match(stage, /node\.skeleton\?\.update\?\.\(\)/, "skinned skeleton palettes refresh before camera bounds");
   assert.match(stage, /node\.computeBoundingBox\?\.\(\)/, "skinned mesh bounds are recomputed after pose updates");
-  assert.ok(stage.includes('import { forEachAvatarRenderedVertexIndex, resolveAvatarSceneBounds } from "./avatar/avatarSceneBounds"'), "avatar loader uses the indexed rendered-surface bounds adapter");
-  assert.match(stage, /const sourceSceneBounds=resolveAvatarSceneBounds\(root\)/, "source normalization excludes studio/environment geometry");
-  assert.match(stage, /const normalizedSceneBounds=resolveAvatarSceneBounds\(root\)/, "camera framing uses pose-aware character-only bounds");
+  assert.ok(stage.includes('import { forEachAvatarRenderedVertexIndex, resolveAvatarFramingBounds, resolveAvatarSceneBounds } from "./avatar/avatarSceneBounds"'), "avatar loader separates the full rendered-surface audit from robust framing bounds");
+  assert.match(stage, /const sourceSceneBounds=resolveAvatarSceneBounds\(root\)/, "full source diagnostics retain all visible rendered geometry");
+  assert.match(stage, /const sourceFramingBounds=resolveAvatarFramingBounds\(root\)/, "normalization uses robust skeleton-referenced bounds");
+  assert.match(stage, /const normalizedSceneBounds=resolveAvatarSceneBounds\(root\)/, "post-normalization diagnostics keep the complete visible scene");
+  assert.match(stage, /const normalizedFramingBounds=resolveAvatarFramingBounds\(root\)/, "post-normalization camera bounds are filtered independently");
+  assert.match(stage, /const hasFramingOutliers=normalizedFramingBounds\.excludedOutlierMeshes\.length>0/, "tiny mesh outliers are explicitly identified");
+  assert.match(stage, /normalizationExcludedOutlierMeshes:\s*sourceFramingBounds\.excludedOutlierMeshes/, "excluded normalization outliers remain visible in diagnostics");
   assert.match(stage, /excludedEnvironmentMeshes:\s*sourceSceneBounds\.excludedEnvironmentMeshes/, "runtime diagnostics disclose excluded environment meshes");
   assert.match(stage, /avatarVisibleMeshCount/);
   assert.match(stage, /avatarRenderCalls/);
@@ -46,10 +50,12 @@ test("GLB diagnostics and camera framing share the morph-aware skinned vertex su
   const stage = await readFile(new URL("../src/components/Avatar3DStage.tsx", import.meta.url), "utf8");
   assert.match(stage, /node\.getVertexPosition\(index,\s*auditVertex\)/,
     "vertex audit must include the current morph and skin deformation");
-  assert.match(stage, /const cameraBoundsSource\s*=\s*skinVertexBounds\s*\?/,
-    "camera fit must prefer the exact deformed surface bounds");
-  assert.match(stage, /const cameraBounds=skinVertexBounds\s*\?/,
-    "camera fit bounds must use the same vertex audit result");
+  assert.match(stage, /const cameraBoundsSource = hasFramingOutliers[\s\S]*?skinVertexBounds/s,
+    "camera fit uses robust skeleton bounds only when a tiny extreme mesh would distort it");
+  assert.match(stage, /const cameraSourceBounds=hasFramingOutliers[\s\S]*?skinVertexBounds/s,
+    "normal camera framing still prefers exact skinned surface bounds");
+  assert.match(stage, /const cameraBounds=cameraSourceBounds[\s\S]*?skinVertexBounds/s,
+    "camera bounds derive from the selected validated source");
 });
 
 test("GLB browser diagnostics expose per-mesh surface bounds and projected fit", async () => {
