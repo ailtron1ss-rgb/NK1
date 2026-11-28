@@ -87,7 +87,7 @@ assert.equal((await families.requestToolApproval('http.research.probe.nomega-reg
   opaque.registerTool({
     id: 'fixture.provider.commit',
     capability: 'provider.custom.operation',
-    destructive: false,
+    destructive: true,
     requiresIdempotencyKey: true,
     projectAllowed: false,
     execute: async (input) => {
@@ -193,4 +193,28 @@ assert.equal((await families.requestToolApproval('http.research.probe.nomega-reg
     'the intentionally safe synthesized-speech exception remains approval-free');
 }
 
-console.log('WORKPASS53_ACTION_APPROVAL_BOUNDARY=PASS scenarios=26');
+
+{
+  const idempotentOnly = new ActionGateway({ live: true });
+  idempotentOnly.setExecutionLedgerPersister(async () => {});
+  let executions = 0;
+  idempotentOnly.registerTool({
+    id: 'catalog.update',
+    capability: 'catalog.write',
+    destructive: false,
+    requiresIdempotencyKey: true,
+    execute: async () => { executions += 1; return { updated: true }; },
+  });
+  const descriptor = idempotentOnly.listTools().find(tool => tool.id === 'catalog.update');
+  assert.equal(descriptor.permissionClass, 'none',
+    'durable idempotency is a replay-safety contract, not an approval class');
+  assert.equal(descriptor.requiresApproval, false);
+  const result = await idempotentOnly.executeTool(
+    'catalog.update', { key: 'valid-key' }, 'idempotent update',
+    { idempotencyKey: 'catalog-update-001' },
+  );
+  assert.equal(result.ok, true);
+  assert.equal(executions, 1);
+}
+
+console.log('WORKPASS53_ACTION_APPROVAL_BOUNDARY=PASS scenarios=27');
