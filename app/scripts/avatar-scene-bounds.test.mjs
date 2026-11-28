@@ -47,3 +47,26 @@ test("environment classification is scoped to mesh nodes, not humanoid bones", (
   assert.equal(face.visible, true);
   assert.ok(resolved.bounds.getSize(new THREE.Vector3()).length() > 0);
 });
+
+test("scene bounds ignore position-buffer vertices not referenced by rendered triangles", () => {
+  const root = new THREE.Group();
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute("position", new THREE.Float32BufferAttribute([
+    -0.2, 0, 0,
+     0.2, 0, 0,
+     0, 1.6, 0,
+     0, 12, 0,
+  ], 3));
+  geometry.setIndex([0, 1, 2]);
+  const body = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial());
+  body.name = "BODY_rendered_surface";
+  root.add(body);
+
+  const resolved = resolveAvatarSceneBounds(root);
+  const size = resolved.bounds.getSize(new THREE.Vector3());
+
+  assert.ok(Math.abs(size.x - 0.4) < 1e-6);
+  assert.ok(Math.abs(size.y - 1.6) < 1e-6,
+    "an unreferenced position-buffer outlier must not expand the rendered character bounds");
+  assert.ok(Math.abs(size.z) < 1e-6);
+});
