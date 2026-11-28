@@ -80,7 +80,7 @@ test("morph deformation is included only for indexed rendered vertices", () => {
   ], 3));
   geometry.setIndex([0, 1, 2]);
   geometry.morphAttributes.position = [new THREE.Float32BufferAttribute([
-    0, 0, 0, 0, 0, 0, 0, 0.5, 0, 0, 100, 0,
+    0, 0, 0, 0, 0, 0, 0, 1.5, 0, 0, 100, 0,
   ], 3)];
   const mesh = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({ morphTargets: true }));
   mesh.name = "BODY_morph_surface";
