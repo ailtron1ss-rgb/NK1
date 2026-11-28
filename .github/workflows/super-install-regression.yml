@@ -11,6 +11,7 @@ on:
       - 'tools/runtime-pin.mjs'
       - 'tools/runtime-pin.test.mjs'
       - '.github/workflows/super-install-regression.yml'
+      - 'Прогресс/**'
   workflow_dispatch:
 
 permissions:
