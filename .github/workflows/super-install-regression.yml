@@ -1,4 +1,5 @@
 name: NK1 Super Install Regression
+# Trigger a fresh exact-head regression when the progress ledger or workflow is reconciled.
 
 on:
   pull_request:
