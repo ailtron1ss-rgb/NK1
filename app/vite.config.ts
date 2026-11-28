@@ -151,7 +151,6 @@ export default defineConfig(({ command, isPreview }) => ({
     port: 8080,
     strictPort: true,
     proxy: {
-      "/api/health": { target: "http://127.0.0.1:3310", changeOrigin: true },
       "/api/organism": { target: "http://127.0.0.1:3310", changeOrigin: true },
       "/api/research": { target: "http://127.0.0.1:8765", changeOrigin: true },
     },
