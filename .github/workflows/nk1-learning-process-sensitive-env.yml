@@ -1,0 +1,40 @@
+name: NK1 learning process sensitive environment boundary
+on:
+  pull_request:
+    branches: [workpass70-source]
+    paths:
+      - 'runtime/neuro-kurisu/src/organism/learning/LearningProcessSupervisor.ts'
+      - 'runtime/neuro-kurisu/src/organism/learning/P23TrustedShadowLearningScheduler.ts'
+      - 'runtime/neuro-kurisu/src/organism/learning/TeacherStudentDistillationTrainer.ts'
+      - 'runtime/neuro-kurisu/tests/p23-learning-process-supervisor.mjs'
+      - 'runtime/neuro-kurisu/tests/p23-runtime-signed-shadow-observation.mjs'
+      - 'runtime/neuro-kurisu/tests/p23-trusted-shadow-runtime-config.mjs'
+      - '.github/workflows/nk1-learning-process-sensitive-env.yml'
+permissions:
+  contents: read
+concurrency:
+  group: nk1-learning-process-sensitive-env-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  least-privilege:
+    name: Credential environment deny-by-default and trusted-shadow grants
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v7
+      - name: Set up Node
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: runtime/neuro-kurisu/package-lock.json
+      - name: Install locked runtime dependencies
+        run: npm ci --prefix runtime/neuro-kurisu --ignore-scripts --no-audit --no-fund
+      - name: Learning process deny-by-default boundary and exact grants
+        run: npm --prefix runtime/neuro-kurisu run test:p23:learning-process-supervisor
+      - name: Trusted-shadow schedule grant validation
+        run: npm --prefix runtime/neuro-kurisu run test:p23:trusted-shadow-runtime-config
+      - name: Signed shadow observation compatibility
+        run: npm --prefix runtime/neuro-kurisu run test:p23:runtime-signed-shadow-observation
+      - name: Runtime typecheck
+        run: npm --prefix runtime/neuro-kurisu run typecheck
