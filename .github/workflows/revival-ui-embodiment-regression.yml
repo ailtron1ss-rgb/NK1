@@ -1,0 +1,51 @@
+name: NK1 Revival UI and Embodiment Guardrails
+
+on:
+  pull_request:
+    branches: [workpass70-source]
+    paths:
+      - "app/src/organism/store.ts"
+      - "app/src/organism/uiSnapshotCommitGate.ts"
+      - "app/src/components/RuntimeHealthPanel.tsx"
+      - "app/src/routes/index.tsx"
+      - "app/src/components/AvatarStage.tsx"
+      - "app/src/components/avatar/avatarBodyStepScheduler.ts"
+      - "app/scripts/*snapshot*"
+      - "app/scripts/*body-step*"
+      - "app/scripts/runtime-health-panel.test.mjs"
+      - "app/package.json"
+      - ".github/workflows/revival-ui-embodiment-regression.yml"
+  push:
+    branches: [workpass70-source]
+    paths:
+      - "app/src/organism/store.ts"
+      - "app/src/organism/uiSnapshotCommitGate.ts"
+      - "app/src/components/RuntimeHealthPanel.tsx"
+      - "app/src/routes/index.tsx"
+      - "app/src/components/AvatarStage.tsx"
+      - "app/src/components/avatar/avatarBodyStepScheduler.ts"
+      - "app/scripts/*snapshot*"
+      - "app/scripts/*body-step*"
+      - "app/scripts/runtime-health-panel.test.mjs"
+      - "app/package.json"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: revival-ui-embodiment-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  focused-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - name: Run UI snapshot, body cadence and runtime health contracts
+        run: npm --prefix app run test:revival-ui-guards
