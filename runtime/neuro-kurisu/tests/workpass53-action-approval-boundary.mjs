@@ -90,6 +90,7 @@ assert.equal((await families.requestToolApproval('http.research.probe.nomega-reg
     destructive: true,
     requiresIdempotencyKey: true,
     projectAllowed: true,
+    verify: async () => ({ verified: false, basis: 'none', confidence01: 0, notes: 'approval-boundary-fixture' }),
     execute: async (input) => {
       executions += 1;
       return { accepted: true, target: String(input.target) };
@@ -147,8 +148,6 @@ assert.equal((await families.requestToolApproval('http.research.probe.nomega-reg
 {
   const cases = [
     { id: 'fixture.vendor.destructive', flags: { destructive: true } },
-    { id: 'fixture.vendor.undo-required', flags: { requiresUndoFirst: true } },
-    { id: 'fixture.vendor.undo-preparation', flags: { undoFirst: { prepare: () => ({}) } } },
   ];
   for (const item of cases) {
     const gateway = new ActionGateway({ live: true });
@@ -217,4 +216,26 @@ assert.equal((await families.requestToolApproval('http.research.probe.nomega-reg
   assert.equal(executions, 1);
 }
 
-console.log('WORKPASS53_ACTION_APPROVAL_BOUNDARY=PASS scenarios=27');
+{
+  const undoOnly = new ActionGateway({ live: true });
+  undoOnly.setExecutionLedgerPersister(async () => {});
+  undoOnly.registerTool({
+    id: 'fixture.vendor.undo-required',
+    capability: 'opaque.provider.operation',
+    requiresUndoFirst: true,
+    destructive: false,
+    execute: async () => ({ accepted: true }),
+  });
+  const descriptor = undoOnly.listTools().find(tool => tool.id === 'fixture.vendor.undo-required');
+  assert.equal(descriptor.permissionClass, 'none',
+    'Undo-First is its own recovery contract and must not be silently converted into host approval');
+  assert.equal(descriptor.requiresApproval, false);
+  const result = await undoOnly.executeTool(
+    'fixture.vendor.undo-required', { target: 'resource-7' }, 'missing undo preflight',
+    { idempotencyKey: 'undo-required-001' },
+  );
+  assert.equal(result.outcomeClass, 'undo-plan-required',
+    'the existing Undo-First boundary must remain the governing pre-execution gate');
+}
+
+console.log('WORKPASS53_ACTION_APPROVAL_BOUNDARY=PASS scenarios=28');
