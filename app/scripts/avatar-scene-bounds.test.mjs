@@ -10,7 +10,7 @@ test("environment floor does not shrink the character's normalized bounds", () =
     new THREE.MeshBasicMaterial(),
   );
   body.name = "BODY_torso_core";
-  body.position.y = 0.8;
+  body.position.y = 0.45;
   root.add(body);
 
   const floor = new THREE.Mesh(
@@ -102,11 +102,11 @@ test("a tiny pathological skinned mesh cannot shrink the full avatar normalizati
   hips.name = "hips";
   const head = new THREE.Bone();
   head.name = "head";
-  head.position.y = 1.6;
+  head.position.y = 0.82;
   hips.add(head);
   root.add(hips);
 
-  const bodyGeometry = new THREE.BoxGeometry(0.4, 1.6, 0.3, 4, 4, 4);
+  const bodyGeometry = new THREE.BoxGeometry(0.4, 0.82, 0.3, 4, 4, 4);
   const body = new THREE.Mesh(bodyGeometry, new THREE.MeshBasicMaterial());
   body.name = "BODY_torso_and_limbs";
   body.position.y = 0.8;
@@ -132,7 +132,7 @@ test("a tiny pathological skinned mesh cannot shrink the full avatar normalizati
   assert.ok(Math.abs(completeSize.y - 3.15) < 1e-6,
     "the full geometry audit must retain the outlier rather than hide or mutate the asset");
   assert.ok(Math.abs(framingSize.x - 0.4) < 1e-6);
-  assert.ok(Math.abs(framingSize.y - 1.6) < 1e-6,
+  assert.ok(Math.abs(framingSize.y - 0.82) < 1e-6,
     "the single tiny outlier must not determine the avatar's scale");
   assert.ok(Math.abs(framingSize.z - 0.3) < 1e-6);
   assert.deepEqual(framing.excludedOutlierMeshes.map((item) => item.name), ["FACE_mouth"]);
