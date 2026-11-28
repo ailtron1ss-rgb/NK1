@@ -369,3 +369,53 @@ test("elbow and knee hinge limits are symmetric and expose finite correction dia
   assert.ok(result.jointLimits.maxCorrectionDeg > 0);
   assert.ok(everyNumberIsFinite(result.state));
 });
+
+
+function pointSegmentDistance(point, start, end) {
+  const dx = end.x - start.x, dy = end.y - start.y, dz = end.z - start.z;
+  const lengthSquared = dx * dx + dy * dy + dz * dz;
+  const t = lengthSquared > 1e-12
+    ? Math.max(0, Math.min(1, ((point.x - start.x) * dx + (point.y - start.y) * dy
+      + (point.z - start.z) * dz) / lengthSquared))
+    : 0;
+  return Math.hypot(
+    point.x - (start.x + dx * t),
+    point.y - (start.y + dy * t),
+    point.z - (start.z + dz * t),
+  );
+}
+
+test("articulated forearms and hands are kept outside the torso collision capsule", () => {
+  let state = createAvatarArticulatedBodyState();
+  let result = null;
+  for (let tick = 0; tick < 150; tick += 1) {
+    result = stepAvatarArticulatedBody(state, {
+      leftShoulder: -1,
+      leftElbow: -1,
+      rightShoulder: -1,
+      rightElbow: -1,
+    }, 1000 / 30, { awake: true, energy01: 1, groundEnabled: false });
+    state = result.state;
+  }
+
+  assert.ok(result);
+  assert.ok(result.contacts.bodyCollisionCount > 0,
+    "torso/limb capsule constraints must report that they resolved arm penetration");
+  assert.ok(result.contacts.maxBodyCollisionCorrection > 0,
+    "the collision diagnostics must expose the maximum positional correction");
+
+  const torsoStart = state.particles.pelvis.position;
+  const torsoEnd = state.particles.chest.position;
+  for (const [id, particleRadius] of [
+    ["leftWristPoint", 0.035],
+    ["leftHandPoint", 0.03],
+    ["rightWristPoint", 0.035],
+    ["rightHandPoint", 0.03],
+  ]) {
+    const distance = pointSegmentDistance(state.particles[id].position, torsoStart, torsoEnd);
+    const minimum = 0.135 + particleRadius;
+    assert.ok(distance >= minimum - 0.015,
+      id + " must not remain inside the torso capsule; distance=" + distance.toFixed(4)
+        + " minimum=" + minimum.toFixed(4));
+  }
+});
