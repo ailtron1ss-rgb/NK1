@@ -156,3 +156,17 @@ The 3D capability panel reports secondary bones, mesh inventory, total attached 
 
 
 Avatar normalization and camera bounds are computed from unique vertex indices referenced by each geometry's active draw range, not every slot in the position buffer. Unreferenced vertex-buffer outliers are ignored; morph and skin transforms are applied through `getVertexPosition()` before world-space bounds are accumulated.
+
+
+## Skeleton-aware normalization and camera outlier isolation — 2026-11-28
+
+The v5 browser framebuffer audit identified a pathological but still-rendered small mesh: `FACE_mouth` contributes 271 of 31,047 indexed rendered vertices (less than 1%) while its world-space vertical extent is about 3.15 model units. The humanoid skeleton spans about 0.82 units. Using the union of all visible mesh bounds therefore allowed this single low-vertex mesh to shrink the complete character during normalization and camera fitting.
+
+The loader now keeps two distinct bounds products:
+
+- `resolveAvatarSceneBounds` remains the complete geometry audit. It retains the full visible surface, including anomalous meshes, and the per-mesh skin diagnostics continue to report those vertices and influences.
+- `resolveAvatarFramingBounds` computes the bounds used for normalization and camera framing. It identifies a candidate only when the candidate mesh's maximum world-space extent exceeds 2.5 times the measured skeleton height and its indexed rendered vertices are no more than 5% of the visible model's indexed vertices. The default full bounds are retained when no usable skeleton reference exists or filtering would produce an empty box.
+
+The candidate mesh is **not hidden, removed, rewritten or excluded from the render scene**. Only its influence on normalization and camera fitting is excluded; its full bounds remain visible in diagnostics. This is deliberately a geometry-integrity guard, not a face-specific name blacklist.
+
+Regression coverage asserts that a tiny extreme mesh remains in full scene diagnostics, remains visible, and cannot shrink the framing bounds; ordinary geometry and environments remain governed by their existing contracts. Browser framebuffer acceptance and real-device review are still required before this behavior is considered visually accepted on the canonical avatar.
