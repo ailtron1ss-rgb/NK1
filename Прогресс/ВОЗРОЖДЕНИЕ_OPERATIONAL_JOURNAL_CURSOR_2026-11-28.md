@@ -52,7 +52,8 @@
 - [x] Добавлен отдельный regression test для репозитория.
 - [x] Добавлен focused GitHub Actions workflow.
 - [x] Focused workflow `NK1 Operational Journal Cursor Regression`: SUCCESS, run `46134164582`, job `140945647361`, на code head `bf03992...`.
-- [x] Общие аудиты обнаружили нашу ошибку workflow: NK1 policy требует `actions/checkout@v7` и `actions/setup-node@v7`, а первоначально было добавлено `@v4`. Исправлено на `@v7`; после этого нужен повторный exact-head прогон.
+- [x] Общие аудиты обнаружили две ошибки workflow и обе исправлены: NK1 policy требует `actions/checkout@v7` и `actions/setup-node@v7` (первоначально было `@v4`); затем `setup-node` искал отсутствующий корневой lock-файл. Выставлено `package-manager-cache: false`, поскольку lock-файлы принадлежат отдельным пакетам.
+- [ ] Повторный exact-head прогон после обеих правок ожидает завершения.
 - [ ] Общий regression matrix на обновлённом head ещё не подтверждён зелёным.
 - [ ] Полный runtime typecheck / интеграционные suite в репозитории ещё не выполнены.
 - [ ] API пока не подключён к Core checkpoint owner envelope; это следующий отдельный этап. Нельзя считать атомарный RuntimeCheckpointEnvelope реализованным.
