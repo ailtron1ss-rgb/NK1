@@ -25,8 +25,7 @@ export * from './language/LanguageOrgan.ts';
 export * from './language/KurisuCanonProfile.ts';
 export * from './persistence/FileStateStore.ts';
 export * from './persistence/StateMigrations.ts';
-export * from './learning/AdvancedResilienceEngine.ts';
-export * from './learning/AdaptiveSynapticMatrix.ts';
+export * from './learning/index.ts';
 
 export * from './cognition/P41NativePerception.ts';
 export * from './cognition/P41TemporalPerceptionModel.ts';
@@ -85,6 +84,3 @@ export * from './research/TheInventionLoop.ts';
 // Expose the integrated kernel; internal research contracts remain module-scoped.
 export * from './system/OmeStroIntegrationKernel.ts';
 
-// Expose the host-admitted, non-executing source-candidate staging boundary.
-export * from './analysis/SourceCandidateWorkspace.ts';
-export * from './learning/CodeAssimilationSourceCandidateAdmission.ts';
