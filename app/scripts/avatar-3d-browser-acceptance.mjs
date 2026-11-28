@@ -127,6 +127,16 @@ try {
     "model center must be projected near the center of the viewport");
   assert.ok(report.modelRuntime.renderCalls > 0 && report.modelRuntime.renderedTriangles > 0,
     "WebGL must draw the loaded model, not only an empty background");
+  report.morphInitialization = await canvas.evaluate((element) => {
+    const raw = element.dataset.avatarMorphInitialization;
+    return raw ? JSON.parse(raw) : null;
+  });
+  assert.ok(report.morphInitialization && report.morphInitialization.meshCount > 0,
+    "the generic GLB loader must expose its pre-bounds facial morph initialization report");
+  assert.ok(report.morphInitialization.managedTargetCount > 0,
+    "the canonical GLB must expose NK1-managed facial morph targets");
+  assert.ok(report.morphInitialization.resetTargetCount > 0,
+    "the canonical GLB must prove that non-neutral imported facial weights were reset before the first render");
   report.webgl = await canvas.evaluate((element) => {
     const gl = element.getContext("webgl2") || element.getContext("webgl");
     if (!gl) return { available: false, version: null, renderer: null, width: element.width, height: element.height };
