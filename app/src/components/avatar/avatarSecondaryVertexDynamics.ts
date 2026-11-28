@@ -328,12 +328,12 @@ export function resolveAvatarSecondaryBodySurface(root: unknown): any | null {
 function applyAvatarBodySurfaceCollisions(
   bindings: readonly AvatarSecondaryVertexBinding[],
   bodySurface: any,
-): void {
-  if (!bodySurface || typeof bodySurface.getVertexPosition !== "function") return;
+): boolean {
+  if (!bodySurface || typeof bodySurface.getVertexPosition !== "function") return false;
   const geometry = bodySurface.geometry;
   const positionAttribute = geometry?.attributes?.position ?? geometry?.getAttribute?.("position");
   const vertexCount = positionAttribute?.count;
-  if (!Number.isInteger(vertexCount) || vertexCount < 4) return;
+  if (!Number.isInteger(vertexCount) || vertexCount < 4) return false;
 
   bodySurface.updateWorldMatrix?.(true, false);
   bodySurface.skeleton?.update?.();
@@ -341,7 +341,7 @@ function applyAvatarBodySurfaceCollisions(
   const surfaceVertex = new THREE.Vector3();
   for (let vertex = 0; vertex < vertexCount; vertex += 1) {
     bodySurface.getVertexPosition(vertex, surfaceVertex);
-    if (![surfaceVertex.x, surfaceVertex.y, surfaceVertex.z].every(Number.isFinite)) return;
+    if (![surfaceVertex.x, surfaceVertex.y, surfaceVertex.z].every(Number.isFinite)) return false;
     const offset = vertex * 3;
     surfacePositions[offset] = surfaceVertex.x;
     surfacePositions[offset + 1] = surfaceVertex.y;
@@ -352,7 +352,7 @@ function applyAvatarBodySurfaceCollisions(
     positions: surfacePositions,
     indices: geometry.index?.array ?? null,
   });
-  if (!collider) return;
+  if (!collider) return false;
 
   const localVertex = new THREE.Vector3();
   const bodyLocalPoint = new THREE.Vector3();
@@ -426,6 +426,7 @@ function applyAvatarBodySurfaceCollisions(
       );
     }
   }
+  return true;
 }
 
 /**
@@ -562,8 +563,8 @@ export function updateAvatarSecondaryVertexDynamics(
   frame: AvatarNeuroAdaptiveFrame,
   timeSeconds: number,
   bodySurface?: any,
-): void {
-  if (!Array.isArray(bindings) || !frame || typeof frame !== "object") return;
+): boolean {
+  if (!Array.isArray(bindings) || !frame || typeof frame !== "object") return false;
   const drive = resolveAvatarSecondaryVertexDrive(frame);
   const time = clamp(timeSeconds, 0, 1_000_000);
   for (const binding of bindings) {
@@ -579,11 +580,12 @@ export function updateAvatarSecondaryVertexDynamics(
       if (offsetAttribute) offsetAttribute.needsUpdate = true;
     }
   }
-  if (bodySurface) applyAvatarBodySurfaceCollisions(bindings, bodySurface);
+  const bodyCollisionReady = bodySurface ? applyAvatarBodySurfaceCollisions(bindings, bodySurface) : false;
   for (const binding of bindings) {
     const offsetAttribute = binding?.patchedGeometry?.attributes?.nk1SecondaryOffset;
     if (offsetAttribute) offsetAttribute.needsUpdate = true;
   }
+  return bodyCollisionReady;
 }
 
 /** Restore original materials and dispose the private clones on replacement/reset. */
