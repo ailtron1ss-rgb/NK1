@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import * as THREE from "three";
 import * as vertexDynamics from "../src/components/avatar/avatarSecondaryVertexDynamics.ts";
 
 function makeGeometry(minY = -1, maxY = 1) {
@@ -142,10 +143,69 @@ test("shader injection adds a bounded displacement only after the skinning trans
   assert.equal(vertexDynamics.injectAvatarSecondaryVertexShader(shader, uniforms), true);
   assert.ok(shader.vertexShader.includes("#include <skinning_vertex>"));
   assert.ok(shader.vertexShader.indexOf("#include <skinning_vertex>") < shader.vertexShader.indexOf("transformed.x +="));
+  assert.ok(shader.vertexShader.indexOf("#include <skinning_vertex>") < shader.vertexShader.indexOf("transformed += nk1SecondaryOffset;"),
+    "XPBD offsets must be applied after skinning so body contacts share deformed mesh space");
   assert.ok(shader.vertexShader.includes("transformed.x +="));
   assert.ok(shader.vertexShader.includes("transformed.z +="));
   assert.ok(shader.vertexShader.length > original.length);
   assert.equal(shader.uniforms.nk1SecondaryAmplitude, uniforms.nk1SecondaryAmplitude);
+});
+
+function bodySurfaceMesh() {
+  const positions = new Float32Array([
+    0, 0, 0,
+    1, 0, 0,
+    0, 1, 0,
+    0, 0, 1,
+  ]);
+  const geometry = {
+    attributes: { position: { array: positions, count: 4 } },
+    index: { array: new Uint16Array([0, 2, 1, 0, 1, 3, 1, 2, 3, 2, 0, 3]) },
+  };
+  return {
+    name: "BODY_torso_core", isMesh: true, isSkinnedMesh: true, geometry,
+    getVertexPosition(index, target) { return target.fromArray(positions, index * 3); },
+    localToWorld(target) { return target; },
+    worldToLocal(target) { return target; },
+    updateWorldMatrix() {},
+    skeleton: { update() {} },
+  };
+}
+
+test("body surface resolver selects only the exact canonical skinned torso shell", () => {
+  const canonical = bodySurfaceMesh();
+  const impostor = { ...bodySurfaceMesh(), name: "BODY_torso_core_proxy" };
+  const staticMesh = { ...bodySurfaceMesh(), name: "BODY_torso_core_static", isSkinnedMesh: false };
+  const root = scene([impostor, staticMesh, canonical]);
+  assert.equal(vertexDynamics.resolveAvatarSecondaryBodySurface(root), canonical);
+});
+
+test("XPBD vertices are projected against the current skinned torso surface in mesh-local space", () => {
+  const torso = bodySurfaceMesh();
+  const part = mesh("CLOTH_labcoat_main", { geometry: makeParticleGeometry(3) });
+  const positions = part.geometry.attributes.position.array;
+  for (let vertex = 0; vertex < part.geometry.attributes.position.count; vertex += 1) {
+    const offset = vertex * 3;
+    positions[offset] = 0.18 + (vertex % 3) * 0.01;
+    positions[offset + 1] = 0.18 + Math.floor(vertex / 3) * 0.01;
+    positions[offset + 2] = 0.18;
+  }
+  part.geometry.boundingBox = { min: { y: 0.18 }, max: { y: 0.2 } };
+  part.getVertexPosition = (index, target) => target.fromArray(part.geometry.attributes.position.array, index * 3);
+  part.localToWorld = (target) => target;
+  part.worldToLocal = (target) => target;
+  part.updateWorldMatrix = () => {};
+  const bindings = vertexDynamics.attachAvatarSecondaryVertexDynamics(scene([part, torso]), 1);
+  assert.equal(bindings.length, 1);
+  const state = bindings[0].particleState;
+  assert.ok(state);
+  vertexDynamics.updateAvatarSecondaryVertexDynamics(bindings, frame({ deltaSeconds: 0 }), 0, torso);
+  assert.ok(state.bodyCollisionCount > 0, "an embedded movable cloth vertex must receive torso contact");
+  assert.ok(state.maxBodyCollisionCorrection > 0);
+  const offsets = bindings[0].patchedGeometry.getAttribute("nk1SecondaryOffset").array;
+  assert.ok(offsets.some((value) => Math.abs(value) > 1e-6),
+    "the body contact correction must reach the post-skin GPU offset attribute");
+  vertexDynamics.disposeAvatarSecondaryVertexDynamics(bindings);
 });
 
 test("shader injection fails closed when the skinned vertex anchor is absent", () => {
