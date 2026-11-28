@@ -612,7 +612,7 @@ export class ActionGateway {
     const tool=this.tools.get(id);
     const inferred=tool?.permissionClass ?? inferPermissionClass(id,tool?.capability ?? '');
     if(inferred) return inferred;
-    if(tool && (tool.destructive===true || tool.requiresUndoFirst===true || Boolean(tool.undoFirst))) return 'system';
+    if(tool?.destructive===true) return 'system';
     return null;
   }
 
