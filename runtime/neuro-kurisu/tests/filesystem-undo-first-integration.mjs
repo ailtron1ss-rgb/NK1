@@ -49,6 +49,7 @@ try {
 
   // The file writer must be a real tool on the same ActionGateway as camera,
   // speech and project actions — not a parallel file executor.
+  assert.equal(typeof core.executeUndoForKey, 'function', 'OrganismCore must expose the canonical undo boundary without private-internals access');
   const tools = core.actionToolsSnapshot();
   const writer = tools.find(row => row.id === 'organism.files.write');
   assert.ok(writer, 'OrganismCore must register the first sandboxed filesystem write tool');
@@ -92,7 +93,7 @@ try {
   assert.equal(result.result.contentHash, expectedContentHash);
   assert.equal(result.result.path, input.path);
 
-  const undo = await runtime.executeUndoForKey(idempotencyKey, 'inspect filesystem recovery plan');
+  const undo = await core.executeUndoForKey(idempotencyKey, 'inspect filesystem recovery plan');
   assert.equal(undo.status, 'manual-intervention-required');
   assert.ok(undo.planHash);
   assert.ok(undo.recoveryArtifactRef?.startsWith('nk1-file-create:'));
