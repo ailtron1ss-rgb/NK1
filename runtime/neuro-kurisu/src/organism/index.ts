@@ -84,3 +84,7 @@ export * from './research/TheInventionLoop.ts';
 
 // Expose the integrated kernel; internal research contracts remain module-scoped.
 export * from './system/OmeStroIntegrationKernel.ts';
+
+// Expose the host-admitted, non-executing source-candidate staging boundary.
+export * from './analysis/SourceCandidateWorkspace.ts';
+export * from './learning/CodeAssimilationSourceCandidateAdmission.ts';
