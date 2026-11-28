@@ -3,6 +3,7 @@ import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
+import { inflateRawSync } from 'node:zlib';
 import { OrganismRuntime } from '../src/organism/core/OrganismRuntime.ts';
 
 test('a forced runtime flush commits one v2 envelope in the canonical Core checkpoint', async () => {
@@ -26,9 +27,9 @@ test('a forced runtime flush commits one v2 envelope in the canonical Core check
     assert.equal(envelope.version, 2, 'new checkpoints must use the v2 manifest-bound schema');
     assert.equal(envelope.coreTick, persisted.state.tick,
       'the envelope and Core snapshot must be committed at the same logical tick');
-    assert.equal(envelope.worldTick, envelope.owners.world.rawBytes >= 0
-      ? JSON.parse(Buffer.from(envelope.owners.world.payloadBase64, 'base64').toString('binary')).snapshot?.tick
-      : -1, 'the envelope must bind the captured World tick');
+    const worldPayload = JSON.parse(inflateRawSync(Buffer.from(envelope.owners.world.payloadBase64, 'base64')).toString('utf8'));
+    assert.equal(envelope.worldTick, worldPayload.snapshot.tick,
+      'the envelope must bind the captured World tick');
 
     const expectedOwners = ['cognitiveHealth', 'cognitiveSpine', 'openLoop', 'riskAwareRecovery', 'world'];
     assert.deepEqual(Object.keys(envelope.ownerHashes).sort(), expectedOwners,
