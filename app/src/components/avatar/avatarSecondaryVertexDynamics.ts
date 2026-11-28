@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import type { AvatarNeuroAdaptiveFrame } from "./avatarNeuroAdaptiveDynamics.ts";
-import { createAvatarSecondaryParticleState, stepAvatarSecondaryParticleState, type AvatarSecondaryParticleState } from "./avatarSecondaryParticleSolver.ts";
+import { createAvatarBodySurfaceCollider, createAvatarSecondaryParticleState, projectPointOutsideBodySurface, stepAvatarSecondaryParticleState, type AvatarBodySurfaceCollider, type AvatarSecondaryParticleState } from "./avatarSecondaryParticleSolver.ts";
 
 export type AvatarSecondaryVertexRole = "hair" | "garment";
 
@@ -221,7 +221,7 @@ uniform float nk1SecondaryHair;
 }
 `;
   let vertexShader = shader.vertexShader.replace(commonAnchor, commonAnchor + declarations);
-  if (particleDriven) vertexShader = vertexShader.replace(skinningAnchor, "transformed += nk1SecondaryOffset;\n" + skinningAnchor);
+  if (particleDriven) vertexShader = vertexShader.replace(skinningAnchor, skinningAnchor + "\ntransformed += nk1SecondaryOffset;");
   vertexShader = vertexShader.replace(skinningAnchor, skinningAnchor + displacement);
   if (vertexShader === shader.vertexShader) return false;
 
@@ -304,6 +304,128 @@ function resolveParticlePinMask(
     mask[index] = pinBlend * pinBlend * (3 - 2 * pinBlend);
   }
   return mask;
+}
+
+/**
+ * Resolve only the canonical skinned torso surface. Similar names, proxy
+ * objects and static meshes are deliberately ignored.
+ */
+export function resolveAvatarSecondaryBodySurface(root: unknown): any | null {
+  if (!root || typeof root !== "object" || typeof (root as any).traverse !== "function") return null;
+  let surface: any = null;
+  (root as any).traverse((node: any) => {
+    if (surface || node?.isSkinnedMesh !== true
+      || normalize(String(node.name ?? "")) !== "bodytorsocore"
+      || typeof node.getVertexPosition !== "function") return;
+    const geometry = node.geometry;
+    const position = geometry?.attributes?.position ?? geometry?.getAttribute?.("position");
+    if (!position || !Number.isInteger(position.count) || position.count < 4) return;
+    surface = node;
+  });
+  return surface;
+}
+
+function applyAvatarBodySurfaceCollisions(
+  bindings: readonly AvatarSecondaryVertexBinding[],
+  bodySurface: any,
+): void {
+  if (!bodySurface || typeof bodySurface.getVertexPosition !== "function") return;
+  const geometry = bodySurface.geometry;
+  const positionAttribute = geometry?.attributes?.position ?? geometry?.getAttribute?.("position");
+  const vertexCount = positionAttribute?.count;
+  if (!Number.isInteger(vertexCount) || vertexCount < 4) return;
+
+  bodySurface.updateWorldMatrix?.(true, false);
+  bodySurface.skeleton?.update?.();
+  const surfacePositions = new Float32Array(vertexCount * 3);
+  const surfaceVertex = new THREE.Vector3();
+  for (let vertex = 0; vertex < vertexCount; vertex += 1) {
+    bodySurface.getVertexPosition(vertex, surfaceVertex);
+    if (![surfaceVertex.x, surfaceVertex.y, surfaceVertex.z].every(Number.isFinite)) return;
+    const offset = vertex * 3;
+    surfacePositions[offset] = surfaceVertex.x;
+    surfacePositions[offset + 1] = surfaceVertex.y;
+    surfacePositions[offset + 2] = surfaceVertex.z;
+  }
+
+  const collider: AvatarBodySurfaceCollider | null = createAvatarBodySurfaceCollider({
+    positions: surfacePositions,
+    indices: geometry.index?.array ?? null,
+  });
+  if (!collider) return;
+
+  const localVertex = new THREE.Vector3();
+  const bodyLocalPoint = new THREE.Vector3();
+  const correctedWorldPoint = new THREE.Vector3();
+  const delta = new THREE.Vector3();
+  const minimumDistanceByRole = { hair: 0.008, garment: 0.01 } as const;
+
+  for (const binding of bindings) {
+    const state = binding?.particleState;
+    const mesh = binding?.mesh;
+    if (!state || !mesh || typeof mesh.getVertexPosition !== "function"
+      || typeof mesh.localToWorld !== "function" || typeof mesh.worldToLocal !== "function") continue;
+    mesh.updateWorldMatrix?.(true, false);
+    state.bodyCollisionCount = 0;
+    state.maxBodyCollisionCorrection = 0;
+    const minimumDistance = minimumDistanceByRole[binding.role];
+
+    for (let vertex = 0; vertex < state.vertexCount; vertex += 1) {
+      if (state.inverseMass[vertex] <= 0) continue;
+      mesh.getVertexPosition(vertex, localVertex);
+      if (![localVertex.x, localVertex.y, localVertex.z].every(Number.isFinite)) continue;
+
+      bodyLocalPoint.copy(localVertex);
+      mesh.localToWorld(bodyLocalPoint);
+      bodySurface.worldToLocal(bodyLocalPoint);
+      const projection = projectPointOutsideBodySurface(bodyLocalPoint, collider, minimumDistance);
+      if (!projection) continue;
+
+      correctedWorldPoint.set(projection.position.x, projection.position.y, projection.position.z);
+      bodySurface.localToWorld(correctedWorldPoint);
+      mesh.worldToLocal(correctedWorldPoint);
+      delta.copy(correctedWorldPoint).sub(localVertex);
+      if (![delta.x, delta.y, delta.z].every(Number.isFinite)) continue;
+
+      const offset = vertex * 3;
+      let nextX = state.positions[offset] + delta.x;
+      let nextY = state.positions[offset + 1] + delta.y;
+      let nextZ = state.positions[offset + 2] + delta.z;
+      let restX = nextX - state.rest[offset];
+      let restY = nextY - state.rest[offset + 1];
+      let restZ = nextZ - state.rest[offset + 2];
+      const displacement = Math.hypot(restX, restY, restZ);
+      if (!Number.isFinite(displacement)) continue;
+      if (displacement > state.maxOffset && displacement > 1e-9) {
+        const scale = state.maxOffset / displacement;
+        restX *= scale; restY *= scale; restZ *= scale;
+        nextX = state.rest[offset] + restX;
+        nextY = state.rest[offset + 1] + restY;
+        nextZ = state.rest[offset + 2] + restZ;
+      }
+      const appliedX = nextX - state.positions[offset];
+      const appliedY = nextY - state.positions[offset + 1];
+      const appliedZ = nextZ - state.positions[offset + 2];
+      if (Math.hypot(appliedX, appliedY, appliedZ) <= 1e-9) continue;
+
+      state.positions[offset] = nextX;
+      state.positions[offset + 1] = nextY;
+      state.positions[offset + 2] = nextZ;
+      // Contact is a positional constraint, not an impulse; shift the Verlet
+      // history by the same correction so the next tick does not invent speed.
+      state.previous[offset] += appliedX;
+      state.previous[offset + 1] += appliedY;
+      state.previous[offset + 2] += appliedZ;
+      state.offsets[offset] = restX;
+      state.offsets[offset + 1] = restY;
+      state.offsets[offset + 2] = restZ;
+      state.bodyCollisionCount += 1;
+      state.maxBodyCollisionCorrection = Math.max(
+        state.maxBodyCollisionCorrection,
+        projection.correction,
+      );
+    }
+  }
 }
 
 /**
@@ -439,10 +561,12 @@ export function updateAvatarSecondaryVertexDynamics(
   bindings: readonly AvatarSecondaryVertexBinding[],
   frame: AvatarNeuroAdaptiveFrame,
   timeSeconds: number,
+  bodySurface?: any,
 ): void {
   if (!Array.isArray(bindings) || !frame || typeof frame !== "object") return;
   const drive = resolveAvatarSecondaryVertexDrive(frame);
   const time = clamp(timeSeconds, 0, 1_000_000);
+  if (bodySurface) applyAvatarBodySurfaceCollisions(bindings, bodySurface);
   for (const binding of bindings) {
     if (!binding?.uniforms) continue;
     binding.uniforms.nk1SecondaryTime.value = time;
