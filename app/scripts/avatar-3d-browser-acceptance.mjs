@@ -25,6 +25,7 @@ const report = {
   baseUrl,
   asset: "NeuroKurisu_3D_v5.glb",
   expectedSecondaryParticleMeshes: 13,
+  expectedSecondaryBodyCollisionSurface: "BODY_torso_core",
   viewport: { width: 390, height: 844 },
   webgl: null,
   diagnostics: "",
@@ -112,6 +113,8 @@ try {
     allSecondary: allSecondaryMatch ? Number(allSecondaryMatch[1]) : null,
     xpbdParticles: xpbdMatch ? Number(xpbdMatch[1]) : null,
     canvasXpbdParticles: await canvas.evaluate((element) => Number(element.dataset.avatarSecondaryParticleMeshCount || 0)),
+    bodyCollisionSurface: await canvas.evaluate((element) => element.dataset.avatarSecondaryBodyCollisionSurface || "none"),
+    bodyCollisionVertices: await canvas.evaluate((element) => Number(element.dataset.avatarSecondaryBodyCollisionCount || 0)),
     expected: report.expectedSecondaryParticleMeshes,
   };
   assert.equal(report.secondaryRuntimeCounts.allSecondary, 13,
@@ -120,6 +123,8 @@ try {
     "canonical v5 must activate XPBD on all 12 selected surfaces; actual diagnostics: " + report.diagnostics);
   assert.equal(report.secondaryRuntimeCounts.canvasXpbdParticles, 13,
     "canvas runtime diagnostic must agree with the visible XPBD particle count");
+  assert.equal(report.secondaryRuntimeCounts.bodyCollisionSurface, report.expectedSecondaryBodyCollisionSurface,
+    "canonical v5 must resolve its exact skinned BODY_torso_core collision surface");
   assert.match(report.diagnostics, /(?:GPU sway|XPBD-симуляция частиц поверхности)/,
     "canonical v5 must expose an active secondary deformation path");
 
