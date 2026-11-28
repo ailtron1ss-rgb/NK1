@@ -59,3 +59,11 @@ test("GLB browser diagnostics expose per-mesh surface bounds and projected fit",
   assert.match(stage, /cameraProjectionAudit/,
     "runtime must report projected bounds computed by the active camera");
 });
+
+test("GLB browser diagnostics expose per-mesh surface bounds and projected fit", async () => {
+  const stage = await readFile(new URL("../src/components/Avatar3DStage.tsx", import.meta.url), "utf8");
+  assert.match(stage, /extremeMeshBounds/,
+    "skin audit must identify mesh nodes that contribute outsized bounds");
+  assert.match(stage, /cameraProjectionAudit/,
+    "runtime must report projected bounds computed by the active camera");
+});
