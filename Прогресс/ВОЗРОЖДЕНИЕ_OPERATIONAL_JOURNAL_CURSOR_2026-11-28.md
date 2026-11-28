@@ -1,0 +1,67 @@
+# Возрождение — OperationalJournal durable cursor
+
+**Дата:** 28 ноября 2026  
+**Репозиторий:** `ailtron1ss-rgb/NK1`  
+**Основа:** `workpass70-source@b8b965b31c5e5d89eae834c6bf0a1727284df241`  
+**Рабочая ветка:** `aspect/operational-journal-cursor-20261128`
+
+## Почему выбран этот участок
+
+В текущем каноническом исходнике `OrganismRuntime` и Core ведут отдельные sidecar-состояния ряда владельцев. Следующий более крупный шаг — сохранить снимки всех владельцев внутри одной Core checkpoint generation. Донорский PR #1198 содержит готовый дизайн RuntimeCheckpointEnvelope, но его ветка отстала от актуальной базы на десятки коммитов и меняет 29 файлов. Полный перенос опасен.
+
+В качестве безопасного основания выделен независимый слой: `OperationalJournal` должен уметь вернуть точный курсор после завершения предыдущих записей, отделив его от последующих и честно показывая состояние fsync.
+
+## Источник и адаптация
+
+Донор: PR #1198, `aspect/p0-persistence-integration-20261126`, head `54cbd67bd4df8cd134cb260991f6f1c14e2cf218`. Использован только концепт cursor из его изменения `OperationalJournal.ts`; весь PR не переносился.
+
+Текущий исходник:
+- Путь: `runtime/neuro-kurisu/src/organism/persistence/OperationalJournal.ts`
+- База blob SHA: `d18217576b2e03b8ca836988cd7f21240c7cdefe`
+- База: 5 907 байт.
+
+Внедрено в рабочую ветку:
+- `OperationalJournalCursor`: версия, объём и количество удерживаемых сегментов, ID первого полного события в активном сегменте, размер активного сегмента, число полных записей, SHA-256 последней записи, флаги file/directory fsync.
+- `cursor()`: помещает барьер в существующую последовательную очередь, поэтому курсор фиксирует все предыдущие записи и не захватывает следующие.
+- Внутренний метод синхронизирует активный файл, отдельно пытается синхронизировать каталог, читает сегменты и рассчитывает стабильные SHA-256.
+- `syncDirectory()` теперь возвращает boolean; в strict режиме ошибка по-прежнему выбрасывается, в best-effort режиме потеря directory fsync явно отражается как `false`.
+- Добавлены sync events для восстановления checkpoint envelope и legacy-восстановления.
+- **Дополнительная защита, отсутствовавшая в доноре:** неполный хвост JSONL без завершающего LF блокирует cursor с `operational-journal-cursor-incomplete-tail`. Нельзя объявлять offset долговечным, если последняя запись оборвана.
+
+## TDD и локальная проверка
+
+Локальный изолированный harness на Node.js v22.16.0 использовал исходный файл, полученный из точной базовой ветки, и четыре проверки:
+1. курсор появляется после предыдущих записей и содержит согласованные байты, количество записей и хеши;
+2. курсор строго находится между записями, поставленными в очередь до и после него;
+3. оборванный JSONL хвост не принимается за завершённую позицию;
+4. ротация сохраняет корректный учёт активного и удерживаемых сегментов.
+
+Результат TDD:
+- RED до реализации: 3 проверки упали на ожидаемом отсутствии `cursor()` (одна ошибка assertion о неопределённой функции и две `journal.cursor is not a function`). Это было отсутствие требуемого API, а не ошибка импорта/настройки.
+- GREEN после реализации: первые 3 проверки прошли.
+- GREEN после дополнительной проверки torn-tail: **4/4 PASS**.
+- Команда:
+  `node --disable-warning=ExperimentalWarning --experimental-strip-types --test /mnt/data/nk1_journal_tdd/tests/operational-journal-cursor.test.mjs`
+- Это результат изолированного harness для изменённого модуля, а не полный запуск всего NK1.
+
+## Границы и следующий интеграционный этап
+
+- [x] Выбран и сравнен donor участок из PR #1198.
+- [x] Реализован cursor API и отдельное обнаружение torn JSONL tail.
+- [x] Локальный RED → GREEN, 4/4.
+- [x] Добавлен отдельный regression test для репозитория.
+- [x] Добавлен focused GitHub Actions workflow.
+- [x] Focused workflow `NK1 Operational Journal Cursor Regression`: SUCCESS, run `46134164582`, job `140945647361`, на code head `bf03992...`.
+- [x] Общие аудиты обнаружили две ошибки workflow и обе исправлены: NK1 policy требует `actions/checkout@v7` и `actions/setup-node@v7` (первоначально было `@v4`); затем `setup-node` искал отсутствующий корневой lock-файл. Выставлено `package-manager-cache: false`, поскольку lock-файлы принадлежат отдельным пакетам.
+- [x] Повторный exact-head focused run после обеих правок: **SUCCESS**, run `46134414931`, job `140946350117`; все 7 шагов job завершились успешно.
+- [x] Дополнительный N.E.K.O. operational journal durability run `46134414922` — SUCCESS.
+- [x] На том же PR head успешно прошли Module Dependency Audit (`46134414812`), Runtime Wiring Census (`46134414836`), integrated software baseline (`46134414920`), Action Gateway governance (`46134414878`), clean prototype startup (`46134414882`), explicit-forget integrity (`46134414926`) и 2D asset contract (`46134414850`).
+- [ ] Полный regression matrix: full application UI, NeuroCore core regression, unified organism runtime и WorkPass79 ещё выполнялись в последней выборке.
+- [ ] Общий regression matrix на обновлённом head ещё не подтверждён зелёным.
+- [ ] Полный runtime typecheck / интеграционные suite в репозитории ещё не выполнены.
+- [ ] API пока не подключён к Core checkpoint owner envelope; это следующий отдельный этап. Нельзя считать атомарный RuntimeCheckpointEnvelope реализованным.
+- [ ] Независимый review не выполнен.
+- [ ] Android/Termux cold-restart и fsync/storage soak не выполнены.
+- [ ] Ничего не слито в `workpass70-source`, `main` не изменён, Release не создавался.
+
+**Техническая оговорка:** `directorySynced=false` означает, что ОС/файловая система не подтвердила fsync каталога при best-effort политике. Это не обещание защиты от любого внезапного отключения питания. Не меняли мобильную fsync политику без измерения на целевом Android filesystem.
