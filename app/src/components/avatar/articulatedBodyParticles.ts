@@ -249,7 +249,7 @@ function unit(value:BodyVector3):BodyVector3|null{
 }
 
 /** Project a distal body particle out of a finite capsule, including degenerate-axis fallback. */
-function projectPointOutsideCapsule(
+export function projectPointOutsideCapsule(
   point: BodyVector3,
   start: BodyVector3,
   end: BodyVector3,
