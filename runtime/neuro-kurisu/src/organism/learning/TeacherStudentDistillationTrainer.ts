@@ -611,6 +611,10 @@ export async function runTeacherStudentDistillationTraining(
       'PATH', 'HOME', 'TMPDIR', 'CUDA_VISIBLE_DEVICES', 'CUDA_HOME',
       'LD_LIBRARY_PATH', 'HF_HOME', 'HF_HUB_CACHE', 'TRANSFORMERS_CACHE', 'TORCH_HOME',
     ],
+    // This host-owned trainer deliberately uses local model caches and CUDA
+    // runtime paths. Grant only those exact path selectors; arbitrary learner
+    // and trusted-shadow processes remain deny-by-default.
+    allowSensitiveEnv: ['HOME', 'CUDA_HOME', 'LD_LIBRARY_PATH', 'HF_HOME', 'TORCH_HOME'],
     signal: input.signal,
   });
 }
