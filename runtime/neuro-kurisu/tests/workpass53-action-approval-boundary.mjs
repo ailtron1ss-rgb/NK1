@@ -89,7 +89,7 @@ assert.equal((await families.requestToolApproval('http.research.probe.nomega-reg
     capability: 'provider.custom.operation',
     destructive: true,
     requiresIdempotencyKey: true,
-    projectAllowed: false,
+    projectAllowed: true,
     execute: async (input) => {
       executions += 1;
       return { accepted: true, target: String(input.target) };
