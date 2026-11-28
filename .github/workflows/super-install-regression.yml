@@ -1,0 +1,41 @@
+name: NK1 Super Install Regression
+# Trigger a fresh exact-head regression when the progress ledger or workflow is reconciled.
+
+on:
+  pull_request:
+    branches:
+      - workpass70-source
+    paths:
+      - '.nvmrc'
+      - 'tools/super-install.mjs'
+      - 'tools/super-install.test.mjs'
+      - 'tools/runtime-pin.mjs'
+      - 'tools/runtime-pin.test.mjs'
+      - '.github/workflows/super-install-regression.yml'
+      - 'Прогресс/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: super-install-regression-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  installer-regression:
+    name: Installer fixture + runtime pin
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout exact PR head
+        uses: actions/checkout@v7
+
+      - name: Set up the repository-pinned Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          package-manager-cache: false
+
+      - name: Run installer and runtime-pin regressions
+        run: node --test tools/super-install.test.mjs tools/runtime-pin.test.mjs

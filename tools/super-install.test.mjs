@@ -21,7 +21,7 @@ function processIsRunning(pid) {
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const installerSource = path.join(repoRoot, 'tools/super-install.mjs');
-const helperSource = path.join(repoRoot, 'tools/lib/node-runtime.mjs');
+const runtimePinSource = path.join(repoRoot, 'tools/runtime-pin.mjs');
 
 async function createFixture(t) {
   const root = await mkdtemp(path.join(os.tmpdir(), 'nk-super-install-'));
@@ -32,7 +32,7 @@ async function createFixture(t) {
   const fakeBin = path.join(root, 'fake-bin');
   for (const dir of [tools, path.join(tools, 'lib'), app, runtime, fakeBin]) await mkdir(dir, { recursive: true });
   await writeFile(path.join(tools, 'super-install.mjs'), await readFile(installerSource));
-  await writeFile(path.join(tools, 'lib/node-runtime.mjs'), await readFile(helperSource));
+  await writeFile(path.join(tools, 'runtime-pin.mjs'), await readFile(runtimePinSource));
   await writeFile(path.join(root, '.nvmrc'), '24\n');
   for (const [dir, name, version] of [[app, 'app-builder-workspace', '1.0.0'], [runtime, 'neuro-kurisu-organism-evolution', '1.0.0']]) {
     await writeFile(path.join(dir, 'package.json'), JSON.stringify({ name, version }, null, 2));
@@ -40,7 +40,7 @@ async function createFixture(t) {
   }
   const log = path.join(root, 'npm-invocations.txt');
   const fakeNpm = path.join(fakeBin, 'npm');
-  await writeFile(fakeNpm, `#!/bin/sh\nprintf '%s\\t%s\\n' "$PWD" "$*" >> "$NK_FAKE_NPM_LOG"\nif [ -n "$NK_FAKE_NPM_FAIL_CWD" ] && [ "$PWD" = "$NK_FAKE_NPM_FAIL_CWD" ]; then exit "${'${NK_FAKE_NPM_EXIT:-17}'}"; fi\nif [ -n "$NK_FAKE_NPM_HANG_CWD" ] && [ "$PWD" = "$NK_FAKE_NPM_HANG_CWD" ]; then sleep 30 & echo $! >> "$NK_FAKE_NPM_CHILD_PIDS"; wait; fi\nexit 0\n`);
+  await writeFile(fakeNpm, `#!/bin/sh\nif [ "$1" = "--version" ]; then echo "10.9.2"; exit 0; fi\nprintf '%s\\t%s\\n' "$PWD" "$*" >> "$NK_FAKE_NPM_LOG"\nif [ -n "$NK_FAKE_NPM_FAIL_CWD" ] && [ "$PWD" = "$NK_FAKE_NPM_FAIL_CWD" ]; then exit "${'${NK_FAKE_NPM_EXIT:-17}'}"; fi\nif [ -n "$NK_FAKE_NPM_HANG_CWD" ] && [ "$PWD" = "$NK_FAKE_NPM_HANG_CWD" ]; then sleep 30 & echo $! >> "$NK_FAKE_NPM_CHILD_PIDS"; wait; fi\nexit 0\n`);
   await chmod(fakeNpm, 0o755);
   return { root, app, runtime, log, fakeBin };
 }
