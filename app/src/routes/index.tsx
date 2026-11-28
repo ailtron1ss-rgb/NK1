@@ -13,6 +13,7 @@ import { RuntimeAtlas } from "@/components/RuntimeAtlas";
 import { LettaGovernanceConsole } from "@/components/LettaGovernanceConsole";
 import { ConscioControlConsole } from "@/components/ConscioControlConsole";
 import { ConstitutionEvolutionConsole } from "@/components/ConstitutionEvolutionConsole";
+import { RuntimeHealthPanel } from "@/components/RuntimeHealthPanel";
 
 export const Route = createFileRoute("/")({ component: Home });
 
@@ -35,18 +36,19 @@ function Home() {
 
   return (
     <main className="min-h-dvh bg-bg px-3 py-4 md:px-6 md:py-6">
-      <header className="mx-auto mb-4 flex max-w-7xl items-end justify-between gap-4">
+      <header className="mx-auto mb-4 flex max-w-7xl flex-col items-stretch gap-3 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
         <div>
-          <p className="text-xs uppercase tracking-widest text-subtle">Neuro organism</p>
+          <p className="text-xs uppercase tracking-widest text-subtle">NeuroCore · digital organism</p>
           <h1 className="font-display text-3xl tracking-tight text-fg md:text-4xl">Kurisu</h1>
         </div>
-        <p className="text-right text-xs text-muted">
-          canonical runtime · Neuro-Kurisu 35.75.0 · schema 225
+        <div className="flex flex-col items-start gap-1 text-left text-xs text-muted sm:items-end sm:text-right">
+          NK1 cognitive runtime · persistent identity
           <br />
           <span className="tabular-nums">
             {snap.awake ? "awake" : "asleep"} · tick {snap.tick}
           </span>
-        </p>
+        </div>
+        <RuntimeHealthPanel />
       </header>
 
       <div className="mx-auto grid max-w-7xl gap-4 lg:grid-cols-[280px_minmax(0,1fr)_260px]">
@@ -80,7 +82,7 @@ function Home() {
       </div>
 
       <footer className="mx-auto mt-6 max-w-7xl text-xs text-subtle">
-        canonicalRuntime=Neuro-Kurisu 35.75.0 · researchOnly={"NeuroCore, NOMEGA, DeepCode"} · Live2D+legacy visual bridge
+        NeuroCore · NK1 canonical runtime · Live2D / VRM / GLB embodiment bridge
       </footer>
     </main>
   );

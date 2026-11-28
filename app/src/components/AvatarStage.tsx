@@ -22,6 +22,7 @@ import {
 import { resolveSemanticGestureIntent } from "./avatar/semanticGestureIntent";
 import type { BodyChannel, SwitchPlan } from "./avatar/embodimentSwitch";
 import { createAvatarArticulatedBodyState, stepAvatarArticulatedBody } from "./avatar/articulatedBodyParticles";
+import { shouldStepAvatarBodyMotion } from "./avatar/avatarBodyStepScheduler";
 import { buildAvatarRenderProjection } from "./avatar/avatarRenderProjection.ts";
 import { avatarRendererPresentation } from "./avatar/avatarRendererPresentation.ts";
 import { createAvatarPresentationReceipt, describeAvatarFrameStatus, isCurrentAvatarPresentationReceipt, type AvatarPresentationReceiptV1 } from "./avatar/avatarPresentationReceipt.ts";
@@ -310,7 +311,7 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
     const frame = (now: number) => {
       if (!active) return;
       const deltaMs = now - lastStepAt;
-      if (deltaMs >= 33) {
+      if (shouldStepAvatarBodyMotion(now, lastStepAt)) {
         lastStepAt = now;
         const intent = latestMotionIntentRef.current;
         if (intent) {
