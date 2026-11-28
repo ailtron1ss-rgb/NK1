@@ -42,6 +42,7 @@ try {
   const redacted = await runLearningProcess(run, 'b'.repeat(64), {
     ...base,
     env: { NK1_TEST_ACCESS_TOKEN: accessToken },
+    allowSensitiveEnv: ['NK1_TEST_ACCESS_TOKEN'],
     args: ['-e', "process.stdout.write(process.env.NK1_TEST_ACCESS_TOKEN); process.stderr.write('Authorization: Bearer '+process.env.NK1_TEST_ACCESS_TOKEN)"],
   });
   assert.equal(redacted.receipt.status, 'completed');
@@ -57,6 +58,7 @@ try {
     ...base,
     maxOutputBytes: 8,
     env: { NK1_TEST_ACCESS_TOKEN: accessToken },
+    allowSensitiveEnv: ['NK1_TEST_ACCESS_TOKEN'],
     args: ['-e', 'process.stdout.write(process.env.NK1_TEST_ACCESS_TOKEN)'],
   });
   assert.equal(truncatedSecret.receipt.status, 'output-limit');
@@ -87,6 +89,7 @@ try {
       SUPABASE_SERVICE_ROLE_KEY: serviceRoleKey,
       REDIS_URL: redisUrl,
     },
+    allowSensitiveEnv: ['DATABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY', 'REDIS_URL'],
     args: ['-e', "process.stdout.write(process.env.DATABASE_URL); process.stderr.write(process.env.SUPABASE_SERVICE_ROLE_KEY+' '+process.env.REDIS_URL)"],
   });
   assert.equal(connectionSecrets.receipt.stdout, '[REDACTED]');
@@ -225,6 +228,99 @@ try {
   await assert.rejects(() => readLearningExecutionReceipt(tamperedPath), /receipt fields/);
   const stored = JSON.parse(await readFile(success.receiptPath, 'utf8'));
   assert.equal(stored.runId, run.runId);
+
+  const ordinaryMode = await runLearningProcess(run, 'b'.repeat(64), {
+    ...base,
+    env: { NODE_ENV: 'test' },
+    args: ['-e', 'process.stdout.write(process.env.NODE_ENV || "missing")'],
+  });
+  assert.equal(ordinaryMode.receipt.status, 'completed');
+  assert.equal(ordinaryMode.receipt.stdout, 'test',
+    'ordinary NODE_ENV configuration must remain available without a credential grant');
+
+  // Lumina-derived least-privilege boundary: credential-shaped environment
+  // variables must not cross into a child unless the host grants each exact key.
+  const sensitiveKey = 'NK1_TEST_ACCESS_TOKEN';
+  const sensitiveValue = 'nk1-fixture-secret-value-2026';
+  const priorSensitive = process.env[sensitiveKey];
+  process.env[sensitiveKey] = sensitiveValue;
+  try {
+    await assert.rejects(
+      () => runLearningProcess(run, 'b'.repeat(64), {
+        ...base,
+        inheritEnv: [sensitiveKey],
+        args: ['-e', 'process.stdout.write(process.env.NK1_TEST_ACCESS_TOKEN || "missing")'],
+      }),
+      /sensitive-environment-key-not-authorized/,
+      'inherited credentials require an exact host-owned authorization',
+    );
+    await assert.rejects(
+      () => runLearningProcess(run, 'b'.repeat(64), {
+        ...base,
+        env: { [sensitiveKey]: sensitiveValue },
+        args: ['-e', 'process.stdout.write(process.env.NK1_TEST_ACCESS_TOKEN || "missing")'],
+      }),
+      /sensitive-environment-key-not-authorized/,
+      'explicit credentials require the same exact authorization as inherited credentials',
+    );
+    for (const [key, value] of [
+      ['SSH_AUTH_SOCK', '/tmp/host-ssh-agent.sock'],
+      ['GPG_AGENT_INFO', '/tmp/host-gpg-agent:1:1'],
+      ['KUBECONFIG', '/home/nk1/.kube/config'],
+      ['GOOGLE_APPLICATION_CREDENTIALS', '/home/nk1/gcp-service-account.json'],
+      ['AWS_PROFILE', 'production'],
+      ['DOCKER_HOST', 'unix:///var/run/docker.sock'],
+      ['NODE_OPTIONS', '--require=/tmp/host-preload.cjs'],
+      ['LD_PRELOAD', '/tmp/host-inject.so'],
+      ['PYTHONPATH', '/home/nk1/.local/lib/python3'],
+      ['RUBYOPT', '-r/tmp/host-preload.rb'],
+      ['HOME', '/home/nk1'],
+      ['USERPROFILE', 'C:\\Users\\nk1'],
+      ['XDG_CONFIG_HOME', '/home/nk1/.config'],
+      ['GNUPGHOME', '/home/nk1/.gnupg'],
+    ]) {
+      await assert.rejects(
+        () => runLearningProcess(run, 'b'.repeat(64), {
+          ...base,
+          env: { [key]: value },
+          args: ['-e', 'process.stdout.write("should-not-run")'],
+        }),
+        /sensitive-environment-key-not-authorized/,
+        key + ' must be treated as a credential or host-authority selector',
+      );
+    }
+    const allowed = await runLearningProcess(run, 'b'.repeat(64), {
+      ...base,
+      env: { [sensitiveKey]: sensitiveValue },
+      allowSensitiveEnv: [sensitiveKey],
+      args: ['-e', 'process.stdout.write(process.env.NK1_TEST_ACCESS_TOKEN || "missing")'],
+    });
+    assert.equal(allowed.receipt.status, 'completed');
+    assert.equal(allowed.receipt.stdout, '[REDACTED]');
+    assert.ok(!JSON.stringify(allowed.receipt).includes(sensitiveValue));
+    const allowedInherited = await runLearningProcess(run, 'b'.repeat(64), {
+      ...base,
+      inheritEnv: [sensitiveKey],
+      allowSensitiveEnv: [sensitiveKey],
+      args: ['-e', 'process.stdout.write(process.env.NK1_TEST_ACCESS_TOKEN || "missing")'],
+    });
+    assert.equal(allowedInherited.receipt.status, 'completed');
+    assert.equal(allowedInherited.receipt.stdout, '[REDACTED]',
+      'an explicitly approved inherited credential is still redacted from receipts');
+    await assert.rejects(
+      () => runLearningProcess(run, 'b'.repeat(64), {
+        ...base,
+        env: { [sensitiveKey]: sensitiveValue },
+        allowSensitiveEnv: ['DATABASE_URL'],
+      }),
+      /sensitive-environment-grant-not-bound-to-command/,
+      'a grant for another variable must not authorize this credential',
+    );
+  } finally {
+    if (priorSensitive === undefined) delete process.env[sensitiveKey];
+    else process.env[sensitiveKey] = priorSensitive;
+  }
+
   console.log('P23_LEARNING_PROCESS_SUPERVISOR=PASS');
 } finally {
   await rm(root, { recursive: true, force: true });
