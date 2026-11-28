@@ -117,6 +117,9 @@ export const useKurisu = create<KurisuStore>((set, get) => ({
       if (now - lastInitiativePollAt < 5_000) return;
       lastInitiativePollAt = now;
       const pending = await neuroApi.proactiveMessage();
+      // A newer snapshot request may start while the initiative endpoint is in flight.
+      // Do not append or ACK an initiative from a superseded poll.
+      if (!snapshotCommitGate.isCurrent(requestId)) return;
       const initiative = pending.initiative;
       if (!initiative?.id || !initiative.message?.trim()) return;
       const existing = get().snap.chat;
