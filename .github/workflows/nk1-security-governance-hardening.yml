@@ -1,0 +1,41 @@
+name: NK1 fail-closed action and plugin approval
+
+on:
+  pull_request:
+    branches: [workpass70-source]
+    paths:
+      - "runtime/neuro-kurisu/src/organism/system/ActionGateway.ts"
+      - "runtime/neuro-kurisu/src/organism/integration/neko/NekoPluginManifestPolicyRegistry.ts"
+      - "runtime/neuro-kurisu/tests/workpass53-action-approval-boundary.mjs"
+      - "runtime/neuro-kurisu/tests/neko-plugin-manifest-policy.mjs"
+      - "runtime/neuro-kurisu/package.json"
+      - ".github/workflows/nk1-security-governance-hardening.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nk1-security-governance-hardening-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  approval-hardening:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: runtime/neuro-kurisu
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: runtime/neuro-kurisu/package-lock.json
+      - name: Install locked runtime dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Verify opaque high-risk tools require system approval and destructive plugin manifests cannot opt out
+        run: npm run test:security-governance-hardening
+      - name: Runtime typecheck
+        run: npm run typecheck
