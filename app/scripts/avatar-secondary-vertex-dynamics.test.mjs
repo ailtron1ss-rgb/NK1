@@ -196,7 +196,7 @@ test("attachment is limited to separate skinned hair locks and garment panels, n
 });
 
 test("the asset-verified HAIR_layer_R0 mesh is eligible for bounded secondary hair dynamics", () => {
-  const part = mesh("HAIR_layer_R0");
+  const part = mesh("HAIR_layer_R0", { geometry: makeParticleGeometry(3) });
   const bindings = vertexDynamics.attachAvatarSecondaryVertexDynamics(scene([part]), 1);
   assert.equal(bindings.length, 1,
     "the canonical v5 browser audit exposes HAIR_layer_R0 as a detached hair-layer mesh");
