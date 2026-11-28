@@ -5,10 +5,12 @@ import test from "node:test";
 const panel = await readFile(new URL("../src/components/RuntimeHealthPanel.tsx", import.meta.url), "utf8");
 const route = await readFile(new URL("../src/routes/index.tsx", import.meta.url), "utf8");
 const server = await readFile(new URL("../../runtime/neuro-kurisu/src/server/server.mjs", import.meta.url), "utf8");
+const vite = await readFile(new URL("../vite.config.ts", import.meta.url), "utf8");
 
 test("RuntimeHealthPanel uses the canonical health endpoint", () => {
   assert.ok(panel.includes('neuroApiUrl("/api/health")'));
   assert.ok(server.includes("url.pathname === '/health' || url.pathname === '/api/health'"));
+  assert.match(vite, /["']\/api\/health["']:\s*\{\s*target:\s*["']http:\/\/127\.0\.0\.1:3310["']/);
 });
 
 test("the UI health fields are present in the canonical runtime payload", () => {
