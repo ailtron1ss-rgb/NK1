@@ -45,7 +45,7 @@ Workflow не скачивает зависимости проекта и не �
 - [x] Создан отдельный workflow для выполнения focused tests.
 - [ ] Локальный запуск NK1-теста в полном checkout — не выполнен: в этой среде нет полного рабочего дерева NK1 с зависимостями/исходной Git-базой.
 - [ ] Красный запуск старой фикстуры перед исправлением не зафиксирован; поэтому это не заявляется как полный red-green TDD цикл.
-- [ ] GitHub Actions exact-head для нового PR — ожидает запуска/результата.
+- [x] Focused GitHub Actions exact-head: SUCCESS, run `46133547759`, job `140943760676`; оба test-файла выполнены.
 - [ ] Независимая проверка PR — не выполнена.
 - [ ] Физическая проверка на Android/Termux — не выполнена.
 - [ ] Изменение пока не слито в `workpass70-source` и не опубликовано в Release.
@@ -54,8 +54,8 @@ Workflow не скачивает зависимости проекта и не �
 
 | Файл | Исходное состояние | Результат | Статус |
 |---|---|---|---|
-| `tools/super-install.test.mjs` | 6 548 байт; зависимость теста от старого helper | 6 605 байт; runtime pin и fake npm согласованы | Изменён; CI ожидает |
-| `.github/workflows/super-install-regression.yml` | отсутствовал | новый focused workflow | Добавлен; CI ожидает |
+| `tools/super-install.test.mjs` | 6 548 байт; зависимость теста от старого helper | 6 605 байт; runtime pin и fake npm согласованы | Изменён; focused CI green |
+| `.github/workflows/super-install-regression.yml` | отсутствовал | новый focused workflow | Добавлен; run 46133547759 SUCCESS |
 | `Прогресс/ВОЗРОЖДЕНИЕ_ИНТЕГРАЦИЯ_SUPER_INSTALL_2026-11-28.md` | отсутствовал | provenance + проверочные границы | Добавлен |
 
 **Граница результата:** это реальная починка установочного тестового контура и его CI-страховки. Она не является сборкой полного NK1 runtime, не исправляет persistence envelope и не закрывает Android acceptance.
