@@ -5,6 +5,7 @@ import {
   AVATAR_ARTICULATED_BODY_SEGMENT_COUNT,
   createAvatarArticulatedBodyState,
   stepAvatarArticulatedBody,
+  projectPointOutsideCapsule,
 } from "../src/components/avatar/articulatedBodyParticles.ts";
 
 function run(initial, frames, target, options = { awake: true, energy01: 0.8 }) {
@@ -421,30 +422,32 @@ test("articulated forearms and hands are kept outside the torso collision capsul
 });
 
 
-test("capsule self-collision resolves a limb point exactly on the torso axis deterministically", () => {
-  const previous = createAvatarArticulatedBodyState();
-  const pelvis = previous.particles.pelvis.position;
-  const chest = previous.particles.chest.position;
-  previous.particles.leftHandPoint.position = {
-    x: (pelvis.x + chest.x) * 0.5,
-    y: (pelvis.y + chest.y) * 0.5,
-    z: (pelvis.z + chest.z) * 0.5,
-  };
-  previous.particles.leftHandPoint.velocity = { x: 0, y: 0, z: 0 };
-
-  const result = stepAvatarArticulatedBody(previous, {}, 1000 / 60, {
-    awake: true,
-    energy01: 0.8,
-    groundEnabled: false,
-  });
-  assert.ok(result.contacts.bodyCollisionCount > 0,
-    "an axis-aligned limb point must still produce a deterministic contact");
-  assert.ok(everyNumberIsFinite(result.state), "the degenerate contact normal must remain finite");
-  const distance = pointSegmentDistance(
-    result.state.particles.leftHandPoint.position,
-    result.state.particles.pelvis.position,
-    result.state.particles.chest.position,
+test("capsule projection resolves axis-aligned and zero-length degenerate contacts deterministically", () => {
+  const axial = projectPointOutsideCapsule(
+    { x: 0, y: 0.5, z: 0 },
+    { x: 0, y: 0, z: 0 },
+    { x: 0, y: 1, z: 0 },
+    0.165,
+    -1,
   );
-  assert.ok(distance >= 0.135 + 0.03 - 0.015,
-    "a point on the capsule axis must be projected outside without producing NaN");
+  assert.ok(axial, "a point exactly on the capsule axis must be projected");
+  assert.deepEqual(axial.normal, { x: -1, y: 0, z: 0 },
+    "the side fallback must select a stable outward normal");
+  assert.ok(everyNumberIsFinite(axial));
+  assert.ok(pointSegmentDistance(axial.position, { x: 0, y: 0, z: 0 }, { x: 0, y: 1, z: 0 }) >= 0.165 - 1e-9);
+
+  const sphereFallback = projectPointOutsideCapsule(
+    { x: 0, y: 0, z: 0 },
+    { x: 0, y: 0, z: 0 },
+    { x: 0, y: 0, z: 0 },
+    0.075,
+    1,
+  );
+  assert.ok(sphereFallback, "a zero-length capsule must deterministically behave as a sphere");
+  assert.ok(everyNumberIsFinite(sphereFallback));
+  assert.ok(Math.abs(Math.hypot(
+    sphereFallback.position.x,
+    sphereFallback.position.y,
+    sphereFallback.position.z,
+  ) - 0.075) < 1e-9);
 });
