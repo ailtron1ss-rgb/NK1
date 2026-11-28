@@ -153,3 +153,6 @@ All sampled vertices in the candidate hair/garment/sleeve meshes have normalized
 - Sleeve candidates: upper and lower left/right sleeve meshes.
 
 The 3D capability panel reports secondary bones, mesh inventory, total attached secondary meshes and active XPBD particle meshes separately. Allowlisted independent hair/garment meshes receive real constrained vertex-particle dynamics without altering shared source skin weights; unsupported meshes remain on the GPU-sway fallback or their original skin.
+
+
+Avatar normalization and camera bounds are computed from unique vertex indices referenced by each geometry's active draw range, not every slot in the position buffer. Unreferenced vertex-buffer outliers are ignored; morph and skin transforms are applied through `getVertexPosition()` before world-space bounds are accumulated.

@@ -69,4 +69,28 @@ test("scene bounds ignore position-buffer vertices not referenced by rendered tr
   assert.ok(Math.abs(size.y - 1.6) < 1e-6,
     "an unreferenced position-buffer outlier must not expand the rendered character bounds");
   assert.ok(Math.abs(size.z) < 1e-6);
+  assert.equal(resolved.includedVertexCount, 3);
+});
+
+test("morph deformation is included only for indexed rendered vertices", () => {
+  const root = new THREE.Group();
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute("position", new THREE.Float32BufferAttribute([
+    -0.2, 0, 0, 0.2, 0, 0, 0, 1, 0, 0, 20, 0,
+  ], 3));
+  geometry.setIndex([0, 1, 2]);
+  geometry.morphAttributes.position = [new THREE.Float32BufferAttribute([
+    0, 0, 0, 0, 0, 0, 0, 0.5, 0, 0, 100, 0,
+  ], 3)];
+  const mesh = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({ morphTargets: true }));
+  mesh.name = "BODY_morph_surface";
+  mesh.morphTargetInfluences = [1];
+  root.add(mesh);
+
+  const resolved = resolveAvatarSceneBounds(root);
+  const size = resolved.bounds.getSize(new THREE.Vector3());
+
+  assert.ok(Math.abs(size.y - 1.5) < 1e-6,
+    "morph-deformed positions must be measured without unreferenced outliers");
+  assert.equal(resolved.includedVertexCount, 3);
 });

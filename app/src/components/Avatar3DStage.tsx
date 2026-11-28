@@ -23,7 +23,7 @@ import { AvatarNeuroAdaptiveDynamics, isAvatarSecondaryDynamicsBoneCandidate, re
 import { auditAvatarSecondaryScene, hasAvatarNeuralFabricEmission, isAvatarNeuralFabricMaterialTagged, type AvatarSecondaryAssetAudit } from "./avatar/avatarSecondaryAssetAudit";
 import { attachAvatarSecondaryVertexDynamics, disposeAvatarSecondaryVertexDynamics, updateAvatarSecondaryVertexDynamics, type AvatarSecondaryVertexBinding } from "./avatar/avatarSecondaryVertexDynamics";
 import { resolveAvatarCameraFraming } from "./avatar/avatarCameraFraming";
-import { resolveAvatarSceneBounds } from "./avatar/avatarSceneBounds";
+import { forEachAvatarRenderedVertexIndex, resolveAvatarSceneBounds } from "./avatar/avatarSceneBounds";
 import { fetchRemoteAvatarModel } from "./avatar/remoteAvatarSource";
 import { applyAvatarAnimationFrame } from "./avatar/avatarAnimationRuntime";
 import { createAvatarPresentationReceipt, type AvatarPresentationReceiptV1 } from "./avatar/avatarPresentationReceipt.ts";
@@ -195,9 +195,9 @@ export function Avatar3DStage(props:Props){
         skinAudit.missingSkinAttributeMeshes++;
         return;
       }
-      const vertexCount = Math.min(positions.count, skinIndices.count, skinWeights.count);
       const boneCount = node.skeleton?.bones?.length ?? 0;
-      for (let index = 0; index < vertexCount; index++) {
+      forEachAvatarRenderedVertexIndex(node, (index) => {
+        if (index >= skinIndices.count || index >= skinWeights.count) return;
         const weights = [
           skinWeights.getX(index), skinWeights.getY(index),
           skinWeights.getZ(index), skinWeights.getW(index),
@@ -238,7 +238,7 @@ export function Avatar3DStage(props:Props){
         }
         auditVertex.applyMatrix4(node.matrixWorld);
         skinAudit.transformedVertexBounds.expandByPoint(auditVertex);
-      }
+      });
     });
     const skinVertexSize = new THREE.Vector3();
     const skinBoneSize = new THREE.Vector3();
@@ -289,6 +289,7 @@ export function Avatar3DStage(props:Props){
       weightSumMin: Number.isFinite(skinAudit.weightSumMin) ? skinAudit.weightSumMin : null,
       weightSumMax: skinAudit.weightSumMax,
       transformedVertexBounds: skinVertexBounds,
+      renderedVertexCount: skinAudit.vertexCount,
       boneWorldBounds: skinBoneBounds,
       boneCount: skinAudit.boneNames.length,
       boneNames: skinAudit.boneNames,
@@ -336,6 +337,8 @@ export function Avatar3DStage(props:Props){
     const sourceAxisDiagnostics = {
       boundsSize: { x: sourceSize.x, y: sourceSize.y, z: sourceSize.z },
       excludedEnvironmentMeshes: sourceSceneBounds.excludedEnvironmentMeshes,
+      indexedRenderedVertexCount: sourceSceneBounds.includedVertexCount,
+      normalizedIndexedRenderedVertexCount: normalizedSceneBounds.includedVertexCount,
       cameraBoundsSource,
       cameraBoundsSize,
       skinnedBoundsRefreshed,
