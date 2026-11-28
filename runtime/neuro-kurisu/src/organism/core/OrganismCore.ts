@@ -16,6 +16,7 @@ import { defaultLettaGovernanceAdaptationState, type LettaGovernanceAdaptationSt
 import { ConscioAdaptationFabric, defaultConscioAdaptationState, type ConscioAdaptationState, type ConscioSourceState } from '../integration/conscio/ConscioAdaptationFabric.ts';
 import type { ActionKind, OrganismDecisionTrace, IntentCandidate, OrganismCycleResult, OrganismGoal, OrganismObservation, OrganismState, LearningProvenance, OrganismNeeds, EmbodimentFacet, WorkspaceFrame, ConsolidatedMemory, PredictedActionOutcome, WorldTransitionForOrganism, } from './types.ts';
 import { FileStateStore, type JsonStateStore } from '../persistence/FileStateStore.ts';
+import { createRuntimeCheckpointEnvelope, validateRuntimeCheckpointEnvelope as validateRuntimeCheckpointEnvelopeValue, type RuntimeCheckpointEnvelope, type RuntimeCheckpointEnvelopeValidation, type RuntimeCheckpointOwnerSnapshots } from '../system/RuntimeCheckpointEnvelope.ts';
 import { FileActionExecutionLedgerArchive } from '../persistence/FileActionExecutionLedgerArchive.ts';
 import { RecoveryWatchdog, type RecoveryWatchdogState } from '../persistence/RecoveryWatchdog.ts';
 import { WorldModel, type PredictedOutcome, type InternalWorldState, type WorldModelSnapshot } from '../world/WorldModel.ts';
@@ -515,6 +516,8 @@ export interface OrganismSystemState {
     lastStateHash: string;
     replaySignature: string;
     lastReplayAt: number;
+    /** Runtime-owned sidecar state committed atomically with this Core checkpoint. */
+    runtimeCheckpointEnvelope?: RuntimeCheckpointEnvelope;
     subjectIdentity?: import('./types.ts').SubjectIdentityRecord;
     evolution: import('./types.ts').EvolutionResearchState;
     predictionLedger?: import('../system/PredictionLedger.ts').PredictionLedgerState;
@@ -1295,6 +1298,8 @@ export class OrganismCore {
     /** Highest tick already evaluated by the canonical internal cycle verifier. */
     private lastClosedCognitiveCycleTick = -1;
     private persisted: PersistedOrganism = defaultPersisted();
+    private runtimeCheckpointContributor: ((coreTick:number)=>RuntimeCheckpointOwnerSnapshots|Promise<RuntimeCheckpointOwnerSnapshots>) | null = null;
+    private runtimeCheckpointCommitObserver: ((envelope:RuntimeCheckpointEnvelope)=>Promise<void>|void) | null = null;
     private ready = false;
     /** Serializes Negative Space mutations across durable checkpoints and rollback. */
     private negativeSpaceMutationTail: Promise<void> = Promise.resolve();
@@ -2258,6 +2263,19 @@ export class OrganismCore {
             this.persisted.system.integrity = finalIntegrity;
             throw new Error(`Organism final integrity violation: ${finalIntegrity.violations.map(v => `${v.code}@${v.path}`).join(', ')}`);
         }
+        const previousRuntimeCheckpointEnvelope = this.persisted.system.runtimeCheckpointEnvelope;
+        if (fullProjection && this.runtimeCheckpointContributor) {
+            const snapshots = await this.runtimeCheckpointContributor(this.persisted.state.tick);
+            const previousGeneration = this.persisted.system.runtimeCheckpointEnvelope?.generation ?? 0;
+            const envelope = createRuntimeCheckpointEnvelope({
+                generation: Number.isSafeInteger(previousGeneration) && previousGeneration >= 0 ? previousGeneration + 1 : 1,
+                checkpointId: randomUUID(),
+                coreTick: this.persisted.state.tick,
+                createdAt: Date.now(),
+                snapshots,
+            });
+            this.persisted.system.runtimeCheckpointEnvelope = envelope;
+        }
         if (fullProjection) {
             continuityCandidate = this.preparePersistentContinuityCandidate('durable-checkpoint');
             this.persisted.system.persistentContinuityKernel = continuityCandidate.kernel;
@@ -2299,6 +2317,7 @@ export class OrganismCore {
                 }
                 if (recoveryBefore) this.persisted.system.failureRecoveryCertification = recoveryBefore;
                 if (watchdogBeforeCommit) this.persisted.system.recoveryWatchdog = watchdogBeforeCommit;
+                this.persisted.system.runtimeCheckpointEnvelope = previousRuntimeCheckpointEnvelope;
                 throw error;
             }
             if (watchdogCheckpointAt !== null) {
@@ -2310,6 +2329,10 @@ export class OrganismCore {
             }
             if (recoveryCandidate) this.organismSystems.governance.failureRecoveryCertification.restore(recoveryCandidate);
             this.persistence.persistenceProjectionCoordinator.commitMaterialization(projectionContext, this.persisted.state.tick);
+            const committedRuntimeEnvelope = this.persisted.system.runtimeCheckpointEnvelope;
+            if (committedRuntimeEnvelope && this.runtimeCheckpointCommitObserver) {
+                try { await this.runtimeCheckpointCommitObserver(committedRuntimeEnvelope); } catch { /* canonical Core checkpoint remains authoritative */ }
+            }
             saveMs = Date.now() - t;
             const persistedMetrics = this.persistenceMetrics();
             this.persistence.persistenceDurabilityGovernor.recordCheckpoint({
@@ -2695,6 +2718,20 @@ export class OrganismCore {
     cognitiveBudgetSpend(operation: import('../cognition/CognitiveBudgetManager.ts').CognitiveOperation, cost01?: number, informationGain01 = 0, reason = 'runtime'): ReturnType<CognitiveBudgetManager['spend']> { const result = this.agencySubsystem.budget.spend(operation, cost01, informationGain01, { tick: this.persisted.state.tick, reason }); this.persisted.facets.cognition.budget = this.agencySubsystem.budget.snapshot(); return result; }
     cognitiveBudgetCanSpend(operation: import('../cognition/CognitiveBudgetManager.ts').CognitiveOperation, cost01?: number): boolean { return this.agencySubsystem.budget.canSpend(operation, cost01); }
     cognitiveImmuneSnapshot() { return structuredClone(this.cognitiveRuntime.cognitiveImmune.snapshot()); }
+    /** Runtime contributes bounded sidecar snapshots immediately before a durable Core save. */
+    setRuntimeCheckpointContributor(provider: ((coreTick:number)=>RuntimeCheckpointOwnerSnapshots|Promise<RuntimeCheckpointOwnerSnapshots>) | null): void {
+        this.runtimeCheckpointContributor = provider;
+    }
+    validateRuntimeCheckpointEnvelope(value: unknown): RuntimeCheckpointEnvelopeValidation {
+        return validateRuntimeCheckpointEnvelopeValue(value);
+    }
+    setRuntimeCheckpointCommitObserver(observer: ((envelope:RuntimeCheckpointEnvelope)=>Promise<void>|void) | null): void {
+        this.runtimeCheckpointCommitObserver = observer;
+    }
+    /** Mark runtime-owned state dirty so the normal Core checkpoint governor includes it. */
+    markRuntimeCheckpointDirty(): void {
+        this.markPersistenceDirty();
+    }
     setRuntimeEvidence(snapshot: import('../system/RuntimeEvidenceBus.ts').RuntimeEvidenceSnapshot): void { this.persisted.system.runtimeEvidence = snapshot; }
     setCognitiveEventFabric(snapshot: import('../system/CognitiveEventFabric.ts').CognitiveEventFabricSnapshot): void { this.persisted.system.cognitiveEventFabric = snapshot; }
     setRuntimeCognitiveEventFabric(snapshot: import('../system/CognitiveEventFabric.ts').CognitiveEventFabricSnapshot): void { this.persisted.system.runtimeCognitiveEventFabric = snapshot; }
