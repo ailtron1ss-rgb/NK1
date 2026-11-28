@@ -36,5 +36,5 @@ test('avatar normalization hides environment meshes and isolates tiny outliers f
   assert.match(avatarStage, /excludedEnvironmentMeshes:\s*sourceSceneBounds\.excludedEnvironmentMeshes/);
   assert.match(avatarStage, /const sourceFramingBounds=resolveAvatarFramingBounds\(root\)/);
   assert.match(avatarStage, /const bounds=sourceFramingBounds\.bounds\.isEmpty\(\)\?sourceSceneBounds\.bounds:sourceFramingBounds\.bounds/);
-  assert.match(avatarStage, /normalizationExcludedOutlierMeshes:\\s*sourceFramingBounds\.excludedOutlierMeshes/);
+  assert.ok(avatarStage.includes("normalizationExcludedOutlierMeshes: sourceFramingBounds.excludedOutlierMeshes"), "normalization outliers stay inspectable in the runtime diagnostics");
 });
