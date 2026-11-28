@@ -37,6 +37,63 @@ test('invalid operation identity and invalid monotonic time fail closed', () => 
   assert.equal(validClock.publish('  ', { phase: 'command-requested' }), null);
 });
 
+test('native provider input rejects invalid phases, accessors, proxies and coercion without mutating state', () => {
+  const channel = createNativeSpeechEventChannel(() => 9);
+  const received = [];
+  channel.subscribe(event => received.push(event));
+
+  assert.equal(channel.publish('speech-invalid-phase', { phase: 'playback-started' }), null);
+
+  let getterCalls = 0;
+  const accessorInput = {};
+  Object.defineProperty(accessorInput, 'phase', {
+    enumerable: true,
+    get() { getterCalls++; return 'command-requested'; },
+  });
+  assert.equal(channel.publish('speech-accessor', accessorInput), null);
+  assert.equal(getterCalls, 0, 'input accessors must be rejected without execution');
+
+  let proxyTraps = 0;
+  const proxyInput = new Proxy({ phase: 'command-requested' }, {
+    getPrototypeOf() { proxyTraps++; throw new Error('native-speech-proxy-trap'); },
+    ownKeys() { proxyTraps++; throw new Error('native-speech-proxy-trap'); },
+    get() { proxyTraps++; throw new Error('native-speech-proxy-trap'); },
+  });
+  assert.equal(channel.publish('speech-proxy', proxyInput), null);
+  assert.equal(proxyTraps, 0, 'proxy input must be rejected before reflective traps');
+
+  let identityCoercions = 0;
+  const hostileOperationId = {
+    toString() { identityCoercions++; return 'coerced-operation'; },
+  };
+  assert.equal(channel.publish(hostileOperationId, { phase: 'command-requested' }), null);
+  assert.equal(identityCoercions, 0, 'operation identity must not invoke caller coercion');
+
+  let reasonCoercions = 0;
+  const invalidInputs = [
+    { phase: 'process-exited', exitCode: Number.NaN },
+    { phase: 'process-exited', exitCode: 256 },
+    { phase: 'process-error', signal: 7 },
+    { phase: 'process-error', errorCode: 42 },
+    { phase: 'process-error', reason: { toString() { reasonCoercions++; return 'bad'; } } },
+    { phase: 'command-requested', unexpected: true },
+  ];
+  for (const invalid of invalidInputs) {
+    assert.equal(channel.publish('speech-invalid-fields', invalid), null);
+  }
+  assert.equal(reasonCoercions, 0, 'invalid diagnostic fields must not be coerced');
+
+  const valid = channel.publish('speech-after-reject', { phase: 'command-requested' });
+  assert.equal(valid.sequence, 1, 'rejected input must not advance operation sequence');
+  assert.deepEqual(received.map(event => event.operationId), ['speech-after-reject']);
+
+  const sanitized = channel.publish('speech-sanitized', {
+    phase: 'process-error',
+    reason: 'line\nbreak\tvalue',
+  });
+  assert.equal(sanitized.reason, 'line break value', 'diagnostic control whitespace is normalized');
+});
+
 test('native process events are explicitly not playback lifecycle evidence', () => {
   const channel = createNativeSpeechEventChannel(() => 42);
   const spawned = channel.publish('speech-E', { phase: 'process-spawned' });
