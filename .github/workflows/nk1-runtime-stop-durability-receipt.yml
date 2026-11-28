@@ -1,0 +1,42 @@
+name: NK1 runtime shutdown partial durability receipt
+
+on:
+  pull_request:
+    branches: [workpass70-source]
+    paths:
+      - "runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts"
+      - "runtime/neuro-kurisu/src/organism/system/ContinuityLedger.ts"
+      - "runtime/neuro-kurisu/tests/runtime-stop-durability-20261127.mjs"
+      - "runtime/neuro-kurisu/package.json"
+      - ".github/workflows/nk1-runtime-stop-durability-receipt.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nk1-runtime-stop-durability-receipt-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  shutdown-durability:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: runtime/neuro-kurisu
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: runtime/neuro-kurisu/package-lock.json
+      - name: Install locked runtime dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Verify partial and durable shutdown receipts
+        run: npm run test:runtime-stop-durability
+      - name: Existing Core and watchdog restart regressions
+        run: npm run test:big-pass-324 && npm run test:big-pass-324:core
+      - name: Runtime typecheck
+        run: npm run typecheck
