@@ -3370,7 +3370,7 @@ export class OrganismRuntime {
     return { version:1, retainedSegments:0, retainedBytes:0, activeSegmentId:null, activeSegmentBytes:0,
       activeSegmentRecords:0, activeSegmentTailSha256:null, fileSynced:false, directorySynced:false };
   }
-  private runtimeCheckpointOwnerSnapshots(journalOffset: RuntimeJournalCursor) {
+  private runtimeCheckpointOwnerSnapshots(journalOffset: RuntimeJournalCursor): RuntimeCheckpointOwnerSnapshots {
     return { world:this.environment.persisted(), openLoop:this.openLoopRadar.snapshot(),
       cognitiveSpine:this.cognitiveSpineScheduler.snapshot(), riskAwareRecovery:this.unifiedCycle.riskAwareRecoverySnapshot(),
       cognitiveHealth:this.cognitiveImmuneSystem?.snapshot() ?? null, journalOffset };
