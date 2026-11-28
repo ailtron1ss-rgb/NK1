@@ -566,7 +566,6 @@ export function updateAvatarSecondaryVertexDynamics(
   if (!Array.isArray(bindings) || !frame || typeof frame !== "object") return;
   const drive = resolveAvatarSecondaryVertexDrive(frame);
   const time = clamp(timeSeconds, 0, 1_000_000);
-  if (bodySurface) applyAvatarBodySurfaceCollisions(bindings, bodySurface);
   for (const binding of bindings) {
     if (!binding?.uniforms) continue;
     binding.uniforms.nk1SecondaryTime.value = time;
@@ -579,6 +578,11 @@ export function updateAvatarSecondaryVertexDynamics(
       const offsetAttribute = binding.patchedGeometry.attributes?.nk1SecondaryOffset;
       if (offsetAttribute) offsetAttribute.needsUpdate = true;
     }
+  }
+  if (bodySurface) applyAvatarBodySurfaceCollisions(bindings, bodySurface);
+  for (const binding of bindings) {
+    const offsetAttribute = binding?.patchedGeometry?.attributes?.nk1SecondaryOffset;
+    if (offsetAttribute) offsetAttribute.needsUpdate = true;
   }
 }
 
