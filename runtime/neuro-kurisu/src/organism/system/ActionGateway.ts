@@ -603,8 +603,17 @@ export class ActionGateway {
     return current;
   }
 
+  /**
+   * Resolve a canonical approval class. Name/capability inference remains the
+   * preferred path, but an explicitly high-risk tool cannot opt out merely by
+   * choosing an opaque ID or omitting permissionClass.
+   */
   private permissionClassFor(id:string):ActionToolPermissionClass|null {
-    return this.tools.get(id)?.permissionClass ?? inferPermissionClass(id,this.tools.get(id)?.capability ?? '');
+    const tool=this.tools.get(id);
+    const inferred=tool?.permissionClass ?? inferPermissionClass(id,tool?.capability ?? '');
+    if(inferred) return inferred;
+    if(tool?.destructive===true) return 'system';
+    return null;
   }
 
   private approvalFingerprint(toolId:string,input:Record<string,unknown>,options:ActionGatewayExecutionOptions,operation:ActionToolApprovalOperation):string {
@@ -782,7 +791,7 @@ export class ActionGateway {
       id:t.id,capability:t.capability,destructive:t.destructive,projectAllowed:Boolean(t.projectAllowed),
       hasInputContract:Boolean(t.inputContract),inputSchema:t.inputContract?structuredClone(t.inputContract):undefined,
       hasOutputContract:Boolean(t.outputContract),outputSchema:t.outputContract?structuredClone(t.outputContract):undefined,supportsAtomicUndoPrecondition:Boolean(t.supportsAtomicUndoPrecondition),
-      permissionClass:t.permissionClass??inferPermissionClass(t.id,t.capability)??'none',requiresApproval:Boolean(t.permissionClass??inferPermissionClass(t.id,t.capability)),hasAvailabilityGate:Boolean(t.availability),hasCompetenceGate:Boolean(t.competence),hasOutcomeVerifier:Boolean(t.verify),hasReceiptReconciliation:Boolean(t.reconcile),requiresIdempotencyKey:requiresDurableIdempotency(t),requiresUndoFirst:Boolean(t.requiresUndoFirst||t.undoFirst),hasUndoFirstPreparation:Boolean(t.undoFirst),
+      permissionClass:this.permissionClassFor(t.id)??'none',requiresApproval:Boolean(this.permissionClassFor(t.id)),hasAvailabilityGate:Boolean(t.availability),hasCompetenceGate:Boolean(t.competence),hasOutcomeVerifier:Boolean(t.verify),hasReceiptReconciliation:Boolean(t.reconcile),requiresIdempotencyKey:requiresDurableIdempotency(t),requiresUndoFirst:Boolean(t.requiresUndoFirst||t.undoFirst),hasUndoFirstPreparation:Boolean(t.undoFirst),
     }));
   }
 
@@ -793,7 +802,7 @@ export class ActionGateway {
    */
   toolGovernanceReport() {
     const tools=[...this.tools.values()].sort((a,b)=>a.id<b.id?-1:a.id>b.id?1:0).map(tool=>{
-      const permissionClass=tool.permissionClass??inferPermissionClass(tool.id,tool.capability)??null;
+      const permissionClass=this.permissionClassFor(tool.id);
       const durableReceiptRequired=requiresDurableIdempotency(tool);
       const highRisk=tool.destructive || durableReceiptRequired ||
         (permissionClass!==null && ['device','filesystem','code','system','self-modification'].includes(permissionClass));
