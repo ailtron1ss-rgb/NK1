@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import * as THREE from "three";
-import { resolveAvatarSceneBounds } from "../src/components/avatar/avatarSceneBounds.ts";
+import { resolveAvatarFramingBounds, resolveAvatarSceneBounds } from "../src/components/avatar/avatarSceneBounds.ts";
 
 test("environment floor does not shrink the character's normalized bounds", () => {
   const root = new THREE.Group();
@@ -93,4 +93,48 @@ test("morph deformation is included only for indexed rendered vertices", () => {
   assert.ok(Math.abs(size.y - 1.5) < 1e-6,
     "morph-deformed positions must be measured without unreferenced outliers");
   assert.equal(resolved.includedVertexCount, 3);
+});
+
+
+test("a tiny pathological skinned mesh cannot shrink the full avatar normalization bounds", () => {
+  const root = new THREE.Group();
+  const hips = new THREE.Bone();
+  hips.name = "hips";
+  const head = new THREE.Bone();
+  head.name = "head";
+  head.position.y = 1.6;
+  hips.add(head);
+  root.add(hips);
+
+  const bodyGeometry = new THREE.BoxGeometry(0.4, 1.6, 0.3, 4, 4, 4);
+  const body = new THREE.Mesh(bodyGeometry, new THREE.MeshBasicMaterial());
+  body.name = "BODY_torso_and_limbs";
+  body.position.y = 0.8;
+  root.add(body);
+
+  const mouthGeometry = new THREE.BufferGeometry();
+  mouthGeometry.setAttribute("position", new THREE.Float32BufferAttribute([
+    -0.05, 0.04, 0.08,
+     0.05, 1.6, 0.08,
+     0, 3.19, 0.08,
+  ], 3));
+  mouthGeometry.setIndex([0, 1, 2]);
+  const mouth = new THREE.Mesh(mouthGeometry, new THREE.MeshBasicMaterial());
+  mouth.name = "FACE_mouth";
+  root.add(mouth);
+  root.updateWorldMatrix(true, true);
+
+  const completeBounds = resolveAvatarSceneBounds(root);
+  const framing = resolveAvatarFramingBounds(root);
+  const completeSize = completeBounds.bounds.getSize(new THREE.Vector3());
+  const framingSize = framing.bounds.getSize(new THREE.Vector3());
+
+  assert.ok(Math.abs(completeSize.y - 3.15) < 1e-6,
+    "the full geometry audit must retain the outlier rather than hide or mutate the asset");
+  assert.ok(Math.abs(framingSize.x - 0.4) < 1e-6);
+  assert.ok(Math.abs(framingSize.y - 1.6) < 1e-6,
+    "the single tiny outlier must not determine the avatar's scale");
+  assert.ok(Math.abs(framingSize.z - 0.3) < 1e-6);
+  assert.deepEqual(framing.excludedOutlierMeshes.map((item) => item.name), ["FACE_mouth"]);
+  assert.equal(mouth.visible, true, "outlier geometry remains rendered and available to diagnostics");
 });
