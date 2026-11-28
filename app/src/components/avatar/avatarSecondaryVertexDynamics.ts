@@ -357,7 +357,7 @@ function applyAvatarBodySurfaceCollisions(
   const bodyWorldMatrix = bodySurface.matrixWorld;
   if (!bodyWorldMatrix || !Number.isFinite(bodyWorldMatrix.determinant())
     || Math.abs(bodyWorldMatrix.determinant()) < 1e-12) return false;
-  const inverseBodyWorldMatrix = new THREE.Matrix4().copy(bodyWorldMatrix).invert();
+  const inverseBodyWorldMatrix = bodyWorldMatrix.clone().invert();
   const localVertex = new THREE.Vector3();
   const bodyLocalPoint = new THREE.Vector3();
   const correctedMeshPoint = new THREE.Vector3();
@@ -375,7 +375,7 @@ function applyAvatarBodySurfaceCollisions(
     state.bodyCollisionCount = 0;
     state.maxBodyCollisionCorrection = 0;
     if (!Number.isFinite(meshDeterminant) || Math.abs(meshDeterminant) < 1e-12) continue;
-    const inverseMeshWorldMatrix = new THREE.Matrix4().copy(meshWorldMatrix).invert();
+    const inverseMeshWorldMatrix = meshWorldMatrix.clone().invert();
     const minimumDistance = minimumDistanceByRole[binding.role];
 
     for (let vertex = 0; vertex < state.vertexCount; vertex += 1) {
