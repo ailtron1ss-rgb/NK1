@@ -100,6 +100,9 @@ export class OperationalJournal {
     }
     const directorySynced = await this.syncDirectory();
     const active = await readFile(this.filePath);
+    if (active.byteLength > 0 && active[active.byteLength - 1] !== 0x0a) {
+      throw new Error('operational-journal-cursor-incomplete-tail');
+    }
     const paths = [this.filePath, ...Array.from({ length: this.maxRotations }, (_, index) => `${this.filePath}.${index + 1}`)];
     let retainedBytes = 0;
     let retainedSegments = 0;
