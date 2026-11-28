@@ -171,6 +171,7 @@ export function Avatar3DStage(props:Props){
       weightSumMax: 0,
       transformedVertexBounds: new THREE.Box3(),
       boneWorldBounds: new THREE.Box3(),
+      meshBounds: [] as Array<any>,
       boneNames: [] as string[],
     };
     const auditVertex = new THREE.Vector3();
@@ -196,6 +197,8 @@ export function Avatar3DStage(props:Props){
         return;
       }
       const boneCount = node.skeleton?.bones?.length ?? 0;
+      const meshDeformedBounds = new THREE.Box3();
+      let meshRenderedVertexCount = 0;
       forEachAvatarRenderedVertexIndex(node, (index) => {
         if (index >= skinIndices.count || index >= skinWeights.count) return;
         const weights = [
@@ -238,7 +241,36 @@ export function Avatar3DStage(props:Props){
         }
         auditVertex.applyMatrix4(node.matrixWorld);
         skinAudit.transformedVertexBounds.expandByPoint(auditVertex);
+        meshDeformedBounds.expandByPoint(auditVertex);
+        meshRenderedVertexCount += 1;
       });
+      if (!meshDeformedBounds.isEmpty()) {
+        const meshSize = meshDeformedBounds.getSize(new THREE.Vector3());
+        const materials = Array.isArray(node.material) ? node.material : node.material ? [node.material] : [];
+        skinAudit.meshBounds.push({
+          name: String(node.name || "(unnamed skinned mesh)"),
+          visible: node.visible !== false,
+          frustumCulled: node.frustumCulled !== false,
+          renderOrder: Number(node.renderOrder || 0),
+          renderedVertexCount: meshRenderedVertexCount,
+          bounds: {
+            min: { x: meshDeformedBounds.min.x, y: meshDeformedBounds.min.y, z: meshDeformedBounds.min.z },
+            max: { x: meshDeformedBounds.max.x, y: meshDeformedBounds.max.y, z: meshDeformedBounds.max.z },
+            size: { x: meshSize.x, y: meshSize.y, z: meshSize.z },
+          },
+          materials: materials.map((material: any) => ({
+            name: String(material?.name || ""),
+            visible: material?.visible !== false,
+            transparent: material?.transparent === true,
+            opacity: Number.isFinite(material?.opacity) ? material.opacity : 1,
+            alphaTest: Number.isFinite(material?.alphaTest) ? material.alphaTest : 0,
+            depthWrite: material?.depthWrite !== false,
+            colorWrite: material?.colorWrite !== false,
+            hasMap: !!material?.map,
+            hasAlphaMap: !!material?.alphaMap,
+          })),
+        });
+      }
     });
     const skinVertexSize = new THREE.Vector3();
     const skinBoneSize = new THREE.Vector3();
@@ -293,6 +325,11 @@ export function Avatar3DStage(props:Props){
       boneWorldBounds: skinBoneBounds,
       boneCount: skinAudit.boneNames.length,
       boneNames: skinAudit.boneNames,
+      extremeMeshBounds: skinAudit.meshBounds
+        .slice()
+        .sort((a: any, b: any) => Math.max(b.bounds.size.x, b.bounds.size.y, b.bounds.size.z)
+          - Math.max(a.bounds.size.x, a.bounds.size.y, a.bounds.size.z))
+        .slice(0, 12),
     };
     const cameraBoundsSource = skinVertexBounds
       ? "skinned-deformed-vertices"
@@ -310,6 +347,52 @@ export function Avatar3DStage(props:Props){
     };
     const framing=applyAvatarCameraFit(rt,cameraBounds);
     if(!framing)throw new Error("Не удалось рассчитать безопасное кадрирование модели.");
+    const projectWorldBounds = (bounds: any) => {
+      const projected = new THREE.Box3();
+      const point = new THREE.Vector3();
+      for (const x of [bounds.min.x, bounds.max.x]) {
+        for (const y of [bounds.min.y, bounds.max.y]) {
+          for (const z of [bounds.min.z, bounds.max.z]) {
+            point.set(x, y, z).project(rt.camera);
+            projected.expandByPoint(point);
+          }
+        }
+      }
+      const ndcSize = projected.getSize(new THREE.Vector3());
+      const cssWidth = Math.max(rt.renderer.domElement.clientWidth, 1);
+      const cssHeight = Math.max(rt.renderer.domElement.clientHeight, 1);
+      const bufferWidth = Math.max(rt.renderer.domElement.width, 1);
+      const bufferHeight = Math.max(rt.renderer.domElement.height, 1);
+      return {
+        ndcBounds: {
+          min: { x: projected.min.x, y: projected.min.y, z: projected.min.z },
+          max: { x: projected.max.x, y: projected.max.y, z: projected.max.z },
+        },
+        normalizedViewportFraction: { width: ndcSize.x / 2, height: ndcSize.y / 2 },
+        cssPixels: { width: ndcSize.x * cssWidth / 2, height: ndcSize.y * cssHeight / 2 },
+        drawingBufferPixels: { width: ndcSize.x * bufferWidth / 2, height: ndcSize.y * bufferHeight / 2 },
+      };
+    };
+    const cameraProjectionAudit = {
+      fovDegrees: rt.camera.fov,
+      aspect: rt.camera.aspect,
+      zoom: rt.camera.zoom,
+      near: rt.camera.near,
+      far: rt.camera.far,
+      cameraPosition: {
+        x: rt.camera.position.x, y: rt.camera.position.y, z: rt.camera.position.z,
+      },
+      cameraTarget: { x: framing.center.x, y: framing.center.y, z: framing.center.z },
+      cameraDistance: framing.distance,
+      projectedModelBounds: projectWorldBounds(cameraBounds),
+      projectedExtremeMeshes: skinningDiagnostics.extremeMeshBounds.map((mesh: any) => ({
+        name: mesh.name,
+        renderedVertexCount: mesh.renderedVertexCount,
+        boundsSize: mesh.bounds.size,
+        materials: mesh.materials,
+        projection: projectWorldBounds(mesh.bounds),
+      })),
+    };
     // Capture asset-space geometry and humanoid up-axis before normalization.
     // This distinguishes a Z-up/sideways export from a camera-framing regression.
     root.updateMatrixWorld(true);
@@ -343,12 +426,14 @@ export function Avatar3DStage(props:Props){
       cameraBoundsSize,
       skinnedBoundsRefreshed,
       skinning: skinningDiagnostics,
+      cameraProjectionAudit,
       headToHips: sourceHeadToHips,
       dominantBoundsAxis: sourceSize.x >= sourceSize.y && sourceSize.x >= sourceSize.z
         ? "x" : sourceSize.y >= sourceSize.z ? "y" : "z",
       sourceMaxDimension: Math.max(sourceSize.x, sourceSize.y, sourceSize.z),
     };
     rt.renderer.domElement.dataset.avatarModelAxisDiagnostics = JSON.stringify(sourceAxisDiagnostics);
+    rt.renderer.domElement.dataset.avatarCameraProjectionAudit = JSON.stringify(cameraProjectionAudit);
     let modelMeshCount=0,visibleModelMeshCount=0,skinnedModelMeshCount=0;
     root.traverse((n:any)=>{
       if(!n.isMesh)return;
