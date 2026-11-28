@@ -1952,6 +1952,7 @@
     "test:goal-bound-plan-runtime-integration": "node --experimental-strip-types tests/goal-bound-plan-runtime-integration-20261126.mjs",
     "test:cognitive-workspace-prearbitration": "node --experimental-strip-types tests/cognitive-workspace-prearbitration.mjs",
     "test:runtime-stop-durability": "node --experimental-strip-types --test tests/runtime-stop-durability-20261127.mjs",
-    "test:security-governance-hardening": "node --experimental-strip-types tests/workpass53-action-approval-boundary.mjs && node --experimental-strip-types tests/neko-plugin-manifest-policy.mjs"
+    "test:security-governance-hardening": "node --experimental-strip-types tests/workpass53-action-approval-boundary.mjs && node --experimental-strip-types tests/neko-plugin-manifest-policy.mjs",
+    "test:p23:skill-shadow-freshness": "node --experimental-strip-types tests/p23-skill-shadow-evidence-freshness.mjs"
   }
 }
