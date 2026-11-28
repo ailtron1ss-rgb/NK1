@@ -87,8 +87,11 @@ test("an initiative response is discarded if a newer snapshot request starts whi
 
 test("tickIdle rechecks snapshot freshness after the proactive endpoint resolves", async () => {
   const store = await readFile(new URL("../src/organism/store.ts", import.meta.url), "utf8");
-  assert.match(
-    store,
-    /const pending = await neuroApi\\.proactiveMessage\\(\\);\\s*\\/\\/ A newer snapshot request may start while the initiative endpoint is in flight\\.\\s*\\/\\/ Do not append or ACK an initiative from a superseded poll\\.\\s*if \\(!snapshotCommitGate\\.isCurrent\\(requestId\\)\\) return;\\s*const initiative = pending\\.initiative;/,
-  );
+  assert.ok(store.includes(
+    "const pending = await neuroApi.proactiveMessage();\\n" +
+    "      // A newer snapshot request may start while the initiative endpoint is in flight.\\n" +
+    "      // Do not append or ACK an initiative from a superseded poll.\\n" +
+    "      if (!snapshotCommitGate.isCurrent(requestId)) return;\\n" +
+    "      const initiative = pending.initiative;",
+  ));
 });
