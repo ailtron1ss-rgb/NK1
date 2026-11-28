@@ -51,3 +51,11 @@ test("GLB diagnostics and camera framing share the morph-aware skinned vertex su
   assert.match(stage, /const cameraBounds=skinVertexBounds\s*\?/,
     "camera fit bounds must use the same vertex audit result");
 });
+
+test("GLB browser diagnostics expose per-mesh surface bounds and projected fit", async () => {
+  const stage = await readFile(new URL("../src/components/Avatar3DStage.tsx", import.meta.url), "utf8");
+  assert.match(stage, /extremeMeshBounds/,
+    "skin audit must identify mesh nodes that contribute outsized bounds");
+  assert.match(stage, /cameraProjectionAudit/,
+    "runtime must report projected bounds computed by the active camera");
+});
