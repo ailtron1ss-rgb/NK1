@@ -107,7 +107,7 @@ The runtime attaches dynamics only to exact allowlisted `SkinnedMesh` nodes with
 
 | Role | Exact allowed names | Maximum world-space amplitude |
 |---|---|---:|
-| Hair | `HAIR_long_lock_L/R`, `HAIR_front_strand_L/R`, `HAIR_layer_L1/L2/R1/R2` | 0.012 model units |
+| Hair | `HAIR_long_lock_L/R`, `HAIR_front_strand_L/R`, `HAIR_layer_L0/L1/L2/R0/R1/R2` | 0.012 model units |
 | Garment | `CLOTH_skirt`, `CLOTH_labcoat_main` | 0.007 model units |
 | Tie | `CLOTH_tie_blade` | 0.0045 model units |
 
@@ -170,3 +170,6 @@ The loader now keeps two distinct bounds products:
 The candidate mesh is **not hidden, removed, rewritten or excluded from the render scene**. Only its influence on normalization and camera fitting is excluded; its full bounds remain visible in diagnostics. This is deliberately a geometry-integrity guard, not a face-specific name blacklist.
 
 Regression coverage asserts that a tiny extreme mesh remains in full scene diagnostics, remains visible, and cannot shrink the framing bounds; ordinary geometry and environments remain governed by their existing contracts. Browser framebuffer acceptance and real-device review are still required before this behavior is considered visually accepted on the canonical avatar.
+
+
+The 2026-11-28 browser audit of the canonical v5 asset explicitly identified `HAIR_layer_R0` as a 637-vertex rendered mesh. It is included in the same bounded hair XPBD profile as the existing side layers; this does not broaden eligibility to `HAIR_back_mass`, `HAIR_crown`, central fringe, face, eyes or sleeves. The runtime still applies the 768-vertex cap, topology validation, attachment pinning and private geometry/material clones before enabling the solver.
