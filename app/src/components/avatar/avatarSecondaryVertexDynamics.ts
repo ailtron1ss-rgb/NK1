@@ -354,9 +354,13 @@ function applyAvatarBodySurfaceCollisions(
   });
   if (!collider) return false;
 
+  const bodyWorldMatrix = bodySurface.matrixWorld;
+  if (!bodyWorldMatrix || !Number.isFinite(bodyWorldMatrix.determinant())
+    || Math.abs(bodyWorldMatrix.determinant()) < 1e-12) return false;
+  const inverseBodyWorldMatrix = new THREE.Matrix4().copy(bodyWorldMatrix).invert();
   const localVertex = new THREE.Vector3();
   const bodyLocalPoint = new THREE.Vector3();
-  const correctedWorldPoint = new THREE.Vector3();
+  const correctedMeshPoint = new THREE.Vector3();
   const delta = new THREE.Vector3();
   const minimumDistanceByRole = { hair: 0.008, garment: 0.01 } as const;
 
@@ -364,10 +368,14 @@ function applyAvatarBodySurfaceCollisions(
     const state = binding?.particleState;
     const mesh = binding?.mesh;
     if (!state || !mesh || typeof mesh.getVertexPosition !== "function"
-      || typeof mesh.localToWorld !== "function" || typeof mesh.worldToLocal !== "function") continue;
+      || !mesh.matrixWorld) continue;
     mesh.updateWorldMatrix?.(true, false);
+    const meshWorldMatrix = mesh.matrixWorld;
+    const meshDeterminant = meshWorldMatrix.determinant();
     state.bodyCollisionCount = 0;
     state.maxBodyCollisionCorrection = 0;
+    if (!Number.isFinite(meshDeterminant) || Math.abs(meshDeterminant) < 1e-12) continue;
+    const inverseMeshWorldMatrix = new THREE.Matrix4().copy(meshWorldMatrix).invert();
     const minimumDistance = minimumDistanceByRole[binding.role];
 
     for (let vertex = 0; vertex < state.vertexCount; vertex += 1) {
@@ -375,16 +383,13 @@ function applyAvatarBodySurfaceCollisions(
       mesh.getVertexPosition(vertex, localVertex);
       if (![localVertex.x, localVertex.y, localVertex.z].every(Number.isFinite)) continue;
 
-      bodyLocalPoint.copy(localVertex);
-      mesh.localToWorld(bodyLocalPoint);
-      bodySurface.worldToLocal(bodyLocalPoint);
+      bodyLocalPoint.copy(localVertex).applyMatrix4(meshWorldMatrix).applyMatrix4(inverseBodyWorldMatrix);
       const projection = projectPointOutsideBodySurface(bodyLocalPoint, collider, minimumDistance);
       if (!projection) continue;
 
-      correctedWorldPoint.set(projection.position.x, projection.position.y, projection.position.z);
-      bodySurface.localToWorld(correctedWorldPoint);
-      mesh.worldToLocal(correctedWorldPoint);
-      delta.copy(correctedWorldPoint).sub(localVertex);
+      correctedMeshPoint.set(projection.position.x, projection.position.y, projection.position.z)
+        .applyMatrix4(bodyWorldMatrix).applyMatrix4(inverseMeshWorldMatrix);
+      delta.copy(correctedMeshPoint).sub(localVertex);
       if (![delta.x, delta.y, delta.z].every(Number.isFinite)) continue;
 
       const offset = vertex * 3;
