@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import * as particleSolver from "../src/components/avatar/avatarSecondaryParticleSolver.ts";
 import {
   createAvatarSecondaryParticleState,
   resetAvatarSecondaryParticleState,
@@ -54,6 +55,56 @@ function frame(overrides = {}) {
     ...overrides,
   };
 }
+
+test("body surface collider projects an embedded surface particle back outside the torso shell", () => {
+  const createCollider = particleSolver.createAvatarBodySurfaceCollider;
+  const project = particleSolver.projectPointOutsideBodySurface;
+  assert.equal(typeof createCollider, "function",
+    "secondary dynamics must expose a bounded indexed body-surface collider");
+  assert.equal(typeof project, "function");
+
+  const positions = new Float32Array([
+    0, 0, 0,
+    1, 0, 0,
+    0, 1, 0,
+    0, 0, 1,
+  ]);
+  const indices = new Uint16Array([
+    0, 2, 1,
+    0, 1, 3,
+    1, 2, 3,
+    2, 0, 3,
+  ]);
+  const collider = createCollider({ positions, indices, cellSize: 0.2 });
+  assert.ok(collider);
+  const embedded = { x: 0.25, y: 0.25, z: 0.25 };
+  const contact = project(embedded, collider, 0.05);
+  assert.ok(contact, "an embedded particle must be projected out of the closed torso surface");
+  assert.ok(contact.correction > 0.05);
+  const correctedDistance = Math.hypot(
+    contact.position.x - embedded.x,
+    contact.position.y - embedded.y,
+    contact.position.z - embedded.z,
+  );
+  assert.ok(Math.abs(correctedDistance - contact.correction) < 1e-6);
+  assert.ok([contact.position.x, contact.position.y, contact.position.z].every(Number.isFinite));
+});
+
+test("body surface collider ignores distant particles and rejects malformed triangle data", () => {
+  const createCollider = particleSolver.createAvatarBodySurfaceCollider;
+  const project = particleSolver.projectPointOutsideBodySurface;
+  assert.equal(typeof createCollider, "function");
+  assert.equal(typeof project, "function");
+  const positions = new Float32Array([0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1]);
+  const collider = createCollider({
+    positions,
+    indices: new Uint16Array([0, 2, 1, 0, 1, 3, 1, 2, 3, 2, 0, 3]),
+  });
+  assert.ok(collider);
+  assert.equal(project({ x: 4, y: 4, z: 4 }, collider, 0.05), null);
+  assert.equal(createCollider({ positions, indices: new Uint16Array([0, 1, 99]) }), null);
+  assert.equal(createCollider({ positions: new Float32Array([0, 0, Number.NaN]), indices: new Uint16Array([0, 0, 0]) }), null);
+});
 
 test("XPBD surface particles use real mesh vertices and pin the authored attachment row", () => {
   const mesh = grid();
