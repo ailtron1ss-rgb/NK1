@@ -128,3 +128,14 @@ export function resolveAvatarSceneBounds(root: AvatarSceneRoot): AvatarSceneBoun
 
   return { bounds, excludedEnvironmentMeshes, includedVertexCount };
 }
+
+
+/** Character framing bounds; the implementation is intentionally pending the outlier contract. */
+export function resolveAvatarFramingBounds(root: AvatarSceneRoot) {
+  const scene = resolveAvatarSceneBounds(root);
+  return {
+    bounds: scene.bounds,
+    includedVertexCount: scene.includedVertexCount,
+    excludedOutlierMeshes: [] as Array<{ name: string; vertexCount: number; extentRatio: number }>,
+  };
+}
