@@ -114,6 +114,7 @@ try {
     xpbdParticles: xpbdMatch ? Number(xpbdMatch[1]) : null,
     canvasXpbdParticles: await canvas.evaluate((element) => Number(element.dataset.avatarSecondaryParticleMeshCount || 0)),
     bodyCollisionSurface: await canvas.evaluate((element) => element.dataset.avatarSecondaryBodyCollisionSurface || "none"),
+    bodyCollisionReady: await canvas.evaluate((element) => element.dataset.avatarSecondaryBodyCollisionReady === "true"),
     bodyCollisionVertices: await canvas.evaluate((element) => Number(element.dataset.avatarSecondaryBodyCollisionCount || 0)),
     expected: report.expectedSecondaryParticleMeshes,
   };
@@ -125,6 +126,8 @@ try {
     "canvas runtime diagnostic must agree with the visible XPBD particle count");
   assert.equal(report.secondaryRuntimeCounts.bodyCollisionSurface, report.expectedSecondaryBodyCollisionSurface,
     "canonical v5 must resolve its exact skinned BODY_torso_core collision surface");
+  assert.equal(report.secondaryRuntimeCounts.bodyCollisionReady, true,
+    "canonical v5 torso triangle data must build a usable bounded collision grid");
   assert.match(report.diagnostics, /(?:GPU sway|XPBD-симуляция частиц поверхности)/,
     "canonical v5 must expose an active secondary deformation path");
 
