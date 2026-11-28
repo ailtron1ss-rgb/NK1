@@ -1,0 +1,55 @@
+name: NK1 Runtime Checkpoint Envelope Regression
+
+on:
+  pull_request:
+    branches:
+      - workpass70-source
+    paths:
+      - 'runtime/neuro-kurisu/src/organism/system/RuntimeCheckpointEnvelope.ts'
+      - 'runtime/neuro-kurisu/src/organism/core/OrganismCore.ts'
+      - 'runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts'
+      - 'runtime/neuro-kurisu/src/organism/persistence/OperationalJournal.ts'
+      - 'runtime/neuro-kurisu/tests/runtime-checkpoint-envelope-workpass73.mjs'
+      - 'runtime/neuro-kurisu/tests/runtime-checkpoint-projection-fault-matrix-workpass74.mjs'
+      - 'runtime/neuro-kurisu/tests/runtime-stop-durability-20261127.mjs'
+      - '.github/workflows/runtime-checkpoint-envelope-regression.yml'
+      - 'Прогресс/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: runtime-checkpoint-envelope-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checkpoint-envelope:
+    name: Envelope typecheck + restart/fault matrix
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout exact PR head
+        uses: actions/checkout@v7
+
+      - name: Set up repository-pinned Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          package-manager-cache: false
+
+      - name: Install runtime workspace dependencies
+        run: npm ci
+        working-directory: runtime/neuro-kurisu
+
+      - name: Typecheck complete runtime workspace
+        run: npm run typecheck
+        working-directory: runtime/neuro-kurisu
+
+      - name: Validate envelope restore, projection repair and restart
+        run: |
+          node --experimental-strip-types tests/runtime-checkpoint-envelope-workpass73.mjs
+          node --experimental-strip-types tests/runtime-checkpoint-projection-fault-matrix-workpass74.mjs
+          node --experimental-strip-types --test tests/runtime-stop-durability-20261127.mjs
+          node --experimental-strip-types --test tests/operational-journal-cursor-workpass84.mjs
+        working-directory: runtime/neuro-kurisu
