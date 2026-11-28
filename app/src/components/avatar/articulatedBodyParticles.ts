@@ -41,6 +41,10 @@ export interface ArticulatedBodyContacts {
   rightFoot: boolean;
   maxCorrection: number;
   maxSlipSpeed: number;
+  /** Number of capsule-contact projections applied to distal body particles. */
+  bodyCollisionCount: number;
+  /** Largest single body-collision positional correction, in body-space units. */
+  maxBodyCollisionCorrection: number;
 }
 export interface ArticulatedBodyJointLimitDiagnostics {
   maxFlexionDeg: number;
@@ -199,6 +203,42 @@ const HINGE_JOINTS:readonly HingeJointSpec[]=[
   {key:"rightKnee",parent:"rightHipPoint",joint:"rightKneePoint",child:"rightAnklePoint",distal:["rightHeelPoint","rightToePoint"],fallbackSide:1},
 ];
 
+interface BodyCollisionCapsule {
+  from: ArticulatedBodyParticleId;
+  to: ArticulatedBodyParticleId;
+  radius: number;
+}
+interface BodyCollisionParticle {
+  id: ArticulatedBodyParticleId;
+  radius: number;
+  fallbackSide: -1 | 1;
+}
+
+// Renderer-neutral body-space collision volumes. Proximal attachment points
+// (shoulders and hips) are excluded from point contacts so joints may remain
+// anatomically connected to the torso without fighting their parent segment.
+const BODY_COLLISION_CAPSULES: readonly BodyCollisionCapsule[] = [
+  { from: "pelvis", to: "chest", radius: 0.135 },
+  { from: "chest", to: "neck", radius: 0.09 },
+  { from: "neck", to: "head", radius: 0.075 },
+];
+const BODY_COLLISION_PARTICLES: readonly BodyCollisionParticle[] = [
+  { id: "leftElbowPoint", radius: 0.045, fallbackSide: -1 },
+  { id: "leftWristPoint", radius: 0.035, fallbackSide: -1 },
+  { id: "leftHandPoint", radius: 0.03, fallbackSide: -1 },
+  { id: "rightElbowPoint", radius: 0.045, fallbackSide: 1 },
+  { id: "rightWristPoint", radius: 0.035, fallbackSide: 1 },
+  { id: "rightHandPoint", radius: 0.03, fallbackSide: 1 },
+  { id: "leftKneePoint", radius: 0.05, fallbackSide: -1 },
+  { id: "rightKneePoint", radius: 0.05, fallbackSide: 1 },
+  { id: "leftAnklePoint", radius: 0.035, fallbackSide: -1 },
+  { id: "rightAnklePoint", radius: 0.035, fallbackSide: 1 },
+  { id: "leftHeelPoint", radius: 0.03, fallbackSide: -1 },
+  { id: "leftToePoint", radius: 0.03, fallbackSide: -1 },
+  { id: "rightHeelPoint", radius: 0.03, fallbackSide: 1 },
+  { id: "rightToePoint", radius: 0.03, fallbackSide: 1 },
+];
+
 function dot(a:BodyVector3,b:BodyVector3):number{return a.x*b.x+a.y*b.y+a.z*b.z;}
 function cross(a:BodyVector3,b:BodyVector3):BodyVector3{
   return vec(a.y*b.z-a.z*b.y,a.z*b.x-a.x*b.z,a.x*b.y-a.y*b.x);
@@ -206,6 +246,69 @@ function cross(a:BodyVector3,b:BodyVector3):BodyVector3{
 function unit(value:BodyVector3):BodyVector3|null{
   const magnitude=len(value);
   return Number.isFinite(magnitude)&&magnitude>1e-8?mul(value,1/magnitude):null;
+}
+
+/** Project a distal body particle out of a finite capsule, including degenerate-axis fallback. */
+function projectPointOutsideCapsule(
+  point: BodyVector3,
+  start: BodyVector3,
+  end: BodyVector3,
+  minimumDistance: number,
+  fallbackSide: -1 | 1,
+): { position: BodyVector3; normal: BodyVector3; correction: number } | null {
+  if (![point.x,point.y,point.z,start.x,start.y,start.z,end.x,end.y,end.z,minimumDistance]
+    .every(Number.isFinite) || minimumDistance <= 0) return null;
+  const axis = sub(end,start);
+  const axisLengthSquared = dot(axis,axis);
+  const along = axisLengthSquared > 1e-12
+    ? clamp(dot(sub(point,start),axis)/axisLengthSquared,0,1)
+    : 0;
+  const closest = add(start,mul(axis,along));
+  const radial = sub(point,closest);
+  const distance = len(radial);
+  if (!Number.isFinite(distance) || distance >= minimumDistance) return null;
+
+  let normal = unit(radial);
+  if (!normal) {
+    const axisUnit = unit(axis) ?? vec(0,1,0);
+    const preferred = vec(fallbackSide,0,0);
+    normal = unit(sub(preferred,mul(axisUnit,dot(preferred,axisUnit))))
+      ?? unit(cross(axisUnit,vec(0,0,1)))
+      ?? vec(fallbackSide,0,0);
+    if (normal.x*fallbackSide < 0) normal = mul(normal,-1);
+  }
+  const correction = minimumDistance-distance;
+  if (!Number.isFinite(correction) || correction <= 0) return null;
+  return { position:add(point,mul(normal,correction)),normal,correction };
+}
+
+function projectArticulatedBodySelfCollisions(
+  state: ArticulatedBodyParticleState,
+  contactNormals: Map<ArticulatedBodyParticleId,BodyVector3>,
+  contacts: ArticulatedBodyContacts,
+): void {
+  for (const spec of BODY_COLLISION_PARTICLES) {
+    const particle = state.particles[spec.id];
+    for (const capsule of BODY_COLLISION_CAPSULES) {
+      if (capsule.from === spec.id || capsule.to === spec.id) continue;
+      const projection = projectPointOutsideCapsule(
+        particle.position,
+        state.particles[capsule.from].position,
+        state.particles[capsule.to].position,
+        capsule.radius+spec.radius,
+        spec.fallbackSide,
+      );
+      if (!projection) continue;
+      particle.position = projection.position;
+      const previousNormal = contactNormals.get(spec.id);
+      contactNormals.set(spec.id,previousNormal?add(previousNormal,projection.normal):projection.normal);
+      contacts.bodyCollisionCount += 1;
+      contacts.maxBodyCollisionCorrection = Math.max(
+        contacts.maxBodyCollisionCorrection,
+        projection.correction,
+      );
+    }
+  }
 }
 function rotateAroundAxis(value:BodyVector3,axis:BodyVector3,angle:number):BodyVector3{
   const cosine=Math.cos(angle),sine=Math.sin(angle);
@@ -400,7 +503,10 @@ export function stepAvatarArticulatedBody(
     {id:"rightHeelPoint" as ArticulatedBodyParticleId,side:"right" as const},
     {id:"rightToePoint" as ArticulatedBodyParticleId,side:"right" as const},
   ] as const;
-  const contacts:ArticulatedBodyContacts={leftFoot:false,rightFoot:false,maxCorrection:0,maxSlipSpeed:0};
+  const contacts:ArticulatedBodyContacts={
+    leftFoot:false,rightFoot:false,maxCorrection:0,maxSlipSpeed:0,
+    bodyCollisionCount:0,maxBodyCollisionCorrection:0,
+  };
   const correctionDegrees:ArticulatedBodyJointLimitDiagnostics["correctionDegrees"]={
     leftElbow:0,rightElbow:0,leftKnee:0,rightKnee:0,
   };
@@ -435,6 +541,7 @@ export function stepAvatarArticulatedBody(
     const before={} as Record<ArticulatedBodyParticleId,BodyVector3>;
     const incomingVelocity={} as Record<ArticulatedBodyParticleId,BodyVector3>;
     const projectedSupport=new Set<ArticulatedBodyParticleId>();
+    const collisionNormals=new Map<ArticulatedBodyParticleId,BodyVector3>();
     for(const id of IDS){
       const p=state.particles[id];before[id]={...p.position};incomingVelocity[id]={...p.velocity};if(p.pinned)continue;
       const stiffness=reduced?92:128,damping=reduced||!awake?22:18,gravity=awake?(1-energy)*.12:.18;
@@ -474,12 +581,21 @@ export function stepAvatarArticulatedBody(
           }
         }
       }
+      // Resolve limb-to-torso contacts after bone lengths and hinges. Repeating
+      // the unilateral projection each iteration prevents constraints from
+      // pulling the hands/wrists back through the body volume on the next pass.
+      projectArticulatedBodySelfCollisions(state,collisionNormals,contacts);
       state.particles.pelvis.position={...state.particles.pelvis.target};
     }
     for(const id of IDS){
       const p=state.particles[id];if(p.pinned)continue;
       p.velocity=mul(sub(p.position,before[id]),1/dt);
       p.velocity=mul(p.velocity,(reduced || !awake) ? 0.78 : 0.9);
+      const collisionNormal=unit(collisionNormals.get(id)??vec());
+      if(collisionNormal){
+        // Zero restitution: positional separation must not become a bounce.
+        p.velocity=sub(p.velocity,mul(collisionNormal,dot(p.velocity,collisionNormal)));
+      }
       p.position=vec(clamp(p.position.x,-2,2),clamp(p.position.y,-2,3),clamp(p.position.z,-2,2));
     }
     if(groundEnabled){
