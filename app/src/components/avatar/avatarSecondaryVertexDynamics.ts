@@ -348,10 +348,16 @@ function applyAvatarBodySurfaceCollisions(
     surfacePositions[offset + 2] = surfaceVertex.z;
   }
 
+  const colliderDiagnostics: { reason?: string; vertexCount?: number; triangleCount?: number; validTriangles?: number; gridEntries?: number; cellSize?: number } = {};
   const collider: AvatarBodySurfaceCollider | null = createAvatarBodySurfaceCollider({
     positions: surfacePositions,
     indices: geometry.index?.array ?? null,
+    diagnostics: colliderDiagnostics,
   });
+  bodySurface.userData = {
+    ...(bodySurface.userData ?? {}),
+    nk1SecondaryCollisionBuild: { ...colliderDiagnostics },
+  };
   if (!collider) return false;
 
   const bodyWorldMatrix = bodySurface.matrixWorld;
