@@ -101,9 +101,25 @@ try {
   const audit = stage.locator('details[aria-label="Диагностика вторичной физики аватара"]');
   await audit.waitFor({ state: "visible", timeout: 10_000 });
   if (!(await audit.getAttribute("open"))) await audit.locator("summary").click();
-  await audit.getByText("All secondary meshes: 12", { exact: true }).waitFor({ state: "visible", timeout: 10_000 });
-  await audit.getByText("XPBD surface particles: 12 mesh", { exact: true }).waitFor({ state: "visible", timeout: 10_000 });
+  await page.waitForFunction(() => {
+    const panel = document.querySelector('details[aria-label="Диагностика вторичной физики аватара"]');
+    return panel instanceof HTMLDetailsElement && panel.textContent?.includes("All secondary meshes:");
+  }, undefined, { timeout: 10_000 });
   report.diagnostics = await audit.innerText();
+  const allSecondaryMatch = report.diagnostics.match(/All secondary meshes:\\s*(\\d+)/);
+  const xpbdMatch = report.diagnostics.match(/XPBD surface particles:\\s*(\\d+)\\s+mesh/);
+  report.secondaryRuntimeCounts = {
+    allSecondary: allSecondaryMatch ? Number(allSecondaryMatch[1]) : null,
+    xpbdParticles: xpbdMatch ? Number(xpbdMatch[1]) : null,
+    canvasXpbdParticles: await canvas.evaluate((element) => Number(element.dataset.avatarSecondaryParticleMeshCount || 0)),
+    expected: report.expectedSecondaryParticleMeshes,
+  };
+  assert.equal(report.secondaryRuntimeCounts.allSecondary, 12,
+    "canonical v5 must expose 12 attached secondary meshes; actual diagnostics: " + report.diagnostics);
+  assert.equal(report.secondaryRuntimeCounts.xpbdParticles, 12,
+    "canonical v5 must activate XPBD on all 12 selected surfaces; actual diagnostics: " + report.diagnostics);
+  assert.equal(report.secondaryRuntimeCounts.canvasXpbdParticles, 12,
+    "canvas runtime diagnostic must agree with the visible XPBD particle count");
   assert.match(report.diagnostics, /(?:GPU sway|XPBD-симуляция частиц поверхности)/,
     "canonical v5 must expose an active secondary deformation path");
 
