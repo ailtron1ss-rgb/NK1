@@ -1,0 +1,42 @@
+name: NK1 host-admitted source candidate workspace
+
+on:
+  pull_request:
+    branches: [workpass70-source]
+    paths:
+      - 'runtime/neuro-kurisu/src/organism/analysis/SourceCandidateWorkspace.ts'
+      - 'runtime/neuro-kurisu/src/organism/learning/CodeAssimilationSourceCandidateAdmission.ts'
+      - 'runtime/neuro-kurisu/tests/source-candidate-workspace.mjs'
+      - 'runtime/neuro-kurisu/tests/code-assimilation-source-candidate-admission.mjs'
+      - 'runtime/neuro-kurisu/package.json'
+      - '.github/workflows/nk1-source-candidate-workspace.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: nk1-source-candidate-workspace-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  host-admitted-source-candidate:
+    name: Host-admitted immutable source candidate materialization
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: runtime/neuro-kurisu
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v7
+      - name: Set up Node
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: runtime/neuro-kurisu/package-lock.json
+      - name: Install locked dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Candidate workspace path, hash and no-overwrite regressions
+        run: npm run test:source-candidate-workspace
+      - name: Signed source provenance, SBOM, license and host-base admission
+        run: npm run test:code-assimilation-source-candidate-admission
+      - name: Runtime typecheck
+        run: npm run typecheck
