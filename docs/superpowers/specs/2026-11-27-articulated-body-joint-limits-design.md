@@ -42,3 +42,19 @@ The body has 22 particles and 21 distance constraints. Ground contact constrains
 - Distal subchains move coherently; lengths remain bounded.
 - Collinear, zero-length and non-finite states fail closed to finite outputs.
 - Existing 22-particle ground contact and GLB/VRM/app integration remain green.
+
+
+## Follow-up — Body-space capsule self-collision — 2026-11-28
+
+The shared 22-particle articulated-body solver now applies bounded point-versus-capsule contacts after the segment-length, hinge and support-plane projections. This is part of the same renderer-neutral pose solution consumed by the 2D and 3D embodiment paths; it does not introduce a second motor or pose owner.
+
+- Torso proxy: pelvis-to-chest capsule, radius 0.135 body units.
+- Upper torso proxy: chest-to-neck capsule, radius 0.09.
+- Neck/head proxy: neck-to-head capsule, radius 0.075.
+- Distal elbow, wrist, hand, knee, ankle, heel and toe particles have bounded point radii and are projected only when they penetrate a body capsule. Shoulder and hip attachment points are intentionally excluded.
+- Contacts are unilateral and run after the structural/hinge/ground projections in each solver iteration so the next distance pass cannot leave the limbs inside the torso. Contact diagnostics report projection count and maximum correction.
+- Contact response uses zero normal restitution: positional separation does not create an artificial bounce.
+
+This is a coarse skeletal self-collision guard, not GLB surface-to-surface collision, cloth/body contact, self-collision between garment meshes, or volumetric soft tissue. Those require authored collision geometry or a validated surface/volume mapping and remain separate work.
+
+The regression fixture folds both forearms and hands toward the torso, verifies that their final points stay outside the torso capsule, and requires nonzero collision diagnostics. The same articulated-body workflow also reruns the existing ground, hinge, VRM/GLB integration, TypeScript and development-bundle gates.

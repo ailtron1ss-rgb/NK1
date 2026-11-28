@@ -56,14 +56,19 @@ jobs:
         with:
           python-version-file: .python-version
       - name: Validate browser smoke harness syntax
-        run: node --check app/scripts/full-app-ui-browser-smoke.mjs
+        run: |
+          node --check app/scripts/full-app-ui-browser-smoke.mjs
+          node --check app/scripts/avatar-3d-browser-acceptance.mjs
       - name: Install locked app and runtime dependencies
         run: |
           npm ci --prefix app --no-audit --no-fund
           npm ci --prefix runtime/neuro-kurisu --no-audit --no-fund
       - name: Install Chromium for the full application UI
         working-directory: app
-        run: npx playwright install --with-deps chromium
+        # The hosted runner already provides the shared browser libraries. Avoid
+        # Playwright's apt --with-deps path: it refreshes every third-party apt
+        # source and can fail on unrelated mirrors (e.g. Microsoft packages 403).
+        run: npx playwright install chromium
       - name: Launch the complete prototype and verify the full UI
         shell: bash
         run: |
@@ -112,6 +117,7 @@ jobs:
             exit 1
           fi
           node app/scripts/full-app-ui-browser-smoke.mjs http://127.0.0.1:8080 "$out"
+          node app/scripts/avatar-3d-browser-acceptance.mjs http://127.0.0.1:8080 "$out"
           cp "$log" "$out/quickstart.log"
       - name: Upload full application screenshots and smoke report
         if: always()

@@ -1,0 +1,50 @@
+name: NK1 avatar neuroadaptive secondary dynamics
+
+on:
+  pull_request:
+    branches: [workpass70-source]
+    paths:
+      - "app/src/components/Avatar3DStage.tsx"
+      - "app/src/components/avatar/avatarNeuroAdaptiveDynamics.ts"
+      - "app/src/components/avatar/avatarSecondaryVertexDynamics.ts"
+      - "app/src/components/avatar/avatarSceneBounds.ts"
+      - "app/src/types/three.d.ts"
+      - "app/src/components/avatar/avatarSecondaryParticleSolver.ts"
+      - "app/scripts/avatar-secondary-particle-solver.test.mjs"
+      - "app/src/components/avatar/avatarCameraFraming.ts"
+      - "app/src/components/avatar/avatarSecondaryAssetAudit.ts"
+      - "app/scripts/avatar-secondary-vertex-dynamics.test.mjs"
+      - "app/scripts/avatar-scene-bounds.test.mjs"
+      - "app/scripts/avatar-camera-framing.test.mjs"
+      - "app/scripts/avatar-neuroadaptive-dynamics.test.mjs"
+      - "app/scripts/avatar-secondary-asset-audit.test.mjs"
+      - "app/scripts/avatar-neuroadaptive-workflow.test.mjs"
+      - "docs/avatar/NK1_NEUROADAPTIVE_ASSET_CONTRACT.md"
+      - ".github/workflows/nk1-avatar-neuroadaptive-dynamics.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nk1-avatar-neuroadaptive-dynamics-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  avatar-neuroadaptive-dynamics:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - name: Install pinned app dependencies
+        run: npm ci --prefix app --ignore-scripts
+      - name: Test neuroadaptive dynamics, asset audits and workflow wiring
+        run: node --experimental-strip-types --test app/scripts/avatar-neuroadaptive-dynamics.test.mjs app/scripts/avatar-secondary-vertex-dynamics.test.mjs app/scripts/avatar-scene-bounds.test.mjs app/scripts/avatar-secondary-particle-solver.test.mjs app/scripts/avatar-camera-framing.test.mjs app/scripts/avatar-secondary-asset-audit.test.mjs app/scripts/avatar-neuroadaptive-workflow.test.mjs app/scripts/glb-avatar-expression-secondary-motion.test.mjs app/scripts/avatar-3d-glb-motion-integration.test.mjs
+      - name: App TypeScript check
+        run: npm --prefix app run typecheck
+      - name: App development-mode production bundle
+        run: npm --prefix app run build:dev
