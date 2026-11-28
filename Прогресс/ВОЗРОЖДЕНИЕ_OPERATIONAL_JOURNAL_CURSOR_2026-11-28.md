@@ -53,7 +53,10 @@
 - [x] Добавлен focused GitHub Actions workflow.
 - [x] Focused workflow `NK1 Operational Journal Cursor Regression`: SUCCESS, run `46134164582`, job `140945647361`, на code head `bf03992...`.
 - [x] Общие аудиты обнаружили две ошибки workflow и обе исправлены: NK1 policy требует `actions/checkout@v7` и `actions/setup-node@v7` (первоначально было `@v4`); затем `setup-node` искал отсутствующий корневой lock-файл. Выставлено `package-manager-cache: false`, поскольку lock-файлы принадлежат отдельным пакетам.
-- [ ] Повторный exact-head прогон после обеих правок ожидает завершения.
+- [x] Повторный exact-head focused run после обеих правок: **SUCCESS**, run `46134414931`, job `140946350117`; все 7 шагов job завершились успешно.
+- [x] Дополнительный N.E.K.O. operational journal durability run `46134414922` — SUCCESS.
+- [x] На том же PR head успешно прошли Module Dependency Audit (`46134414812`), Runtime Wiring Census (`46134414836`), integrated software baseline (`46134414920`), Action Gateway governance (`46134414878`), clean prototype startup (`46134414882`), explicit-forget integrity (`46134414926`) и 2D asset contract (`46134414850`).
+- [ ] Полный regression matrix: full application UI, NeuroCore core regression, unified organism runtime и WorkPass79 ещё выполнялись в последней выборке.
 - [ ] Общий regression matrix на обновлённом head ещё не подтверждён зелёным.
 - [ ] Полный runtime typecheck / интеграционные suite в репозитории ещё не выполнены.
 - [ ] API пока не подключён к Core checkpoint owner envelope; это следующий отдельный этап. Нельзя считать атомарный RuntimeCheckpointEnvelope реализованным.
