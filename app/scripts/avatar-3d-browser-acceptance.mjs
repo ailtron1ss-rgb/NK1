@@ -24,7 +24,7 @@ const report = {
   schemaVersion: 1,
   baseUrl,
   asset: "NeuroKurisu_3D_v5.glb",
-  expectedGpuSwayMeshes: 11,
+  expectedSecondaryParticleMeshes: 12,
   viewport: { width: 390, height: 844 },
   webgl: null,
   diagnostics: "",
@@ -101,7 +101,8 @@ try {
   const audit = stage.locator('details[aria-label="Диагностика вторичной физики аватара"]');
   await audit.waitFor({ state: "visible", timeout: 10_000 });
   if (!(await audit.getAttribute("open"))) await audit.locator("summary").click();
-  await audit.getByText("All secondary meshes: 11", { exact: true }).waitFor({ state: "visible", timeout: 10_000 });
+  await audit.getByText("All secondary meshes: 12", { exact: true }).waitFor({ state: "visible", timeout: 10_000 });
+  await audit.getByText("XPBD surface particles: 12 mesh", { exact: true }).waitFor({ state: "visible", timeout: 10_000 });
   report.diagnostics = await audit.innerText();
   assert.match(report.diagnostics, /(?:GPU sway|XPBD-симуляция частиц поверхности)/,
     "canonical v5 must expose an active secondary deformation path");
