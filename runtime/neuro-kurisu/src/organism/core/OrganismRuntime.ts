@@ -20,6 +20,7 @@ import { Mem0PlatformAdapter, type Mem0Candidate } from '../integration/mem0/Mem
 import { buildCognitiveProposalPrompt, parseCognitiveProposal } from '../language/LanguageOrgan.ts';
 import { OperationalJournal } from '../persistence/OperationalJournal.ts';
 import type { JsonStateStore } from '../persistence/FileStateStore.ts';
+import type { RuntimeCheckpointOwnerSnapshots } from '../system/RuntimeCheckpointEnvelope.ts';
 import { choosePhonePolicyDelay, type PhonePolicyConfig } from '../system/PhoneRuntimePolicy.ts';
 import { RuntimeClockScheduler, type RuntimeClockDecision } from '../system/RuntimeClockScheduler.ts';
 import { ContinuityLedger } from '../system/ContinuityLedger.ts';
@@ -95,6 +96,27 @@ async function readVoiceInput(embodiment: EmbodimentRuntime): Promise<VoiceInput
   if (typeof compatible.listenDetailed === 'function') return compatible.listenDetailed();
   const text = await embodiment.listen();
   return text ? { text, providerId: embodiment.speechInputProviderId } : null;
+}
+
+type RuntimeJournalCursor = Awaited<ReturnType<OperationalJournal['cursor']>>;
+export interface RuntimeCheckpointRecoveryReceipt {
+  receiptId:string; outcome:'restored'|'rejected'|'restore-failed'|'legacy'; recoveredAt:number;
+  schemaVersion?:number; checkpointId?:string; generation?:number; coreTick?:number; worldTick?:number;
+  journalOffset?:RuntimeJournalCursor; manifestHash?:string; reason?:string;
+}
+function stableCheckpointJson(value: unknown): string {
+  const normalize = (input: unknown): unknown => {
+    if (input === undefined || typeof input === 'function' || typeof input === 'symbol') return undefined;
+    if (input === null || typeof input !== 'object') return typeof input === 'number' && !Number.isFinite(input) ? null : input;
+    if (Array.isArray(input)) return input.map(item => normalize(item) ?? null);
+    const output: Record<string, unknown> = {};
+    for (const key of Object.keys(input as Record<string, unknown>).sort()) {
+      const normalized = normalize((input as Record<string, unknown>)[key]);
+      if (normalized !== undefined) output[key] = normalized;
+    }
+    return output;
+  };
+  return JSON.stringify(normalize(value)) ?? 'undefined';
 }
 
 function environmentToWorldContext(snapshot: ReturnType<WorldEnvironment['snapshot']>): WorldContext {
@@ -209,6 +231,8 @@ export interface RuntimeConfig extends OrganismConfig {
   cognitiveSpineStore?: JsonStateStore<CognitiveSpineScheduleState>;
   /** Optional injected durable sidecar for autonomous risk/recovery calibration. */
   riskAwareRecoveryStore?: JsonStateStore<RiskAwareRecoveryControllerState>;
+  /** Optional injected durable store for Open Loop Radar projections and fault testing. */
+  openLoopStore?: JsonStateStore<OpenLoopRadarState>;
   worldStateStore?: JsonStateStore<PersistedWorld>;
   journal?: { write(level: 'info'|'warn'|'error', event: string, data?: Record<string, unknown>): Promise<void> };
   visionBackend?: VisionSemanticBackend;
@@ -442,6 +466,9 @@ export class OrganismRuntime {
   private readonly riskAwareRecoveryStore: JsonStateStore<RiskAwareRecoveryControllerState>;
   private readonly cognitiveImmuneSystem: RuntimeCognitiveHealthMonitor | null;
   private readonly cognitiveImmuneStore: JsonStateStore<any>;
+  private runtimeCheckpointRestoreStatus = 'not-checked';
+  private runtimeCheckpointRecoveryReceipt: RuntimeCheckpointRecoveryReceipt | null = null;
+  private readonly runtimeCheckpointProjectionFailures = new Map<string,{generation:number;reason:'startup-repair'|'post-commit';message:string}>();
   private readonly unifiedCycle = new UnifiedCognitiveCycle();
   private readonly continuousCognitiveFabric = new ContinuousCognitiveFabric();
   private readonly realityGrounding = new RealityGroundingController();
@@ -609,7 +636,7 @@ export class OrganismRuntime {
     if (!Number.isSafeInteger(this.synapticAdapterTimeoutMs) || this.synapticAdapterTimeoutMs < 100 || this.synapticAdapterTimeoutMs > 120_000) {
       throw new Error('synaptic-adapter-timeout-invalid');
     }
-    this.openLoopStore = new FileStateStore<OpenLoopRadarState>(`${config.stateFile}.open-loops.json`);
+    this.openLoopStore = config.openLoopStore ?? new FileStateStore<OpenLoopRadarState>(`${config.stateFile}.open-loops.json`);
     this.journal = config.journal ?? new OperationalJournal(config.stateFile.replace(/\.json$/i, '.operational.jsonl'));
     this.continuityLedger = new ContinuityLedger(config.stateFile.replace(/\.json$/i, '.continuity.jsonl'));
     this.registerRuntimeClocks();
@@ -698,36 +725,34 @@ export class OrganismRuntime {
       // Re-verified active records and quarantined replay mismatches are persisted before
       // any cognitive step can use the language adapter path.
       await this.synapticMatrixStore.save(this.synapticMatrix.snapshot());
-      const restoredOpenLoopState = await this.openLoopStore.load();
-      this.openLoopRadar.restore(restoredOpenLoopState ?? undefined);
-      if (!restoredOpenLoopState) await this.openLoopStore.save(this.openLoopRadar.snapshot());
       const systemSnapshot = this.core.systemSnapshot();
-      if (this.cognitiveImmuneSystem) {
-        try {
-          this.cognitiveImmuneSystem.restore(await this.cognitiveImmuneStore.load() ?? undefined);
-        } catch (error) {
-          await this.journal.write('warn', 'runtime.cognitive-health.restore-failed', {
-            message: String((error as any)?.message ?? error).slice(0, 180),
-          }).catch(() => {});
+      const checkpointEnvelope = systemSnapshot.runtimeCheckpointEnvelope;
+      const restoredFromEnvelope = await this.restoreRuntimeCheckpointEnvelope(checkpointEnvelope);
+      if (!restoredFromEnvelope && checkpointEnvelope !== undefined) throw new Error('runtime-checkpoint-envelope-present-but-unrecoverable:' + this.runtimeCheckpointRestoreStatus);
+      if (!restoredFromEnvelope) {
+        const restoredOpenLoopState = await this.openLoopStore.load();
+        this.openLoopRadar.restore(restoredOpenLoopState ?? undefined);
+        if (!restoredOpenLoopState) await this.openLoopStore.save(this.openLoopRadar.snapshot());
+        if (this.cognitiveImmuneSystem) {
+          try { this.cognitiveImmuneSystem.restore(await this.cognitiveImmuneStore.load() ?? undefined); }
+          catch (error) { await this.journal.write('warn','runtime.cognitive-health.restore-failed',{message:String((error as any)?.message??error).slice(0,180)}).catch(()=>{}); }
         }
+        try { this.cognitiveSpineScheduler.restore(await this.cognitiveSpineStore.load() ?? undefined); }
+        catch (error) {
+          this.cognitiveSpineScheduler.restore();
+          await this.journal.write('warn','runtime.cognitive-spine.restore-failed',{message:String((error as any)?.message??error).slice(0,180)}).catch(()=>{});
+        }
+        try { this.unifiedCycle.restoreRiskAwareRecovery(await this.riskAwareRecoveryStore.load() ?? undefined); }
+        catch (error) {
+          this.unifiedCycle.restoreRiskAwareRecovery();
+          await this.journal.write('warn','runtime.risk-aware-recovery.restore-failed',{message:String((error as any)?.message??error).slice(0,180)}).catch(()=>{});
+        }
+        const legacyWorld = await this.worldStore.load();
+        this.environment.restore(legacyWorld);
+        if (!legacyWorld) { await this.worldStore.save(this.environment.persisted()); this.lastWorldCheckpointAt = Date.now(); }
       }
-      try {
-        this.cognitiveSpineScheduler.restore(await this.cognitiveSpineStore.load() ?? undefined);
-      } catch (error) {
-        // The optional cadence sidecar must never prevent the canonical organism from booting.
-        this.cognitiveSpineScheduler.restore();
-        await this.journal.write('warn', 'runtime.cognitive-spine.restore-failed', {
-          message: String((error as any)?.message ?? error).slice(0, 180),
-        }).catch(() => {});
-      }
-      try {
-        this.unifiedCycle.restoreRiskAwareRecovery(await this.riskAwareRecoveryStore.load() ?? undefined);
-      } catch (error) {
-        this.unifiedCycle.restoreRiskAwareRecovery();
-        await this.journal.write('warn', 'runtime.risk-aware-recovery.restore-failed', {
-          message: String((error as any)?.message ?? error).slice(0, 180),
-        }).catch(() => {});
-      }
+      this.core.setRuntimeCheckpointContributor(async () => this.runtimeCheckpointOwnerSnapshots(await this.runtimeCheckpointJournalOffset()));
+      this.core.setRuntimeCheckpointCommitObserver(envelope => this.onRuntimeCheckpointCommitted(envelope));
       this.evidenceBus.restore(systemSnapshot.runtimeEvidence ?? undefined);
       this.cognitiveEventFabric.restore(systemSnapshot.runtimeCognitiveEventFabric ?? systemSnapshot.cognitiveEventFabric ?? undefined);
       this.resourceEconomy.restore(systemSnapshot.runtimeCognitiveResourceEconomy ?? systemSnapshot.cognitiveResourceEconomy ?? undefined);
@@ -752,9 +777,6 @@ export class OrganismRuntime {
         processed: runtimeView.continuous?.processed,
       });
       this.core.setRuntimeClosure(this.runtimeClosure.snapshot());
-      const world = await this.worldStore.load();
-      this.environment.restore(world);
-      if (!world) { await this.worldStore.save(this.environment.persisted()); this.lastWorldCheckpointAt = Date.now(); }
       const snap = this.core.snapshot();
       await this.embodiment.init(snap.facets.embodiment?.body);
       this.embodiedRecovery.restore(snap.facets.embodiment?.embodiedRecovery);
@@ -2167,7 +2189,7 @@ export class OrganismRuntime {
       const system=this.cognitiveImmuneSystem;
       if(!system)throw new Error('cognitive-health-monitor-not-configured');
       const result=system.inspectHealth(input);
-      if(result.observationAccepted)await this.cognitiveImmuneStore.save(system.snapshot());
+      if(result.observationAccepted)this.core.markRuntimeCheckpointDirty();
       return result;
     });
   }
@@ -2179,7 +2201,7 @@ export class OrganismRuntime {
       const system=this.cognitiveImmuneSystem;
       if(!system)throw new Error('cognitive-health-monitor-not-configured');
       const reviewed=system.reviewHealthSignal(id,verdict,reviewer,evidenceRef);
-      if(reviewed)await this.cognitiveImmuneStore.save(system.snapshot());
+      if(reviewed){this.core.markRuntimeCheckpointDirty();await this.core.flush();}
       return reviewed;
     });
   }
@@ -2205,10 +2227,14 @@ export class OrganismRuntime {
       if(!input)return; // Missing evidence is unknown, never a healthy/recovery sample.
       const result=system.inspectHealth({...input,tick});
       if(!result.observationAccepted)return;
-      // Avoid an fsync on every mobile tick. Persist signal transitions immediately,
-      // otherwise checkpoint the bounded observation stream every eighth organism tick.
-      if(result.newSignals.length||result.recoveredSignals.length||tick%8===0)
-        await this.cognitiveImmuneStore.save(system.snapshot());
+      // The envelope is canonical: urgent health transitions force a Core commit;
+      // routine observations join the next governed full checkpoint.
+      if(result.newSignals.length||result.recoveredSignals.length) {
+        this.core.markRuntimeCheckpointDirty();
+        await this.core.flush();
+      } else if(tick%8===0) {
+        this.core.markRuntimeCheckpointDirty();
+      }
       if(result.newSignals.length||result.recoveredSignals.length){
         await this.journal.write(result.healthStatus==='critical'?'error':'warn','runtime.cognitive-health.changed',{
           tick,status:result.healthStatus,score01:result.score01,coverage01:result.coverage01,
@@ -2923,7 +2949,10 @@ export class OrganismRuntime {
     const stopErrors: unknown[] = [];
     const durability = {
       core: 'not-attempted' as 'not-attempted' | 'durable' | 'failed',
+      runtimeCheckpointEnvelope: 'not-attempted' as 'not-attempted' | 'durable' | 'failed',
       world: 'not-attempted' as 'not-attempted' | 'durable' | 'failed',
+      openLoop: 'not-attempted' as 'not-attempted' | 'durable' | 'failed',
+      cognitiveHealth: 'not-attempted' as 'not-attempted' | 'durable' | 'failed' | 'not-configured',
       continuityLedger: 'not-attempted' as 'not-attempted' | 'durable' | 'failed',
       cognitiveSpine: 'not-attempted' as 'not-attempted' | 'durable' | 'failed',
       riskAwareRecovery: 'not-attempted' as 'not-attempted' | 'durable' | 'failed',
@@ -2986,8 +3015,19 @@ export class OrganismRuntime {
         }
 
         try {
+          this.core.markRuntimeCheckpointDirty();
           await this.core.flush();
           durability.core = 'durable';
+          const checkpointValidation = this.core.validateRuntimeCheckpointEnvelope(this.core.systemSnapshot().runtimeCheckpointEnvelope);
+          if (checkpointValidation.ok) {
+            durability.runtimeCheckpointEnvelope = 'durable';
+            durability.world = 'durable'; durability.openLoop = 'durable';
+            durability.cognitiveSpine = 'durable'; durability.riskAwareRecovery = 'durable';
+            durability.cognitiveHealth = checkpointValidation.snapshots.cognitiveHealth === null ? 'not-configured' : 'durable';
+          } else {
+            for (const key of ['runtimeCheckpointEnvelope','world','openLoop','cognitiveSpine','riskAwareRecovery','cognitiveHealth'] as const) durability[key] = 'failed';
+            capture(new Error('runtime-checkpoint-envelope-unverified:' + checkpointValidation.reason));
+          }
         } catch (error) {
           durability.core = 'failed';
           capture(error);
@@ -2996,29 +3036,6 @@ export class OrganismRuntime {
           }).catch(() => {});
         }
 
-        try {
-          const persisted = await this.persistCognitiveSpineSchedule();
-          durability.cognitiveSpine = persisted ? 'durable' : 'failed';
-          if (!persisted) capture(new Error('cognitive-spine-durability-unconfirmed'));
-        } catch (error) {
-          durability.cognitiveSpine = 'failed';
-          capture(error);
-        }
-        try {
-          const persisted = await this.persistRiskAwareRecovery();
-          durability.riskAwareRecovery = persisted ? 'durable' : 'failed';
-          if (!persisted) capture(new Error('risk-aware-recovery-durability-unconfirmed'));
-        } catch (error) {
-          durability.riskAwareRecovery = 'failed';
-          capture(error);
-        }
-        try {
-          await this.checkpointWorld(true);
-          durability.world = 'durable';
-        } catch (error) {
-          durability.world = 'failed';
-          capture(error);
-        }
       });
     } catch (error) {
       capture(error);
@@ -3070,16 +3087,18 @@ export class OrganismRuntime {
     })();
     const overallDurable = runtimeViewRef.current !== null &&
       durability.core === 'durable' &&
-      durability.world === 'durable' &&
+      durability.runtimeCheckpointEnvelope === 'durable' &&
+      durability.world === 'durable' && durability.openLoop === 'durable' &&
+      durability.cognitiveHealth !== 'failed' &&
       durability.continuityLedger === 'durable' &&
-      durability.cognitiveSpine === 'durable' &&
-      durability.riskAwareRecovery === 'durable' &&
+      durability.cognitiveSpine === 'durable' && durability.riskAwareRecovery === 'durable' &&
       stopErrors.length === 0;
     const receipt = {
       overall: overallDurable ? 'durable' : 'partial',
       tick: runtimeViewRef.current?.tick ?? null,
       worldTick,
       durability,
+      runtimeCheckpointProjectionFailures: [...this.runtimeCheckpointProjectionFailures.entries()].map(([owner, failure]) => ({ owner, ...failure })),
       errors: stopErrors.slice(0, 8).map(error =>
         String((error as any)?.message ?? error).slice(0, 180)),
     };
@@ -3096,27 +3115,17 @@ export class OrganismRuntime {
   }
 
   private async persistCognitiveSpineSchedule(): Promise<boolean> {
-    try {
-      await this.cognitiveSpineStore.save(this.cognitiveSpineScheduler.snapshot());
-      return true;
-    } catch (error) {
-      await this.journal.write('warn', 'runtime.cognitive-spine.persist-failed', {
-        tick: this.cognitiveSpineScheduler.snapshot().lastTick,
-        message: String((error as any)?.message ?? error).slice(0, 180),
-      }).catch(() => {});
+    try { this.core.markRuntimeCheckpointDirty(); return true; }
+    catch (error) {
+      await this.journal.write('warn','runtime.cognitive-spine.persist-failed',{tick:this.cognitiveSpineScheduler.snapshot().lastTick,message:String((error as any)?.message??error).slice(0,180)}).catch(()=>{});
       return false;
     }
   }
 
   private async persistRiskAwareRecovery(): Promise<boolean> {
-    try {
-      await this.riskAwareRecoveryStore.save(this.unifiedCycle.riskAwareRecoverySnapshot());
-      return true;
-    } catch (error) {
-      await this.journal.write('warn', 'runtime.risk-aware-recovery.persist-failed', {
-        tick: this.unifiedCycle.riskAwareRecoverySnapshot().tick,
-        message: String((error as any)?.message ?? error).slice(0, 180),
-      }).catch(() => {});
+    try { this.core.markRuntimeCheckpointDirty(); return true; }
+    catch (error) {
+      await this.journal.write('warn','runtime.risk-aware-recovery.persist-failed',{tick:this.unifiedCycle.riskAwareRecoverySnapshot().tick,message:String((error as any)?.message??error).slice(0,180)}).catch(()=>{});
       return false;
     }
   }
@@ -3349,16 +3358,126 @@ export class OrganismRuntime {
   private startEmbodimentClock(): void { if (this.initialized) this.clockScheduler.start('embodiment'); }
 
   private shouldCheckpointWorld(force = false): boolean {
+    if (this.runtimeCheckpointProjectionFailures.size > 0) return true;
     if (force || this.lastWorldCheckpointAt === 0) return true;
     if (this.worldDirtyCycles >= this.phonePolicy.worldCheckpointMaxDirtyCycles) return true;
     return Date.now() - this.lastWorldCheckpointAt >= this.phonePolicy.worldCheckpointMinIntervalMs;
   }
 
+  private async runtimeCheckpointJournalOffset(): Promise<RuntimeJournalCursor> {
+    const journal = this.journal as OperationalJournal & { cursor?: () => Promise<RuntimeJournalCursor> };
+    if (typeof journal.cursor === 'function') return journal.cursor();
+    return { version:1, retainedSegments:0, retainedBytes:0, activeSegmentId:null, activeSegmentBytes:0,
+      activeSegmentRecords:0, activeSegmentTailSha256:null, fileSynced:false, directorySynced:false };
+  }
+  private runtimeCheckpointOwnerSnapshots(journalOffset: RuntimeJournalCursor) {
+    return { world:this.environment.persisted(), openLoop:this.openLoopRadar.snapshot(),
+      cognitiveSpine:this.cognitiveSpineScheduler.snapshot(), riskAwareRecovery:this.unifiedCycle.riskAwareRecoverySnapshot(),
+      cognitiveHealth:this.cognitiveImmuneSystem?.snapshot() ?? null, journalOffset };
+  }
+  private async persistRuntimeCheckpointProjections(
+    snapshots: ReturnType<OrganismRuntime['runtimeCheckpointOwnerSnapshots']>, generation:number,
+    reason:'startup-repair'|'post-commit',
+  ): Promise<void> {
+    const writes:Array<[string,()=>Promise<void>]>=[
+      ['world',()=>this.worldStore.save(snapshots.world)],
+      ['openLoop',()=>this.openLoopStore.save(snapshots.openLoop)],
+      ['cognitiveSpine',()=>this.cognitiveSpineStore.save(snapshots.cognitiveSpine)],
+      ['riskAwareRecovery',()=>this.riskAwareRecoveryStore.save(snapshots.riskAwareRecovery)],
+    ];
+    if(this.cognitiveImmuneSystem)writes.push(['cognitiveHealth',()=>this.cognitiveImmuneStore.save(snapshots.cognitiveHealth)]);
+    const results=await Promise.allSettled(writes.map(([,write])=>write()));
+    for(let i=0;i<results.length;i++){
+      const result=results[i],owner=writes[i][0];
+      if(result.status==='rejected'){
+        const message=String((result.reason as any)?.message??result.reason).slice(0,180);
+        this.runtimeCheckpointProjectionFailures.set(owner,{generation,reason,message});
+        await this.journal.write('warn','runtime.checkpoint-envelope.projection-failed',{owner,generation,reason,message}).catch(()=>{});
+      }else this.runtimeCheckpointProjectionFailures.delete(owner);
+    }
+    if(this.runtimeCheckpointProjectionFailures.has('world')){this.lastWorldCheckpointAt=0;this.worldDirtyCycles=Math.max(1,this.worldDirtyCycles);}
+    else{this.lastWorldCheckpointAt=Date.now();this.worldDirtyCycles=0;}
+  }
+  runtimeCheckpointDiagnostics() {
+    return { restoreStatus:this.runtimeCheckpointRestoreStatus,
+      generation:this.core.systemSnapshot().runtimeCheckpointEnvelope?.generation??0,
+      recoveryReceipt:this.runtimeCheckpointRecoveryReceipt?{...this.runtimeCheckpointRecoveryReceipt}:null,
+      projectionFailures:[...this.runtimeCheckpointProjectionFailures.entries()].map(([owner,failure])=>({owner,...failure})) };
+  }
+  private async recordRuntimeCheckpointRecoveryReceipt(
+    outcome:RuntimeCheckpointRecoveryReceipt['outcome'],
+    details:Partial<Omit<RuntimeCheckpointRecoveryReceipt,'receiptId'|'outcome'|'recoveredAt'>>={},
+  ):Promise<void>{
+    const receipt:RuntimeCheckpointRecoveryReceipt={receiptId:randomUUID(),outcome,recoveredAt:Date.now(),...details};
+    this.runtimeCheckpointRecoveryReceipt=receipt;
+    const event={restored:'runtime.checkpoint-envelope.restored',rejected:'runtime.checkpoint-envelope.rejected',
+      'restore-failed':'runtime.checkpoint-envelope.restore-failed',legacy:'runtime.checkpoint-envelope.legacy'}[outcome];
+    await this.journal.write(outcome==='restored'||outcome==='legacy'?'info':'warn',event,{...receipt}).catch(()=>{});
+  }
+  private async onRuntimeCheckpointCommitted(value:unknown):Promise<void>{
+    const validation=this.core.validateRuntimeCheckpointEnvelope(value);
+    if(!validation.ok){await this.journal.write('error','runtime.checkpoint-envelope.committed-invalid',{reason:validation.reason}).catch(()=>{});return;}
+    await this.persistRuntimeCheckpointProjections(validation.snapshots,validation.envelope.generation,'post-commit');
+  }
+  private restoreRuntimeCheckpointOwners(snapshots:ReturnType<OrganismRuntime['runtimeCheckpointOwnerSnapshots']>):void{
+    const worldProbe=new WorldEnvironment();worldProbe.restore(snapshots.world);
+    if(stableCheckpointJson(worldProbe.persisted())!==stableCheckpointJson(snapshots.world))throw new Error('runtime-checkpoint-world-restore-preflight-failed');
+    const openLoopProbe=new OpenLoopRadar();openLoopProbe.restore(snapshots.openLoop);
+    if(stableCheckpointJson(openLoopProbe.snapshot())!==stableCheckpointJson(snapshots.openLoop))throw new Error('runtime-checkpoint-open-loop-restore-preflight-failed');
+    const spineProbe=new CognitiveSpineScheduler();spineProbe.restore(snapshots.cognitiveSpine);
+    if(stableCheckpointJson(spineProbe.snapshot())!==stableCheckpointJson(snapshots.cognitiveSpine))throw new Error('runtime-checkpoint-cognitive-spine-restore-preflight-failed');
+    const recoveryProbe=new UnifiedCognitiveCycle();recoveryProbe.restoreRiskAwareRecovery(snapshots.riskAwareRecovery);
+    if(stableCheckpointJson(recoveryProbe.riskAwareRecoverySnapshot())!==stableCheckpointJson(snapshots.riskAwareRecovery))throw new Error('runtime-checkpoint-risk-recovery-restore-preflight-failed');
+    if(snapshots.cognitiveHealth!==null&&!this.cognitiveImmuneSystem)throw new Error('runtime-checkpoint-cognitive-health-not-configured');
+    if(this.cognitiveImmuneSystem){
+      const previous=this.cognitiveImmuneSystem.snapshot();
+      try{
+        this.cognitiveImmuneSystem.restore(snapshots.cognitiveHealth as any);
+        if(snapshots.cognitiveHealth!==null&&stableCheckpointJson(this.cognitiveImmuneSystem.snapshot())!==stableCheckpointJson(snapshots.cognitiveHealth))
+          throw new Error('runtime-checkpoint-cognitive-health-restore-preflight-failed');
+      }catch(error){try{this.cognitiveImmuneSystem.restore(previous as any);}catch{}throw error;}
+    }
+    this.environment.restore(snapshots.world);this.openLoopRadar.restore(snapshots.openLoop);
+    this.cognitiveSpineScheduler.restore(snapshots.cognitiveSpine);this.unifiedCycle.restoreRiskAwareRecovery(snapshots.riskAwareRecovery);
+    this.lastWorldCheckpointAt=Date.now();this.worldDirtyCycles=0;
+  }
+  private async restoreRuntimeCheckpointEnvelope(value:unknown):Promise<boolean>{
+    if(value===undefined){
+      this.runtimeCheckpointRestoreStatus='legacy-no-envelope';
+      await this.recordRuntimeCheckpointRecoveryReceipt('legacy',{reason:'checkpoint-envelope-absent'});return false;
+    }
+    const validation=this.core.validateRuntimeCheckpointEnvelope(value);
+    if(!validation.ok){
+      this.runtimeCheckpointRestoreStatus='rejected:'+validation.reason;
+      await this.recordRuntimeCheckpointRecoveryReceipt('rejected',{reason:validation.reason});return false;
+    }
+    try{
+      const currentCoreTick=this.core.operationalStatusSnapshot().tick;
+      if(validation.envelope.coreTick!==currentCoreTick)throw new Error('runtime-checkpoint-core-tick-mismatch');
+      this.restoreRuntimeCheckpointOwners(validation.snapshots);
+      await this.persistRuntimeCheckpointProjections(validation.snapshots,validation.envelope.generation,'startup-repair');
+      this.runtimeCheckpointRestoreStatus='restored:'+validation.envelope.generation;
+      await this.recordRuntimeCheckpointRecoveryReceipt('restored',{
+        schemaVersion:validation.envelope.version,checkpointId:validation.envelope.checkpointId,generation:validation.envelope.generation,
+        coreTick:validation.envelope.coreTick,worldTick:validation.envelope.worldTick,
+        ...('journalOffset'in validation.envelope?{journalOffset:validation.envelope.journalOffset}:{}),
+        ...('manifestHash'in validation.envelope?{manifestHash:validation.envelope.manifestHash}:{}),
+      });return true;
+    }catch(error){
+      const reason=String((error as any)?.message??error).slice(0,180);
+      this.runtimeCheckpointRestoreStatus='restore-failed:'+reason;
+      await this.recordRuntimeCheckpointRecoveryReceipt('restore-failed',{
+        schemaVersion:validation.envelope.version,checkpointId:validation.envelope.checkpointId,generation:validation.envelope.generation,
+        coreTick:validation.envelope.coreTick,worldTick:validation.envelope.worldTick,
+        ...('journalOffset'in validation.envelope?{journalOffset:validation.envelope.journalOffset}:{}),
+        ...('manifestHash'in validation.envelope?{manifestHash:validation.envelope.manifestHash}:{}),reason,
+      });return false;
+    }
+  }
+
   private async checkpointWorld(force = false): Promise<void> {
     if (!this.shouldCheckpointWorld(force)) return;
-    await this.worldStore.save(this.environment.persisted());
-    this.worldDirtyCycles = 0;
-    this.lastWorldCheckpointAt = Date.now();
+    this.core.markRuntimeCheckpointDirty();
   }
 
 
@@ -3372,7 +3491,8 @@ export class OrganismRuntime {
     const previous = this.openLoopRadar.snapshot();
     try {
       const result = mutation();
-      await this.openLoopStore.save(this.openLoopRadar.snapshot());
+      this.core.markRuntimeCheckpointDirty();
+      await this.core.flush();
       return result;
     } catch (error) {
       this.openLoopRadar.restore(previous);
@@ -3505,11 +3625,10 @@ export class OrganismRuntime {
 
   async flush(): Promise<void> {
     return this.enqueue(async () => {
-      await this.core.flush();
-      await this.openLoopStore.save(this.openLoopRadar.snapshot());
       const view = this.core.runtimeClosureOperationalSnapshot();
       this.runtimeClosure.durable({ at: Date.now(), tick: view.tick, stateTick: view.tick, replaySignature: view.replaySignature, continuousTick: view.continuous?.tick, continuityProcessed: view.continuous?.processed, memoryCount: view.memoryCount });
       this.core.setRuntimeClosure(this.runtimeClosure.snapshot());
+      this.core.markRuntimeCheckpointDirty();
       await this.core.flush();
     });
   }
