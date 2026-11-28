@@ -51,6 +51,8 @@ export interface AvatarBodySurfaceCollider {
   max: AvatarBodySurfacePoint;
   cellSize: number;
   cells: ReadonlyMap<string, readonly number[]>;
+  visitStamps: Uint32Array;
+  queryVersion: number;
 }
 
 export interface AvatarBodySurfaceColliderInput {
@@ -198,7 +200,7 @@ export function createAvatarBodySurfaceCollider(
     validTriangles += 1;
   }
   if (validTriangles < 4 || cells.size === 0) return null;
-  return { positions, indices, center, min, max, cellSize, cells };
+  return { positions, indices, center, min, max, cellSize, cells, visitStamps: new Uint32Array(triangleCount), queryVersion: 0 };
 }
 
 /** Project a particle to the outward side of its closest torso triangle. */
@@ -209,7 +211,7 @@ export function projectPointOutsideBodySurface(
 ): AvatarBodySurfaceProjection | null {
   if (!collider || !point || ![point.x, point.y, point.z, minimumDistance].every(Number.isFinite)
     || minimumDistance <= 0) return null;
-  const { min, max, cellSize, positions, indices, cells, center } = collider;
+  const { min, max, cellSize, positions, indices, cells, center, visitStamps } = collider;
   const broadMargin = Math.max(minimumDistance, cellSize * 0.2);
   if (point.x < min.x - broadMargin || point.x > max.x + broadMargin
     || point.y < min.y - broadMargin || point.y > max.y + broadMargin
@@ -218,26 +220,19 @@ export function projectPointOutsideBodySurface(
   const cx = Math.floor((point.x - min.x) / cellSize);
   const cy = Math.floor((point.y - min.y) / cellSize);
   const cz = Math.floor((point.z - min.z) / cellSize);
-  const candidates = new Set<number>();
-  for (let x = cx - 2; x <= cx + 2; x += 1) {
-    for (let y = cy - 2; y <= cy + 2; y += 1) {
-      for (let z = cz - 2; z <= cz + 2; z += 1) {
-        for (const triangle of cells.get(bodyCellKey(x, y, z)) ?? []) candidates.add(triangle);
-      }
-    }
+  let queryVersion = (collider.queryVersion + 1) >>> 0;
+  if (queryVersion === 0) {
+    visitStamps.fill(0);
+    queryVersion = 1;
   }
-  if (candidates.size === 0) {
-    const insideBounds = point.x >= min.x && point.x <= max.x
-      && point.y >= min.y && point.y <= max.y
-      && point.z >= min.z && point.z <= max.z;
-    if (!insideBounds) return null;
-    for (let triangle = 0; triangle < indices.length / 3; triangle += 1) candidates.add(triangle);
-  }
+  collider.queryVersion = queryVersion;
 
   let closestDistanceSquared = Number.POSITIVE_INFINITY;
   let closestPoint: AvatarBodySurfacePoint | null = null;
   let closestNormal: AvatarBodySurfacePoint | null = null;
-  for (const triangle of candidates) {
+  const testTriangle = (triangle: number) => {
+    if (visitStamps[triangle] === queryVersion) return;
+    visitStamps[triangle] = queryVersion;
     const offset = triangle * 3;
     const ai = indices[offset] * 3, bi = indices[offset + 1] * 3, ci = indices[offset + 2] * 3;
     const a = { x: positions[ai], y: positions[ai + 1], z: positions[ai + 2] };
@@ -246,19 +241,34 @@ export function projectPointOutsideBodySurface(
     const ab = bodySub(b, a), ac = bodySub(c, a);
     let normal = bodyCross(ab, ac);
     const normalLength = bodyLength(normal);
-    if (!Number.isFinite(normalLength) || normalLength < 1e-8) continue;
+    if (!Number.isFinite(normalLength) || normalLength < 1e-8) return;
     normal = bodyScale(normal, 1 / normalLength);
     const nearest = closestPointOnBodyTriangle(point, a, b, c);
     const radial = bodySub(nearest, center);
     if (bodyDot(normal, radial) < 0) normal = bodyScale(normal, -1);
     const separation = bodySub(point, nearest);
     const distanceSquared = bodyDot(separation, separation);
-    if (!Number.isFinite(distanceSquared) || distanceSquared >= closestDistanceSquared) continue;
+    if (!Number.isFinite(distanceSquared) || distanceSquared >= closestDistanceSquared) return;
     closestDistanceSquared = distanceSquared;
     closestPoint = nearest;
     closestNormal = normal;
+  };
+
+  for (let x = cx - 1; x <= cx + 1; x += 1) {
+    for (let y = cy - 1; y <= cy + 1; y += 1) {
+      for (let z = cz - 1; z <= cz + 1; z += 1) {
+        for (const triangle of cells.get(bodyCellKey(x, y, z)) ?? []) testTriangle(triangle);
+      }
+    }
   }
 
+  if (!closestPoint || !closestNormal) {
+    const insideBounds = point.x >= min.x && point.x <= max.x
+      && point.y >= min.y && point.y <= max.y
+      && point.z >= min.z && point.z <= max.z;
+    if (!insideBounds) return null;
+    for (let triangle = 0; triangle < indices.length / 3; triangle += 1) testTriangle(triangle);
+  }
   if (!closestPoint || !closestNormal) return null;
   const signedDistance = bodyDot(bodySub(point, closestPoint), closestNormal);
   if (!Number.isFinite(signedDistance) || signedDistance >= minimumDistance) return null;
@@ -270,7 +280,6 @@ export function projectPointOutsideBodySurface(
     correction,
   };
 }
-
 const FIXED_STEP_SECONDS = 1 / 60;
 const MAX_FRAME_SECONDS = FIXED_STEP_SECONDS * 4;
 const MAX_PARTICLES = 768;
