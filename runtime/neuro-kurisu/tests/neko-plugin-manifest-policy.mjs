@@ -238,4 +238,56 @@ const makeRegistry = (options = {}) => new NekoPluginManifestPolicyRegistry(make
   assert.equal(await registry.authorize(context(), registeredTools[0]), true);
 }
 
-console.log('NEKO_PLUGIN_MANIFEST_POLICY=PASS cases=12');
+
+{
+  const destructiveWithoutPermission = {
+    schemaVersion: 1,
+    id: 'records',
+    name: 'Records plugin',
+    version: '1.0.0',
+    enabled: true,
+    protocols: ['mcp'],
+    tools: [{
+      id: 'records.erase',
+      capability: 'records.erase',
+      destructive: true,
+      permissionClass: 'none',
+      requiresHostApproval: false,
+      actions: ['tool_call'],
+    }],
+  };
+  const liveTool = {
+    id: 'records.erase',
+    capability: 'records.erase',
+    destructive: true,
+    permissionClass: 'none',
+    requiresApproval: false,
+  };
+  const registry = new NekoPluginManifestPolicyRegistry({ listTools: () => [liveTool] });
+  assert.deepEqual(registry.register(destructiveWithoutPermission),
+    { registered: false, reason: 'invalid-approval-declaration' },
+    'a destructive plugin tool must carry an explicit permission class and host-approval requirement');
+  const falselyApproved = {
+    ...destructiveWithoutPermission,
+    tools: [{ ...destructiveWithoutPermission.tools[0], requiresHostApproval: true }],
+  };
+  assert.deepEqual(registry.register(falselyApproved),
+    { registered: false, reason: 'invalid-approval-declaration' },
+    'a manifest may not claim host approval when the canonical ActionGateway has no approvable class');
+}
+
+{
+  const misleading = manifest();
+  misleading.tools[0] = {
+    ...misleading.tools[0],
+    destructive: true,
+    permissionClass: 'none',
+    requiresHostApproval: false,
+    actions: ['tool_call'],
+  };
+  assert.deepEqual(makeRegistry().register(misleading),
+    { registered: false, reason: 'registered-tool-contract-mismatch' },
+    'a manifest cannot relabel an actually read-only registered tool as destructive; compare the real descriptor before classifying the approval declaration');
+}
+
+console.log('NEKO_PLUGIN_MANIFEST_POLICY=PASS cases=15');
