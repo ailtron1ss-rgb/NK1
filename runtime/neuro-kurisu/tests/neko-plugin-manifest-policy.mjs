@@ -276,4 +276,17 @@ const makeRegistry = (options = {}) => new NekoPluginManifestPolicyRegistry(make
     'a manifest may not claim host approval when the canonical ActionGateway has no approvable class');
 }
 
-console.log('NEKO_PLUGIN_MANIFEST_POLICY=PASS cases=14');
+{
+  const misleading = manifest();
+  misleading.tools[0] = {
+    ...misleading.tools[0],
+    destructive: true,
+    permissionClass: 'none',
+    requiresHostApproval: false,
+  };
+  assert.deepEqual(makeRegistry().register(misleading),
+    { registered: false, reason: 'registered-tool-contract-mismatch' },
+    'a manifest cannot relabel an actually read-only registered tool as destructive; compare the real descriptor before classifying the approval declaration');
+}
+
+console.log('NEKO_PLUGIN_MANIFEST_POLICY=PASS cases=15');
