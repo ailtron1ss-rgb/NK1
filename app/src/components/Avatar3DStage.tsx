@@ -197,8 +197,11 @@ export function Avatar3DStage(props:Props){
         return;
       }
       const boneCount = node.skeleton?.bones?.length ?? 0;
+      const meshSourceBounds = new THREE.Box3();
       const meshDeformedBounds = new THREE.Box3();
       let meshRenderedVertexCount = 0;
+      let minimumYVertex: any = null;
+      let maximumYVertex: any = null;
       forEachAvatarRenderedVertexIndex(node, (index) => {
         if (index >= skinIndices.count || index >= skinWeights.count) return;
         const weights = [
@@ -231,18 +234,64 @@ export function Avatar3DStage(props:Props){
         else skinAudit.zeroWeightVertexCount++;
         skinAudit.weightSumMin = Math.min(skinAudit.weightSumMin, weightSum);
         skinAudit.weightSumMax = Math.max(skinAudit.weightSumMax, weightSum);
+        // Preserve the undeformed buffer-space path beside the actual
+        // morph+skin result so bind-pose/weight defects can be isolated.
+        const sourceLocalPosition = new THREE.Vector3().fromBufferAttribute(positions, index);
+        const sourceWorldPosition = sourceLocalPosition.clone().applyMatrix4(node.matrixWorld);
+        meshSourceBounds.expandByPoint(sourceWorldPosition);
+
         // Match Three.js's renderer and Box3 precise path: this includes
         // active morph targets before the current skeleton deformation.
         if (typeof node.getVertexPosition === "function") {
           node.getVertexPosition(index, auditVertex);
         } else {
-          auditVertex.fromBufferAttribute(positions, index);
+          auditVertex.copy(sourceLocalPosition);
           node.applyBoneTransform(index, auditVertex);
         }
+        const deformedLocalPosition = auditVertex.clone();
         auditVertex.applyMatrix4(node.matrixWorld);
         skinAudit.transformedVertexBounds.expandByPoint(auditVertex);
         meshDeformedBounds.expandByPoint(auditVertex);
         meshRenderedVertexCount += 1;
+
+        const deformedWorldPosition = {
+          x: auditVertex.x, y: auditVertex.y, z: auditVertex.z,
+        };
+        const activeSkinInfluences = indices
+          .map((joint, channel) => ({
+            jointIndex: joint,
+            boneName: Number.isInteger(joint) ? String(node.skeleton?.bones?.[joint]?.name || "") : "",
+            weight: weights[channel],
+          }))
+          .filter((entry) => Number.isFinite(entry.weight) && entry.weight > 1e-5);
+        const activeMorphInfluences = Object.entries(node.morphTargetDictionary || {})
+          .flatMap(([name, targetIndex]: [string, any]) => {
+            const influence = Number(node.morphTargetInfluences?.[targetIndex] ?? 0);
+            return Number.isFinite(influence) && Math.abs(influence) > 1e-5
+              ? [{ name, targetIndex, influence }]
+              : [];
+          });
+        const extremeVertexRecord = {
+          vertexIndex: index,
+          sourceLocalPosition: {
+            x: sourceLocalPosition.x, y: sourceLocalPosition.y, z: sourceLocalPosition.z,
+          },
+          sourceWorldPosition: {
+            x: sourceWorldPosition.x, y: sourceWorldPosition.y, z: sourceWorldPosition.z,
+          },
+          deformedLocalPosition: {
+            x: deformedLocalPosition.x, y: deformedLocalPosition.y, z: deformedLocalPosition.z,
+          },
+          deformedWorldPosition,
+          activeSkinInfluences,
+          activeMorphInfluences,
+        };
+        if (!minimumYVertex || deformedWorldPosition.y < minimumYVertex.deformedWorldPosition.y) {
+          minimumYVertex = extremeVertexRecord;
+        }
+        if (!maximumYVertex || deformedWorldPosition.y > maximumYVertex.deformedWorldPosition.y) {
+          maximumYVertex = extremeVertexRecord;
+        }
       });
       if (!meshDeformedBounds.isEmpty()) {
         const meshSize = meshDeformedBounds.getSize(new THREE.Vector3());
@@ -253,11 +302,26 @@ export function Avatar3DStage(props:Props){
           frustumCulled: node.frustumCulled !== false,
           renderOrder: Number(node.renderOrder || 0),
           renderedVertexCount: meshRenderedVertexCount,
+          sourceBounds: {
+            min: { x: meshSourceBounds.min.x, y: meshSourceBounds.min.y, z: meshSourceBounds.min.z },
+            max: { x: meshSourceBounds.max.x, y: meshSourceBounds.max.y, z: meshSourceBounds.max.z },
+            size: {
+              x: meshSourceBounds.max.x - meshSourceBounds.min.x,
+              y: meshSourceBounds.max.y - meshSourceBounds.min.y,
+              z: meshSourceBounds.max.z - meshSourceBounds.min.z,
+            },
+          },
           bounds: {
             min: { x: meshDeformedBounds.min.x, y: meshDeformedBounds.min.y, z: meshDeformedBounds.min.z },
             max: { x: meshDeformedBounds.max.x, y: meshDeformedBounds.max.y, z: meshDeformedBounds.max.z },
             size: { x: meshSize.x, y: meshSize.y, z: meshSize.z },
           },
+          extremeVertices: {
+            minY: minimumYVertex,
+            maxY: maximumYVertex,
+          },
+          bindMatrix: typeof node.bindMatrix?.toArray === "function" ? node.bindMatrix.toArray() : null,
+          bindMatrixInverse: typeof node.bindMatrixInverse?.toArray === "function" ? node.bindMatrixInverse.toArray() : null,
           materials: materials.map((material: any) => ({
             name: String(material?.name || ""),
             visible: material?.visible !== false,
