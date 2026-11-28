@@ -140,7 +140,7 @@ test("shader injection adds a bounded displacement only after the skinning trans
     nk1SecondaryHair: { value: 1 },
   };
   const original = shader.vertexShader;
-  assert.equal(vertexDynamics.injectAvatarSecondaryVertexShader(shader, uniforms), true);
+  assert.equal(vertexDynamics.injectAvatarSecondaryVertexShader(shader, uniforms, true), true);
   assert.ok(shader.vertexShader.includes("#include <skinning_vertex>"));
   assert.ok(shader.vertexShader.indexOf("#include <skinning_vertex>") < shader.vertexShader.indexOf("transformed.x +="));
   assert.ok(shader.vertexShader.indexOf("#include <skinning_vertex>") < shader.vertexShader.indexOf("transformed += nk1SecondaryOffset;"),
@@ -154,9 +154,9 @@ test("shader injection adds a bounded displacement only after the skinning trans
 function bodySurfaceMesh() {
   const positions = new Float32Array([
     0, 0, 0,
-    1, 0, 0,
-    0, 1, 0,
-    0, 0, 1,
+    0.5, 0, 0,
+    0, 0.5, 0,
+    0, 0, 0.5,
   ]);
   const geometry = {
     attributes: { position: { array: positions, count: 4 } },
@@ -186,11 +186,11 @@ test("XPBD vertices are projected against the current skinned torso surface in m
   const positions = part.geometry.attributes.position.array;
   for (let vertex = 0; vertex < part.geometry.attributes.position.count; vertex += 1) {
     const offset = vertex * 3;
-    positions[offset] = 0.18 + (vertex % 3) * 0.01;
-    positions[offset + 1] = 0.18 + Math.floor(vertex / 3) * 0.01;
-    positions[offset + 2] = 0.18;
+    positions[offset] = 0.08 + (vertex % 3) * 0.01;
+    positions[offset + 1] = 0.08 + Math.floor(vertex / 3) * 0.01;
+    positions[offset + 2] = 0.08;
   }
-  part.geometry.boundingBox = { min: { y: 0.18 }, max: { y: 0.2 } };
+  part.geometry.boundingBox = { min: { y: 0.08 }, max: { y: 0.1 } };
   part.getVertexPosition = (index, target) => target.fromArray(part.geometry.attributes.position.array, index * 3);
   part.localToWorld = (target) => target;
   part.worldToLocal = (target) => target;
