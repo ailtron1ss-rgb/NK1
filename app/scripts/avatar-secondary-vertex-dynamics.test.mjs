@@ -207,6 +207,16 @@ test("the asset-verified HAIR_layer_R0 mesh is eligible for bounded secondary ha
   vertexDynamics.disposeAvatarSecondaryVertexDynamics(bindings);
 });
 
+test("the asset-verified HAIR_layer_L0 mesh receives mirrored bounded XPBD hair dynamics", () => {
+  const part = mesh("HAIR_layer_L0", { geometry: makeParticleGeometry(3) });
+  const bindings = vertexDynamics.attachAvatarSecondaryVertexDynamics(scene([part]), 1);
+  assert.equal(bindings.length, 1);
+  assert.equal(bindings[0].role, "hair");
+  assert.equal(bindings[0].uniforms.nk1SecondarySide.value, -1);
+  assert.ok(bindings[0].particleState);
+  vertexDynamics.disposeAvatarSecondaryVertexDynamics(bindings);
+});
+
 test("toon-converted GLB materials keep their cel gradient and accept the same vertex sway hook", () => {
   const original = makeMaterial("NK1_Toon_Hair", "toon");
   original.userData.nk1ToonConverted = true;
