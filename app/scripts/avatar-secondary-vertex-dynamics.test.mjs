@@ -163,7 +163,7 @@ function bodySurfaceMesh() {
     index: { array: new Uint16Array([0, 2, 1, 0, 1, 3, 1, 2, 3, 2, 0, 3]) },
   };
   return {
-    name: "BODY_torso_core", isMesh: true, isSkinnedMesh: true, geometry,
+    name: "BODY_torso_core", isMesh: true, isSkinnedMesh: true, geometry, matrixWorld: new THREE.Matrix4(),
     getVertexPosition(index, target) { return target.fromArray(positions, index * 3); },
     localToWorld(target) { return target; },
     worldToLocal(target) { return target; },
@@ -191,6 +191,7 @@ test("XPBD vertices are projected against the current skinned torso surface in m
     positions[offset + 2] = 0.08;
   }
   part.geometry.boundingBox = { min: { y: 0.08 }, max: { y: 0.1 } };
+  part.matrixWorld = new THREE.Matrix4();
   part.getVertexPosition = (index, target) => target.fromArray(part.geometry.attributes.position.array, index * 3);
   part.localToWorld = (target) => target;
   part.worldToLocal = (target) => target;
