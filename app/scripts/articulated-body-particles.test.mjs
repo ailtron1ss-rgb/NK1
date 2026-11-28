@@ -419,3 +419,32 @@ test("articulated forearms and hands are kept outside the torso collision capsul
         + " minimum=" + minimum.toFixed(4));
   }
 });
+
+
+test("capsule self-collision resolves a limb point exactly on the torso axis deterministically", () => {
+  const previous = createAvatarArticulatedBodyState();
+  const pelvis = previous.particles.pelvis.position;
+  const chest = previous.particles.chest.position;
+  previous.particles.leftHandPoint.position = {
+    x: (pelvis.x + chest.x) * 0.5,
+    y: (pelvis.y + chest.y) * 0.5,
+    z: (pelvis.z + chest.z) * 0.5,
+  };
+  previous.particles.leftHandPoint.velocity = { x: 0, y: 0, z: 0 };
+
+  const result = stepAvatarArticulatedBody(previous, {}, 1000 / 60, {
+    awake: true,
+    energy01: 0.8,
+    groundEnabled: false,
+  });
+  assert.ok(result.contacts.bodyCollisionCount > 0,
+    "an axis-aligned limb point must still produce a deterministic contact");
+  assert.ok(everyNumberIsFinite(result.state), "the degenerate contact normal must remain finite");
+  const distance = pointSegmentDistance(
+    result.state.particles.leftHandPoint.position,
+    result.state.particles.pelvis.position,
+    result.state.particles.chest.position,
+  );
+  assert.ok(distance >= 0.135 + 0.03 - 0.015,
+    "a point on the capsule axis must be projected outside without producing NaN");
+});
