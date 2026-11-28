@@ -87,11 +87,15 @@ test("an initiative response is discarded if a newer snapshot request starts whi
 
 test("tickIdle rechecks snapshot freshness after the proactive endpoint resolves", async () => {
   const store = await readFile(new URL("../src/organism/store.ts", import.meta.url), "utf8");
-  assert.ok(store.includes(
-    "const pending = await neuroApi.proactiveMessage();\\n" +
-    "      // A newer snapshot request may start while the initiative endpoint is in flight.\\n" +
-    "      // Do not append or ACK an initiative from a superseded poll.\\n" +
-    "      if (!snapshotCommitGate.isCurrent(requestId)) return;\\n" +
-    "      const initiative = pending.initiative;",
-  ));
+  const pendingIndex = store.indexOf("const pending = await neuroApi.proactiveMessage();");
+  const freshnessCheckIndex = store.indexOf("if (!snapshotCommitGate.isCurrent(requestId)) return;", pendingIndex);
+  const initiativeIndex = store.indexOf("const initiative = pending.initiative;", pendingIndex);
+  const chatWriteIndex = store.indexOf("saveChat(chat)", pendingIndex);
+  const acknowledgementIndex = store.indexOf("await neuroApi.ackProactiveMessage(initiative.id)", pendingIndex);
+
+  assert.ok(pendingIndex >= 0, "tickIdle must read the pending initiative");
+  assert.ok(freshnessCheckIndex > pendingIndex, "freshness must be rechecked after the pending response resolves");
+  assert.ok(initiativeIndex > freshnessCheckIndex, "stale initiative data must not be inspected before the freshness check");
+  assert.ok(chatWriteIndex > freshnessCheckIndex, "stale initiative must not be persisted to the chat cache");
+  assert.ok(acknowledgementIndex > freshnessCheckIndex, "stale initiative must not be acknowledged");
 });
