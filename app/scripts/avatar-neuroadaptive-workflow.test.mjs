@@ -30,8 +30,11 @@ test('offscreen framebuffer readback wakes exactly one explicit render frame', (
   assert.match(browserAcceptance, /dispatchEvent\(new Event\("nk1:avatar-pixel-audit-request"\)\)/);
 });
 
-test('avatar normalization hides environment meshes and fits only character geometry', () => {
-  assert.match(avatarStage, /resolveAvatarSceneBounds\(root\)/);
+test('avatar normalization hides environment meshes and isolates tiny outliers from full geometry audit', () => {
+  assert.match(avatarStage, /resolveAvatarSceneBounds\(root\)/, 'full surface bounds remain available for diagnostics');
+  assert.match(avatarStage, /resolveAvatarFramingBounds\(root\)/, 'normalization uses skeleton-aware framing bounds');
   assert.match(avatarStage, /excludedEnvironmentMeshes:\s*sourceSceneBounds\.excludedEnvironmentMeshes/);
-  assert.match(avatarStage, /const bounds=sourceSceneBounds\.bounds/);
+  assert.match(avatarStage, /const sourceFramingBounds=resolveAvatarFramingBounds\(root\)/);
+  assert.match(avatarStage, /const bounds=sourceFramingBounds\.bounds\.isEmpty\(\)\?sourceSceneBounds\.bounds:sourceFramingBounds\.bounds/);
+  assert.match(avatarStage, /normalizationExcludedOutlierMeshes:\\s*sourceFramingBounds\.excludedOutlierMeshes/);
 });
