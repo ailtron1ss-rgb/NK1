@@ -60,3 +60,13 @@ test("GLB browser diagnostics expose per-mesh surface bounds and projected fit",
     "runtime must report projected bounds computed by the active camera");
 });
 
+
+test("skinned mesh diagnostics distinguish source positions from deformed vertices and retain bone influences", async () => {
+  const stage = await readFile(new URL("../src/components/Avatar3DStage.tsx", import.meta.url), "utf8");
+  assert.match(stage, /sourceBounds/,
+    "mesh diagnostics must preserve undeformed source geometry bounds");
+  assert.match(stage, /extremeVertices/,
+    "mesh diagnostics must expose the vertices responsible for extreme world-space bounds");
+  assert.match(stage, /activeSkinInfluences/,
+    "extreme vertex records must identify the bones and weights producing the deformation");
+});
